@@ -15,7 +15,12 @@ export default function AuthPage() {
       <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-blue-600/20 blur-[120px] rounded-full animate-pulse delay-700" />
       
       {/* Grid Overlay */}
-      <div className="absolute inset-0 bg-[url('/grid.svg')] bg-center [mask-image:linear-gradient(180deg,white,rgba(255,255,255,0))] opacity-20" />
+      <div className="absolute inset-0 bg-grid opacity-[0.03]" />
+
+      {/* Decorative Factory Text */}
+      <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 opacity-[0.02] pointer-events-none select-none">
+        <span className="text-[15rem] font-black tracking-tighter uppercase tracking-[0.1em]">{t('titleAccent')}</span>
+      </div>
 
       <motion.div
         initial={{ opacity: 0, y: 20 }}
@@ -24,7 +29,7 @@ export default function AuthPage() {
       >
         <Link 
           href="/" 
-          className="inline-flex items-center text-sm text-gray-400 hover:text-white transition-colors mb-12 group"
+          className="inline-flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-colors mb-12 group"
         >
           <span className="mr-2 group-hover:-translate-x-1 transition-transform">←</span>
           {t('backToLanding')}
@@ -35,13 +40,13 @@ export default function AuthPage() {
           <div className="absolute -top-24 -left-24 w-48 h-48 bg-purple-500/10 blur-[60px] rounded-full" />
           
           <div className="text-center mb-10">
-            <motion.h1 
+             <motion.h1 
               initial={{ opacity: 0 }}
               animate={{ opacity: 1 }}
               transition={{ delay: 0.2 }}
-              className="text-4xl font-bold tracking-tight mb-4"
+              className="text-4xl font-black uppercase tracking-tight mb-4"
             >
-              {t('title')} <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">{t('titleAccent')}</span>
+              {t('title')} <span className="gradient-text-cosmic text-glow-mint">{t('titleAccent')}</span>
             </motion.h1>
             <p className="text-gray-400 text-sm md:text-base">
               {t('subtitle')}
@@ -59,11 +64,8 @@ export default function AuthPage() {
       </motion.div>
 
       {/* Aesthetic Footer Branding */}
-      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-20 flex items-center gap-2">
-        <div className="w-6 h-6 bg-white rounded-full flex items-center justify-center">
-          <div className="w-3 h-3 bg-black rounded-sm transform rotate-45" />
-        </div>
-        <span className="text-xs font-bold tracking-widest uppercase">Viral Engine</span>
+      <div className="absolute bottom-8 left-1/2 -translate-x-1/2 opacity-20 flex items-center gap-2 grayscale group hover:grayscale-0 hover:opacity-100 transition-all cursor-default">
+        <span className="text-xs font-black tracking-[0.4em] uppercase italic">Virale<span className="text-cyan-400">.uno</span></span>
       </div>
     </main>
   );

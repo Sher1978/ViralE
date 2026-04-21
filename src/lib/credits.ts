@@ -11,6 +11,7 @@ export const CREDIT_COSTS = {
   PRO_RENDER: 50,
   AVATAR_HEYGEN: 50,
   AVATAR_HIGGSFIELD: 15,
+  REGENERATE_BLOCK: 1,
 };
 
 export async function checkBalance(supabase: SupabaseClient, userId: string) {

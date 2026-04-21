@@ -1,15 +1,15 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { getAuthenticatedUser } from '@/lib/auth';
+import { getAuthContext } from '@/lib/auth';
 import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
 import { createRenderJob } from '@/lib/render';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(
   req: Request,
   { params }: { params: Promise<{ id: string }> }
 ) {
   try {
-    const user = await getAuthenticatedUser();
+    const { user, supabase: authorizedSupabase } = await getAuthContext();
     const { id: projectId } = await params;
     const { mode, tier, assetId, aiPolish, versionId, recordedAssetId } = await req.json();
 
@@ -20,7 +20,7 @@ export async function POST(
     const userId = user.id;
 
     // 1. Verify Project Ownership
-    const { data: project, error: projectError } = await supabase
+    const { data: project, error: projectError } = await authorizedSupabase
       .from('projects')
       .select('user_id')
       .eq('id', projectId)
@@ -40,11 +40,11 @@ export async function POST(
 
     // 3. Deduct Animation & Polish Credits (Render cost is deducted inside createRenderJob)
     if (animationCost > 0) {
-      await deductCredits(userId, animationCost, 'ANIMATION_SETUP', projectId);
+      await deductCredits(supabaseAdmin, userId, animationCost, 'ANIMATION_SETUP', projectId);
     }
 
     // 4. Update Project Config
-    const { error: updateError } = await supabase
+    const { error: updateError } = await authorizedSupabase
       .from('projects')
       .update({
         avatar_mode: mode,
@@ -58,7 +58,7 @@ export async function POST(
     if (updateError) throw updateError;
 
     // 5. Create Render Job (Deducts CREDIT_COSTS.PRO_RENDER and stores metadata)
-    const job = await createRenderJob(userId, projectId, versionId, 'pro', {
+    const job = await createRenderJob(supabaseAdmin, userId, projectId, versionId, 'pro', {
       mode,
       tier,
       assetId,

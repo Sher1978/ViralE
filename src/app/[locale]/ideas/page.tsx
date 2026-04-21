@@ -1,6 +1,6 @@
 'use client';
 
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/navigation';
 import { TrendingUp, Zap, ArrowRight } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 
@@ -12,7 +12,7 @@ export default function IdeasPage() {
   const router = useRouter();
 
   const handleToScript = (topic: string) => {
-    router.push(`/${locale}/projects/new/script?topic=${encodeURIComponent(topic)}`);
+    router.push(`/projects/new/script?topic=${encodeURIComponent(topic)}`);
   };
 
   const IDEAS = [

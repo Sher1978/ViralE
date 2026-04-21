@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { addCredits } from '@/lib/credits';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
@@ -14,7 +15,7 @@ export async function POST(req: Request) {
     const userId = user.id;
 
     // MOCK: In production, verify payment package and gateway response here
-    await addCredits(userId, amount, 'top_up');
+    await addCredits(supabaseAdmin, userId, amount, 'top_up');
 
     return NextResponse.json({
       success: true,

@@ -1,12 +1,13 @@
 'use client';
 
 import { useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 
 export default function LoginButtons() {
   const t = useTranslations('auth');
+  const locale = useLocale();
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
@@ -15,7 +16,7 @@ export default function LoginButtons() {
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/auth/callback`,
+          redirectTo: `${window.location.origin}/api/auth/callback`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -29,13 +30,68 @@ export default function LoginButtons() {
     }
   };
 
-  const handleTelegramLogin = () => {
+  const handleTelegramLogin = async () => {
     setIsLoading('telegram');
-    // Telegram logic usually happens via script injection or a specific redirect.
-    // For now, let's look for a Telegram widget or show a placeholder.
-    // In production, we'll inject the <script src="https://telegram.org/js/telegram-widget.js?22" ...>
-    alert('Telegram login integration pending: Need to set secondary redirect to bot auth.');
-    setIsLoading(null);
+    try {
+      const configRes = await fetch('/api/auth/telegram/config');
+      const { botId } = await configRes.json();
+      
+      if (!botId) throw new Error('Telegram not configured');
+
+      const origin = window.location.origin;
+      const tgUrl = `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${encodeURIComponent(origin)}&embed=1&request_access=write`;
+      
+      const width = 550;
+      const height = 470;
+      const left = (window.screen.width - width) / 2;
+      const top = (window.screen.height - height) / 2;
+      
+      const popup = window.open(tgUrl, 'telegram_login', `width=${width},height=${height},left=${left},top=${top}`);
+
+      const messageListener = async (event: MessageEvent) => {
+        if (event.origin === 'https://oauth.telegram.org' || event.origin === window.location.origin) {
+          try {
+            const data = JSON.parse(event.data);
+            if (data.event === 'auth_result') {
+              window.removeEventListener('message', messageListener);
+              popup?.close();
+              
+              const authRes = await fetch('/api/auth/telegram', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(data.result)
+              });
+              
+              if (authRes.ok) {
+                const { session } = await authRes.json();
+                
+                // CRITICAL: Set session on client for supabase instance to be ready
+                const { error: sessionError } = await supabase.auth.setSession(session);
+                if (sessionError) throw sessionError;
+
+                window.location.href = `/${locale}/projects/new/script`;
+              } else {
+                throw new Error('Backend auth failed');
+              }
+            }
+          } catch (e) {
+            // Not our message
+          }
+        }
+      };
+
+      window.addEventListener('message', messageListener);
+
+      // Timeout safety
+      setTimeout(() => {
+        window.removeEventListener('message', messageListener);
+        if (isLoading === 'telegram') setIsLoading(null);
+      }, 300000);
+
+    } catch (error) {
+      console.error('Telegram login error:', error);
+      setIsLoading(null);
+    }
   };
 
   return (

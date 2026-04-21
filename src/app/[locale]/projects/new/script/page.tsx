@@ -2,7 +2,8 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useRouter } from '@/navigation';
 import { Sparkles, ArrowRight, Wand2, History, ChevronRight, Loader2 } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { profileService } from '@/lib/services/profileService';
@@ -44,11 +45,18 @@ export default function ScriptLabPage() {
 
   useEffect(() => {
     async function loadData() {
-      if (!projectIdParam || !versionIdParam) return;
+      if (!projectIdParam) {
+        // If no project, check for pre-filled topic from Ideas page
+        const topic = searchParams.get('topic');
+        if (topic) {
+          setTopicInput(topic);
+        }
+        return;
+      }
       
       setIsLoading(true);
       try {
-        const ver = await projectService.getVersion(versionIdParam);
+        const ver = await projectService.getVersion(versionIdParam!);
         if (ver?.script_data) {
           setScriptData(ver.script_data as any);
           setCurrentVersion(ver);
@@ -64,7 +72,7 @@ export default function ScriptLabPage() {
       }
     }
     loadData();
-  }, [projectIdParam, versionIdParam]);
+  }, [projectIdParam, versionIdParam, searchParams]);
 
   const handleApplyRefinement = async (instruction: string) => {
     if (!projectIdParam || !versionIdParam) return;
@@ -169,12 +177,13 @@ export default function ScriptLabPage() {
 
       // 2. Update version with latest script data
       const version = await projectService.updateVersion(vId!, {
-        scriptData: scriptData
+        script_data: scriptData
       });
       if (!version) throw new Error('Version update failed');
 
       // Redirect to Storyboard
-      router.push(`/${locale}/projects/new/storyboard?projectId=${pId}&versionId=${vId}`);
+      // Redirect to Storyboard (routing helper handles locale)
+      router.push(`/projects/new/storyboard?projectId=${pId}&versionId=${vId}`);
     } catch (err: any) {
       console.error('Save failed:', err);
       setError(err.message || 'Failed to save project');

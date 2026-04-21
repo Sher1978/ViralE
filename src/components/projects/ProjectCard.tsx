@@ -1,7 +1,7 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { useTranslations, useLocale } from 'next-intl';
+import { useRouter } from '@/navigation';
 import { 
   Play, 
   Clock, 
@@ -17,7 +17,8 @@ import { motion } from 'framer-motion';
 
 export interface Project {
   id: string;
-  topic_title: string;
+  title?: string;
+  topic_title?: string;
   status: 'ideation' | 'scripting' | 'storyboard' | 'rendering' | 'completed' | 'error';
   created_at: string;
   updated_at: string;
@@ -35,6 +36,7 @@ interface ProjectCardProps {
 
 export default function ProjectCard({ project }: ProjectCardProps) {
   const t = useTranslations('projects');
+  const locale = useLocale();
   const router = useRouter();
 
   const getStatusConfig = (status: Project['status']) => {
@@ -94,8 +96,8 @@ export default function ProjectCard({ project }: ProjectCardProps) {
       path = `/projects/new/production?projectId=${project.id}`;
     }
 
-    // Always include locale
-    router.push(`/${locale}${path}`);
+    // Localized router handles prefix automatically
+    router.push(path);
   };
 
   const projectTitle = project.topic_title || project.title || 'Untitled Project';
