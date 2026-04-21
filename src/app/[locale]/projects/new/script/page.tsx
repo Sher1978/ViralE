@@ -1,4 +1,6 @@
 'use client';
+// Build trigger: Ensure TypeScript property name parity (script_data)
+
 
 import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
