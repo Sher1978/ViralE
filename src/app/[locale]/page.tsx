@@ -223,10 +223,10 @@ export default function LandingPage() {
           animate={{ opacity: 1, x: 0 }}
           className="flex items-center gap-6"
         >
-          <div className="hidden sm:flex items-center gap-6 mr-4">
+          <div className="flex items-center gap-6 mr-4">
              <Link href="/" locale={locale === 'ru' ? 'en' : 'ru'} className="group flex items-center gap-2">
               <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 group-hover:text-white transition-colors">
-                {locale === 'ru' ? 'English' : 'Русский'}
+                {locale === 'ru' ? 'EN' : 'RU'}
               </span>
               <Globe className="w-3.5 h-3.5 text-white/20 group-hover:text-cyan-400 transition-colors" />
             </Link>

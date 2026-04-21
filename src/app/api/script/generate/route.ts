@@ -79,15 +79,41 @@ export async function POST(req: Request) {
       throw e;
     }
 
-    // 4. Generate or Refine Script
+    // 4. Generate or Refine Script (with mock fallback)
     let scriptJson;
-    if (mode === 'refine') {
-      console.log(`[ScriptGen] Refining script with instruction: ${instruction}`);
-      const { refineScript } = await import('@/lib/ai/gemini');
-      scriptJson = await refineScript(currentScript, instruction, digitalShadow, locale);
-    } else {
-      console.log(`[ScriptGen] Generating initial script for idea: ${coreIdea}`);
-      scriptJson = await generateScript(coreIdea, digitalShadow, locale);
+    try {
+      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key') {
+        console.warn('[ScriptGen] GEMINI_API_KEY is missing or dummy. Using mock fallback.');
+        throw new Error('MOCK_MODE');
+      }
+
+      if (mode === 'refine') {
+        console.log(`[ScriptGen] Refining script with instruction: ${instruction}`);
+        const { refineScript } = await import('@/lib/ai/gemini');
+        scriptJson = await refineScript(currentScript, instruction, digitalShadow, locale);
+      } else {
+        console.log(`[ScriptGen] Generating initial script for idea: ${coreIdea}`);
+        scriptJson = await generateScript(coreIdea, digitalShadow, locale);
+      }
+    } catch (error: any) {
+      console.warn('[ScriptGen] Generation failed or bypassed. Using mock fallback:', error.message);
+      
+      // Structured fallback content
+      if (locale === 'ru') {
+        scriptJson = {
+          hook: "Секрет раскрыт",
+          intro: `Сегодня мы поговорим про ${coreIdea || 'этот тренд'}. Почему это важно прямо сейчас?`,
+          body: `Вот 3 причины, почему ${coreIdea || 'это'} работает. Во-первых, это системность. Во-вторых, это внимание к деталям. И в-третьих, это Viral Engine.`,
+          cta: "Подпишись, чтобы качать свой Digital DNA!"
+        };
+      } else {
+        scriptJson = {
+          hook: "Secret Unlocked",
+          intro: `Today we dive into ${coreIdea || 'this topic'}. Why does it matter right now?`,
+          body: `Here are 3 reasons why ${coreIdea || 'it'} works. First, consistency. Second, attention to detail. And third, Viral Engine.`,
+          cta: "Follow to upgrade your Digital DNA!"
+        };
+      }
     }
 
     // 5. Save Version

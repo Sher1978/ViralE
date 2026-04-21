@@ -230,22 +230,33 @@ export default function ScriptLabPage() {
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000" />
             <textarea
+              id="topic-textarea"
               value={topicInput}
-              onChange={(e) => setTopicInput(e.target.value)}
+              onChange={(e) => {
+                console.log('Topic change:', e.target.value);
+                setTopicInput(e.target.value);
+              }}
               placeholder={locale === 'ru' ? 'Напр: 5 секретов как выбрать лучшее авто...' : 'E.g.: 5 secrets to picking the best car...'}
-              className="w-full h-48 bg-[#0d0d1a] border border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500/50 transition-all resize-none shadow-2xl"
+              className="w-full h-48 bg-[#0d0d1a] border border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500/50 transition-all resize-none shadow-2xl relative z-10"
             />
           </div>
 
           <button
+            id="generate-script-btn"
             onClick={handleInitialGenerate}
-            disabled={!topicInput.trim()}
-            className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group disabled:opacity-30 disabled:grayscale transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)]"
+            disabled={!topicInput || topicInput.trim().length < 3 || isLoading}
+            className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group disabled:opacity-30 disabled:grayscale transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
           >
-            <span className="font-black text-lg uppercase tracking-widest">
-              {locale === 'ru' ? 'Создать сценарий' : 'Generate Script'}
-            </span>
-            <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+            {isLoading ? (
+              <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+            ) : (
+              <>
+                <span className="font-black text-lg uppercase tracking-widest">
+                  {locale === 'ru' ? 'Создать сценарий' : 'Generate Script'}
+                </span>
+                <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+              </>
+            )}
           </button>
         </div>
 
