@@ -1,0 +1,36 @@
+export type SegmentType = 'intro_avatar' | 'outro_avatar' | 'animated_still' | 'broll' | 'transition';
+export type AvatarProvider = 'heygen' | 'higgsfield';
+export type AnimationStyle = 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'glitch' | 'none';
+
+export interface SceneSegment {
+  id: string;
+  type: SegmentType;
+  scriptText: string;
+  duration?: number;
+  assetUrl?: string; // URL of generated video/image
+  voiceUrl?: string; // URL of the voiceover for this segment
+  prompt: string;    // Prompt used for generation
+  animationStyle?: AnimationStyle;
+  overlayBroll?: string; // Optional B-roll URL
+  status: 'pending' | 'rendering' | 'completed' | 'failed' | 'error';
+  
+  // Multi-provider support
+  provider?: AvatarProvider;
+  avatarId?: string;
+  modelId?: string; // e.g. 'kling-3.0', 'nano-banana'
+}
+
+export interface ProductionManifest {
+  version: string;
+  projectId: string;
+  versionId: string;
+  segments: SceneSegment[];
+  totalDuration: number;
+  config: {
+    resolution: string;
+    fps: number;
+    musicUrl?: string;
+    musicVolume: number;
+    defaultProvider?: AvatarProvider;
+  };
+}
