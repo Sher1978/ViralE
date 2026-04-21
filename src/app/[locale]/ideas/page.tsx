@@ -171,7 +171,8 @@ export default function IdeasPage() {
             {/* Actions */}
             <div className="flex items-center justify-between pt-1">
               <button
-                className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest"
+                onClick={() => handleToScript(idea.topic)}
+                className="flex items-center gap-1.5 text-[10px] font-bold uppercase tracking-widest transition-transform hover:scale-105 active:scale-95"
                 style={{ color: idea.tagColor }}
               >
                 <TrendingUp className="w-3 h-3" />
@@ -179,7 +180,7 @@ export default function IdeasPage() {
               </button>
               <div className="flex gap-2">
                 <button
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[9px] font-bold transition-all hover:scale-105"
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[9px] font-bold transition-all hover:scale-105 active:scale-95"
                   style={{
                     background: 'rgba(255,255,255,0.04)',
                     border: '1px solid rgba(255,255,255,0.07)',
@@ -189,7 +190,8 @@ export default function IdeasPage() {
                   {common('later')}
                 </button>
                 <button
-                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[9px] font-bold transition-all hover:scale-105"
+                  onClick={() => handleToScript(idea.topic)}
+                  className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[9px] font-bold transition-all hover:scale-105 active:scale-95 shadow-lg shadow-emerald-500/10"
                   style={{
                     background: 'rgba(0,255,204,0.08)',
                     border: '1px solid rgba(0,255,204,0.2)',

@@ -26,7 +26,8 @@
     "topUp": "top up →"
   },
   "landing": {
-    "badge": "Powered by Gemini · HeyGen · Veo 3",
+    "badge": "AI CONTENT FACTORY",
+    "login": "Login",
     "title": "SINGLE WINDOW",
     "titleAccent": "TO VIRALITY",
     "subtitle": "One prompt — total presence. Your premium AI content factory that builds videos, texts, and carousels in 5 minutes.",
@@ -390,6 +391,15 @@
   },
   "dashboard_extra": {
     "viewAllIdeas": "View all ideas →"
+  },
+  "auth": {
+    "title": "ENTER THE",
+    "titleAccent": "FACTORY",
+    "subtitle": "Welcome to the command center of your virality.",
+    "googleBtn": "Login with Google",
+    "telegramBtn": "Login with Telegram",
+    "backToLanding": "← Back to landing",
+    "footer": "Secure login via official protocols"
   },
   "mocks": {
     "idea1Topic": "Car Inspector Secrets 2026",

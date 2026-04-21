@@ -73,8 +73,8 @@ export default function LandingPage() {
           <Link href={`/${locale === 'ru' ? 'en' : 'ru'}`} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors">
             {locale === 'ru' ? 'English' : 'Русский'}
           </Link>
-          <Link href={`/${locale}/dashboard`} className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
-            Login
+          <Link href={`/${locale}/auth`} className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
+            {t('login')}
           </Link>
         </div>
       </nav>
@@ -112,7 +112,7 @@ export default function LandingPage() {
 
           {/* Main CTA */}
           <motion.div variants={itemVariants} className="flex flex-col items-center gap-6 w-full max-w-md">
-            <Link href={`/${locale}/onboarding`} className="w-full">
+            <Link href={`/${locale}/auth`} className="w-full">
               <button className="w-full py-6 rounded-2xl bg-white text-black font-black text-xl uppercase tracking-tight flex items-center justify-center gap-3 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-2xl shadow-white/10">
                 <Play className="w-5 h-5 fill-current" />
                 {t('cta')}
