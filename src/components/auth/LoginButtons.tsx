@@ -2,12 +2,11 @@
 
 import { useState } from 'react';
 import { useTranslations } from 'next-intl';
-import { createClientComponentClient } from '@supabase/auth-helpers-nextjs';
+import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 
 export default function LoginButtons() {
   const t = useTranslations('auth');
-  const supabase = createClientComponentClient();
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
