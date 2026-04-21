@@ -147,5 +147,20 @@ export const projectService = {
       return false;
     }
     return true;
+  },
+
+  async updateVersion(versionId: string, updates: Partial<ProjectVersion>): Promise<ProjectVersion | null> {
+    const { data, error } = await supabase
+      .from('project_versions')
+      .update(updates)
+      .eq('id', versionId)
+      .select()
+      .single();
+
+    if (error) {
+      console.error('Error updating version:', error);
+      return null;
+    }
+    return data;
   }
 };
