@@ -3,7 +3,7 @@
 import { useState } from 'react';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { ArrowRight, Mic, Link2, MessageSquare, Check } from 'lucide-react';
+import { ArrowRight, Mic, Link2, MessageSquare, Check, Dna } from 'lucide-react';
 
 export default function OnboardingPage() {
   const t = useTranslations('onboarding');
@@ -52,10 +52,13 @@ export default function OnboardingPage() {
       {/* Step content */}
       {step === 0 && (
         <div className="space-y-6 animate-slide-up" style={{ opacity: 1 }}>
-          <div className="text-center space-y-2">
-            <span className="text-5xl">🧬</span>
+          <div className="text-center space-y-4">
+            <div className="relative inline-block">
+              <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full animate-pulse" />
+              <Dna className="w-16 h-16 text-cyan-400 relative z-10 mx-auto" />
+            </div>
             <h2
-              className="text-2xl font-black tracking-tighter uppercase gradient-text-gold"
+              className="text-4xl font-black tracking-tighter uppercase gradient-text-cosmic"
               style={{ fontFamily: 'var(--font-space-grotesk), sans-serif' }}
             >
               {t('step1Title')}

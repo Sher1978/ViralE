@@ -35,11 +35,11 @@
     "statButton": "1 button",
     "statButtonSub": "entire process",
     "statTime": "< 5 min",
-    "statTimeSub": "to ready video",
+    "statTimeSub": "atomic velocity",
     "statCost": "$1–2",
-    "statCostSub": "production cost",
-    "featureHub": "Meaning Hub",
-    "featureHubSub": "Enter one idea — get content for all social networks instantly.",
+    "statCostSub": "compute cost",
+    "featureHub": "Meaning Nexus",
+    "featureHubSub": "One fragment of thought — total digital presence.",
     "featureConsultant": "AI Consultant",
     "featureConsultantSub": "Your personal strategist who knows trends and your niche.",
     "featurePrompter": "AI Teleprompter",
@@ -48,7 +48,7 @@
     "featureFactorySub": "Multi-engine rendering: Video, Articles, Carousels.",
     "cta": "Launch Factory",
     "tryFree": "Try for free",
-    "startOnboarding": "Create Digital DNA",
+    "startOnboarding": "Synthesize DNA",
     "footer": "iOS 25 Concept UI · Sherlock Studio",
     "stars": "★★★★★",
     "concept": "iOS 25 Concept UI · Sherlock Studio",
@@ -74,8 +74,8 @@
     "hubShorts": "Daily Shorts"
   },
   "onboarding": {
-    "step1Title": "Your Voice DNA",
-    "step1Sub": "Give the system examples of your style. AI will learn and write just like you.",
+    "step1Title": "Neural Consciousness",
+    "step1Sub": "Feed the machine with your fragments. The system crystallizes your unique persona.",
     "step1ModeLinks": "Video links",
     "step1ModeChat": "AI Interview",
     "step1ModeImport": "Import DNA",
@@ -426,6 +426,10 @@
     "idea2Reason": "Controversial topic with high reach",
     "idea3Topic": "Fuel Economy Hacks",
     "idea3Reason": "Evergreen content for any season",
+    "idea4Topic": "Car Flipping Secrets: Avoiding Junk",
+    "idea4Reason": "Audience values practical tips and debunking myths.",
+    "idea5Topic": "Top 3 Mistakes When Choosing Your First EV",
+    "idea5Reason": "High interest in moving to electric vehicles among newcomers.",
     "viewAllIdeas": "View all ideas →"
   }
 }

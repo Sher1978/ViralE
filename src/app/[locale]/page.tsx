@@ -16,9 +16,108 @@ import {
   Zap,
   Globe,
   Lock,
-  ChevronRight
+  ChevronRight,
+  Dna,
+  Layers,
+  Activity
 } from 'lucide-react';
-import { useState } from 'react';
+import { useState, useRef, useEffect } from 'react';
+
+// Premium DNA Icon Component
+const PremiumDnaIcon = ({ className = "w-8 h-8" }) => {
+  return (
+    <div className={`relative ${className} group/dna flex items-center justify-center`}>
+      <svg viewBox="0 0 100 100" className="w-full h-full">
+        {/* Animated Double Helix SVG */}
+        <defs>
+          <linearGradient id="dnaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
+            <stop offset="0%" stopColor="#22d3ee" stopOpacity="1" />
+            <stop offset="100%" stopColor="#818cf8" stopOpacity="1" />
+          </linearGradient>
+          <filter id="glow">
+            <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
+            <feMerge>
+              <feMergeNode in="coloredBlur"/>
+              <feMergeNode in="SourceGraphic"/>
+            </feMerge>
+          </filter>
+        </defs>
+        
+        {[...Array(12)].map((_, i) => (
+          <motion.g key={i}>
+            <motion.circle
+              cx="50"
+              cy={15 + i * 6}
+              r="2"
+              fill="url(#dnaGradient)"
+              animate={{
+                cx: [35, 65, 35],
+                opacity: [0.4, 1, 0.4],
+                scale: [0.8, 1.2, 0.8]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                delay: i * 0.1,
+                ease: "easeInOut"
+              }}
+              style={{ filter: 'url(#glow)' }}
+            />
+            <motion.circle
+              cx="50"
+              cy={15 + i * 6}
+              r="2"
+              fill="url(#dnaGradient)"
+              animate={{
+                cx: [65, 35, 65],
+                opacity: [1, 0.4, 1],
+                scale: [1.2, 0.8, 1.2]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                delay: i * 0.1,
+                ease: "easeInOut"
+              }}
+              style={{ filter: 'url(#glow)' }}
+            />
+            <motion.line
+              x1="35" y1={15 + i * 6}
+              x2="65" y2={15 + i * 6}
+              stroke="url(#dnaGradient)"
+              strokeWidth="0.5"
+              strokeOpacity="0.2"
+              animate={{
+                x1: [35, 65, 35],
+                x2: [65, 35, 65],
+                opacity: [0.1, 0.3, 0.1]
+              }}
+              transition={{
+                duration: 2,
+                repeat: Infinity,
+                delay: i * 0.1,
+                ease: "easeInOut"
+              }}
+            />
+          </motion.g>
+        ))}
+      </svg>
+      
+      {/* Radial Glow */}
+      <div className="absolute inset-0 bg-cyan-500/10 blur-2xl rounded-full scale-150 animate-pulse pointer-events-none" />
+      
+      {/* Particle Orbits */}
+      <motion.div
+        animate={{ rotate: 360 }}
+        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+        className="absolute inset-[-50%] pointer-events-none"
+      >
+        <div className="absolute top-0 left-1/2 w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_#22d3ee]" />
+        <div className="absolute bottom-0 left-1/2 w-1 h-1 bg-purple-400 rounded-full shadow-[0_0_8px_#a855f7]" />
+      </motion.div>
+    </div>
+  );
+};
 
 // Custom Store Badge Component
 const StoreBadge = ({ type, text, subtext, toastMessage, href = "#" }: { type: 'apple' | 'google', text: string, subtext: string, toastMessage: string, href?: string }) => {
@@ -194,10 +293,19 @@ export default function LandingPage() {
                 <motion.button 
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
-                  className="w-full h-20 rounded-3xl bg-white/5 border border-white/10 text-white font-black text-base uppercase tracking-widest flex items-center justify-center gap-3 hover:bg-white/10 transition-all backdrop-blur-xl"
+                  className="w-full h-20 rounded-3xl bg-white/5 border border-white/10 text-white font-black text-base uppercase tracking-widest flex items-center justify-center gap-4 hover:bg-white/10 transition-all backdrop-blur-xl relative overflow-hidden group shadow-[0_0_50px_rgba(34,211,238,0.15)]"
                 >
-                  <Sparkles className="w-5 h-5 text-cyan-400" />
-                  {t('startOnboarding')}
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_var(--x,_50%)_var(--y,_50%),rgba(34,211,238,0.15)_0%,transparent_50%)] opacity-0 group-hover:opacity-100 transition-opacity" 
+                    onMouseMove={(e) => {
+                      const rect = e.currentTarget.getBoundingClientRect();
+                      e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                      e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                    }}
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-[200%] animate-scan group-hover:animate-scan-fast" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-cyan-500/10 animate-mesh" />
+                  <PremiumDnaIcon className="w-7 h-7 relative z-10" />
+                  <span className="relative z-10">{t('startOnboarding')}</span>
                 </motion.button>
               </Link>
             </div>
@@ -313,20 +421,49 @@ export default function LandingPage() {
               {/* Output Grid */}
               <div className="w-full lg:w-1/2 grid grid-cols-2 gap-5">
                 {[
-                  { icon: Video, label: t('hubVideo'), color: 'text-rose-400', bg: 'bg-rose-500/10' },
-                  { icon: Layout, label: t('hubCarousel'), color: 'text-purple-400', bg: 'bg-purple-500/10' },
-                  { icon: MessageSquare, label: t('hubText'), color: 'text-cyan-400', bg: 'bg-cyan-500/10' },
-                  { icon: Zap, label: t('hubShorts'), color: 'text-amber-400', bg: 'bg-amber-500/10' }
+                  { image: '/previews/viral_video.png', label: t('hubVideo'), meta: 'NEURAL RENDER 4K', color: 'from-cyan-900/40' },
+                  { image: '/previews/carousel.png', label: t('hubCarousel'), meta: 'HD VECTOR LAYERS', color: 'from-purple-900/40' },
+                  { image: '/previews/text.png', label: t('hubText'), meta: 'GPT-O1 OPTIMIZED', color: 'from-indigo-900/40' },
+                  { image: '/previews/shorts.png', label: t('hubShorts'), meta: 'VERTICAL VEO 3.1', color: 'from-blue-900/40' }
                 ].map((item, i) => (
                   <motion.div
                     key={i}
-                    whileHover={{ scale: 1.05, y: -5 }}
-                    className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 flex flex-col items-center text-center space-y-4 hover:bg-white/[0.06] hover:border-white/10 transition-all shadow-xl group border-l-cyan-500/20"
+                    whileHover={{ scale: 1.05, y: -8 }}
+                    className="group relative h-56 rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl flex flex-col items-center justify-end bg-[#0a0c10]"
                   >
-                    <div className={`p-5 rounded-2xl ${item.bg} ${item.color} border border-current/20 shadow-inner group-hover:scale-110 transition-transform`}>
-                      <item.icon className="w-8 h-8" />
+                    <img 
+                      src={item.image} 
+                      alt={item.label}
+                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 grayscale-[0.2] group-hover:grayscale-0"
+                    />
+                    <div className={`absolute inset-0 bg-gradient-to-t ${item.color} via-black/20 to-transparent opacity-80 group-hover:opacity-40 transition-opacity duration-500`} />
+                    
+                    {/* Glass Footer */}
+                    <div className="relative w-full p-5 glass-card border-none rounded-none border-t border-white/10 backdrop-blur-3xl translate-y-2 group-hover:translate-y-0 transition-all duration-500">
+                       <div className="flex flex-col gap-1.5">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/90 group-hover:text-cyan-400 transition-colors">{item.label}</span>
+                            <div className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[7px] font-black uppercase tracking-widest text-cyan-400/80 group-hover:text-cyan-400 group-hover:bg-cyan-500/10 transition-all">{item.meta}</div>
+                          </div>
+                          <div className="flex gap-1 h-0.5 mt-2 bg-white/5 rounded-full overflow-hidden">
+                            <motion.div 
+                              initial={{ width: 0 }}
+                              whileInView={{ width: '100%' }}
+                              transition={{ duration: 1.5, delay: 0.1 * i }}
+                              className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-mesh"
+                            />
+                          </div>
+                       </div>
                     </div>
-                    <div className="text-xs font-black uppercase tracking-[0.2em] text-white/70 group-hover:text-white transition-colors">{item.label}</div>
+
+                    {/* Lens Flare Overlay */}
+                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-700 bg-[radial-gradient(circle_at_var(--x,_50%)_var(--y,_50%),rgba(255,255,255,0.15)_0%,transparent_50%)]" 
+                       onMouseMove={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                        e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                      }}
+                    />
                   </motion.div>
                 ))}
               </div>
@@ -425,10 +562,12 @@ export default function LandingPage() {
                 <motion.button 
                   whileHover={{ scale: 1.04, y: -4 }}
                   whileTap={{ scale: 0.96 }}
-                  className="w-full h-24 rounded-[2rem] bg-white text-black font-black text-2xl uppercase tracking-tighter flex items-center justify-center gap-4 transition-transform shadow-[0_25px_60px_rgba(255,255,255,0.1)] group"
+                  className="w-full h-24 rounded-[2rem] bg-white text-black font-black text-2xl uppercase tracking-tighter flex items-center justify-center gap-4 transition-transform shadow-[0_25px_60px_rgba(255,255,255,0.15)] group relative overflow-hidden"
                 >
-                  {t('startOnboarding')}
-                  <Zap className="w-6 h-6 fill-current group-hover:scale-125 transition-transform" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-[200%] animate-scan group-hover:animate-scan-fast" />
+                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity animate-mesh" />
+                  <PremiumDnaIcon className="w-8 h-8 relative z-10" />
+                  <span className="relative z-10">{t('startOnboarding')}</span>
                 </motion.button>
               </Link>
               

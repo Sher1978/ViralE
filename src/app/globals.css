@@ -596,4 +596,36 @@
     border-radius: 50%;
     background: #020408;
   }
+
+  /* === PREMIUM OVERLAYS === */
+  .glass-card {
+    background: rgba(255, 255, 255, 0.03);
+    backdrop-filter: blur(12px) saturate(180%);
+    -webkit-backdrop-filter: blur(12px) saturate(180%);
+    border: 1px solid rgba(255, 255, 255, 0.08);
+    box-shadow: 0 4px 24px -1px rgba(0, 0, 0, 0.2);
+  }
+
+  @keyframes scan-horizontal {
+    0% { transform: translateX(-200%); }
+    100% { transform: translateX(200%); }
+  }
+
+  .animate-scan {
+    animation: scan-horizontal 4s linear infinite;
+  }
+
+  .animate-scan-fast {
+    animation: scan-horizontal 2s linear infinite;
+  }
+
+  @keyframes mesh {
+    0%, 100% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+  }
+
+  .animate-mesh {
+    background-size: 200% 200%;
+    animation: mesh 5s ease infinite;
+  }
 }
