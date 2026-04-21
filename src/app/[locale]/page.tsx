@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
-import Link from 'next/link';
+import { Link } from '@/navigation';
 import { motion } from 'framer-motion';
 import { 
   Sparkles, 
@@ -70,10 +70,10 @@ export default function LandingPage() {
           <span className="text-xl font-black tracking-tighter uppercase italic">Virale<span className="text-cyan-400">.uno</span></span>
         </div>
         <div className="flex items-center gap-4">
-          <Link href={`/${locale === 'ru' ? 'en' : 'ru'}`} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors">
+          <Link href="/" locale={locale === 'ru' ? 'en' : 'ru'} className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white transition-colors">
             {locale === 'ru' ? 'English' : 'Русский'}
           </Link>
-          <Link href={`/${locale}/auth`} className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
+          <Link href="/auth" className="px-4 py-2 rounded-full bg-white/5 border border-white/10 text-[10px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all">
             {t('login')}
           </Link>
         </div>
