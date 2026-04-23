@@ -101,6 +101,7 @@ export default function ScriptLabPage() {
       }
       
       setIsLoading(true);
+      try {
         const ver = await projectService.getVersion(versionIdParam!);
         if (ver?.script_data) {
           const data = ver.script_data as any;
@@ -208,10 +209,10 @@ export default function ScriptLabPage() {
       });
       if (!project) throw new Error('Project creation failed');
       
+      await projectService.updateProjectStatus(project.id, 'scripting');
       const version = await projectService.createVersion({
         projectId: project.id,
         scriptData: scriptData, // Use current default scriptData
-        status: 'scripting'
       });
       
       if (!version) throw new Error('Version creation failed');

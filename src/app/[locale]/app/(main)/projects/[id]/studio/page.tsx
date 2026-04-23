@@ -67,7 +67,7 @@ export default function StudioPage() {
         const profile = await profileService.ensureProfile();
         if (profile) {
           setCurrentProfile(profile);
-          setHeygenKey(profile.user_api_keys?.heygen || '');
+          setHeygenKey(profile.heygen_api_key || '');
           
           // Force Knowledge Lab if DNA is missing
           if (!profile.synthetic_training_data) {
@@ -350,8 +350,7 @@ export default function StudioPage() {
     setHeygenKey(key);
     if (!currentProfile) return;
     try {
-      const updatedKeys = { ...currentProfile.user_api_keys, heygen: key };
-      await profileService.updateProfile(currentProfile.id, { user_api_keys: updatedKeys });
+      await profileService.updateProfile(currentProfile.id, { heygen_api_key: key });
     } catch (err) {
       console.error('Failed to update HeyGen key:', err);
     }

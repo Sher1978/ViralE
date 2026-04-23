@@ -224,7 +224,7 @@ function KeySection({
             onChange={(e) => onChange(e.target.value)}
             placeholder={status.hasKey ? status.maskedKey || placeholder : placeholder}
             className="w-full bg-black/40 border border-white/10 rounded-xl p-4 text-[12px] text-white focus:outline-none focus:ring-1 transition-all placeholder:text-white/10 outline-none pr-12"
-            style={{ focusRingColor: accent }}
+            style={{ borderColor: value ? `${accent}40` : 'rgba(255,255,255,0.1)' }}
           />
           {link && (
             <a 

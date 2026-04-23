@@ -40,7 +40,15 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en') {
   `;
 }
 
-export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en') {
+export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string) {
+  const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
+  const targetModel = apiKey 
+    ? client.getGenerativeModel({ 
+        model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
+        generationConfig: { responseMimeType: "application/json" }
+      }) 
+    : model;
+
   const systemPrompt = getSystemPrompt(digitalShadow, locale);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
@@ -69,7 +77,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     }
   `;
 
-  const result = await model.generateContent([systemPrompt, userPrompt]);
+  const result = await targetModel.generateContent([systemPrompt, userPrompt]);
   const response = await result.response;
   const text = response.text().trim();
   
@@ -166,8 +174,17 @@ export async function refineScript(
   currentScript: any, 
   instruction: string, 
   digitalShadow: string, 
-  locale: string = 'en'
+  locale: string = 'en',
+  apiKey?: string
 ) {
+  const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
+  const targetModel = apiKey 
+    ? client.getGenerativeModel({ 
+        model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
+        generationConfig: { responseMimeType: "application/json" }
+      }) 
+    : model;
+
   const systemPrompt = getSystemPrompt(digitalShadow, locale);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
@@ -192,7 +209,7 @@ export async function refineScript(
     - Output ONLY valid JSON in the same structure as the existing script.
   `;
 
-  const result = await model.generateContent([systemPrompt, userPrompt]);
+  const result = await targetModel.generateContent([systemPrompt, userPrompt]);
   const response = await result.response;
   const text = response.text().trim();
   

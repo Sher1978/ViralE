@@ -24,8 +24,8 @@ export const avatarService = {
     
     if (userId) {
       const profile = await profileService.getProfile(userId);
-      if (profile?.user_api_keys?.heygen) {
-        apiKey = profile.user_api_keys.heygen;
+      if (profile?.heygen_api_key) {
+        apiKey = profile.heygen_api_key;
         console.log(`[HeyGen] Using personal API key for user: ${userId}`);
       }
     }
