@@ -39,7 +39,7 @@ export default function ByokSettingsPage() {
       if (!data.error) {
         setKeys(data);
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
     } finally {
       setLoading(false);
@@ -62,7 +62,7 @@ export default function ByokSettingsPage() {
         await fetchKeys();
         setForm({ heygenKey: '', anthropicKey: '', groqKey: '' });
       }
-    } catch (e) {
+    } catch (e: any) {
       console.error(e);
     } finally {
       setSaving(false);
@@ -108,7 +108,7 @@ export default function ByokSettingsPage() {
         placeholder={t('heygenKeyPlaceholder')}
         status={keys.heygen}
         value={form.heygenKey}
-        onChange={(val) => setForm({ ...form, heygenKey: val })}
+        onChange={(val: string) => setForm({ ...form, heygenKey: val })}
         accent="#00FFCC"
         link="https://app.heygen.com/settings?nav=API"
       />
@@ -121,7 +121,7 @@ export default function ByokSettingsPage() {
         placeholder={t('anthropicKeyPlaceholder')}
         status={keys.anthropic}
         value={form.anthropicKey}
-        onChange={(val) => setForm({ ...form, anthropicKey: val })}
+        onChange={(val: string) => setForm({ ...form, anthropicKey: val })}
         accent="#9B5FFF"
         link="https://console.anthropic.com/settings/keys"
       />
@@ -134,7 +134,7 @@ export default function ByokSettingsPage() {
         placeholder="Enter your gsk-..."
         status={keys.groq}
         value={form.groqKey}
-        onChange={(val) => setForm({ ...form, groqKey: val })}
+        onChange={(val: string) => setForm({ ...form, groqKey: val })}
         accent="#F55036"
         link="https://console.groq.com/keys"
       />
@@ -164,6 +164,18 @@ export default function ByokSettingsPage() {
   );
 }
 
+interface KeySectionProps {
+  icon: React.ReactNode;
+  title: string;
+  hint: string;
+  placeholder: string;
+  status: { hasKey: boolean; maskedKey: string | null };
+  value: string;
+  onChange: (val: string) => void;
+  accent: string;
+  link?: string;
+}
+
 function KeySection({ 
   icon, 
   title, 
@@ -174,7 +186,7 @@ function KeySection({
   onChange, 
   accent,
   link
-}: any) {
+}: KeySectionProps) {
   return (
     <div 
       className="rounded-3xl p-6 space-y-4"
