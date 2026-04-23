@@ -298,6 +298,10 @@
     "statusRendering": "Рендер...",
     "statusScript": "Сценарий",
     "statusStoryboard": "Раскадровка",
+    "engineSelector": "ИИ Движок",
+    "engineGemini": "Gemini 2.5 Flash",
+    "engineClaude": "Claude 3.5 Sonnet",
+    "engineHint": "Выберите интеллект для вашего сценария",
     "viewBtn": "Открыть",
     "continueBtn": "Продолжить",
     "iterateBtn": "Итерировать",
@@ -408,9 +412,12 @@
     "promptHelperBtn": "Создать промпт",
     "copyPrompt": "Копировать промпт",
     "instructionGrok": "Вставь этот текст в Grok (X.ai) или Midjourney на телефоне, сгенерируй фото и загрузи результат сюда.",
-    "heygenKeyLabel": "HeyGen API Ключ",
+    "heygenKeyLabel": "HeyGen API Key",
     "heygenKeyPlaceholder": "Введите sk-...",
-    "heygenKeyHint": "Используется только для ваших аватаров. Мы не храним его в открытом виде."
+    "heygenKeyHint": "Используется только для ваших аватаров. Мы не храним ключ в открытом виде.",
+    "anthropicKeyLabel": "Claude (Anthropic) API Key",
+    "anthropicKeyPlaceholder": "Введите sk-ant-...",
+    "anthropicKeyHint": "Используется для генерации сценариев. Мы не храним ключ в открытом виде."
   },
   "profileDna": {
     "title": "УПРАВЛЕНИЕ ДНК",
@@ -470,5 +477,49 @@
     "emptyDesc": "Архивированные элементы появятся здесь",
     "restore": "Восстановить",
     "deletePermanently": "Удалить навсегда"
+  },
+  "landingV2": {
+    "hero": {
+      "tagline": "ОДНА ИДЕЯ. ВСЕ ФОРМАТЫ. ГОТОВО.",
+      "title": "VIRALE",
+      "subtitle": "Твоя премиальная ИИ-фабрика контента. Синтез одного фрагмента мысли в тотальное цифровое присутствие.",
+      "cta": "СОЗДАТЬ ДНК →",
+      "stats": {
+        "creators": "ВСЕГО АВТОРОВ",
+        "quality": "ПРЕМИУМ КАЧЕСТВО"
+      }
+    },
+    "features": {
+      "synthesis": {
+        "title": "Нейронный Синтез",
+        "description": "Мы не просто генерируем. Мы синтезируем твою Цифровую Тень, сохраняя уникальный стиль во всех форматах."
+      },
+      "flow": {
+        "title": "Поток Производства",
+        "description": "Промышленный конвейер для системной виральности.",
+        "step1": "ВХОД ИДЕИ",
+        "step2": "НЕЙРО-ДВИЖОК",
+        "step3": "МУЛЬТИ-ФОРМАТ"
+      }
+    },
+    "showcase": {
+      "title": "МУЛЬТИ-ФОРМАТНЫЙ ВЫХОД",
+      "description": "Все, что нужно креатору, доставляется за один цикл работы фабрики.",
+      "video": "Виральное Видео",
+      "cover": "Магнитная Обложка",
+      "text": "Текст вовлечения",
+      "carousel": "Соц-карусель",
+      "metadata": "RE-RENDERED · 4K · NEURAL CALIBRATED"
+    },
+    "cta": {
+      "title": "ЭНЕРГИЯ ВИРАЛЬНОСТИ",
+      "subtitle": "Присоединяйся к 10,000+ авторов, которые перестали монтировать и начали думать.",
+      "launch": "ЗАПУСТИТЬ ЗАВОД"
+    },
+    "nav": {
+      "works": "КАК ЭТО РАБОТАЕТ",
+      "outputs": "ВЫХОД",
+      "pricing": "ЦЕНЫ"
+    }
   }
 }

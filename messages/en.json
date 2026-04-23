@@ -297,6 +297,15 @@
     "statusRendering": "Rendering...",
     "statusScript": "Script",
     "statusStoryboard": "Storyboard",
+    "engineSelector": "AI Engine",
+    "engineGemini": "Gemini 2.5 Flash",
+    "engineClaude": "Claude 3.5 Sonnet",
+    "engineHint": "Choose the brain for your script",
+    "upgradeRequired": "Upgrade Required",
+    "upgradeToCreator": "AI Generation is available on Creator tier. Upgrade to unlock the brain.",
+    "upgradeBtn": "Upgrade to Creator",
+    "manualScriptOption": "Manual Script",
+    "useYourIdea": "Type your manual script or upgrade for AI",
     "viewBtn": "Open",
     "continueBtn": "Continue",
     "iterateBtn": "Iterate",
@@ -409,7 +418,10 @@
     "instructionGrok": "Paste this text into Grok (X.ai) or Midjourney on your phone, generate the image, and upload the result here.",
     "heygenKeyLabel": "HeyGen API Key",
     "heygenKeyPlaceholder": "Enter your sk-...",
-    "heygenKeyHint": "Used only for your avatars. We don't store it in plain text."
+    "heygenKeyHint": "Used only for your avatars. We don't store it in plain text.",
+    "anthropicKeyLabel": "Claude (Anthropic) API Key",
+    "anthropicKeyPlaceholder": "Enter your sk-ant-...",
+    "anthropicKeyHint": "Used for script generation. We don't store it in plain text."
   },
   "profileDna": {
     "title": "DNA MANAGEMENT",
@@ -469,5 +481,49 @@
     "emptyDesc": "Items you archive will appear here",
     "restore": "Restore",
     "deletePermanently": "Delete Permanently"
+  },
+  "landingV2": {
+    "hero": {
+      "tagline": "ONE IDEA. EVERY FORMAT. DONE.",
+      "title": "VIRALE",
+      "subtitle": "Your premium AI content factory. Synthesis of one fragment of thought into total digital presence.",
+      "cta": "BUILD YOUR DNA →",
+      "stats": {
+        "creators": "TOTAL CREATORS",
+        "quality": "PREMIUM QUALITY"
+      }
+    },
+    "features": {
+      "synthesis": {
+        "title": "Neural Synthesis",
+        "description": "We don't just generate. We synthesize your Digital Shadow, keeping your unique tone across all formats."
+      },
+      "flow": {
+        "title": "Production Flow",
+        "description": "Industrial-grade pipeline for consistent virality.",
+        "step1": "IDEA INPUT",
+        "step2": "NEURAL ENGINE",
+        "step3": "MULTI-FORMAT OUTPUT"
+      }
+    },
+    "showcase": {
+      "title": "MULTI-FORMAT OUTPUT",
+      "description": "Everything the creator needs is delivered in one factory run.",
+      "video": "Viral Video",
+      "cover": "Magnetic Cover",
+      "text": "Engagement Text",
+      "carousel": "Social Carousel",
+      "metadata": "RE-RENDERED · 4K · NEURAL CALIBRATED"
+    },
+    "cta": {
+      "title": "VIRAL ENERGY",
+      "subtitle": "Join the 10,000+ creators who stopped editing and started thinking.",
+      "launch": "LAUNCH FACTORY"
+    },
+    "nav": {
+      "works": "HOW IT WORKS",
+      "outputs": "OUTPUTS",
+      "pricing": "PRICING"
+    }
   }
 }

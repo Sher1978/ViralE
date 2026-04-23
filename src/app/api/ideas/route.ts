@@ -48,6 +48,15 @@ export async function GET(req: Request) {
     return NextResponse.json(existingIdeas || []);
   } catch (error: any) {
     console.error('Ideation fetch failed for user:', error);
+    
+    if (error.message?.includes('TIER_LOCK')) {
+      return NextResponse.json({ error: 'TIER_LOCK', message: error.message }, { status: 403 });
+    }
+    
+    if (error.message?.includes('MONTHLY_LIMIT')) {
+      return NextResponse.json({ error: 'MONTHLY_LIMIT', message: error.message }, { status: 429 });
+    }
+
     if (error.message?.includes('User personality not found')) {
       return NextResponse.json({ error: 'ONBOARDING_REQUIRED', message: error.message }, { status: 200 });
     }

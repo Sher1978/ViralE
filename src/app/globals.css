@@ -166,18 +166,24 @@
 
   .bg-grid {
     background-image: 
-      linear-gradient(rgba(255,255,255,0.02) 1px, transparent 1px),
-      linear-gradient(90deg, rgba(255,255,255,0.02) 1px, transparent 1px);
-    background-size: 32px 32px;
-  }
-
   /* === GLOW SHADOWS === */
+  /* === DECORATIONS === */
+  .bg-grid {
+    background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
+                      linear-gradient(90deg, rgba(255, 255, 255, 0.05) 1px, transparent 1px);
+    background-size: 40px 40px;
+  }
+  
   .shadow-glow-gold {
-    box-shadow: 0 0 30px rgba(212, 175, 55, 0.3), 0 0 80px rgba(212, 175, 55, 0.1);
+    box-shadow: var(--glow-gold);
   }
   
   .shadow-glow-mint {
-    box-shadow: 0 0 30px rgba(0, 255, 204, 0.3), 0 0 80px rgba(0, 255, 204, 0.1);
+    box-shadow: var(--glow-mint);
+  }
+  
+  .shadow-glow-blue {
+    box-shadow: var(--glow-blue);
   }
 
   .shadow-glow-purple {

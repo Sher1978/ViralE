@@ -1,14 +1,14 @@
 import { NextResponse } from 'next/server';
-import { generateScript } from '@/lib/ai/gemini';
+import * as factory from '@/lib/ai/factory';
 import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
 import { getAuthContext } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
-    let { projectId, coreIdea, locale = 'en', mode = 'initial', instruction, currentScript, versionId: targetVersionId } = await req.json();
+    let { projectId, coreIdea, locale = 'en', mode = 'initial', instruction, currentScript, versionId: targetVersionId, engine = 'gemini' } = await req.json();
 
-    console.log(`[ScriptGen] Mode: ${mode}, Locale: ${locale}, ProjectID: ${projectId || 'NEW'}`);
+    console.log(`[ScriptGen] Mode: ${mode}, Locale: ${locale}, Engine: ${engine}, ProjectID: ${projectId || 'NEW'}`);
 
     const userId = user.id;
 
@@ -54,10 +54,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // 2. Get Digital Shadow (Allow fallback if profile is missing or field is empty)
+    // 2. Get Digital Shadow and Keys
     const { data: profile, error: profileError } = await authorizedSupabase
       .from('profiles')
-      .select('digital_shadow_prompt')
+      .select('digital_shadow_prompt, anthropic_api_key, groq_api_key, gemini_api_key')
       .eq('id', userId)
       .single();
 
@@ -66,6 +66,9 @@ export async function POST(req: Request) {
     }
 
     const digitalShadow = profile?.digital_shadow_prompt || '';
+    const anthropicApiKey = profile?.anthropic_api_key || undefined;
+    const groqApiKey = profile?.groq_api_key || undefined;
+    const geminiApiKey = profile?.gemini_api_key || undefined;
     const onboardingIncomplete = !digitalShadow;
 
     // 3. Transact Credits
@@ -80,22 +83,28 @@ export async function POST(req: Request) {
       throw e;
     }
 
-    // 4. Generate or Refine Script (with mock fallback)
+    // 4. Generate or Refine Script
     let scriptJson;
     try {
-      const activeApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
-      if (!activeApiKey || activeApiKey === 'your_gemini_api_key') {
-        console.warn('[ScriptGen] Gemini API Key is missing or dummy. Using mock fallback.');
-        throw new Error('MOCK_MODE');
-      }
-
+      // Simple bypass for tests if needed, but we used factory now
       if (mode === 'refine') {
-        console.log(`[ScriptGen] Refining script with instruction: ${instruction}`);
-        const { refineScript } = await import('@/lib/ai/gemini');
-        scriptJson = await refineScript(currentScript, instruction, digitalShadow, locale);
+        console.log(`[ScriptGen] Refining script [Engine: ${engine}] with instruction: ${instruction}`);
+        scriptJson = await factory.refineScript(currentScript, instruction, digitalShadow, {
+          engine,
+          locale,
+          anthropicApiKey,
+          groqApiKey,
+          geminiApiKey
+        });
       } else {
-        console.log(`[ScriptGen] Generating initial script for idea: ${coreIdea}`);
-        scriptJson = await generateScript(coreIdea, digitalShadow, locale);
+        console.log(`[ScriptGen] Generating initial script [Engine: ${engine}] for idea: ${coreIdea}`);
+        scriptJson = await factory.generateScript(coreIdea, digitalShadow, {
+          engine,
+          locale,
+          anthropicApiKey,
+          groqApiKey,
+          geminiApiKey
+        });
       }
     } catch (error: any) {
       console.warn('[ScriptGen] Generation failed or bypassed. Using mock fallback:', error.message);
@@ -105,14 +114,14 @@ export async function POST(req: Request) {
         scriptJson = {
           hook: "Секрет раскрыт",
           intro: `Сегодня мы поговорим про ${coreIdea || 'этот тренд'}. Почему это важно прямо сейчас?`,
-          body: `Вот 3 причины, почему ${coreIdea || 'это'} работает. Во-первых, это системность. Во-вторых, это внимание к деталям. И в-третьих, это Viral Engine.`,
+          story: `Вот 3 причины, почему ${coreIdea || 'это'} работает. Во-первых, это системность. Во-вторых, это внимание к деталям. И в-третьих, это Viral Engine.`,
           cta: "Подпишись, чтобы качать свой Digital DNA!"
         };
       } else {
         scriptJson = {
           hook: "Secret Unlocked",
           intro: `Today we dive into ${coreIdea || 'this topic'}. Why does it matter right now?`,
-          body: `Here are 3 reasons why ${coreIdea || 'it'} works. First, consistency. Second, attention to detail. And third, Viral Engine.`,
+          story: `Here are 3 reasons why ${coreIdea || 'it'} works. First, consistency. Second, attention to detail. And third, Viral Engine.`,
           cta: "Follow to upgrade your Digital DNA!"
         };
       }

@@ -31,6 +31,8 @@ export default function ScriptLabPage() {
   const [topicInput, setTopicInput] = useState('');
   const [customCommand, setCustomCommand] = useState('');
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
+  const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude'>('gemini');
+  const [isAiLocked, setIsAiLocked] = useState(false);
 
   const [scriptData, setScriptData] = useState({
     hook: locale === 'ru' 
@@ -54,6 +56,7 @@ export default function ScriptLabPage() {
       try {
         const prof = await profileService.getOrCreateProfile();
         setUser(prof);
+        setIsAiLocked(prof?.tier === 'free');
       } catch (err) {
         console.error('Failed to load profile:', err);
       }
@@ -123,7 +126,8 @@ export default function ScriptLabPage() {
           mode: 'refine',
           instruction,
           currentScript: scriptData,
-          locale
+          locale,
+          engine: selectedEngine
         })
       });
 
@@ -142,7 +146,40 @@ export default function ScriptLabPage() {
     }
   };
 
+  const handleManualStart = async () => {
+    if (!topicInput.trim()) return;
+    setIsLoading(true);
+    setError(null);
+    try {
+      const profile = await profileService.getOrCreateProfile();
+      if (!profile) throw new Error('Auth failed');
+      
+      const project = await projectService.createProject({
+        title: topicInput,
+        userId: profile.id
+      });
+      if (!project) throw new Error('Project creation failed');
+      
+      const version = await projectService.createVersion({
+        projectId: project.id,
+        scriptData: scriptData, // Use current default scriptData
+        status: 'scripting'
+      });
+      
+      if (!version) throw new Error('Version creation failed');
+      
+      router.replace(`/projects/new/script?projectId=${project.id}&versionId=${version.id}`);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
   const handleInitialGenerate = async () => {
+    if (isAiLocked) {
+      return handleManualStart();
+    }
     if (!topicInput.trim()) return;
     setIsLoading(true);
     setError(null);
@@ -154,7 +191,8 @@ export default function ScriptLabPage() {
         body: JSON.stringify({
           coreIdea: topicInput,
           mode: 'initial',
-          locale
+          locale,
+          engine: selectedEngine
         })
       });
 
@@ -293,23 +331,106 @@ export default function ScriptLabPage() {
             />
           </div>
 
-          <button
-            id="generate-script-btn"
-            onClick={handleInitialGenerate}
-            disabled={!topicInput || topicInput.trim().length < 3 || isLoading}
-            className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group disabled:opacity-30 disabled:grayscale transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
-          >
-            {isLoading ? (
-              <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
-            ) : (
-              <>
-                <span className="font-black text-lg uppercase tracking-widest">
-                  {locale === 'ru' ? 'Создать сценарий' : 'Generate Script'}
-                </span>
-                <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-              </>
-            )}
-          </button>
+          {!isAiLocked && (
+            <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 ml-2">
+                {locale === 'ru' ? 'Выбор ИИ' : 'AI Engine'}
+              </label>
+              <div className="flex flex-wrap gap-2 p-1.5 bg-black/40 rounded-[1.5rem] border border-white/5 backdrop-blur-xl">
+                <button
+                  onClick={() => setSelectedEngine('gemini')}
+                  className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest ${
+                    selectedEngine === 'gemini' 
+                      ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
+                      : 'text-white/20 hover:text-white/40'
+                  }`}
+                >
+                  Gemini 2.5
+                </button>
+                <button
+                  onClick={() => setSelectedEngine('claude')}
+                  className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest ${
+                    selectedEngine === 'claude' 
+                      ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
+                      : 'text-white/20 hover:text-white/40'
+                  }`}
+                >
+                  Claude 3.5
+                </button>
+                {user?.anthropic_api_key && (
+                  <button
+                    onClick={() => setSelectedEngine('claude-byok' as any)}
+                    className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-purple-500/30 ${
+                      selectedEngine === ('claude-byok' as any)
+                        ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
+                        : 'text-purple-400/40 hover:text-purple-400'
+                    }`}
+                  >
+                    <Key className="w-3 h-3" />
+                    Claude (BYOK)
+                  </button>
+                )}
+                {user?.groq_api_key && (
+                  <button
+                    onClick={() => setSelectedEngine('groq' as any)}
+                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-orange-500/30 ${
+                      selectedEngine === ('groq' as any)
+                        ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(255,100,0,0.3)]' 
+                        : 'text-orange-400/40 hover:text-orange-400'
+                    }`}
+                  >
+                    Groq
+                  </button>
+                )}
+              </div>
+            </div>
+          )}
+
+          {isAiLocked ? (
+            <div className="space-y-4">
+              <button
+                onClick={handleManualStart}
+                disabled={!topicInput || topicInput.trim().length < 3 || isLoading}
+                className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
+              >
+                {isLoading ? (
+                  <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+                ) : (
+                  <>
+                    <span className="font-black text-lg uppercase tracking-widest">
+                      {locale === 'ru' ? 'Написать вручную' : 'Write Manually'}
+                    </span>
+                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                  </>
+                )}
+              </button>
+              <button
+                onClick={() => router.push(`/${locale}/app/profile/subscription`)}
+                className="w-full bg-white text-black py-6 rounded-[2rem] flex items-center justify-center gap-4 group font-black text-lg uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all relative z-10"
+              >
+                <Sparkles className="w-6 h-6 animate-pulse" />
+                {locale === 'ru' ? 'Разблокировать ИИ' : 'Unlock AI Engine'}
+              </button>
+            </div>
+          ) : (
+            <button
+              id="generate-script-btn"
+              onClick={handleInitialGenerate}
+              disabled={!topicInput || topicInput.trim().length < 3 || isLoading}
+              className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group disabled:opacity-30 disabled:grayscale transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
+            >
+              {isLoading ? (
+                <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+              ) : (
+                <>
+                  <span className="font-black text-lg uppercase tracking-widest">
+                    {locale === 'ru' ? 'Создать сценарий' : 'Generate Script'}
+                  </span>
+                  <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                </>
+              )}
+            </button>
+          )}
         </div>
 
         {error && (

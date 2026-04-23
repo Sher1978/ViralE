@@ -10,15 +10,39 @@ export interface IdeaSuggestion {
 export async function generateDailyIdeas(supabase: SupabaseClient, userId: string, locale: string = 'en'): Promise<IdeaSuggestion[]> {
   const languageName = locale === 'ru' ? 'Russian' : 'English';
   
-  // 1. Fetch user persona DNA
+  // 1. Fetch user persona DNA and tier
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('digital_shadow_prompt, industry_context')
+    .select('digital_shadow_prompt, industry_context, tier')
     .eq('id', userId)
     .single();
 
   if (error && error.code !== 'PGRST116') {
     throw error;
+  }
+
+  const tier = profile?.tier || 'free';
+
+  // Enforcement of Tier Gating for AI Topic Generation
+  if (tier === 'free') {
+    throw new Error('TIER_LOCK: AI Topic Generation is available on Creator and Pro tiers.');
+  }
+
+  // Monthly limit enforcement for Creator tier
+  if (tier === 'creator') {
+    const startOfMonth = new Date();
+    startOfMonth.setDate(1);
+    startOfMonth.setHours(0,0,0,0);
+
+    const { count } = await supabase
+      .from('ideation_feed')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .gte('created_at', startOfMonth.toISOString());
+
+    if ((count || 0) >= 10) {
+      throw new Error('MONTHLY_LIMIT: You have reached your limit of 10 AI topics per month. Upgrade to Pro for unlimited generation.');
+    }
   }
 
   const digitalShadow = profile?.digital_shadow_prompt || 'Expert Content Strategist focused on high-retention viral marketing.';

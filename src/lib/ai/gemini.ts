@@ -50,7 +50,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     Structure:
     - hook: 1-3 words, high impact
     - intro: first 3 seconds
-    - body: the "meat" of the content
+    - story: the "meat" of the content
     - cta: single sentence call to action
     
     REMEMBER: Output in ${languageName}. Output ONLY valid JSON.

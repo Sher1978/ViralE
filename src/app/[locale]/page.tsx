@@ -275,7 +275,7 @@ export default function LandingPage() {
               <Globe className="w-3.5 h-3.5 text-white/20 group-hover:text-cyan-400 transition-colors" />
             </Link>
           </div>
-          <Link href={`/${locale}/auth`}>
+          <Link href="/auth">
             <motion.button 
               whileHover={{ scale: 1.05 }}
               whileTap={{ scale: 0.95 }}
@@ -321,7 +321,7 @@ export default function LandingPage() {
           {/* Main CTA */}
           <motion.div variants={itemVariants} className="flex flex-col items-center gap-10 w-full max-w-xl">
             <div className="flex flex-col sm:flex-row gap-4 w-full">
-              <Link href={`/${locale}/auth?next=/${locale}/app/projects`} className="flex-[2]">
+              <Link href="/auth?next=/app/projects" className="flex-[2]">
                 <motion.button 
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
@@ -333,7 +333,7 @@ export default function LandingPage() {
                 </motion.button>
               </Link>
               
-              <Link href={`/${locale}/auth?next=/${locale}/app/onboarding`} className="flex-1">
+              <Link href="/auth?next=/app/onboarding" className="flex-1">
                 <motion.button 
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
@@ -369,7 +369,7 @@ export default function LandingPage() {
               />
             </div>
 
-            <Link href={`/${locale}/auth?next=/${locale}/app/projects`} className="group flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all">
+            <Link href="/auth?next=/app/projects" className="group flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all">
               <Globe className="w-4 h-4 text-white/30 group-hover:text-cyan-400 transition-colors" />
               <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 group-hover:text-white transition-colors">
                 {t('webVersion')}
@@ -602,7 +602,7 @@ export default function LandingPage() {
           
           <div className="flex flex-col items-center gap-16 relative z-10">
             <div className="flex flex-col md:flex-row gap-6 w-full max-w-2xl justify-center">
-               <Link href={`/${locale}/auth?next=/${locale}/app/onboarding`} className="flex-1">
+               <Link href="/auth?next=/app/onboarding" className="flex-1">
                 <motion.button 
                   whileHover={{ scale: 1.04, y: -4 }}
                   whileTap={{ scale: 0.96 }}
@@ -615,7 +615,7 @@ export default function LandingPage() {
                 </motion.button>
               </Link>
               
-              <Link href={`/${locale}/auth?next=/${locale}/app/projects`} className="flex-1">
+              <Link href="/auth?next=/app/projects" className="flex-1">
                 <motion.button 
                   whileHover={{ scale: 1.04, y: -4 }}
                   whileTap={{ scale: 0.96 }}

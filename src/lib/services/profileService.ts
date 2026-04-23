@@ -11,10 +11,12 @@ export interface Profile {
   onboarding_completed: boolean;
   synthetic_training_data?: string;
   knowledge_base_json?: any;
-  user_api_keys: {
-    heygen?: string;
-    elevenlabs?: string;
-  } | null;
+  tier: 'free' | 'creator' | 'pro';
+  subscription_status: string;
+  heygen_api_key?: string | null;
+  anthropic_api_key?: string | null;
+  elevenlabs_api_key?: string | null;
+  groq_api_key?: string | null;
 }
 
 export const profileService = {
@@ -54,7 +56,8 @@ export const profileService = {
               id: session.user.id,
               email: session.user.email || `anon_${session.user.id}@viral.engine`,
               credits_balance: 100, // Default starting credits
-              user_api_keys: {},
+              tier: 'free',
+              subscription_status: 'active',
             },
           ])
           .select()
