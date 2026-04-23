@@ -164,9 +164,6 @@
                 radial-gradient(circle at center, #0B1229 0%, #020408 100%);
   }
 
-  .bg-grid {
-    background-image: 
-  /* === GLOW SHADOWS === */
   /* === DECORATIONS === */
   .bg-grid {
     background-image: linear-gradient(rgba(255, 255, 255, 0.05) 1px, transparent 1px),
