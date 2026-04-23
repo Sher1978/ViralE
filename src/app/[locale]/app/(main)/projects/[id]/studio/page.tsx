@@ -387,8 +387,7 @@ export default function StudioPage() {
     <div className="flex flex-col h-screen bg-[#05050a] text-white overflow-hidden font-sans">
       {/* Header */}
       <header className="h-14 border-b border-white/5 flex items-center justify-between px-6 bg-[#0a0a14] z-50">
-        <div className="flex items-center gap-4">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-br from-purple-500 to-blue-600 flex items-center justify-center font-black shadow-lg shadow-purple-500/20">V</div>
+        <div className="flex items-center gap-4 pl-10">
           <div>
             <h1 className="text-sm font-black tracking-tight uppercase leading-none mb-1">
               Viral Studio <span className="text-white/20 mx-1">/</span> <span className="text-white/60">{project?.title}</span>

@@ -284,17 +284,17 @@ export function StrategistChat({
   };
 
   return (
-    <div className="fixed bottom-28 right-6 z-50 flex flex-col items-end">
+    <div className="fixed top-1 left-6 z-[100] flex flex-col items-start">
       {/* Floating Toggle Button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "relative h-14 w-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-500 overflow-hidden border-2",
+          "relative h-12 w-12 rounded-xl shadow-2xl flex items-center justify-center transition-all duration-500 overflow-hidden border-2",
           isOpen 
             ? "bg-red-500/80 backdrop-blur-md border-red-400/50" 
-            : "bg-black/40 backdrop-blur-md border-white/20"
+            : "bg-black/80 backdrop-blur-md border-white/20"
         )}
       >
         {isOpen ? (
@@ -319,10 +319,10 @@ export function StrategistChat({
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: 20, scale: 0.95 }}
+            initial={{ opacity: 0, y: -20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="mb-4 w-[380px] h-[550px] bg-slate-900/60 backdrop-blur-3xl border border-white/10 rounded-2xl shadow-2xl flex flex-col overflow-hidden relative"
+            exit={{ opacity: 0, y: -20, scale: 0.95 }}
+            className="mt-4 w-[380px] h-[600px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden relative"
           >
             {/* Background Visualizer */}
             <div className={cn(
