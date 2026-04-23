@@ -16,10 +16,13 @@ export default function LoginButtons() {
   const handleGoogleLogin = async () => {
     setIsLoading('google');
     try {
+      const redirectPath = next.startsWith('/') ? next : `/${next}`;
+      const localizedNext = `/${locale}${redirectPath}`;
+      
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback`,
+          redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(localizedNext)}`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -72,7 +75,9 @@ export default function LoginButtons() {
                 const { error: sessionError } = await supabase.auth.setSession(session);
                 if (sessionError) throw sessionError;
 
-                window.location.href = `/${locale}/app/projects`;
+                // Redirect to the intended page
+                const redirectPath = next.startsWith('/') ? next : `/${next}`;
+                window.location.href = `/${locale}${redirectPath}`;
               } else {
                 throw new Error('Backend auth failed');
               }

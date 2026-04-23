@@ -531,5 +531,23 @@
       "outputs": "ВЫХОД",
       "pricing": "ЦЕНЫ"
     }
+  },
+  "studio": {
+    "teleprompter": {
+      "title": "Телесуфлер",
+      "scrollPace": "Скорость",
+      "textSize": "Размер текста",
+      "startReading": "Начать чтение",
+      "stopReading": "Остановить",
+      "sceneLabel": "Сцена {n}"
+    },
+    "assembly": {
+      "title": "Монтаж",
+      "quickRerender": "Быстрый рендер",
+      "regenerateWithPrompt": "Уточнить и перегенерировать",
+      "clarifyingPromptPlaceholder": "Добавь больше динамики...",
+      "regenerateBtn": "Обновить",
+      "scenesCount": "{n} Сцен"
+    }
   }
 }

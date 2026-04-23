@@ -1,13 +1,14 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useRouter, useParams } from 'next/navigation';
 import { 
   Play, Pause, SkipForward, SkipBack, 
   Settings2, Wand2, RefreshCw, Plus, 
   Trash2, ChevronRight, Layers, Layout,
-  Brain, Lock
+  Brain, Lock, Monitor, MessageSquare,
+  Scissors, Type, Sliders, CheckCircle2
 } from 'lucide-react';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { renderService, RenderJob } from '@/lib/services/renderService';
@@ -30,10 +31,19 @@ export default function StudioPage() {
   const [currentTime, setCurrentTime] = useState(0);
   const [isLibraryOpen, setIsLibraryOpen] = useState(false);
   const [libraryAssets, setLibraryAssets] = useState<any[]>([]);
-  const [activeTab, setActiveTab] = useState<'layout' | 'assets' | 'settings' | 'knowledge'>('layout');
+  const [activeTab, setActiveTab] = useState<'layout' | 'assets' | 'settings' | 'knowledge' | 'teleprompter' | 'assembly'>('layout');
   const [telegramChatId, setTelegramChatId] = useState('');
   const [heygenKey, setHeygenKey] = useState('');
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
+  
+  // Teleprompter States
+  const [isReading, setIsReading] = useState(false);
+  const [scrollSpeed, setScrollSpeed] = useState(2); // 1-10 scale
+  const [textSize, setTextSize] = useState<'sm' | 'md' | 'lg'>('md');
+  const prompterRef = useRef<HTMLDivElement>(null);
+
+  // Assembly States
+  const [clarifyingPrompts, setClarifyingPrompts] = useState<Record<string, string>>({});
 
   useEffect(() => {
     async function loadStudioData() {
@@ -142,6 +152,19 @@ export default function StudioPage() {
     return () => clearTimeout(timeout);
   }, [manifest, projectId, isLoading]);
 
+  // Teleprompter Auto-scroll Effect
+  useEffect(() => {
+    if (!isReading) return;
+
+    const interval = setInterval(() => {
+      if (prompterRef.current) {
+        prompterRef.current.scrollTop += scrollSpeed * 0.5;
+      }
+    }, 50);
+
+    return () => clearInterval(interval);
+  }, [isReading, scrollSpeed]);
+
   const saveManifestManually = async () => {
     if (!manifest || !project) return;
     setIsSaving(true);
@@ -154,7 +177,7 @@ export default function StudioPage() {
     }
   };
 
-  const regenerateSegment = async (segmentId: string) => {
+  const regenerateSegment = async (segmentId: string, customPrompt?: string) => {
     const segment = manifest?.segments.find(s => s.id === segmentId);
     if (!segment) return;
 
@@ -166,10 +189,19 @@ export default function StudioPage() {
         return {
           ...prev,
           segments: prev.segments.map(s => 
-            s.id === segmentId ? { ...s, status: 'rendering' } : s
+            s.id === segmentId ? { 
+              ...s, 
+              status: 'rendering',
+              prompt: customPrompt ? `${s.prompt} [CLARIFICATION: ${customPrompt}]` : s.prompt 
+            } : s
           )
         };
       });
+
+      const updatedSegment = {
+        ...segment,
+        prompt: customPrompt ? `${segment.prompt} [CLARIFICATION: ${customPrompt}]` : segment.prompt
+      };
 
       // 2. Trigger API call
       const response = await fetch(`/api/studio/regenerate`, {
@@ -179,7 +211,10 @@ export default function StudioPage() {
           projectId,
           segmentId,
           segmentType: segment.type,
-          segmentData: segment
+          segmentData: {
+            ...segment,
+            prompt: customPrompt ? `${segment.prompt} [CLARIFICATION: ${customPrompt}]` : segment.prompt
+          }
         })
       });
 
@@ -425,6 +460,22 @@ export default function StudioPage() {
             <Layout size={20}/>
             <span className="absolute left-full ml-4 px-2 py-1 bg-purple-500 text-[8px] font-black uppercase rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">Layout</span>
           </button>
+
+          <button 
+            onClick={() => setActiveTab('teleprompter')}
+            className={`p-3 rounded-2xl transition-all group relative ${activeTab === 'teleprompter' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-inner' : 'text-white/20 hover:text-white hover:bg-white/5'}`}
+          >
+            <Monitor size={20}/>
+            <span className="absolute left-full ml-4 px-2 py-1 bg-purple-500 text-[8px] font-black uppercase rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">Teleprompter</span>
+          </button>
+
+          <button 
+            onClick={() => setActiveTab('assembly')}
+            className={`p-3 rounded-2xl transition-all group relative ${activeTab === 'assembly' ? 'bg-purple-500/10 text-purple-400 border border-purple-500/20 shadow-inner' : 'text-white/20 hover:text-white hover:bg-white/5'}`}
+          >
+            <Scissors size={20}/>
+            <span className="absolute left-full ml-4 px-2 py-1 bg-purple-500 text-[8px] font-black uppercase rounded opacity-0 group-hover:opacity-100 transition-opacity whitespace-nowrap z-50">Assembly</span>
+          </button>
           
           <button 
             onClick={() => setActiveTab('knowledge')}
@@ -455,6 +506,155 @@ export default function StudioPage() {
         </aside>
 
         {/* Assets Library Drawer */}
+        {/* Teleprompter Drawer */}
+        {activeTab === 'teleprompter' && (
+          <aside className="w-80 border-r border-white/5 bg-[#0a0a14] flex flex-col p-6 animate-slide-in-left overflow-hidden">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-purple-400">{t('teleprompter.title')}</h3>
+              <Monitor size={16} className="text-purple-400/50" />
+            </div>
+            
+            <div 
+              ref={prompterRef}
+              className="flex-1 overflow-y-auto mb-6 pr-2 scrollbar-none scrollbar-thumb-white/10"
+            >
+              <div className="space-y-12 py-4">
+                {manifest?.segments.map((s, idx) => (
+                  <div key={s.id} className="space-y-4 opacity-60 hover:opacity-100 transition-opacity">
+                    <span className="text-[8px] font-black uppercase text-purple-500/50">{t('teleprompter.sceneLabel', { n: idx + 1 })}</span>
+                    <p className={`font-bold leading-relaxed text-white/90 ${textSize === 'sm' ? 'text-sm' : textSize === 'lg' ? 'text-2xl' : 'text-lg'}`}>
+                      {s.scriptText || '--- No Script Content ---'}
+                    </p>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            <div className="pt-6 border-t border-white/5 space-y-4">
+              <div className="flex items-center justify-between">
+                <span className="text-[9px] font-black uppercase text-white/30 tracking-widest">{t('teleprompter.scrollPace')}</span>
+                <span className="text-[9px] font-black text-purple-400">{scrollSpeed}x</span>
+              </div>
+              <input 
+                type="range" 
+                min="0" 
+                max="10" 
+                step="0.5"
+                value={scrollSpeed}
+                onChange={(e) => setScrollSpeed(Number(e.target.value))}
+                className="w-full accent-purple-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer" 
+              />
+              
+              <div className="flex items-center justify-between pt-2">
+                <span className="text-[9px] font-black uppercase text-white/30 tracking-widest">{t('teleprompter.textSize')}</span>
+                <div className="flex gap-1">
+                  <button 
+                    onClick={() => setTextSize('sm')}
+                    className={`w-6 h-6 rounded flex items-center justify-center text-[10px] transition-colors ${textSize === 'sm' ? 'bg-purple-500 font-bold' : 'bg-white/5 hover:bg-white/10'}`}
+                  >A</button>
+                  <button 
+                    onClick={() => setTextSize('md')}
+                    className={`w-6 h-6 rounded flex items-center justify-center text-[11px] transition-colors ${textSize === 'md' ? 'bg-purple-500 font-bold' : 'bg-white/5 hover:bg-white/10'}`}
+                  >A</button>
+                  <button 
+                    onClick={() => setTextSize('lg')}
+                    className={`w-6 h-6 rounded flex items-center justify-center text-[12px] transition-colors ${textSize === 'lg' ? 'bg-purple-500 font-bold' : 'bg-white/5 hover:bg-white/10'}`}
+                  >A</button>
+                </div>
+              </div>
+
+              <button 
+                onClick={() => setIsReading(!isReading)}
+                className={`w-full py-4 rounded-2xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-2 mt-4 shadow-lg ${isReading ? 'bg-red-500/20 text-red-500 border border-red-500/20 shadow-red-500/20' : 'bg-purple-500 text-white shadow-purple-500/20'}`}
+              >
+                <div className={`w-2 h-2 rounded-full bg-current ${isReading ? 'animate-pulse' : ''}`} />
+                {isReading ? t('teleprompter.stopReading') : t('teleprompter.startReading')}
+              </button>
+            </div>
+          </aside>
+        )}
+
+        {/* Assembly / Editor Drawer */}
+        {activeTab === 'assembly' && (
+          <aside className="w-80 border-r border-white/5 bg-[#0a0a14] flex flex-col p-6 animate-slide-in-left overflow-hidden">
+            <div className="flex items-center justify-between mb-6">
+              <h3 className="text-xs font-black uppercase tracking-[0.2em] text-purple-400">{t('assembly.title')}</h3>
+              <Scissors size={16} className="text-purple-400/50" />
+            </div>
+
+            <div className="flex-1 overflow-y-auto pr-2 scrollbar-none space-y-4">
+              {manifest?.segments.map((s, idx) => (
+                <div 
+                  key={s.id} 
+                  onClick={() => setSelectedSegmentId(s.id)}
+                  className={`p-4 rounded-2xl border transition-all cursor-pointer group/card ${selectedSegmentId === s.id ? 'bg-purple-500/10 border-purple-500/30' : 'bg-white/5 border-white/5 hover:border-white/10'}`}
+                >
+                  <div className="flex items-start gap-3">
+                    <div className="w-16 h-16 rounded-xl bg-black/40 border border-white/5 overflow-hidden flex-none relative">
+                       {s.assetUrl ? (
+                         s.type.includes('avatar') ? (
+                            <video src={s.assetUrl} className="w-full h-full object-cover opacity-50" muted />
+                         ) : (
+                            <div className="w-full h-full bg-cover bg-center opacity-50" style={{ backgroundImage: `url('${s.assetUrl}')` }} />
+                         )
+                       ) : (
+                         <div className="w-full h-full flex items-center justify-center text-white/10">
+                            <Monitor size={16} />
+                         </div>
+                       )}
+                       {s.status === 'rendering' && (
+                         <div className="absolute inset-0 bg-purple-500/20 flex items-center justify-center">
+                            <RefreshCw size={12} className="animate-spin text-purple-400" />
+                         </div>
+                       )}
+                    </div>
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center justify-between mb-1">
+                        <span className="text-[8px] font-black uppercase text-white/20 tracking-widest">S{idx + 1}</span>
+                        {s.status === 'completed' ? <CheckCircle2 size={10} className="text-green-500/50" /> : <div className="w-1.5 h-1.5 rounded-full bg-orange-500/50" />}
+                      </div>
+                      <p className="text-[10px] font-bold text-white/60 truncate uppercase tracking-tight">{s.type.replace('_', ' ')}</p>
+                      <p className="text-[9px] text-white/30 line-clamp-2 mt-1 italic">"{s.prompt?.substring(0, 40)}..."</p>
+                    </div>
+                  </div>
+                  
+                  {selectedSegmentId === s.id && (
+                    <div className="mt-4 pt-4 border-t border-white/5 space-y-3 animate-in fade-in slide-in-from-top-1">
+                      <textarea
+                        value={clarifyingPrompts[s.id] || ''}
+                        onChange={(e) => setClarifyingPrompts(prev => ({ ...prev, [s.id]: e.target.value }))}
+                        onClick={(e) => e.stopPropagation()}
+                        placeholder={t('assembly.clarifyingPromptPlaceholder')}
+                        className="w-full bg-black/40 border border-white/10 rounded-xl p-2 text-[10px] text-white/60 focus:outline-none focus:border-purple-500/50 h-16 resize-none"
+                      />
+                      <button 
+                        onClick={(e) => { e.stopPropagation(); regenerateSegment(s.id, clarifyingPrompts[s.id]); }}
+                        disabled={!!isRegenerating}
+                        className="w-full py-2 rounded-xl bg-purple-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-purple-400 transition-all flex items-center justify-center gap-2"
+                      >
+                         <RefreshCw size={10} className={isRegenerating === s.id ? 'animate-spin' : ''} />
+                         {t('assembly.regenerateBtn')}
+                      </button>
+                    </div>
+                  )}
+                </div>
+              ))}
+            </div>
+
+            <div className="mt-6 pt-6 border-t border-white/5 flex items-center justify-between">
+              <div className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20">
+                {t('assembly.scenesCount', { n: manifest?.segments.length ?? 0 })}
+              </div>
+              <button 
+                onClick={() => addSegment('animated_still')}
+                className="p-2 rounded-xl bg-purple-500/20 text-purple-400 hover:bg-purple-500/30 transition-all"
+              >
+                <Plus size={16} />
+              </button>
+            </div>
+          </aside>
+        )}
+
         {activeTab === 'assets' && (
           <aside className="w-72 border-r border-white/5 bg-[#0a0a14] flex flex-col p-6 animate-slide-in-left overflow-y-auto">
             <h3 className="text-xs font-black uppercase tracking-[0.2em] text-purple-400 mb-6">B-Roll Library</h3>
@@ -803,17 +1003,36 @@ export default function StudioPage() {
               </div>
 
               <div className="pt-8 border-t border-white/5">
+                <div className="space-y-4">
+                  <div className="flex items-center justify-between ml-1">
+                    <label className="text-[10px] font-black uppercase text-white/30 tracking-widest">Refine Output</label>
+                    <span className="text-[8px] font-bold text-purple-400/50 uppercase tracking-tighter">AI Precision</span>
+                  </div>
+                  <div className="relative group">
+                    <textarea 
+                      className="w-full bg-purple-600/5 border border-purple-500/20 rounded-2xl p-4 text-[11px] text-white/80 focus:outline-none focus:border-purple-500/50 min-h-[80px] leading-relaxed resize-none transition-all placeholder:text-white/10"
+                      placeholder="Add specific instructions: 'Make it sunnier', 'Add more neon', 'Zoom slower'..."
+                      value={selectedSegment.refinementPrompt || ''}
+                      onChange={(e) => updateSegmentField(selectedSegment.id, 'refinementPrompt', e.target.value)}
+                    />
+                    <div className="absolute bottom-3 right-3 opacity-0 group-hover:opacity-100 transition-opacity">
+                       <Brain size={12} className="text-purple-500/30" />
+                    </div>
+                  </div>
+                </div>
+
                 <button 
                   onClick={() => regenerateSegment(selectedSegment.id)}
                   disabled={!!isRegenerating}
-                  className="w-full py-5 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:shadow-[0_0_30px_rgba(147,51,234,0.4)] transition-all shadow-lg active:scale-95 disabled:opacity-50"
+                  className="w-full py-5 rounded-[2rem] bg-gradient-to-r from-purple-600 via-fuchsia-600 to-blue-600 text-white text-[11px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-3 hover:shadow-[0_0_40px_rgba(147,51,234,0.3)] transition-all shadow-lg active:scale-95 disabled:opacity-50 relative overflow-hidden group/btn"
                 >
+                  <div className="absolute inset-0 bg-white/10 opacity-0 group-hover/btn:opacity-100 transition-opacity" />
                   {isRegenerating === selectedSegment.id ? (
                     <RefreshCw className="w-4 h-4 animate-spin" />
                   ) : (
-                    <Wand2 size={16}/>
+                    <Wand2 size={16} className="group-hover/btn:rotate-12 transition-transform" />
                   )}
-                  {isRegenerating === selectedSegment.id ? 'Regenerating...' : 'Regenerate Scene'}
+                  {isRegenerating === selectedSegment.id ? 'Synthesizing...' : selectedSegment.refinementPrompt ? 'Synthesize Refinement' : 'Regenerate Scene'}
                 </button>
                 <div className="flex items-center justify-center gap-3 mt-4 text-[10px] font-black uppercase tracking-widest text-white/20">
                   <span>Balance: 420 CR</span>

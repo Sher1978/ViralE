@@ -30,6 +30,7 @@ export interface Project {
     script?: any;
     storyboard?: any;
     credits_used?: number;
+    format?: 'vertical' | 'square' | 'horizontal';
   };
 }
 
@@ -93,32 +94,30 @@ export default function ProjectCard({ project, onRefresh }: ProjectCardProps) {
     if (project.status === 'archived') return;
 
     // Determine the step based on status
-    let path = `/${project.id}`;
+    let path = `/app/projects/${project.id}`;
     
     if (project.status === 'completed') {
-      path = `/projects/${project.id}/delivery`;
+      path = `/app/projects/${project.id}/delivery`;
     } else if (project.status === 'scripting' || project.status === 'ideation') {
-      path = `/projects/new/script?projectId=${project.id}`;
-    } else if (project.status === 'storyboard') {
-      path = `/projects/new/storyboard?projectId=${project.id}`;
-    } else if (project.status === 'rendering') {
-      path = `/projects/new/production?projectId=${project.id}`;
+      // Use standard localized path, the router handles the [locale] prefix
+      path = `/app/projects/${project.id}/studio`; 
+    } else if (project.status === 'storyboard' || project.status === 'rendering') {
+      path = `/app/projects/${project.id}/studio`;
     }
 
-    // Localized router handles prefix automatically
     router.push(path);
   };
   
   const handleIterate = (e: React.MouseEvent) => {
     e.stopPropagation();
-    router.push(`/projects/new/script?fromProjectId=${project.id}`);
+    router.push(`/app/projects/new/script?fromProjectId=${project.id}`);
   };
 
   const handleArchiveToggle = async (e: React.MouseEvent) => {
     e.stopPropagation();
     try {
       setIsArchiving(true);
-      const newStatus = project.status === 'archived' ? 'completed' : 'archived'; // Default back to completed if restoring, or we could store prev status
+      const newStatus = project.status === 'archived' ? 'completed' : 'archived';
       
       const res = await fetch('/api/projects', {
         method: 'PATCH',
@@ -140,91 +139,115 @@ export default function ProjectCard({ project, onRefresh }: ProjectCardProps) {
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
-      animate={{ opacity: 1, y: 0 }}
-      whileHover={{ y: -4 }}
-      className="group relative"
+      initial={{ opacity: 0, scale: 0.95 }}
+      animate={{ opacity: 1, scale: 1 }}
+      whileHover={{ y: -8, scale: 1.02 }}
+      className="group relative cursor-pointer"
+      onClick={handleAction}
     >
-      <div className={`p-5 rounded-3xl border ${config.borderColor} bg-white/[0.03] backdrop-blur-xl transition-all duration-300 group-hover:bg-white/[0.05] group-hover:border-white/20 ${project.status === 'archived' ? 'opacity-60' : ''}`}>
-        {/* Header */}
-        <div className="flex justify-between items-start mb-4">
-          <div className={`px-3 py-1 rounded-full text-[10px] font-bold tracking-wider uppercase flex items-center gap-1.5 ${config.bgColor} ${config.textColor} border ${config.borderColor}`}>
-            {config.icon}
-            {config.label}
-          </div>
-          <button className="p-1 rounded-full hover:bg-white/10 transition-colors text-white/40 group-hover:text-white/80">
-            <MoreVertical className="w-4 h-4" />
-          </button>
-        </div>
-
-        {/* Title */}
-        <h3 className="text-lg font-medium text-white mb-2 line-clamp-2 min-h-[3.5rem] leading-snug">
-          {projectTitle}
-        </h3>
-
-        {/* Progress Bar (Visual Only for now) */}
-        <div className="w-full h-1 bg-white/5 rounded-full overflow-hidden mb-5">
-          <div 
-            className={`h-full ${project.status === 'completed' ? 'bg-emerald-500' : project.status === 'archived' ? 'bg-white/10' : 'bg-purple-500'} transition-all duration-1000`} 
-            style={{ width: project.status === 'completed' || project.status === 'archived' ? '100%' : '65%' }}
-          />
-        </div>
-
-        {/* Footer */}
-        <div className="flex items-center justify-between gap-2">
-          <div className="flex items-center gap-3 shrink-0">
-            <div className="text-[11px] text-white/40 flex items-center gap-1">
-              <Clock className="w-3 h-3" />
-              {date}
+      <div className={`aspect-square rounded-[2.5rem] border ${config.borderColor} bg-white/[0.03] backdrop-blur-xl overflow-hidden transition-all duration-500 group-hover:border-white/30 ${project.status === 'archived' ? 'opacity-60' : ''}`}>
+        
+        {/* Visual Background */}
+        <div className="absolute inset-0 z-0">
+          {project.metadata?.video_url ? (
+            <video 
+              src={project.metadata.video_url} 
+              className="w-full h-full object-cover opacity-60 group-hover:opacity-80 transition-opacity duration-700"
+              muted
+              loop
+              playsInline
+              autoPlay
+            />
+          ) : (
+            <div className="w-full h-full relative overflow-hidden bg-[#0a0a14]">
+              {/* Dynamic Abstract Background */}
+              <div className="absolute inset-0 bg-gradient-to-br from-purple-600/20 via-transparent to-emerald-600/10" />
+              <div className="absolute top-1/4 left-1/4 w-32 h-32 bg-purple-500/20 blur-3xl rounded-full animate-pulse" />
+              <div className="absolute bottom-1/4 right-1/4 w-32 h-32 bg-blue-500/20 blur-3xl rounded-full animate-pulse [animation-delay:1s]" />
+              <div className="w-full h-full flex flex-col items-center justify-center opacity-10 group-hover:opacity-20 transition-opacity">
+                <Layers className="w-16 h-16 text-white mb-2" />
+                <span className="text-[10px] font-black uppercase tracking-widest">Neural Seed</span>
+              </div>
             </div>
+          )}
+          {/* Rich Vignette & Glass Overlay */}
+          <div className="absolute inset-0 bg-gradient-to-t from-[#0a0a14] via-transparent to-[#0a0a14]/40 opacity-80" />
+          <div className="absolute inset-0 bg-black/20 group-hover:bg-transparent transition-colors duration-500" />
+        </div>
+
+        {/* Content Overlay */}
+        <div className="relative z-10 h-full p-8 flex flex-col justify-between">
+          {/* Top: Status Tag */}
+          <div className="flex justify-between items-start">
+            <div className={`px-4 py-2 rounded-2xl text-[9px] font-black tracking-widest uppercase flex items-center gap-2 ${config.bgColor} ${config.textColor} border ${config.borderColor} backdrop-blur-xl shadow-lg`}>
+              <div className="relative">
+                {config.icon}
+                {project.status !== 'completed' && project.status !== 'archived' && (
+                  <div className="absolute -top-1 -right-1 w-2 h-2 bg-purple-400 rounded-full animate-ping" />
+                )}
+              </div>
+              {config.label}
+            </div>
+            
+            <button 
+              onClick={(e) => { e.stopPropagation(); }}
+              className="w-10 h-10 rounded-2xl bg-black/40 hover:bg-black/60 border border-white/5 text-white/40 group-hover:text-white transition-all flex items-center justify-center backdrop-blur-md"
+            >
+              <MoreVertical className="w-4 h-4" />
+            </button>
           </div>
 
-          <div className="flex items-center gap-2 overflow-hidden">
-            {project.status !== 'archived' ? (
-              <>
-                <button
-                  onClick={handleAction}
-                  className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 hover:border-white/20 text-white text-xs font-medium transition-all group/btn whitespace-nowrap"
-                >
-                  {project.status === 'completed' ? t('viewBtn') : t('continueBtn')}
-                  <ArrowRight className="w-3 h-3 transition-transform group-hover/btn:translate-x-1" />
-                </button>
-                
+          {/* Bottom: Info */}
+          <div className="space-y-4">
+            <div>
+              <h3 className="text-2xl font-black text-white leading-[1.1] tracking-tight group-hover:text-purple-300 transition-colors line-clamp-2">
+                {projectTitle}
+              </h3>
+              <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.2em] mt-2 flex items-center gap-2">
+                <Clock className="w-3 h-3" />
+                Updated {date}
+              </p>
+            </div>
+            
+            <div className="flex items-center justify-between gap-4 pt-2 opacity-0 group-hover:opacity-100 transform translate-y-4 group-hover:translate-y-0 transition-all duration-500">
+              <div className="flex items-center gap-2">
+                {project.status === 'completed' && (
+                  <button
+                    onClick={handleIterate}
+                    className="w-10 h-10 rounded-xl bg-purple-500/20 hover:bg-purple-500 text-purple-300 hover:text-white border border-purple-500/30 transition-all flex items-center justify-center group/btn"
+                    title={t('iterateBtn')}
+                  >
+                    <RotateCcw className="w-4 h-4 group-hover:rotate-180 transition-transform duration-500" />
+                  </button>
+                )}
                 <button
                   onClick={handleArchiveToggle}
                   disabled={isArchiving}
-                  className="p-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/40 hover:text-white transition-all disabled:opacity-50"
-                  title="Archive"
+                  className="w-10 h-10 rounded-xl bg-white/5 hover:bg-rose-500/20 border border-white/5 text-white/20 hover:text-rose-400 transition-all flex items-center justify-center"
                 >
                   <Archive className="w-4 h-4" />
                 </button>
-              </>
-            ) : (
-                <button
-                onClick={handleArchiveToggle}
-                disabled={isArchiving}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-emerald-500/10 hover:bg-emerald-500/20 border border-emerald-500/20 text-emerald-400 text-xs font-medium transition-all group/btn"
-              >
-                <RotateCcw className="w-3 h-3" />
-                {t('actions.restore')}
-              </button>
-            )}
-            
-            {project.status === 'completed' && (
-              <button
-                onClick={handleIterate}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 hover:border-purple-500/40 text-purple-400 text-xs font-medium transition-all group/btn whitespace-nowrap"
-              >
-                <Layers className="w-3 h-3" />
-                {t('iterateBtn')}
-              </button>
-            )}
+              </div>
+
+              <div className="w-12 h-12 rounded-2xl bg-purple-500 flex items-center justify-center text-black shadow-xl shadow-purple-500/20 hover:scale-110 active:scale-95 transition-all">
+                <ArrowRight className="w-6 h-6 stroke-[3]" />
+              </div>
+            </div>
+
+            {/* Precision Progress Indicator */}
+            <div className="relative w-full h-1.5 bg-white/5 rounded-full overflow-hidden">
+              <motion.div 
+                initial={{ width: 0 }}
+                animate={{ width: project.status === 'completed' ? '100%' : '65%' }}
+                className={`absolute inset-y-0 left-0 rounded-full ${project.status === 'completed' ? 'bg-emerald-400 shadow-[0_0_10px_#10B981]' : 'bg-purple-500 shadow-[0_0_10px_#A855F7]'}`}
+              />
+            </div>
           </div>
         </div>
       </div>
 
-      {/* Glossy Glow Effect on Hover */}
-      <div className="absolute -inset-1 bg-gradient-to-r from-purple-500/20 to-blue-500/20 rounded-[2rem] blur-2xl opacity-0 group-hover:opacity-100 transition-opacity pointer-events-none" />
+      {/* Ambient Outer Glow */}
+      <div className={`absolute -inset-1 rounded-[2.8rem] bg-gradient-to-br ${project.status === 'completed' ? 'from-emerald-500/0 via-emerald-500/0 to-emerald-500/0' : 'from-purple-500/0 via-purple-500/0 to-purple-500/0'} group-hover:opacity-20 transition-opacity blur-xl -z-10`} />
     </motion.div>
   );
 }

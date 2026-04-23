@@ -535,5 +535,23 @@
       "outputs": "OUTPUTS",
       "pricing": "PRICING"
     }
+  },
+  "studio": {
+    "teleprompter": {
+      "title": "Teleprompter",
+      "scrollPace": "Scroll Pace",
+      "textSize": "Text Size",
+      "startReading": "Start Reading",
+      "stopReading": "Stop Reading",
+      "sceneLabel": "Scene {n}"
+    },
+    "assembly": {
+      "title": "Assembly",
+      "quickRerender": "Quick Re-render",
+      "regenerateWithPrompt": "Regenerate with clarification",
+      "clarifyingPromptPlaceholder": "e.g. make the b-roll more cinematic...",
+      "regenerateBtn": "Update Element",
+      "scenesCount": "{n} Scenes"
+    }
   }
 }

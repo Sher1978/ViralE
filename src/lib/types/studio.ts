@@ -18,6 +18,7 @@ export interface SceneSegment {
   provider?: AvatarProvider;
   avatarId?: string;
   modelId?: string; // e.g. 'kling-3.0', 'nano-banana'
+  refinementPrompt?: string;
 }
 
 export interface ProductionManifest {
