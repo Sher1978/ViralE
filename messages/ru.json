@@ -15,7 +15,11 @@
     "quickLaunch": "Быстрый запуск",
     "toScript": "В сценарий",
     "alreadyHaveAccount": "Уже есть аккаунт",
-    "signInHere": "Войдите здесь"
+    "signInHere": "Войдите здесь",
+    "installApp": "Установить приложение",
+    "installDescription": "Добавьте Viral Studio на главный экран для лучшего опыта.",
+    "installButton": "Установить",
+    "close": "Закрыть"
   },
   "nav": {
     "dash": "DASH",

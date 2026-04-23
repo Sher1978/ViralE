@@ -2,7 +2,7 @@
   "name": "Viral Studio",
   "short_name": "ViralStudio",
   "description": "Professional Content Creation Studio for Viral Creators",
-  "start_url": "/",
+  "start_url": "/?mode=standalone",
   "display": "standalone",
   "background_color": "#000000",
   "theme_color": "#000000",

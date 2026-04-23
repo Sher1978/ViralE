@@ -14,8 +14,11 @@
     "later": "Later",
     "quickLaunch": "Quick Launch",
     "toScript": "To Script",
-    "alreadyHaveAccount": "Already have an account",
-    "signInHere": "Sign in here"
+    "signInHere": "Sign in here",
+    "installApp": "Install App",
+    "installDescription": "Add Viral Studio to your home screen for the best experience.",
+    "installButton": "Install",
+    "close": "Close"
   },
   "nav": {
     "dash": "DASH",

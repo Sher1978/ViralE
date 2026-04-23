@@ -1,6 +1,8 @@
 'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
+import { useRouter, useSearchParams } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
@@ -172,6 +174,48 @@ const StoreBadge = ({ type, text, subtext, toastMessage, href = "#" }: { type: '
 export default function LandingPage() {
   const t = useTranslations('landing');
   const locale = useLocale();
+  const router = useRouter();
+  const searchParams = useSearchParams();
+  const [isRedirecting, setIsRedirecting] = useState(false);
+
+  useEffect(() => {
+    const checkRedirect = async () => {
+      const mode = searchParams?.get('mode');
+      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || mode === 'standalone';
+      
+      // If PWA mode, we ALWAYS go to the flow
+      if (isStandalone) {
+        setIsRedirecting(true);
+        router.push(`/${locale}/app/projects`);
+        return;
+      }
+
+      // For standard browser users, only redirect if they are logged in AND onboarded
+      const { data: { session } } = await supabase.auth.getSession();
+      const onboarded = document.cookie.includes('profile_onboarded=true');
+
+      if (session && onboarded && !session.user.is_anonymous) {
+        setIsRedirecting(true);
+        router.push(`/${locale}/app/projects`);
+      }
+    };
+    
+    checkRedirect();
+  }, [locale, router, searchParams]);
+
+  if (isRedirecting) {
+    return (
+      <div className="min-h-screen bg-[#020408] flex items-center justify-center">
+        <motion.div 
+          animate={{ opacity: [0.3, 1, 0.3], scale: [0.98, 1, 0.98] }}
+          transition={{ duration: 2, repeat: Infinity }}
+          className="text-cyan-400 font-black tracking-[0.5em] uppercase text-xs"
+        >
+          {t('title')}
+        </motion.div>
+      </div>
+    );
+  }
 
   const containerVariants = {
     hidden: { opacity: 0 },

@@ -7,6 +7,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { PageShell } from "@/components/layout/PageShell";
+import { InstallPrompt } from "@/components/pwa/InstallPrompt";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -70,6 +71,7 @@ export default async function LocaleLayout({
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <SessionSync />
+          <InstallPrompt />
           
           {/* Decorative Orbs (Global) */}
           <div className="orb orb-gold" />
