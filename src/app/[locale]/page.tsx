@@ -333,7 +333,7 @@ export default function LandingPage() {
                 </motion.button>
               </Link>
               
-              <Link href="/app/onboarding" className="flex-1">
+              <Link href={`/${locale}/auth?next=/${locale}/app/onboarding`} className="flex-1">
                 <motion.button 
                   whileHover={{ scale: 1.02, y: -2 }}
                   whileTap={{ scale: 0.98 }}
