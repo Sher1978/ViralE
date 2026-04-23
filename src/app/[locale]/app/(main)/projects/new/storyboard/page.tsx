@@ -7,6 +7,8 @@ import Link from 'next/link';
 import { Image as ImageIcon, Sparkles, RefreshCw, ChevronLeft, ChevronRight, Wand2, Loader2 } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
+import { profileService, Profile } from '@/lib/services/profileService';
+import { StrategistChat } from '@/components/studio/StrategistChat';
 
 export default function StoryboardPage() {
   const t = useTranslations('storyboard');
@@ -22,6 +24,7 @@ export default function StoryboardPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
   const [version, setVersion] = useState<ProjectVersion | null>(null);
+  const [user, setUser] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
 
   const generateStoryboard = async () => {
@@ -88,11 +91,13 @@ export default function StoryboardPage() {
       }
 
       try {
-        const [proj, ver] = await Promise.all([
+        const [proj, ver, prof] = await Promise.all([
           projectService.getProject(projectIdParam),
-          projectService.getVersion(versionIdParam)
+          projectService.getVersion(versionIdParam),
+          profileService.getOrCreateProfile()
         ]);
-
+        
+        setUser(prof);
         if (!proj || !ver) {
           setError('Project not found');
         } else {
@@ -240,6 +245,8 @@ export default function StoryboardPage() {
 
       {/* Strategist Advisor */}
       <StrategistChat 
+        projectId={projectIdParam || ''}
+        userId={user?.id || ''}
         context="storyboard"
         onApplySuggestion={(text) => {
           // If the strategist suggests a visual change, we apply it to the whole storyboard or first scene

@@ -8,9 +8,8 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from '@/navigation';
 import { Sparkles, ArrowRight, Wand2, History, ChevronRight, Loader2, Dna } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
-import { profileService } from '@/lib/services/profileService';
+import { profileService, Profile } from '@/lib/services/profileService';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
-
 import { StrategistChat } from '@/components/studio/StrategistChat';
 
 export default function ScriptLabPage() {
@@ -47,9 +46,18 @@ export default function ScriptLabPage() {
 
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [currentVersion, setCurrentVersion] = useState<ProjectVersion | null>(null);
+  const [user, setUser] = useState<Profile | null>(null);
 
   useEffect(() => {
     async function loadData() {
+      // Load user profile
+      try {
+        const prof = await profileService.getOrCreateProfile();
+        setUser(prof);
+      } catch (err) {
+        console.error('Failed to load profile:', err);
+      }
+
       // Handle Iteration Logic (Copying from existing project)
       const fromProjectId = searchParams.get('fromProjectId');
       if (fromProjectId && !projectIdParam) {
@@ -518,6 +526,8 @@ export default function ScriptLabPage() {
 
       {/* Strategist Advisor */}
       <StrategistChat 
+        projectId={projectIdParam || ''}
+        userId={user?.id || ''}
         context="script"
         onApplySuggestion={(text) => {
           // If the strategist provides a direct instruction, we use it to refine the script

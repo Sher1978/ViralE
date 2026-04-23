@@ -203,7 +203,7 @@ export default function StudioPage() {
                   segments: prev.segments.map(s => 
                     s.id === segmentId ? { 
                       ...s, 
-                      status: jobStatus.status === 'completed' ? 'ready' : 'error',
+                      status: jobStatus.status === 'completed' ? 'completed' : 'error',
                       assetUrl: jobStatus.output_url || s.assetUrl 
                     } : s
                   )
@@ -695,12 +695,12 @@ export default function StudioPage() {
                   <div className="p-3 bg-black/20">
                     <div className="flex items-center justify-between mb-1">
                       <p className="text-[9px] font-bold text-white/40 uppercase tracking-tighter">
-                        {segment.status === 'ready' ? '✅ Ready' : segment.status === 'rendering' ? '⏳ Rendering' : '🟠 Pending'}
+                        {segment.status === 'completed' ? '✅ Ready' : segment.status === 'rendering' ? '⏳ Rendering' : '🟠 Pending'}
                       </p>
                       <span className="text-[8px] font-black text-white/20 uppercase">S{index + 1}</span>
                     </div>
                     <div className="h-1 w-full bg-white/5 rounded-full overflow-hidden">
-                       <div className={`h-full transition-all duration-[3000ms] ${segment.status === 'ready' ? 'bg-green-500/50 w-full' : segment.status === 'rendering' ? 'bg-purple-500 w-1/2 animate-shimmer' : 'bg-white/10 w-0'}`} />
+                       <div className={`h-full transition-all duration-[3000ms] ${segment.status === 'completed' ? 'bg-green-500/50 w-full' : segment.status === 'rendering' ? 'bg-purple-500 w-1/2 animate-shimmer' : 'bg-white/10 w-0'}`} />
                     </div>
                   </div>
                 </div>

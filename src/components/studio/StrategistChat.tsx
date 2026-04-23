@@ -253,13 +253,11 @@ export function StrategistChat({
     }
 
     // 2. Fallback to active segment update if in studio and manifest exists
-    if (context === 'studio' && activeSegmentId && setManifest) {
-      setManifest(prev => {
-        if (!prev) return prev;
-        const newManifest = { ...prev };
-        const segmentIndex = newManifest.segments.findIndex(s => s.id === activeSegmentId);
-        
-        if (segmentIndex !== -1) {
+    if (context === 'studio' && activeSegmentId && setManifest && manifest) {
+      const newManifest = { ...manifest };
+      const segmentIndex = newManifest.segments.findIndex(s => s.id === activeSegmentId);
+      
+      if (segmentIndex !== -1) {
           const segment = newManifest.segments[segmentIndex];
           if (segment.type === 'animated_still' || segment.type === 'broll') {
             newManifest.segments[segmentIndex].prompt = newText;
@@ -270,13 +268,12 @@ export function StrategistChat({
             }
           }
           
+          setManifest(newManifest);
           setMessages(curr => [...curr, { 
             role: 'assistant', 
             content: "Done! I've updated the segment with the new strategy." 
           }]);
         }
-        return newManifest;
-      });
     } else {
       // 3. Just copy to clipboard if no target action
       copyToClipboard(newText, messages.length);

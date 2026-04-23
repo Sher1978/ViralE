@@ -4,7 +4,7 @@ import { NextRequest } from 'next/server';
 
 const intlMiddleware = createMiddleware(routing);
 
-export default function middleware(request: NextRequest) {
+export default function proxy(request: NextRequest) {
   const response = intlMiddleware(request);
   // Inject pathname for server components layout logic
   response.headers.set('x-pathname', request.nextUrl.pathname);

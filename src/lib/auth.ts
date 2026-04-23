@@ -36,7 +36,7 @@ export async function getAuthContext() {
   );
 
   let user = null;
-  let authError = null;
+  let authError: any = null;
 
   if (!token) {
     console.warn('[Auth] No token found in cookies:', cookieName);

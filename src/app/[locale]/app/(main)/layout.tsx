@@ -9,15 +9,12 @@ export default async function MainLayout({
 }) {
   const locale = await getLocale();
   
-  let user, supabase;
-  try {
-    const auth = await getAuthContext();
-    user = auth.user;
-    supabase = auth.supabase;
-  } catch (e) {
+  const { user, supabase } = await getAuthContext().catch((e) => {
     console.error('[MainLayout] Auth failed, redirecting to /auth:', e);
     redirect({ href: '/auth', locale });
-  }
+    // This will never be reached because redirect throws, but TS needs it for narrowing
+    throw e;
+  });
 
   // Fetch profile to check onboarding completion status
   const { data: profile, error } = await supabase

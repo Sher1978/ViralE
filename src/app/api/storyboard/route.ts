@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { generateStoryboardAI } from '@/lib/storyboard';
+import { generateStoryboardAI, refineSceneAI } from '@/lib/storyboard';
 import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
 import { getAuthContext } from '@/lib/auth';
 
@@ -61,7 +61,7 @@ export async function POST(req: Request) {
  
     // 2. Deduct Credits
     try {
-      const cost = mode === 'refine_scene' ? CREDIT_COSTS.REGENERATE_FRAME : CREDIT_COSTS.GENERATE_STORYBOARD;
+      const cost = mode === 'refine_scene' ? CREDIT_COSTS.REGENERATE_BLOCK : CREDIT_COSTS.GENERATE_STORYBOARD;
       await deductCredits(authorizedSupabase, userId, cost, 'STORYBOARD_GEN', projectId);
     } catch (e: any) {
       if (e.message === 'INSUFFICIENT_CREDITS') {

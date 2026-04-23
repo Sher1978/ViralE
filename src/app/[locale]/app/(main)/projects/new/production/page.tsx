@@ -320,6 +320,8 @@ export default function ProductionPage() {
       )}
       {/* Strategist Advisor */}
       <StrategistChat 
+        projectId={projectId || ''}
+        userId={user?.id || ''}
         context="production"
         onApplySuggestion={(text) => {
           const lower = text.toLowerCase();

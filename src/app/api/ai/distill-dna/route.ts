@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
-import { createClient } from '@/lib/supabase/server';
+import { supabase } from '@/lib/supabase';
 
 const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
@@ -41,7 +41,6 @@ export async function POST(req: NextRequest) {
     const dnaInfo = JSON.parse(cleanJson);
 
     // Update profile in database
-    const supabase = await createClient();
     const { data: profile, error } = await supabase
       .from('profiles')
       .update({
