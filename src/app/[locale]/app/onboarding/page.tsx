@@ -175,6 +175,29 @@ export default function OnboardingPage() {
               />
             </div>
           )}
+
+          {/* Skip DNA Option */}
+          <div className="pt-4 border-t border-white/5 space-y-4">
+            <button
+              onClick={() => {
+                if (confirm(t('skipWarning'))) {
+                  setIsSubmitting(true);
+                  fetch('/api/onboarding', {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ locale })
+                  }).then(res => {
+                    if (res.ok) window.location.href = `/${locale}/app/dashboard`;
+                    else alert('Error skipping DNA');
+                  }).finally(() => setIsSubmitting(false));
+                }
+              }}
+              className="w-full py-4 text-[11px] font-black uppercase tracking-[0.2em] text-white/20 hover:text-white/60 transition-colors flex items-center justify-center gap-2"
+            >
+              <ArrowRight className="w-3 h-3 opacity-30" />
+              {t('skipDna')}
+            </button>
+          </div>
         </div>
       )}
 
@@ -256,6 +279,7 @@ export default function OnboardingPage() {
               <p className="text-[11px] text-white/30 mt-1">{t('step3BotLabel')}</p>
             </div>
             <button
+              onClick={() => window.open('https://t.me/viral_engine_bot', '_blank')}
               className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all hover:scale-[1.02]"
               style={{
                 background: 'linear-gradient(135deg, #4D9EFF, #0099CC)',
@@ -327,9 +351,13 @@ export default function OnboardingPage() {
                 
                 if (response.ok) {
                   window.location.href = `/${locale}/app/dashboard`;
+                } else {
+                  const errorData = await response.json();
+                  alert(`Error: ${errorData.error || 'Failed to finalize onboarding'}`);
                 }
-              } catch (err) {
+              } catch (err: any) {
                 console.error('Finalize onboarding failed:', err);
+                alert(`System Error: ${err.message || 'Check your connection'}`);
               } finally {
                 setIsSubmitting(false);
               }
@@ -339,6 +367,17 @@ export default function OnboardingPage() {
           </button>
         )}
       </div>
+
+      {step === 0 && (
+        <div className="text-center pt-4">
+          <p className="text-[10px] text-white/20">
+            {t('alreadyHaveAccount')}? {' '}
+            <Link href={`/${locale}/auth`} className="text-gold/40 hover:text-gold transition-colors underline">
+              {t('signInHere')}
+            </Link>
+          </p>
+        </div>
+      )}
     </div>
   );
 }

@@ -13,7 +13,9 @@
     "logout": "Выйти из аккаунта",
     "later": "Позже",
     "quickLaunch": "Быстрый запуск",
-    "toScript": "В сценарий"
+    "toScript": "В сценарий",
+    "alreadyHaveAccount": "Уже есть аккаунт",
+    "signInHere": "Войдите здесь"
   },
   "nav": {
     "dash": "DASH",
@@ -101,6 +103,8 @@
     "step3Cta": "✈️ Открыть @viral_engine_bot",
     "step3Hint": "Перейди в Telegram и нажми /start",
     "step3Done": "Готово! Как только откроешь бот — мы узнаем.",
+    "skipDna": "Пропустить пока",
+    "skipWarning": "Без ДНК стиль будет стандартным. Мы рекомендуем заполнить её позже.",
     "launch": "🚀 Запустить Viral Engine"
   },
   "dashboard": {
@@ -430,6 +434,11 @@
     "title": "ВХОД В",
     "titleAccent": "ФАБРИКУ",
     "subtitle": "Добро пожаловать в командный центр твоей виральности.",
+    "greeting": "С возвращением, Творец.",
+    "aestheticPhrase1": "Машина готова к твоим сигналам.",
+    "aestheticPhrase2": "Один вход до тотального присутствия.",
+    "strategistGreeting": "Привет! Я твой ИИ-Стратег.",
+    "strategistPrompt": "Готов синтезировать свой первый виральный хит? Давай начнем с идентификации твоего профиля.",
     "googleBtn": "Войти через Google",
     "telegramBtn": "Войти через Telegram",
     "backToLanding": "← На главную",

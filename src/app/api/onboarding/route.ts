@@ -7,9 +7,10 @@ export async function POST(req: Request) {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
     const { answers, dnaPrompt, locale = 'en' } = await req.json();
 
-    if (!answers && !dnaPrompt) {
-      return NextResponse.json({ error: 'Missing answers or DNA prompt' }, { status: 400 });
-    }
+    // Allow missing answers/dnaPrompt for the "Skip" case
+    // if (!answers && !dnaPrompt) {
+    //   return NextResponse.json({ error: 'Missing answers or DNA prompt' }, { status: 400 });
+    // }
 
     const userId = user.id;
 

@@ -13,7 +13,9 @@
     "logout": "Sign Out",
     "later": "Later",
     "quickLaunch": "Quick Launch",
-    "toScript": "To Script"
+    "toScript": "To Script",
+    "alreadyHaveAccount": "Already have an account",
+    "signInHere": "Sign in here"
   },
   "nav": {
     "dash": "DASH",
@@ -101,6 +103,8 @@
     "step3Cta": "✈️ Open @viral_engine_bot",
     "step3Hint": "Go to Telegram and press /start",
     "step3Done": "Done! As soon as you open the bot — we'll know.",
+    "skipDna": "Skip for now",
+    "skipWarning": "Without DNA, style will be standard. We recommend filling it later.",
     "launch": "🚀 Launch Viral Engine"
   },
   "dashboard": {
@@ -430,6 +434,11 @@
     "title": "ENTER THE",
     "titleAccent": "FACTORY",
     "subtitle": "Welcome to the command center of your virality.",
+    "greeting": "Welcome back, Creator.",
+    "aestheticPhrase1": "The machine is ready for your signals.",
+    "aestheticPhrase2": "One login away from total presence.",
+    "strategistGreeting": "Hello! I am your AI Strategist.",
+    "strategistPrompt": "Ready to synthesize your first viral hit? Let's start by identifying your profile.",
     "googleBtn": "Login with Google",
     "telegramBtn": "Login with Telegram",
     "backToLanding": "← Back to landing",
