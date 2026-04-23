@@ -6,7 +6,7 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from '@/navigation';
-import { Sparkles, ArrowRight, Wand2, History, ChevronRight, Loader2, Dna } from 'lucide-react';
+import { Sparkles, ArrowRight, Wand2, History, ChevronRight, Loader2, Dna, Lock, Key, AlertTriangle, Cpu, GraduationCap, TrendingUp, Leaf } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { profileService, Profile } from '@/lib/services/profileService';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
@@ -31,19 +31,28 @@ export default function ScriptLabPage() {
   const [topicInput, setTopicInput] = useState('');
   const [customCommand, setCustomCommand] = useState('');
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
-  const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude'>('gemini');
+  const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('gemini');
   const [isAiLocked, setIsAiLocked] = useState(false);
 
+  const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational'>('evergreen');
+  const [allScenarios, setAllScenarios] = useState<any>(null);
+  
   const [scriptData, setScriptData] = useState({
     hook: locale === 'ru' 
-      ? "Знаешь почему 90% покупателей переплачивают за авто? Не потому что \"рынок такой\" — а потому что никто не объяснил 3 простых правила проверки."
-      : "Do you know why 90% of buyers overpay for cars? It's not because \"that's the market\" — it's because nobody explained 3 simple inspection rules.",
+      ? "Знаешь почему 90% покупателей переплачивают за авто?"
+      : "Do you know why 90% of buyers overpay for cars?",
     story: locale === 'ru'
-      ? "Разбираю по-честному. Первое — VIN история. Всего 500 рублей и ты знаешь всё тёмное прошлое. Второе — независимая диагностика. Не верь продавцу, верь цифрам. Третье — правильный тест-драйв."
-      : "I'm breaking it down honestly. First — VIN history. Just $10 and you know the entire dark past. Second — independent diagnostics. Don't trust the seller, trust the numbers. Third — the proper test drive.",
+      ? "Разбираю по-честному. Первое — VIN история. Второе — незавизимая диагностика."
+      : "I'm breaking it down honestly. First — VIN history. Second — independent diagnostics.",
     cta: locale === 'ru'
-      ? "Хочешь чек-лист проверки авто перед покупкой? Пиши слово «МАШИНА» в комментариях и я пришлю его в директ."
-      : "Want a car inspection checklist before buying? Comment the word \"CAR\" and I'll send it to your DMs."
+      ? "Пиши слово «МАШИНА» в комментариях."
+      : "Comment the word \"CAR\".",
+    visual_hook: locale === 'ru'
+      ? "Эстетичный кадр с дорогим авто в неоновом свете"
+      : "Aesthetic shot of a premium car in neon light",
+    social_post: locale === 'ru'
+      ? "Секреты автоподбора 2026. 🚗💨 #авто #советы #viral"
+      : "Car buying secrets 2026. 🚗💨 #cars #tips #viral"
   });
 
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
@@ -92,10 +101,16 @@ export default function ScriptLabPage() {
       }
       
       setIsLoading(true);
-      try {
         const ver = await projectService.getVersion(versionIdParam!);
         if (ver?.script_data) {
-          setScriptData(ver.script_data as any);
+          const data = ver.script_data as any;
+          if (data.evergreen) {
+            setAllScenarios(data);
+            setScriptData(data[activeScenario] || data.evergreen);
+          } else {
+            // Legacy format
+            setScriptData(data);
+          }
           setCurrentVersion(ver);
         }
         const proj = await projectService.getProject(projectIdParam);
@@ -111,8 +126,23 @@ export default function ScriptLabPage() {
     loadData();
   }, [projectIdParam, versionIdParam, searchParams]);
 
+  const handleScenarioSwitch = (scenario: 'evergreen' | 'trend' | 'educational') => {
+    if (user?.tier === 'free' && scenario !== 'evergreen') return;
+    setActiveScenario(scenario);
+    if (allScenarios?.[scenario]) {
+      setScriptData(allScenarios[scenario]);
+    }
+  };
+
   const handleApplyRefinement = async (instruction: string) => {
     if (!projectIdParam || !versionIdParam) return;
+    
+    // Threshold check
+    if ((user?.credits_balance || 0) < 50 && user?.tier !== 'pro') {
+      setError(locale === 'ru' ? 'Для редактирования нужно минимум 50 кредитов.' : 'Minimum 50 credits required for adjustment.');
+      return;
+    }
+
     setIsRefining(true);
     setError(null);
 
@@ -132,12 +162,30 @@ export default function ScriptLabPage() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Refinement failed');
+      if (!response.ok) {
+        if (data.code === 'BALANCE_TOO_LOW') {
+          setError(locale === 'ru' ? 'Для редактирования нужно минимум 50 кредитов.' : 'Minimum 50 credits required for adjustment.');
+          return;
+        }
+        throw new Error(data.error || 'Refinement failed');
+      }
 
-      setScriptData(data.script);
+      // Update script data
+      const newScript = data.script;
+      setScriptData(newScript);
+      
+      // Update allScenarios if it's a multi-scenario object
+      if (allScenarios) {
+        setAllScenarios({ ...allScenarios, [activeScenario]: newScript });
+      }
+
       if (data.onboardingIncomplete) {
         setOnboardingIncomplete(true);
       }
+      
+      // Refresh user balance if possible
+      const prof = await profileService.getOrCreateProfile();
+      setUser(prof);
     } catch (err: any) {
       setError(err.message);
     } finally {
@@ -185,6 +233,30 @@ export default function ScriptLabPage() {
     setError(null);
 
     try {
+      // Tier Check: Creator limit (20 generations/month)
+      if (user?.tier === 'creator') {
+        const { count, error: countError } = await profileService.getMonthlyGenerationCount(user.id);
+        if (countError) throw countError;
+        if ((count || 0) >= 20) {
+          setError(locale === 'ru' 
+            ? 'Лимит Создателя (20 генераций в месяц) исчерпан. Перейдите на PRO или купите кредиты.' 
+            : 'Creator limit (20 generations/month) reached. Upgrade to PRO or buy credits.');
+          setIsLoading(false);
+          return;
+        }
+      }
+
+      // Warning for credits if user not pro
+      if (user?.tier !== 'pro') {
+        const confirmMsg = locale === 'ru' 
+          ? 'Это действие потратит 10 кредитов. Продолжить?'
+          : 'This action will cost 10 credits. Continue?';
+        if (!window.confirm(confirmMsg)) {
+          setIsLoading(false);
+          return;
+        }
+      }
+
       const response = await fetch('/api/script/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -199,12 +271,22 @@ export default function ScriptLabPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Generation failed');
 
-      setScriptData(data.script);
+      const fullScript = data.script;
+      if (fullScript.evergreen) {
+        setAllScenarios(fullScript);
+        setScriptData(fullScript.evergreen);
+        setActiveScenario('evergreen');
+      } else {
+        setScriptData(fullScript);
+      }
+
       if (data.onboardingIncomplete) {
         setOnboardingIncomplete(true);
       }
-      // Update URL without refreshing the whole page state
-      // The localized router handles the locale prefix automatically
+      
+      const prof = await profileService.getOrCreateProfile();
+      setUser(prof);
+      
       router.replace(`/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
     } catch (err: any) {
       setError(err.message);
@@ -461,10 +543,73 @@ export default function ScriptLabPage() {
             </h1>
           </div>
         </div>
-        <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 shadow-lg backdrop-blur-md">
-          <span className="text-[10px] font-bold text-white/60 tracking-wider font-mono">{t('cost')}</span>
+        <div className="flex items-center gap-2">
+          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 shadow-lg backdrop-blur-md">
+            <span className="text-[10px] font-bold text-white/60 tracking-wider font-mono">{t('cost')}</span>
+          </div>
+          {user && user.credits_balance < 50 && user.tier !== 'pro' && (
+            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 animate-pulse">
+              <AlertTriangle className="w-3 h-3 text-amber-500" />
+              <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest whitespace-nowrap">
+                {t('lowBalance')}
+              </span>
+            </div>
+          )}
         </div>
       </div>
+
+      {/* Scenario Selector */}
+      <div className="p-1 px-1.5 bg-black/40 rounded-[1.5rem] border border-white/5 flex gap-1.5 overflow-x-auto no-scrollbar backdrop-blur-xl shadow-2xl">
+        {[
+          { id: 'evergreen', icon: Leaf },
+          { id: 'trend', icon: TrendingUp },
+          { id: 'educational', icon: GraduationCap }
+        ].map(({ id, icon: Icon }) => {
+          const isLocked = user?.tier === 'free' && id !== 'evergreen';
+          const isActive = activeScenario === id;
+
+          return (
+            <button
+              key={id}
+              onClick={() => handleScenarioSwitch(id as any)}
+              className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-3 rounded-xl transition-all relative overflow-hidden group ${
+                isActive 
+                  ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
+                  : 'text-white/40 hover:text-white/60'
+              } ${isLocked ? 'cursor-not-allowed opacity-60 grayscale' : ''}`}
+            >
+              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-purple-400/40 group-hover:text-purple-400 transition-colors'}`} />
+              <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
+                {t(`scenarios.${id}`)}
+              </span>
+              {isLocked && (
+                <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
+                  <Lock className="w-4 h-4 text-white/40" />
+                </div>
+              )}
+            </button>
+          );
+        })}
+      </div>
+
+      {user?.tier === 'free' && activeScenario !== 'evergreen' && (
+        <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 to-transparent border border-purple-500/20 flex items-center justify-between">
+          <div className="flex items-center gap-3">
+            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
+              <Lock className="w-5 h-5 text-purple-400" />
+            </div>
+            <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest leading-relaxed max-w-[200px]">
+              {t('scenarios.lockedHint')}
+            </p>
+          </div>
+          <button 
+            onClick={() => router.push(`/${locale}/app/profile/subscription`)}
+            className="px-4 py-2 rounded-xl bg-purple-500 text-white text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
+          >
+            Upgrade
+          </button>
+        </div>
+      )}
 
       {error && (
         <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold text-center animate-shake">
@@ -598,6 +743,53 @@ export default function ScriptLabPage() {
               value={scriptData.cta}
               onChange={(e) => setScriptData({ ...scriptData, cta: e.target.value })}
               className="w-full p-5 rounded-2xl bg-white/[0.02] border border-white/5 text-sm leading-relaxed text-white/70 focus:outline-none focus:border-purple-500/30 resize-none min-h-[80px] transition-all"
+            />
+          </div>
+        </div>
+
+        {/* VISUAL HOOK Block */}
+        <div className="group relative">
+          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-cyan-500/40 rounded-full" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-2">
+              <div className="flex items-center gap-1.5">
+                <span className="text-[10px] font-black tracking-[0.2em] text-cyan-400/50 uppercase">Visual Hook</span>
+                <div className="px-1.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[8px] font-black text-cyan-400 uppercase tracking-tighter">AI Cover</div>
+              </div>
+              <button 
+                onClick={() => handleApplyRefinement('Regenerate the visual hook prompt to be more cinematic and professional')}
+                className="opacity-0 group-hover:opacity-100 transition-all text-[9px] font-bold text-cyan-400 hover:text-white uppercase tracking-widest"
+              >
+                {t('regenerate')}
+              </button>
+            </div>
+            <textarea
+              value={scriptData.visual_hook || ''}
+              onChange={(e) => setScriptData({ ...scriptData, visual_hook: e.target.value })}
+              placeholder={locale === 'ru' ? 'Описание для обложки (Midjourney prompt)...' : 'Description for cover (Midjourney prompt)...'}
+              className="w-full p-5 rounded-2xl bg-[#09121a]/50 border border-cyan-500/10 text-sm italic leading-relaxed text-cyan-100/60 focus:outline-none focus:border-cyan-500/30 resize-none min-h-[100px] transition-all"
+            />
+          </div>
+        </div>
+
+        {/* SOCIAL POST Block */}
+        <div className="group relative">
+          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-pink-500/40 rounded-full" />
+          <div className="space-y-2">
+            <div className="flex items-center justify-between px-2">
+              <span className="text-[10px] font-black tracking-[0.2em] text-pink-400/50 uppercase">Social Post</span>
+              <button 
+                onClick={() => handleApplyRefinement('Refine the social post caption to be more catchy with emojis')}
+                className="opacity-0 group-hover:opacity-100 transition-all text-[9px] font-bold text-pink-400 hover:text-white uppercase tracking-widest"
+              >
+                {t('regenerate')}
+              </button>
+            </div>
+            <textarea
+              value={scriptData.social_post || ''}
+              onChange={(e) => setScriptData({ ...scriptData, social_post: e.target.value })}
+              placeholder={locale === 'ru' ? 'Текст поста для соцсетей...' : 'Social post caption...'}
+              className="w-full p-5 rounded-2xl bg-[#1a0912]/50 border border-pink-500/10 text-sm leading-relaxed text-pink-100/60 focus:outline-none focus:border-pink-500/30 resize-none min-h-[100px] transition-all"
             />
           </div>
         </div>

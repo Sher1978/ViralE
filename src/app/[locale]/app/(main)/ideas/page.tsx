@@ -15,6 +15,7 @@ export default function IdeasPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'new' | 'archived'>('new');
   const [processingId, setProcessingId] = useState<string | null>(null);
+  const [errorState, setErrorState] = useState<'TIER_LOCK' | 'MONTHLY_LIMIT' | null>(null);
 
   const fetchIdeas = useCallback(async (status: string) => {
     try {
@@ -22,6 +23,14 @@ export default function IdeasPage() {
       const res = await fetch(`/api/ideas?locale=${locale}&status=${status}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
+      if (data.error === 'TIER_LOCK') {
+        setErrorState('TIER_LOCK');
+        return;
+      }
+      if (data.error === 'MONTHLY_LIMIT') {
+        setErrorState('MONTHLY_LIMIT');
+        return;
+      }
       setIdeas(data);
     } catch (err) {
       console.error('Error fetching ideas:', err);
@@ -106,7 +115,44 @@ export default function IdeasPage() {
 
       {/* Ideas list */}
       <div className="space-y-4">
-        {loading && ideas.length === 0 ? (
+        {errorState === 'TIER_LOCK' ? (
+          <div className="flex flex-col items-center justify-center py-20 px-8 text-center space-y-8 bg-white/[0.02] border border-white/5 rounded-[2rem] animate-fade-up">
+            <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-white/10 flex items-center justify-center relative overflow-hidden group">
+              <TrendingUp className="w-10 h-10 text-white/40 group-hover:scale-110 transition-transform" />
+              <div className="absolute inset-0 bg-gradient-to-t from-purple-500/10 to-transparent" />
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-xl font-black uppercase tracking-tighter gradient-text-purple">Unlock AI Trends</h3>
+              <p className="text-[11px] text-white/40 uppercase tracking-[0.1em] font-medium leading-relaxed max-w-[240px]">
+                AI-powered trend scouting is exclusive to <span className="text-white/60">Creator</span> and <span className="text-white/60">Pro</span> tiers.
+              </p>
+            </div>
+            <button 
+              onClick={() => router.push('/billing')}
+              className="px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-purple-500/20"
+            >
+              Upgrade Now
+            </button>
+          </div>
+        ) : errorState === 'MONTHLY_LIMIT' ? (
+          <div className="flex flex-col items-center justify-center py-20 px-8 text-center space-y-8 bg-white/[0.02] border border-white/5 rounded-[2rem] animate-fade-up">
+            <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-white/10 flex items-center justify-center relative overflow-hidden group">
+              <TrendingUp className="w-10 h-10 text-white/40 group-hover:scale-110 transition-transform" />
+            </div>
+            <div className="space-y-3">
+              <h3 className="text-xl font-black uppercase tracking-tighter text-yellow-500/80">Monthly Limit Reached</h3>
+              <p className="text-[11px] text-white/40 uppercase tracking-[0.1em] font-medium leading-relaxed max-w-[240px]">
+                You've used your 10 AI topics for this month. Upgrade to <span className="text-white/60">Pro</span> for unlimited insights.
+              </p>
+            </div>
+            <button 
+               onClick={() => router.push('/billing')}
+               className="px-8 py-4 rounded-2xl bg-yellow-500 text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-yellow-500/20"
+            >
+              Go Pro
+            </button>
+          </div>
+        ) : loading && ideas.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-20 space-y-4">
             <Loader2 className="w-8 h-8 text-purple-500/50 animate-spin" />
             <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold">Synthesizing Trends...</p>

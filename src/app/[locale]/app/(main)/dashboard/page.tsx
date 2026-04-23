@@ -2,15 +2,37 @@
 
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { Sparkles, TrendingUp, ArrowRight, Search, Link2, Mic, Brain } from 'lucide-react';
+import { Sparkles, TrendingUp, ArrowRight, Search, Link2, Mic, Brain, Key, AlertTriangle, Loader2 } from 'lucide-react';
 import { CreditBadge } from '@/components/ui/CreditBadge';
 import KnowledgeTrainer from '@/components/onboarding/KnowledgeTrainer';
+import { useRouter } from '@/navigation';
+import { useState, useEffect } from 'react';
+import { profileService, Profile } from '@/lib/services/profileService';
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
   const common = useTranslations('common');
   const mocks = useTranslations('mocks');
   const locale = useLocale();
+  const router = useRouter();
+
+  const [prompt, setPrompt] = useState('');
+  const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('gemini');
+  const [user, setUser] = useState<Profile | null>(null);
+  const [isLoading, setIsLoading] = useState(false);
+
+  useEffect(() => {
+    async function loadProfile() {
+      const p = await profileService.getOrCreateProfile();
+      setUser(p);
+    }
+    loadProfile();
+  }, []);
+
+  const handleGenerate = () => {
+    if (!prompt.trim()) return;
+    router.push(`/${locale}/app/projects/new/script?topic=${encodeURIComponent(prompt)}&engine=${selectedEngine}`);
+  };
 
   const IDEAS = [
     {
@@ -55,7 +77,7 @@ export default function DashboardPage() {
           </h1>
         </div>
         <div className="flex flex-col items-end gap-2">
-          <CreditBadge credits={840} packs={8} />
+          <CreditBadge credits={user?.credits_balance || 0} packs={Math.floor((user?.credits_balance || 0) / 100)} />
           <Link href={`/${locale}/app/billing`}>
             <span className="text-[9px] text-white/20 hover:text-white/40 transition-colors uppercase tracking-widest">
               {common('topUp')} →
@@ -63,6 +85,21 @@ export default function DashboardPage() {
           </Link>
         </div>
       </div>
+
+      {user && user.credits_balance < 50 && (
+        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between animate-pulse">
+           <div className="flex items-center gap-3">
+             <AlertTriangle className="w-5 h-5 text-amber-500" />
+             <div className="space-y-0.5">
+               <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Low credits</p>
+               <p className="text-[9px] text-amber-500/60 uppercase tracking-widest font-bold">Refill to unlock full production</p>
+             </div>
+           </div>
+           <Link href={`/${locale}/app/billing`} className="px-3 py-1.5 rounded-lg bg-amber-500 text-black text-[9px] font-black uppercase tracking-widest">
+             Top up
+           </Link>
+        </div>
+      )}
 
       {/* Main Input */}
       <div
@@ -102,20 +139,70 @@ export default function DashboardPage() {
         {/* Text input */}
         <div className="relative">
           <textarea
+            value={prompt}
+            onChange={(e) => setPrompt(e.target.value)}
             className="input-core resize-none"
             rows={3}
             placeholder={t('placeholder')}
           />
         </div>
 
+        {/* AI Selector */}
+        <div className="space-y-3">
+          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 ml-1">
+            {t('engineSelector') || 'AI Engine'}
+          </label>
+          <div className="flex flex-wrap gap-2 p-1 bg-black/40 rounded-2xl border border-white/5">
+            <button
+              onClick={() => setSelectedEngine('gemini')}
+              className={`flex-1 min-w-[90px] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                selectedEngine === 'gemini' ? 'bg-purple-600 text-white shadow-lg' : 'text-white/20 hover:text-white/40'
+              }`}
+            >
+              Gemini
+            </button>
+            <button
+              onClick={() => setSelectedEngine('claude')}
+              className={`flex-1 min-w-[90px] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
+                selectedEngine === 'claude' ? 'bg-purple-600 text-white shadow-lg' : 'text-white/20 hover:text-white/40'
+              }`}
+            >
+              Claude
+            </button>
+            {user?.anthropic_api_key && (
+              <button
+                onClick={() => setSelectedEngine('claude-byok')}
+                className={`flex-1 min-w-[110px] flex items-center justify-center gap-1.5 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-purple-500/20 ${
+                  selectedEngine === 'claude-byok' ? 'bg-purple-600 text-white shadow-lg' : 'text-purple-400/30 hover:text-purple-400'
+                }`}
+              >
+                <Key className="w-3 h-3" />
+                BYOK
+              </button>
+            )}
+            {user?.groq_api_key && (
+              <button
+                onClick={() => setSelectedEngine('groq')}
+                className={`flex-1 min-w-[90px] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-orange-500/20 ${
+                  selectedEngine === 'groq' ? 'bg-orange-600 text-white shadow-lg' : 'text-orange-400/30 hover:text-orange-400'
+                }`}
+              >
+                Groq
+              </button>
+            )}
+          </div>
+        </div>
+
         {/* Generate button */}
-        <Link href={`/${locale}/app/projects/new`}>
-          <button className="btn-primary w-full rounded-2xl py-4 text-sm">
-            <Sparkles className="w-4 h-4" />
-            {t('generateBtn')}
-            <ArrowRight className="w-4 h-4" />
-          </button>
-        </Link>
+        <button 
+          onClick={handleGenerate}
+          disabled={!prompt.trim() || isLoading}
+          className="btn-primary w-full rounded-2xl py-5 text-sm uppercase font-black tracking-widest disabled:opacity-30 group"
+        >
+          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
+          {t('generateBtn')}
+          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+        </button>
       </div>
 
       {/* Divider */}
@@ -178,6 +265,7 @@ export default function DashboardPage() {
 
             {/* Action */}
             <button
+              onClick={() => router.push(`/${locale}/app/projects/new/script?topic=${encodeURIComponent(idea.topic)}`)}
               className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all duration-200 hover:text-white/70"
               style={{ color: idea.tagColor }}
             >

@@ -126,7 +126,9 @@
     "tagViral": "ВИРАЛЬНЫЙ",
     "tagEver": "ВЕЧНОЗЕЛЁНЫЙ",
     "viralLabel": "вирал",
-    "expandBtn": "Развернуть в сценарий"
+    "expandBtn": "Развернуть в сценарий",
+    "engineSelector": "ИИ Движок",
+    "lowBalance": "Мало кредитов"
   },
   "scriptLab": {
     "badge": "Script Lab",
@@ -136,7 +138,7 @@
     "tagHook": "HOOK",
     "tagStory": "STORY",
     "tagCTA": "CTA",
-    "cost": "50 кредитов",
+    "cost": "10 кредитов",
     "approve": "✓ Утвердить сценарий",
     "aiCommands": "AI-команда",
     "cmdSharper": "Резче",
@@ -144,7 +146,15 @@
     "cmdFunnier": "Добавить юмор",
     "cmdFormal": "Официальнее",
     "cmdQuestion": "Свой вопрос к ИИ...",
-    "regenerate": "Регенерировать блок"
+    "regenerate": "Регенерировать блок",
+    "scenarios": {
+      "evergreen": "Evergreen",
+      "trend": "Trend 2026",
+      "educational": "Educational",
+      "lockedHint": "Доступно в пакете Creator. Перейдите на Creator, чтобы видеть все сценарии."
+    },
+    "creditThreshold": "Минимум 50 кредитов для редактирования",
+    "lowBalance": "Недостаточно кредитов для ИИ-правки"
   },
   "storyboard": {
     "badge": "Storyboard",

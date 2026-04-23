@@ -45,15 +45,28 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
-    Based on this idea: "${coreIdea}", generate a viral video script.
+    Based on this idea: "${coreIdea}", generate 3 distinct viral video scripts (scenarios).
     
-    Structure:
-    - hook: 1-3 words, high impact
+    SCENARIOS TO GENERATE:
+    1. evergreen: Universal expert content that stays relevant. Focus on timeless value.
+    2. trend: High-energy, fast-paced, optimized for 2026 trends. Focus on peak attention.
+    3. educational: Direct problem-solution format. Focus on teaching one specific thing.
+
+    Structure for EACH scenario:
+    - hook: 1-3 words, high impact (The Text Hook)
     - intro: first 3 seconds
     - story: the "meat" of the content
     - cta: single sentence call to action
+    - visual_hook: A highly detailed, cinematic prompt for an AI image generator (like Midjourney) to create a viral COVER for this video. Use professional photography terms.
+    - social_post: A short, engaging social media description/caption with 3 relevant emojis and 3 tags.
     
-    REMEMBER: Output in ${languageName}. Output ONLY valid JSON.
+    REMEMBER: All text output must be in ${languageName}. 
+    Output ONLY valid JSON in format: 
+    {
+      "evergreen": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "trend": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "educational": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
+    }
   `;
 
   const result = await model.generateContent([systemPrompt, userPrompt]);
@@ -165,7 +178,13 @@ export async function refineScript(
     INSTRUCTION: "${instruction}"
     
     TASK: Refine the script based on the instruction. 
-    You can update one or all parts (hook, intro, body, cta).
+    You can update any of these parts:
+    - hook (text hook)
+    - intro
+    - story (body)
+    - cta
+    - visual_hook (cover image prompt)
+    - social_post (caption)
     
     CRITICAL: 
     - Maintain the user's digital shadow and style.

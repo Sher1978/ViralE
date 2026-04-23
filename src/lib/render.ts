@@ -27,10 +27,22 @@ export async function createRenderJob(
 ) {
   const cost = type === 'preview' ? CREDIT_COSTS.RENDER_PREVIEW : CREDIT_COSTS.PRO_RENDER;
 
+  // Fetch User Tier for Watermark Enforcement
+  const { data: profile } = await supabase
+    .from('profiles')
+    .select('tier')
+    .eq('id', userId)
+    .single();
+  
+  const tier = profile?.tier || 'free';
+
   // Render job configuration based on tier and type
   const settings: RenderConfig = type === 'preview' 
     ? { resolution: '720x1280', fps: 24, quality: 'draft' }
     : { resolution: '1080x1920', fps: 30, quality: 'high' };
+
+  // Explicit watermark logic: Only FREE tier gets a watermark
+  (settings as any).watermark = (tier === 'free');
 
   if (avatarConfig) {
     settings.avatar_mode = avatarConfig.mode;

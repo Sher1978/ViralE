@@ -69,6 +69,69 @@ export class ReplicateVideoGenerator implements IVideoGenerator {
 }
 
 /**
+ * HEYGEN GENERATOR
+ * Uses HeyGen API for avatar talking head generation
+ */
+export class HeyGenVideoGenerator implements IVideoGenerator {
+  private apiKey: string;
+
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey || process.env.HEYGEN_API_KEY || '';
+  }
+
+  async generate(job: VideoGenerationJob): Promise<VideoGenerationResult> {
+    if (!this.apiKey) {
+      return { success: false, error: 'HeyGen API Key not found. Please add your key in Settings.' };
+    }
+
+    try {
+      console.log(`[HeyGen] Requesting video generation for job ${job.id}`);
+      
+      const response = await fetch('https://api.heygen.com/v2/video/generate', {
+        method: 'POST',
+        headers: {
+          'X-Api-Key': this.apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          video_inputs: [
+            {
+              character: {
+                type: 'avatar',
+                avatar_id: job.config?.avatarId || 'josh_lite_20230714',
+                avatar_style: 'normal'
+              },
+              input_text: job.config?.script || 'Hello from Viral Engine',
+              voice: {
+                type: 'text',
+                voice_id: job.config?.voiceId || 'en-US-GuyNeural'
+              }
+            }
+          ],
+          dimension: { width: 1080, height: 1920 }
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error?.message || 'HeyGen API Error');
+
+      const videoId = data.data?.video_id;
+      
+      // Polling for completion (simplified for now, ideally handled via webhook)
+      console.log(`[HeyGen] Job created: ${videoId}. Waiting for completion...`);
+      
+      return {
+        success: true,
+        videoUrl: `PENDING_HEYGEN_${videoId}` // The frontend or a background worker should poll this
+      };
+    } catch (error: any) {
+      console.error('[HeyGen] Error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+}
+
+/**
  * MOCK GENERATOR (Fallback)
  */
 export class MockVideoGenerator implements IVideoGenerator {
@@ -87,17 +150,27 @@ export class MockVideoGenerator implements IVideoGenerator {
  * Handles job states and storage integration
  */
 export async function processVideoJob(jobId: string) {
-  const generator = new ReplicateVideoGenerator();
-
   try {
     // 1. Fetch Job
     const { data: job, error: fetchError } = await supabase
       .from('render_jobs')
-      .select('*')
+      .select('*, profiles(tier, heygen_api_key)')
       .eq('id', jobId)
       .single();
 
     if (fetchError || !job) throw new Error('Job not found');
+
+    const profile = (job as any).profiles;
+    const tier = profile?.tier || 'free';
+    const userHeyGenKey = profile?.heygen_api_key;
+
+    // Determine generator
+    let generator: IVideoGenerator;
+    if (job.config_json?.engine === 'heygen') {
+      generator = new HeyGenVideoGenerator(userHeyGenKey);
+    } else {
+      generator = new ReplicateVideoGenerator();
+    }
 
     // 2. Mark as Processing
     await supabase

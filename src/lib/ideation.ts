@@ -25,7 +25,14 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
 
   // Enforcement of Tier Gating for AI Topic Generation
   if (tier === 'free') {
-    throw new Error('TIER_LOCK: AI Topic Generation is available on Creator and Pro tiers.');
+    const { count } = await supabase
+      .from('ideation_feed')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId);
+
+    if ((count || 0) >= 3) {
+      throw new Error('TIER_LOCK: Your free trial of the Strategist is over (3/3). Upgrade to Creator for 20 topics/mo.');
+    }
   }
 
   // Monthly limit enforcement for Creator tier
@@ -40,8 +47,8 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
       .eq('user_id', userId)
       .gte('created_at', startOfMonth.toISOString());
 
-    if ((count || 0) >= 10) {
-      throw new Error('MONTHLY_LIMIT: You have reached your limit of 10 AI topics per month. Upgrade to Pro for unlimited generation.');
+    if ((count || 0) >= 20) {
+      throw new Error('MONTHLY_LIMIT: You have reached your limit of 20 AI topics per month. Upgrade to Pro for unlimited generation.');
     }
   }
 

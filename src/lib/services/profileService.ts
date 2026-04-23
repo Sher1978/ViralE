@@ -106,4 +106,18 @@ export const profileService = {
     }
     return true;
   },
+  
+  async getMonthlyGenerationCount(userId: string): Promise<{ count: number | null, error: any }> {
+    const now = new Date();
+    const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+    
+    const { count, error } = await supabase
+      .from('credits_transactions')
+      .select('*', { count: 'exact', head: true })
+      .eq('user_id', userId)
+      .eq('transaction_type', 'SCRIPT_GEN')
+      .gte('created_at', firstDay);
+      
+    return { count, error };
+  }
 };

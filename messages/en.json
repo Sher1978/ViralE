@@ -125,7 +125,9 @@
     "tagViral": "VIRAL",
     "tagEver": "EVERGREEN",
     "viralLabel": "viral",
-    "expandBtn": "Expand into script"
+    "expandBtn": "Expand into script",
+    "engineSelector": "AI Engine",
+    "lowBalance": "Low credits"
   },
   "scriptLab": {
     "badge": "Script Lab",
@@ -135,7 +137,7 @@
     "tagHook": "HOOK",
     "tagStory": "STORY",
     "tagCTA": "CTA",
-    "cost": "50 credits",
+    "cost": "10 credits",
     "approve": "✓ Approve Script",
     "aiCommands": "AI Commands",
     "cmdSharper": "Sharper",
@@ -143,7 +145,15 @@
     "cmdFunnier": "Add humor",
     "cmdFormal": "More formal",
     "cmdQuestion": "Your own question to AI...",
-    "regenerate": "Regenerate block"
+    "regenerate": "Regenerate block",
+    "scenarios": {
+      "evergreen": "Evergreen",
+      "trend": "Trend 2026",
+      "educational": "Educational",
+      "lockedHint": "Locked for Free tier. Upgrade to Creator to unlock all scenarios."
+    },
+    "creditThreshold": "Min. 50 credits required for adjustment",
+    "lowBalance": "Insufficient balance for AI adjustment"
   },
   "storyboard": {
     "badge": "Storyboard",
