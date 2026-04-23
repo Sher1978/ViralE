@@ -16,14 +16,19 @@ export async function POST(req: Request) {
     // 1. Synthesize or Use Provided "DNA" Master Prompt
     let masterPrompt = dnaPrompt;
     if (!masterPrompt && answers) {
+      console.log('[Onboarding] Synthesizing DNA for user:', userId);
       masterPrompt = await synthesizeDigitalShadow(answers, locale);
     }
 
+    console.log('[Onboarding] Updating profile for user:', userId);
+    
     // 2. Update Profile with DNA and mark onboarding complete
+    // We update both the old and new column names for safety during migration
     const { data, error } = await authorizedSupabase
       .from('profiles')
       .update({
         digital_shadow_prompt: masterPrompt,
+        synthetic_training_data: masterPrompt, // New column
         raw_onboarding_data: answers,
         onboarding_completed: true,
         updated_at: new Date().toISOString()
@@ -32,13 +37,25 @@ export async function POST(req: Request) {
       .select()
       .single();
 
-    if (error) throw error;
+    if (error) {
+      console.error('[Onboarding] Database update failed:', error);
+      throw error;
+    }
 
-    return NextResponse.json({
+    console.log('[Onboarding] Profile updated successfully for user:', userId);
+
+    const response = NextResponse.json({
       success: true,
       dna: masterPrompt,
       profile: data
     });
+
+    response.cookies.set('profile_onboarded', 'true', {
+      path: '/',
+      maxAge: 60 * 60 * 24 * 365, // 1 year
+    });
+
+    return response;
 
   } catch (error: any) {
     console.error('Onboarding synthesis failed:', error);

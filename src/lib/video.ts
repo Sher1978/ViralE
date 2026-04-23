@@ -22,20 +22,62 @@ export interface IVideoGenerator {
 }
 
 /**
- * MOCK GENERATOR
- * Used for testing the pipeline skeleton without spending credits/API keys
+ * REPLICATE GENERATOR
+ * Uses Flux or similar models for high-fidelity image generation
+ */
+export class ReplicateVideoGenerator implements IVideoGenerator {
+  async generate(job: VideoGenerationJob): Promise<VideoGenerationResult> {
+    const token = process.env.REPLICATE_API_TOKEN;
+    if (!token) {
+      console.warn('[Replicate] No token found, falling back to Mock.');
+      return new MockVideoGenerator().generate(job);
+    }
+
+    try {
+      const Replicate = (await import('replicate')).default;
+      const replicate = new Replicate({ auth: token });
+
+      console.log(`[Replicate] Generating image for job ${job.id} using prompt: ${job.config?.prompt}`);
+
+      // We use Flux Dev for high-fidelity storyboard frames
+      const output: any = await replicate.run(
+        "lucataco/flux-dev:a5739f37ef1108d4b3ff2ba8ef1a7fa2744ef8740c83d6a978f85f36e4be32a5",
+        {
+          input: {
+            prompt: job.config?.prompt || "A cinematic scene",
+            aspect_ratio: "9:16",
+            output_format: "webp",
+            guidance_scale: 3.5,
+            num_inference_steps: 28
+          }
+        }
+      );
+
+      const imageUrl = Array.isArray(output) ? output[0] : output;
+      
+      console.log(`[Replicate] Success: ${imageUrl}`);
+
+      return {
+        success: true,
+        videoUrl: imageUrl // We use the image URL as the "video" source for now (will be animated in studio)
+      };
+    } catch (error: any) {
+      console.error('[Replicate] Error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+}
+
+/**
+ * MOCK GENERATOR (Fallback)
  */
 export class MockVideoGenerator implements IVideoGenerator {
   async generate(job: VideoGenerationJob): Promise<VideoGenerationResult> {
     console.log(`[MockVideoGenerator] Starting generation for job ${job.id}...`);
-    
-    // Simulate processing time
-    await new Promise(resolve => setTimeout(resolve, 8000)); 
-
-    // Return a cinematic placeholder video
+    await new Promise(resolve => setTimeout(resolve, 3000)); 
     return {
       success: true,
-      videoUrl: 'https://cdn.pixabay.com/video/2023/10/22/186105-877322960_tiny.mp4' // High-tech placeholder
+      videoUrl: 'https://cdn.pixabay.com/video/2023/10/22/186105-877322960_tiny.mp4'
     };
   }
 }
@@ -45,7 +87,7 @@ export class MockVideoGenerator implements IVideoGenerator {
  * Handles job states and storage integration
  */
 export async function processVideoJob(jobId: string) {
-  const generator = new MockVideoGenerator();
+  const generator = new ReplicateVideoGenerator();
 
   try {
     // 1. Fetch Job

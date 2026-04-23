@@ -4,10 +4,13 @@ import { useState } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
+import { useSearchParams } from 'next/navigation';
 
 export default function LoginButtons() {
   const t = useTranslations('auth');
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const next = searchParams.get('next') ?? '/app/projects';
   const [isLoading, setIsLoading] = useState<string | null>(null);
 
   const handleGoogleLogin = async () => {
@@ -69,7 +72,7 @@ export default function LoginButtons() {
                 const { error: sessionError } = await supabase.auth.setSession(session);
                 if (sessionError) throw sessionError;
 
-                window.location.href = `/${locale}/projects/new/script`;
+                window.location.href = `/${locale}/app/projects`;
               } else {
                 throw new Error('Backend auth failed');
               }

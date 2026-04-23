@@ -9,6 +9,8 @@ export interface Profile {
   digital_shadow_prompt: string | null;
   industry_context: string | null;
   onboarding_completed: boolean;
+  synthetic_training_data?: string;
+  knowledge_base_json?: any;
   user_api_keys: {
     heygen?: string;
     elevenlabs?: string;

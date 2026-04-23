@@ -20,7 +20,8 @@
     "ideas": "IDEAS",
     "projects": "PROJECTS",
     "billing": "BILLING",
-    "profile": "PROFILE"
+    "profile": "PROFILE",
+    "archive": "ARCHIVE"
   },
   "creditBadge": {
     "topUp": "top up →"
@@ -257,8 +258,16 @@
     "filterTrend": "Trends",
     "filterEver": "Evergreen",
     "filterViral": "Viral",
+    "tabFeed": "Feed",
+    "tabSaved": "Saved",
+    "titleSaved": "SAVED THEMES",
+    "subtitleSaved": "Your collection of high-potential themes",
+    "btnSave": "Save",
+    "btnSaved": "Saved",
+    "statusSaved": "Saved",
     "viralLabel": "viral",
     "expandBtn": "Expand into script",
+    "btnScript": "To Script",
     "tagTrend": "🔥 Trend",
     "tagViral": "⚡ Viral",
     "tagEver": "🌿 Evergreen",
@@ -283,6 +292,7 @@
     "statusStoryboard": "Storyboard",
     "viewBtn": "Open",
     "continueBtn": "Continue",
+    "iterateBtn": "Iterate",
     "search": "Search projects...",
     "noResults": "No projects found",
     "loadMore": "Load More",
@@ -296,7 +306,13 @@
       "storyboard": "Storyboard",
       "rendering": "Rendering",
       "completed": "Ready",
-      "error": "Error"
+      "error": "Error",
+      "archived": "Archived"
+    },
+    "actions": {
+      "archive": "Archive",
+      "restore": "Restore",
+      "delete": "Delete"
     },
     "stats": {
       "total": "Total",
@@ -431,5 +447,15 @@
     "idea5Topic": "Top 3 Mistakes When Choosing Your First EV",
     "idea5Reason": "High interest in moving to electric vehicles among newcomers.",
     "viewAllIdeas": "View all ideas →"
+  },
+  "archive": {
+    "title": "ARCHIVE",
+    "supertitle": "History",
+    "projects": "Projects",
+    "ideas": "Ideas",
+    "empty": "Archive is empty",
+    "emptyDesc": "Items you archive will appear here",
+    "restore": "Restore",
+    "deletePermanently": "Delete Permanently"
   }
 }

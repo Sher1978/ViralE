@@ -7,6 +7,7 @@ export interface Project {
   status: 'ideation' | 'scripting' | 'storyboard' | 'rendering' | 'completed' | 'error';
   input_source?: string;
   final_video_url?: string;
+  parent_id?: string;
   metadata: any;
   config_json?: any;
   created_at: string;
@@ -37,8 +38,8 @@ export const projectService = {
     return data;
   },
 
-  async createProject(params: { userId: string, title: string, inputSource?: string }): Promise<Project | null> {
-    const { userId, title, inputSource } = params;
+  async createProject(params: { userId: string, title: string, inputSource?: string, parentId?: string }): Promise<Project | null> {
+    const { userId, title, inputSource, parentId } = params;
     const { data, error } = await supabase
       .from('projects')
       .insert([
@@ -46,6 +47,7 @@ export const projectService = {
           user_id: userId,
           title,
           input_source: inputSource,
+          parent_id: parentId,
           status: 'ideation',
         },
       ])

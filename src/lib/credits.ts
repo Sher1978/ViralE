@@ -73,7 +73,7 @@ export async function deductCredits(
     .insert({
       user_id: userId,
       amount: -amount,
-      type,
+      transaction_type: type,
       project_id: projectId,
     });
 

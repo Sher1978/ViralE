@@ -13,6 +13,16 @@ export async function POST(req: Request) {
 
     const userId = user.id;
 
+    // --- ONBOARDING CHECK ---
+    const { data: profile } = await authorizedSupabase
+      .from('profiles')
+      .select('digital_shadow_prompt')
+      .eq('id', userId)
+      .single();
+
+    // Note: We used to block here with 403. Now we allow expert fallback.
+    // ------------------------
+
     // Verify Project Ownership via authorized client
     const { data: project, error: projectError } = await authorizedSupabase
       .from('projects')

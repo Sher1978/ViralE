@@ -17,9 +17,13 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
     .eq('id', userId)
     .single();
 
-  if (error || !profile?.digital_shadow_prompt) {
-    throw new Error('User personality not found. Complete onboarding first.');
+  if (error && error.code !== 'PGRST116') {
+    throw error;
   }
+
+  const digitalShadow = profile?.digital_shadow_prompt || 'Expert Content Strategist focused on high-retention viral marketing.';
+  const industry = profile?.industry_context || 'General Content Creation';
+
 
   const prompt = `
     You are the "Viral Engine" Trend-Spotter. Based on the user's personality and industry, 
@@ -28,10 +32,10 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
     CRITICAL: All generated text content (topic_title, rationale) MUST BE IN ${languageName.toUpperCase()}.
     
     USER PERSONA DNA:
-    ${profile.digital_shadow_prompt}
+    ${digitalShadow}
     
     INDUSTRY CONTEXT:
-    ${profile.industry_context || 'General Content Creation'}
+    ${industry}
     
     OUTPUT FORMAT: JSON array of 3 objects
     [
@@ -47,9 +51,22 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
   const response = await result.response;
   const text = response.text().trim();
   
-  // Clean potential markdown code blocks
-  const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
-  return JSON.parse(jsonStr);
+  // Clean potential markdown code blocks and extract the JSON array
+  let jsonStr = text;
+  const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
+  if (jsonMatch) {
+    jsonStr = jsonMatch[0];
+  } else {
+    // Fallback cleaning if Regex fails
+    jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  }
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch (parseError) {
+    console.error('Failed to parse AI response as JSON:', text);
+    throw new Error('AI generated invalid data format. Please try again.');
+  }
 }
 
 export async function saveIdeasToFeed(supabase: SupabaseClient, userId: string, ideas: IdeaSuggestion[]) {

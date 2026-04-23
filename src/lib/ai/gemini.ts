@@ -1,10 +1,12 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 
-const apiKey = process.env.GEMINI_API_KEY || "";
+const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
 
+const DEFAULT_MODEL = "gemini-1.5-flash-latest";
+
 export const model = genAI.getGenerativeModel({ 
-  model: "gemini-1.5-flash",
+  model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
   generationConfig: {
     responseMimeType: "application/json",
   }
@@ -16,6 +18,12 @@ export const model = genAI.getGenerativeModel({
 export function getSystemPrompt(digitalShadow: string, locale: string = 'en') {
   const languageName = locale === 'ru' ? 'Russian' : 'English';
   
+  const persona = digitalShadow && digitalShadow.trim() !== "" 
+    ? digitalShadow 
+    : (locale === 'ru' 
+        ? "Вы — опытный контент-стратег и экспертный автор. Ваш стиль: глубокий разбор темы, ироничный взгляд на индустрию, акцент на системность и результат. Вы говорите коротко, емко и по делу."
+        : "You are a seasoned content strategist and expert author. Your style is a deep dive into the topic, an ironic look at the industry, with an focus on systems and results. You speak concisely, powerfully, and to the point.");
+
   return `
     You are the "Viral Engine" Strategist. Your goal is to generate high-retention video scripts 
     that stay true to the user's digital persona (The Digital Shadow).
@@ -23,7 +31,7 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en') {
     CRITICAL: All generated text content (hooks, body, calls-to-action) MUST BE IN ${languageName.toUpperCase()}.
     
     USER'S DIGITAL SHADOW: 
-    ${digitalShadow}
+    ${persona}
     
     INSTRUCTIONS:
     1. Output MUST be valid JSON.
@@ -84,6 +92,29 @@ export async function synthesizeDigitalShadow(rawInputs: any, locale: string = '
 }
 
 /**
+ * Distills raw synthetic data into a structured knowledge summary
+ */
+export async function distillSyntheticKnowledge(rawData: string, locale: string = 'en') {
+  const languageName = locale === 'ru' ? 'Russian' : 'English';
+  const prompt = `
+    You are an AI Librarian. You are given raw notes/data from NotebookLM or Gemini.
+    Your goal is to distill this data into a set of 5-10 key "Knowledge Fragments" 
+    that define the user's expertise and style.
+    
+    CRITICAL: Output in ${languageName}. Output as a bulleted list.
+    
+    RAW DATA:
+    ${rawData}
+  `;
+
+  const textModelName = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const textModel = genAI.getGenerativeModel({ model: textModelName });
+  const result = await textModel.generateContent(prompt);
+  const response = await result.response;
+  return response.text().trim();
+}
+
+/**
  * Updates an existing DNA by synthesizing it with new data
  */
 export async function updateDnaPersona(oldPersona: string, newData: string, locale: string = 'en') {
@@ -109,7 +140,8 @@ export async function updateDnaPersona(oldPersona: string, newData: string, loca
   `;
 
   // Note: For this one we don't need JSON response, just text
-  const textModel = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const textModelName = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const textModel = genAI.getGenerativeModel({ model: textModelName });
   const result = await textModel.generateContent(prompt);
   const response = await result.response;
   return response.text().trim();

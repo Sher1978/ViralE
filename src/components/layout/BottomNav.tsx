@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { LayoutDashboard, Lightbulb, FolderKanban, User, CreditCard } from 'lucide-react';
+import { LayoutDashboard, Lightbulb, FolderKanban, User, CreditCard, Archive } from 'lucide-react';
 import { LangSwitcher } from '@/components/ui/LangSwitcher';
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -16,18 +16,19 @@ export function BottomNav() {
   const t = useTranslations('nav');
 
   const navItems = [
-    { key: 'dash', href: `/${locale}/dashboard`, icon: LayoutDashboard },
-    { key: 'ideas', href: `/${locale}/ideas`, icon: Lightbulb },
-    { key: 'projects', href: `/${locale}/projects`, icon: FolderKanban },
-    { key: 'billing', href: `/${locale}/billing`, icon: CreditCard },
-    { key: 'profile', href: `/${locale}/profile`, icon: User },
+    { key: 'dash', href: `/${locale}/app/dashboard`, icon: LayoutDashboard },
+    { key: 'ideas', href: `/${locale}/app/ideas`, icon: Lightbulb },
+    { key: 'projects', href: `/${locale}/app/projects`, icon: FolderKanban },
+    { key: 'archive', href: `/${locale}/app/archive`, icon: Archive },
+    { key: 'billing', href: `/${locale}/app/billing`, icon: CreditCard },
+    { key: 'profile', href: `/${locale}/app/profile`, icon: User },
   ];
 
   const hideNav = [
     `/${locale}`,
     `/${locale}/auth`,
-    `/${locale}/onboarding`,
-  ].some(p => pathname === p || pathname.startsWith(`/${locale}/onboarding`));
+    `/${locale}/app/onboarding`,
+  ].some(p => pathname === p || pathname.startsWith(`/${locale}/app/onboarding`));
 
   if (hideNav) return null;
 
@@ -82,7 +83,7 @@ export function BottomNav() {
                       isActive ? "text-black" : "text-white/30"
                     )}
                   >
-                    {t(item.key as 'dash' | 'ideas' | 'projects' | 'billing' | 'profile')}
+                    {t(item.key as 'dash' | 'ideas' | 'projects' | 'billing' | 'profile' | 'archive')}
                   </span>
                 </Link>
               </li>

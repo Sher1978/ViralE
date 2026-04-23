@@ -9,19 +9,28 @@ export async function GET(req: Request) {
 
     const { searchParams } = new URL(req.url);
     const locale = searchParams.get('locale') || 'en';
+    const requestedStatus = searchParams.get('status') || 'new';
 
-    // 1. Check if we already have ideas for today
-    const { data: existingIdeas, error: fetchError } = await authorizedSupabase
+    let query = authorizedSupabase
       .from('ideation_feed')
       .select('*')
       .eq('user_id', userId)
-      .eq('status', 'new')
       .order('created_at', { ascending: false });
+
+    // Handle Archive filtering
+    if (requestedStatus === 'archived') {
+      query = query.eq('metadata->archived', true);
+    } else {
+      query = query.eq('status', requestedStatus)
+                   .or('metadata->archived.is.null,metadata->archived.eq.false');
+    }
+
+    const { data: existingIdeas, error: fetchError } = await query;
 
     if (fetchError) throw fetchError;
 
-    // 2. If no new ideas, generate fresh ones
-    if (!existingIdeas || existingIdeas.length === 0) {
+    // 2. If we asked for 'new' ideas and didn't find any, generate fresh ones
+    if (requestedStatus === 'new' && (!existingIdeas || existingIdeas.length === 0)) {
       const freshIdeas = await generateDailyIdeas(authorizedSupabase, userId, locale);
       await saveIdeasToFeed(authorizedSupabase, userId, freshIdeas);
       
@@ -30,15 +39,19 @@ export async function GET(req: Request) {
         .from('ideation_feed')
         .select('*')
         .eq('user_id', userId)
-        .eq('status', 'new');
+        .eq('status', 'new')
+        .or('metadata->archived.is.null,metadata->archived.eq.false');
         
       return NextResponse.json(newlyCreated);
     }
 
-    return NextResponse.json(existingIdeas);
+    return NextResponse.json(existingIdeas || []);
   } catch (error: any) {
-    console.error('Ideation fetch failed:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Ideation fetch failed for user:', error);
+    if (error.message?.includes('User personality not found')) {
+      return NextResponse.json({ error: 'ONBOARDING_REQUIRED', message: error.message }, { status: 200 });
+    }
+    return NextResponse.json({ error: error.message || 'Unknown error' }, { status: 500 });
   }
 }
 
@@ -53,10 +66,10 @@ export async function PATCH(req: Request) {
 
     const userId = user.id;
 
-    // Verify Ownership via authorized client
+    // Verify Ownership and get current metadata
     const { data: idea, error: ideaError } = await authorizedSupabase
       .from('ideation_feed')
-      .select('user_id')
+      .select('user_id, status, metadata')
       .eq('id', ideaId)
       .single();
 
@@ -64,9 +77,23 @@ export async function PATCH(req: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
+    // Handle special "archived" logic for ideas
+    let updateData: any = { status };
+    const currentMetadata = (idea as any).metadata || {};
+
+    if (status === 'archived') {
+      // Keep original status but mark as archived
+      updateData = { 
+        metadata: { ...currentMetadata, archived: true } 
+      };
+    } else {
+      // Unmark as archived if any other status is set
+      updateData.metadata = { ...currentMetadata, archived: false };
+    }
+
     const { data, error } = await authorizedSupabase
       .from('ideation_feed')
-      .update({ status })
+      .update(updateData)
       .eq('id', ideaId)
       .select()
       .single();

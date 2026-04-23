@@ -65,7 +65,8 @@ export async function POST(req: Request) {
       console.warn('[ScriptGen] Profile fetch warning:', profileError);
     }
 
-    const digitalShadow = profile?.digital_shadow_prompt || (locale === 'ru' ? "Экспертный стиль повествования." : "Professional expert persona.");
+    const digitalShadow = profile?.digital_shadow_prompt || '';
+    const onboardingIncomplete = !digitalShadow;
 
     // 3. Transact Credits
     try {
@@ -82,8 +83,9 @@ export async function POST(req: Request) {
     // 4. Generate or Refine Script (with mock fallback)
     let scriptJson;
     try {
-      if (!process.env.GEMINI_API_KEY || process.env.GEMINI_API_KEY === 'your_gemini_api_key') {
-        console.warn('[ScriptGen] GEMINI_API_KEY is missing or dummy. Using mock fallback.');
+      const activeApiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+      if (!activeApiKey || activeApiKey === 'your_gemini_api_key') {
+        console.warn('[ScriptGen] Gemini API Key is missing or dummy. Using mock fallback.');
         throw new Error('MOCK_MODE');
       }
 
@@ -133,7 +135,7 @@ export async function POST(req: Request) {
       if (updateError) throw updateError;
       version = updatedVersion;
     } else {
-      // Get max version count for this project
+      // Get max version count for this project to create a label
       const { count } = await authorizedSupabase
         .from('project_versions')
         .select('*', { count: 'exact', head: true })
@@ -144,13 +146,13 @@ export async function POST(req: Request) {
         .from('project_versions')
         .insert({
           project_id: projectId,
-          version_number: (count || 0) + 1, 
           script_data: scriptJson,
+          version_label: `v${(count || 0) + 1}`,
           created_at: new Date().toISOString()
         })
         .select()
         .single();
-
+      
       if (versionError) {
         console.error('[ScriptGen] Version save failed:', versionError);
         throw versionError;
@@ -167,12 +169,24 @@ export async function POST(req: Request) {
       })
       .eq('id', projectId);
 
+    // 7. Mark idea as used if applicable
+      const ideaTitle = coreIdea;
+      if (ideaTitle) {
+        await authorizedSupabase
+          .from('ideation_feed')
+          .update({ status: 'used' })
+          .eq('user_id', userId)
+          .eq('topic_title', ideaTitle)
+          .eq('status', 'new');
+      }
+
     console.log(`[ScriptGen] Success: ${projectId}, Version: ${version.id}`);
     return NextResponse.json({
       success: true,
       script: scriptJson,
       projectId,
-      versionId: version.id
+      versionId: version.id,
+      onboardingIncomplete
     });
 
   } catch (error: any) {

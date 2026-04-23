@@ -14,6 +14,16 @@ export async function POST(req: Request) {
 
     const userId = user.id;
 
+    // --- ONBOARDING CHECK ---
+    const { data: profile } = await authorizedSupabase
+      .from('profiles')
+      .select('digital_shadow_prompt')
+      .eq('id', userId)
+      .single();
+
+    // Note: We used to block here with 403. Now we allow expert fallback.
+    // ------------------------
+
     // 0. Verify Project & Version Ownership (using authorized client respects RLS)
     const { data: project, error: projectError } = await authorizedSupabase
       .from('projects')
@@ -39,27 +49,47 @@ export async function POST(req: Request) {
     // 1. Fetch current Script
     const { data: version, error: fetchError } = await authorizedSupabase
       .from('project_versions')
-      .select('script_data')
+      .select('script_data, storyboard_data')
       .eq('id', versionId)
       .single();
-
+ 
     if (fetchError || !version?.script_data) {
       throw new Error('Script version not found');
     }
 
+    const { mode = 'generate_all', sceneIndex, instruction = 'Regenerate for better virality' } = await req.json();
+ 
     // 2. Deduct Credits
     try {
-      await deductCredits(authorizedSupabase, userId, CREDIT_COSTS.GENERATE_STORYBOARD, 'STORYBOARD_GEN', projectId);
+      const cost = mode === 'refine_scene' ? CREDIT_COSTS.REGENERATE_FRAME : CREDIT_COSTS.GENERATE_STORYBOARD;
+      await deductCredits(authorizedSupabase, userId, cost, 'STORYBOARD_GEN', projectId);
     } catch (e: any) {
       if (e.message === 'INSUFFICIENT_CREDITS') {
         return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
       }
       throw e;
     }
-
+ 
     // 3. Orchestrate AI Visual Director
-    const storyboardJson = await generateStoryboardAI(version.script_data, locale);
-
+    let storyboardJson;
+    if (mode === 'refine_scene' && typeof sceneIndex === 'number') {
+      const currentStoryboard = (version.storyboard_data as any) || { scenes: [] };
+      const refinedScene = await refineSceneAI(
+        version.script_data, 
+        sceneIndex, 
+        currentStoryboard.scenes || [], 
+        instruction, 
+        locale
+      );
+      
+      const newScenes = [...(currentStoryboard.scenes || [])];
+      newScenes[sceneIndex] = refinedScene;
+      storyboardJson = { ...currentStoryboard, scenes: newScenes };
+    } else {
+      const frames = await generateStoryboardAI(version.script_data, locale);
+      storyboardJson = { scenes: frames };
+    }
+ 
     // 4. Update the Version row with storyboard data
     const { error: updateError } = await authorizedSupabase
       .from('project_versions')
@@ -67,20 +97,20 @@ export async function POST(req: Request) {
         storyboard_data: storyboardJson
       })
       .eq('id', versionId);
-
+ 
     if (updateError) throw updateError;
-
+ 
     // 5. Update overall project status
     await authorizedSupabase
       .from('projects')
       .update({ status: 'storyboard' })
       .eq('id', projectId);
-
+ 
     return NextResponse.json({
       success: true,
       storyboard: storyboardJson
     });
-
+ 
   } catch (error: any) {
     console.error('Storyboard generation failed:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

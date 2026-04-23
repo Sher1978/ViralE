@@ -20,18 +20,24 @@ interface Message {
 
 interface StrategistChatProps {
   projectId: string;
-  manifest: ProductionManifest;
-  setManifest: (manifest: ProductionManifest) => void;
+  manifest?: ProductionManifest;
+  setManifest?: (manifest: ProductionManifest) => void;
+  userId: string;
   activeSegmentId?: string;
   locale?: string;
+  context?: 'script' | 'storyboard' | 'studio' | 'production';
+  onApplySuggestion?: (text: string) => void;
 }
 
-export default function StrategistChat({
+export function StrategistChat({
   projectId,
   manifest,
   setManifest,
+  userId,
   activeSegmentId,
-  locale = 'en'
+  locale = 'en',
+  context = 'studio',
+  onApplySuggestion
 }: StrategistChatProps) {
   const t = useTranslations('Strategist');
   const [isOpen, setIsOpen] = useState(false);
@@ -58,13 +64,16 @@ export default function StrategistChat({
 
   useEffect(() => {
     const checkAccess = async () => {
-      // Mocked user ID fetch for now or passed via props
-      // For now we'll assume we can check via service
-      const status = await strategistService.getAccessStatus('current-user'); // This needs real ID in logic
-      setAccess(status);
+      if (!userId) return;
+      try {
+        const status = await strategistService.getAccessStatus(userId);
+        setAccess(status);
+      } catch (err) {
+        console.error('Failed to check strategist access:', err);
+      }
     };
     checkAccess();
-  }, []);
+  }, [userId]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
@@ -233,34 +242,70 @@ export default function StrategistChat({
   };
 
   const applySuggestion = (newText: string) => {
-    if (!activeSegmentId) return;
-
-    const newManifest = { ...manifest };
-    const segmentIndex = newManifest.segments.findIndex(s => s.id === activeSegmentId);
-    
-    if (segmentIndex !== -1) {
-      newManifest.segments[segmentIndex].scriptText = newText;
-      setManifest(newManifest);
-      setMessages(prev => [...prev, { 
+    // 1. If custom callback provided, use it
+    if (onApplySuggestion) {
+      onApplySuggestion(newText);
+      setMessages(curr => [...curr, { 
         role: 'assistant', 
-        content: "Done! I've updated the segment script with the new strategy." 
+        content: "Applied! Redirecting strategy to the creative canvas." 
       }]);
+      return;
+    }
+
+    // 2. Fallback to active segment update if in studio and manifest exists
+    if (context === 'studio' && activeSegmentId && setManifest) {
+      setManifest(prev => {
+        if (!prev) return prev;
+        const newManifest = { ...prev };
+        const segmentIndex = newManifest.segments.findIndex(s => s.id === activeSegmentId);
+        
+        if (segmentIndex !== -1) {
+          const segment = newManifest.segments[segmentIndex];
+          if (segment.type === 'animated_still' || segment.type === 'broll') {
+            newManifest.segments[segmentIndex].prompt = newText;
+          } else {
+            newManifest.segments[segmentIndex].scriptText = newText;
+            if (!segment.prompt || segment.prompt.length < 10) {
+              newManifest.segments[segmentIndex].prompt = `Visual for: ${newText.substring(0, 50)}...`;
+            }
+          }
+          
+          setMessages(curr => [...curr, { 
+            role: 'assistant', 
+            content: "Done! I've updated the segment with the new strategy." 
+          }]);
+        }
+        return newManifest;
+      });
+    } else {
+      // 3. Just copy to clipboard if no target action
+      copyToClipboard(newText, messages.length);
     }
   };
 
   return (
-    <div className="fixed bottom-6 right-6 z-50 flex flex-col items-end">
+    <div className="fixed bottom-28 right-6 z-50 flex flex-col items-end">
       {/* Floating Toggle Button */}
       <motion.button
         whileHover={{ scale: 1.05 }}
         whileTap={{ scale: 0.95 }}
         onClick={() => setIsOpen(!isOpen)}
         className={cn(
-          "relative h-14 w-14 rounded-full shadow-2xl flex items-center justify-center transition-colors",
-          isOpen ? "bg-red-500/80 backdrop-blur-md" : "bg-purple-600/80 backdrop-blur-md"
+          "relative h-14 w-14 rounded-full shadow-2xl flex items-center justify-center transition-all duration-500 overflow-hidden border-2",
+          isOpen 
+            ? "bg-red-500/80 backdrop-blur-md border-red-400/50" 
+            : "bg-black/40 backdrop-blur-md border-white/20"
         )}
       >
-        {isOpen ? <X className="text-white" /> : <MessageSquare className="text-white" />}
+        {isOpen ? (
+          <X className="text-white h-6 w-6" />
+        ) : (
+          <img 
+            src="/icon-512x512.png" 
+            alt="Advisor" 
+            className="w-full h-full object-cover scale-110"
+          />
+        )}
         {!isOpen && (
           <motion.div
             animate={{ scale: [1, 1.2, 1] }}
@@ -359,9 +404,10 @@ export default function StrategistChat({
                     <div className="mt-2 flex flex-wrap gap-2">
                       <button 
                          onClick={() => applySuggestion(m.content)}
-                         className="flex items-center gap-1.5 px-3 py-1 bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/30 rounded-full text-[10px] font-bold text-white transition-colors"
+                         className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/40 hover:to-blue-600/40 border border-purple-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-lg active:scale-95 group/apply"
                       >
-                        <Zap className="h-3 w-3 text-yellow-400" /> {t('applyToScript')}
+                        <Zap className="h-3 w-3 text-yellow-400 group-hover/apply:animate-pulse" /> 
+                        {t('applyToScript')}
                       </button>
                     </div>
                   )}

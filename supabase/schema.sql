@@ -9,6 +9,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     credits_balance INTEGER DEFAULT 100 NOT NULL,
     digital_shadow_prompt TEXT, -- DNA Voice / Master Prompt
     industry_context TEXT,
+    synthetic_training_data TEXT, -- Raw text from NotebookLM/Gemini
+    knowledge_base_json JSONB DEFAULT '{}'::jsonb, -- Structured knowledge excerpts
     avatar_config_json JSONB DEFAULT '{}'::jsonb,
     raw_onboarding_data JSONB DEFAULT '{}'::jsonb,
     onboarding_completed BOOLEAN DEFAULT FALSE,
@@ -21,10 +23,11 @@ CREATE TABLE IF NOT EXISTS public.projects (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
     user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
     title TEXT NOT NULL,
-    status TEXT DEFAULT 'ideation' CHECK (status IN ('ideation', 'scripting', 'storyboard', 'rendering', 'completed', 'error')),
+    status TEXT DEFAULT 'ideation' CHECK (status IN ('ideation', 'scripting', 'storyboard', 'rendering', 'completed', 'error', 'archived')),
     input_source TEXT, -- Topic or URL
     final_video_url TEXT,
     final_telegram_file_id TEXT,
+    parent_id UUID REFERENCES public.projects(id) ON DELETE SET NULL,
     metadata JSONB DEFAULT '{}'::jsonb,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
@@ -47,7 +50,7 @@ CREATE TABLE IF NOT EXISTS public.ideation_feed (
     topic_title TEXT NOT NULL,
     rationale TEXT,
     viral_potential_score INTEGER,
-    status TEXT DEFAULT 'new' CHECK (status IN ('new', 'used', 'dismissed')),
+    status TEXT DEFAULT 'new' CHECK (status IN ('new', 'used', 'dismissed', 'archived')),
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );
 
@@ -89,6 +92,7 @@ ALTER TABLE public.render_jobs ENABLE ROW LEVEL SECURITY;
 -- 1. Profiles Policies
 CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
 CREATE POLICY "Users can update their own profile" ON public.profiles FOR UPDATE USING (auth.uid() = id);
+CREATE POLICY "Users can insert their own profile" ON public.profiles FOR INSERT WITH CHECK (auth.uid() = id);
 -- NOTE: credits_balance should only be updated by server-side service role via API routes.
 
 -- 2. Projects Policies
@@ -105,6 +109,7 @@ CREATE POLICY "Users can create their own project versions" ON public.project_ve
 
 -- 4. Ideation Feed Policies
 CREATE POLICY "Users can view their own ideas" ON public.ideation_feed FOR SELECT USING (auth.uid() = user_id);
+CREATE POLICY "Users can insert their own ideas" ON public.ideation_feed FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their own ideas" ON public.ideation_feed FOR UPDATE USING (auth.uid() = user_id);
 
 -- 5. Credits Transactions Policies

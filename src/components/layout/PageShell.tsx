@@ -3,6 +3,7 @@
 import { usePathname } from 'next/navigation';
 import { useLocale } from 'next-intl';
 import { BottomNav } from './BottomNav';
+import { GlobalStrategist } from '../global/GlobalStrategist';
 
 interface PageShellProps {
   children: React.ReactNode;
@@ -12,12 +13,8 @@ export function PageShell({ children }: PageShellProps) {
   const pathname = usePathname();
   const locale = useLocale();
 
-  // Define paths that should be full-width (Marketing)
-  const isMarketingPath = [
-    `/${locale}`,
-    `/${locale}/`,
-    `/${locale}/auth`,
-  ].includes(pathname) || pathname === '/';
+  const isAppPath = pathname.includes(`/${locale}/app`);
+  const isMarketingPath = !isAppPath;
 
   if (isMarketingPath) {
     return (
@@ -64,6 +61,7 @@ export function PageShell({ children }: PageShellProps) {
         {children}
       </main>
       <BottomNav />
+      <GlobalStrategist />
     </div>
   );
 }
