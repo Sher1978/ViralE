@@ -39,75 +39,15 @@ export default function LoginButtons() {
   const handleTelegramLogin = async () => {
     setIsLoading('telegram');
     try {
-      // Check if mobile or explicitly Safari on iPhone
-      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      if (isMobile) {
-        // Redirect Flow for mobile (Reliable on Safari)
-        window.location.href = `/${locale}/auth/telegram`;
-        return;
-      }
-
-      // Popup Flow for Desktop
+      // Fetch bot info to get username
       const configRes = await fetch('/api/auth/telegram/config');
-      const { botId } = await configRes.json();
+      const { botUsername } = await configRes.json();
       
-      if (!botId) throw new Error('Telegram not configured');
+      if (!botUsername) throw new Error('Telegram bot not configured');
 
-      const origin = window.location.origin;
-      const tgUrl = `https://oauth.telegram.org/auth?bot_id=${botId}&origin=${encodeURIComponent(origin)}&embed=1&request_access=write`;
-      
-      const width = 550;
-      const height = 470;
-      const left = (window.screen.width - width) / 2;
-      const top = (window.screen.height - height) / 2;
-      
-      const popup = window.open(tgUrl, 'telegram_login', `width=${width},height=${height},left=${left},top=${top}`);
-
-      if (!popup) {
-        // Fallback if popup blocked
-        window.location.href = `/${locale}/auth/telegram`;
-        return;
-      }
-
-      const messageListener = async (event: MessageEvent) => {
-        if (event.origin === 'https://oauth.telegram.org' || event.origin === window.location.origin) {
-          try {
-            const data = JSON.parse(event.data);
-            if (data.event === 'auth_result') {
-              window.removeEventListener('message', messageListener);
-              popup?.close();
-              
-              const authRes = await fetch('/api/auth/telegram', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify(data.result)
-              });
-              
-              if (authRes.ok) {
-                const { session } = await authRes.json();
-                const { error: sessionError } = await supabase.auth.setSession(session);
-                if (sessionError) throw sessionError;
-
-                const redirectPath = next.startsWith('/') ? next : `/${next}`;
-                window.location.href = `/${locale}${redirectPath}`;
-              } else {
-                throw new Error('Backend auth failed');
-              }
-            }
-          } catch (e) {
-            // Not our message
-          }
-        }
-      };
-
-      window.addEventListener('message', messageListener);
-
-      // Timeout safety
-      setTimeout(() => {
-        window.removeEventListener('message', messageListener);
-        if (isLoading === 'telegram') setIsLoading(null);
-      }, 300000);
+      // Frictionless: Redirect to bot with start parameter
+      // The bot will then provide a magic login link
+      window.location.href = `https://t.me/${botUsername}?start=auth`;
 
     } catch (error) {
       console.error('Telegram login error:', error);

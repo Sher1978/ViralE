@@ -18,7 +18,9 @@ export async function getAuthContext() {
   }
   
   const cookieName = projectRef ? `sb-${projectRef}-auth-token` : '';
-  const token = cookieName ? cookieStore.get(cookieName)?.value : undefined;
+  const token = cookieName 
+    ? (cookieStore.get(cookieName)?.value || cookieStore.get(`${cookieName}.0`)?.value)
+    : undefined;
 
   const supabase = createClient(
     process.env.NEXT_PUBLIC_SUPABASE_URL!,

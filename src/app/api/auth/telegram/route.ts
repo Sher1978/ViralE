@@ -76,6 +76,16 @@ async function handleTelegramAuth(userData: any, hash: string) {
     throw signInError || new Error('Failed to create session');
   }
 
+  // 5. Update Profile with telegram_id
+  await supabaseAdmin.from('profiles').upsert({
+    id: targetUser!.id,
+    telegram_id: parseInt(telegramId),
+    full_name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
+    avatar_url: userData.photo_url,
+    username: userData.username,
+    updated_at: new Date().toISOString()
+  }, { onConflict: 'id' });
+
   return { session: sessionData.session, user: targetUser };
 }
 
@@ -92,38 +102,18 @@ export async function POST(request: Request) {
 }
 
 export async function GET(request: Request) {
-  try {
-    const { searchParams } = new URL(request.url);
-    const hash = searchParams.get('hash');
-    if (!hash) throw new Error('Missing hash');
+  const { searchParams } = new URL(request.url);
+  const hash = searchParams.get('hash');
+  if (!hash) return NextResponse.redirect(new URL('/auth', request.url));
 
-    const userData: any = {};
-    searchParams.forEach((value, key) => {
-      if (key !== 'hash') userData[key] = value;
-    });
-
-    const result = await handleTelegramAuth(userData, hash);
-
-    // If it's a direct redirect from Telegram, we need to return a script that sets the session
-    // Or redirect to a page that handles it.
-    // For simplicity, we'll redirect to a client-side route that has the session in a hash or query
-    // But since we have the session, we can just render a small HTML that calls supabase.auth.setSession
-    
-    const next = searchParams.get('next') || '/en/app/projects';
-    
-    return new NextResponse(
-      `<html>
-        <body>
-          <script>
-            localStorage.setItem('tg_session', '${JSON.stringify(result.session)}');
-            window.location.href = '${next}';
-          </script>
-        </body>
-      </html>`,
-      { headers: { 'Content-Type': 'text/html' } }
-    );
-  } catch (error: any) {
-    console.error('Telegram GET Auth Error:', error);
-    return NextResponse.redirect(new URL('/auth?error=telegram_failed', request.url));
-  }
+  // Build the callback URL with all parameters
+  const callbackUrl = new URL(request.url);
+  
+  // Detect locale from path or default to en
+  const pathParts = new URL(request.url).pathname.split('/');
+  const locale = pathParts.find(p => p === 'ru' || p === 'en') || 'en';
+  
+  callbackUrl.pathname = `/${locale}/auth/telegram/callback`;
+  
+  return NextResponse.redirect(callbackUrl);
 }

@@ -1,13 +1,28 @@
 'use client';
 
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { motion } from 'framer-motion';
 import { Link } from '@/navigation';
 import LoginButtons from '@/components/auth/LoginButtons';
 import { Sparkles, Bot, Terminal } from 'lucide-react';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { supabase } from '@/lib/supabase';
 
 export default function AuthPage() {
   const t = useTranslations('auth');
+  const router = useRouter();
+  const locale = useLocale();
+
+  useEffect(() => {
+    const checkUser = async () => {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (session) {
+        router.push(`/${locale}/app/projects`);
+      }
+    };
+    checkUser();
+  }, [router, locale]);
 
   return (
     <main className="min-h-screen bg-[#050505] text-white flex flex-col items-center justify-center relative overflow-hidden p-6">
@@ -26,16 +41,8 @@ export default function AuthPage() {
       <motion.div
         initial={{ opacity: 0, y: 20 }}
         animate={{ opacity: 1, y: 0 }}
-        className="relative z-10 w-full max-w-md"
+        className="relative z-10 w-full max-w-md pt-12"
       >
-        <Link 
-          href="/" 
-          className="inline-flex items-center text-[10px] font-black uppercase tracking-[0.2em] text-white/40 hover:text-white transition-colors mb-12 group"
-        >
-          <span className="mr-2 group-hover:-translate-x-1 transition-transform">←</span>
-          {t('backToLanding')}
-        </Link>
-
         <div className="bg-white/5 backdrop-blur-2xl border border-white/10 rounded-[32px] p-8 md:p-12 shadow-2xl relative overflow-hidden group">
           {/* Internal Glow */}
           <div className="absolute -top-24 -left-24 w-48 h-48 bg-purple-500/10 blur-[60px] rounded-full" />

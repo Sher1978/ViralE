@@ -26,5 +26,15 @@
 - **Render Worker**: Node.js + Express + FFmpeg (отдельный микросервис).
 - **Delivery**: Telegram Bot API.
 
+## Progress Tracker
+- [x] UI: fix double arrow in auth page
+- [x] Auth: Implement frictionless "bot-first" registration/login
+- [/] Archiving: 3-day automated archival to Telegram
+    - [x] Database migration for `telegram_id` and archive fields
+    - [x] `archiveService` logic
+    - [x] CRON endpoint for automation
+    - [ ] Webhook setup (setWebhook)
+- [ ] Final Verification & Deployment
+
 ---
 **Следующее действие:** Создание проекта и развертывание БД.

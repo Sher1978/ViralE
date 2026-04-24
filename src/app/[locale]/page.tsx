@@ -190,11 +190,10 @@ export default function LandingPage() {
         return;
       }
 
-      // For standard browser users, only redirect if they are logged in AND onboarded
+      // For standard browser users, redirect if they are logged in
       const { data: { session } } = await supabase.auth.getSession();
-      const onboarded = document.cookie.includes('profile_onboarded=true');
 
-      if (session && onboarded && !session.user.is_anonymous) {
+      if (session && !session.user.is_anonymous) {
         setIsRedirecting(true);
         router.push(`/${locale}/app/projects`);
       }
