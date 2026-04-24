@@ -17,7 +17,10 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
     .eq('id', userId)
     .single();
 
-  if (error && error.code !== 'PGRST116') {
+  if (error) {
+    if (error.code === 'PGRST116' || error.message === 'Not found') {
+      throw new Error('User personality not found');
+    }
     throw error;
   }
 
