@@ -34,7 +34,7 @@ async function handleTelegramAuth(userData: any, hash: string) {
   
   if (!targetUser) {
     const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-    targetUser = users.find(u => u.email === email) || null;
+    targetUser = users.find((u: any) => u.email === email) || null;
   }
 
   if (!targetUser) {
