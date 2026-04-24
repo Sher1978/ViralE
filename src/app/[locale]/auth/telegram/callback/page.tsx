@@ -2,12 +2,11 @@
 
 import { useEffect } from 'react';
 import { useRouter, useSearchParams } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { supabase } from '@/lib/supabase';
 
 export default function TelegramCallbackPage({ params }: { params: { locale: string } }) {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const supabase = createClient();
   const locale = params.locale;
 
   useEffect(() => {
