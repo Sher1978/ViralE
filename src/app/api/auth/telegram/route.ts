@@ -1,6 +1,6 @@
-import { createClient } from '@supabase/supabase-js';
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { supabaseAdmin } from '@/lib/supabase';
 
 async function handleTelegramAuth(userData: any, hash: string) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -21,25 +21,12 @@ async function handleTelegramAuth(userData: any, hash: string) {
     throw new Error('Invalid hash');
   }
 
-  // 2. Initialize Supabase Admin
-  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
-  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
-
-  if (!serviceRoleKey) {
-    throw new Error('Supabase Service Role Key missing');
-  }
-
-  const supabaseAdmin = createClient(supabaseUrl, serviceRoleKey, {
-    auth: {
-      autoRefreshToken: false,
-      persistSession: false
-    }
-  });
-
   const telegramId = userData.id.toString();
   const email = `tg_${telegramId}@telegram.local`;
   
   // Deterministic password based on service role key and telegram ID
+  // Use a fallback for build time if needed, but it won't be called then
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 'static_build_fallback';
   const password = crypto.createHmac('sha256', serviceRoleKey).update(telegramId).digest('hex');
 
   // 3. Upsert User
