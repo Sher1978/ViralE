@@ -19,6 +19,10 @@ export interface SceneSegment {
   avatarId?: string;
   modelId?: string; // e.g. 'kling-3.0', 'nano-banana'
   refinementPrompt?: string;
+  
+  // B-roll Cycling
+  brollSuggestions?: string[]; // Array of URLs from Giphy/Mixkit
+  currentBrollIndex?: number;
 }
 
 export interface ProductionManifest {

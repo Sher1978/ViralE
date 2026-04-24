@@ -19,16 +19,6 @@ export function SessionSync() {
         console.log('[SessionSync] Session found, setting cookie...');
         // Set cookie for 7 days
         document.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
-      } else {
-        console.log('[SessionSync] No session, signing in anonymously...');
-        // Attempt anonymous sign in if no session found
-        const { data: authData, error } = await supabase.auth.signInAnonymously();
-        if (error) {
-          console.error('[SessionSync] Anon auth failed:', error);
-        } else if (authData.session) {
-          console.log('[SessionSync] Anon session created:', authData.session.user.id);
-          document.cookie = `${cookieName}=${authData.session.access_token}; path=/; max-age=604800; SameSite=Lax`;
-        }
       }
     };
 

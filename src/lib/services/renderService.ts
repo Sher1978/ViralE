@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { marketingService } from './marketingService';
 
 export interface RenderJob {
   id: string;
@@ -140,7 +141,7 @@ export const renderService = {
   /**
    * Triggers a final studio render (assembly) from a manifest
    */
-  async triggerStudioRender(projectId: string, versionId: string, manifest: any): Promise<RenderJob> {
+  async triggerStudioRender(projectId: string, versionId: string, manifest: any, options: { includeMarketingPackage?: boolean } = {}): Promise<RenderJob> {
     const { data: profile } = await supabase.auth.getUser();
 
     // Try to get telegram_chat_id from project config
@@ -159,7 +160,8 @@ export const renderService = {
           config_json: { 
             manifest,
             assembly_mode: true,
-            telegram_chat_id
+            telegram_chat_id,
+            generate_marketing_package: options.includeMarketingPackage || false
           },
         },
       ])
@@ -168,12 +170,45 @@ export const renderService = {
 
     if (error) throw error;
     
-    // Also update project status
+    // 4. Update project status
     await supabase
       .from('projects')
       .update({ status: 'rendering' })
-      .eq('id', projectId);
+      .eq('id', projectId).catch((e: any) => console.error("Update status error", e));
+
+    // 5. Trigger Marketing Package if requested
+    if (options.includeMarketingPackage) {
+      marketingService.generatePackage(projectId, manifest).catch((err: any) => {
+        console.error('[RenderService] Failed to trigger marketing package:', err);
+      });
+    }
 
     return data;
+  },
+
+  async getBrollSuggestions(tags: string[]): Promise<string[]> {
+    // In production, this calls internal Giphy/Mixkit scrapers
+    // For now, returning curated high-motion placeholders
+    const emotion = tags[0]?.toLowerCase() || 'dynamic';
+    
+    const giphyMocks: Record<string, string[]> = {
+      'excited': [
+        'https://media.giphy.com/media/l41lTfuxV6M0SCSvC/giphy.gif',
+        'https://media.giphy.com/media/l0HlHFRbmaZtBRhXG/giphy.gif',
+        'https://media.giphy.com/media/3o7TKSjPqcK9I9sJk0/giphy.gif'
+      ],
+      'fear': [
+        'https://media.giphy.com/media/l1J9vJ8E6L4f7L9kY/giphy.gif',
+        'https://media.giphy.com/media/26AHON43y3dG2G7RK/giphy.gif'
+      ],
+      'happy': [
+        'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHU4dzRyZnd4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/l0HlHFRbmaZtBRhXG/giphy.gif'
+      ]
+    };
+
+    return giphyMocks[emotion] || [
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHU4dzRyZnd4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/3o7TKMGpx4Z5pPH0Ws/giphy.gif',
+      'https://media.giphy.com/media/v1.Y2lkPTc5MGI3NjExNHU4dzRyZnd4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eHh4eCZlcD12MV9pbnRlcm5hbF9naWZfYnlfaWQmY3Q9Zw/26AHON43y3dG2G7RK/giphy.gif'
+    ];
   }
 };

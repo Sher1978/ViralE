@@ -22,12 +22,13 @@
     "close": "Закрыть"
   },
   "nav": {
-    "dash": "DASH",
-    "ideas": "IDEAS",
-    "projects": "PROJECTS",
-    "billing": "BILLING",
-    "profile": "PROFILE",
-    "archive": "ARCHIVE"
+    "dash": "ДАШБОРД",
+    "ideas": "ИДЕИ",
+    "studio": "СТУДИЯ",
+    "projects": "ПРОЕКТЫ",
+    "billing": "БИЛЛИНГ",
+    "profile": "ПРОФИЛЬ",
+    "archive": "АРХИВ"
   },
   "creditBadge": {
     "topUp": "пополнить →"

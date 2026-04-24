@@ -39,6 +39,16 @@ export default function LoginButtons() {
   const handleTelegramLogin = async () => {
     setIsLoading('telegram');
     try {
+      // Check if mobile or explicitly Safari on iPhone
+      const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      
+      if (isMobile) {
+        // Redirect Flow for mobile (Reliable on Safari)
+        window.location.href = `/${locale}/auth/telegram`;
+        return;
+      }
+
+      // Popup Flow for Desktop
       const configRes = await fetch('/api/auth/telegram/config');
       const { botId } = await configRes.json();
       
@@ -53,6 +63,12 @@ export default function LoginButtons() {
       const top = (window.screen.height - height) / 2;
       
       const popup = window.open(tgUrl, 'telegram_login', `width=${width},height=${height},left=${left},top=${top}`);
+
+      if (!popup) {
+        // Fallback if popup blocked
+        window.location.href = `/${locale}/auth/telegram`;
+        return;
+      }
 
       const messageListener = async (event: MessageEvent) => {
         if (event.origin === 'https://oauth.telegram.org' || event.origin === window.location.origin) {
@@ -70,12 +86,9 @@ export default function LoginButtons() {
               
               if (authRes.ok) {
                 const { session } = await authRes.json();
-                
-                // CRITICAL: Set session on client for supabase instance to be ready
                 const { error: sessionError } = await supabase.auth.setSession(session);
                 if (sessionError) throw sessionError;
 
-                // Redirect to the intended page
                 const redirectPath = next.startsWith('/') ? next : `/${next}`;
                 window.location.href = `/${locale}${redirectPath}`;
               } else {
