@@ -21,13 +21,10 @@
     "close": "Close"
   },
   "nav": {
-    "dash": "DASH",
-    "ideas": "IDEAS",
+    "home": "HOME",
     "studio": "STUDIO",
-    "projects": "PROJECTS",
-    "billing": "BILLING",
-    "profile": "PROFILE",
-    "archive": "ARCHIVE"
+    "library": "LIBRARY",
+    "profile": "PROFILE"
   },
   "creditBadge": {
     "topUp": "top up →"
@@ -122,11 +119,18 @@
     "placeholder": "Enter a topic or paste a video/article link…",
     "generateBtn": "✦ Generate Script",
     "aiSection": "AI Strategist suggests",
-    "tagTrend": "TREND",
-    "tagViral": "VIRAL",
-    "tagEver": "EVERGREEN",
-    "viralLabel": "viral",
-    "expandBtn": "Expand into script",
+    "tagTrend": "Trend",
+    "tagViral": "Viral Potential",
+    "tagEver": "Evergreen",
+    "dnaLab": "DNA Lab",
+    "dnaLabDesc": "Distilled Identity & Strategy",
+    "dnaEdit": "Recalibrate",
+    "dnaStatus": "Active DNA",
+    "discoverTitle": "Discovery Feed",
+    "discoverDesc": "AI-suggested viral topics based on your DNA",
+    "boostToStudio": "Push to Studio",
+    "viralLabel": "Viral Probability",
+    "expandBtn": "Details",
     "engineSelector": "AI Engine",
     "lowBalance": "Low credits"
   },
@@ -319,6 +323,15 @@
     "useYourIdea": "Type your manual script or upgrade for AI",
     "viewBtn": "Open",
     "continueBtn": "Continue",
+    "stageLab": "Script Lab",
+    "stageStoryboard": "Storyboard",
+    "stageProduction": "Production Hub",
+    "studioTitle": "Viral Studio",
+    "studioDesc": "High-end content production hub",
+    "activeProjects": "Active Productions",
+    "noActive": "No active productions in this stage",
+    "startNew": "Start New",
+    "launchBtn": "Launch Production",
     "iterateBtn": "Iterate",
     "search": "Search projects...",
     "noResults": "No projects found",
@@ -393,9 +406,9 @@
     "statVideos": "Videos",
     "statFollowers": "Followers",
     "statReach": "Reach",
-    "sectionProfile": "Profile",
-    "sectionSettings": "Settings",
-    "sectionPro": "Pro features",
+    "sectionProfile": "PRODUCTION ASSETS",
+    "sectionSettings": "SYSTEM CONFIG",
+    "sectionPro": "AI CONNECTORS / BYOK",
     "dnaLabel": "Digital Shadow (Voice DNA)",
     "dnaSub": "Tone of Voice configured",
     "avatarLabel": "HeyGen Avatar",
@@ -484,14 +497,14 @@
     "viewAllIdeas": "View all ideas →"
   },
   "archive": {
-    "title": "ARCHIVE",
+    "title": "LIBRARY",
     "supertitle": "History",
-    "projects": "Projects",
-    "ideas": "Ideas",
-    "empty": "Archive is empty",
-    "emptyDesc": "Items you archive will appear here",
+    "projects": "Productions",
+    "ideas": "Thought Fragments",
+    "empty": "Library is empty",
+    "emptyDesc": "Stored assets and rescued ideas will appear here",
     "restore": "Restore",
-    "deletePermanently": "Delete Permanently"
+    "deletePermanently": "Erase Forever"
   },
   "landingV2": {
     "hero": {

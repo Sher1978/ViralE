@@ -2,169 +2,234 @@
 
 import { useTranslations, useLocale } from 'next-intl';
 import Link from 'next/link';
-import { ChevronRight, LogOut } from 'lucide-react';
+import { 
+  ChevronRight, 
+  LogOut, 
+  Fingerprint, 
+  UserCircle2, 
+  Send, 
+  Bell, 
+  Moon, 
+  Languages, 
+  Key, 
+  ShieldCheck, 
+  Cpu, 
+  BarChart3, 
+  Settings2,
+  Sparkles,
+  Zap
+} from 'lucide-react';
+import { motion } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
+import { useEffect, useState } from 'react';
+import { profileService } from '@/lib/services/profileService';
+import { Profile } from '@/lib/types/profile';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
   const commonT = useTranslations('common');
   const locale = useLocale();
+  const [profile, setProfile] = useState<Profile | null>(null);
+
+  useEffect(() => {
+    profileService.getProfile().then(setProfile);
+  }, []);
 
   const SETTINGS_SECTIONS = [
     {
       title: t('sectionProfile'),
       items: [
-        { icon: '🎭', label: t('dnaLabel'), sub: t('dnaSub'), href: `/${locale}/app/profile/dna`, accent: '#D4AF37' },
-        { icon: '👤', label: t('avatarLabel'), sub: t('avatarSub'), href: `/${locale}/app/profile/avatar`, accent: '#00FFCC' },
-        { icon: '✈️', label: t('telegramLabel'), sub: t('telegramSub'), href: `/${locale}/app/profile/telegram`, accent: '#4D9EFF' },
-      ],
-    },
-    {
-      title: t('sectionSettings'),
-      items: [
-        { icon: '🔔', label: t('notifLabel'), sub: t('notifSub'), href: `/${locale}/app/profile/notifications`, accent: '#9B5FFF' },
-        { icon: '🌙', label: t('themeLabel'), sub: t('themeSub'), href: `/${locale}/app/profile/theme`, accent: '#4D9EFF' },
-        { icon: '🌍', label: t('langLabel'), sub: locale === 'ru' ? 'Русский' : 'English', href: `/${locale}/app/profile/language`, accent: '#00FFCC' },
+        { icon: Fingerprint, label: t('dnaLabel'), sub: t('dnaSub'), href: `/${locale}/app/profile/dna`, accent: '#D4AF37' },
+        { icon: UserCircle2, label: t('avatarLabel'), sub: t('avatarSub'), href: `/${locale}/app/profile/avatar`, accent: '#00FFCC' },
+        { icon: Send, label: t('telegramLabel'), sub: t('telegramSub'), href: `/${locale}/app/profile/telegram`, accent: '#4D9EFF' },
       ],
     },
     {
       title: t('sectionPro'),
       items: [
-        { icon: '🔑', label: t('byokLabel'), sub: t('byokSub'), href: `/${locale}/app/profile/byok`, accent: '#D4AF37' },
-        { icon: '🔒', label: t('securityLabel'), sub: t('securitySub'), href: `/${locale}/app/profile/security`, accent: '#FF4D6D' },
+        { icon: Key, label: t('byokLabel'), sub: t('byokSub'), href: `/${locale}/app/profile/byok`, accent: '#D4AF37' },
+        { icon: ShieldCheck, label: t('securityLabel'), sub: t('securitySub'), href: `/${locale}/app/profile/security`, accent: '#FF4D6D' },
+      ],
+    },
+    {
+      title: t('sectionSettings'),
+      items: [
+        { icon: Bell, label: t('notifLabel'), sub: t('notifSub'), href: `/${locale}/app/profile/notifications`, accent: '#9B5FFF' },
+        { icon: Moon, label: t('themeLabel'), sub: t('themeSub'), href: `/${locale}/app/profile/theme`, accent: '#4D9EFF' },
+        { icon: Languages, label: t('langLabel'), sub: locale === 'ru' ? 'Русский' : 'English', href: `/${locale}/app/profile/language`, accent: '#00FFCC' },
       ],
     },
   ];
 
-  return (
-    <div className="space-y-5 animate-fade-in">
-      {/* Profile header */}
-      <div
-        className="rounded-3xl p-5 space-y-4"
-        style={{
-          background: 'linear-gradient(135deg, rgba(155,95,255,0.08) 0%, rgba(11,18,41,0.6) 100%)',
-          border: '1px solid rgba(155,95,255,0.15)',
-        }}
-      >
-        <div className="flex items-center gap-4">
-          {/* Avatar */}
-          <div
-            className="w-16 h-16 rounded-2xl flex items-center justify-center text-3xl relative overflow-hidden"
-            style={{
-              background: 'linear-gradient(135deg, rgba(212,175,55,0.2), rgba(155,95,255,0.2))',
-              border: '2px solid rgba(212,175,55,0.3)',
-            }}
-          >
-            🧑‍💻
-            <div
-              className="absolute bottom-0 right-0 w-4 h-4 rounded-full flex items-center justify-center"
-              style={{ background: '#00FFCC' }}
-            >
-              <span className="text-[8px] text-black font-black">✓</span>
-            </div>
-          </div>
+  const containerVariants = {
+    hidden: { opacity: 0 },
+    visible: {
+      opacity: 1,
+      transition: {
+        staggerChildren: 0.1
+      }
+    }
+  };
 
-          <div className="flex-1">
-            <h1 className="font-black text-lg text-white">
-              {locale === 'ru' ? 'Авто Эксперт' : 'Car Expert'}
-            </h1>
-            <p className="text-[11px] text-white/40">expert@auto.io</p>
-            <div className="flex items-center gap-2 mt-2">
-              <span
-                className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
-                style={{
-                  background: 'rgba(0,255,204,0.12)',
-                  border: '1px solid rgba(0,255,204,0.25)',
-                  color: '#00FFCC',
-                }}
-              >
-                ⚡ Pro
-              </span>
-              <CreditBadge credits={840} packs={8} />
+  const itemVariants = {
+    hidden: { y: 20, opacity: 0 },
+    visible: { y: 0, opacity: 1 }
+  };
+
+  return (
+    <motion.div 
+      variants={containerVariants}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6 pb-24"
+    >
+      {/* Profile Header Card */}
+      <motion.div
+        variants={itemVariants}
+        className="relative overflow-hidden rounded-[2.5rem] p-6 glass-premium"
+      >
+        <div className="absolute top-0 right-0 p-4 opacity-10">
+          <Settings2 size={120} strokeWidth={1} />
+        </div>
+
+        <div className="flex items-start justify-between relative z-10">
+          <div className="flex items-center gap-5">
+            {/* Avatar with dynamic glow */}
+            <div className="relative">
+              <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center text-3xl shadow-xl">
+                🧑‍💻
+              </div>
+              <div className="absolute -bottom-1 -right-1 bg-[#00FFCC] w-6 h-6 rounded-full border-4 border-[#0b1229] flex items-center justify-center">
+                <Zap size={10} className="text-black fill-black" />
+              </div>
+            </div>
+
+            <div>
+              <h1 className="text-2xl font-black text-white/90 tracking-tight leading-none mb-1">
+                {locale === 'ru' ? 'Авто Эксперт' : 'Car Expert'}
+              </h1>
+              <p className="text-xs text-white/40 font-medium mb-3">expert@auto.io</p>
+              <div className="flex items-center gap-2">
+                <div className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center gap-1.5">
+                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
+                  <span className="text-[9px] font-black uppercase text-cyan-400 tracking-wider">
+                    PRO STATUS
+                  </span>
+                </div>
+                <CreditBadge credits={840} packs={8} />
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Stats */}
-        <div className="grid grid-cols-3 gap-2">
+        {/* DNA Quick Preview */}
+        {profile?.digital_shadow_prompt && (
+          <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm">
+            <div className="flex items-center gap-2 mb-2">
+              <Fingerprint size={12} className="text-[#D4AF37]" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37]/80">DNA Signature</span>
+            </div>
+            <p className="text-[11px] text-white/60 line-clamp-2 leading-relaxed italic">
+              "{profile.digital_shadow_prompt}"
+            </p>
+          </div>
+        )}
+
+        {/* Micro Stats Row */}
+        <div className="grid grid-cols-3 gap-3 mt-6">
           {[
-            { label: t('statVideos'), value: '12', color: '#9B5FFF' },
-            { label: t('statFollowers'), value: '24K', color: '#D4AF37' },
-            { label: t('statReach'), value: '180K', color: '#00FFCC' },
+            { label: t('statVideos'), value: '12', icon: Sparkles, color: 'text-purple-400' },
+            { label: t('statFollowers'), value: '24K', icon: UserCircle2, color: 'text-amber-400' },
+            { label: t('statReach'), value: '180K', icon: BarChart3, color: 'text-cyan-400' },
           ].map((stat) => (
-            <div
-              key={stat.label}
-              className="text-center p-2 rounded-xl"
-              style={{
-                background: `${stat.color}08`,
-                border: `1px solid ${stat.color}15`,
-              }}
-            >
-              <div className="font-black text-sm" style={{ color: stat.color }}>{stat.value}</div>
-              <div className="text-[8px] text-white/25 uppercase tracking-wider">{stat.label}</div>
+            <div key={stat.label} className="bg-black/20 rounded-2xl p-3 border border-white/[0.03]">
+              <div className="flex items-center gap-1.5 mb-1 opacity-50">
+                <stat.icon size={10} />
+                <span className="text-[8px] font-bold uppercase tracking-widest leading-none">{stat.label}</span>
+              </div>
+              <div className={`text-lg font-black tracking-tighter ${stat.color}`}>{stat.value}</div>
             </div>
           ))}
         </div>
+      </motion.div>
+
+      {/* Main Settings List */}
+      <div className="space-y-8 px-1">
+        {SETTINGS_SECTIONS.map((section, sIdx) => (
+          <motion.div 
+            key={section.title} 
+            variants={itemVariants}
+            className="space-y-3"
+          >
+            <div className="flex items-center gap-2 px-2">
+              <div className="w-1 h-3 rounded-full bg-white/20" />
+              <h2 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30">
+                {section.title}
+              </h2>
+            </div>
+            
+            <div className="overflow-hidden rounded-[2rem] border border-white/[0.06] bg-gradient-to-b from-white/[0.04] to-transparent">
+              {section.items.map((item, i) => (
+                <Link key={item.label} href={item.href}>
+                  <div className="group flex items-center gap-4 p-5 transition-all hover:bg-white/[0.05] active:scale-[0.98]">
+                    <div 
+                      className="w-11 h-11 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110"
+                      style={{ 
+                        background: `${item.accent}12`,
+                        border: `1px solid ${item.accent}20`,
+                        color: item.accent
+                      }}
+                    >
+                      <item.icon size={20} strokeWidth={2} />
+                    </div>
+                    
+                    <div className="flex-1 min-w-0">
+                      <div className="text-sm font-bold text-white/90 mb-0.5 group-hover:text-white transition-colors">
+                        {item.label}
+                      </div>
+                      <div className="text-[11px] text-white/30 font-medium group-hover:text-white/50 transition-colors">
+                        {item.sub}
+                      </div>
+                    </div>
+                    
+                    <ChevronRight size={16} className="text-white/10 group-hover:translate-x-1 transition-all" />
+                  </div>
+                  {i < section.items.length - 1 && (
+                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-5" />
+                  )}
+                </Link>
+              ))}
+            </div>
+          </motion.div>
+        ))}
       </div>
 
-      {/* Settings sections */}
-      {SETTINGS_SECTIONS.map((section) => (
-        <div key={section.title} className="space-y-2">
-          <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/25 ml-1">
-            {section.title}
-          </p>
-          <div
-            className="rounded-2xl overflow-hidden"
-            style={{
-              background: 'rgba(11,18,41,0.5)',
-              border: '1px solid rgba(255,255,255,0.07)',
-            }}
-          >
-            {section.items.map((item, i) => (
-              <Link key={item.label} href={item.href}>
-                <div
-                  className="flex items-center gap-3 p-4 transition-all hover:bg-white/5 cursor-pointer"
-                  style={{
-                    borderBottom: i < section.items.length - 1 ? '1px solid rgba(255,255,255,0.05)' : undefined,
-                  }}
-                >
-                  <div
-                    className="w-9 h-9 rounded-xl flex items-center justify-center text-lg shrink-0"
-                    style={{
-                      background: `${item.accent}12`,
-                      border: `1px solid ${item.accent}20`,
-                    }}
-                  >
-                    {item.icon}
-                  </div>
-                  <div className="flex-1 min-w-0">
-                    <p className="text-sm font-semibold text-white/80">{item.label}</p>
-                    <p className="text-[10px] text-white/30 truncate">{item.sub}</p>
-                  </div>
-                  <ChevronRight className="w-4 h-4 text-white/20 shrink-0" />
-                </div>
-              </Link>
-            ))}
+      {/* Logout & Footer */}
+      <motion.div variants={itemVariants} className="px-1 space-y-6">
+        <button
+          className="w-full flex items-center justify-center gap-3 py-5 rounded-[2rem] text-sm font-black transition-all hover:bg-[#FF4D6D]/10 active:scale-95 group"
+          style={{
+            background: 'rgba(255,77,109,0.05)',
+            border: '1px solid rgba(255,77,109,0.15)',
+            color: '#FF4D6D',
+          }}
+        >
+          <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
+          {commonT('logout').toUpperCase()}
+        </button>
+
+        <div className="text-center space-y-2 pb-8">
+          <div className="flex items-center justify-center gap-2 opacity-20">
+            <Cpu size={12} />
+            <p className="text-[10px] font-black uppercase tracking-[0.4em]">
+              {t('version')}
+            </p>
           </div>
+          <p className="text-[9px] font-bold text-white/10 uppercase tracking-widest">
+            © 2026 SHERLOCK DIGITAL CORE
+          </p>
         </div>
-      ))}
-
-      {/* Logout */}
-      <button
-        className="w-full flex items-center justify-center gap-2 py-3 rounded-2xl text-sm font-bold transition-all hover:scale-[1.01]"
-        style={{
-          background: 'rgba(255,77,109,0.08)',
-          border: '1px solid rgba(255,77,109,0.2)',
-          color: '#FF4D6D',
-        }}
-      >
-        <LogOut className="w-4 h-4" />
-        {commonT('logout')}
-      </button>
-
-      <p className="text-center text-[9px] text-white/15 uppercase tracking-[0.2em] pb-2">
-        {t('version')}
-      </p>
-    </div>
+      </motion.div>
+    </motion.div>
   );
 }

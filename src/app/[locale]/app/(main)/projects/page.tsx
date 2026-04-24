@@ -13,251 +13,208 @@ import {
   X,
   Monitor,
   CheckCircle2,
-  Archive
+  Archive,
+  FlaskConical,
+  Clapperboard,
+  Video,
+  Rocket,
+  Zap,
+  ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams } from 'next/navigation';
 import ProjectCard, { Project } from '@/components/projects/ProjectCard';
+import { useRouter } from '@/navigation';
 
-const LIMIT = 6;
+const LIMIT = 12;
 
-export default function ProjectsPage() {
+type StudioTab = 'lab' | 'storyboard' | 'production';
+
+export default function StudioPage() {
   const { locale } = useParams() as { locale: string };
   const t = useTranslations('projects');
+  const router = useRouter();
   
-  // State
+  const [activeTab, setActiveTab] = useState<StudioTab>('lab');
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [loadingMore, setLoadingMore] = useState(false);
   const [search, setSearch] = useState('');
-  const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'completed'>('all');
-  const [page, setPage] = useState(1);
-  const [totalPages, setTotalPages] = useState(1);
-  const [totalCount, setTotalCount] = useState(0);
 
-  // Fetch projects
-  const fetchProjects = useCallback(async (pageNum: number, isLoadMore = false) => {
+  const fetchProjects = useCallback(async () => {
     try {
-      if (isLoadMore) setLoadingMore(true);
-      else setLoading(true);
-
-      const params = new URLSearchParams({
-        page: pageNum.toString(),
-        limit: LIMIT.toString(),
-        search: search,
-      });
-
-      if (statusFilter === 'active') {
-        params.append('status', 'ideation,scripting,storyboard,rendering');
-      } else if (statusFilter === 'completed') {
-        params.append('status', 'completed');
-      }
-
-      const res = await fetch(`/api/projects?${params.toString()}`);
+      setLoading(true);
+      const res = await fetch(`/api/projects?limit=${LIMIT}&search=${search}`);
       const data = await res.json();
-
-      if (isLoadMore) {
-        setProjects(prev => [...prev, ...(data.items || [])]);
-      } else {
-        setProjects(data.items || []);
-      }
-      
-      setTotalPages(data.totalPages);
-      setTotalCount(data.total);
-      setPage(data.page);
+      setProjects(data.items || []);
     } catch (error) {
       console.error('Failed to fetch projects:', error);
     } finally {
       setLoading(false);
-      setLoadingMore(false);
     }
-  }, [search, statusFilter]);
+  }, [search]);
 
-  // Initial fetch and filter change
   useEffect(() => {
-    const timer = setTimeout(() => {
-      fetchProjects(1);
-    }, 300); // Debounce search
-    return () => clearTimeout(timer);
+    fetchProjects();
   }, [fetchProjects]);
 
-  const handleLoadMore = () => {
-    if (page < totalPages) {
-      fetchProjects(page + 1, true);
-    }
-  };
+  const filteredProjects = projects.filter(p => {
+    if (activeTab === 'lab') return ['ideation', 'scripting'].includes(p.status);
+    if (activeTab === 'storyboard') return ['storyboard'].includes(p.status);
+    if (activeTab === 'production') return ['rendering', 'completed'].includes(p.status);
+    return false;
+  });
 
-  const [viewMode, setViewMode] = useState<'status' | 'format'>('status');
-  
-  // Format sections
-  const formats = [
-    { id: 'vertical', title: 'Vertical (9:16)', icon: Monitor },
-    { id: 'square', title: 'Square (1:1)', icon: LayoutGrid },
-    { id: 'horizontal', title: 'Horizontal (16:9)', icon: Monitor }, // Using Monitor for now as placeholder
-    { id: 'unknown', title: 'Other Formats', icon: Filter },
-  ];
-
-  const sections = [
-    { 
-      id: 'active', 
-      title: t('filterActive'), 
-      status: ['ideation', 'scripting', 'storyboard', 'rendering'],
-      icon: RefreshCcw
-    },
-    { 
-      id: 'completed', 
-      title: t('filterDone'), 
-      status: ['completed'],
-      icon: CheckCircle2 
-    },
-    { 
-      id: 'archived', 
-      title: t('archived'), 
-      status: ['archived'],
-      icon: Archive 
-    }
-  ];
+  const tabs = [
+    { id: 'lab', icon: FlaskConical, label: t('stageLab'), count: projects.filter(p => ['ideation', 'scripting'].includes(p.status)).length },
+    { id: 'storyboard', icon: Clapperboard, label: t('stageStoryboard'), count: projects.filter(p => ['storyboard'].includes(p.status)).length },
+    { id: 'production', icon: Video, label: t('stageProduction'), count: projects.filter(p => ['rendering', 'completed'].includes(p.status)).length },
+  ] as const;
 
   return (
-    <div className="space-y-12 pb-32 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
-      {/* Header & Controls */}
-      <div className="flex flex-col gap-6 pt-8">
-        <div className="flex items-center justify-between">
-          <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.3em] text-purple-400 mb-2">
-              Viral Engine Ecosystem
-            </p>
-            <h1 className="text-4xl font-black tracking-tight flex items-center gap-2">
-              <span className="text-white/40">{t('title')}</span>
-              <span className="text-white">{t('titleAccent')}</span>
-            </h1>
+    <div className="space-y-10 pb-32 max-w-7xl mx-auto px-4">
+      {/* Premium Header */}
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 pt-10">
+        <div className="space-y-4">
+          <div className="flex items-center gap-3">
+             <div className="w-12 h-12 rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center">
+                <Zap className="w-6 h-6 text-purple-400 fill-current" />
+             </div>
+             <div>
+               <h1 className="text-4xl font-black uppercase tracking-tighter leading-none">
+                 {t('studioTitle')}
+               </h1>
+               <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/30 mt-1">
+                 {t('studioDesc')}
+               </p>
+             </div>
           </div>
+        </div>
 
-          <Link href={`/${locale}/app/projects/new`}>
-            <motion.button
-              whileHover={{ scale: 1.05, boxShadow: '0 0 30px rgba(16,185,129,0.2)' }}
-              whileTap={{ scale: 0.95 }}
-              className="flex items-center gap-3 px-8 py-3.5 rounded-[1.5rem] bg-emerald-500 text-black font-black text-xs uppercase tracking-widest shadow-xl shadow-emerald-500/10 transition-all"
+        <div className="flex items-center gap-4">
+           {/* Search Miniature */}
+           <div className="relative group hidden sm:block">
+             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
+             <input 
+               type="text" 
+               placeholder={t('search')}
+               value={search}
+               onChange={(e) => setSearch(e.target.value)}
+               className="bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-purple-500/50 focus:bg-white/[0.08] transition-all w-48"
+             />
+           </div>
+           
+           <Link href={`/${locale}/app/projects/new`}>
+             <button className="flex items-center gap-3 px-8 py-3.5 rounded-2xl bg-white text-black font-black text-[11px] uppercase tracking-widest group active:scale-95 transition-all">
+                <Plus className="w-4 h-4 stroke-[3]" />
+                {t('launchBtn')}
+             </button>
+           </Link>
+        </div>
+      </div>
+
+      {/* Main Workflow Tabs */}
+      <div className="p-2 glass-premium rounded-[2.5rem] border border-white/5">
+        <div className="grid grid-cols-3 gap-2">
+          {tabs.map((tab) => (
+            <button
+              key={tab.id}
+              onClick={() => setActiveTab(tab.id)}
+              className={`relative flex flex-col items-center justify-center py-6 rounded-[2rem] transition-all overflow-hidden group ${
+                activeTab === tab.id 
+                  ? 'bg-white/5 text-white' 
+                  : 'text-white/20 hover:text-white/40 hover:bg-white/[0.02]'
+              }`}
             >
-              <Plus className="w-4 h-4 stroke-[3]" />
-              {t('newBtn')}
-            </motion.button>
-          </Link>
-        </div>
-
-        {/* Search & Global Tabs */}
-        <div className="flex flex-col sm:flex-row gap-4 items-center">
-          <div className="relative flex-1 group w-full">
-            <Search className="absolute left-5 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-purple-400 transition-colors" />
-            <input
-              type="text"
-              placeholder={t('search')}
-              value={search}
-              onChange={(e) => setSearch(e.target.value)}
-              className="w-full pl-14 pr-4 py-4 rounded-[1.5rem] bg-white/[0.03] border border-white/5 focus:border-purple-500/50 focus:bg-white/[0.05] text-white text-sm outline-none transition-all placeholder:text-white/20"
-            />
-          </div>
-          
-          <div className="flex items-center gap-2 p-1 bg-white/5 border border-white/10 rounded-2xl shrink-0">
-             <button 
-               onClick={() => setViewMode('status')}
-               className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'status' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'text-white/40 hover:text-white/60'}`}
-             >
-               By Status
-             </button>
-             <button 
-               onClick={() => setViewMode('format')}
-               className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${viewMode === 'format' ? 'bg-purple-500 text-white shadow-lg shadow-purple-500/20' : 'text-white/40 hover:text-white/60'}`}
-             >
-               By Format
-             </button>
-          </div>
-        </div>
-      </div>
-
-      {/* Dynamic Sections */}
-      <div className="space-y-16">
-        {loading && page === 1 ? (
-          <div className="min-h-[400px] flex flex-col items-center justify-center gap-4">
-            <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20 animate-pulse">
-              Syncing Neural Archive...
-            </p>
-          </div>
-        ) : projects.length > 0 ? (
-          sections.map((section) => {
-            const sectionProjects = projects.filter(p => section.status.includes(p.status));
-            if (sectionProjects.length === 0 && !search) return null;
-
-            return (
-              <div key={section.id} className="space-y-6">
-                <div className="flex items-center justify-between px-2">
-                  <div className="flex items-center gap-3">
-                    <div className="p-2 rounded-xl bg-white/5 border border-white/10 text-purple-400">
-                      <section.icon className="w-4 h-4" />
-                    </div>
-                    <h2 className="text-xs font-black uppercase tracking-[0.2em] text-white/80">
-                      {section.title}
-                      <span className="ml-3 text-white/20 tabular-nums">({sectionProjects.length})</span>
-                    </h2>
-                  </div>
-                </div>
-
-                <div className="relative group">
-                  <div className="flex gap-6 overflow-x-auto no-scrollbar scroll-smooth pb-8 px-2 -mx-2">
-                    <AnimatePresence mode="popLayout">
-                      {sectionProjects.map((project) => (
-                        <div key={project.id} className="flex-none w-[280px] sm:w-[320px]">
-                          <ProjectCard project={project} />
-                        </div>
-                      ))}
-                    </AnimatePresence>
-                    
-                    {/* Ghost card for "Create New" at the end of active section */}
-                    {section.id === 'active' && !search && (
-                      <Link href={`/${locale}/app/projects/new`} className="flex-none block group/new">
-                        <div className="w-[320px] aspect-square rounded-[2.5rem] border-2 border-dashed border-white/5 bg-white/[0.02] hover:bg-purple-500/[0.03] hover:border-purple-500/20 transition-all flex flex-col items-center justify-center gap-4 text-center p-8">
-                          <div className="w-16 h-16 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center group-hover/new:scale-110 group-hover/new:rotate-90 transition-all">
-                            <Plus className="w-8 h-8 text-white/20 group-hover/new:text-purple-400" />
-                          </div>
-                          <div>
-                            <h3 className="text-xs font-black uppercase tracking-widest text-white/40 mb-1 group-hover/new:text-white">Start New</h3>
-                            <p className="text-[9px] font-bold text-white/10 uppercase tracking-tight group-hover/new:text-white/20">Generate next viral hit</p>
-                          </div>
-                        </div>
-                      </Link>
-                    )}
-                  </div>
-                </div>
+              {activeTab === tab.id && (
+                <motion.div 
+                  layoutId="activeTabBg"
+                  className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent"
+                />
+              )}
+              
+              <tab.icon className={`w-6 h-6 mb-2 transition-all ${activeTab === tab.id ? 'scale-110 text-purple-400' : 'group-hover:scale-110'}`} />
+              <span className="text-[11px] font-black uppercase tracking-widest mb-1">{tab.label}</span>
+              
+              <div className="flex items-center gap-1.5">
+                <div className={`w-1 h-1 rounded-full ${tab.count > 0 ? 'bg-emerald-500 animate-pulse' : 'bg-white/10'}`} />
+                <span className="text-[9px] font-bold tabular-nums opacity-60">{tab.count} active</span>
               </div>
-            );
-          })
-        ) : (
-          <div className="min-h-[400px] flex flex-col items-center justify-center text-center px-6">
-            <div className="w-24 h-24 rounded-[2rem] bg-white/[0.02] border border-white/5 flex items-center justify-center mb-8 relative">
-              <div className="absolute inset-0 bg-purple-500/10 blur-2xl rounded-full" />
-              <LayoutGrid className="w-10 h-10 text-white/10 relative z-10" />
-            </div>
-            <h3 className="text-2xl font-black text-white mb-4 uppercase tracking-tighter">{t('noResults')}</h3>
-            <p className="text-sm text-white/30 max-w-sm mx-auto leading-relaxed font-medium">
-              {search 
-                ? 'Your neural query returned zero matches. Try recalibrating search parameters.' 
-                : 'Your creative vault is currently empty. Initialize your first production sequence to begin.'}
-            </p>
-            {!search && (
-              <Link href={`/${locale}/app/projects/new`} className="mt-12">
-                <button className="px-10 py-4 rounded-[1.8rem] bg-purple-600 hover:bg-purple-500 text-white font-black text-xs uppercase tracking-widest transition-all shadow-2xl shadow-purple-500/40 active:scale-95">
-                  Launch Project Alpha
-                </button>
-              </Link>
-            )}
-          </div>
-        )}
+
+              {activeTab === tab.id && (
+                <motion.div 
+                  layoutId="activeTabUnderline"
+                  className="absolute bottom-0 left-1/2 -translate-x-1/2 w-12 h-1 bg-purple-500 rounded-t-full"
+                />
+              )}
+            </button>
+          ))}
+        </div>
       </div>
 
-      {/* Decorative Elements */}
-      <div className="fixed top-1/4 -right-64 w-[600px] h-[600px] bg-purple-600/10 blur-[150px] -z-10 rounded-full" />
-      <div className="fixed bottom-1/4 -left-64 w-[600px] h-[600px] bg-emerald-600/5 blur-[150px] -z-10 rounded-full" />
+      {/* Grid Container */}
+      <AnimatePresence mode="wait">
+        <motion.div
+          key={activeTab}
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          exit={{ opacity: 0, y: -20 }}
+          transition={{ duration: 0.2 }}
+          className="min-h-[400px]"
+        >
+          {loading ? (
+            <div className="h-64 flex flex-col items-center justify-center gap-4">
+              <div className="w-10 h-10 border-2 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+            </div>
+          ) : filteredProjects.length > 0 ? (
+            <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+              {filteredProjects.map((project) => (
+                <ProjectCard key={project.id} project={project} />
+              ))}
+              
+              {/* Contextual Create Mini-Card */}
+              <Link href={`/${locale}/app/projects/new`} className="group">
+                <div className="h-full min-h-[160px] glass-premium rounded-[2.5rem] border border-dashed border-white/10 flex flex-col items-center justify-center gap-3 p-6 hover:border-purple-500/40 hover:bg-purple-500/[0.02] transition-all">
+                   <div className="w-10 h-10 rounded-2xl bg-white/5 border border-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                      <Plus className="w-5 h-5 text-white/20 group-hover:text-purple-400" />
+                   </div>
+                   <div className="text-center">
+                     <p className="text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:text-white">{t('startNew')}</p>
+                     <p className="text-[8px] font-bold text-white/10 uppercase tracking-tight mt-0.5">Initialize sequence</p>
+                   </div>
+                </div>
+              </Link>
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center text-center py-24 space-y-8 glass-premium rounded-[3rem] border border-white/5">
+              <div className="relative">
+                <div className="w-20 h-20 rounded-[2rem] bg-white/[0.02] border border-white/5 flex items-center justify-center relative z-10">
+                   <tab.icon className="w-8 h-8 text-white/10" />
+                </div>
+                <div className="absolute inset-0 bg-purple-500/5 blur-3xl" />
+              </div>
+              
+              <div className="space-y-4 max-w-sm mx-auto">
+                <h3 className="text-xl font-black uppercase tracking-tighter">{t('noActive')}</h3>
+                <p className="text-xs text-white/20 font-medium leading-relaxed">
+                  Every viral masterpiece begins with a single prompt. Initialize your project and watch it climb the stages.
+                </p>
+                
+                <Link href={`/${locale}/app/projects/new`} className="inline-block mt-4">
+                  <button className="flex items-center gap-3 px-8 py-4 bg-purple-600 rounded-2xl text-[11px] font-black uppercase tracking-[0.2em] shadow-xl shadow-purple-600/20 hover:bg-purple-500 active:scale-95 transition-all">
+                     <Rocket className="w-4 h-4" />
+                     {t('startNew')}
+                     <ArrowRight className="w-4 h-4" />
+                  </button>
+                </Link>
+              </div>
+            </div>
+          )}
+        </motion.div>
+      </AnimatePresence>
+
+      {/* Background Decor */}
+      <div className="fixed top-20 right-0 w-[500px] h-[500px] bg-purple-600/5 blur-[120px] pointer-events-none -z-10" />
+      <div className="fixed bottom-0 left-0 w-[500px] h-[500px] bg-emerald-600/5 blur-[120px] pointer-events-none -z-10" />
     </div>
   );
 }

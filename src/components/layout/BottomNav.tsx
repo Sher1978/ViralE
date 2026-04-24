@@ -4,7 +4,7 @@ import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { LayoutDashboard, Lightbulb, FolderKanban, User, CreditCard, Archive, Monitor } from 'lucide-react';
+import { LayoutDashboard, Lightbulb, FolderKanban, User, CreditCard, Archive, Monitor, Sparkles, Library } from 'lucide-react';
 import { LangSwitcher } from '@/components/ui/LangSwitcher';
 
 function cn(...classes: (string | boolean | undefined)[]) {
@@ -17,11 +17,10 @@ export function BottomNav() {
   const t = useTranslations('nav');
 
   const navItems = [
-    { key: 'dash', href: `/${locale}/app/dashboard`, icon: LayoutDashboard },
-    { key: 'ideas', href: `/${locale}/app/ideas`, icon: Lightbulb },
-    { key: 'studio', href: `/${locale}/app/projects`, icon: Monitor, isCentral: true }, // Logic to pick latest project if none
-    { key: 'projects', href: `/${locale}/app/projects`, icon: FolderKanban },
-    { key: 'billing', href: `/${locale}/app/billing`, icon: CreditCard },
+    { key: 'home', href: `/${locale}/app/dashboard`, icon: LayoutDashboard }, 
+    { key: 'studio', href: `/${locale}/app/projects`, icon: Sparkles, isCentral: true },
+    { key: 'library', href: `/${locale}/app/archive`, icon: Library },
+    { key: 'profile', href: `/${locale}/app/profile`, icon: User },
   ];
 
   const hideNav = [
@@ -85,7 +84,6 @@ export function BottomNav() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1 py-4.5 rounded-2xl transition-all duration-300 relative mx-0.5",
                     "flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-2xl transition-all duration-300 relative mx-0.5",
                     isActive
                       ? "text-black"

@@ -2,12 +2,17 @@
 
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
-import { Sparkles, TrendingUp, ArrowRight, Search, Link2, Mic, Brain, Key, AlertTriangle, Loader2 } from 'lucide-react';
+import { 
+  Sparkles, TrendingUp, ArrowRight, Search, Link2, Mic, 
+  Brain, Key, AlertTriangle, Loader2, Zap, Radio, Cpu, 
+  Dna, Compass, FlaskConical, Target, Rocket, ChevronRight,
+  Eye, Monitor
+} from 'lucide-react';
 import { CreditBadge } from '@/components/ui/CreditBadge';
-import KnowledgeTrainer from '@/components/onboarding/KnowledgeTrainer';
 import { useRouter } from '@/navigation';
 import { useState, useEffect } from 'react';
 import { profileService, Profile } from '@/lib/services/profileService';
+import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DashboardPage() {
   const t = useTranslations('dashboard');
@@ -20,11 +25,17 @@ export default function DashboardPage() {
   const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('gemini');
   const [user, setUser] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(false);
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
     async function loadProfile() {
-      const p = await profileService.getOrCreateProfile();
-      setUser(p);
+      try {
+        const p = await profileService.getOrCreateProfile();
+        setUser(p);
+      } catch (err) {
+        console.error('Error loading profile:', err);
+      }
     }
     loadProfile();
   }, []);
@@ -61,234 +72,285 @@ export default function DashboardPage() {
     },
   ];
 
+  if (!mounted) return null;
+
   return (
-    <div className="space-y-6 animate-fade-in">
-      {/* Header */}
-      <div className="flex items-start justify-between">
-        <div>
-          <p className="text-[10px] text-white/30 uppercase tracking-[0.2em] mb-1">{t('supertitle')}</p>
-          <h1
-            className="text-2xl font-black tracking-tighter uppercase"
-            style={{ fontFamily: 'var(--font-space-grotesk), sans-serif' }}
-          >
-            {t('title')}
-            <br />
-            <span className="gradient-text-gold">{t('titleAccent')}</span>
-          </h1>
-        </div>
-        <div className="flex flex-col items-end gap-2">
-          <CreditBadge credits={user?.credits_balance || 0} packs={Math.floor((user?.credits_balance || 0) / 100)} />
-          <Link href={`/${locale}/app/billing`}>
-            <span className="text-[9px] text-white/20 hover:text-white/40 transition-colors uppercase tracking-widest">
-              {common('topUp')} →
-            </span>
-          </Link>
-        </div>
-      </div>
-
-      {user && user.credits_balance < 50 && (
-        <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-between animate-pulse">
-           <div className="flex items-center gap-3">
-             <AlertTriangle className="w-5 h-5 text-amber-500" />
-             <div className="space-y-0.5">
-               <p className="text-[10px] font-black text-amber-500 uppercase tracking-widest leading-none">Low credits</p>
-               <p className="text-[9px] text-amber-500/60 uppercase tracking-widest font-bold">Refill to unlock full production</p>
-             </div>
-           </div>
-           <Link href={`/${locale}/app/billing`} className="px-3 py-1.5 rounded-lg bg-amber-500 text-black text-[9px] font-black uppercase tracking-widest">
-             Top up
-           </Link>
-        </div>
-      )}
-
-      {/* Main Input */}
-      <div
-        className="rounded-3xl p-5 space-y-4"
-        style={{
-          background: 'rgba(11, 18, 41, 0.6)',
-          backdropFilter: 'blur(24px)',
-          border: '1px solid rgba(255,255,255,0.08)',
-        }}
-      >
-        <label className="text-[9px] font-black uppercase tracking-[0.25em] text-white/30">
-          {t('inputTitle')}
-        </label>
-
-        {/* Input modes */}
-        <div className="flex gap-2">
-          {[
-            { icon: Mic, label: t('modeTopic') },
-            { icon: Link2, label: t('modeLink') },
-            { icon: Search, label: t('modeSearch') },
-          ].map(({ icon: Icon, label }, i) => (
-            <button
-              key={label}
-              className="flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[10px] font-bold uppercase tracking-widest transition-all duration-200"
-              style={{
-                background: i === 0 ? 'rgba(0,255,204,0.12)' : 'rgba(255,255,255,0.04)',
-                border: `1px solid ${i === 0 ? 'rgba(0,255,204,0.3)' : 'rgba(255,255,255,0.08)'}`,
-                color: i === 0 ? '#00FFCC' : 'rgba(255,255,255,0.3)',
-              }}
-            >
-              <Icon className="w-3 h-3" />
-              {label}
-            </button>
-          ))}
-        </div>
-
-        {/* Text input */}
-        <div className="relative">
-          <textarea
-            value={prompt}
-            onChange={(e) => setPrompt(e.target.value)}
-            className="input-core resize-none"
-            rows={3}
-            placeholder={t('placeholder')}
-          />
-        </div>
-
-        {/* AI Selector */}
-        <div className="space-y-3">
-          <label className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 ml-1">
-            {t('engineSelector') || 'AI Engine'}
-          </label>
-          <div className="flex flex-wrap gap-2 p-1 bg-black/40 rounded-2xl border border-white/5">
-            <button
-              onClick={() => setSelectedEngine('gemini')}
-              className={`flex-1 min-w-[90px] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                selectedEngine === 'gemini' ? 'bg-purple-600 text-white shadow-lg' : 'text-white/20 hover:text-white/40'
-              }`}
-            >
-              Gemini
-            </button>
-            <button
-              onClick={() => setSelectedEngine('claude')}
-              className={`flex-1 min-w-[90px] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all ${
-                selectedEngine === 'claude' ? 'bg-purple-600 text-white shadow-lg' : 'text-white/20 hover:text-white/40'
-              }`}
-            >
-              Claude
-            </button>
-            {user?.anthropic_api_key && (
-              <button
-                onClick={() => setSelectedEngine('claude-byok')}
-                className={`flex-1 min-w-[110px] flex items-center justify-center gap-1.5 py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-purple-500/20 ${
-                  selectedEngine === 'claude-byok' ? 'bg-purple-600 text-white shadow-lg' : 'text-purple-400/30 hover:text-purple-400'
-                }`}
-              >
-                <Key className="w-3 h-3" />
-                BYOK
-              </button>
-            )}
-            {user?.groq_api_key && (
-              <button
-                onClick={() => setSelectedEngine('groq')}
-                className={`flex-1 min-w-[90px] py-3 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all border border-orange-500/20 ${
-                  selectedEngine === 'groq' ? 'bg-orange-600 text-white shadow-lg' : 'text-orange-400/30 hover:text-orange-400'
-                }`}
-              >
-                Groq
-              </button>
-            )}
+    <div className="space-y-12 pb-40 px-1">
+      {/* Neural Status Bar */}
+      <div className="flex items-center justify-between px-1">
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="w-2.5 h-2.5 rounded-full bg-[#00FFCC] animate-pulse" />
+            <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-[#00FFCC] blur-md animate-pulse opacity-50" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 leading-none">Neural Hub</span>
+            <span className="text-[8px] font-bold text-[#00FFCC]/60 uppercase tracking-[0.2em] mt-1">Profile: Active & Synced</span>
           </div>
         </div>
+        <div className="flex items-center gap-4">
+           <div className="flex flex-col items-end">
+             <CreditBadge credits={user?.credits_balance || 0} packs={Math.floor((user?.credits_balance || 0) / 100)} />
+             <Link href={`/${locale}/app/billing`} className="mt-1.5 group">
+                <span className="text-[9px] text-white/20 group-hover:text-[#D4AF37] transition-colors uppercase tracking-widest font-black flex items-center gap-1">
+                  {common('topUp')} <ChevronRight className="w-3 h-3" />
+                </span>
+             </Link>
+           </div>
+        </div>
+      </div>
 
-        {/* Generate button */}
-        <button 
-          onClick={handleGenerate}
-          disabled={!prompt.trim() || isLoading}
-          className="btn-primary w-full rounded-2xl py-5 text-sm uppercase font-black tracking-widest disabled:opacity-30 group"
+      {/* DNA Calibration Lab Peek */}
+      <section className="relative">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="glass-premium rounded-[2.5rem] p-8 border border-white/5 overflow-hidden group hover:border-[#9B5FFF]/30 transition-all duration-700"
         >
-          {isLoading ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-          {t('generateBtn')}
-          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-        </button>
-      </div>
-
-      {/* Divider */}
-      <div className="flex items-center gap-3">
-        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} />
-        <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/20">
-          {t('aiSection')}
-        </span>
-        <div className="flex-1 h-px" style={{ background: 'rgba(255,255,255,0.05)' }} />
-      </div>
-
-      {/* Ideas */}
-      <div className="space-y-3">
-        {IDEAS.map((idea, i) => (
-          <div
-            key={idea.id}
-            className="animate-slide-up opacity-0 card-idea p-4 space-y-3"
-            style={{
-              animationFillMode: 'forwards',
-              animationDelay: `${0.1 + i * 0.08}s`,
-            }}
-          >
-            <div className="flex items-start justify-between gap-3">
-              <div className="flex-1 space-y-1">
-                {/* Tag */}
-                <div className="flex items-center gap-2">
-                  <span
-                    className="text-[8px] font-black uppercase tracking-widest px-2 py-0.5 rounded-full"
-                    style={{
-                      background: `${idea.tagColor}15`,
-                      border: `1px solid ${idea.tagColor}30`,
-                      color: idea.tagColor,
-                    }}
-                  >
-                    {idea.tag}
-                  </span>
+          {/* Animated Background Gradients */}
+          <div className="absolute -top-24 -right-24 w-64 h-64 bg-cyan-500/10 blur-[100px] rounded-full group-hover:bg-[#9B5FFF]/10 transition-colors duration-1000" />
+          <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-[#9B5FFF]/5 blur-[80px] rounded-full" />
+          
+          <div className="flex flex-col lg:flex-row gap-10 relative z-10">
+            <div className="flex-1 space-y-6">
+              <div className="flex items-center gap-4">
+                <div className="w-14 h-14 rounded-3xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
+                  <Dna className="w-7 h-7 text-cyan-400" />
                 </div>
-                <p className="text-sm font-semibold text-white/85 leading-snug">
-                  &ldquo;{idea.topic}&rdquo;
-                </p>
+                <div>
+                  <div className="flex items-center gap-2">
+                    <h2 className="text-xl font-black uppercase tracking-tight">{t('dnaLab')}</h2>
+                    <span className="text-[10px] font-black bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-500/20 uppercase">Persona-Locked</span>
+                  </div>
+                  <p className="text-[11px] text-white/30 font-bold uppercase tracking-widest mt-1">{t('dnaLabDesc')}</p>
+                </div>
               </div>
 
-              {/* Viral score */}
-              <div className="flex flex-col items-center shrink-0">
-                <div
-                  className="w-12 h-12 rounded-2xl flex items-center justify-center font-black text-base"
-                  style={{
-                    background: `linear-gradient(135deg, ${idea.tagColor}18, ${idea.tagColor}08)`,
-                    border: `1.5px solid ${idea.tagColor}30`,
-                    color: idea.tagColor,
-                  }}
-                >
-                  {idea.viral}%
+              <div className="p-6 bg-black/40 rounded-[2rem] border border-white/5 relative group/dna overflow-hidden">
+                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover/dna:opacity-100 transition-opacity" />
+                <div className="line-clamp-3 text-[12px] font-medium text-white/50 leading-relaxed italic relative z-10">
+                  {user?.digital_shadow_prompt || "Sequence not initialized. Calibrate your DNA to lock in your production style."}
                 </div>
-                <span className="text-[7px] text-white/20 uppercase tracking-widest mt-1">{t('viralLabel')}</span>
+                <div className="mt-5 flex items-center justify-between relative z-10">
+                  <div className="flex items-center gap-3">
+                    <div className="flex -space-x-1">
+                      <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
+                      <div className="w-2 h-2 rounded-full bg-cyan-400/40" />
+                      <div className="w-2 h-2 rounded-full bg-cyan-300/20" />
+                    </div>
+                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-500/60">
+                      {t('dnaStatus')}
+                    </span>
+                  </div>
+                  <Link href={`/${locale}/app/profile/dna`}>
+                    <button className="text-[10px] font-black uppercase tracking-[0.1em] px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/5 flex items-center gap-2 group/btn">
+                      {t('dnaEdit')}
+                      <Sparkles className="w-3.5 h-3.5 group-hover/btn:scale-125 transition-transform" />
+                    </button>
+                  </Link>
+                </div>
               </div>
             </div>
 
-            <p className="text-[11px] text-white/35 leading-relaxed">{idea.reason}</p>
+            <div className="lg:w-px bg-white/5 hidden lg:block self-stretch" />
 
-            {/* Action */}
-            <button
-              onClick={() => router.push(`/${locale}/app/projects/new/script?topic=${encodeURIComponent(idea.topic)}`)}
-              className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-widest transition-all duration-200 hover:text-white/70"
-              style={{ color: idea.tagColor }}
+            <div className="lg:w-[300px] flex flex-col justify-between space-y-6">
+               <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/20">{t('engineSelector')}</span>
+                    <Cpu className="w-3.5 h-3.5 text-white/10" />
+                  </div>
+                  <div className="grid grid-cols-2 gap-2 p-1.5 bg-black/40 rounded-2xl border border-white/5">
+                    {['gemini', 'claude'].map((eng) => (
+                      <button
+                        key={eng}
+                        onClick={() => setSelectedEngine(eng as any)}
+                        className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                          selectedEngine === eng 
+                            ? 'bg-white/10 text-white shadow-xl border border-white/10' 
+                            : 'text-white/20 hover:text-white/40'
+                        }`}
+                      >
+                        {eng}
+                      </button>
+                    ))}
+                  </div>
+               </div>
+               
+               <div className="p-4 bg-gradient-to-br from-white/5 to-transparent rounded-[1.5rem] border border-white/5 flex items-center gap-4">
+                  <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
+                    <Target className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40 block">Global Reach</span>
+                    <span className="text-[9px] font-bold text-emerald-500 uppercase">Optimized for Viral</span>
+                  </div>
+               </div>
+            </div>
+          </div>
+        </motion.div>
+      </section>
+
+      {/* Main Command Console */}
+      <section className="relative">
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.1 }}
+          className="glass-premium rounded-[3rem] p-8 space-y-8 overflow-hidden border border-white/5 shadow-2xl"
+        >
+          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full pointer-events-none" />
+          
+          <div className="space-y-6">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">
+                {t('title')} <span className="gradient-text-gold">{t('titleAccent')}</span>
+              </h1>
+              <div className="flex items-center gap-3 bg-white/5 p-2 rounded-full border border-white/5 w-fit">
+                 <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                 <span className="text-[9px] font-black uppercase tracking-widest text-white/40 pr-2">Profile Engine Ready</span>
+              </div>
+            </div>
+
+            {/* Mode Selection */}
+            <div className="flex p-1.5 bg-black/40 rounded-2xl border border-white/5 w-fit">
+              {[
+                { icon: Mic, label: t('modeTopic'), active: true },
+                { icon: Link2, label: t('modeLink') },
+                { icon: Search, label: t('modeSearch') },
+              ].map((mode, i) => (
+                <button
+                  key={i}
+                  className={`flex items-center gap-3 px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.1em] transition-all ${
+                    mode.active 
+                      ? 'bg-white/10 text-white shadow-lg border border-white/10' 
+                      : 'text-white/30 hover:text-white/50'
+                  }`}
+                >
+                  <mode.icon className="w-4 h-4" />
+                  <span className="hidden sm:inline">{mode.label}</span>
+                </button>
+              ))}
+            </div>
+
+            {/* Input Terminal */}
+            <div className="relative group">
+              <textarea
+                value={prompt}
+                onChange={(e) => setPrompt(e.target.value)}
+                className="w-full bg-black/60 border border-white/5 rounded-[2rem] p-8 text-lg font-medium text-white placeholder:text-white/5 focus:outline-none focus:border-purple-500/30 transition-all resize-none min-h-[180px] shadow-inner"
+                placeholder={t('placeholder')}
+              />
+              <div className="absolute bottom-6 right-8 flex items-center gap-4 opacity-30 group-focus-within:opacity-100 transition-opacity">
+                <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-white font-mono">
+                  {prompt.length > 0 ? `SIZE: ${prompt.length} CH` : 'IDLE'}
+                </span>
+              </div>
+            </div>
+
+            <button 
+              onClick={handleGenerate}
+              disabled={!prompt.trim() || isLoading}
+              className="w-full h-[72px] bg-white text-black rounded-3xl text-[15px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 active:scale-[0.98] transition-all disabled:opacity-30 disabled:grayscale group relative overflow-hidden shadow-2xl"
             >
-              <TrendingUp className="w-3 h-3" />
-              {t('expandBtn')}
-              <ArrowRight className="w-3 h-3" />
+              <div className="absolute inset-0 bg-gradient-to-r from-[#D4AF37] to-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity" />
+              <span className="relative z-10 flex items-center gap-3">
+                {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Rocket className="w-6 h-6" />}
+                {t('generateBtn')}
+              </span>
             </button>
           </div>
-        ))}
-      </div>
+        </motion.div>
+      </section>
 
-      {/* Link to Ideas */}
-      <Link href={`/${locale}/app/ideas`}>
-        <div
-          className="flex items-center justify-center gap-2 py-3 rounded-2xl text-[11px] font-bold uppercase tracking-widest transition-all hover:scale-[1.02]"
-          style={{
-            border: '1px dashed rgba(255,255,255,0.1)',
-            color: 'rgba(255,255,255,0.25)',
-          }}
-        >
-          {mocks('viewAllIdeas')}
+      {/* AI Strategist Recommendations (Discover) */}
+      <div className="space-y-8">
+        <div className="flex items-center justify-between px-4">
+          <div className="flex items-center gap-4">
+            <div className="w-10 h-10 rounded-2xl bg-[#9B5FFF]/10 flex items-center justify-center border border-[#9B5FFF]/20">
+              <Compass className="w-5 h-5 text-[#9B5FFF]" />
+            </div>
+            <div className="flex flex-col">
+              <h2 className="text-[13px] font-black uppercase tracking-[0.2em] text-white">
+                {t('discoverTitle')}
+              </h2>
+              <span className="text-[9px] text-white/30 font-bold uppercase tracking-widest mt-0.5">{t('discoverDesc')}</span>
+            </div>
+          </div>
+          <div className="hidden sm:flex gap-3">
+             <div className="w-1.5 h-1.5 rounded-full bg-white/5" />
+             <div className="w-1.5 h-1.5 rounded-full bg-white/10" />
+             <div className="w-1.5 h-1.5 rounded-full bg-[#9B5FFF] animate-pulse" />
+          </div>
         </div>
-      </Link>
+
+        {/* Discovery Feed */}
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6 px-1">
+          {IDEAS.map((idea, i) => (
+            <motion.div
+              key={idea.id}
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              transition={{ delay: i * 0.1 + 0.3 }}
+              className="group"
+            >
+              <div className="glass-premium rounded-[2.5rem] p-7 h-full flex flex-col space-y-6 border border-white/5 hover:border-[#00FFCC]/30 transition-all duration-500 cursor-pointer relative overflow-hidden"
+                   onClick={() => router.push(`/${locale}/app/projects/new/script?topic=${encodeURIComponent(idea.topic)}`)}>
+                
+                <div className="absolute top-0 right-0 p-6 opacity-0 group-hover:opacity-100 transition-opacity">
+                   <ArrowRight className="w-6 h-6 text-[#00FFCC]" />
+                </div>
+
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-5 rounded-full" style={{ background: idea.tagColor }} />
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em]" style={{ color: idea.tagColor }}>
+                      {idea.tag}
+                  </span>
+                </div>
+
+                <h3 className="text-2xl font-black text-white/90 leading-[1.1] tracking-tight group-hover:text-white transition-colors">
+                  {idea.topic}
+                </h3>
+
+                <div className="flex-1 flex flex-col justify-end space-y-6">
+                  <div className="p-5 bg-black/40 rounded-[1.5rem] border border-white/10 group-hover:border-[#00FFCC]/20 transition-colors">
+                    <p className="text-[12px] text-white/40 leading-relaxed font-semibold italic line-clamp-3">
+                      &ldquo;{idea.reason}&rdquo;
+                    </p>
+                  </div>
+
+                  <div className="flex items-center justify-between pt-2">
+                    <div className="flex flex-col">
+                       <span className="text-[28px] font-black leading-none mb-1" style={{ color: idea.tagColor }}>{idea.viral}%</span>
+                       <span className="text-[8px] font-black uppercase tracking-widest text-white/20">{t('viralLabel')}</span>
+                    </div>
+                    
+                    <button className="flex items-center gap-3 px-6 py-3.5 bg-white shadow-xl text-black rounded-3xl text-[11px] font-black uppercase tracking-tighter transition-all group-hover:scale-105 active:scale-95">
+                      {t('boostToStudio')}
+                    </button>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          ))}
+        </div>
+
+        {/* Global Hub Access */}
+        <Link href={`/${locale}/app/archive`} className="block px-1">
+          <motion.div 
+            whileHover={{ scale: 1.01 }}
+            className="py-10 border border-dashed border-white/10 rounded-[3rem] flex flex-col items-center justify-center gap-4 text-white/10 hover:text-white/40 hover:border-white/20 hover:bg-white/[0.01] transition-all group cursor-pointer"
+          >
+            <div className="w-12 h-12 rounded-full bg-white/5 flex items-center justify-center border border-white/5 group-hover:scale-110 group-hover:border-white/20 transition-all">
+              <Monitor className="w-6 h-6" />
+            </div>
+            <div className="text-center">
+              <span className="text-[12px] font-black uppercase tracking-[0.4em] block">{mocks('viewAllIdeas')}</span>
+              <span className="text-[8px] font-bold uppercase tracking-[0.2em] mt-1 opacity-40">Access Personal Library Hub</span>
+            </div>
+          </motion.div>
+        </Link>
+      </div>
     </div>
   );
 }

@@ -111,3 +111,9 @@
 | **B-Roll (Standard)** | Veo 3.1 | 30 секунд | $1.00 |
 | **Голос** | ElevenLabs | 150 слов | $0.15 |
 | **Итого себестоимость** | | | **~$1.35** |
+
+### 7. Deployment & Domains
+*   **Production Domain:** [viralengine.pro](https://viralengine.pro)
+*   **Technical/Preview Domain:** [viral-engine.vercel.app](https://viral-engine.vercel.app)
+*   **Infrastructure:** Vercel (Frontend/API), Supabase (DB/Auth)
+
