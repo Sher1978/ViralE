@@ -188,7 +188,7 @@ export default function StudioPage() {
             <div className="flex flex-col items-center justify-center text-center py-24 space-y-8 glass-premium rounded-[3rem] border border-white/5">
               <div className="relative">
                 <div className="w-20 h-20 rounded-[2rem] bg-white/[0.02] border border-white/5 flex items-center justify-center relative z-10">
-                   <tab.icon className="w-8 h-8 text-white/10" />
+                   <FlaskConical className="w-8 h-8 text-white/10" />
                 </div>
                 <div className="absolute inset-0 bg-purple-500/5 blur-3xl" />
               </div>

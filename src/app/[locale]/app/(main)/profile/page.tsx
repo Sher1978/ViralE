@@ -23,7 +23,7 @@ import { motion } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
 import { useEffect, useState } from 'react';
 import { profileService } from '@/lib/services/profileService';
-import { Profile } from '@/lib/types/profile';
+import { Profile } from '@/lib/services/profileService';
 
 export default function ProfilePage() {
   const t = useTranslations('profile');
@@ -32,7 +32,7 @@ export default function ProfilePage() {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
-    profileService.getProfile().then(setProfile);
+    profileService.getOrCreateProfile().then(setProfile);
   }, []);
 
   const SETTINGS_SECTIONS = [
