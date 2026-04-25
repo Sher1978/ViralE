@@ -96,16 +96,23 @@ export default function StudioPage() {
   ];
 
   return (
-    <div className="space-y-12 pb-32 max-w-7xl mx-auto px-4 overflow-x-hidden">
-      {/* Ultra-Clean Header */}
-      <div className="pt-10 mb-2">
-        <div className="space-y-1 text-center md:text-left">
-          <h1 className="text-5xl font-black uppercase tracking-tighter leading-none italic">
-            Viral <span className="text-purple-500">Studio</span>
-          </h1>
-          <p className="text-[11px] font-black uppercase tracking-[0.5em] text-white/20 mt-2">
-            AI Content Production pipeline
-          </p>
+    <div className="space-y-8 pb-32 max-w-7xl mx-auto px-4 overflow-x-hidden">
+      {/* Compact Pro Header */}
+      <div className="flex items-start justify-between pt-6 mb-2">
+        <div className="flex items-center gap-4">
+          {/* Logo/Strategist Placeholder - Ensuring it stays top-left as a button */}
+          <div className="w-12 h-12 rounded-2xl bg-purple-600/10 border border-purple-500/20 flex items-center justify-center active:scale-95 transition-transform cursor-pointer">
+            <h1 className="text-2xl font-black text-purple-500 italic">V</h1>
+          </div>
+          
+          <div className="space-y-0.5">
+            <h1 className="text-3xl font-black uppercase tracking-tighter leading-none italic">
+              Viral <span className="text-purple-500">Studio</span>
+            </h1>
+            <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/20">
+              AI Content Production
+            </p>
+          </div>
         </div>
       </div>
 
