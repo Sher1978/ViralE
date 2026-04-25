@@ -1,8 +1,10 @@
-'use client';
-
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { 
+  X, ArrowLeft, Library, Square, 
+  Settings, Type, Timer, Palette, Mic2, Camera,
+  MoreVertical, Edit3, Check, RotateCw
+} from 'lucide-react';
 
 interface TeleprompterViewProps {
   cameraStream: MediaStream | null;
@@ -18,6 +20,11 @@ interface TeleprompterViewProps {
   customScript: string;
   textSize: 'sm' | 'md' | 'lg';
   scriptOpacity: number;
+  onScriptUpdate: (newText: string) => void;
+  onBack?: () => void;
+  onToggleRecording?: () => void;
+  onFlipCamera?: () => void;
+  isRecordingVideo?: boolean;
   t: (key: string, data?: any) => string;
 }
 
@@ -35,11 +42,33 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
   customScript,
   textSize,
   scriptOpacity,
+  onScriptUpdate,
+  onBack,
+  onToggleRecording,
+  onFlipCamera,
+  isRecordingVideo,
   t,
 }) => {
+  const [isEditing, setIsEditing] = React.useState(false);
+  const [editedText, setEditedText] = React.useState('');
+  const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const handleStartEdit = () => {
+    const currentText = useCustomScript 
+      ? customScript 
+      : manifest?.segments.map((s: any) => s.scriptText).filter(Boolean).join('\n\n');
+    setEditedText(currentText || '');
+    setIsEditing(true);
+  };
+
+  const handleSaveEdit = () => {
+    onScriptUpdate(editedText);
+    setIsEditing(false);
+  };
+
   return (
-    <div className="w-full h-full relative flex flex-col items-center justify-center overflow-hidden rounded-[3rem] border border-white/5">
-      {/* Camera Layer */}
+    <div className="w-full h-full relative flex flex-col items-center justify-center overflow-hidden bg-black rounded-[3rem] border border-white/10 shadow-2xl">
+      {/* 📹 Video Foundation */}
       {cameraStream && (
         <div className="absolute inset-0 z-0">
           <video 
@@ -47,37 +76,105 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
             autoPlay 
             muted 
             playsInline
-            className={`w-full h-full object-cover opacity-60 transition-transform duration-500 ${isVideoMirrored ? 'scale-x-[-1]' : ''}`}
+            className={`w-full h-full object-cover opacity-70 transition-transform duration-1000 ${isVideoMirrored ? 'scale-x-[-1]' : ''}`}
           />
-          <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
         </div>
       )}
       
-      {/* Industry Reading Indicators */}
-      <div className="absolute top-[30%] left-0 right-0 z-20 pointer-events-none">
-        {/* Focus Marker Arrows */}
-        <div className="absolute left-8 -translate-y-1/2 flex items-center gap-4">
-          <ChevronRight size={48} className="text-purple-500 animate-pulse drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]" />
-          <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
-        </div>
-        <div className="absolute right-8 -translate-y-1/2 flex items-center gap-4 rotate-180">
-          <ChevronRight size={48} className="text-purple-500 animate-pulse drop-shadow-[0_0_10px_rgba(168,85,247,0.5)]" />
-          <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
-        </div>
+      {/* 🔮 Top HUD - Reference Style */}
+      <div className="absolute top-8 left-0 right-0 px-8 flex items-center justify-between z-40">
+        <button 
+          onClick={onBack}
+          className="text-white/80 hover:text-white transition-all active:scale-95"
+        >
+          <ArrowLeft size={32} />
+        </button>
         
-        {/* Central Reading Guide */}
-        <div className="mx-auto h-[100px] border-y border-white/5 bg-white/[0.02] flex items-center justify-center transition-all duration-700"
-             style={{ maxWidth: `${prompterWidth + 100}px` }}>
-          <div className="w-full h-[1px] bg-gradient-to-r from-transparent via-purple-500/50 to-transparent" />
+        <div className="flex items-center gap-6">
+          <button onClick={handleStartEdit} className="text-white/80 hover:text-white transition-all">
+            <Edit3 size={32} />
+          </button>
+          <button className="text-white/80 hover:text-white transition-all">
+            <MoreVertical size={32} />
+          </button>
         </div>
       </div>
 
-      {/* Status Indicator */}
-      <div className="absolute top-0 right-0 p-8 flex items-center gap-3">
-         <div className={`w-3 h-3 rounded-full ${isReading ? 'bg-red-500 animate-pulse box-content border-4 border-red-500/20' : 'bg-white/10'}`} />
-         <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">
-           {isReading ? 'On Air - Professional Mode' : 'Ready'}
-         </span>
+      {/* 🔵 Reading Guide - The Blue Line + Triangle */}
+      <div className="absolute top-[30%] left-0 right-0 z-20 pointer-events-none flex items-center">
+         {/* Triangle Marker */}
+         <div className="absolute left-0 w-0 h-0 border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent border-l-[12px] border-l-white ml-1" />
+         {/* The Blue Line */}
+         <div className="w-full h-[2px] bg-sky-500/80 shadow-[0_0_10px_rgba(14,165,233,0.5)]" />
+      </div>
+
+      {/* 📜 Scrolling Text Canvas */}
+      <div 
+        ref={prompterRef}
+        className={`w-full h-full overflow-y-auto scrollbar-none transition-transform duration-700 relative z-10 ${isMirrored ? 'scale-x-[-1]' : ''}`}
+        style={{
+          paddingTop: '30vh',
+          paddingBottom: '50vh'
+        }}
+      >
+        <div 
+          className="mx-auto space-y-32 transition-all duration-700 ease-out px-8 text-left"
+          style={{ maxWidth: `${prompterWidth}px` }}
+        >
+          <div className="space-y-12">
+            <p className={`font-black uppercase leading-[1.2] transition-all duration-500 tracking-tight ${
+              textSize === 'sm' ? 'text-3xl' : textSize === 'lg' ? 'text-7xl' : 'text-5xl'
+            }`} style={{ 
+              color: `rgba(255, 255, 255, ${isReading ? scriptOpacity : 0.8})`,
+              textShadow: '0 4px 10px rgba(0,0,0,0.8)'
+            }}>
+              {useCustomScript ? customScript : manifest?.segments.map((s: any) => s.scriptText).filter(Boolean).join('\n\n')}
+            </p>
+          </div>
+        </div>
+      </div>
+
+      {/* 🔴 Primary Action Bar */}
+      <div className="absolute bottom-28 left-0 right-0 px-12 flex items-center justify-center gap-10 z-30">
+        <button 
+          onClick={() => fileInputRef.current?.click()}
+          className="text-white/40 hover:text-white transition-all flex flex-col items-center gap-1"
+        >
+          <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center">
+            <Library size={24} />
+          </div>
+        </button>
+
+        <div className="flex items-center gap-6">
+          <motion.button 
+            whileTap={{ scale: 0.9 }}
+            onClick={onToggleRecording}
+            className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center"
+          >
+            <div className={`rounded-full transition-all duration-300 ${isRecordingVideo ? 'w-10 h-10 bg-red-600 rounded-md' : 'w-16 h-16 bg-red-600'}`} />
+          </motion.button>
+          
+          <div className="flex flex-col gap-4">
+            <button className="text-white/80 hover:text-white transition-all">
+              <Check size={28} />
+            </button>
+            <button onClick={onFlipCamera} className="text-white/80 hover:text-white transition-all">
+               <RotateCw size={28} />
+            </button>
+          </div>
+        </div>
+      </div>
+
+      {/* 🛠️ Floating Settings Toolbar */}
+      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40">
+         <div className="flex items-center gap-8 bg-black/40 backdrop-blur-3xl px-8 py-4 rounded-3xl border border-white/10 shadow-2xl">
+            <button className="text-white/60 hover:text-white transition-all"><X size={24} /></button>
+            <button className="text-white/60 hover:text-white transition-all"><Palette size={24} /></button>
+            <button className="text-white/60 hover:text-white transition-all"><Mic2 size={24} /></button>
+            <button className="text-white/40 hover:text-white transition-all px-4 py-1.5 bg-white/5 rounded-full text-[10px] font-black uppercase tracking-widest">Floating</button>
+            <button className="text-white/60 hover:text-white transition-all"><Type size={24} /></button>
+            <button className="text-white/60 hover:text-white transition-all"><Settings size={24} /></button>
+         </div>
       </div>
 
       {/* Countdown Overlay */}
@@ -87,70 +184,42 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
             initial={{ opacity: 0, scale: 2 }}
             animate={{ opacity: 1, scale: 1 }}
             exit={{ opacity: 0, scale: 0.5 }}
-            className="absolute inset-0 z-50 flex items-center justify-center bg-black/80 backdrop-blur-xl"
+            className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-2xl"
           >
-            <div className="relative">
-              <span className="text-[12rem] font-black italic text-transparent bg-clip-text bg-gradient-to-br from-purple-400 via-white to-blue-500 drop-shadow-[0_0_50px_rgba(168,85,247,0.8)]">
-                {countdown}
-              </span>
-              <div className="absolute -inset-20 border-2 border-white/10 rounded-full animate-ping opacity-20" />
-            </div>
+            <span className="text-[15rem] font-black italic text-white drop-shadow-[0_0_80px_rgba(168,85,247,0.5)]">
+              {countdown}
+            </span>
           </motion.div>
         )}
       </AnimatePresence>
-
-      {/* The Scrolling Canvas */}
-      <div 
-        ref={prompterRef}
-        className={`w-full h-full overflow-y-auto scrollbar-none transition-transform duration-700 ${isMirrored ? 'scale-x-[-1]' : ''}`}
-        style={{
-          paddingTop: '30vh',
-          paddingBottom: '60vh'
-        }}
-      >
-        <div 
-          className="mx-auto space-y-48 transition-all duration-700 ease-out px-12"
-          style={{ maxWidth: `${prompterWidth}px` }}
-        >
-          {!useCustomScript ? (
-            manifest?.segments.map((s: any, idx: number) => (
-              <div key={s.id} className="space-y-12 text-center group cursor-default">
-                <div className="flex items-center justify-center gap-6 opacity-20 group-hover:opacity-100 transition-opacity">
-                  <div className="h-[1px] w-24 bg-gradient-to-r from-transparent to-purple-500/50" />
-                  <span className="text-[12px] font-black uppercase text-purple-500 tracking-[0.5em]">{t('teleprompter.sceneLabel', { n: idx + 1 })}</span>
-                  <div className="h-[1px] w-24 bg-gradient-to-l from-transparent to-purple-500/50" />
-                </div>
-                <p className={`font-black leading-[1.2] transition-all duration-500 drop-shadow-2xl tracking-tight ${
-                  textSize === 'sm' ? 'text-4xl' : textSize === 'lg' ? 'text-8xl' : 'text-6xl'
-                }`} style={{ 
-                  color: `rgba(255, 255, 255, ${isReading ? scriptOpacity : 0.2})` 
-                }}>
-                  {s.scriptText || '---'}
-                </p>
-              </div>
-            ))
-          ) : (
-            <div className="space-y-12 text-center">
-               <div className="flex items-center justify-center gap-6 opacity-40">
-                  <div className="h-[1px] w-24 bg-gradient-to-r from-transparent to-blue-500/50" />
-                  <span className="text-[12px] font-black uppercase text-blue-500 tracking-[0.5em]">Custom Script Mode</span>
-                  <div className="h-[1px] w-24 bg-gradient-to-l from-transparent to-blue-500/50" />
-                </div>
-              <p className={`font-black leading-[1.2] transition-all duration-500 drop-shadow-2xl tracking-tight whitespace-pre-wrap ${
-                textSize === 'sm' ? 'text-4xl' : textSize === 'lg' ? 'text-8xl' : 'text-6xl'
-              }`} style={{ 
-                color: `rgba(255, 255, 255, ${isReading ? scriptOpacity : 0.2})` 
-              }}>
-                {customScript || 'PASTE SCRIPT IN CONSOLE'}
-              </p>
-            </div>
-          )}
-        </div>
-      </div>
       
-      {/* Fade Overlays */}
-      <div className="absolute inset-x-0 top-0 h-1/3 bg-gradient-to-b from-[#05050a] via-[#05050a]/80 to-transparent pointer-events-none z-10" />
-      <div className="absolute inset-x-0 bottom-0 h-1/3 bg-gradient-to-t from-[#05050a] via-[#05050a]/80 to-transparent pointer-events-none z-10" />
+      {/* Editor Modal Overlay */}
+      <AnimatePresence>
+        {isEditing && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="absolute inset-0 z-[110] bg-black/95 backdrop-blur-3xl p-10 flex flex-col gap-10"
+          >
+            <div className="flex items-center justify-between text-white">
+              <h3 className="text-2xl font-black italic uppercase">Edit Script</h3>
+              <div className="flex gap-4">
+                <button onClick={() => setIsEditing(false)} className="p-4 rounded-2xl bg-white/5 border border-white/10"><X size={24} /></button>
+                <button onClick={handleSaveEdit} className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs flex items-center gap-3"><Check size={18} /> Apply</button>
+              </div>
+            </div>
+            <textarea
+              autoFocus
+              value={editedText}
+              onChange={(e) => setEditedText(e.target.value)}
+              className="flex-1 bg-transparent border border-white/5 rounded-[2rem] p-8 text-2xl font-bold text-white focus:outline-none focus:border-purple-500/30 transition-all resize-none shadow-inner leading-relaxed"
+            />
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
+      <input ref={fileInputRef} type="file" accept="video/*" className="hidden" />
     </div>
   );
 };

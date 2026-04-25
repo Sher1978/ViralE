@@ -166,54 +166,96 @@ export async function POST(req: Request) {
         scriptJson = {
           evergreen: {
             hook: "Секрет раскрыт",
-            intro: `Сегодня мы поговорим про ${coreIdea || 'этот тренд'}. Почему это важно прямо сейчас?`,
-            story: `Вот 3 причины, почему ${coreIdea || 'это'} работает. Во-первых, это системность. Во-вторых, это внимание к деталям. И в-третьих, это Viral Engine.`,
+            problem: "Многие тратят годы на изучение темы, но не получают результата.",
+            good_news: "Есть системный путь, который сокращает время в 10 раз.",
+            solution: "Нужно сосредоточиться на базе и автоматизации процессов через Viral Engine.",
             cta: "Подпишись, чтобы качать свой Digital DNA!",
-            visual_hook: "Кинематографичный кадр: человек в очках дополненной реальности в стилистике киберпанк, неоновое синее и фиолетовое освещение, гиперреализм, 8k.",
-            social_post: "Как создавать контент будущего уже сегодня? 🧬 Пошаговый разбор в новом видео! #ViralEngine #Marketing #ContentCreation"
+            visual_hook: "Кинематографичный кадр: человек в очках дополненной реальности, неоновое синее освещение, 8k.",
+            social_post: "Как создавать контент будущего уже сегодня? 🧬 #ViralEngine #Marketing"
           },
           trend: {
             hook: "Тренд 2026: залетаем",
-            intro: "Ты готов к будущему? 2026 уже здесь.",
-            story: `Трендовый сценарий про ${coreIdea || 'это'}. Динамика, монтаж, ирония.`,
+            problem: "Старые методы охвата больше не работают в новой экономике внимания.",
+            good_news: "Алгоритмы теперь любят динамику и быструю смену кадров.",
+            solution: "Используй резкие переходы и провокационные хуки.",
             cta: "Ставь лайк, если в теме!",
-            visual_hook: "Динамичный коллаж из неоновых элементов и абстрактных фигур, яркий фиолетовый фон, стиль Digital Zen.",
-            social_post: "2026 уже здесь! 🚀 Лови свежий тренд и внедряй первым. #Trends2026 #FutureTech #Viral"
+            visual_hook: "Динамичный коллаж из неоновых элементов, яркий фиолетовый фон, стиль Digital Zen.",
+            social_post: "2026 уже здесь! 🚀 Лови свежий тренд. #Trends2026 #Viral"
           },
           educational: {
             hook: "Как это сделать",
-            intro: `Многие не знают, как правильно работать с ${coreIdea || 'этин'}.`,
-            story: "Шаг 1. План. Шаг 2. Нейросети. Шаг 3. Система. Всё просто.",
+            problem: "Сложные темы отпугивают аудиторию, если поданы скучно.",
+            good_news: "Любой процесс можно разложить на 3 простых шага.",
+            solution: "План, Нейросети, Система. Всё просто.",
             cta: "Сохрани, чтобы не потерять!",
-            visual_hook: "Минималистичный кадр: парящий кристалл с кодом внутри, мягкий студийный свет, премиальный вид.",
-            social_post: "Сложные вещи простыми словами. 🧠 Твоя шпаргалка по системному подходу. #Education #AI #Strategy"
+            visual_hook: "Минималистичный кадр: парящий кристалл с кодом внутри, мягкий свет.",
+            social_post: "Сложные вещи простыми словами. 🧠 #Education #AI"
+          },
+          controversial: {
+            hook: "Всё это ложь",
+            problem: "Вам внушают, что успех — это удача, но это математика.",
+            good_news: "Если убрать эмоции, остается чистая стратегия.",
+            solution: "Перестаньте верить гуру и начните верить данным.",
+            cta: "Пиши 'МАТРИЦА' в комментах!",
+            visual_hook: "Драматичный красный свет, разбитое зеркало, в котором отражается код.",
+            social_post: "Горькая правда про охваты. 💣 #Matrix #Truth #System"
+          },
+          storytelling: {
+            hook: "Я всё потерял",
+            problem: "Год назад мой аккаунт был в коме, охваты на нуле.",
+            good_news: "Одна случайная встреча изменила мой подход навсегда.",
+            solution: "Я понял, что контент — это не текст, а отражение вашей ДНК.",
+            cta: "Читай продолжение в закрепе!",
+            visual_hook: "Теплое закатное освещение, открытая книга, пыль в лучах света.",
+            social_post: "Мой личный путь от нуля до системы. 📖 #Story #MyPath"
           }
         };
       } else {
         scriptJson = {
           evergreen: {
             hook: "Secret Unlocked",
-            intro: `Today we dive into ${coreIdea || 'this topic'}. Why does it matter right now?`,
-            story: `Here are 3 reasons why ${coreIdea || 'it'} works. First, consistency. Second, attention to detail. And third, Viral Engine.`,
+            problem: "Most people spend years studying a topic without seeing real progress.",
+            good_news: "There is a systematic path that cuts that time by 10x.",
+            solution: "Focus on the core fundamentals and automate processes with Viral Engine.",
             cta: "Follow to upgrade your Digital DNA!",
-            visual_hook: "Cinematic shot of a person wearing AR glasses, cyberpunk style, neon blue and purple lighting, hyper-realistic, 8k.",
-            social_post: "How to create future-proof content today? 🧬 Step-by-step breakdown in my new video! #ViralEngine #Marketing #ContentCreation"
+            visual_hook: "Cinematic shot of a person wearing AR glasses, neon blue lighting, 8k.",
+            social_post: "How to create future-proof content today? 🧬 #ViralEngine #Marketing"
           },
           trend: {
             hook: "2026 Trend Alert",
-            intro: "Are you ready for the future? 2026 is here.",
-            story: `Trend-optimized scenario about ${coreIdea || 'this'}. Fast pace, extreme edits.`,
+            problem: "Legacy reach methods are dying in the new attention economy.",
+            good_news: "Algorithms now crave dynamics and rapid visual shifts.",
+            solution: "Leverage sharp transitions and provocative text hooks.",
             cta: "Like for more alpha!",
-            visual_hook: "Dynamic collage of neon elements and abstract shapes, vibrant purple background, Digital Zen style.",
-            social_post: "2026 is already here! 🚀 Catch the latest trend and implement it first. #Trends2026 #FutureTech #Viral"
+            visual_hook: "Dynamic collage of neon elements, vibrant purple background, Digital Zen style.",
+            social_post: "2026 is here! 🚀 Catch the latest trend. #Trends2026 #Viral"
           },
           educational: {
             hook: "The How-To Guide",
-            intro: `Most people fail with ${coreIdea || 'this'}. Here is why.`,
-            story: "Step 1. Strategy. Step 2. AI stacking. Step 3. Systems. It works.",
+            problem: "Complex topics bore your audience when presented poorly.",
+            good_news: "Any process can be distilled into 3 simple, actionable steps.",
+            solution: "Plan, AI integration, Systems. That is it.",
             cta: "Save this for later!",
-            visual_hook: "Minimalist shot of a floating crystal with code inside, soft studio light, premium aesthetic.",
-            social_post: "Complex things made simple. 🧠 Your cheat sheet for a systematic approach. #Education #AI #Strategy"
+            visual_hook: "Minimalist shot of a floating crystal with code inside, soft studio light.",
+            social_post: "Complex things made simple. 🧠 #Education #AI"
+          },
+          controversial: {
+            hook: "It Is All A Lie",
+            problem: "They tell you success is luck, but it is pure cold math.",
+            good_news: "Remove the emotion, and only strategy remains.",
+            solution: "Stop following gurus and start following the data arrays.",
+            cta: "Type 'MATRIX' below!",
+            visual_hook: "Dramatic red lighting, a shattered mirror reflecting code streams.",
+            social_post: "The bitter truth about growth. 💣 #Matrix #Truth #System"
+          },
+          storytelling: {
+            hook: "I Lost Everything",
+            problem: "A year ago, my account was dead, reach was at absolute zero.",
+            good_news: "One chance encounter changed my production approach forever.",
+            solution: "I realized content is not just text, it is a mirror of your DNA.",
+            cta: "Read my full story in the bio!",
+            visual_hook: "Warm sunset lighting, an open book, dust particles in light rays.",
+            social_post: "My personal journey from zero to system. 📖 #Story #MyPath"
           }
         };
       }

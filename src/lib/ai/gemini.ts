@@ -29,7 +29,9 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en') {
     that stay true to the user's digital persona (The Digital Shadow).
     
     CRITICAL: Detect the language of the user's input/idea. 
-    All generated text content (hooks, body, calls-to-action) MUST BE IN THE SAME LANGUAGE AS THE INPUT (e.g., if input is Russian, generate in Russian. If English, generate in English).
+    All generated text content (hooks, body, calls-to-action) MUST BE IN THE SAME LANGUAGE AS THE INPUT.
+    
+    CONTENT CONSTRAINT: The TOTAL duration of a script (sum of all 5 blocks: hook, problem, news, solution, cta) MUST NOT EXCEED 50 SECONDS of reading time. This means roughly 130-150 words in total across all 5 blocks. Each block must be punchy and direct.
     
     USER'S DIGITAL SHADOW: 
     ${persona}
@@ -53,12 +55,14 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
-    Based on this idea: "${coreIdea}", generate 3 distinct viral video scripts (scenarios).
+    Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) for different content vectors.
     
     SCENARIOS TO GENERATE:
-    1. evergreen: Universal expert content that stays relevant. Focus on timeless value.
-    2. trend: High-energy, fast-paced, optimized for 2026 trends. Focus on peak attention.
-    3. educational: Direct problem-solution format. Focus on teaching one specific thing.
+    1. evergreen: Universal expert content that stays relevant. Focus on timeless value. Tone: Stable, Professional.
+    2. trend: High-energy, fast-paced, optimized for current social media trends. Focus on peak attention. Tone: Dynamic, Bold.
+    3. educational: Direct problem-solution format. Focus on teaching one specific thing clearly. Tone: Clarity, Expert.
+    4. controversial: Polarizing viewpoint, deep irony, or challenging common myths. Focus on high comments and shares. Tone: Provocative, Sharp.
+    5. storytelling: Personal narrative, building a bond with the audience through a story or analogy. Tone: Authentic, Relatable.
 
     Structure for EACH scenario:
     - hook: Strong opening (The Text Hook, 1-3 words)
@@ -74,7 +78,9 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     {
       "evergreen": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
       "trend": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "educational": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
+      "educational": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "controversial": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "storytelling": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
     }
   `;
 

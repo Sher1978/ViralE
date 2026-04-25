@@ -20,6 +20,8 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en') {
     
     CRITICAL: All generated text content (hooks, body, calls-to-action) MUST BE IN ${languageName.toUpperCase()}.
     
+    CONTENT CONSTRAINT: The TOTAL duration of a script (sum of all 5 blocks: hook, problem, good_news, solution, cta) MUST NOT EXCEED 50 SECONDS of reading time (max 150 words total).
+    
     USER'S DIGITAL SHADOW: 
     ${persona}
     
@@ -43,33 +45,38 @@ export async function generateScript(
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
-    Based on this idea: "${coreIdea}", generate 3 distinct viral video scripts (scenarios).
+    Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) for different content vectors.
     
     SCENARIOS TO GENERATE:
-    1. evergreen: Universal expert content that stays relevant. Focus on timeless value.
-    2. trend: High-energy, fast-paced, optimized for 2026 trends. Focus on peak attention.
-    3. educational: Direct problem-solution format. Focus on teaching one specific thing.
+    1. evergreen: Universal expert content, timeless value.
+    2. trend: Optimized for current viral trends, high energy.
+    3. educational: Direct problem-solution teaching.
+    4. controversial: Challenging myths, deep irony, provocative.
+    5. storytelling: Personal narrative, bond building.
 
     Structure for EACH scenario:
-    - hook: 1-3 words, high impact (The Text Hook)
-    - intro: first 3 seconds
-    - story: the "meat" of the content
-    - cta: single sentence call to action
-    - visual_hook: A highly detailed, cinematic prompt for an AI image generator (like Midjourney) to create a viral COVER for this video. Use professional photography terms.
-    - social_post: A short, engaging social media description/caption with 3 relevant emojis and 3 tags.
+    - hook: 1-3 words impact
+    - problem: the pain point
+    - good_news: the positive turn
+    - solution: the core value/lesson
+    - cta: punchy call to action
+    - visual_hook: detailed Cover image prompt
+    - social_post: engaging caption
     
-    REMEMBER: All text output must be in ${languageName}. 
+    REMEMBER: Output in ${languageName}. 
     Output ONLY valid JSON in format: 
     {
-      "evergreen": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "trend": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "educational": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
+      "evergreen": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "trend": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "educational": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "controversial": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "storytelling": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
     }
   `;
 
   const response = await anthropic.messages.create({
     model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
-    max_tokens: 1024,
+    max_tokens: 2048,
     system: systemPrompt,
     messages: [
       { role: "user", content: userPrompt }
@@ -106,13 +113,7 @@ export async function refineScript(
     INSTRUCTION: "${instruction}"
     
     TASK: Refine the script based on the instruction. 
-    You can update any of these parts:
-    - hook (text hook)
-    - intro
-    - story (body)
-    - cta
-    - visual_hook (cover image prompt)
-    - social_post (caption)
+    Update these specific parts: hook, problem, good_news, solution, cta, visual_hook, social_post.
     
     CRITICAL: 
     - Maintain the user's digital shadow and style.

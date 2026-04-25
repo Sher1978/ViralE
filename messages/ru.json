@@ -156,8 +156,10 @@
     "regenerate": "Регенерировать блок",
     "scenarios": {
       "evergreen": "Evergreen",
-      "trend": "Trend 2026",
+      "trend": "Trends",
       "educational": "Educational",
+      "controversial": "Controversial",
+      "storytelling": "Storytelling",
       "lockedHint": "Доступно в пакете Creator. Перейдите на Creator, чтобы видеть все сценарии."
     },
     "creditThreshold": "Минимум 50 кредитов для редактирования",

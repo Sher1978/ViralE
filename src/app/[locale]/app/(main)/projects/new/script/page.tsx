@@ -42,7 +42,7 @@ export default function ScriptLabPage() {
   const [limitModalData, setLimitModalData] = useState({ title: '', desc: '', type: 'trial' as any });
 
 
-  const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational'>('evergreen');
+  const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>('evergreen');
   const [allScenarios, setAllScenarios] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
@@ -62,7 +62,7 @@ export default function ScriptLabPage() {
     return () => clearInterval(interval);
   }, [isLoading, isGenerating, loadingSteps.length]);
   
-  const [selectionSources, setSelectionSources] = useState<Record<string, 'evergreen' | 'trend' | 'educational'>>({
+  const [selectionSources, setSelectionSources] = useState<Record<string, 'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>>({
     hook: 'evergreen',
     problem: 'evergreen',
     good_news: 'evergreen',
@@ -85,17 +85,7 @@ export default function ScriptLabPage() {
   const [masterTextOverride, setMasterTextOverride] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
 
-  const scenarios: ('evergreen' | 'trend' | 'educational')[] = ['evergreen', 'trend', 'educational'];
-
-  const handleNextScenario = () => {
-    const nextIdx = (scenarios.indexOf(activeScenario) + 1) % scenarios.length;
-    setActiveScenario(scenarios[nextIdx]);
-  };
-
-  const handlePrevScenario = () => {
-    const prevIdx = (scenarios.indexOf(activeScenario) - 1 + scenarios.length) % scenarios.length;
-    setActiveScenario(scenarios[prevIdx]);
-  };
+  const scenarios: ('evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling')[] = ['evergreen', 'trend', 'educational', 'controversial', 'storytelling'];
 
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [currentVersion, setCurrentVersion] = useState<ProjectVersion | null>(null);
@@ -202,8 +192,21 @@ export default function ScriptLabPage() {
     setActiveScenario(scenario);
   };
 
-  const handleBlockSelect = (type: string, source: 'evergreen' | 'trend' | 'educational') => {
+  const handleBlockSelect = (type: string, source: 'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling') => {
     setSelectionSources(prev => ({ ...prev, [type]: source }));
+  };
+
+  const handleBlockUpdate = (blockId: string, scenarioId: string, newContent: string) => {
+    setAllScenarios((prev: any) => {
+      if (!prev) return prev;
+      return {
+        ...prev,
+        [scenarioId]: {
+          ...prev[scenarioId],
+          [blockId]: newContent
+        }
+      };
+    });
   };
 
   const getActiveBlockValue = (type: string) => {
@@ -214,7 +217,7 @@ export default function ScriptLabPage() {
   };
 
   const getFinalText = () => {
-    if (!allScenarios) return Object.values(scriptData).filter(v => v).join(' ');
+    if (!allScenarios) return Object.values(scriptData).filter(v => v).join('\n\n');
     const parts = [
       allScenarios[selectionSources.hook]?.hook,
       allScenarios[selectionSources.problem]?.problem,
@@ -222,7 +225,12 @@ export default function ScriptLabPage() {
       allScenarios[selectionSources.solution]?.solution,
       allScenarios[selectionSources.cta]?.cta,
     ];
-    return parts.filter(Boolean).join(' ');
+    return parts.filter(Boolean).join('\n\n');
+  };
+
+  const handleCopyToClipboard = () => {
+    const text = getFinalText();
+    navigator.clipboard.writeText(text);
   };
 
   const handleApplyRefinement = async (instruction: string) => {
@@ -483,8 +491,8 @@ export default function ScriptLabPage() {
         if (!version) throw new Error(locale === 'ru' ? 'Ошибка при обновлении версии' : 'Version update failed');
       }
 
-      // Redirect to Storyboard
-      router.push(`/app/projects/new/storyboard?projectId=${pId}&versionId=${vId}`);
+      // Redirect to Studio (Teleprompter)
+      router.push(`/app/projects/${pId}/studio?tab=teleprompter`);
     } catch (err: any) {
       console.error('[ScriptLab] Save failed:', err);
       setError(err.message || (locale === 'ru' ? 'Не удалось сохранить проект' : 'Failed to save project'));
@@ -702,7 +710,9 @@ export default function ScriptLabPage() {
           scenarios={[
             { id: 'evergreen', color: '#00FF9F', label: 'Evergreen' },
             { id: 'trend', color: '#FF8A00', label: 'Trends' },
-            { id: 'educational', color: '#3B82F6', label: 'Educational' }
+            { id: 'educational', color: '#3B82F6', label: 'Educational' },
+            { id: 'controversial', color: '#FF2D55', label: 'Controversial' },
+            { id: 'storytelling', color: '#00D2FF', label: 'Storytelling' }
           ]} 
         />
       </div>
@@ -757,14 +767,30 @@ export default function ScriptLabPage() {
           { id: 'solution', label: t('tagSolution') },
           { id: 'cta', label: t('tagCTA') }
         ]}
-        scenarios={['evergreen', 'trend', 'educational']}
+        scenarios={['evergreen', 'trend', 'educational', 'controversial', 'storytelling']}
         selectionSources={selectionSources}
         allScenarios={allScenarios}
         scriptData={scriptData}
         locale={locale}
         t={t}
         onBlockSelect={handleBlockSelect}
+        onBlockUpdate={handleBlockUpdate}
         onRefine={handleApplyRefinement}
+        onAccept={async () => {
+          const synthesizedScript = {
+            hook: allScenarios[selectionSources.hook]?.hook || scriptData.hook,
+            problem: allScenarios[selectionSources.problem]?.problem || scriptData.problem,
+            good_news: allScenarios[selectionSources.good_news]?.good_news || scriptData.good_news,
+            solution: allScenarios[selectionSources.solution]?.solution || scriptData.solution,
+            cta: allScenarios[selectionSources.cta]?.cta || scriptData.cta,
+            visual_hook: allScenarios[selectionSources.hook]?.visual_hook || scriptData.visual_hook,
+            social_post: allScenarios[selectionSources.hook]?.social_post || scriptData.social_post,
+          };
+          setScriptData(synthesizedScript as any);
+          handleApprove();
+        }}
+        onCopy={handleCopyToClipboard}
+        isSaving={isSaving}
       />
 
       <StrategistChat 
@@ -782,34 +808,6 @@ export default function ScriptLabPage() {
         type={error ? 'error' : limitModalData.type}
         locale={locale}
       />
-
-      {/* Footer Actions - Floating Accept Button */}
-      <div className="fixed bottom-28 left-0 right-0 p-4 z-50 flex justify-center">
-        <div className="max-w-md w-full relative">
-          <div className="absolute inset-x-4 -inset-y-2 bg-purple-500/20 blur-3xl opacity-50 pointer-events-none" />
-          <button 
-            onClick={async () => {
-              // Automatically synthesize selected blocks from across scenarios
-              const synthesizedScript = {
-                hook: allScenarios[selectionSources.hook]?.hook || scriptData.hook,
-                problem: allScenarios[selectionSources.problem]?.problem || scriptData.problem,
-                good_news: allScenarios[selectionSources.good_news]?.good_news || scriptData.good_news,
-                solution: allScenarios[selectionSources.solution]?.solution || scriptData.solution,
-                cta: allScenarios[selectionSources.cta]?.cta || scriptData.cta,
-                visual_hook: allScenarios[selectionSources.hook]?.visual_hook || scriptData.visual_hook,
-                social_post: allScenarios[selectionSources.hook]?.social_post || scriptData.social_post,
-              };
-              setScriptData(synthesizedScript as any);
-              handleApprove();
-            }}
-            disabled={isSaving || isRefining || !allScenarios}
-            className="w-full btn-primary py-6 rounded-[2.5rem] flex items-center justify-center gap-4 group shadow-[0_20px_50px_rgba(0,255,159,0.2)]"
-          >
-            <span className="font-black text-sm uppercase tracking-[0.3em]">Accept Scenario</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </div>
-      </div>
     </div>
   );
 }
