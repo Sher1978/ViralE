@@ -70,7 +70,7 @@ export const renderService = {
    * Uploads recorded media to Supabase storage
    */
   async uploadMedia(projectId: string, blob: Blob, type: 'video' | 'audio'): Promise<{ assetId: string, publicUrl: string }> {
-    const fileName = `${projectId}/${type}_${Date.now()}.${blob.type.includes('video') ? 'webm' : 'webm'}`;
+    const fileName = `${projectId}/${type}_${Date.now()}.${type === 'video' ? 'webm' : 'mp3'}`;
     const filePath = `user_recordings/${fileName}`;
 
     // 1. Upload to Storage
@@ -106,19 +106,18 @@ export const renderService = {
    * Saves studio manifest to dedicated table
    */
   async saveManifest(projectId: string, manifest: any, name?: string): Promise<any> {
-    const { data, error } = await supabase
-      .from('studio_manifests')
-      .insert({
-        project_id: projectId,
-        manifest_json: manifest,
-        name: name || `Draft ${new Date().toLocaleTimeString()}`,
-        is_active: true
-      })
-      .select()
-      .single();
-
-    if (error) throw error;
-    return data;
+    const response = await fetch('/api/studio/manifest', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ projectId, manifest, name })
+    });
+    
+    if (!response.ok) {
+      const errorData = await response.json();
+      throw new Error(errorData.error || 'Failed to save manifest');
+    }
+    
+    return response.json();
   },
 
   /**

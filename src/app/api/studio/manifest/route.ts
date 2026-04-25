@@ -10,8 +10,33 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing parameters' }, { status: 400 });
     }
 
-    // Insert a new version of the manifest
-    // The database trigger will automatically set is_active=false for previous ones
+    // 1. Check for existing active manifest to update (Task-16 refinement for autosave)
+    const { data: existing } = await authorizedSupabase
+      .from('studio_manifests')
+      .select('id')
+      .eq('project_id', projectId)
+      .eq('is_active', true)
+      .order('created_at', { ascending: false })
+      .limit(1)
+      .single();
+
+    if (existing?.id) {
+      const { data: updatedManifest, error: updateError } = await authorizedSupabase
+        .from('studio_manifests')
+        .update({
+          manifest_json: manifest,
+          name: name || `Draft ${new Date().toLocaleTimeString()}`,
+          updated_at: new Date().toISOString()
+        })
+        .eq('id', existing.id)
+        .select()
+        .single();
+      
+      if (updateError) throw updateError;
+      return NextResponse.json({ success: true, manifestId: updatedManifest.id });
+    }
+
+    // 2. No existing manifest — create the first one
     const { data: newManifest, error } = await authorizedSupabase
       .from('studio_manifests')
       .insert({

@@ -2,7 +2,9 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { useRouter, useParams } from 'next/navigation';
+import { useParams } from 'next/navigation';
+import { useRouter } from '@/navigation';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { 
   Play, Pause, SkipForward, SkipBack, 
   Settings2, Wand2, RefreshCw, Plus, X,
@@ -84,10 +86,23 @@ export default function StudioPage() {
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   
   const prompterRef = useRef<HTMLDivElement>(null);
+  const prompterSidebarRef = useRef<HTMLDivElement>(null);
   const scrollPosRef = useRef(0);
+  
+  // Polling Refs
+  const pollIntervalsRef = useRef<Map<string, NodeJS.Timeout>>(new Map());
+  const pollAttemptsRef = useRef<Map<string, number>>(new Map());
 
   // Assembly States
   const [clarifyingPrompts, setClarifyingPrompts] = useState<Record<string, string>>({});
+
+  // Premium Modal States
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [modalConfig, setModalConfig] = useState({ 
+    title: '', 
+    desc: '', 
+    type: 'info' as 'credits' | 'tier' | 'success' | 'info' | 'error' | 'trial' | 'warning' | 'confirm'
+  });
 
   useEffect(() => {
     async function loadStudioData() {
@@ -239,7 +254,8 @@ export default function StudioPage() {
         const pixelsPerMs = (scrollSpeed * 0.05); 
         scrollPosRef.current += pixelsPerMs * delta;
         
-        prompterRef.current.scrollTop = scrollPosRef.current;
+        if (prompterRef.current) prompterRef.current.scrollTop = scrollPosRef.current;
+        if (prompterSidebarRef.current) prompterSidebarRef.current.scrollTop = scrollPosRef.current;
       }
       frameId = requestAnimationFrame(animate);
     };
@@ -287,6 +303,7 @@ export default function StudioPage() {
       setIsReading(true);
       scrollPosRef.current = 0;
       if (prompterRef.current) prompterRef.current.scrollTop = 0;
+      if (prompterSidebarRef.current) prompterSidebarRef.current.scrollTop = 0;
       
       // Start Video Recording if in Camera mode
       if (cameraStream) {
@@ -457,11 +474,28 @@ export default function StudioPage() {
       
       // 3. Start Polling for this job
       if (data.jobId) {
+        pollAttemptsRef.current.set(segmentId, 0);
         const pollInterval = setInterval(async () => {
           try {
+            const attempts = pollAttemptsRef.current.get(segmentId) || 0;
+            if (attempts > 20) { // Max 1 minute polling (20 * 3s)
+              clearInterval(pollInterval);
+              pollIntervalsRef.current.delete(segmentId);
+              setManifest(prev => {
+                if (!prev) return prev;
+                return {
+                  ...prev,
+                  segments: prev.segments.map(s => s.id === segmentId ? { ...s, status: 'error' } : s)
+                };
+              });
+              return;
+            }
+            pollAttemptsRef.current.set(segmentId, attempts + 1);
+
             const jobStatus = await renderService.getJobStatus(data.jobId);
             if (jobStatus && (jobStatus.status === 'completed' || jobStatus.status === 'failed')) {
               clearInterval(pollInterval);
+              pollIntervalsRef.current.delete(segmentId);
               
               setManifest(prev => {
                 if (!prev) return prev;
@@ -481,6 +515,7 @@ export default function StudioPage() {
             console.error('Job polling failed:', pollErr);
           }
         }, 3000); // Poll every 3s
+        pollIntervalsRef.current.set(segmentId, pollInterval);
       }
       
     } catch (err) {
@@ -616,8 +651,15 @@ export default function StudioPage() {
         await renderService.triggerStudioRender(projectId, version.id, manifest, {
           includeMarketingPackage: true
         });
-        alert('Master Render Started! Check Telegram for your video + Instagram marketing package (6 images + cover + SEO description).');
-        router.push(`/${locale}/app/projects`);
+        setModalConfig({
+          title: locale === 'ru' ? 'Рендер Запущен' : 'Render Started',
+          desc: locale === 'ru' 
+            ? 'Мастер-рендер запущен! Проверьте Telegram для получения видео и маркетингового пакета.' 
+            : 'Master Render Started! Check Telegram for your video and marketing package.',
+          type: 'success'
+        });
+        setShowLimitModal(true);
+        router.push(`/app/projects/${projectId}?tab=delivery`);
       }
     } catch (err) {
       console.error('Final export failed:', err);
@@ -719,7 +761,7 @@ export default function StudioPage() {
       if (!version) throw new Error('Version not found');
 
       await renderService.triggerStudioRender(projectId, version.id, manifest);
-      router.push(`/${locale}/app/projects/${projectId}?tab=delivery`);
+      router.push(`/app/projects/${projectId}?tab=delivery`);
     } catch (err) {
       console.error('Final render trigger failed:', err);
     } finally {
@@ -988,8 +1030,13 @@ export default function StudioPage() {
                         <button 
                           onClick={() => {
                             // Logic to switch to Avatar generation
-                            setActiveTab('settings');
-                            alert('Switching to AI Avatar Engine. Update your HeyGen/Vapi settings to begin synthesis.');
+                          setActiveTab('settings');
+                          setModalConfig({
+                            title: locale === 'ru' ? 'ИИ Аватар' : 'AI Avatar',
+                            desc: locale === 'ru' ? 'Переключение на AI Avatar Engine. Обновите настройки HeyGen/Vapi для начала синтеза.' : 'Switching to AI Avatar Engine. Update your HeyGen/Vapi settings to begin synthesis.',
+                            type: 'info'
+                          });
+                          setShowLimitModal(true);
                           }}
                           className="flex-1 h-16 rounded-2xl bg-purple-600 text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 hover:bg-purple-500 hover:scale-[1.02] active:scale-95 transition-all shadow-xl shadow-purple-500/20"
                         >
@@ -1019,7 +1066,7 @@ export default function StudioPage() {
                       <div className="absolute top-1/2 left-0 right-0 h-[2px] bg-purple-500/20 z-0" />
                       
                       <div 
-                        ref={prompterRef}
+                        ref={prompterSidebarRef}
                         className="w-full max-w-2xl text-center overflow-y-auto no-scrollbar relative z-10"
                         style={{ 
                           fontSize: textSize === 'lg' ? '3.5rem' : textSize === 'md' ? '2.5rem' : '1.5rem', 
@@ -1057,20 +1104,6 @@ export default function StudioPage() {
            </div>
         )}
 
-        {activeTab === 'knowledge' && (
-          <div className="absolute inset-0 bg-[#05050a] z-[60] p-6 overflow-y-auto">
-             <div className="flex justify-between items-center mb-8">
-                <h2 className="text-xl font-black uppercase tracking-tight">Digital DNA Vault</h2>
-                <button onClick={() => setActiveTab('assembly')} className="p-3 bg-white/5 rounded-2xl"><X size={20} /></button>
-             </div>
-             {currentProfile && (
-               <KnowledgeLab 
-                 profile={currentProfile} 
-                 onProfileUpdate={(updated) => setCurrentProfile(updated)} 
-               />
-             )}
-          </div>
-        )}
 
         {/* Global Modal Overlays */}
         <BRollPickerModal 
@@ -1480,7 +1513,14 @@ export default function StudioPage() {
               <div className="p-4 rounded-2xl bg-white/5 border border-white/5 space-y-4">
                  <p className="text-[10px] font-black uppercase text-white/30 tracking-widest">AI Scene Generator</p>
                  <button 
-                  onClick={() => {/* Trigger Veo 3 Job */}}
+                  onClick={() => {
+                    setModalConfig({
+                      title: locale === 'ru' ? 'Veo 3 Скоро' : 'Veo 3 Coming Soon',
+                      desc: locale === 'ru' ? 'Генерация через Veo 3 скоро будет доступна в вашем регионе.' : 'Veo 3 generation will be available in your region soon.',
+                      type: 'info'
+                    });
+                    setShowLimitModal(true);
+                  }}
                   className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-500 to-blue-500 text-white text-[10px] font-black uppercase tracking-widest hover:shadow-[0_0_20px_rgba(168,85,247,0.4)] transition-all flex items-center justify-center gap-2"
                  >
                    <Sparkles size={16} /> Generate with Veo 3
@@ -1504,8 +1544,8 @@ export default function StudioPage() {
                     </div>
                     <div className="p-3 bg-black/60 backdrop-blur-sm -mt-12 relative z-10 flex justify-between items-center border-t border-white/5">
                       <span className="text-[8px] font-black uppercase truncate w-32 tracking-wider">{asset.name}</span>
-                      <button 
-                        onClick={() => {/* Cycle Source Trigger */}}
+                     <button 
+                        onClick={() => cycleBroll()}
                         className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10"
                       >
                         <RefreshCw size={12} className="text-purple-400" />
@@ -1878,7 +1918,7 @@ export default function StudioPage() {
               <div className="absolute bottom-8 left-8 right-8 h-1 bg-white/10 rounded-full overflow-hidden">
                 <div 
                   className="h-full bg-purple-500 transition-all duration-300"
-                  style={{ width: (activeIndex / Math.max(1, manifest?.segments.length || 1)) * 100 + "%" }}
+                  style={{ width: ((activeIndex + 1) / Math.max(1, manifest?.segments.length || 1)) * 100 + "%" }}
                 />
               </div>
             </div>
@@ -2097,7 +2137,7 @@ export default function StudioPage() {
                   {isRegenerating === selectedSegment.id ? 'Synthesizing...' : selectedSegment.refinementPrompt ? 'Synthesize Refinement' : 'Regenerate Scene'}
                 </button>
                 <div className="flex items-center justify-center gap-3 mt-4 text-[10px] font-black uppercase tracking-widest text-white/20">
-                  <span>Balance: 420 CR</span>
+                  <span>Balance: {currentProfile?.credits_balance ?? 0} CR</span>
                   <div className="w-1 h-1 rounded-full bg-white/10" />
                   <span className="text-purple-400/60">
                     Cost: {selectedSegment.provider === 'higgsfield' ? '15' : '50'} CR
@@ -2151,15 +2191,6 @@ export default function StudioPage() {
         </aside>
 
 
-      <style jsx global>{`
-        @keyframes kenburns {
-          from { transform: scale(1) translate(0, 0); }
-          to { transform: scale(1.1) translate(-1%, -1%); }
-        }
-        .animate-ken-burns {
-          animation: kenburns 10s ease infinite alternate;
-        }
-      `}</style>
 
       {/* Recording Review Overlay */}
       <AnimatePresence>
@@ -2265,6 +2296,16 @@ export default function StudioPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      <PremiumLimitModal
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        title={modalConfig.title}
+        description={modalConfig.desc}
+        type={modalConfig.type}
+        locale={locale}
+        balance={currentProfile?.credits_balance}
+      />
     </div>
   );
 

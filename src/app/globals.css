@@ -642,4 +642,12 @@
     background-size: 200% 200%;
     animation: mesh 5s ease infinite;
   }
+
+  @keyframes kenburns {
+    from { transform: scale(1) translate(0, 0); }
+    to { transform: scale(1.1) translate(-1%, -1%); }
+  }
+  .animate-ken-burns {
+    animation: kenburns 10s ease infinite alternate;
+  }
 }
