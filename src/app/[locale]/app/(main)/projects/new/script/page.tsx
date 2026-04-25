@@ -13,6 +13,8 @@ import { projectService, Project, ProjectVersion } from '@/lib/services/projectS
 import { StrategistChat } from '@/components/studio/StrategistChat';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { ContentMatrix } from './_components/ContentMatrix';
+import { ScenarioLegend } from './_components/ScenarioLegend';
 
 
 export default function ScriptLabPage() {
@@ -666,14 +668,12 @@ export default function ScriptLabPage() {
             </button>
           )}
         </div>
-
-      {/* Errors are handled via PremiumLimitModal below */}
       </div>
     );
   }
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20">
+    <div className="space-y-6 animate-fade-in pb-40">
       <StatusStepper currentStep="script" />
 
       {error && (
@@ -682,90 +682,30 @@ export default function ScriptLabPage() {
         </div>
       )}
 
-      {/* Header */}
+      {/* Header Context */}
       <div className="flex items-center justify-between">
-        <div className="flex items-center gap-2">
-          <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
-            <Sparkles className="w-4 h-4 text-purple-400" />
+        <div className="flex items-center gap-3">
+          <div className="w-10 h-10 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 shadow-lg">
+            <Sparkles className="w-5 h-5 text-purple-400" />
           </div>
           <div>
-            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/80 leading-none mb-1">
-              {t('badge')}
+            <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 leading-none mb-1">
+              Idea Lab Stage
             </p>
-            <h1 className="text-2xl font-black tracking-tighter uppercase leading-none">
-              {t('title')} <span className="gradient-text-purple">{t('titleAccent')}</span>
+            <h1 className="text-2xl font-black tracking-tighter uppercase leading-none text-white">
+              Creative <span className="gradient-text-purple">Matrix</span>
             </h1>
           </div>
         </div>
-        <div className="flex items-center gap-2">
-          <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 shadow-lg backdrop-blur-md">
-            <span className="text-[10px] font-bold text-white/60 tracking-wider font-mono">{t('cost')}</span>
-          </div>
-          {user && user.credits_balance < 50 && user.tier !== 'pro' && (
-            <div className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-amber-500/10 border border-amber-500/20 animate-pulse">
-              <AlertTriangle className="w-3 h-3 text-amber-500" />
-              <span className="text-[9px] font-bold text-amber-500 uppercase tracking-widest whitespace-nowrap">
-                {t('lowBalance')}
-              </span>
-            </div>
-          )}
-        </div>
+
+        <ScenarioLegend 
+          scenarios={[
+            { id: 'evergreen', color: '#00FF9F', label: 'Evergreen' },
+            { id: 'trend', color: '#FF8A00', label: 'Trends' },
+            { id: 'educational', color: '#3B82F6', label: 'Educational' }
+          ]} 
+        />
       </div>
-
-      {/* Scenario Selector */}
-      <div className="p-1 px-1.5 bg-black/40 rounded-[1.5rem] border border-white/5 flex gap-1.5 overflow-x-auto no-scrollbar backdrop-blur-xl shadow-2xl">
-        {[
-          { id: 'evergreen', icon: Leaf },
-          { id: 'trend', icon: TrendingUp },
-          { id: 'educational', icon: GraduationCap }
-        ].map(({ id, icon: Icon }) => {
-          const isLocked = user?.tier === 'free' && id !== 'evergreen';
-          const isActive = activeScenario === id;
-
-          return (
-            <button
-              key={id}
-              onClick={() => handleScenarioSwitch(id as any)}
-              className={`flex-1 min-w-[120px] flex items-center justify-center gap-2 py-3 rounded-xl transition-all relative overflow-hidden group ${
-                isActive 
-                  ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
-                  : 'text-white/40 hover:text-white/60'
-              } ${isLocked ? 'cursor-not-allowed opacity-60 grayscale' : ''}`}
-            >
-              <Icon className={`w-3.5 h-3.5 ${isActive ? 'text-white' : 'text-purple-400/40 group-hover:text-purple-400 transition-colors'}`} />
-              <span className="text-[10px] font-black uppercase tracking-widest whitespace-nowrap">
-                {t(`scenarios.${id}`)}
-              </span>
-              {isLocked && (
-                <div className="absolute inset-0 bg-black/60 flex items-center justify-center backdrop-blur-[1px]">
-                  <Lock className="w-4 h-4 text-white/40" />
-                </div>
-              )}
-            </button>
-          );
-        })}
-      </div>
-
-      {user?.tier === 'free' && activeScenario !== 'evergreen' && (
-        <div className="p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 to-transparent border border-purple-500/20 flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center">
-              <Lock className="w-5 h-5 text-purple-400" />
-            </div>
-            <p className="text-[10px] font-bold text-white/60 uppercase tracking-widest leading-relaxed max-w-[200px]">
-              {t('scenarios.lockedHint')}
-            </p>
-          </div>
-          <button 
-            onClick={() => router.push(`/${locale}/app/profile/subscription`)}
-            className="px-4 py-2 rounded-xl bg-purple-500 text-white text-[9px] font-black uppercase tracking-widest hover:scale-105 transition-all"
-          >
-            Upgrade
-          </button>
-        </div>
-      )}
-
-      {/* Errors are handled via PremiumLimitModal below */}
 
       {onboardingIncomplete && (
         <div className="animate-slide-up relative overflow-hidden p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-white/10 backdrop-blur-xl group">
@@ -783,8 +723,8 @@ export default function ScriptLabPage() {
                 </p>
                 <p className="text-[10px] text-white/40 leading-relaxed max-w-sm">
                   {locale === 'ru' 
-                    ? 'Ваша ДНК еще не настроена. Сценарий создан в экспертном стиле. Настройте ДНК для идеального отзеркаливания.'
-                    : 'Your DNA is not configured. Script generated in expert style. Complete DNA for perfect persona mirroring.'}
+                    ? 'Ваша ДНК еще не настроена. Сценарий создан в экспертном стиле.'
+                    : 'Your DNA is not configured. Script generated in expert style.'}
                 </p>
               </div>
             </div>
@@ -798,194 +738,34 @@ export default function ScriptLabPage() {
         </div>
       )}
 
-      {/* Topic Context */}
-      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between group/topic hover:bg-white/[0.07] transition-all">
-        <div className="flex items-center gap-3 flex-1 mr-4">
-          <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse shadow-[0_0_8px_rgba(168,85,247,0.5)]" />
-          {isEditingTopic ? (
-            <input 
-              value={topicInput}
-              onChange={(e) => setTopicInput(e.target.value)}
-              onBlur={handleUpdateTopic}
-              onKeyDown={(e) => e.key === 'Enter' && handleUpdateTopic()}
-              autoFocus
-              className="bg-transparent text-xs font-medium text-white focus:outline-none w-full border-b border-purple-500/30 pb-0.5"
-            />
-          ) : (
-            <p className="text-xs font-medium text-white/70">
-              {t('topic', { topic: currentProject?.title || (locale === 'ru' ? 'Секреты автоподбора 2026' : 'Car Buying Secrets 2026') })}
-            </p>
-          )}
-        </div>
-        <button 
-          onClick={() => isEditingTopic ? handleUpdateTopic() : setIsEditingTopic(true)}
-          className="text-[10px] font-black text-purple-400 uppercase tracking-widest hover:text-white transition-colors"
-        >
-          {isEditingTopic ? 'Save' : 'Edit'}
-        </button>
-      </div>
-
-      {/* Script Blocks Grid with Swipe Support */}
-      <div className="relative overflow-visible pb-64 px-1">
-        <AnimatePresence mode="popLayout" initial={false}>
-          <motion.div
-            key={activeScenario}
-            initial={{ opacity: 0, x: 50, scale: 0.95 }}
-            animate={{ opacity: 1, x: 0, scale: 1 }}
-            exit={{ opacity: 0, x: -50, scale: 0.95 }}
-            transition={{ type: "spring", damping: 25, stiffness: 200 }}
-            drag="x"
-            dragConstraints={{ left: 0, right: 0 }}
-            dragElastic={0.2}
-            onDragEnd={(e, info) => {
-              const threshold = 100;
-              if (info.offset.x < -threshold) handleNextScenario();
-              else if (info.offset.x > threshold) handlePrevScenario();
-            }}
-            className="space-y-6 cursor-grab active:cursor-grabbing"
-          >
-            {[
-              { id: 'hook', label: t('tagHook') },
-              { id: 'problem', label: t('tagProblem') },
-              { id: 'good_news', label: t('tagGoodNews') },
-              { id: 'solution', label: t('tagSolution') },
-              { id: 'cta', label: t('tagCTA') }
-            ].map((block) => {
-              const isSelected = selectionSources[block.id] === activeScenario;
-              const scenarioColor = activeScenario === 'evergreen' ? '#00FFCC' : activeScenario === 'trend' ? '#A855F7' : '#FACC15';
-              
-              return (
-                <div key={block.id} className="group relative">
-                  <div 
-                    className={`absolute -left-2 top-0 bottom-0 w-1 rounded-full transition-all duration-500 ${isSelected ? 'scale-y-100 opacity-100 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'scale-y-50 opacity-10'}`} 
-                    style={{ background: scenarioColor }}
-                  />
-                  <div className="space-y-2">
-                    <div className="flex items-center justify-between px-2">
-                      <div className="flex items-center gap-2">
-                        <span className="text-[10px] font-black tracking-[0.2em] text-white/30 uppercase">{block.label}</span>
-                        {isSelected && <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: scenarioColor }} />}
-                      </div>
-                      <button 
-                        onClick={() => handleBlockSelect(block.id, activeScenario)}
-                        className={`text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl transition-all border ${
-                          isSelected 
-                            ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)] scale-105' 
-                            : 'border-white/10 text-white/40 hover:border-white/20 hover:text-white'
-                        }`}
-                      >
-                        {isSelected ? '✓ In Mix' : 'Select'}
-                      </button>
-                    </div>
-                    <textarea
-                      value={allScenarios?.[activeScenario]?.[block.id] || scriptData[block.id as keyof typeof scriptData] || ''}
-                      onChange={(e) => {
-                        const val = e.target.value;
-                        if (allScenarios) {
-                          const newScenarios = { ...allScenarios };
-                          newScenarios[activeScenario][block.id] = val;
-                          setAllScenarios(newScenarios);
-                        } else {
-                          setScriptData(prev => ({ ...prev, [block.id]: val }));
-                        }
-                      }}
-                      className={`w-full p-5 rounded-2xl bg-white/[0.02] border transition-all duration-300 text-sm leading-relaxed text-white/80 focus:outline-none resize-none min-h-[90px] ${
-                        isSelected ? 'border-white/20 bg-white/[0.05]' : 'border-white/5'
-                      }`}
-                    />
-                  </div>
-                </div>
-              );
-            })}
-          </motion.div>
-        </AnimatePresence>
-
-        {/* Master Script Editor (The Frankenstein) - HIGHLIGHTED */}
-        <motion.div 
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          className="mt-16 p-[2px] rounded-[2.5rem] bg-gradient-to-br from-yellow-400 via-purple-500 to-cyan-400 shadow-[0_30px_100px_rgba(250,204,21,0.15)] relative z-20 group/master"
-        >
-          <div className="bg-[#0c0c16] rounded-[2.4rem] p-6 border border-white/5">
-            <div className="flex items-center justify-between mb-6">
-              <div className="flex items-center gap-4">
-                <div className="w-12 h-12 rounded-2xl bg-yellow-400/10 flex items-center justify-center border border-yellow-400/20 shadow-[0_0_20px_rgba(250,204,21,0.1)]">
-                  <Sparkles className="w-6 h-6 text-yellow-400" />
-                </div>
-                <div>
-                  <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white">Master Content</h3>
-                  <p className="text-[10px] text-yellow-400/50 uppercase tracking-widest font-bold">The Ultimate Frankenstein Mix</p>
-                </div>
-              </div>
-              <button 
-                onClick={() => {
-                  const text = masterTextOverride || getFinalText();
-                  navigator.clipboard.writeText(text);
-                  setCopyFeedback(true);
-                  setTimeout(() => setCopyFeedback(false), 2000);
-                }}
-                className={`flex items-center gap-2 px-5 py-3 rounded-2xl transition-all text-[11px] font-black uppercase tracking-widest ${
-                  copyFeedback ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 active:scale-95'
-                } border shadow-xl`}
-              >
-                <History className={`w-4 h-4 ${copyFeedback ? 'animate-bounce' : ''}`} />
-                {copyFeedback ? 'Copied!' : 'Copy'}
-              </button>
-            </div>
-            
-            <textarea 
-              value={masterTextOverride !== null ? masterTextOverride : getFinalText()}
-              onChange={(e) => setMasterTextOverride(e.target.value)}
-              className="w-full bg-white/[0.03] border border-white/10 rounded-[1.5rem] p-5 text-base leading-[1.8] text-white/95 focus:outline-none focus:border-yellow-400/30 resize-none min-h-[250px] font-medium transition-all shadow-inner"
-              placeholder="Select blocks above or type here to craft your final script..."
-            />
-
-            <div className="mt-5 pt-5 border-t border-white/5 flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="flex -space-x-1.5">
-                  {['hook', 'problem', 'good_news', 'solution', 'cta'].map((id) => {
-                    const src = selectionSources[id];
-                    return (
-                      <div key={id} className={`w-4 h-4 rounded-full border-2 border-[#0c0c16] scale-110 shadow-lg ${src === 'evergreen' ? 'bg-emerald-400' : src === 'trend' ? 'bg-purple-500' : 'bg-yellow-400'}`} />
-                    );
-                  })}
-                </div>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Nerve Synthesis</span>
-              </div>
-              <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black text-white/50 uppercase tracking-tighter">
-                {(masterTextOverride || getFinalText()).split(/\s+/).filter(Boolean).length} words
-              </div>
-            </div>
-          </div>
-        </motion.div>
-      </div>
-
-      {/* AI Narrative Controls */}
-      <div className="space-y-4 px-2">
-        <div className="flex items-center justify-between mb-2">
-           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">AI Magic Refinement</p>
-           <div className="h-[1px] flex-1 bg-white/5 ml-4" />
-        </div>
-        <div className="grid grid-cols-2 gap-3">
-          {[
-            { label: t('cmdSharper'), icon: '⚡', instruction: 'Make the tone sharper' },
-            { label: t('cmdShorter'), icon: '✂️', instruction: 'Make it much shorter' },
-            { label: t('cmdFunnier'), icon: '🎭', instruction: 'Add some irony' },
-            { label: t('cmdFormal'), icon: '💎', instruction: 'More professional' },
-          ].map((cmd) => (
-            <button
-              key={cmd.label}
-              onClick={() => handleApplyRefinement(cmd.instruction)}
-              className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-purple-500/30 transition-all text-left group"
-            >
-              <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
-                <span className="text-base">{cmd.icon}</span>
-              </div>
-              <span className="text-xs font-bold text-white/70 tracking-tight">{cmd.label}</span>
-            </button>
-          ))}
+      {/* Topic Edit */}
+      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
+        <div className="flex items-center gap-3 flex-1">
+          <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+          <p className="text-xs font-medium text-white/60">
+            {topicInput || 'Your core idea here...'}
+          </p>
         </div>
       </div>
+
+      {/* The Matrix Carousel */}
+      <ContentMatrix 
+        blocks={[
+          { id: 'hook', label: t('tagHook') },
+          { id: 'problem', label: t('tagProblem') },
+          { id: 'good_news', label: t('tagGoodNews') },
+          { id: 'solution', label: t('tagSolution') },
+          { id: 'cta', label: t('tagCTA') }
+        ]}
+        scenarios={['evergreen', 'trend', 'educational']}
+        selectionSources={selectionSources}
+        allScenarios={allScenarios}
+        scriptData={scriptData}
+        locale={locale}
+        t={t}
+        onBlockSelect={handleBlockSelect}
+        onRefine={handleApplyRefinement}
+      />
 
       <StrategistChat 
         projectId={projectIdParam || ''}
@@ -1003,29 +783,32 @@ export default function ScriptLabPage() {
         locale={locale}
       />
 
-      {/* Footer Actions */}
-      <div className="fixed bottom-28 left-0 right-0 p-4 z-50">
-        <button 
-          onClick={async () => {
-            const finalContent = masterTextOverride || getFinalText();
-            const finalData = {
-              hook: finalContent,
-              problem: '',
-              good_news: '',
-              solution: '',
-              cta: '',
-              visual_hook: allScenarios?.[selectionSources.visual_hook]?.visual_hook || scriptData.visual_hook,
-              social_post: allScenarios?.[selectionSources.social_post]?.social_post || scriptData.social_post,
-            };
-            setScriptData(finalData as any);
-            handleApprove();
-          }}
-          disabled={isSaving || isRefining}
-          className="btn-primary w-full rounded-[2.5rem] py-6 flex items-center justify-center gap-3 group shadow-[0_25px_60px_rgba(250,204,21,0.2)] animate-pulse-glow"
-        >
-          <span className="font-black text-sm uppercase tracking-[0.2em]">{t('approve')}</span>
-          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-        </button>
+      {/* Footer Actions - Floating Accept Button */}
+      <div className="fixed bottom-28 left-0 right-0 p-4 z-50 flex justify-center">
+        <div className="max-w-md w-full relative">
+          <div className="absolute inset-x-4 -inset-y-2 bg-purple-500/20 blur-3xl opacity-50 pointer-events-none" />
+          <button 
+            onClick={async () => {
+              // Automatically synthesize selected blocks from across scenarios
+              const synthesizedScript = {
+                hook: allScenarios[selectionSources.hook]?.hook || scriptData.hook,
+                problem: allScenarios[selectionSources.problem]?.problem || scriptData.problem,
+                good_news: allScenarios[selectionSources.good_news]?.good_news || scriptData.good_news,
+                solution: allScenarios[selectionSources.solution]?.solution || scriptData.solution,
+                cta: allScenarios[selectionSources.cta]?.cta || scriptData.cta,
+                visual_hook: allScenarios[selectionSources.hook]?.visual_hook || scriptData.visual_hook,
+                social_post: allScenarios[selectionSources.hook]?.social_post || scriptData.social_post,
+              };
+              setScriptData(synthesizedScript as any);
+              handleApprove();
+            }}
+            disabled={isSaving || isRefining || !allScenarios}
+            className="w-full btn-primary py-6 rounded-[2.5rem] flex items-center justify-center gap-4 group shadow-[0_20px_50px_rgba(0,255,159,0.2)]"
+          >
+            <span className="font-black text-sm uppercase tracking-[0.3em]">Accept Scenario</span>
+            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
+          </button>
+        </div>
       </div>
     </div>
   );
