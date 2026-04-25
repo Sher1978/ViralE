@@ -24,13 +24,15 @@ export default function ProjectsPage() {
   const [mounted, setMounted] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profile, setProfile] = useState<any>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
-      const profile = await profileService.getOrCreateProfile();
-      if (profile?.id) {
-        const data = await projectService.listProjects(profile.id);
-        setProjects(data);
+      const data = await profileService.getOrCreateProfile();
+      setProfile(data);
+      if (data?.id) {
+        const projData = await projectService.listProjects(data.id);
+        setProjects(projData);
       }
     } catch (err) {
       console.error('Error loading projects:', err);
@@ -193,7 +195,11 @@ export default function ProjectsPage() {
         )}
       </div>
 
-      <StrategistChat />
+      <StrategistChat 
+        projectId="" 
+        userId={profile?.id || ''} 
+        context="hub"
+      />
 
       {/* Decorative Assets */}
       <div className="fixed top-1/4 -right-64 w-[600px] h-[600px] bg-purple-600/5 blur-[150px] pointer-events-none -z-10 animate-pulse" />
