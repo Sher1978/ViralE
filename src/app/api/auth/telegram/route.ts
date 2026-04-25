@@ -69,8 +69,7 @@ async function handleTelegramAuth(userData: any, hash: string) {
     telegram_id: parseInt(telegramId),
     full_name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
     avatar_url: userData.photo_url,
-    username: userData.username,
-    updated_at: new Date().toISOString()
+    username: userData.username
   }, { onConflict: 'id' });
 
   return { session: sessionData.session, user: targetUser };

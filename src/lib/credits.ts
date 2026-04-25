@@ -29,7 +29,7 @@ export async function checkBalance(supabase: SupabaseClient, userId: string) {
         // Create profile if missing
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
-          .insert({ id: userId, credits_balance: 50, updated_at: new Date().toISOString() })
+          .insert({ id: userId, credits_balance: 50 })
           .select('credits_balance')
           .single();
         
@@ -71,8 +71,7 @@ export async function deductCredits(
   const { data, error: updateError } = await supabase
     .from('profiles')
     .update({ 
-      credits_balance: currentBalance - amount,
-      updated_at: new Date().toISOString()
+      credits_balance: currentBalance - amount
     })
     .eq('id', userId)
     .eq('credits_balance', currentBalance)
@@ -115,8 +114,7 @@ export async function addCredits(
   const { error: updateError } = await supabase
     .from('profiles')
     .update({ 
-      credits_balance: balance + amount,
-      updated_at: new Date().toISOString()
+      credits_balance: balance + amount
     })
     .eq('id', userId);
 

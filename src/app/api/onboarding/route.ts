@@ -31,8 +31,7 @@ export async function POST(req: Request) {
         digital_shadow_prompt: masterPrompt,
         synthetic_training_data: masterPrompt, // New column
         raw_onboarding_data: answers,
-        onboarding_completed: true,
-        updated_at: new Date().toISOString()
+        onboarding_completed: true
       })
       .eq('id', userId)
       .select()

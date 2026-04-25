@@ -21,6 +21,7 @@ ALTER TABLE public.studio_manifests ADD COLUMN IF NOT EXISTS updated_at TIMESTAM
 -- 3. Ensure 'profiles' table has all required columns
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS credits_balance INTEGER DEFAULT 100;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'free';
+ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS anthropic_api_key TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS groq_api_key TEXT;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS telegram_chat_id TEXT;
