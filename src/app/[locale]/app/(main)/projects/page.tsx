@@ -159,9 +159,9 @@ export default function StudioPage() {
                   } to-black/40`} />
                 </div>
 
-                {/* Giant Comic Numbering */}
-                <div className="absolute -left-4 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
-                  <span className="text-[140px] font-black italic text-white/5 leading-none tracking-tighter">
+                {/* Giant Comic Numbering - Improved Visibility */}
+                <div className="absolute -left-6 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
+                  <span className="text-[160px] font-black italic text-white/10 leading-none tracking-tighter drop-shadow-[0_0_2px_rgba(255,255,255,0.05)]">
                     {index + 1}
                   </span>
                 </div>
@@ -173,9 +173,9 @@ export default function StudioPage() {
                   'justify-end pb-14'
                 }`}>
                   <div className={`${index === 1 ? 'md:pl-12' : index === 2 ? 'md:pl-24' : ''} space-y-1 z-30`}>
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Sequence Step</p>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50">Sequence Step</p>
                     <h3 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none shadow-black/50 drop-shadow-2xl">
-                      {hub.title.split(' ')[0]} <span className="text-white/50">{hub.title.split(' ')[1] || ''}</span>
+                      {hub.title.split(' ')[0]} <span className="text-white/40">{hub.title.split(' ')[1] || ''}</span>
                     </h3>
                     <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest leading-none">
                       {hub.desc}
