@@ -97,36 +97,15 @@ export default function StudioPage() {
 
   return (
     <div className="space-y-12 pb-32 max-w-7xl mx-auto px-4 overflow-x-hidden">
-      {/* Premium Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 pt-10">
-        <div className="space-y-1">
-          <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
+      {/* Ultra-Clean Header */}
+      <div className="pt-10 mb-2">
+        <div className="space-y-1 text-center md:text-left">
+          <h1 className="text-5xl font-black uppercase tracking-tighter leading-none italic">
             Viral <span className="text-purple-500">Studio</span>
           </h1>
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
-            Professional Content Production Hub
+          <p className="text-[11px] font-black uppercase tracking-[0.5em] text-white/20 mt-2">
+            AI Content Production pipeline
           </p>
-        </div>
-
-        <div className="flex items-center gap-4">
-           {/* Search Miniature */}
-           <div className="relative group hidden sm:block">
-             <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-3.5 h-3.5 text-white/20" />
-             <input 
-               type="text" 
-               placeholder={t('search')}
-               value={search}
-               onChange={(e) => setSearch(e.target.value)}
-               className="bg-white/5 border border-white/10 rounded-xl pl-9 pr-4 py-2.5 text-[10px] font-bold uppercase tracking-widest outline-none focus:border-purple-500/50 transition-all w-48"
-             />
-           </div>
-           
-           <Link href={`/${locale}/app/projects/new`}>
-             <button className="flex items-center gap-3 px-8 py-3.5 rounded-2xl bg-white text-black font-black text-[11px] uppercase tracking-widest group active:scale-95 transition-all shadow-xl shadow-white/5">
-                <Plus className="w-4 h-4 stroke-[3]" />
-                {t('launchBtn')}
-             </button>
-           </Link>
         </div>
       </div>
 
@@ -134,28 +113,36 @@ export default function StudioPage() {
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
         {mainHubs.map((hub) => (
           <Link key={hub.id} href={hub.href} className="group">
-            <div className="relative aspect-[16/10] rounded-[2.5rem] border border-white/10 overflow-hidden transition-all duration-700 hover:border-white/30 hover:scale-[1.02] active:scale-[0.98] shadow-2xl">
-              {/* Background Image */}
+            <div className="relative h-[220px] rounded-[2.5rem] border border-white/10 overflow-hidden transition-all duration-700 hover:border-white/30 hover:scale-[1.02] active:scale-[0.98] shadow-2xl">
+              {/* Background with Fallback Gradient */}
+              <div className={`absolute inset-0 bg-gradient-to-br ${
+                hub.id === 'lab' ? 'from-purple-900/40 to-indigo-900/40' :
+                hub.id === 'storyboard' ? 'from-orange-900/40 to-amber-900/40' :
+                'from-blue-900/40 to-cyan-900/40'
+              } z-0`} />
+              
               <img 
                 src={hub.image} 
-                className="absolute inset-0 w-full h-full object-cover opacity-60 group-hover:opacity-100 transition-all duration-1000 group-hover:scale-110"
+                className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-80 transition-all duration-1000 group-hover:scale-110 z-10 error-img-hide"
                 alt={hub.title}
+                onError={(e) => (e.currentTarget.style.display = 'none')}
               />
-              <div className={`absolute inset-0 bg-gradient-to-t ${hub.color} via-[#0a0a14]/60 to-[#0a0a14]/20 group-hover:via-[#0a0a14]/20 transition-all duration-700`} />
               
-              <div className="absolute inset-0 p-8 flex flex-col justify-end">
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 mb-1 group-hover:text-white transition-colors">Start Sequence</p>
-                <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">
+              <div className={`absolute inset-0 bg-gradient-to-t ${hub.color} via-[#0a0a14]/80 to-transparent z-20 transition-all duration-700 group-hover:via-[#0a0a14]/40`} />
+              
+              <div className="absolute inset-0 p-8 flex flex-col justify-end z-30">
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 mb-1.5 group-hover:text-white transition-colors">Initialize Step</p>
+                <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">
                   {hub.title}
                 </h3>
-                <p className="text-xs font-bold text-white/40 group-hover:text-white/60 transition-colors uppercase tracking-widest">
+                <p className="text-[10px] font-bold text-white/40 group-hover:text-white/60 transition-colors uppercase tracking-widest leading-relaxed">
                   {hub.desc}
                 </p>
               </div>
 
-              {/* Hover Arrow */}
-              <div className="absolute top-8 right-8 w-12 h-12 rounded-2xl bg-white/10 backdrop-blur-xl border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 -translate-x-4 group-hover:translate-x-0 transition-all duration-500">
-                <ArrowRight className="w-6 h-6 text-white" />
+              {/* Action Indicator */}
+              <div className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-y-0 transition-all duration-500 z-40">
+                <ArrowRight className="w-5 h-5 text-white" />
               </div>
             </div>
           </Link>
