@@ -41,6 +41,22 @@ export default function ScriptLabPage() {
 
   const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational'>('evergreen');
   const [allScenarios, setAllScenarios] = useState<any>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generationStep, setGenerationStep] = useState(0);
+
+  const loadingSteps = locale === 'ru' 
+    ? ['Анализируем идею...', 'Калибруем Digital DNA...', 'Прошиваем смыслы...', 'Финальная сборка...']
+    : ['Analyzing Idea...', 'Calibrating Digital DNA...', 'Injecting Narrative...', 'Final Assembly...'];
+
+  useEffect(() => {
+    let interval: any;
+    if (isLoading || isGenerating) {
+      interval = setInterval(() => {
+        setGenerationStep(prev => (prev + 1) % loadingSteps.length);
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading, isGenerating, loadingSteps.length]);
   
   const [scriptData, setScriptData] = useState({
     hook: locale === 'ru' 
@@ -323,10 +339,13 @@ export default function ScriptLabPage() {
       const prof = await profileService.getOrCreateProfile();
       setUser(prof);
       
+      // Crucial: Set generating mode to true to keep the loading UI until redirect finishes
+      setIsGenerating(true);
       router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Generation failed:', err);
       setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
+      setIsGenerating(false);
     } finally {
       setIsLoading(false);
     }
@@ -402,16 +421,38 @@ export default function ScriptLabPage() {
     }
   };
 
-  if (isLoading) {
+  if (isLoading || isGenerating) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <div className="w-16 h-16 relative">
-          <div className="absolute inset-0 border-4 border-purple-500/20 rounded-full" />
-          <div className="absolute inset-0 border-4 border-t-purple-500 rounded-full animate-spin" />
+      <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+        <div className="relative w-32 h-32 mb-12">
+           <div className="absolute inset-0 border-2 border-purple-500/10 rounded-full" />
+           <div className="absolute inset-0 border-2 border-t-purple-500 rounded-full animate-spin" />
+           <div className="absolute inset-4 border border-cyan-500/20 rounded-full animate-reverse-spin" />
+           <div className="absolute inset-0 flex items-center justify-center">
+              <Sparkles className="w-8 h-8 text-purple-400 animate-pulse" />
+           </div>
         </div>
-        <p className="text-[10px] text-purple-400/60 uppercase tracking-[0.3em] font-black animate-pulse">
-          Processing Matrix...
-        </p>
+        
+        <div className="space-y-4 max-w-sm">
+           <AnimatePresence mode="wait">
+             <motion.p 
+               key={generationStep}
+               initial={{ opacity: 0, y: 10 }}
+               animate={{ opacity: 1, y: 0 }}
+               exit={{ opacity: 0, y: -10 }}
+               className="text-xl font-black uppercase italic tracking-tighter text-white"
+             >
+               {loadingSteps[generationStep]}
+             </motion.p>
+           </AnimatePresence>
+           <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.4em] leading-relaxed">
+              SHER DIGITAL CORE IS ASSEMBLING YOUR NARRATIVE MATRIX
+           </p>
+        </div>
+
+        {/* Matrix background deco */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.05)_0%,transparent_70%)] pointer-events-none" />
+        <div className="absolute top-0 left-0 w-full h-full opacity-[0.02] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
       </div>
     );
   }

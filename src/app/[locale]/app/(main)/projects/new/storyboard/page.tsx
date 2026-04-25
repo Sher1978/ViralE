@@ -21,11 +21,22 @@ export default function StoryboardPage() {
   const projectIdParam = searchParams.get('projectId');
   const versionIdParam = searchParams.get('versionId');
 
-  const [isLoading, setIsLoading] = useState(true);
-  const [project, setProject] = useState<Project | null>(null);
-  const [version, setVersion] = useState<ProjectVersion | null>(null);
-  const [user, setUser] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [generationStep, setGenerationStep] = useState(0);
+
+  const loadingSteps = locale === 'ru' 
+    ? ['Анализируем контекст...', 'Синтезируем атмосферу...', 'Прорисовываем кадры...', 'Финальная калибровка...']
+    : ['Analyzing Context...', 'Synthesizing Atmosphere...', 'Mapping Frames...', 'Final Calibration...'];
+
+  useEffect(() => {
+    let interval: any;
+    if (isLoading) {
+      interval = setInterval(() => {
+        setGenerationStep(prev => (prev + 1) % loadingSteps.length);
+      }, 2500);
+    }
+    return () => clearInterval(interval);
+  }, [isLoading, loadingSteps.length]);
 
   const generateStoryboard = async () => {
     if (!projectIdParam || !versionIdParam) return;
@@ -116,9 +127,31 @@ export default function StoryboardPage() {
 
   if (isLoading) {
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-orange-500" />
-        <p className="text-sm text-white/40 uppercase tracking-widest font-black">Assembling Storyboard...</p>
+      <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in">
+        <div className="relative w-32 h-32 mb-12">
+           <div className="absolute inset-0 border-2 border-orange-500/10 rounded-full" />
+           <div className="absolute inset-0 border-2 border-t-orange-500 rounded-full animate-spin" />
+           <div className="absolute inset-4 border border-white/5 rounded-full animate-reverse-spin" />
+           <div className="absolute inset-0 flex items-center justify-center">
+              <ImageIcon className="w-8 h-8 text-orange-400 animate-pulse" />
+           </div>
+        </div>
+        
+        <div className="space-y-4 max-w-sm">
+           <motion.p 
+             key={generationStep}
+             initial={{ opacity: 0, y: 10 }}
+             animate={{ opacity: 1, y: 0 }}
+             className="text-xl font-black uppercase italic tracking-tighter text-white"
+           >
+             {loadingSteps[generationStep]}
+           </motion.p>
+           <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.4em] leading-relaxed">
+              SHER VISUAL CORE IS SYNTHESIZING YOUR CINEMATIC TIMELINE
+           </p>
+        </div>
+
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(249,115,22,0.05)_0%,transparent_70%)] pointer-events-none" />
       </div>
     );
   }

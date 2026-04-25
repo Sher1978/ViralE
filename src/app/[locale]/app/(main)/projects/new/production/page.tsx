@@ -51,6 +51,21 @@ function ProductionContent() {
   const [showStudio, setShowStudio] = useState(false);
   const [scriptData, setScriptData] = useState<{ hook: string; story: string; cta: string } | null>(null);
   const [activeStep, setActiveStep] = useState(1);
+  const [generationStep, setGenerationStep] = useState(0);
+
+  const loadingSteps = locale === 'ru' 
+    ? ['Пробуждаем ИИ-агентов...', 'Синхронизируем звук...', 'Калибруем мимику...', 'Финальная сборка...']
+    : ['Waking up AI Agents...', 'Synchronizing Audio...', 'Calibrating Motion...', 'Final Assembly...'];
+
+  useEffect(() => {
+    let interval: any;
+    if (isLaunching) {
+      interval = setInterval(() => {
+        setGenerationStep(prev => (prev + 1) % loadingSteps.length);
+      }, 2000);
+    }
+    return () => clearInterval(interval);
+  }, [isLaunching, loadingSteps.length]);
 
   useEffect(() => {
     async function init() {
@@ -269,12 +284,48 @@ function ProductionContent() {
           )}
         </div>
       ) : (
-        <div className="py-10 animate-fade-in">
-          <div className="max-w-xl mx-auto px-6">
-            <FactoryMonitor progress={progress} status={jobStatus} />
-          </div>
+        <div className="py-10 animate-fade-in text-center px-4">
+           <div className="max-w-xl mx-auto">
+             <FactoryMonitor progress={progress} status={jobStatus} />
+           </div>
         </div>
       )}
+
+      {/* Premium Processing Overlay (Visible during launch) */}
+      <AnimatePresence>
+        {(isLaunching) && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center"
+          >
+            <div className="relative w-32 h-32 mb-12">
+               <div className="absolute inset-0 border-2 border-purple-500/10 rounded-full" />
+               <div className="absolute inset-0 border-2 border-t-purple-500 rounded-full animate-spin" />
+               <div className="absolute inset-4 border border-cyan-500/20 rounded-full animate-reverse-spin" />
+               <div className="absolute inset-0 flex items-center justify-center">
+                  <Factory className="w-8 h-8 text-purple-400 animate-pulse" />
+               </div>
+            </div>
+            
+            <div className="space-y-4 max-w-sm">
+               <motion.p 
+                 key={generationStep}
+                 initial={{ opacity: 0, y: 10 }}
+                 animate={{ opacity: 1, y: 0 }}
+                 className="text-xl font-black uppercase italic tracking-tighter text-white"
+               >
+                 {loadingSteps[generationStep]}
+               </motion.p>
+               <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.4em] leading-relaxed">
+                  SHER DIGITAL CORE IS ASSEMBLING YOUR VIRAL ENGINE SEQUENCE
+               </p>
+            </div>
+            <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.05)_0%,transparent_70%)] pointer-events-none" />
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* Overlays & Alerts */}
       <PremiumLimitModal 
