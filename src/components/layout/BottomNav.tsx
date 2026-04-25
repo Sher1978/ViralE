@@ -5,7 +5,6 @@ import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Lightbulb, FolderKanban, User, CreditCard, Archive, Monitor, Sparkles, Library } from 'lucide-react';
-import { LangSwitcher } from '@/components/ui/LangSwitcher';
 
 function cn(...classes: (string | boolean | undefined)[]) {
   return classes.filter(Boolean).join(' ');
@@ -103,11 +102,6 @@ export function BottomNav() {
             );
           })}
 
-          {/* Integrated Language Switcher Area */}
-          <li className="flex items-center pl-1 pr-0.5">
-            <div className="w-[1px] h-6 bg-white/10 mx-1 hidden xs:block" />
-            <LangSwitcher />
-          </li>
         </ul>
       </div>
     </nav>
