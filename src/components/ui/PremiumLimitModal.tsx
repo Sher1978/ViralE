@@ -12,17 +12,20 @@ interface PremiumLimitModalProps {
   description: string;
   advice?: string;
   type?: 'trial' | 'credits' | 'tier' | 'success' | 'info' | 'error' | 'warning';
-  locale?: string;
+  balance?: number;
+  onConfirm?: () => void;
 }
 
 export function PremiumLimitModal({
   isOpen,
   onClose,
+  onConfirm,
   title,
   description,
   advice,
   type = 'trial',
-  locale = 'en'
+  locale = 'en',
+  balance
 }: PremiumLimitModalProps) {
   const router = useRouter();
 
@@ -77,13 +80,23 @@ export function PremiumLimitModal({
           </button>
 
           {/* Header Icon */}
-          <div className="mb-8 flex flex-col items-center">
+          <div className="mb-6 flex flex-col items-center">
             <div className="relative">
               <div className={`absolute -inset-4 rounded-full ${theme.bg} blur-2xl opacity-50`} />
               <div className="relative flex h-16 w-16 items-center justify-center border border-white/5 bg-white/5 shadow-inner">
                 <Icon className={`h-8 w-8 ${theme.color}`} />
               </div>
             </div>
+            
+            {/* Live Balance Indicator */}
+            {typeof balance === 'number' && (
+              <div className="mt-4 px-3 py-1 bg-white/5 border border-white/10 rounded-full flex items-center gap-1.5">
+                <div className="w-1 h-1 rounded-full bg-cyan-400 animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-white/40">
+                  {locale === 'ru' ? 'Баланс:' : 'Balance:'} <span className="text-white">{balance}</span>
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Text Content */}
@@ -112,7 +125,25 @@ export function PremiumLimitModal({
 
           {/* Action Area */}
           <div className="space-y-3">
-            {(type === 'trial' || type === 'credits' || type === 'tier') ? (
+            {type === 'confirm' ? (
+              <div className="flex gap-3">
+                <button
+                  onClick={onClose}
+                  className="flex-1 py-4 rounded-xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all font-mono"
+                >
+                  {locale === 'ru' ? 'Отмена' : 'Cancel'}
+                </button>
+                <button
+                  onClick={() => {
+                    if (onConfirm) onConfirm();
+                    onClose();
+                  }}
+                  className="flex-1 py-4 rounded-xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all shadow-[0_10px_30px_rgba(255,255,255,0.2)]"
+                >
+                  {locale === 'ru' ? 'Дальше' : 'Proceed'}
+                </button>
+              </div>
+            ) : (type === 'trial' || type === 'credits' || type === 'tier') ? (
               <button
                 onClick={() => {
                   router.push('/app/profile/subscription');
@@ -122,7 +153,7 @@ export function PremiumLimitModal({
               >
                 <div className="relative z-10 flex items-center justify-center gap-3">
                   <span className="text-sm font-black uppercase tracking-tighter italic">
-                    {locale === 'ru' ? 'Снять ограничения' : 'Remove Limits'}
+                    {locale === 'ru' ? 'Меню Тарифов' : 'Upgrade Plan'}
                   </span>
                   <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
                 </div>
@@ -134,7 +165,7 @@ export function PremiumLimitModal({
               >
                 <div className="relative z-10 flex items-center justify-center gap-3">
                   <span className="text-sm font-black uppercase tracking-tighter italic">
-                    {locale === 'ru' ? 'Понятно, работаем дальше' : 'Understood, proceed'}
+                    {locale === 'ru' ? 'Понял' : 'Understood'}
                   </span>
                 </div>
               </button>
@@ -143,7 +174,7 @@ export function PremiumLimitModal({
             {(type === 'trial' || type === 'credits' || type === 'tier') && (
               <button
                 onClick={onClose}
-                className="w-full flex items-center justify-center py-2 text-[8px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white/40 transition-all"
+                className="w-full flex items-center justify-center py-2 text-[8px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white/40 transition-all font-mono"
               >
                 {locale === 'ru' ? 'Вернуться позже' : 'Maybe Later'}
               </button>

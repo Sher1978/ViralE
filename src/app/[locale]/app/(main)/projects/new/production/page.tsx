@@ -339,6 +339,7 @@ function ProductionContent() {
         advice={locale === 'ru' ? 'Время сборки зависит от загрузки ИИ-агентов. Проверь, достаточно ли кредитов для этого движка.' : 'Assembly time depends on AI agent load. Check if you have enough credits for this engine tier.'}
         type="error"
         locale={locale}
+        balance={user?.credits_balance}
       />
 
       {showStudio && scriptData && project && (
