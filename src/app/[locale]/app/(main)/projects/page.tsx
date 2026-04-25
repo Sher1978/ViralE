@@ -151,41 +151,41 @@ export default function StudioPage() {
                   />
                 )}
 
-                {/* Image Layer with Better Visibility */}
+                {/* Image Layer with High Contrast Overlay */}
                 <div className="absolute inset-0">
                   <img 
                     src={hub.image} 
-                    className="w-full h-full object-cover opacity-50 grayscale group-active:grayscale-0 group-active:opacity-90 transition-all duration-1000 group-active:scale-105"
+                    className="w-full h-full object-cover opacity-30 grayscale group-active:grayscale-0 group-active:opacity-80 transition-all duration-1000 group-active:scale-105"
                     alt={hub.title}
                     onError={(e) => (e.currentTarget.style.opacity = '0')}
                   />
                   <div className={`absolute inset-0 bg-gradient-to-br ${
-                    hub.id === 'lab' ? 'from-purple-600/30 via-purple-900/50' :
-                    hub.id === 'storyboard' ? 'from-orange-600/30 via-orange-900/50' :
-                    'from-blue-600/30 via-blue-900/50'
+                    hub.id === 'lab' ? 'from-purple-600/40 via-purple-900/60' :
+                    hub.id === 'storyboard' ? 'from-orange-600/40 via-orange-900/60' :
+                    'from-blue-600/40 via-blue-900/60'
                   } to-black/60`} />
                 </div>
 
-                {/* Stylized Numbering - High Contrast Watermark Style */}
-                <div className="absolute -left-10 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
-                  <span className="text-[180px] font-black italic text-white/15 leading-none tracking-tighter outline-text-subtle">
+                {/* Giant Stylized Numbering - Positioned to avoid clipping */}
+                <div className="absolute left-4 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
+                  <span className="text-[180px] font-black italic text-white/20 leading-none tracking-tighter drop-shadow-2xl">
                     {index + 1}
                   </span>
                 </div>
 
-                {/* Content Layer - More Compact and Clear */}
-                <div className={`absolute inset-0 p-8 flex flex-col ${
-                  index === 0 ? 'justify-start pt-10' : 
+                {/* Content Layer - Back to High Contrast */}
+                <div className={`absolute inset-0 p-10 flex flex-col ${
+                  index === 0 ? 'justify-start pt-14' : 
                   index === 1 ? 'justify-center' : 
-                  'justify-end pb-10'
+                  'justify-end pb-14'
                 }`}>
-                  <div className={`${index === 1 ? 'md:pl-16' : index === 2 ? 'md:pl-32' : ''} space-y-0.5 z-30 transition-transform duration-500 group-active:translate-x-1`}>
-                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/60 mb-0.5">Phase 0{index + 1}</p>
-                    <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none drop-shadow-lg">
-                      {hub.title.split(' ')[0]} <span className="text-white/60">{hub.title.split(' ')[1] || ''}</span>
+                  <div className={`${index === 1 ? 'md:pl-16' : index === 2 ? 'md:pl-32' : ''} space-y-1 z-30 transition-transform duration-500 group-active:translate-x-2`}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 mb-1">Sequence Step</p>
+                    <h3 className="text-5xl font-black text-white uppercase italic tracking-tighter leading-none shadow-black/50 drop-shadow-2xl">
+                      {hub.title.split(' ')[0]} <span className="text-white/50">{hub.title.split(' ')[1] || ''}</span>
                     </h3>
-                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none mt-1.5">
-                      {hub.desc}
+                    <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest leading-none mt-2">
+                       {hub.desc}
                     </p>
                   </div>
                 </div>
