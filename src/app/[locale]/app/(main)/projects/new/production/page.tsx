@@ -28,6 +28,23 @@ export default function ProductionPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [version, setVersion] = useState<ProjectVersion | null>(null);
 
+  const [stage, setStage] = useState<'selection' | 'processing'>('selection');
+  const [progress, setProgress] = useState(0);
+  const [isLaunching, setIsLaunching] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [jobId, setJobId] = useState<string | null>(null);
+  const [jobStatus, setJobStatus] = useState<string>('pending');
+  const [config, setConfig] = useState({
+    mode: 'stock',
+    tier: 'lite',
+    assetId: null as string | null,
+    aiPolish: false,
+    recordedAssetId: null as string | null,
+    recordingType: null as 'audio' | 'video' | null
+  });
+  const [showStudio, setShowStudio] = useState(false);
+  const [scriptData, setScriptData] = useState<{ hook: string; story: string; cta: string } | null>(null);
+
   const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [activeStep, setActiveStep] = useState(1);
 
