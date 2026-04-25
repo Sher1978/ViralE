@@ -369,7 +369,7 @@ export default function ScriptLabPage() {
       }
 
       // Redirect to Storyboard
-      router.push(`/projects/new/storyboard?projectId=${pId}&versionId=${vId}`);
+      router.push(`/app/projects/new/storyboard?projectId=${pId}&versionId=${vId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Save failed:', err);
       setError(err.message || (locale === 'ru' ? 'Не удалось сохранить проект' : 'Failed to save project'));
