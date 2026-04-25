@@ -283,9 +283,10 @@ function ProductionContent() {
           setError(null);
           if (!projectId) router.push('/app/projects');
         }}
-        title={locale === 'ru' ? 'Внимание' : 'Attention'}
+        title={locale === 'ru' ? 'Конвейерный Сбой' : 'Conveyor Alert'}
         description={error || ''}
-        type="tier"
+        advice={locale === 'ru' ? 'Время сборки зависит от загрузки ИИ-агентов. Проверь, достаточно ли кредитов для этого движка.' : 'Assembly time depends on AI agent load. Check if you have enough credits for this engine tier.'}
+        type="error"
         locale={locale}
       />
 

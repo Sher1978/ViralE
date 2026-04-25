@@ -123,27 +123,15 @@ export default function StoryboardPage() {
     );
   }
 
-  if (error) {
-    return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold">
-          ⚠️ {error}
-        </div>
-        <button 
-          onClick={() => router.push(`/${locale}/app/projects/new/script`)}
-          className="px-6 py-2 rounded-full bg-white/5 border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/10"
-        >
-          Return to Script Lab
-        </button>
-      </div>
-    );
-  }
-
   const scriptData = version?.script_data as { hook: string; story: string; cta: string } || null;
   const storyboardData = version?.storyboard_data as { scenes: any[] } || { scenes: [] };
   
   // Map AI scenes to the script blocks
   const scenes = storyboardData.scenes.length > 0 ? storyboardData.scenes : [];
+
+  const handleReturnToScript = () => {
+    router.push(`/${locale}/app/projects/new/script?projectId=${projectIdParam}&versionId=${versionIdParam}`);
+  };
 
   return (
     <div className="space-y-6 animate-fade-in pb-24">

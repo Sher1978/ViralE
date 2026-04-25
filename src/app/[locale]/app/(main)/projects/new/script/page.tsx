@@ -551,11 +551,7 @@ export default function ScriptLabPage() {
           )}
         </div>
 
-        {error && (
-          <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold text-center animate-shake">
-            ⚠️ {error}
-          </div>
-        )}
+      {/* Errors are handled via PremiumLimitModal below */}
       </div>
     );
   }
@@ -647,11 +643,7 @@ export default function ScriptLabPage() {
         </div>
       )}
 
-      {error && (
-        <div className="p-4 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold text-center animate-shake">
-          ⚠️ {error}
-        </div>
-      )}
+      {/* Errors are handled via PremiumLimitModal below */}
 
       {onboardingIncomplete && (
         <div className="animate-slide-up relative overflow-hidden p-4 rounded-2xl bg-gradient-to-r from-purple-500/10 to-cyan-500/10 border border-white/10 backdrop-blur-xl group">
@@ -903,11 +895,15 @@ export default function ScriptLabPage() {
         </button>
       </div>
       <PremiumLimitModal 
-        isOpen={showLimitModal}
-        onClose={() => setShowLimitModal(false)}
-        title={limitModalData.title}
-        description={limitModalData.desc}
-        type={limitModalData.type}
+        isOpen={!!error || showLimitModal}
+        onClose={() => {
+          setError(null);
+          setShowLimitModal(false);
+        }}
+        title={limitModalData.title || (locale === 'ru' ? 'Системное Уведомление' : 'System Notification')}
+        description={error || limitModalData.desc}
+        advice={error ? (locale === 'ru' ? 'Попробуй проверить соединение или переформулировать запрос. Конвейер иногда требует четкости.' : 'Try checking your connection or rephrasing your request. The engine loves clarity.') : (locale === 'ru' ? 'Это поможет нам поддерживать высокое качество ИИ для всех создателей.' : 'This helps us maintain high-quality AI for all creators.')}
+        type={error ? 'error' : limitModalData.type}
         locale={locale}
       />
     </div>

@@ -208,9 +208,10 @@ export default function ProjectsPage() {
       <PremiumLimitModal 
         isOpen={!!error}
         onClose={() => setError(null)}
-        title={locale === 'ru' ? 'Внимание' : 'Attention'}
+        title={locale === 'ru' ? 'Сбой Системы' : 'System Notice'}
         description={error || ''}
-        type="tier"
+        advice={locale === 'ru' ? 'Попробуй проверить соединение или освежить сессию. Конвейер иногда требует перезагрузки.' : 'Try checking your connection or refreshing your session. The engine occasionally needs a restart.'}
+        type="error"
         locale={locale}
       />
     </div>
