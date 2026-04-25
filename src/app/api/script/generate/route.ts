@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     // 2. Get Digital Shadow and Keys
     const { data: profile, error: profileError } = await authorizedSupabase
       .from('profiles')
-      .select('digital_shadow_prompt, anthropic_api_key, groq_api_key, gemini_api_key, credits_balance, tier')
+      .select('digital_shadow_prompt, anthropic_api_key, groq_api_key, credits_balance, tier')
       .eq('id', userId)
       .single();
 
@@ -68,7 +68,7 @@ export async function POST(req: Request) {
     const digitalShadow = profile?.digital_shadow_prompt || '';
     const anthropicApiKey = profile?.anthropic_api_key || undefined;
     const groqApiKey = profile?.groq_api_key || undefined;
-    const geminiApiKey = profile?.gemini_api_key || undefined;
+    const geminiApiKey = undefined; // Not stored in DB yet, use system key
     const tier = profile?.tier || 'free';
     const onboardingIncomplete = !digitalShadow;
 
