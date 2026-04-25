@@ -1027,17 +1027,17 @@ export default function ScriptLabPage() {
       />
 
       {/* Footer Actions */}
-      <div className="fixed bottom-0 left-0 right-0 p-4 bg-[#06060c]/80 backdrop-blur-2xl border-t border-white/5 z-50">
+      <div className="fixed bottom-28 left-0 right-0 p-4 z-50">
         <button 
           onClick={handleApprove}
           disabled={isSaving || isRefining}
-          className="btn-primary w-full rounded-[2rem] py-5 flex items-center justify-center gap-3 group disabled:opacity-50 shadow-[0_8px_32px_rgba(168,85,247,0.2)]"
+          className="btn-primary w-full rounded-[2rem] py-6 flex items-center justify-center gap-3 group disabled:opacity-50 shadow-[0_20px_50px_rgba(0,180,255,0.4)] animate-pulse-glow"
         >
           {isSaving ? (
             <Loader2 className="w-5 h-5 animate-spin" />
           ) : (
             <>
-              <span className="font-black text-sm uppercase tracking-[0.1em]">{t('approve')}</span>
+              <span className="font-black text-sm uppercase tracking-[0.2em]">{t('approve')}</span>
               <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
             </>
           )}
