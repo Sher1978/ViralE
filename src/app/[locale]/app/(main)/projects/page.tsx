@@ -98,7 +98,7 @@ export default function StudioPage() {
   return (
     <div className="space-y-8 pb-32 max-w-7xl mx-auto px-4 overflow-x-hidden">
       {/* Improved Pro Header */}
-      <div className="flex items-start justify-between pt-4 mb-4">
+      <div className="flex items-start justify-between pt-4 mb-6">
         <div className="flex items-center gap-6">
           <div className="space-y-0.5">
             <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
@@ -111,8 +111,8 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Professional Stage Collage - Monolithic Diagonal Layout with Physical Gaps */}
-      <div className="relative group/monolith overflow-hidden rounded-[3rem] border-4 border-black shadow-2xl bg-black px-1 py-1 space-y-1">
+      {/* Professional Stage Collage - Monolithic Diagonal Layout with Maximum Visibility */}
+      <div className="relative group/monolith overflow-hidden rounded-[4rem] border-4 border-black shadow-2xl bg-black px-1.5 py-1.5 space-y-2">
         {mainHubs.map((hub, index) => (
           <motion.div
             key={hub.id}
@@ -128,7 +128,7 @@ export default function StudioPage() {
             <Link href={hub.href}>
               <div 
                 className={`relative transition-all duration-700 overflow-hidden active:scale-[0.99]
-                  ${index === 0 ? 'z-30 h-[220px]' : index === 1 ? 'z-20 -mt-16 h-[260px]' : 'z-10 -mt-16 h-[220px]'}
+                  ${index === 0 ? 'z-30 h-[240px]' : index === 1 ? 'z-20 -mt-20 h-[300px]' : 'z-10 -mt-20 h-[240px]'}
                 `}
                 style={{
                   clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' :
@@ -136,43 +136,43 @@ export default function StudioPage() {
                             'polygon(0 15%, 100% 0, 100% 100%, 0 100%)'
                 }}
               >
-                {/* Subtle top shadow for depth instead of hard line */}
-                <div className="absolute top-0 left-0 w-full h-[60px] bg-gradient-to-b from-black/40 to-transparent z-40 pointer-events-none" />
+                {/* Subtle top shadow for depth */}
+                <div className="absolute top-0 left-0 w-full h-[80px] bg-gradient-to-b from-black/50 to-transparent z-40 pointer-events-none" />
 
-                {/* Image Layer with High Contrast Overlay */}
+                {/* Image Layer with Better Visibility */}
                 <div className="absolute inset-0">
                   <img 
                     src={hub.image} 
-                    className="w-full h-full object-cover opacity-30 grayscale group-hover:grayscale-0 group-hover:opacity-60 transition-all duration-1000 group-hover:scale-110"
+                    className="w-full h-full object-cover opacity-50 transition-all duration-1000 group-hover:scale-105"
                     alt={hub.title}
                     onError={(e) => (e.currentTarget.style.opacity = '0')}
                   />
                   <div className={`absolute inset-0 bg-gradient-to-br ${
-                    hub.id === 'lab' ? 'from-purple-600/60 via-purple-900/80' :
-                    hub.id === 'storyboard' ? 'from-orange-600/60 via-orange-900/80' :
-                    'from-blue-600/60 via-blue-900/80'
-                  } to-black/80`} />
+                    hub.id === 'lab' ? 'from-purple-600/50 via-purple-900/70' :
+                    hub.id === 'storyboard' ? 'from-orange-600/50 via-orange-900/70' :
+                    'from-blue-600/50 via-blue-900/70'
+                  } to-black/90`} />
                 </div>
 
-                {/* Giant Original Stylized Numbering - Subtle Watermark */}
-                <div className="absolute left-6 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
-                  <span className="text-[200px] font-black italic text-white/10 leading-none tracking-tighter drop-shadow-2xl">
+                {/* Giant Original Stylized Numbering - Subtle White Watermark */}
+                <div className="absolute left-6 top-1/2 -translate-y-1/2 select-none pointer-events-none z-30">
+                  <span className="text-[200px] font-black italic text-white/[0.08] leading-none tracking-tighter">
                     {index + 1}
                   </span>
                 </div>
 
-                {/* Content Layer */}
+                {/* Content Layer - Optimized for Fit */}
                 <div className={`absolute inset-0 p-12 flex flex-col ${
-                  index === 0 ? 'justify-start pt-14' : 
+                  index === 0 ? 'justify-start pt-16' : 
                   index === 1 ? 'justify-center' : 
-                  'justify-end pb-14'
+                  'justify-end pb-16'
                 }`}>
-                  <div className={`${index === 1 ? 'md:pl-20' : index === 2 ? 'md:pl-32' : ''} space-y-1 z-30 transition-transform duration-500 group-active:translate-x-2`}>
-                    <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 mb-1">Sequence Step</p>
-                    <h3 className="text-6xl font-black text-white uppercase italic tracking-tighter leading-none shadow-black/50 drop-shadow-2xl">
-                      {hub.title.split(' ')[0]} <span className="text-white/50">{hub.title.split(' ')[1] || ''}</span>
+                  <div className={`${index === 1 ? 'md:pl-20' : index === 2 ? 'md:pl-32' : ''} space-y-1 z-40`}>
+                    <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white/40 mb-1">Step {index + 1}</p>
+                    <h3 className="text-4xl sm:text-5xl font-black text-white uppercase italic tracking-tighter leading-none drop-shadow-2xl">
+                      {hub.title.split(' ')[0]} <span className="text-white/40">{hub.title.split(' ')[1] || hub.title.split(' ')[2] || ''}</span>
                     </h3>
-                    <p className="text-xs font-bold text-white/30 uppercase tracking-[0.2em] leading-none mt-3">
+                    <p className="text-xs font-bold text-white/30 uppercase tracking-[0.1em] leading-none mt-3 max-w-sm">
                        {hub.desc}
                     </p>
                   </div>
