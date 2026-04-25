@@ -283,7 +283,7 @@ export function StrategistChat({
   };
 
   return (
-    <div className={containerClassName || "fixed top-[28px] left-6 z-[100] flex flex-col items-start"}>
+    <div className={containerClassName || "fixed top-6 left-6 z-[100] flex flex-col items-start"}>
       {/* Floating Toggle Button */}
       <motion.button
         whileHover={{ scale: 1.05 }}

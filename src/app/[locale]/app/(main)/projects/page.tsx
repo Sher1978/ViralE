@@ -51,15 +51,19 @@ export default function ProjectsPage() {
 
   return (
     <div className="space-y-0 pb-32 max-w-7xl mx-auto overflow-x-hidden">
-      {/* Professional Header - Aligned with Global Strategist */}
-      <div className="flex flex-col pt-4 mb-4 pl-16">
-        <div className="space-y-0.5">
-          <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
-            Viral<span className="text-purple-500">E</span>
-          </h1>
-          <p className="text-[10px] uppercase tracking-[0.4em] font-black text-white/20">
-            AI Content Production Factory
-          </p>
+      {/* Professional Header - Aligned with Global Strategist Logo */}
+      <div className="flex items-center gap-4 pt-6 mb-8 px-6 min-h-12">
+        {/* Spacer for the Fixed Strategist Orb (w-12) */}
+        <div className="w-12 flex-shrink-0" />
+        <div className="flex flex-col justify-center">
+          <div className="space-y-0">
+            <h1 className="text-4xl font-black uppercase tracking-tighter leading-[0.8] italic">
+              Viral<span className="text-purple-500">E</span>
+            </h1>
+            <p className="text-[10px] uppercase tracking-[0.4em] font-black text-white/20 mt-1">
+              AI Content Production Factory
+            </p>
+          </div>
         </div>
       </div>
 
