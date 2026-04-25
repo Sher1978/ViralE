@@ -542,6 +542,9 @@ export function StrategistChat({
         type="trial"
         locale={locale}
       />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
