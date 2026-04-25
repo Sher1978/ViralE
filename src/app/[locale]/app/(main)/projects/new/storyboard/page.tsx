@@ -9,6 +9,7 @@ import { StatusStepper } from '@/components/ui/StatusStepper';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { profileService, Profile } from '@/lib/services/profileService';
 import { StrategistChat } from '@/components/studio/StrategistChat';
+import { motion } from 'framer-motion';
 
 export default function StoryboardPage() {
   const t = useTranslations('storyboard');

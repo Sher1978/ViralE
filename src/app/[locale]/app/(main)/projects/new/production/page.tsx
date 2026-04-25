@@ -17,6 +17,7 @@ import { profileService, Profile } from '@/lib/services/profileService';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { renderService } from '@/lib/services/renderService';
 import { StrategistChat } from '@/components/studio/StrategistChat';
+import { motion } from 'framer-motion';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { motion, AnimatePresence } from 'framer-motion';
 
