@@ -97,17 +97,20 @@ export default function StudioPage() {
 
   return (
     <div className="space-y-8 pb-32 max-w-7xl mx-auto px-4 overflow-x-hidden">
-      {/* Improved Pro Header */}
-      <div className="flex items-start justify-between pt-4 mb-6">
-        <div className="flex items-center gap-6">
-          <div className="space-y-0.5">
-            <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
-              Viral <span className="text-purple-500">Studio</span>
-            </h1>
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
-              AI Content Production Factory
-            </p>
-          </div>
+      {/* Improved Pro Header - Aligned Logo and Title on one level */}
+      <div className="flex items-center gap-5 pt-4 mb-8 px-2">
+        {/* Strategist Logo Placeholder / Button */}
+        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-900/40 border border-purple-500/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer group">
+           <Zap className="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform" />
+        </div>
+
+        <div className="space-y-0.5">
+          <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
+            Viral <span className="text-purple-500">Studio</span>
+          </h1>
+          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
+            AI Content Production Factory
+          </p>
         </div>
       </div>
 
