@@ -1,4 +1,4 @@
-export type SegmentType = 'intro_avatar' | 'outro_avatar' | 'animated_still' | 'broll' | 'transition';
+export type SegmentType = 'intro_avatar' | 'outro_avatar' | 'animated_still' | 'broll' | 'transition' | 'user_recording';
 export type AvatarProvider = 'heygen' | 'higgsfield';
 export type AnimationStyle = 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'glitch' | 'none';
 
