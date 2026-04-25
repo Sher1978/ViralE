@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project } from '@/lib/services/projectService';
+import { profileService } from '@/lib/services/profileService';
 import { useRouter } from '@/navigation';
 import { StrategistChat } from '@/components/studio/StrategistChat';
 
