@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Cpu, Zap, Wand2 } from 'lucide-react';
+import { Activity, Cpu, Zap, Wand2, Share2 } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 
 interface ScenarioCardProps {
