@@ -109,58 +109,80 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Professional Stage Collage - Monolithic Diagonal Layout */}
-      <div className="relative group/monolith overflow-hidden rounded-[3rem] border border-white/10 shadow-2xl bg-[#0a0a14]">
+      {/* Professional Stage Collage - Monolithic Diagonal Layout with Cascade Animation */}
+      <div className="relative group/monolith overflow-hidden rounded-[3rem] border border-white/5 shadow-2xl bg-[#0a0a14]">
         {mainHubs.map((hub, index) => (
-          <Link key={hub.id} href={hub.href} className="block relative group">
-            <div 
-              className={`relative h-[220px] transition-all duration-700 overflow-hidden active:scale-[0.98]
-                ${index === 0 ? 'z-30 h-[240px]' : index === 1 ? 'z-20 -mt-16 h-[260px]' : 'z-10 -mt-16 h-[220px]'}
-              `}
-              style={{
-                clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' :
-                          index === 1 ? 'polygon(0 20%, 100% 0, 100% 80%, 0 100%)' :
-                          'polygon(0 20%, 100% 0, 100% 100%, 0 100%)'
-              }}
-            >
-              {/* Image Layer */}
-              <div className="absolute inset-0">
-                <img 
-                  src={hub.image} 
-                  className="w-full h-full object-cover opacity-30 group-active:opacity-80 transition-all duration-1000 group-active:scale-105"
-                  alt={hub.title}
-                  onError={(e) => (e.currentTarget.style.opacity = '0')}
-                />
-                <div className={`absolute inset-0 bg-gradient-to-br ${
-                  hub.id === 'lab' ? 'from-purple-600/40 via-purple-900/40' :
-                  hub.id === 'storyboard' ? 'from-orange-600/40 via-orange-900/40' :
-                  'from-blue-600/40 via-blue-900/40'
-                } to-transparent`} />
-              </div>
+          <motion.div
+            key={hub.id}
+            initial={{ x: -100, opacity: 0 }}
+            animate={{ x: 0, opacity: 1 }}
+            transition={{ 
+              duration: 0.8, 
+              delay: index * 0.2,
+              ease: [0.16, 1, 0.3, 1] // Custom smooth ease
+            }}
+            className="block relative group"
+          >
+            <Link href={hub.href}>
+              <div 
+                className={`relative h-[220px] transition-all duration-700 overflow-hidden active:scale-[0.98]
+                  ${index === 0 ? 'z-30 h-[240px]' : index === 1 ? 'z-20 -mt-20 h-[300px]' : 'z-10 -mt-20 h-[240px]'}
+                `}
+                style={{
+                  clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' :
+                            index === 1 ? 'polygon(0 20%, 100% 0, 100% 80%, 0 100%)' :
+                            'polygon(0 20%, 100% 0, 100% 100%, 0 100%)'
+                }}
+              >
+                {/* Black Separator Line Logic */}
+                {index > 0 && (
+                  <div 
+                    className="absolute top-0 left-0 w-full h-[2px] bg-black z-50 pointer-events-none opacity-60"
+                    style={{
+                      clipPath: 'polygon(0 20%, 100% 0, 100% 1%, 0 21%)'
+                    }}
+                  />
+                )}
 
-              {/* Content Layer */}
-              <div className={`absolute inset-0 p-10 flex flex-col ${
-                index === 0 ? 'justify-start pt-12' : 
-                index === 1 ? 'justify-center' : 
-                'justify-end pb-12'
-              }`}>
-                <div className={`${index === 1 ? 'md:pl-12' : index === 2 ? 'md:pl-24' : ''} space-y-1`}>
-                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Step 0{index + 1}</p>
-                  <h3 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
-                    {hub.title.split(' ')[0]} <span className="text-white/50">{hub.title.split(' ')[1] || ''}</span>
-                  </h3>
-                  <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest leading-none">
-                    {hub.desc}
-                  </p>
+                {/* Image Layer */}
+                <div className="absolute inset-0">
+                  <img 
+                    src={hub.image} 
+                    className="w-full h-full object-cover opacity-30 group-active:opacity-80 transition-all duration-1000 group-active:scale-105"
+                    alt={hub.title}
+                    onError={(e) => (e.currentTarget.style.opacity = '0')}
+                  />
+                  <div className={`absolute inset-0 bg-gradient-to-br ${
+                    hub.id === 'lab' ? 'from-purple-600/40 via-purple-900/50' :
+                    hub.id === 'storyboard' ? 'from-orange-600/40 via-orange-900/50' :
+                    'from-blue-600/40 via-blue-900/50'
+                  } to-transparent`} />
+                </div>
+
+                {/* Content Layer */}
+                <div className={`absolute inset-0 p-10 flex flex-col ${
+                  index === 0 ? 'justify-start pt-12' : 
+                  index === 1 ? 'justify-center' : 
+                  'justify-end pb-12'
+                }`}>
+                  <div className={`${index === 1 ? 'md:pl-12' : index === 2 ? 'md:pl-24' : ''} space-y-1`}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Sequence Phase 0{index + 1}</p>
+                    <h3 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
+                      {hub.title.split(' ')[0]} <span className="text-white/50">{hub.title.split(' ')[1] || ''}</span>
+                    </h3>
+                    <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest leading-none">
+                      {hub.desc}
+                    </p>
+                  </div>
+                </div>
+
+                {/* Action Circle */}
+                <div className="absolute top-1/2 -translate-y-1/2 right-10 w-12 h-12 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-center transition-all group-active:bg-white group-active:text-black">
+                  <ArrowRight className="w-6 h-6" />
                 </div>
               </div>
-
-              {/* Action Circle */}
-              <div className="absolute top-1/2 -translate-y-1/2 right-10 w-12 h-12 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-center transition-all group-active:bg-white group-active:text-black">
-                <ArrowRight className="w-6 h-6" />
-              </div>
-            </div>
-          </Link>
+            </Link>
+          </motion.div>
         ))}
       </div>
 
