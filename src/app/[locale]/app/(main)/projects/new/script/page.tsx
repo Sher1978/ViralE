@@ -12,6 +12,7 @@ import { profileService, Profile } from '@/lib/services/profileService';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { StrategistChat } from '@/components/studio/StrategistChat';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
 
 export default function ScriptLabPage() {
