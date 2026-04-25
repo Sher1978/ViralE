@@ -54,21 +54,21 @@ export default function ProjectsPage() {
       title: 'Script lab',
       desc: 'CRAFT YOUR MESSAGE WITH AI PRECISION',
       href: '/app/projects/new/script',
-      image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059&auto=format&fit=crop',
+      image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1973&auto=format&fit=crop',
     },
     {
       id: 'storyboard',
       title: 'Storyboard',
       desc: 'VISUALIZE YOUR CINEMATIC SEQUENCE',
       href: '/app/projects/new/storyboard',
-      image: 'https://images.unsplash.com/photo-1542204112-326922989632?q=80&w=1974&auto=format&fit=crop',
+      image: 'https://images.unsplash.com/photo-1590179068383-b9c69aacebd3?q=80&w=1974&auto=format&fit=crop',
     },
     {
       id: 'production',
       title: 'Production hub',
       desc: 'LAUNCH PROFESSIONAL RENDERING',
       href: '/app/projects/new/production',
-      image: 'https://images.unsplash.com/photo-1492041944571-0800ed9d90c0?q=80&w=1974&auto=format&fit=crop',
+      image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059&auto=format&fit=crop',
     }
   ];
 

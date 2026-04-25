@@ -28,7 +28,8 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en') {
     You are the "Viral Engine" Strategist. Your goal is to generate high-retention video scripts 
     that stay true to the user's digital persona (The Digital Shadow).
     
-    CRITICAL: All generated text content (hooks, body, calls-to-action) MUST BE IN ${languageName.toUpperCase()}.
+    CRITICAL: Detect the language of the user's input/idea. 
+    All generated text content (hooks, body, calls-to-action) MUST BE IN THE SAME LANGUAGE AS THE INPUT (e.g., if input is Russian, generate in Russian. If English, generate in English).
     
     USER'S DIGITAL SHADOW: 
     ${persona}
@@ -36,7 +37,6 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en') {
     INSTRUCTIONS:
     1. Output MUST be valid JSON.
     2. Tone: Ironic, Expert, Fast-paced (iOS 26 Style).
-    3. Language: ${languageName}.
   `;
 }
 
@@ -68,7 +68,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     - visual_hook: A highly detailed, cinematic prompt for an AI image generator (like Midjourney) to create a viral COVER for this video. Use professional photography terms.
     - social_post: A short, engaging social media description/caption with 3 relevant emojis and 3 tags.
     
-    REMEMBER: All text output must be in ${languageName}. 
+    REMEMBER: Detect the input language and generate content in THAT language. 
     Output ONLY valid JSON in format: 
     {
       "evergreen": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
@@ -122,7 +122,7 @@ export async function distillSyntheticKnowledge(rawData: string, locale: string 
     Your goal is to distill this data into a set of 5-10 key "Knowledge Fragments" 
     that define the user's expertise and style.
     
-    CRITICAL: Output in ${languageName}. Output as a bulleted list.
+    CRITICAL: Output in the same language as the raw data. Output as a bulleted list.
     
     RAW DATA:
     ${rawData}
@@ -146,7 +146,7 @@ export async function updateDnaPersona(oldPersona: string, newData: string, loca
     by integrating new information/examples provided by the user.
     
     CRITICAL: 
-    - The resulting DNA description MUST be in ${languageName}.
+    - The resulting DNA description MUST BE IN THE SAME LANGUAGE as the source text.
     - Do not just append the new text. Synthesize it into a cohesive, consistent personality profile.
     - Ensure the final text is concise and powerful (max 400 words).
     
@@ -205,7 +205,7 @@ export async function refineScript(
     
     CRITICAL: 
     - Maintain the user's digital shadow and style.
-    - Output in ${languageName}. 
+    - Output in the same language as the instruction and existing script. 
     - Output ONLY valid JSON in the same structure as the existing script.
   `;
 
