@@ -21,6 +21,10 @@ export default function StoryboardPage() {
   const projectIdParam = searchParams.get('projectId');
   const versionIdParam = searchParams.get('versionId');
 
+  const [isLoading, setIsLoading] = useState(true);
+  const [project, setProject] = useState<Project | null>(null);
+  const [version, setVersion] = useState<ProjectVersion | null>(null);
+  const [user, setUser] = useState<Profile | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [generationStep, setGenerationStep] = useState(0);
 
