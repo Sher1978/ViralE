@@ -84,7 +84,7 @@ export default function ScriptLabPage() {
 
   // Session Recovery for Generation State (Fix for state loss during router transitions)
   useEffect(() => {
-    if (typeof window !== 'undefined' && !projectIdParam) {
+    if (typeof window !== 'undefined') {
       const savedGenerating = sessionStorage.getItem('isGenerating') === 'true';
       const savedScenarios = sessionStorage.getItem('allScenarios');
       
@@ -102,7 +102,7 @@ export default function ScriptLabPage() {
         }
       }
     }
-  }, [projectIdParam]);
+  }, []); // Run on mount to catch redirected generation state
 
   useEffect(() => {
     async function loadData() {
@@ -401,7 +401,19 @@ export default function ScriptLabPage() {
       router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Generation failed:', err);
-      setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
+      const isCreditError = err.message?.includes('credits') || err.message?.includes('limit');
+      
+      if (isCreditError) {
+        setLimitModalData({
+          title: locale === 'ru' ? 'Лимит ИИ' : 'AI Limit',
+          desc: err.message,
+          type: 'credits'
+        });
+        setShowLimitModal(true);
+      } else {
+        setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
+      }
+      
       setIsGenerating(false);
       if (typeof window !== 'undefined') {
         sessionStorage.removeItem('isGenerating');
@@ -537,6 +549,11 @@ export default function ScriptLabPage() {
         </div>
 
         <div className="space-y-8">
+          {error && (
+            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold animate-shake uppercase tracking-widest text-center">
+              {error}
+            </div>
+          )}
           <div className="relative group">
             <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000" />
             <textarea
@@ -661,6 +678,12 @@ export default function ScriptLabPage() {
   return (
     <div className="space-y-6 animate-fade-in pb-20">
       <StatusStepper currentStep="script" />
+
+      {error && (
+        <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest animate-shake">
+          {error}
+        </div>
+      )}
 
       {/* Header */}
       <div className="flex items-center justify-between">
