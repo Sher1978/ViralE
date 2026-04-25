@@ -25,8 +25,7 @@ export async function POST(req: Request) {
         .from('studio_manifests')
         .update({
           manifest_json: manifest,
-          name: name || `Draft ${new Date().toLocaleTimeString()}`,
-          updated_at: new Date().toISOString()
+          name: name || `Draft ${new Date().toLocaleTimeString()}`
         })
         .eq('id', existing.id)
         .select()

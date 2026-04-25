@@ -226,8 +226,7 @@ export async function POST(req: Request) {
       const { data: updatedVersion, error: updateError } = await authorizedSupabase
         .from('project_versions')
         .update({
-          script_data: scriptJson,
-          updated_at: new Date().toISOString()
+          script_data: scriptJson
         })
         .eq('id', targetVersionId)
         .select()
@@ -265,8 +264,7 @@ export async function POST(req: Request) {
     await authorizedSupabase
       .from('projects')
       .update({ 
-        status: 'scripting',
-        updated_at: new Date().toISOString()
+        status: 'scripting'
       })
       .eq('id', projectId);
 

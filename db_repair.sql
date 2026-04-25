@@ -13,6 +13,11 @@ ALTER TABLE public.project_versions ADD COLUMN IF NOT EXISTS storyboard_data JSO
 ALTER TABLE public.project_versions ADD COLUMN IF NOT EXISTS version_label TEXT;
 ALTER TABLE public.project_versions ADD COLUMN IF NOT EXISTS preview_url TEXT;
 
+-- Add missing updated_at columns
+ALTER TABLE public.projects ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE public.project_versions ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+ALTER TABLE public.studio_manifests ADD COLUMN IF NOT EXISTS updated_at TIMESTAMPTZ DEFAULT now();
+
 -- 3. Ensure 'profiles' table has all required columns
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS credits_balance INTEGER DEFAULT 100;
 ALTER TABLE public.profiles ADD COLUMN IF NOT EXISTS tier TEXT DEFAULT 'free';
