@@ -111,8 +111,8 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Professional Stage Collage - Monolithic Diagonal Layout with Comic Aesthetic */}
-      <div className="relative group/monolith overflow-hidden rounded-[3rem] border-[6px] border-black shadow-2xl bg-black">
+      {/* Professional Stage Collage - Monolithic Diagonal Layout with Physical Gaps */}
+      <div className="relative group/monolith overflow-hidden rounded-[3rem] border-4 border-black shadow-2xl bg-black px-1 py-1 space-y-1">
         {mainHubs.map((hub, index) => (
           <motion.div
             key={hub.id}
@@ -128,7 +128,7 @@ export default function StudioPage() {
             <Link href={hub.href}>
               <div 
                 className={`relative transition-all duration-700 overflow-hidden active:scale-[0.99]
-                  ${index === 0 ? 'z-30 h-[220px]' : index === 1 ? 'z-20 -mt-20 h-[280px]' : 'z-10 -mt-20 h-[220px]'}
+                  ${index === 0 ? 'z-30 h-[220px]' : index === 1 ? 'z-20 -mt-16 h-[260px]' : 'z-10 -mt-16 h-[220px]'}
                 `}
                 style={{
                   clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' :
@@ -136,17 +136,8 @@ export default function StudioPage() {
                             'polygon(0 15%, 100% 0, 100% 100%, 0 100%)'
                 }}
               >
-                {/* Thick Comic-Style Divider Overlay */}
-                <div 
-                  className="absolute inset-0 border-t-[10px] border-black z-50 pointer-events-none"
-                  style={{
-                    clipPath: index === 1 ? 'polygon(0 15%, 100% 0, 100% 2%, 0 17%)' :
-                              index === 2 ? 'polygon(0 15%, 100% 0, 100% 2%, 0 17%)' : 'none'
-                  }}
-                />
-
-                {/* Extra Shadow for depth between slants */}
-                <div className="absolute top-0 left-0 w-full h-[100px] bg-gradient-to-b from-black to-transparent opacity-60 z-40 pointer-events-none" />
+                {/* Subtle top shadow for depth instead of hard line */}
+                <div className="absolute top-0 left-0 w-full h-[60px] bg-gradient-to-b from-black/40 to-transparent z-40 pointer-events-none" />
 
                 {/* Image Layer with High Contrast Overlay */}
                 <div className="absolute inset-0">
@@ -160,12 +151,12 @@ export default function StudioPage() {
                     hub.id === 'lab' ? 'from-purple-600/60 via-purple-900/80' :
                     hub.id === 'storyboard' ? 'from-orange-600/60 via-orange-900/80' :
                     'from-blue-600/60 via-blue-900/80'
-                  } to-black`} />
+                  } to-black/80`} />
                 </div>
 
-                {/* Giant Stylized Numbering */}
+                {/* Giant Original Stylized Numbering - Subtle Watermark */}
                 <div className="absolute left-6 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
-                  <span className="text-[200px] font-black italic text-black/40 leading-none tracking-tighter">
+                  <span className="text-[200px] font-black italic text-white/10 leading-none tracking-tighter drop-shadow-2xl">
                     {index + 1}
                   </span>
                 </div>
