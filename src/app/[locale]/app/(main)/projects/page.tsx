@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useEffect, useCallback } from 'react';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import Link from 'next/link';
 import { useTranslations } from 'next-intl';
 import { 
