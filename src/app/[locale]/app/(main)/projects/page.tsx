@@ -141,12 +141,12 @@ export default function StudioPage() {
                             'polygon(0 15%, 100% 0, 100% 100%, 0 100%)'
                 }}
               >
-                {/* Thick Comic-Style Separator Line */}
+                {/* Thick Comic-Style Separator Line - Precise Alignment for 15% Slant */}
                 {index > 0 && (
                   <div 
-                    className="absolute top-0 left-0 w-full h-[6px] bg-black z-50 pointer-events-none"
+                    className="absolute top-0 left-0 w-full h-[8px] bg-black z-50 pointer-events-none shadow-[0_0_10px_rgba(0,0,0,0.5)]"
                     style={{
-                      clipPath: index === 1 ? 'polygon(0 15%, 100% 0, 100% 2%, 0 17%)' : 'polygon(0 15%, 100% 0, 100% 2%, 0 17%)'
+                      clipPath: 'polygon(0 15%, 100% 0, 100% 3%, 0 18%)'
                     }}
                   />
                 )}
