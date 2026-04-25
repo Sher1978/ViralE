@@ -56,39 +56,13 @@ export function BottomNav() {
           {navItems.map((item) => {
             const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
             const Icon = item.icon;
-            const isCentral = (item as any).isCentral;
-
-            if (isCentral) {
-              return (
-                <li key={item.href} className="relative -mt-10 mb-2 px-2 z-20">
-                  <Link
-                    href={item.href}
-                    className={cn(
-                      "flex flex-col items-center justify-center w-20 h-20 rounded-full transition-all duration-500",
-                      isActive 
-                        ? "bg-purple-500 text-white shadow-[0_0_30px_rgba(168,85,247,0.5)] scale-110" 
-                        : "bg-gradient-to-br from-indigo-600 to-purple-600 text-white/90 hover:scale-105 shadow-xl"
-                    )}
-                  >
-                    <div className={cn(
-                      "absolute inset-0 rounded-full bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity",
-                      !isActive && "animate-pulse"
-                    )} />
-                    <Icon className="w-8 h-8" strokeWidth={2.5} />
-                    <span className="text-[7px] font-black tracking-tighter uppercase mt-1">
-                      {t(item.key as any)}
-                    </span>
-                  </Link>
-                </li>
-              );
-            }
 
             return (
               <li key={item.href} className="flex-1">
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-2xl transition-all duration-300 relative mx-0.5",
+                    "flex flex-col items-center justify-center gap-0.5 py-3 rounded-2xl transition-all duration-300 relative mx-0.5",
                     isActive
                       ? "text-black"
                       : "text-white/40 hover:text-white/70"
@@ -99,8 +73,10 @@ export function BottomNav() {
                       layoutId="activeTab"
                       className="absolute inset-0 rounded-2xl z-0"
                       style={{
-                        background: 'linear-gradient(135deg, #00FFCC, #4DFFD4)',
-                        boxShadow: '0 4px 15px rgba(0,255,204,0.3)',
+                        background: item.key === 'studio' 
+                          ? 'linear-gradient(135deg, #A855F7, #D8B4FE)' 
+                          : 'linear-gradient(135deg, #00FFCC, #4DFFD4)',
+                        boxShadow: `0 4px 15px ${item.key === 'studio' ? 'rgba(168,85,247,0.3)' : 'rgba(0,255,204,0.3)'}`,
                       }}
                       transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
                     />
