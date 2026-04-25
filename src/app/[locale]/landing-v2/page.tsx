@@ -13,7 +13,13 @@ import {
   Smartphone,
   ChevronRight,
   Globe,
-  Share2
+  Share2,
+  Clock,
+  TrendingDown,
+  CircleDollarSign,
+  CheckCircle2,
+  Star,
+  ZapOff
 } from 'lucide-react';
 import { Link } from '@/navigation';
 import { useState } from 'react';
@@ -130,7 +136,7 @@ export default function LandingV2Page() {
               whileTap={{ scale: 0.95 }}
               className="px-8 py-3 rounded-full bg-sherlock-gold text-black text-[11px] font-black uppercase tracking-[0.2em] shadow-glow-gold hover:bg-sherlock-gold-bright transition-all"
             >
-              {t('hero.cta').split(' ')[0]} {t('hero.cta').split(' ')[1]}
+              {t('hero.cta')}
             </motion.button>
           </Link>
         </motion.div>
@@ -146,19 +152,29 @@ export default function LandingV2Page() {
               animate={{ scale: 1, opacity: 1 }}
               className="inline-block px-6 py-2 glass-mint rounded-full border border-neon-mint/30 mb-4"
             >
-              <span className="text-neon-mint text-xs font-black uppercase tracking-[0.3em]">{t('hero.tagline')}</span>
+              <span className="text-neon-mint text-xs font-black uppercase tracking-[0.3em]">{t('hero.badge')}</span>
             </motion.div>
             <h1 className="text-7xl md:text-[8rem] font-black uppercase tracking-tighter leading-[0.85] italic">
-              {t('hero.title').split(' ').map((word, i) => (
-                <span key={i} className={i === 1 ? 'gradient-text-gold block not-italic' : 'block'}>
-                  {word}
-                </span>
-              ))}
+              {t('hero.title')}
             </h1>
             <p className="text-white/40 text-xl md:text-2xl max-w-2xl mx-auto font-medium leading-relaxed">
               {t('hero.subtitle')}
             </p>
           </div>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.3 }}
+            className="flex flex-col md:flex-row items-center gap-6"
+          >
+            <Link href="/auth">
+              <button className="px-12 py-6 rounded-full bg-sherlock-gold text-black font-black text-xl uppercase tracking-tighter shadow-glow-gold hover:scale-105 transition-all">
+                {t('hero.cta')}
+              </button>
+            </Link>
+            <span className="text-white/20 text-xs font-black uppercase tracking-widest">{t('hero.scrollHint')}</span>
+          </motion.div>
 
           {/* Main Visual: Smartphone Mockup LOWERED with 5 Floating Previews in FOREGROUND */}
           <div className="relative mt-10 md:mt-20 flex justify-center w-full min-h-[700px] md:min-h-[900px]">
@@ -259,37 +275,61 @@ export default function LandingV2Page() {
              </div>
           </div>
 
-          <motion.div variants={itemVariants} className="flex flex-col md:flex-row items-center gap-12 pt-20 z-10">
-            <Link href="/auth?next=/app/onboarding">
-              <motion.button 
-                whileHover={{ scale: 1.05, y: -5 }}
-                whileTap={{ scale: 0.95 }}
-                className="px-16 py-8 rounded-[3rem] bg-sherlock-gold text-black font-black text-3xl uppercase tracking-tighter shadow-glow-gold group relative overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/20 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-                {t('hero.cta')}
-              </motion.button>
-            </Link>
-            <div className="flex gap-10 border-l border-white/10 pl-12 h-20 items-center">
-               <div className="flex flex-col items-start">
-                  <span className="text-neon-mint font-black text-3xl tracking-tighter italic">50K+</span>
-                  <span className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">{t('hero.stats.creators')}</span>
-               </div>
-               <div className="w-px h-10 bg-white/10" />
-               <div className="flex flex-col items-start">
-                  <span className="text-sherlock-gold font-black text-3xl tracking-tighter italic">AI-GOLD</span>
-                  <span className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">{t('hero.stats.quality')}</span>
-               </div>
+          <motion.div variants={itemVariants} className="grid grid-cols-1 md:grid-cols-3 gap-12 pt-20 z-10 w-full max-w-4xl">
+            <div className="flex flex-col items-center space-y-2 glass p-8 rounded-3xl border-white/5">
+              <span className="text-neon-mint font-black text-4xl tracking-tighter italic">10×</span>
+              <span className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">{t('hero.stats.content')}</span>
+            </div>
+            <div className="flex flex-col items-center space-y-2 glass p-8 rounded-3xl border-white/5">
+              <span className="text-sherlock-gold font-black text-4xl tracking-tighter italic">6+</span>
+              <span className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">{t('hero.stats.outputs')}</span>
+            </div>
+            <div className="flex flex-col items-center space-y-2 glass p-8 rounded-3xl border-white/5">
+              <span className="text-white font-black text-4xl tracking-tighter italic">1</span>
+              <span className="text-white/40 text-[10px] uppercase font-bold tracking-[0.3em]">{t('hero.stats.prompt')}</span>
             </div>
           </motion.div>
+        </section>
+
+        {/* PROBLEM SECTION */}
+        <section id="problem" className="space-y-24">
+          <div className="flex flex-col items-center text-center space-y-6">
+            <span className="text-sherlock-gold text-[10px] font-black uppercase tracking-[0.4em]">{t('problem.label')}</span>
+            <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter max-w-4xl">{t('problem.title')}</h2>
+            <p className="text-white/40 text-xl md:text-2xl max-w-3xl mx-auto font-medium">{t('problem.subtitle')}</p>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+            <div className="glass p-10 rounded-[3rem] border-white/5 space-y-6 hover:border-sherlock-gold/20 transition-all">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
+                <Clock className="w-8 h-8 text-sherlock-gold" />
+              </div>
+              <h3 className="text-2xl font-black uppercase tracking-tight">{t('problem.item1Title')}</h3>
+              <p className="text-white/40 font-medium leading-relaxed">{t('problem.item1Desc')}</p>
+            </div>
+            <div className="glass p-10 rounded-[3rem] border-white/5 space-y-6 hover:border-neon-mint/20 transition-all">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
+                <CircleDollarSign className="w-8 h-8 text-neon-mint" />
+              </div>
+              <h3 className="text-2xl font-black uppercase tracking-tight">{t('problem.item2Title')}</h3>
+              <p className="text-white/40 font-medium leading-relaxed">{t('problem.item2Desc')}</p>
+            </div>
+            <div className="glass p-10 rounded-[3rem] border-white/5 space-y-6 hover:border-white/20 transition-all">
+              <div className="w-16 h-16 rounded-2xl bg-white/5 flex items-center justify-center">
+                <TrendingDown className="w-8 h-8 text-white/60" />
+              </div>
+              <h3 className="text-2xl font-black uppercase tracking-tight">{t('problem.item3Title')}</h3>
+              <p className="text-white/40 font-medium leading-relaxed">{t('problem.item3Desc')}</p>
+            </div>
+          </div>
         </section>
 
         {/* HOW IT WORKS / FLOW */}
         <section id="works" className="space-y-24">
           <div className="flex flex-col lg:flex-row items-end justify-between gap-10 border-b border-white/5 pb-10">
             <div className="space-y-4">
-              <span className="text-sherlock-gold text-[10px] font-black uppercase tracking-[0.4em]">{t('features.flow.title')}</span>
-              <h2 className="text-6xl font-black uppercase tracking-tighter">{t('features.flow.description').split(' ')[0]} <span className="text-white/20 italic">{t('features.flow.description').split(' ').slice(1).join(' ')}</span></h2>
+              <span className="text-sherlock-gold text-[10px] font-black uppercase tracking-[0.4em]">{t('process.label')}</span>
+              <h2 className="text-6xl font-black uppercase tracking-tighter">{t('process.title')}</h2>
             </div>
             <p className="text-white/40 max-w-sm text-right font-medium">
               We've engineered a sequence that maximizes impact while minimizing effort.
@@ -299,9 +339,9 @@ export default function LandingV2Page() {
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-20 items-center">
             <div className="grid grid-cols-1 gap-8">
               {[
-                { id: '01', title: t('features.flow.step1'), desc: 'Feed the core with your raw idea or a reference link.', icon: Zap, color: 'gold' },
-                { id: '02', title: t('features.flow.step2'), desc: 'Our multi-engine system synthesizes the DNA and scripts.', icon: Cpu, color: 'mint' },
-                { id: '03', title: t('features.flow.step3'), desc: 'Get your video, cover, and texts in minutes.', icon: Share2, color: 'gold' }
+                { id: t('process.step1Number'), title: t('process.step1Title'), desc: t('process.step1Desc'), icon: Dna, color: 'gold' },
+                { id: t('process.step2Number'), title: t('process.step2Title'), desc: t('process.step2Desc'), icon: Cpu, color: 'mint' },
+                { id: t('process.step3Number'), title: t('process.step3Title'), desc: t('process.step3Desc'), icon: Share2, color: 'gold' }
               ].map((step, i) => (
                 <motion.div 
                   key={step.id}
@@ -340,20 +380,59 @@ export default function LandingV2Page() {
           <div className="relative glass rounded-[4rem] p-16 md:p-24 border-white/10 flex flex-col items-center text-center space-y-12">
             <PremiumDnaIcon className="w-32 h-32" />
             <div className="space-y-6 max-w-3xl">
-              <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter">{t('features.synthesis.title')}</h2>
+              <span className="text-sherlock-gold text-[10px] font-black uppercase tracking-[0.4em]">{t('dna.label')}</span>
+              <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter">{t('dna.title')}</h2>
               <p className="text-white/40 text-xl font-medium leading-relaxed">
-                {t('features.synthesis.description')}
+                {t('dna.subtitle')}
               </p>
             </div>
-            <div className="flex gap-4">
-              <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
-                <Dna className="w-5 h-5 text-sherlock-gold" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Voice Cloning</span>
-              </div>
-              <div className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
-                <Layers className="w-5 h-5 text-neon-mint" />
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Style Calibration</span>
-              </div>
+            
+            <div className="grid grid-cols-2 md:grid-cols-3 gap-4 w-full max-w-2xl">
+              {[1, 2, 3, 4, 5, 6].map((i) => (
+                <div key={i} className="px-6 py-4 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-3">
+                  <CheckCircle2 className="w-4 h-4 text-neon-mint" />
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{t(`dna.item${i}`)}</span>
+                </div>
+              ))}
+            </div>
+
+            {/* DNA Visualization */}
+            <div className="w-full max-w-4xl glass-dark p-8 rounded-[3rem] border-white/5 space-y-8 mt-12 bg-black/50">
+                <div className="flex justify-between items-center px-4">
+                  <span className="text-[10px] font-black text-white/20 uppercase tracking-[0.5em]">{t('dna.stats.label')}</span>
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-neon-mint animate-pulse" />
+                    <span className="text-[10px] font-black text-neon-mint uppercase tracking-widest">CALIBRATED</span>
+                  </div>
+                </div>
+                
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-10">
+                  <div className="space-y-6">
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                        <span>{t('dna.stats.tone')}</span>
+                        <span className="text-sherlock-gold">98%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} whileInView={{ width: '98%' }} className="h-full bg-sherlock-gold shadow-glow-gold" />
+                      </div>
+                    </div>
+                    <div className="space-y-3">
+                      <div className="flex justify-between text-[10px] font-black uppercase tracking-widest">
+                        <span>{t('dna.stats.authority')}</span>
+                        <span className="text-neon-mint">92%</span>
+                      </div>
+                      <div className="h-1.5 w-full bg-white/5 rounded-full overflow-hidden">
+                        <motion.div initial={{ width: 0 }} whileInView={{ width: '92%' }} className="h-full bg-neon-mint shadow-glow-mint" />
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="flex flex-col justify-center items-center p-6 border border-white/5 rounded-[2rem] bg-white/[0.02]">
+                    <div className="text-[10px] font-black text-white/20 uppercase tracking-widest mb-2">{t('dna.stats.nicheDetected')}</div>
+                    <div className="text-xl font-black text-white uppercase italic tracking-tight">{t('dna.stats.nicheValue')}</div>
+                  </div>
+                </div>
             </div>
           </div>
         </section>
@@ -361,35 +440,161 @@ export default function LandingV2Page() {
         {/* OUTPUT SHOWCASE */}
         <section id="outputs" className="space-y-24">
           <div className="text-center space-y-4">
-            <span className="text-neon-mint text-[10px] font-black uppercase tracking-[0.4em]">{t('showcase.title')}</span>
-            <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter">{t('showcase.description')}</h2>
+            <span className="text-neon-mint text-[10px] font-black uppercase tracking-[0.4em]">{t('showcase.label')}</span>
+            <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter">{t('showcase.title')}</h2>
+            <p className="text-white/40 text-xl font-medium">{t('showcase.subtitle')}</p>
           </div>
 
-          <div className="relative max-w-5xl mx-auto">
-            <div className="glass rounded-[3rem] p-4 md:p-8 overflow-hidden border-white/10 shadow-2xl relative">
-              <img 
-                src="/v2/showcase.png" 
-                alt="Multi-format outputs" 
-                className="w-full h-full object-cover rounded-[2rem]"
-              />
-              
-              {/* Floating Labels - adjusted for the collage */}
-              <div className="absolute top-[15%] left-[10%] p-4 glass-dark rounded-2xl border-neon-mint/30 animate-float">
-                <span className="text-[10px] font-black uppercase tracking-widest text-neon-mint">{t('showcase.video')}</span>
-              </div>
-              <div className="absolute top-[40%] right-[10%] p-4 glass-dark rounded-2xl border-sherlock-gold/30 animate-float" style={{ animationDelay: '1.5s' }}>
-                <span className="text-[10px] font-black uppercase tracking-widest text-sherlock-gold">{t('showcase.carousel')}</span>
-              </div>
-              <div className="absolute bottom-[20%] left-[15%] p-4 glass-dark rounded-2xl border-white/30 animate-float" style={{ animationDelay: '2.5s' }}>
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{t('showcase.text')} & {t('showcase.cover')}</span>
-              </div>
+          <div className="grid grid-cols-1 lg:grid-cols-12 gap-8 max-w-6xl mx-auto">
+            {/* Primary Video Showcase */}
+            <div className="lg:col-span-8 glass p-2 rounded-[3.5rem] border-white/10 shadow-2xl relative overflow-hidden group">
+               <div className="relative aspect-video rounded-[3rem] overflow-hidden">
+                <img src="/v2/showcase.png" className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-[5s]" />
+                <div className="absolute inset-0 bg-black/40 flex flex-col justify-end p-12 space-y-6">
+                  <div className="inline-block px-4 py-1.5 glass rounded-full border border-neon-mint/30 w-fit">
+                    <span className="text-neon-mint text-[10px] font-black uppercase tracking-widest">{t('showcase.videoBadge')}</span>
+                  </div>
+                  <h3 className="text-4xl font-black uppercase tracking-tighter">{t('showcase.videoTitle')}</h3>
+                  <p className="text-white/60 max-w-lg">{t('showcase.videoDesc')}</p>
+                </div>
+               </div>
             </div>
-            
-            {/* Metadata Badge */}
-            <div className="absolute -bottom-10 left-1/2 -translate-x-1/2 px-10 py-4 glass-gold rounded-full border-sherlock-gold/50 shadow-glow-gold backdrop-blur-xl">
-               <span className="text-xs font-black uppercase tracking-[0.4em] text-sherlock-gold">{t('showcase.metadata')}</span>
+
+            {/* Secondary Showcase (Carousel/Other) */}
+            <div className="lg:col-span-4 flex flex-col gap-8">
+              <div className="flex-1 glass p-8 rounded-[3rem] border-white/5 space-y-4 flex flex-col justify-center">
+                 <div className="flex items-center gap-4">
+                    <Smartphone className="w-8 h-8 text-sherlock-gold" />
+                    <div>
+                      <h4 className="text-xl font-black uppercase tracking-tight">{t('showcase.instaTitle')}</h4>
+                      <p className="text-white/40 text-xs font-bold uppercase tracking-widest">{t('showcase.instaDesc')}</p>
+                    </div>
+                 </div>
+                 <p className="text-white/40 text-sm leading-relaxed">{t('showcase.instaSub')}</p>
+              </div>
+              <div className="flex-1 glass p-8 rounded-[3rem] border-white/5 space-y-4 flex flex-col justify-center">
+                 <div className="flex items-center gap-4">
+                    <Layers className="w-8 h-8 text-neon-mint" />
+                    <div>
+                      <h4 className="text-xl font-black uppercase tracking-tight">{t('showcase.socialTitle')}</h4>
+                      <p className="text-white/40 text-xs font-bold uppercase tracking-widest">{t('showcase.socialDesc')}</p>
+                    </div>
+                 </div>
+                 <p className="text-white/40 text-sm leading-relaxed">{t('showcase.socialSub')}</p>
+              </div>
             </div>
           </div>
+
+          <div className="flex justify-center mt-12">
+            <div className="px-10 py-4 glass-dark rounded-full border-white/10 shadow-glow-gold backdrop-blur-xl">
+               <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 italic">RE-RENDERED · 4K · NEURAL CALIBRATED</span>
+            </div>
+          </div>
+        </section>
+
+        {/* PRICING SECTION */}
+        <section id="pricing" className="space-y-24">
+           <div className="flex flex-col items-center text-center space-y-4">
+              <span className="text-sherlock-gold text-[10px] font-black uppercase tracking-[0.4em]">{t('pricing.label')}</span>
+              <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter">{t('pricing.title')}</h2>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
+              {/* Free Plan */}
+              <div className="glass p-12 rounded-[3.5rem] border-white/5 flex flex-col space-y-8 relative overflow-hidden group">
+                 <div className="space-y-2">
+                    <h3 className="text-2xl font-black uppercase tracking-tight text-white/40">{t('pricing.free.title')}</h3>
+                    <div className="flex items-baseline gap-2">
+                       <span className="text-5xl font-black tracking-tighter">{t('pricing.free.price')}</span>
+                       <span className="text-white/20 text-xs font-bold uppercase tracking-widest">{t('pricing.free.period')}</span>
+                    </div>
+                 </div>
+                 <ul className="space-y-4 flex-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                       <li key={i} className="flex items-center gap-3 text-sm text-white/40 font-medium">
+                          <CheckCircle2 className="w-4 h-4 text-white/10" />
+                          {t(`pricing.free.feature${i}`)}
+                       </li>
+                    ))}
+                 </ul>
+                 <Link href="/auth">
+                    <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all">{t('pricing.free.cta')}</button>
+                 </Link>
+              </div>
+
+              {/* Creator Plan */}
+              <div className="glass-gold p-12 rounded-[3.5rem] border-sherlock-gold/30 flex flex-col space-y-8 relative overflow-hidden scale-105 shadow-glow-gold z-10">
+                 <div className="absolute top-6 right-8 px-4 py-1 bg-sherlock-gold text-black text-[10px] font-black uppercase tracking-widest rounded-full">{t('pricing.creator.badge')}</div>
+                 <div className="space-y-2">
+                    <h3 className="text-2xl font-black uppercase tracking-tight text-sherlock-gold">{t('pricing.creator.title')}</h3>
+                    <div className="flex items-baseline gap-2">
+                       <span className="text-5xl font-black tracking-tighter">{t('pricing.creator.price')}</span>
+                       <span className="text-black/40 text-xs font-bold uppercase tracking-widest">{t('pricing.creator.period')}</span>
+                    </div>
+                 </div>
+                 <ul className="space-y-4 flex-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                       <li key={i} className="flex items-center gap-3 text-sm text-black font-bold">
+                          <CheckCircle2 className="w-4 h-4 text-black/20" />
+                          {t(`pricing.creator.feature${i}`)}
+                       </li>
+                    ))}
+                 </ul>
+                 <Link href="/auth">
+                    <button className="w-full py-6 rounded-2xl bg-black text-sherlock-gold font-black text-sm uppercase tracking-widest shadow-lg hover:scale-105 transition-all">{t('pricing.creator.cta')}</button>
+                 </Link>
+              </div>
+
+              {/* Pro Plan */}
+              <div className="glass p-12 rounded-[3.5rem] border-white/5 flex flex-col space-y-8 relative overflow-hidden group">
+                 <div className="space-y-2">
+                    <h3 className="text-2xl font-black uppercase tracking-tight text-white/40">{t('pricing.pro.title')}</h3>
+                    <div className="flex items-baseline gap-2">
+                       <span className="text-5xl font-black tracking-tighter">{t('pricing.pro.price')}</span>
+                       <span className="text-white/20 text-xs font-bold uppercase tracking-widest">/ month</span>
+                    </div>
+                 </div>
+                 <ul className="space-y-4 flex-1">
+                    {[1, 2, 3, 4, 5].map((i) => (
+                       <li key={i} className="flex items-center gap-3 text-sm text-white/40 font-medium">
+                          <CheckCircle2 className="w-4 h-4 text-white/10" />
+                          {t(`pricing.pro.feature${i}`)}
+                       </li>
+                    ))}
+                 </ul>
+                 <Link href="/auth">
+                    <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all">{t('pricing.pro.cta')}</button>
+                 </Link>
+              </div>
+           </div>
+        </section>
+
+        {/* TESTIMONIALS SECTION */}
+        <section id="testimonials" className="space-y-24">
+           <div className="flex flex-col items-center text-center space-y-4">
+              <span className="text-neon-mint text-[10px] font-black uppercase tracking-[0.4em]">{t('testimonials.label')}</span>
+              <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter">{t('testimonials.title')}</h2>
+           </div>
+
+           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+              {[1, 2, 3].map((i) => (
+                 <div key={i} className="glass p-12 rounded-[3.5rem] border-white/5 space-y-8 flex flex-col">
+                    <div className="flex gap-1">
+                       {[...Array(5)].map((_, j) => <Star key={j} className="w-4 h-4 fill-sherlock-gold text-sherlock-gold" />)}
+                    </div>
+                    <p className="text-xl font-medium leading-relaxed flex-1 italic text-white/80">{t(`testimonials.item${i}Text`)}</p>
+                    <div className="flex items-center gap-4 pt-6 border-t border-white/5">
+                       <div className="w-12 h-12 rounded-full bg-gradient-to-br from-white/10 to-white/5 flex items-center justify-center text-sherlock-gold font-black italic">
+                          {t(`testimonials.item${i}Author`)[0]}
+                       </div>
+                       <div>
+                          <div className="text-sm font-black uppercase tracking-widest">{t(`testimonials.item${i}Author`)}</div>
+                          <div className="text-[10px] font-bold text-white/20 uppercase tracking-widest">{t(`testimonials.item${i}Handle`)}</div>
+                       </div>
+                    </div>
+                 </div>
+              ))}
+           </div>
         </section>
 
         {/* FINAL CTA SECTON */}
@@ -404,27 +609,24 @@ export default function LandingV2Page() {
           
           <div className="relative z-10 flex flex-col items-center text-center space-y-16">
             <div className="space-y-6">
-              <h2 className="text-8xl md:text-[12rem] font-black uppercase tracking-tighter italic leading-[0.8] gradient-text-gold">{t('cta.title')}</h2>
-              <p className="text-white/60 text-2xl max-w-2xl mx-auto font-medium">{t('cta.subtitle')}</p>
+              <h2 className="text-8xl md:text-[8rem] font-black uppercase tracking-tighter italic leading-[0.8] gradient-text-gold">{t('footer.title')}</h2>
+              <p className="text-white/60 text-2xl max-w-2xl mx-auto font-medium">{t('footer.subtitle')}</p>
             </div>
             
-            <Link href="/auth?next=/app/onboarding">
+            <Link href="/auth">
               <motion.button 
                 whileHover={{ scale: 1.05, y: -5 }}
                 whileTap={{ scale: 0.95 }}
                 className="px-20 py-10 rounded-[3rem] bg-sherlock-gold text-black font-black text-4xl uppercase tracking-tighter shadow-glow-gold group relative overflow-hidden"
               >
                 <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/40 to-transparent -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-1000" />
-                {t('cta.launch')}
+                {t('footer.cta')}
               </motion.button>
             </Link>
 
-            <div className="flex items-center gap-10 opacity-20">
-              <Share2 className="w-8 h-8" />
-              <Smartphone className="w-8 h-8" />
-              <Globe className="w-8 h-8" />
-              <Layers className="w-8 h-8" />
-            </div>
+            <Link href="#works" className="text-white/20 text-xs font-black uppercase tracking-[0.5em] hover:text-white transition-colors">
+              {t('footer.demo')}
+            </Link>
           </div>
         </section>
 
@@ -450,7 +652,7 @@ export default function LandingV2Page() {
                <h5 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">PRODUCT</h5>
                <ul className="space-y-4">
                   {['works', 'outputs', 'pricing'].map(item => (
-                    <li key={item}><Link href="#" className="text-sm font-medium text-white/40 hover:text-sherlock-gold transition-colors capitalize">{item}</Link></li>
+                    <li key={item}><Link href={`#${item}`} className="text-sm font-medium text-white/40 hover:text-sherlock-gold transition-colors capitalize">{item}</Link></li>
                   ))}
                </ul>
             </div>

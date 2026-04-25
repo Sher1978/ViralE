@@ -28,6 +28,7 @@ export default function DnaManagementPage() {
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
     fetchDna();
@@ -48,6 +49,7 @@ export default function DnaManagementPage() {
   async function handleUpdate() {
     if (!newData.trim()) return;
     setUpdating(true);
+    setError(null);
     try {
       const res = await fetch('/api/profile/dna', {
         method: 'PATCH',
@@ -55,12 +57,15 @@ export default function DnaManagementPage() {
         body: JSON.stringify({ newData, locale })
       });
       const data = await res.json();
+      if (!res.ok) throw new Error(data.error || (locale === 'ru' ? 'Ошибка обновления DNA' : 'DNA update failed'));
+      
       if (data.dna) {
         setDna(data.dna);
         setNewData('');
       }
-    } catch (e) {
-      console.error(e);
+    } catch (e: any) {
+      console.error('[DnaLab] Update error:', e);
+      setError(e.message || 'Update failed');
     } finally {
       setUpdating(false);
     }
@@ -69,13 +74,14 @@ export default function DnaManagementPage() {
   async function handleReset() {
     if (!confirm(t('resetWarning'))) return;
     setResetting(true);
+    setError(null);
     try {
       const res = await fetch('/api/profile/dna', { method: 'DELETE' });
-      if (res.ok) {
-        router.push(`/${locale}/app/onboarding`);
-      }
-    } catch (e) {
-      console.error(e);
+      if (!res.ok) throw new Error('Reset failed');
+      router.push(`/${locale}/app/onboarding`);
+    } catch (e: any) {
+      console.error('[DnaLab] Reset error:', e);
+      setError(e.message || 'Reset failed');
     } finally {
       setResetting(false);
     }
@@ -202,6 +208,12 @@ export default function DnaManagementPage() {
               </>
             )}
           </button>
+
+          {error && (
+            <div className="mt-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center animate-shake">
+              ⚠️ {error}
+            </div>
+          )}
         </motion.div>
 
         {/* Terminal Options / Danger Zone */}

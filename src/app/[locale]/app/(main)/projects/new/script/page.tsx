@@ -168,7 +168,7 @@ export default function ScriptLabPage() {
           setError(locale === 'ru' ? 'Для редактирования нужно минимум 50 кредитов.' : 'Minimum 50 credits required for adjustment.');
           return;
         }
-        throw new Error(data.error || 'Refinement failed');
+        throw new Error(data.error || (locale === 'ru' ? 'Сбой при редактировании' : 'Refinement failed'));
       }
 
       // Update script data
@@ -188,7 +188,8 @@ export default function ScriptLabPage() {
       const prof = await profileService.getOrCreateProfile();
       setUser(prof);
     } catch (err: any) {
-      setError(err.message);
+      console.error('[ScriptLab] Refinement failed:', err);
+      setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
     } finally {
       setIsRefining(false);
       setCustomCommand('');
@@ -196,18 +197,21 @@ export default function ScriptLabPage() {
   };
 
   const handleManualStart = async () => {
-    if (!topicInput.trim()) return;
+    if (!topicInput.trim()) {
+      setError(locale === 'ru' ? 'Введите идею видео' : 'Please enter a video idea');
+      return;
+    }
     setIsLoading(true);
     setError(null);
     try {
       const profile = await profileService.getOrCreateProfile();
-      if (!profile) throw new Error('Auth failed');
+      if (!profile) throw new Error(locale === 'ru' ? 'Ошибка авторизации' : 'Auth failed');
       
       const project = await projectService.createProject({
         title: topicInput,
         userId: profile.id
       });
-      if (!project) throw new Error('Project creation failed');
+      if (!project) throw new Error(locale === 'ru' ? 'Не удалось создать проект' : 'Project creation failed');
       
       await projectService.updateProjectStatus(project.id, 'scripting');
       const version = await projectService.createVersion({
@@ -215,11 +219,12 @@ export default function ScriptLabPage() {
         scriptData: scriptData, // Use current default scriptData
       });
       
-      if (!version) throw new Error('Version creation failed');
+      if (!version) throw new Error(locale === 'ru' ? 'Не удалось создать версию' : 'Version creation failed');
       
       router.replace(`/projects/new/script?projectId=${project.id}&versionId=${version.id}`);
     } catch (err: any) {
-      setError(err.message);
+      console.error('[ScriptLab] Manual start failed:', err);
+      setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
     } finally {
       setIsLoading(false);
     }
@@ -229,7 +234,10 @@ export default function ScriptLabPage() {
     if (isAiLocked) {
       return handleManualStart();
     }
-    if (!topicInput.trim()) return;
+    if (!topicInput.trim()) {
+      setError(locale === 'ru' ? 'Введите идею видео' : 'Please enter a video idea');
+      return;
+    }
     setIsLoading(true);
     setError(null);
 
@@ -252,7 +260,7 @@ export default function ScriptLabPage() {
         const confirmMsg = locale === 'ru' 
           ? 'Это действие потратит 10 кредитов. Продолжить?'
           : 'This action will cost 10 credits. Continue?';
-        if (!window.confirm(confirmMsg)) {
+        if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) {
           setIsLoading(false);
           return;
         }
@@ -270,7 +278,7 @@ export default function ScriptLabPage() {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.error || 'Generation failed');
+      if (!response.ok) throw new Error(data.error || (locale === 'ru' ? 'Ошибка генерации' : 'Generation failed'));
 
       const fullScript = data.script;
       if (fullScript.evergreen) {
@@ -290,7 +298,8 @@ export default function ScriptLabPage() {
       
       router.replace(`/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
     } catch (err: any) {
-      setError(err.message);
+      console.error('[ScriptLab] Generation failed:', err);
+      setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
     } finally {
       setIsLoading(false);
     }
@@ -321,7 +330,7 @@ export default function ScriptLabPage() {
     try {
       const profile = await profileService.getOrCreateProfile();
       if (!profile) {
-        setError('Authorization failed. Please try again.');
+        setError(locale === 'ru' ? 'Ошибка авторизации. Попробуйте снова.' : 'Authorization failed. Please try again.');
         return;
       }
       let pId = projectIdParam;
@@ -335,7 +344,7 @@ export default function ScriptLabPage() {
           userId: profile.id,
           parentId: fromProjectId || undefined
         });
-        if (!project) throw new Error('Project creation failed');
+        if (!project) throw new Error(locale === 'ru' ? 'Не удалось создать проект' : 'Project creation failed');
         pId = project.id;
       }
 
@@ -346,22 +355,21 @@ export default function ScriptLabPage() {
           projectId: pId,
           scriptData: scriptData
         });
-        if (!newVersion) throw new Error('Failed to create script version');
+        if (!newVersion) throw new Error(locale === 'ru' ? 'Не удалось создать версию сценария' : 'Failed to create script version');
         vId = newVersion.id;
       } else {
         console.log('[ScriptLab] Updating existing version:', vId);
         const version = await projectService.updateVersion(vId, {
           script_data: scriptData
         });
-        if (!version) throw new Error('Version update failed');
+        if (!version) throw new Error(locale === 'ru' ? 'Ошибка при обновлении версии' : 'Version update failed');
       }
 
       // Redirect to Storyboard
-      // Redirect to Storyboard (routing helper handles locale)
       router.push(`/projects/new/storyboard?projectId=${pId}&versionId=${vId}`);
     } catch (err: any) {
-      console.error('Save failed:', err);
-      setError(err.message || 'Failed to save project');
+      console.error('[ScriptLab] Save failed:', err);
+      setError(err.message || (locale === 'ru' ? 'Не удалось сохранить проект' : 'Failed to save project'));
     } finally {
       setIsSaving(false);
     }
@@ -488,7 +496,7 @@ export default function ScriptLabPage() {
                 )}
               </button>
               <button
-                onClick={() => router.push(`/${locale}/app/profile/subscription`)}
+                onClick={() => router.push('/app/profile/subscription')}
                 className="w-full bg-white text-black py-6 rounded-[2rem] flex items-center justify-center gap-4 group font-black text-lg uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all relative z-10"
               >
                 <Sparkles className="w-6 h-6 animate-pulse" />

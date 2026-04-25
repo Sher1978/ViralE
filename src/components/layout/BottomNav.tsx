@@ -27,7 +27,12 @@ export function BottomNav() {
     `/${locale}`,
     `/${locale}/auth`,
     `/${locale}/app/onboarding`,
-  ].some(p => pathname === p || pathname.startsWith(`/${locale}/app/onboarding`));
+  ].some(p => 
+    pathname === p || 
+    pathname.includes('/studio') || 
+    pathname.includes('/projects/new/script') ||
+    pathname.startsWith(`/${locale}/app/onboarding`)
+  );
 
   if (hideNav) return null;
 

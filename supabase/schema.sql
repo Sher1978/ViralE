@@ -7,6 +7,8 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     full_name TEXT,
     avatar_url TEXT,
     credits_balance INTEGER DEFAULT 100 NOT NULL,
+    tier TEXT DEFAULT 'free' CHECK (tier IN ('free', 'creator', 'pro')),
+    subscription_status TEXT DEFAULT 'active',
     digital_shadow_prompt TEXT, -- DNA Voice / Master Prompt
     industry_context TEXT,
     synthetic_training_data TEXT, -- Raw text from NotebookLM/Gemini
@@ -14,8 +16,23 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     avatar_config_json JSONB DEFAULT '{}'::jsonb,
     raw_onboarding_data JSONB DEFAULT '{}'::jsonb,
     onboarding_completed BOOLEAN DEFAULT FALSE,
+    heygen_api_key TEXT,
+    anthropic_api_key TEXT,
+    elevenlabs_api_key TEXT,
+    groq_api_key TEXT,
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
+);
+
+-- 1.1 Feature Access: Track trial and subscription status for specific features
+CREATE TABLE IF NOT EXISTS public.feature_access (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES public.profiles(id) ON DELETE CASCADE NOT NULL,
+    feature_id TEXT NOT NULL, -- e.g., 'strategist_pilot'
+    trial_started_at TIMESTAMP WITH TIME ZONE,
+    is_subscribed BOOLEAN DEFAULT FALSE,
+    updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
+    UNIQUE(user_id, feature_id)
 );
 
 -- 2. Projects: Main project state and results
@@ -88,6 +105,7 @@ ALTER TABLE public.project_versions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ideation_feed ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credits_transactions ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.render_jobs ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.feature_access ENABLE ROW LEVEL SECURITY;
 
 -- 1. Profiles Policies
 CREATE POLICY "Users can view their own profile" ON public.profiles FOR SELECT USING (auth.uid() = id);
@@ -119,4 +137,7 @@ CREATE POLICY "Users can view their own transactions" ON public.credits_transact
 -- 6. Render Jobs Policies
 CREATE POLICY "Users can view their own render jobs" ON public.render_jobs FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can create their own render jobs" ON public.render_jobs FOR INSERT WITH CHECK (auth.uid() = user_id);
+
+-- 7. Feature Access Policies
+CREATE POLICY "Users can view their own feature access" ON public.feature_access FOR SELECT USING (auth.uid() = user_id);
 -- NOTE: Workers will use service role to update status/progress.

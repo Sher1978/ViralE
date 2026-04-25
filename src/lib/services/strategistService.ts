@@ -20,7 +20,7 @@ export const strategistService = {
       .eq('feature_id', 'strategist_pilot')
       .single();
 
-    if (error && error.code !== 'PGRST116') throw error;
+    if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') throw error;
 
     // 2. If subscribed, full access
     if (data?.is_subscribed) {

@@ -507,47 +507,159 @@
     "deletePermanently": "Erase Forever"
   },
   "landingV2": {
-    "hero": {
-      "tagline": "ONE IDEA. EVERY FORMAT. DONE.",
-      "title": "VIRALE",
-      "subtitle": "Your premium AI content factory. Synthesis of one fragment of thought into total digital presence.",
-      "cta": "BUILD YOUR DNA →",
-      "stats": {
-        "creators": "TOTAL CREATORS",
-        "quality": "PREMIUM QUALITY"
-      }
-    },
-    "features": {
-      "synthesis": {
-        "title": "Neural Synthesis",
-        "description": "We don't just generate. We synthesize your Digital Shadow, keeping your unique tone across all formats."
-      },
-      "flow": {
-        "title": "Production Flow",
-        "description": "Industrial-grade pipeline for consistent virality.",
-        "step1": "IDEA INPUT",
-        "step2": "NEURAL ENGINE",
-        "step3": "MULTI-FORMAT OUTPUT"
-      }
-    },
-    "showcase": {
-      "title": "MULTI-FORMAT OUTPUT",
-      "description": "Everything the creator needs is delivered in one factory run.",
-      "video": "Viral Video",
-      "cover": "Magnetic Cover",
-      "text": "Engagement Text",
-      "carousel": "Social Carousel",
-      "metadata": "RE-RENDERED · 4K · NEURAL CALIBRATED"
-    },
-    "cta": {
-      "title": "VIRAL ENERGY",
-      "subtitle": "Join the 10,000+ creators who stopped editing and started thinking.",
-      "launch": "LAUNCH FACTORY"
-    },
     "nav": {
       "works": "HOW IT WORKS",
-      "outputs": "OUTPUTS",
-      "pricing": "PRICING"
+      "videoBadge": "FEATURED",
+      "videoTitle": "CINEMATIC NARRATIVES",
+      "videoDesc": "Transform your raw vision into high-impact cinematic stories optimized for retention and shareability.",
+      "instaTitle": "INSTAGRAM",
+      "instaDesc": "REEL OPTIMIZED",
+      "instaSub": "Dynamic cuts and magnetic pacing for the modern feed.",
+      "socialTitle": "MULTI-PLATFORM",
+      "socialDesc": "CROSS-POLLINATION",
+      "socialSub": "Adapt your content DNA seamlessly across all social ecosystems.",
+      "metadata": "RE-RENDERED · 4K · NEURAL CALIBRATED"
+    },
+    "hero": {
+      "badge": "Viral Engine — AI Content Factory — Now Live",
+      "title": "ONE IDEA. EVERY FORMAT. DONE.",
+      "subtitle": "ViralE is your AI-powered content engine. Drop one prompt. Get a faceless video, Instagram carousels, LinkedIn posts, and Threads — all in minutes. Built for creators who are done wasting time on production.",
+      "cta": "Build Your Digital DNA Free",
+      "scrollHint": "See How It Works ↓",
+      "stats": {
+        "content": "Faster Content",
+        "outputs": "Output Formats",
+        "prompt": "Prompt Needed"
+      }
+    },
+    "problem": {
+      "label": "// The Problem",
+      "title": "YOU'RE A CREATOR, NOT AN EDITOR.",
+      "subtitle": "The average content creator spends over 70% of their time on production — editing, resizing, rewriting, reformatting. That's time stolen from the thing that actually grows your audience: your ideas. ViralE gives it back.",
+      "item1Title": "Hours lost to repurposing",
+      "item1Desc": "Writing a caption, then a thread, then reformatting for LinkedIn — all from the same idea. Manual, repetitive, brutal.",
+      "item2Title": "Video is king but costs a fortune",
+      "item2Desc": "Hiring editors, buying stock footage, syncing subtitles. Most creators can't afford it. ViralE makes you look like you can.",
+      "item3Title": "Inconsistent posting kills growth",
+      "item3Desc": "Algorithms reward consistency. But when production takes all day, you fall behind. We fix the bottleneck."
+    },
+    "process": {
+      "label": "// The Process",
+      "title": "THREE STEPS. ALL YOUR CONTENT.",
+      "step1Number": "01",
+      "step1Title": "Build Your Digital DNA",
+      "step1Desc": "Create your creator profile — your niche, tone, audience, and content style. This is your DNA. ViralE uses it to make everything feel like YOU, not a generic AI.",
+      "step2Number": "02",
+      "step2Title": "Pick an AI-Generated Topic",
+      "step2Desc": "Our AI suggests high-potential topics based on your DNA — evergreen content, trending hooks, authority pieces. Pick one, or bring your own prompt.",
+      "step3Number": "03",
+      "step3Title": "Get Everything, Instantly",
+      "step3Desc": "ViralE generates your faceless video (or teleprompter script), Instagram carousel, and long-form posts for Threads, LinkedIn, and Facebook — simultaneously."
+    },
+    "showcase": {
+      "label": "// What You Get",
+      "title": "SIX OUTPUTS. ONE PROMPT.",
+      "subtitle": "Every piece is production-ready. Subtitles, b-rolls, captions — all included. Just post.",
+      "videoBadge": "★ Primary Output",
+      "videoTitle": "Faceless AI Video",
+      "videoDesc": "Full short-form video with AI-generated voiceover, stock & AI b-roll footage, auto-subtitles, and post-production effects. No camera. No editor. Ready to upload.",
+      "videoStep1": "Script generated",
+      "videoStep2": "Voiceover synthesized",
+      "videoStep3": "B-roll matched",
+      "videoStep4": "Subtitles added",
+      "videoStep5": "Post FX applied",
+      "videoStep6": "Video ready ✓",
+      "altTitle": "Video Alt",
+      "teleprompterTitle": "Teleprompter Mode",
+      "teleprompterDesc": "Prefer to be on camera? Get a ready-to-read script with built-in teleprompter inside the app.",
+      "instaTitle": "Instagram",
+      "instaDesc": "Carousel Series",
+      "instaSub": "10-slide carousels designed for saves and shares. Formatted, captioned, and on-brand.",
+      "socialTitle": "Threads · LinkedIn",
+      "socialDesc": "Long-Form Posts",
+      "socialSub": "Platform-native text posts optimized for each algorithm's format and tone.",
+      "fbTitle": "Facebook",
+      "fbDesc": "Social Copy",
+      "fbSub": "Engagement-first copy for community posts and Facebook reach."
+    },
+    "dna": {
+      "label": "// Your Creator Identity",
+      "title": "YOUR DIGITAL DNA IS YOUR SUPERPOWER.",
+      "subtitle": "Most AI content tools produce generic slop. ViralE is different because it starts with you. Your Digital DNA profile captures your niche, voice, audience type, content angles, and goals. Every output is filtered through it — so it sounds like you wrote it, not a robot.",
+      "item1": "Your Niche",
+      "item2": "Your Tone",
+      "item3": "Your Audience",
+      "item4": "Content Style",
+      "item5": "Evergreen vs Trending",
+      "item6": "Platform Focus",
+      "stats": {
+        "label": "// Digital DNA Profile",
+        "tone": "Tone",
+        "authority": "Authority",
+        "evergreen": "Evergreen",
+        "trending": "Trending",
+        "engagement": "Engagement",
+        "nicheDetected": "NICHE DETECTED",
+        "nicheValue": "Personal Finance × Gen Z"
+      }
+    },
+    "pricing": {
+      "label": "// Pricing",
+      "title": "START FREE. SCALE FAST.",
+      "free": {
+        "title": "Free",
+        "price": "$0",
+        "period": "/ forever",
+        "feature1": "5 content sets per month",
+        "feature2": "Faceless video generation",
+        "feature3": "Instagram carousels",
+        "feature4": "ViralE watermark on videos",
+        "feature5": "Digital DNA profile",
+        "cta": "Start Free →"
+      },
+      "creator": {
+        "badge": "Most Popular",
+        "title": "Creator",
+        "price": "$29",
+        "period": "/ mo",
+        "periodDetail": "/ month · or $17/mo annual",
+        "feature1": "30 content sets per month",
+        "feature2": "No watermark",
+        "feature3": "Teleprompter mode",
+        "feature4": "All platform outputs",
+        "feature5": "Priority AI generation",
+        "cta": "Get Creator →"
+      },
+      "pro": {
+        "title": "Pro",
+        "price": "$79",
+        "period": "/ month · or $47/mo annual",
+        "feature1": "Unlimited content sets",
+        "feature2": "Advanced DNA customization",
+        "feature3": "Analytics dashboard",
+        "feature4": "Team collaboration",
+        "feature5": "White-label exports",
+        "cta": "Go Pro →"
+      }
+    },
+    "testimonials": {
+      "label": "// Early Users",
+      "title": "CREATORS LOVE IT.",
+      "item1Text": "\"I used to spend Sunday afternoons editing. Now I hit one button and my whole week of content is done. ViralE is the unfair advantage I didn't know existed.\"",
+      "item1Author": "Alex M.",
+      "item1Handle": "@alexcreates · 84K followers",
+      "item2Text": "\"The Digital DNA thing is real. My posts actually sound like me. I've tried 6 AI tools and this is the first one that doesn't feel generic.\"",
+      "item2Author": "Sara K.",
+      "item2Handle": "@sarabuilds · 42K followers",
+      "item3Text": "\"Went from posting twice a week to every day. My growth literally doubled in 30 days. The faceless video feature alone is worth 10x the price.\"",
+      "item3Author": "James T.",
+      "item3Handle": "@jamesgrowth · 127K followers"
+    },
+    "footer": {
+      "title": "STOP EDITING. START GOING VIRAL.",
+      "subtitle": "Build your Digital DNA for free in 2 minutes. Your first content set is on us.",
+      "cta": "Build Your Digital DNA Free",
+      "demo": "Watch Demo →"
     }
   },
   "studio": {

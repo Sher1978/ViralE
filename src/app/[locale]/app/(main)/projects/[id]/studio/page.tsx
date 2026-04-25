@@ -793,7 +793,7 @@ export default function StudioPage() {
         {/* Concept Phase: Brainstorming & Ideation */}
         {activeTab === 'concept' && (
            <div className="flex-1 flex flex-col bg-[#05050a] p-4 md:p-8 overflow-hidden">
-              <div className="flex justify-between items-center mb-8">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
                  <div>
                     <div className="flex items-center gap-3 mb-1">
                        <span className="px-2 py-0.5 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-[8px] font-black uppercase tracking-widest animate-pulse">Stage 0: Conceptualization</span>
