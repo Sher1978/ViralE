@@ -7,7 +7,6 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { PageShell } from "@/components/layout/PageShell";
-import { PageShell } from "@/components/layout/PageShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

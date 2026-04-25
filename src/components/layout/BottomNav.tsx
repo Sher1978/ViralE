@@ -68,19 +68,25 @@ export function BottomNav() {
                       : "text-white/40 hover:text-white/70"
                   )}
                 >
-                  {isActive && (
-                    <motion.div
-                      layoutId="activeTab"
-                      className="absolute inset-0 rounded-2xl z-0"
-                      style={{
-                        background: item.key === 'studio' 
-                          ? 'linear-gradient(135deg, #A855F7, #D8B4FE)' 
-                          : 'linear-gradient(135deg, #00FFCC, #4DFFD4)',
-                        boxShadow: `0 4px 15px ${item.key === 'studio' ? 'rgba(168,85,247,0.3)' : 'rgba(0,255,204,0.3)'}`,
-                      }}
-                      transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
-                    />
-                  )}
+                    {isActive && (
+                      <motion.div
+                        layoutId="activeTab"
+                        className="absolute inset-0 rounded-2xl z-0"
+                        style={{
+                          background: item.key === 'studio' 
+                            ? 'linear-gradient(135deg, #A855F7, #D8B4FE)' 
+                            : item.key === 'profile'
+                            ? 'linear-gradient(135deg, #FACC15, #FDE047)'
+                            : 'linear-gradient(135deg, #06B6D4, #22D3EE)',
+                          boxShadow: `0 4px 15px ${
+                            item.key === 'studio' ? 'rgba(168,85,247,0.4)' : 
+                            item.key === 'profile' ? 'rgba(234,179,8,0.4)' : 
+                            'rgba(6,182,212,0.4)'
+                          }`,
+                        }}
+                        transition={{ type: "spring", bounce: 0.2, duration: 0.6 }}
+                      />
+                    )}
                   <div className="relative z-10 flex flex-col items-center gap-0.5">
                     <Icon className="w-5 h-5" strokeWidth={isActive ? 2.5 : 2} />
                     <span

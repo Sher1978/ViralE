@@ -97,38 +97,41 @@ export default function ArchivePage() {
 
   return (
     <div className="space-y-6 animate-fade-in pb-20">
-      {/* Header */}
-      <div className="space-y-1">
+      {/* Header - Aligned with Strategist */}
+      <div className="space-y-1 pl-16">
         <div className="flex items-center justify-between">
           <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/25">
             {t('supertitle')}
           </p>
-          {loading && <Loader2 className="w-3 h-3 text-emerald-500 animate-spin" />}
+          {loading && <Loader2 className="w-3 h-3 text-cyan-500 animate-spin" />}
         </div>
-        <h1 className="text-2xl font-black tracking-tighter uppercase font-space">
-          <span className="gradient-text-gold">{t('title')}</span>
+        <h1 className="text-3xl font-black tracking-tighter uppercase italic leading-none">
+          Archive <span className="text-cyan-500">{t('title')}</span>
         </h1>
       </div>
 
       {/* Search & Tabs */}
       <div className="space-y-4">
         <div className="relative group">
-          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-emerald-500 transition-colors" />
+          <Search className="absolute left-4 top-1/2 -translate-y-1/2 w-4 h-4 text-white/20 group-focus-within:text-cyan-500 transition-colors" />
           <input
             type="text"
             placeholder={tProjects('search')}
             value={search}
             onChange={(e) => setSearch(e.target.value)}
-            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-3.5 pl-11 pr-4 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-emerald-500/30 focus:bg-white/[0.05] transition-all"
+            className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-3.5 pl-11 pr-4 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/30 focus:bg-white/[0.05] transition-all"
           />
         </div>
 
-        <div className="flex p-1 rounded-2xl bg-white/[0.03] border border-white/5">
+        <div className="flex p-1 rounded-2xl bg-white/[0.03] border border-white/5 relative overflow-hidden">
+          {/* Subtle cyan glow for tabs */}
+          <div className="absolute inset-0 bg-cyan-500/5 blur-xl pointer-events-none" />
+          
           <button
             onClick={() => setActiveTab('projects')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            className={`flex-1 relative flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all z-10 ${
               activeTab === 'projects' 
-                ? 'bg-white/10 text-white shadow-lg' 
+                ? 'bg-cyan-500 text-black shadow-[0_0_20px_rgba(6,182,212,0.3)]' 
                 : 'text-white/30 hover:text-white/50'
             }`}
           >
@@ -137,9 +140,9 @@ export default function ArchivePage() {
           </button>
           <button
             onClick={() => setActiveTab('ideas')}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+            className={`flex-1 relative flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all z-10 ${
               activeTab === 'ideas' 
-                ? 'bg-white/10 text-white shadow-lg' 
+                ? 'bg-cyan-500 text-black shadow-[0_0_20px_rgba(6,182,212,0.3)]' 
                 : 'text-white/30 hover:text-white/50'
             }`}
           >
@@ -159,37 +162,55 @@ export default function ArchivePage() {
         ) : (
           <>
             {activeTab === 'projects' && (
-              <div className="grid grid-cols-1 gap-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                 {projects.length > 0 ? (
                   projects.map((project, i) => (
-                    <ProjectCard 
-                      key={project.id} 
-                      project={project} 
-                      onRefresh={fetchArchivedProjects}
-                    />
+                    <motion.div
+                      key={project.id}
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={i % 3 === 1 ? 'xs:mt-8' : ''} // Staggered Waterfall Effect
+                    >
+                      <ProjectCard 
+                        project={project} 
+                        onRefresh={fetchArchivedProjects}
+                      />
+                    </motion.div>
                   ))
                 ) : (
-                  <EmptyState t={t} />
+                  <div className="col-span-full">
+                    <EmptyState t={t} />
+                  </div>
                 )}
               </div>
             )}
 
             {activeTab === 'ideas' && (
-              <div className="space-y-4">
+              <div className="grid grid-cols-1 xs:grid-cols-2 gap-4">
                 {ideas.length > 0 ? (
                   ideas.map((idea, i) => (
-                    <IdeaCard
+                    <motion.div
                       key={idea.id}
-                      idea={idea}
-                      index={i}
-                      locale={locale}
-                      isProcessing={processingId === idea.id}
-                      onToggleArchive={handleToggleIdeaArchive}
-                      onToScript={handleToScript}
-                    />
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      transition={{ delay: i * 0.05 }}
+                      className={i % 2 === 1 ? 'xs:mt-12' : ''} // Stronger Waterfall Effect for Ideas
+                    >
+                      <IdeaCard
+                        idea={idea}
+                        index={i}
+                        locale={locale}
+                        isProcessing={processingId === idea.id}
+                        onToggleArchive={handleToggleIdeaArchive}
+                        onToScript={handleToScript}
+                      />
+                    </motion.div>
                   ))
                 ) : (
-                  <EmptyState t={t} />
+                  <div className="col-span-full">
+                    <EmptyState t={t} />
+                  </div>
                 )}
               </div>
             )}
@@ -202,13 +223,16 @@ export default function ArchivePage() {
 
 function EmptyState({ t }: { t: any }) {
   return (
-    <div className="flex flex-col items-center justify-center py-24 px-10 text-center space-y-4">
-      <div className="w-20 h-20 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-center justify-center mb-2">
-        <Archive className="w-10 h-10 text-white/10" />
+    <div className="flex flex-col items-center justify-center p-10 text-center space-y-6 rounded-[3rem] bg-white/[0.02] border border-dashed border-white/10 backdrop-blur-md">
+      <div className="relative group">
+        <div className="absolute inset-0 bg-cyan-500/20 blur-2xl rounded-full animate-pulse group-hover:bg-cyan-500/40 transition-all" />
+        <div className="relative w-20 h-20 rounded-3xl bg-black border border-white/10 flex items-center justify-center mb-2">
+          <Archive className="w-10 h-10 text-cyan-400" />
+        </div>
       </div>
-      <div className="space-y-1">
-        <h3 className="text-sm font-bold text-white/60">{t('empty')}</h3>
-        <p className="text-[10px] text-white/20 uppercase tracking-widest leading-relaxed">
+      <div className="space-y-2">
+        <h3 className="text-lg font-black uppercase italic tracking-tighter text-white">{t('empty')}</h3>
+        <p className="text-[9px] text-white/30 uppercase tracking-[0.3em] leading-relaxed max-w-[200px]">
           {t('emptyDesc')}
         </p>
       </div>

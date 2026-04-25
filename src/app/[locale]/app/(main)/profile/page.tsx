@@ -83,13 +83,13 @@ export default function ProfilePage() {
       animate="visible"
       className="space-y-6 pb-24"
     >
-      {/* Profile Header Card */}
+      {/* Profile Header - Aligned with Strategist */}
       <motion.div
         variants={itemVariants}
-        className="relative overflow-hidden rounded-[2.5rem] p-6 glass-premium"
+        className="relative overflow-hidden pt-4 pb-8 pl-16 pr-4 border-b border-white/10 bg-black/50"
       >
-        <div className="absolute top-0 right-0 p-4 opacity-10">
-          <Settings2 size={120} strokeWidth={1} />
+        <div className="absolute top-0 right-0 p-4 opacity-10 blur-sm">
+          <Settings2 size={100} strokeWidth={1} className="text-yellow-500" />
         </div>
 
         <div className="flex items-start justify-between relative z-10">
@@ -111,8 +111,8 @@ export default function ProfilePage() {
               <p className="text-xs text-white/40 font-medium mb-3">expert@auto.io</p>
               <div className="flex items-center gap-2">
                 <div className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center gap-1.5">
-                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400 animate-pulse" />
-                  <span className="text-[9px] font-black uppercase text-cyan-400 tracking-wider">
+                  <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
+                  <span className="text-[9px] font-black uppercase text-yellow-400 tracking-wider">
                     PRO STATUS
                   </span>
                 </div>
@@ -122,32 +122,32 @@ export default function ProfilePage() {
           </div>
         </div>
 
-        {/* DNA Quick Preview */}
+        {/* DNA Quick Preview - Gold Style */}
         {profile?.digital_shadow_prompt && (
-          <div className="mt-6 p-4 rounded-2xl bg-white/5 border border-white/5 backdrop-blur-sm">
-            <div className="flex items-center gap-2 mb-2">
-              <Fingerprint size={12} className="text-[#D4AF37]" />
-              <span className="text-[10px] font-bold uppercase tracking-widest text-[#D4AF37]/80">DNA Signature</span>
+          <div className="mt-8 p-5 bg-yellow-500/5 border-y border-yellow-500/10 backdrop-blur-sm -mx-16">
+            <div className="flex items-center gap-2 mb-2 px-16">
+              <Fingerprint size={12} className="text-[#FACC15]" />
+              <span className="text-[10px] font-bold uppercase tracking-widest text-[#FACC15]/80">DNA Signature</span>
             </div>
-            <p className="text-[11px] text-white/60 line-clamp-2 leading-relaxed italic">
+            <p className="text-[11px] text-white/50 px-16 line-clamp-2 leading-relaxed italic">
               "{profile.digital_shadow_prompt}"
             </p>
           </div>
         )}
 
-        {/* Micro Stats Row */}
-        <div className="grid grid-cols-3 gap-3 mt-6">
+        {/* Micro Stats Row - Golden Highlights */}
+        <div className="grid grid-cols-3 gap-0 mt-8 -mx-16 border-t border-white/5 bg-black/20">
           {[
-            { label: t('statVideos'), value: '12', icon: Sparkles, color: 'text-purple-400' },
+            { label: t('statVideos'), value: '12', icon: Sparkles, color: 'text-yellow-400' },
             { label: t('statFollowers'), value: '24K', icon: UserCircle2, color: 'text-amber-400' },
-            { label: t('statReach'), value: '180K', icon: BarChart3, color: 'text-cyan-400' },
-          ].map((stat) => (
-            <div key={stat.label} className="bg-black/20 rounded-2xl p-3 border border-white/[0.03]">
+            { label: t('statReach'), value: '180K', icon: BarChart3, color: 'text-white/40' },
+          ].map((stat, idx) => (
+            <div key={stat.label} className={`p-6 flex flex-col items-center justify-center ${idx < 2 ? 'border-r border-white/5' : ''}`}>
               <div className="flex items-center gap-1.5 mb-1 opacity-50">
                 <stat.icon size={10} />
                 <span className="text-[8px] font-bold uppercase tracking-widest leading-none">{stat.label}</span>
               </div>
-              <div className={`text-lg font-black tracking-tighter ${stat.color}`}>{stat.value}</div>
+              <div className={`text-xl font-black tracking-tighter ${stat.color}`}>{stat.value}</div>
             </div>
           ))}
         </div>
@@ -168,7 +168,7 @@ export default function ProfilePage() {
               </h2>
             </div>
             
-            <div className="overflow-hidden rounded-[2rem] border border-white/[0.06] bg-gradient-to-b from-white/[0.04] to-transparent">
+            <div className="overflow-hidden border-y border-white/[0.06] bg-black">
               {section.items.map((item, i) => (
                 <Link key={item.label} href={item.href}>
                   <div className="group flex items-center gap-4 p-5 transition-all hover:bg-white/[0.05] active:scale-[0.98]">
