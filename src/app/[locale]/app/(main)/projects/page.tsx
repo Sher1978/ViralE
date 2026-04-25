@@ -132,13 +132,13 @@ export default function StudioPage() {
           >
             <Link href={hub.href}>
               <div 
-                className={`relative h-[220px] transition-all duration-700 overflow-hidden active:scale-[0.98]
-                  ${index === 0 ? 'z-30 h-[240px]' : index === 1 ? 'z-20 -mt-20 h-[320px]' : 'z-10 -mt-20 h-[260px]'}
+                className={`relative h-[160px] transition-all duration-700 overflow-hidden active:scale-[0.98]
+                  ${index === 0 ? 'z-30 h-[180px]' : index === 1 ? 'z-20 -mt-16 h-[220px]' : 'z-10 -mt-16 h-[180px]'}
                 `}
                 style={{
-                  clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' :
-                            index === 1 ? 'polygon(0 20%, 100% 0, 100% 80%, 0 100%)' :
-                            'polygon(0 20%, 100% 0, 100% 100%, 0 100%)'
+                  clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' :
+                            index === 1 ? 'polygon(0 15%, 100% 0, 100% 85%, 0 100%)' :
+                            'polygon(0 15%, 100% 0, 100% 100%, 0 100%)'
                 }}
               >
                 {/* Thick Comic-Style Separator Line */}
@@ -146,51 +146,51 @@ export default function StudioPage() {
                   <div 
                     className="absolute top-0 left-0 w-full h-[6px] bg-black z-50 pointer-events-none"
                     style={{
-                      clipPath: 'polygon(0 20%, 100% 0, 100% 2%, 0 22%)'
+                      clipPath: index === 1 ? 'polygon(0 15%, 100% 0, 100% 2%, 0 17%)' : 'polygon(0 15%, 100% 0, 100% 2%, 0 17%)'
                     }}
                   />
                 )}
 
-                {/* Image Layer with High Contrast Overlay */}
+                {/* Image Layer with Better Visibility */}
                 <div className="absolute inset-0">
                   <img 
                     src={hub.image} 
-                    className="w-full h-full object-cover opacity-30 grayscale group-active:grayscale-0 group-active:opacity-80 transition-all duration-1000 group-active:scale-105"
+                    className="w-full h-full object-cover opacity-50 grayscale group-active:grayscale-0 group-active:opacity-90 transition-all duration-1000 group-active:scale-105"
                     alt={hub.title}
                     onError={(e) => (e.currentTarget.style.opacity = '0')}
                   />
                   <div className={`absolute inset-0 bg-gradient-to-br ${
-                    hub.id === 'lab' ? 'from-purple-600/40 via-purple-900/60' :
-                    hub.id === 'storyboard' ? 'from-orange-600/40 via-orange-900/60' :
-                    'from-blue-600/40 via-blue-900/60'
-                  } to-black/40`} />
+                    hub.id === 'lab' ? 'from-purple-600/30 via-purple-900/50' :
+                    hub.id === 'storyboard' ? 'from-orange-600/30 via-orange-900/50' :
+                    'from-blue-600/30 via-blue-900/50'
+                  } to-black/60`} />
                 </div>
 
-                {/* Large Stylized Numbering as Art Element */}
-                <div className="absolute -left-8 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
-                  <span className="text-[200px] font-black italic text-white/10 leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.05)]">
+                {/* Stylized Numbering - High Contrast Watermark Style */}
+                <div className="absolute -left-10 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
+                  <span className="text-[180px] font-black italic text-white/15 leading-none tracking-tighter outline-text-subtle">
                     {index + 1}
                   </span>
                 </div>
 
-                {/* Content Layer */}
-                <div className={`absolute inset-0 p-12 flex flex-col ${
-                  index === 0 ? 'justify-start pt-16' : 
+                {/* Content Layer - More Compact and Clear */}
+                <div className={`absolute inset-0 p-8 flex flex-col ${
+                  index === 0 ? 'justify-start pt-10' : 
                   index === 1 ? 'justify-center' : 
-                  'justify-end pb-16'
+                  'justify-end pb-10'
                 }`}>
-                  <div className={`${index === 1 ? 'md:pl-16' : index === 2 ? 'md:pl-32' : ''} space-y-1 z-30 transition-transform duration-500 group-active:translate-x-2`}>
-                    <p className="text-[11px] font-black uppercase tracking-[0.5em] text-white/50 mb-1">Phase 0{index + 1}</p>
-                    <h3 className="text-5xl font-black text-white uppercase italic tracking-tighter leading-none shadow-black/50 drop-shadow-2xl">
-                      {hub.title.split(' ')[0]} <span className="text-white/40">{hub.title.split(' ')[1] || ''}</span>
+                  <div className={`${index === 1 ? 'md:pl-16' : index === 2 ? 'md:pl-32' : ''} space-y-0.5 z-30 transition-transform duration-500 group-active:translate-x-1`}>
+                    <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/60 mb-0.5">Phase 0{index + 1}</p>
+                    <h3 className="text-3xl font-black text-white uppercase italic tracking-tighter leading-none drop-shadow-lg">
+                      {hub.title.split(' ')[0]} <span className="text-white/60">{hub.title.split(' ')[1] || ''}</span>
                     </h3>
-                    <p className="text-xs font-bold text-white/30 uppercase tracking-widest leading-none mt-2">
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-none mt-1.5">
                       {hub.desc}
                     </p>
                   </div>
                 </div>
 
-                {/* Interaction Overlay - Flash on Touch */}
+                {/* Interaction Overlay */}
                 <div className="absolute inset-0 bg-white/0 group-active:bg-white/5 transition-colors duration-300 z-50 pointer-events-none" />
               </div>
             </Link>
