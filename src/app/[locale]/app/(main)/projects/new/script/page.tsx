@@ -221,7 +221,7 @@ export default function ScriptLabPage() {
       
       if (!version) throw new Error(locale === 'ru' ? 'Не удалось создать версию' : 'Version creation failed');
       
-      router.replace(`/projects/new/script?projectId=${project.id}&versionId=${version.id}`);
+      router.replace(`/app/projects/new/script?projectId=${project.id}&versionId=${version.id}`);
     } catch (err: any) {
       console.error('[ScriptLab] Manual start failed:', err);
       setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
@@ -296,7 +296,7 @@ export default function ScriptLabPage() {
       const prof = await profileService.getOrCreateProfile();
       setUser(prof);
       
-      router.replace(`/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
+      router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Generation failed:', err);
       setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
@@ -496,7 +496,7 @@ export default function ScriptLabPage() {
                 )}
               </button>
               <button
-                onClick={() => router.push('/app/profile/subscription')}
+                onClick={() => router.push('/app/profile')}
                 className="w-full bg-white text-black py-6 rounded-[2rem] flex items-center justify-center gap-4 group font-black text-lg uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all relative z-10"
               >
                 <Sparkles className="w-6 h-6 animate-pulse" />
