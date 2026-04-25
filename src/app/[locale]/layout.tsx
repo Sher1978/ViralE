@@ -42,6 +42,8 @@ export const viewport: Viewport = {
   userScalable: false,
 };
 
+import { Providers } from "@/components/Providers";
+
 export default async function LocaleLayout({
   children,
   params,
@@ -58,23 +60,24 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} className="dark">
+    <html lang={locale} suppressHydrationWarning>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} antialiased min-h-screen`}
-        style={{ background: '#020408' }}
       >
-        <NextIntlClientProvider locale={locale} messages={messages}>
-          <SessionSync />
-          
-          {/* Decorative Orbs (Global) */}
-          <div className="orb orb-gold" />
-          <div className="orb orb-mint" />
-          <div className="orb orb-purple" />
+        <Providers>
+          <NextIntlClientProvider locale={locale} messages={messages}>
+            <SessionSync />
+            
+            {/* Decorative Orbs (Global) */}
+            <div className="orb orb-gold" />
+            <div className="orb orb-mint" />
+            <div className="orb orb-purple" />
 
-          <PageShell>
-            {children}
-          </PageShell>
-        </NextIntlClientProvider>
+            <PageShell>
+              {children}
+            </PageShell>
+          </NextIntlClientProvider>
+        </Providers>
       </body>
     </html>
   );

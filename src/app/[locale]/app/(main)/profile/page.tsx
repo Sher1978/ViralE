@@ -14,7 +14,6 @@ import {
   Key, 
   ShieldCheck, 
   Cpu, 
-  BarChart3, 
   Settings2,
   Sparkles,
   Zap
@@ -25,15 +24,22 @@ import { useEffect, useState } from 'react';
 import { profileService } from '@/lib/services/profileService';
 import { Profile } from '@/lib/services/profileService';
 
+import { useTheme } from 'next-themes';
+
 export default function ProfilePage() {
   const t = useTranslations('profile');
   const commonT = useTranslations('common');
   const locale = useLocale();
+  const { theme, setTheme } = useTheme();
   const [profile, setProfile] = useState<Profile | null>(null);
 
   useEffect(() => {
     profileService.getOrCreateProfile().then(setProfile);
   }, []);
+
+  const toggleTheme = () => {
+    setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
 
   const SETTINGS_SECTIONS = [
     {
@@ -55,8 +61,7 @@ export default function ProfilePage() {
       title: t('sectionSettings'),
       items: [
         { icon: Bell, label: t('notifLabel'), sub: t('notifSub'), href: `/${locale}/app/profile/notifications`, accent: '#9B5FFF' },
-        { icon: Moon, label: t('themeLabel'), sub: t('themeSub'), href: `/${locale}/app/profile/theme`, accent: '#4D9EFF' },
-        { icon: Languages, label: t('langLabel'), sub: locale === 'ru' ? 'Русский' : 'English', href: `/${locale}/app/profile/language`, accent: '#00FFCC' },
+        { icon: Moon, label: t('themeLabel'), sub: theme === 'dark' ? 'Dark Mode (Deep Space)' : 'Light Mode (Industrial Gray)', onClick: toggleTheme, accent: '#4D9EFF' },
       ],
     },
   ];
@@ -135,22 +140,6 @@ export default function ProfilePage() {
           </div>
         )}
 
-        {/* Micro Stats Row - Golden Highlights */}
-        <div className="grid grid-cols-3 gap-0 mt-8 -mx-16 border-t border-white/5 bg-black/20">
-          {[
-            { label: t('statVideos'), value: '12', icon: Sparkles, color: 'text-yellow-400' },
-            { label: t('statFollowers'), value: '24K', icon: UserCircle2, color: 'text-amber-400' },
-            { label: t('statReach'), value: '180K', icon: BarChart3, color: 'text-white/40' },
-          ].map((stat, idx) => (
-            <div key={stat.label} className={`p-6 flex flex-col items-center justify-center ${idx < 2 ? 'border-r border-white/5' : ''}`}>
-              <div className="flex items-center gap-1.5 mb-1 opacity-50">
-                <stat.icon size={10} />
-                <span className="text-[8px] font-bold uppercase tracking-widest leading-none">{stat.label}</span>
-              </div>
-              <div className={`text-xl font-black tracking-tighter ${stat.color}`}>{stat.value}</div>
-            </div>
-          ))}
-        </div>
       </motion.div>
 
       {/* Main Settings List */}
@@ -169,9 +158,9 @@ export default function ProfilePage() {
             </div>
             
             <div className="overflow-hidden border-y border-white/[0.06] bg-black">
-              {section.items.map((item, i) => (
-                <Link key={item.label} href={item.href}>
-                  <div className="group flex items-center gap-4 p-5 transition-all hover:bg-white/[0.05] active:scale-[0.98]">
+              {section.items.map((item, i) => {
+                const content = (
+                  <div className="group flex items-center gap-4 p-5 transition-all hover:bg-white/[0.05] active:scale-[0.98] cursor-pointer">
                     <div 
                       className="w-11 h-11 rounded-2xl flex items-center justify-center transition-transform group-hover:scale-110"
                       style={{ 
@@ -194,11 +183,21 @@ export default function ProfilePage() {
                     
                     <ChevronRight size={16} className="text-white/10 group-hover:translate-x-1 transition-all" />
                   </div>
-                  {i < section.items.length - 1 && (
-                    <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-5" />
-                  )}
-                </Link>
-              ))}
+                );
+
+                return (
+                  <React.Fragment key={item.label}>
+                    {item.href ? (
+                      <Link href={item.href}>{content}</Link>
+                    ) : (
+                      <div onClick={item.onClick}>{content}</div>
+                    )}
+                    {i < section.items.length - 1 && (
+                      <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-5" />
+                    )}
+                  </React.Fragment>
+                );
+              })}
             </div>
           </motion.div>
         ))}
