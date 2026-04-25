@@ -29,6 +29,7 @@ export const metadata: Metadata = {
   description: "Your digital shadow works while you rest. Premium AI content factory in your pocket.",
   keywords: ["viral engine", "AI content", "reels", "shorts", "content automation"],
   icons: {
+    icon: "/icon-512x512.png",
     apple: "/icon-512x512.png",
   },
 };
