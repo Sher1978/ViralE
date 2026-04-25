@@ -128,20 +128,20 @@ export default function StudioPage() {
                 onError={(e) => (e.currentTarget.style.opacity = '0')}
               />
               
-              <div className={`absolute inset-0 bg-gradient-to-t ${hub.color} via-[#0a0a14]/80 to-transparent z-20 transition-all duration-700 group-hover:via-[#0a0a14]/40`} />
+              <div className={`absolute inset-0 bg-gradient-to-t ${hub.color} via-[#0a0a14]/90 to-transparent z-20 transition-all duration-700`} />
               
               <div className="absolute inset-0 p-8 flex flex-col justify-end z-30">
-                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 mb-1.5 group-hover:text-white transition-colors">Initialize Step</p>
+                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 mb-1.5 transition-colors">Initialize Step</p>
                 <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">
                   {hub.title}
                 </h3>
-                <p className="text-[10px] font-bold text-white/40 group-hover:text-white/60 transition-colors uppercase tracking-widest leading-relaxed">
+                <p className="text-[10px] font-bold text-white/50 transition-colors uppercase tracking-widest leading-relaxed">
                   {hub.desc}
                 </p>
               </div>
 
-              {/* Action Indicator */}
-              <div className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/5 backdrop-blur-xl border border-white/10 flex items-center justify-center opacity-0 group-hover:opacity-100 -translate-x-2 group-hover:translate-y-0 transition-all duration-500 z-40">
+              {/* Action Indicator - Always visible for Mobile */}
+              <div className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 flex items-center justify-center transition-all duration-500 z-40 active:scale-90">
                 <ArrowRight className="w-5 h-5 text-white" />
               </div>
             </div>

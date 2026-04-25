@@ -187,7 +187,7 @@ export default function ProjectCard({ project, onRefresh }: ProjectCardProps) {
             
             <button 
               onClick={(e) => { e.stopPropagation(); }}
-              className="w-8 h-8 rounded-xl bg-black/40 hover:bg-black/60 border border-white/5 text-white/40 group-hover:text-white transition-all flex items-center justify-center backdrop-blur-md"
+              className="w-8 h-8 rounded-xl bg-black/60 border border-white/5 text-white transition-all flex items-center justify-center backdrop-blur-md active:scale-90"
             >
               <MoreVertical className="w-3 h-3" />
             </button>
@@ -196,11 +196,11 @@ export default function ProjectCard({ project, onRefresh }: ProjectCardProps) {
           {/* Bottom: Info */}
           <div className="space-y-4">
             <div>
-              <h3 className="text-lg font-black text-white leading-tight tracking-tight group-hover:text-purple-300 transition-colors line-clamp-2">
+              <h3 className="text-lg font-black text-white leading-tight tracking-tight line-clamp-2">
                 {projectTitle}
               </h3>
               <div className="flex items-center gap-3 mt-2">
-                <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest flex items-center gap-1.5">
+                <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest flex items-center gap-1.5">
                   <Clock className="w-3 h-3" />
                   {date}
                 </p>
@@ -210,19 +210,19 @@ export default function ProjectCard({ project, onRefresh }: ProjectCardProps) {
               </div>
             </div>
             
-            <div className="flex items-center justify-between gap-4 pt-1 opacity-0 group-hover:opacity-100 transform translate-y-2 group-hover:translate-y-0 transition-all duration-500">
+            <div className="flex items-center justify-between gap-4 pt-1 transition-all duration-500">
                <div className="flex items-center gap-2">
                 {project.status === 'completed' && (
                   <button
                     onClick={handleIterate}
-                    className="w-8 h-8 rounded-lg bg-purple-500/20 hover:bg-purple-500 text-purple-300 hover:text-white border border-purple-500/30 transition-all flex items-center justify-center"
+                    className="w-8 h-8 rounded-lg bg-purple-500/20 text-purple-300 border border-purple-500/30 transition-all flex items-center justify-center active:bg-purple-500 active:text-white"
                   >
                     <RotateCcw className="w-3 h-3" />
                   </button>
                 )}
               </div>
  
-              <div className="px-5 py-2.5 rounded-xl bg-purple-500 text-black text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-purple-500/20">
+              <div className="px-5 py-2.5 rounded-xl bg-purple-500 text-black text-[10px] font-black uppercase tracking-widest flex items-center gap-2 shadow-xl shadow-purple-500/20 active:scale-95 transition-all">
                 Continue <ArrowRight className="w-3 h-3 stroke-[3]" />
               </div>
             </div>
