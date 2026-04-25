@@ -198,7 +198,7 @@ export default function ProjectsPage() {
       <StrategistChat 
         projectId="" 
         userId={profile?.id || ''} 
-        context="hub"
+        context="studio"
       />
 
       {/* Decorative Assets */}
