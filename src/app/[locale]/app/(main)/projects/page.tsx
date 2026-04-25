@@ -72,7 +72,7 @@ export default function ProjectsPage() {
         {[
           {
             id: 'script',
-            title: locale === 'ru' ? 'Лаборатория скрипта' : 'Script Lab',
+            title: locale === 'ru' ? 'Лаборатория идей' : 'Idea Lab',
             desc: locale === 'ru' ? 'МАСТЕРСКАЯ СМЫСЛОВ И ГЕНЕРАЦИЯ ТЕКСТА' : 'CRAFT YOUR MESSAGE & GENERATE TEXT CONTENT',
             href: '/app/projects/new/script',
             image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1973&auto=format&fit=crop',

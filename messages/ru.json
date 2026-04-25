@@ -136,9 +136,9 @@
     "lowBalance": "Мало кредитов"
   },
   "scriptLab": {
-    "badge": "Script Lab",
-    "title": "РЕДАКТОР",
-    "titleAccent": "СЦЕНАРИЯ",
+    "badge": "Idea Lab",
+    "title": "ЛАБОРАТОРИЯ",
+    "titleAccent": "ИДЕЙ",
     "topic": "Тема: {topic}",
     "tagHook": "HOOK",
     "tagProblem": "PROBLEM",
@@ -326,7 +326,7 @@
     "engineGemini": "Gemini 2.5 Flash",
     "engineClaude": "Claude 3.5 Sonnet",
     "engineHint": "Выберите интеллект для вашего сценария",
-    "stageLab": "Сценарная лаборатория",
+    "stageLab": "Лаборатория идей",
     "stageStoryboard": "Раскадровка",
     "stageProduction": "Продакшн центр",
     "studioTitle": "Виральная Студия",

@@ -100,8 +100,8 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
         <div className="space-y-4">
           <label className="text-[9px] font-black uppercase text-white/30 tracking-widest ml-1">Production Pipeline</label>
           <div className="grid grid-cols-1 gap-2">
-            {[
-              { id: 'concept', icon: Brain, label: '1. Лаборатория скрипта', desc: 'Смыслы и текст' },
+              {[
+                { id: 'concept', icon: Brain, label: '1. Лаборатория идей', desc: 'Смыслы и текст' },
               { id: 'teleprompter', icon: Video, label: '2. Студия Записи', desc: 'Создание A-Roll' },
               { id: 'assembly', icon: Scissors, label: '3. Продакшн', desc: 'Монтаж и B-Roll' },
               { id: 'knowledge', icon: Dna, label: 'Shadow Analytics', desc: 'Настройка ДНК' }

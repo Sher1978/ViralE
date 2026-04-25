@@ -135,9 +135,9 @@
     "lowBalance": "Low credits"
   },
   "scriptLab": {
-    "badge": "Script Lab",
-    "title": "SCRIPT",
-    "titleAccent": "EDITOR",
+    "badge": "Idea Lab",
+    "title": "IDEA",
+    "titleAccent": "LAB",
     "topic": "Topic: {topic}",
     "tagHook": "HOOK",
     "tagProblem": "PROBLEM",
@@ -332,7 +332,7 @@
     "useYourIdea": "Type your manual script or upgrade for AI",
     "viewBtn": "Open",
     "continueBtn": "Continue",
-    "stageLab": "Script Lab",
+    "stageLab": "Idea Lab",
     "stageStoryboard": "Storyboard",
     "stageProduction": "Production Hub",
     "studioTitle": "Viral Studio",
