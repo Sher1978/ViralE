@@ -44,6 +44,7 @@ export default function ScriptLabPage() {
   const [allScenarios, setAllScenarios] = useState<any>(null);
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
+  const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const loadingSteps = locale === 'ru' 
     ? ['Анализируем идею...', 'Калибруем Digital DNA...', 'Прошиваем смыслы...', 'Финальная сборка...']
@@ -301,15 +302,24 @@ export default function ScriptLabPage() {
 
       // Warning for credits if user not pro
       if (user?.tier !== 'pro') {
-        const confirmMsg = locale === 'ru' 
-          ? 'Это действие потратит 10 кредитов. Продолжить?'
-          : 'This action will cost 10 credits. Continue?';
-        if (typeof window !== 'undefined' && !window.confirm(confirmMsg)) {
-          setIsLoading(false);
-          return;
-        }
+        setShowConfirmModal(true);
+        setIsLoading(false);
+        return; // Flow continues in handleConfirmGenerate
       }
 
+      await executeGeneration();
+    } catch (err: any) {
+      console.error('[ScriptLab] Generation failed:', err);
+      setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
+      setIsGenerating(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const executeGeneration = async () => {
+    setIsLoading(true);
+    try {
       const response = await fetch('/api/script/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -458,8 +468,8 @@ export default function ScriptLabPage() {
     );
   }
 
-  // Initial Ideation UI if no project exists yet
-  if (!projectIdParam) {
+  // Initial Ideation UI if no project exists yet AND we don't have generated data in memory
+  if (!projectIdParam && !allScenarios) {
     return (
       <div className="space-y-12 animate-fade-in max-w-2xl mx-auto py-10">
         <StatusStepper currentStep="script" />
@@ -917,6 +927,30 @@ export default function ScriptLabPage() {
           setCustomCommand(text);
           handleApplyRefinement(text);
         }}
+      />
+
+      <PremiumLimitModal 
+        isOpen={showConfirmModal}
+        onClose={() => setShowConfirmModal(false)}
+        onConfirm={executeGeneration}
+        title={locale === 'ru' ? 'Подтверждение Сборки' : 'Confirm Assembly'}
+        description={locale === 'ru' ? 'Это действие потребует 10 кредитов. Стратег подготовил лучшие сценарии для этой идеи.' : 'This action requires 10 credits. The Strategist has prepared the best narratives for this idea.'}
+        advice={locale === 'ru' ? 'ИИ-мощности требуют ресурсов. Убедись, что идея сформулирована четко!' : 'AI compute requires resources. Ensure your idea is clearly stated!'}
+        type="confirm"
+        locale={locale}
+      />
+
+      <PremiumLimitModal 
+        isOpen={!!error || showLimitModal}
+        onClose={() => {
+          setError(null);
+          setShowLimitModal(false);
+        }}
+        title={limitModalData.title || (locale === 'ru' ? 'Внимание' : 'Attention')}
+        description={error || limitModalData.desc}
+        advice={locale === 'ru' ? 'Попробуй проверить баланс или изменить настройки ИИ.' : 'Try checking your balance or adjusting AI settings.'}
+        type={error ? 'error' : limitModalData.type}
+        locale={locale}
       />
 
       {/* Footer Actions */}
