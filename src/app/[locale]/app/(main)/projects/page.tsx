@@ -19,7 +19,8 @@ import {
   Video,
   Rocket,
   Zap,
-  ArrowRight
+  ArrowRight,
+  Clock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useParams } from 'next/navigation';
