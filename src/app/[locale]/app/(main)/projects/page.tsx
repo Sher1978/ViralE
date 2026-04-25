@@ -109,23 +109,23 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Main Visual Hubs */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Main Visual Hubs - Robust Grid Handling */}
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         {mainHubs.map((hub) => (
           <Link key={hub.id} href={hub.href} className="group">
-            <div className="relative h-[220px] rounded-[2.5rem] border border-white/10 overflow-hidden transition-all duration-700 hover:border-white/30 hover:scale-[1.02] active:scale-[0.98] shadow-2xl">
-              {/* Background with Fallback Gradient */}
+            <div className="relative h-[240px] sm:h-[280px] lg:h-[320px] rounded-[3rem] border border-white/10 overflow-hidden transition-all duration-700 hover:border-white/30 hover:scale-[1.01] active:scale-[0.99] shadow-2xl">
+              {/* Background with Professional Fallback Gradient */}
               <div className={`absolute inset-0 bg-gradient-to-br ${
-                hub.id === 'lab' ? 'from-purple-900/40 to-indigo-900/40' :
-                hub.id === 'storyboard' ? 'from-orange-900/40 to-amber-900/40' :
-                'from-blue-900/40 to-cyan-900/40'
+                hub.id === 'lab' ? 'from-purple-600/30 to-indigo-900/60' :
+                hub.id === 'storyboard' ? 'from-orange-600/30 to-amber-900/60' :
+                'from-blue-600/30 to-cyan-900/60'
               } z-0`} />
               
               <img 
                 src={hub.image} 
-                className="absolute inset-0 w-full h-full object-cover opacity-40 group-hover:opacity-80 transition-all duration-1000 group-hover:scale-110 z-10 error-img-hide"
+                className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-70 transition-all duration-1000 group-hover:scale-110 z-10"
                 alt={hub.title}
-                onError={(e) => (e.currentTarget.style.display = 'none')}
+                onError={(e) => (e.currentTarget.style.opacity = '0')}
               />
               
               <div className={`absolute inset-0 bg-gradient-to-t ${hub.color} via-[#0a0a14]/80 to-transparent z-20 transition-all duration-700 group-hover:via-[#0a0a14]/40`} />
