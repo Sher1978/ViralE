@@ -109,11 +109,11 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Main Visual Hubs - Robust Grid Handling */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+      {/* Main Visual Hubs - Single Column focused for maximum impact */}
+      <div className="grid grid-cols-1 gap-10">
         {mainHubs.map((hub) => (
           <Link key={hub.id} href={hub.href} className="group">
-            <div className="relative h-[240px] sm:h-[280px] lg:h-[320px] rounded-[3rem] border border-white/10 overflow-hidden transition-all duration-700 hover:border-white/30 hover:scale-[1.01] active:scale-[0.99] shadow-2xl">
+            <div className="relative h-[200px] sm:h-[240px] md:h-[280px] rounded-[2.5rem] border border-white/10 overflow-hidden transition-all duration-700 hover:border-white/30 hover:scale-[1.01] active:scale-[0.99] shadow-2xl">
               {/* Background with Professional Fallback Gradient */}
               <div className={`absolute inset-0 bg-gradient-to-br ${
                 hub.id === 'lab' ? 'from-purple-600/30 to-indigo-900/60' :
@@ -123,7 +123,7 @@ export default function StudioPage() {
               
               <img 
                 src={hub.image} 
-                className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-70 transition-all duration-1000 group-hover:scale-110 z-10"
+                className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-70 transition-all duration-1000 group-hover:scale-105 z-10"
                 alt={hub.title}
                 onError={(e) => (e.currentTarget.style.opacity = '0')}
               />
