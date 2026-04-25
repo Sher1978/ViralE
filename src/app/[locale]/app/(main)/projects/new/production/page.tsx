@@ -28,310 +28,257 @@ export default function ProductionPage() {
   const [project, setProject] = useState<Project | null>(null);
   const [version, setVersion] = useState<ProjectVersion | null>(null);
 
-  const [stage, setStage] = useState<'selection' | 'processing'>('selection');
-  const [progress, setProgress] = useState(0);
-  const [isLaunching, setIsLaunching] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [jobId, setJobId] = useState<string | null>(null);
-  const [jobStatus, setJobStatus] = useState<string>('pending');
-  const [config, setConfig] = useState({
-    mode: 'stock',
-    tier: 'lite',
-    assetId: null as string | null,
-    aiPolish: false,
-    recordedAssetId: null as string | null,
-    recordingType: null as 'audio' | 'video' | null
-  });
-  const [showStudio, setShowStudio] = useState(false);
-  const [scriptData, setScriptData] = useState<{ hook: string; story: string; cta: string } | null>(null);
+  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
+  const [activeStep, setActiveStep] = useState(1);
+
+  const toggleStep = (step: number) => {
+    if (activeStep === step) return;
+    setActiveStep(step);
+  };
+
+  const confirmStep = (step: number) => {
+    if (!completedSteps.includes(step)) {
+      setCompletedSteps(prev => [...prev, step]);
+    }
+    setActiveStep(step + 1);
+  };
 
   const calculateTotalCost = () => {
-    let base = config.tier === 'pro' ? 50 : config.tier === 'plus' ? 25 : 10;
+    let base = config.tier === 'pro' ? 50 : config.tier === 'standard' ? 25 : 10;
     if (config.mode === 'avatar') base += 20;
-    if (config.aiPolish) base += 5;
+    if (config.aiPolish) base += 10;
     return base;
   };
 
-  // Initialize profile and fetch project data
+  // ... (useEffect initials and polling remain same) ...
   useEffect(() => {
     async function init() {
       try {
         const profile = await profileService.getOrCreateProfile();
         setUser(profile);
-
         if (projectId) {
           const proj = await projectService.getProject(projectId);
           setProject(proj);
-          
           if (versionId) {
             const ver = await projectService.getVersion(versionId);
             setVersion(ver);
-            if (ver?.script_data) {
-              setScriptData(ver.script_data as any);
-            }
+            if (ver?.script_data) setScriptData(ver.script_data as any);
           }
         }
       } catch (err) {
-        console.error('Initialization error:', err);
         setError('Failed to load project details');
       }
     }
     init();
   }, [projectId, versionId]);
 
-  // Real status polling logic using renderService
   useEffect(() => {
     if (stage !== 'processing' || !jobId) return;
-
     const pollStatus = async () => {
       try {
         const job = await renderService.getJobStatus(jobId);
         if (job) {
           setJobStatus(job.status);
-          
-          const statusMap: Record<string, number> = {
-            'pending': 10,
-            'queued': 25,
-            'processing': 45,
-            'assembling': 80,
-            'completed': 100,
-            'failed': 0
-          };
-          
+          const statusMap: Record<string, number> = { 'pending': 10, 'queued': 25, 'processing': 45, 'assembling': 80, 'completed': 100, 'failed': 0 };
           const targetProgress = statusMap[job.status] || 0;
-          
-          setProgress(prev => {
-            if (prev < targetProgress) return prev + 1;
-            return targetProgress;
-          });
-
+          setProgress(prev => prev < targetProgress ? prev + 1 : targetProgress);
           if (job.status === 'completed') {
-            setTimeout(() => {
-              router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}&jobId=${jobId}`);
-            }, 2000);
+            setTimeout(() => router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}&jobId=${jobId}`), 2000);
           }
         }
-      } catch (err) {
-        console.error('Polling error:', err);
-      }
+      } catch (err) { console.error(err); }
     };
-
     const interval = setInterval(pollStatus, 3000);
     pollStatus();
-
     return () => clearInterval(interval);
-  }, [router, locale, stage, jobId, projectId, locale]);
+  }, [router, locale, stage, jobId, projectId]);
 
   const handleLaunch = async () => {
-    if (!projectId || !versionId) {
-      setError('Missing project or version ID');
-      return;
-    }
-
+    if (!projectId || !versionId) { setError('Missing project or version ID'); return; }
     setIsLaunching(true);
     setError(null);
-
     try {
-      const job = await renderService.createJob({
-        projectId,
-        versionId,
-        config: {
-          ...config,
-          previewUrl: version?.preview_url
-        }
-      });
-
+      const job = await renderService.createJob({ projectId, versionId, config: { ...config, previewUrl: version?.preview_url } });
       setJobId(job.id);
       setJobStatus(job.status);
       setStage('processing');
-
-      // 🔥 Trigger simulation for development environment
-      // In production, this would be handled by a real worker listening to the DB
-      fetch('/api/render/process', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ jobId: job.id }),
-      }).catch(err => console.debug('Worker trigger skipped (not in dev or failed):', err));
-
     } catch (err: any) {
       setError(err.message || 'Failed to launch project');
-      console.error('Launch error:', err);
-    } finally {
-      setIsLaunching(false);
-    }
+    } finally { setIsLaunching(false); }
   };
 
-  const tasks = [
-    { id: 1, label: t('task1'), status: progress > 20 ? 'done' : 'processing' },
-    { id: 2, label: t('task2'), status: progress > 45 ? 'done' : progress > 20 ? 'processing' : 'pending' },
-    { id: 3, label: t('task3'), status: progress > 65 ? 'done' : progress > 45 ? 'processing' : 'pending' },
-    { id: 4, label: t('task4'), status: progress > 80 ? 'done' : progress > 65 ? 'processing' : 'pending' },
-    { id: 5, label: t('task5'), status: progress > 90 ? 'done' : progress > 80 ? 'processing' : 'pending' },
-    { id: 6, label: t('task6'), status: progress === 100 ? 'done' : progress > 90 ? 'processing' : 'pending' },
-  ];
-
   return (
-    <div className="space-y-8 animate-fade-in pb-20">
+    <div className="space-y-8 animate-fade-in pb-32">
       <StatusStepper currentStep="render" />
 
       {stage === 'selection' ? (
-        <div className="space-y-12">
-          <div className="space-y-2">
-            <div className="flex items-center gap-2">
-              <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center">
-                <User className="w-4 h-4 text-white/40" />
+        <div className="max-w-4xl mx-auto space-y-6">
+          
+          {/* STEP 01: VISUAL IDENTITY */}
+          <div 
+            onClick={() => activeStep !== 1 && toggleStep(1)}
+            className={`relative transition-all duration-700 ${activeStep === 1 ? 'z-30 scale-100' : 'z-10 opacity-50 cursor-pointer overflow-hidden rounded-[2.5rem]'}`}
+          >
+            {activeStep !== 1 && (
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-md z-40 flex items-center justify-between px-10">
+                <div className="flex items-center gap-4">
+                   <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-black">1</div>
+                   <div>
+                     <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Step 01 / Completed</p>
+                     <p className="text-sm font-bold text-white italic">{config.mode === 'avatar' ? 'AI Avatar Actor' : 'Custom Upload Mode'}</p>
+                   </div>
+                </div>
+                <div className="px-5 py-2 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest bg-white/5">Tap to Edit</div>
               </div>
-              <h2 className="text-2xl font-black uppercase italic tracking-tighter text-white">
-                {t('avatarHubTitle')}
-              </h2>
+            )}
+            
+            <div className="space-y-6">
+               <div className="px-4 space-y-1">
+                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">01 Visual Identity</h3>
+                  <p className="text-xs text-white/40">Select your cinematic base: Viral Models or personal DNA.</p>
+               </div>
+               <AvatarHub onSelect={(c) => setConfig(prev => ({ ...prev, ...c }))} currentConfig={config} />
+               {activeStep === 1 && (
+                 <button onClick={() => confirmStep(1)} className="w-full bg-white text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
+                   Confirm Identity & Proceed <ChevronRight className="w-4 h-4" />
+                 </button>
+               )}
             </div>
-            <p className="text-sm text-white/40 max-w-md">
-              Configure your visual appearance and animation quality for this project.
-            </p>
           </div>
 
-          <AvatarHub 
-            onSelect={(c) => setConfig(prev => ({ ...prev, ...c }))} 
-            currentConfig={config}
-          />
-          
-          <AnimationTiers 
-            onSelect={(c) => setConfig(prev => ({ ...prev, ...c }))} 
-            currentConfig={config}
-          />
+          {/* STEP 02: ANIMATION TIER */}
+          <div 
+            onClick={() => activeStep !== 2 && toggleStep(2)}
+            className={`relative transition-all duration-700 ${activeStep === 2 ? 'z-30 scale-100' : 'z-10 opacity-50 cursor-pointer overflow-hidden rounded-[2.5rem]'}`}
+          >
+            {(activeStep !== 2) && (
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-md z-40 flex items-center justify-between px-10">
+                <div className="flex items-center gap-4">
+                   <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-black">2</div>
+                   <div>
+                     <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Step 02 / Quality</p>
+                     <p className="text-sm font-bold text-white italic">{config.tier.toUpperCase()} Intelligence</p>
+                   </div>
+                </div>
+                {activeStep > 2 && <div className="px-5 py-2 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest bg-white/5">Tap to Edit</div>}
+              </div>
+            )}
+            
+            <div className="space-y-6">
+               <div className="px-4 space-y-1">
+                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">02 Motion Intelligence</h3>
+                  <p className="text-xs text-white/40">Choose AI power level. Different engines provide different motion quality.</p>
+               </div>
+               <AnimationTiers onSelect={(c) => setConfig(prev => ({ ...prev, ...c }))} currentConfig={config} />
+               {activeStep === 2 && (
+                 <button onClick={() => confirmStep(2)} className="w-full bg-white text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
+                   Confirm Motion & Proceed <ChevronRight className="w-4 h-4" />
+                 </button>
+               )}
+            </div>
+          </div>
 
-          {error && (
-            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-sm font-bold text-center animate-pulse">
-              ⚠️ {error}
+          {/* STEP 03: RECORDING STUDIO */}
+          <div 
+            onClick={() => activeStep !== 3 && toggleStep(3)}
+            className={`relative transition-all duration-700 ${activeStep === 3 ? 'z-30 scale-100' : 'z-10 opacity-50 cursor-pointer overflow-hidden rounded-[2.5rem]'}`}
+          >
+            {(activeStep !== 3) && (
+              <div className="absolute inset-0 bg-black/40 backdrop-blur-md z-40 flex items-center justify-between px-10">
+                <div className="flex items-center gap-4">
+                   <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-black">3</div>
+                   <div>
+                     <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Step 03 / Studio</p>
+                     <p className="text-sm font-bold text-white italic">{config.recordedAssetId ? 'Reference Captured' : 'Stock Performance'}</p>
+                   </div>
+                </div>
+                {activeStep > 3 && <div className="px-5 py-2 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest bg-white/5">Tap to Edit</div>}
+              </div>
+            )}
+            
+            <div className="space-y-6">
+               <div className="px-4 space-y-1">
+                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">03 Human Reference</h3>
+                  <p className="text-xs text-white/40">Optional: Record your voice or video to clone your behavior perfectly.</p>
+               </div>
+               
+               <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 flex items-center justify-between gap-8">
+                  <div className="space-y-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30 font-bold text-cyan-400 italic">HD</div>
+                      <h3 className="text-xl font-black uppercase italic tracking-tighter text-white">Recording Studio</h3>
+                    </div>
+                  </div>
+                  <button onClick={() => setShowStudio(true)} className="px-8 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all">
+                    {config.recordedAssetId ? "Update Reference" : "Record Live"}
+                  </button>
+               </div>
+
+               {activeStep === 3 && (
+                 <button onClick={() => confirmStep(3)} className="w-full bg-white text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
+                   Finalize Selection <ChevronRight className="w-4 h-4" />
+                 </button>
+               )}
+            </div>
+          </div>
+
+          {/* FINAL LAUNCH SECTION */}
+          {activeStep >= 3 && (
+            <div className="pt-10 animate-in fade-in slide-in-from-bottom-10">
+               <div className="p-10 rounded-[3rem] bg-gradient-to-br from-purple-500/20 to-transparent border border-purple-500/30 text-center space-y-8">
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">Ready for Rendering</p>
+                    <h2 className="text-5xl font-black uppercase italic tracking-tighter text-white">Initialize Factory</h2>
+                  </div>
+                  
+                  <div className="flex justify-center gap-12">
+                     <div className="text-center">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/20 mb-1">Total Cost</p>
+                        <p className="text-3xl font-black text-white italic">{calculateTotalCost()} <span className="text-sm opacity-30">CREDITS</span></p>
+                     </div>
+                     <div className="text-center">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/20 mb-1">Estimated Time</p>
+                        <p className="text-3xl font-black text-white italic">3-5 <span className="text-sm opacity-30">MIN</span></p>
+                     </div>
+                  </div>
+
+                  <button
+                    onClick={handleLaunch}
+                    disabled={isLaunching}
+                    className="w-full bg-white text-black font-black py-8 rounded-[2.5rem] text-xl uppercase tracking-tighter italic hover:scale-[0.98] active:scale-[0.95] transition-all flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)]"
+                  >
+                    {isLaunching ? <Loader2 className="w-6 h-6 animate-spin" /> : <Factory className="w-6 h-6" />}
+                    {isLaunching ? 'Waking up Agents...' : 'Start Production'}
+                  </button>
+               </div>
             </div>
           )}
 
-          {/* Viral Studio Trigger */}
-          <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 relative overflow-hidden group">
-            <div className="absolute top-0 right-0 w-64 h-64 bg-cyan-500/5 blur-[80px] -z-10 group-hover:bg-cyan-500/10 transition-all" />
-            
-            <div className="flex flex-col md:flex-row md:items-center justify-between gap-8">
-              <div className="space-y-4">
-                <div className="flex items-center gap-3">
-                  <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30">
-                    <RefreshCw className="w-5 h-5 text-cyan-400" />
-                  </div>
-                  <h3 className="text-xl font-black uppercase italic tracking-tighter text-white">
-                    {t('recordingStudioTitle')}
-                  </h3>
-                </div>
-                <p className="text-sm text-white/40 max-w-sm leading-relaxed">
-                  {config.recordedAssetId 
-                    ? "Recording ready! You can retake if needed or proceed to launch."
-                    : t('recordingStudioSub')}
-                </p>
-                
-                {config.recordedAssetId && (
-                  <div className="inline-flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
-                    <CheckCircle2 className="w-3 h-3 text-green-500" />
-                    <span className="text-[10px] font-black uppercase tracking-widest text-green-500">
-                      Take Registered ({config.recordingType})
-                    </span>
-                  </div>
-                )}
-              </div>
-
-              <button
-                onClick={() => setShowStudio(true)}
-                className={`group relative px-10 py-6 rounded-3xl transition-all overflow-hidden flex items-center gap-4 ${config.recordedAssetId ? 'bg-cyan-500/10 border border-cyan-500/30' : 'bg-white/5 border border-white/10 hover:border-white/20'}`}
-              >
-                <div className={`w-12 h-12 rounded-2xl flex items-center justify-center transition-all ${config.recordedAssetId ? 'bg-cyan-500 text-black' : 'bg-white/10 text-white/40 group-hover:bg-white/20 group-hover:text-white'}`}>
-                  {config.recordedAssetId ? <CheckCircle2 className="w-6 h-6" /> : <Video className="w-6 h-6" />}
-                </div>
-                
-                <div className="text-left">
-                  <p className="text-[10px] font-black text-white/20 uppercase tracking-[0.2em] leading-none mb-1">
-                    Professional Capture
-                  </p>
-                  <p className="text-lg font-black text-white uppercase tracking-tighter italic leading-none">
-                    {config.recordedAssetId ? "Update Recording" : t('studioToggle')}
-                  </p>
-                </div>
-                
-                <ChevronRight className="w-5 h-5 text-white/20 group-hover:text-white group-hover:translate-x-1 transition-all ml-auto" />
-
-                {/* Animated Background Pulse */}
-                {!config.recordedAssetId && (
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/0 via-cyan-500/5 to-cyan-500/0 -translate-x-[200%] group-hover:translate-x-[200%] transition-transform duration-1000 ease-in-out" />
-                )}
-              </button>
-            </div>
-          </div>
-
-          <div className="pt-4">
-            <button
-              onClick={handleLaunch}
-              disabled={isLaunching}
-              className="w-full bg-white text-black font-black py-4 rounded-[2rem] text-sm uppercase tracking-widest hover:scale-[0.98] active:scale-[0.95] transition-all flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(255,255,255,0.1)] disabled:opacity-50 disabled:cursor-not-allowed"
-            >
-              {isLaunching ? (
-                <Loader2 className="w-5 h-5 animate-spin" />
-              ) : (
-                <Factory className="w-5 h-5" />
-              )}
-              {isLaunching ? 'Preparing Factory...' : t('launchBtn')}
-            </button>
-            <p className="text-[10px] text-center text-white/20 mt-4 uppercase tracking-[0.2em] font-bold">
-              ESTIMATED COST: {calculateTotalCost()} CREDITS
-            </p>
-          </div>
         </div>
       ) : (
         <div className="space-y-12 py-10 animate-fade-in">
-          <FactoryMonitor 
-            progress={progress} 
-            status={jobStatus} 
-          />
-          
-          {jobStatus === 'failed' && (
-            <div className="max-w-md mx-auto p-6 rounded-[2rem] bg-red-500/10 border border-red-500/20 text-center space-y-4">
-              <p className="text-red-400 font-bold">Factory Malfunction Detected</p>
-              <button 
-                onClick={() => setStage('selection')}
-                className="px-6 py-2 bg-white/5 border border-white/10 rounded-full text-[10px] font-black uppercase tracking-widest text-white/60 hover:bg-white/10 transition-all"
-              >
-                Return to Control Room
-              </button>
-            </div>
-          )}
+          <FactoryMonitor progress={progress} status={jobStatus} />
         </div>
       )}
 
-      {/* Studio Overlay */}
+      {/* Studio & Chat Overlays */}
       {showStudio && scriptData && project && (
         <StudioRecorder 
           projectId={projectId as string}
           script={scriptData}
           onCancel={() => setShowStudio(false)}
           onComplete={(assetId, url) => {
-            setConfig(prev => ({
-              ...prev,
-              recordedAssetId: assetId,
-              recordingType: url.includes('video') ? 'video' : 'audio'
-            }));
+            setConfig(prev => ({ ...prev, recordedAssetId: assetId, recordingType: url.includes('video') ? 'video' : 'audio' }));
             setShowStudio(false);
           }}
         />
       )}
-      {/* Strategist Advisor */}
       <StrategistChat 
         projectId={projectId || ''}
         userId={user?.id || ''}
         context="production"
         onApplySuggestion={(text) => {
-          const lower = text.toLowerCase();
-          if (lower.includes('pro tier') || lower.includes('high quality')) {
-            setConfig(prev => ({ ...prev, tier: 'pro' }));
-          } else if (lower.includes('ai polish') || lower.includes('enhance')) {
-            setConfig(prev => ({ ...prev, aiPolish: true }));
-          } else if (lower.includes('avatar') || lower.includes('virtual present')) {
-            setConfig(prev => ({ ...prev, mode: 'avatar' }));
-          }
+          if (text.toLowerCase().includes('pro tier')) setConfig(prev => ({ ...prev, tier: 'pro' }));
         }}
       />
     </div>
