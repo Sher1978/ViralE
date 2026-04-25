@@ -82,6 +82,28 @@ export default function ScriptLabPage() {
   const [currentVersion, setCurrentVersion] = useState<ProjectVersion | null>(null);
   const [user, setUser] = useState<Profile | null>(null);
 
+  // Session Recovery for Generation State (Fix for state loss during router transitions)
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !projectIdParam) {
+      const savedGenerating = sessionStorage.getItem('isGenerating') === 'true';
+      const savedScenarios = sessionStorage.getItem('allScenarios');
+      
+      if (savedGenerating) {
+        setIsGenerating(true);
+      }
+      
+      if (savedScenarios) {
+        try {
+          const parsed = JSON.parse(savedScenarios);
+          setAllScenarios(parsed);
+          setScriptData(parsed.evergreen || parsed);
+        } catch (e) {
+          console.error('[SessionRecovery] Failed to parse saved scenarios:', e);
+        }
+      }
+    }
+  }, [projectIdParam]);
+
   useEffect(() => {
     async function loadData() {
       // Load user profile
@@ -140,8 +162,12 @@ export default function ScriptLabPage() {
         const proj = await projectService.getProject(projectIdParam);
         setCurrentProject(proj);
         setTopicInput(proj?.title || '');
-        // Clear generating state once data is loaded
+        // Clear generating state and session cache once data is loaded from DB
         setIsGenerating(false);
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('isGenerating');
+          sessionStorage.removeItem('allScenarios');
+        }
       } catch (err) {
         console.error('Failed to load script:', err);
         setError('Failed to load project data');
@@ -264,12 +290,20 @@ export default function ScriptLabPage() {
       
       if (!version) throw new Error(locale === 'ru' ? 'Не удалось создать версию' : 'Version creation failed');
       
-      setIsGenerating(true); // Keep UI in thinking mode during transition
+      // Persist generating state to session to survive router replace remount
+      setIsGenerating(true);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('isGenerating', 'true');
+      }
+      
       router.replace(`/app/projects/new/script?projectId=${project.id}&versionId=${version.id}`);
     } catch (err: any) {
       console.error('[ScriptLab] Manual start failed:', err);
       setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
       setIsGenerating(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('isGenerating');
+      }
     } finally {
       setIsLoading(false);
     }
@@ -344,6 +378,9 @@ export default function ScriptLabPage() {
         setAllScenarios(fullScript);
         setScriptData(fullScript.evergreen);
         setActiveScenario('evergreen');
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('allScenarios', JSON.stringify(fullScript));
+        }
       } else {
         setScriptData(fullScript);
       }
@@ -355,16 +392,22 @@ export default function ScriptLabPage() {
       const prof = await profileService.getOrCreateProfile();
       setUser(prof);
       
-      // Crucial: Set generating mode to true to keep the loading UI until redirect finishes
+      // Crucial: Set generating mode to true and persist it
       setIsGenerating(true);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('isGenerating', 'true');
+      }
+      
       router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Generation failed:', err);
       setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
       setIsGenerating(false);
+      if (typeof window !== 'undefined') {
+        sessionStorage.removeItem('isGenerating');
+        sessionStorage.removeItem('allScenarios');
+      }
     } finally {
-      // Don't setIsLoading(false) if we are successfully generating to prevent flickering
-      // if (isGenerating) return; 
       setIsLoading(false);
     }
   };
