@@ -175,7 +175,7 @@ export default function ProjectsPage() {
                       <Play className="h-5 w-5 text-white/50 group-hover:text-purple-400 transition-all" />
                    </div>
                    <div className="flex flex-col">
-                      <span className="text-xs font-black uppercase tracking-tight text-white/80">{project.topic}</span>
+                      <span className="text-xs font-black uppercase tracking-tight text-white/80">{project.title}</span>
                       <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-0.5">Updated recently</span>
                    </div>
                 </div>
