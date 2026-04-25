@@ -65,7 +65,7 @@ export default function SubscriptionPage() {
     }
   };
 
-  constTIERS = [
+  const TIERS = [
     {
       id: 'free',
       name: 'Free',
