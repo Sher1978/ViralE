@@ -75,190 +75,93 @@ export default function DashboardPage() {
   if (!mounted) return null;
 
   return (
-    <div className="space-y-12 pb-40 px-1">
-      {/* Neural Status Bar */}
-      <div className="flex items-center justify-between px-1">
+    <div className="space-y-10 pb-40 px-2 max-w-5xl mx-auto">
+      {/* Minimal Header */}
+      <div className="flex items-center justify-between pt-4">
         <div className="flex items-center gap-3">
-          <div className="relative">
-            <div className="w-2.5 h-2.5 rounded-full bg-[#00FFCC] animate-pulse" />
-            <div className="absolute inset-0 w-2.5 h-2.5 rounded-full bg-[#00FFCC] blur-md animate-pulse opacity-50" />
-          </div>
-          <div className="flex flex-col">
-            <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 leading-none">Neural Hub</span>
-            <span className="text-[8px] font-bold text-[#00FFCC]/60 uppercase tracking-[0.2em] mt-1">Profile: Active & Synced</span>
-          </div>
+          <div className="w-2.5 h-2.5 rounded-full bg-cyan-500 animate-pulse shadow-[0_0_10px_rgba(6,182,212,0.5)]" />
+          <h1 className="text-xs font-black uppercase tracking-[0.4em] text-white/40 italic">System <span className="text-white/20">Online</span></h1>
         </div>
         <div className="flex items-center gap-4">
-           <div className="flex flex-col items-end">
-             <CreditBadge credits={user?.credits_balance || 0} packs={Math.floor((user?.credits_balance || 0) / 100)} />
-             <Link href={`/${locale}/app/billing`} className="mt-1.5 group">
-                <span className="text-[9px] text-white/20 group-hover:text-[#D4AF37] transition-colors uppercase tracking-widest font-black flex items-center gap-1">
-                  {common('topUp')} <ChevronRight className="w-3 h-3" />
-                </span>
-             </Link>
-           </div>
+           <CreditBadge credits={user?.credits_balance || 0} packs={Math.floor((user?.credits_balance || 0) / 100)} />
         </div>
       </div>
 
-      {/* DNA Calibration Lab Peek */}
-      <section className="relative">
+      {/* DNA LAB - Monolithic Block */}
+      <section>
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          className="glass-premium rounded-[2.5rem] p-8 border border-white/5 overflow-hidden group hover:border-[#9B5FFF]/30 transition-all duration-700"
+          className="relative group cursor-pointer"
         >
-          {/* Animated Background Gradients */}
-          <div className="absolute -top-24 -right-24 w-64 h-64 bg-cyan-500/10 blur-[100px] rounded-full group-hover:bg-[#9B5FFF]/10 transition-colors duration-1000" />
-          <div className="absolute -bottom-24 -left-24 w-48 h-48 bg-[#9B5FFF]/5 blur-[80px] rounded-full" />
-          
-          <div className="flex flex-col lg:flex-row gap-10 relative z-10">
-            <div className="flex-1 space-y-6">
-              <div className="flex items-center gap-4">
-                <div className="w-14 h-14 rounded-3xl bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center shadow-lg group-hover:scale-110 group-hover:rotate-6 transition-all duration-500">
-                  <Dna className="w-7 h-7 text-cyan-400" />
+          <Link href={`/${locale}/app/profile/dna`}>
+            <div className="p-1 border-[3px] border-black rounded-[2.5rem] bg-black overflow-hidden relative">
+              <div 
+                className="relative bg-gradient-to-br from-purple-600/20 via-purple-900/40 to-black p-8 h-[200px] flex items-center gap-8"
+                style={{ clipPath: 'polygon(0 0, 100% 0, 100% 90%, 0 100%)' }}
+              >
+                <div className="w-16 h-16 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center group-hover:scale-110 transition-transform duration-500">
+                  <Dna className="w-8 h-8 text-purple-400" />
                 </div>
-                <div>
-                  <div className="flex items-center gap-2">
-                    <h2 className="text-xl font-black uppercase tracking-tight">{t('dnaLab')}</h2>
-                    <span className="text-[10px] font-black bg-cyan-500/10 text-cyan-400 px-2 py-0.5 rounded-full border border-cyan-500/20 uppercase">Persona-Locked</span>
-                  </div>
-                  <p className="text-[11px] text-white/30 font-bold uppercase tracking-widest mt-1">{t('dnaLabDesc')}</p>
+                
+                <div className="space-y-1">
+                  <h2 className="text-4xl font-black uppercase italic tracking-tighter text-white">DNA <span className="text-purple-500">Lab</span></h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Calibrate Your AI Voice Shadow</p>
                 </div>
-              </div>
 
-              <div className="p-6 bg-black/40 rounded-[2rem] border border-white/5 relative group/dna overflow-hidden">
-                <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-transparent opacity-0 group-hover/dna:opacity-100 transition-opacity" />
-                <div className="line-clamp-3 text-[12px] font-medium text-white/50 leading-relaxed italic relative z-10">
-                  {user?.digital_shadow_prompt || "Sequence not initialized. Calibrate your DNA to lock in your production style."}
-                </div>
-                <div className="mt-5 flex items-center justify-between relative z-10">
-                  <div className="flex items-center gap-3">
-                    <div className="flex -space-x-1">
-                      <div className="w-2 h-2 rounded-full bg-cyan-500 animate-pulse" />
-                      <div className="w-2 h-2 rounded-full bg-cyan-400/40" />
-                      <div className="w-2 h-2 rounded-full bg-cyan-300/20" />
-                    </div>
-                    <span className="text-[10px] font-black uppercase tracking-[0.2em] text-cyan-500/60">
-                      {t('dnaStatus')}
-                    </span>
-                  </div>
-                  <Link href={`/${locale}/app/profile/dna`}>
-                    <button className="text-[10px] font-black uppercase tracking-[0.1em] px-5 py-2.5 bg-white/5 hover:bg-white/10 rounded-2xl transition-all border border-white/5 flex items-center gap-2 group/btn">
-                      {t('dnaEdit')}
-                      <Sparkles className="w-3.5 h-3.5 group-hover/btn:scale-125 transition-transform" />
-                    </button>
-                  </Link>
+                <div className="ml-auto">
+                   <div className="px-6 py-3 bg-white/5 border border-white/10 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/40 group-hover:bg-purple-500 group-hover:text-black transition-all">
+                      Recalibrate
+                   </div>
                 </div>
               </div>
             </div>
-
-            <div className="lg:w-px bg-white/5 hidden lg:block self-stretch" />
-
-            <div className="lg:w-[300px] flex flex-col justify-between space-y-6">
-               <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/20">{t('engineSelector')}</span>
-                    <Cpu className="w-3.5 h-3.5 text-white/10" />
-                  </div>
-                  <div className="grid grid-cols-2 gap-2 p-1.5 bg-black/40 rounded-2xl border border-white/5">
-                    {['gemini', 'claude'].map((eng) => (
-                      <button
-                        key={eng}
-                        onClick={() => setSelectedEngine(eng as any)}
-                        className={`py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-                          selectedEngine === eng 
-                            ? 'bg-white/10 text-white shadow-xl border border-white/10' 
-                            : 'text-white/20 hover:text-white/40'
-                        }`}
-                      >
-                        {eng}
-                      </button>
-                    ))}
-                  </div>
-               </div>
-               
-               <div className="p-4 bg-gradient-to-br from-white/5 to-transparent rounded-[1.5rem] border border-white/5 flex items-center gap-4">
-                  <div className="w-10 h-10 rounded-full bg-purple-500/10 flex items-center justify-center">
-                    <Target className="w-5 h-5 text-purple-400" />
-                  </div>
-                  <div>
-                    <span className="text-[10px] font-black uppercase tracking-widest text-white/40 block">Global Reach</span>
-                    <span className="text-[9px] font-bold text-emerald-500 uppercase">Optimized for Viral</span>
-                  </div>
-               </div>
-            </div>
-          </div>
+          </Link>
         </motion.div>
       </section>
 
-      {/* Main Command Console */}
-      <section className="relative">
+      {/* COMMAND CENTER - Professional Input Hub */}
+      <section className="space-y-6">
+        <div className="flex items-baseline justify-between px-4">
+           <h2 className="text-3xl font-black uppercase italic tracking-tighter text-white">Command <span className="text-cyan-500">Hub</span></h2>
+           <div className="flex gap-2">
+              {['Topic', 'Link'].map((m) => (
+                <button key={m} className="text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-white transition-colors">{m}</button>
+              ))}
+           </div>
+        </div>
+
         <motion.div 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
           transition={{ delay: 0.1 }}
-          className="glass-premium rounded-[3rem] p-8 space-y-8 overflow-hidden border border-white/5 shadow-2xl"
+          className="relative p-1 bg-black border-[3px] border-black rounded-[3rem] overflow-hidden"
         >
-          <div className="absolute -bottom-24 -left-24 w-64 h-64 bg-purple-600/10 blur-[100px] rounded-full pointer-events-none" />
-          
-          <div className="space-y-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
-              <h1 className="text-4xl font-black tracking-tighter uppercase leading-none">
-                {t('title')} <span className="gradient-text-gold">{t('titleAccent')}</span>
-              </h1>
-              <div className="flex items-center gap-3 bg-white/5 p-2 rounded-full border border-white/5 w-fit">
-                 <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-                 <span className="text-[9px] font-black uppercase tracking-widest text-white/40 pr-2">Profile Engine Ready</span>
-              </div>
-            </div>
+          <div className="bg-white/5 p-8 space-y-6 relative">
+            <textarea
+              value={prompt}
+              onChange={(e) => setPrompt(e.target.value)}
+              className="w-full bg-transparent border-none p-0 text-xl font-bold text-white placeholder:text-white/10 focus:outline-none resize-none min-h-[140px]"
+              placeholder="Inject your content idea or paste a trend link..."
+            />
+            
+            <div className="flex items-center justify-between pt-4 border-t border-white/5">
+               <div className="flex gap-4">
+                  <div className="flex items-center gap-2 px-4 py-2 bg-black/40 rounded-xl border border-white/5">
+                     <Cpu className="w-3.5 h-3.5 text-cyan-500" />
+                     <span className="text-[10px] font-black uppercase tracking-widest text-white/40">{selectedEngine}</span>
+                  </div>
+               </div>
 
-            {/* Mode Selection */}
-            <div className="flex p-1.5 bg-black/40 rounded-2xl border border-white/5 w-fit">
-              {[
-                { icon: Mic, label: t('modeTopic'), active: true },
-                { icon: Link2, label: t('modeLink') },
-                { icon: Search, label: t('modeSearch') },
-              ].map((mode, i) => (
-                <button
-                  key={i}
-                  className={`flex items-center gap-3 px-6 py-2.5 rounded-xl text-[11px] font-black uppercase tracking-[0.1em] transition-all ${
-                    mode.active 
-                      ? 'bg-white/10 text-white shadow-lg border border-white/10' 
-                      : 'text-white/30 hover:text-white/50'
-                  }`}
-                >
-                  <mode.icon className="w-4 h-4" />
-                  <span className="hidden sm:inline">{mode.label}</span>
-                </button>
-              ))}
+               <button 
+                onClick={handleGenerate}
+                disabled={!prompt.trim() || isLoading}
+                className="px-10 h-[60px] bg-white text-black rounded-2xl text-xs font-black uppercase tracking-widest flex items-center gap-3 active:scale-95 transition-all shadow-xl disabled:opacity-20"
+              >
+                {isLoading ? <Loader2 className="w-4 h-4 animate-spin" /> : <Rocket className="w-4 h-4" />}
+                Launch Session
+              </button>
             </div>
-
-            {/* Input Terminal */}
-            <div className="relative group">
-              <textarea
-                value={prompt}
-                onChange={(e) => setPrompt(e.target.value)}
-                className="w-full bg-black/60 border border-white/5 rounded-[2rem] p-8 text-lg font-medium text-white placeholder:text-white/5 focus:outline-none focus:border-purple-500/30 transition-all resize-none min-h-[180px] shadow-inner"
-                placeholder={t('placeholder')}
-              />
-              <div className="absolute bottom-6 right-8 flex items-center gap-4 opacity-30 group-focus-within:opacity-100 transition-opacity">
-                <span className="text-[10px] font-medium uppercase tracking-[0.3em] text-white font-mono">
-                  {prompt.length > 0 ? `SIZE: ${prompt.length} CH` : 'IDLE'}
-                </span>
-              </div>
-            </div>
-
-            <button 
-              onClick={handleGenerate}
-              disabled={!prompt.trim() || isLoading}
-              className="w-full h-[72px] bg-white text-black rounded-3xl text-[15px] font-black uppercase tracking-[0.2em] flex items-center justify-center gap-4 active:scale-[0.98] transition-all disabled:opacity-30 disabled:grayscale group relative overflow-hidden shadow-2xl"
-            >
-              <div className="absolute inset-0 bg-gradient-to-r from-[#D4AF37] to-[#FFD700] opacity-0 group-hover:opacity-100 transition-opacity" />
-              <span className="relative z-10 flex items-center gap-3">
-                {isLoading ? <Loader2 className="w-6 h-6 animate-spin" /> : <Rocket className="w-6 h-6" />}
-                {t('generateBtn')}
-              </span>
-            </button>
           </div>
         </motion.div>
       </section>
