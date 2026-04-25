@@ -159,34 +159,32 @@ export default function StudioPage() {
                   } to-black/40`} />
                 </div>
 
-                {/* Giant Comic Numbering - Improved Visibility */}
-                <div className="absolute -left-6 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
-                  <span className="text-[160px] font-black italic text-white/10 leading-none tracking-tighter drop-shadow-[0_0_2px_rgba(255,255,255,0.05)]">
+                {/* Large Stylized Numbering as Art Element */}
+                <div className="absolute -left-8 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
+                  <span className="text-[200px] font-black italic text-white/10 leading-none tracking-tighter drop-shadow-[0_0_15px_rgba(255,255,255,0.05)]">
                     {index + 1}
                   </span>
                 </div>
 
                 {/* Content Layer */}
-                <div className={`absolute inset-0 p-10 flex flex-col ${
-                  index === 0 ? 'justify-start pt-14' : 
+                <div className={`absolute inset-0 p-12 flex flex-col ${
+                  index === 0 ? 'justify-start pt-16' : 
                   index === 1 ? 'justify-center' : 
-                  'justify-end pb-14'
+                  'justify-end pb-16'
                 }`}>
-                  <div className={`${index === 1 ? 'md:pl-12' : index === 2 ? 'md:pl-24' : ''} space-y-1 z-30`}>
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50">Sequence Step</p>
-                    <h3 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none shadow-black/50 drop-shadow-2xl">
+                  <div className={`${index === 1 ? 'md:pl-16' : index === 2 ? 'md:pl-32' : ''} space-y-1 z-30 transition-transform duration-500 group-active:translate-x-2`}>
+                    <p className="text-[11px] font-black uppercase tracking-[0.5em] text-white/50 mb-1">Phase 0{index + 1}</p>
+                    <h3 className="text-5xl font-black text-white uppercase italic tracking-tighter leading-none shadow-black/50 drop-shadow-2xl">
                       {hub.title.split(' ')[0]} <span className="text-white/40">{hub.title.split(' ')[1] || ''}</span>
                     </h3>
-                    <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest leading-none">
+                    <p className="text-xs font-bold text-white/30 uppercase tracking-widest leading-none mt-2">
                       {hub.desc}
                     </p>
                   </div>
                 </div>
 
-                {/* Action Circle (Comic Style) */}
-                <div className="absolute top-1/2 -translate-y-1/2 right-10 w-14 h-14 rounded-full border-4 border-black bg-white flex items-center justify-center transition-all group-active:scale-110 shadow-2xl z-40">
-                  <ArrowRight className="w-8 h-8 text-black stroke-[3]" />
-                </div>
+                {/* Interaction Overlay - Flash on Touch */}
+                <div className="absolute inset-0 bg-white/0 group-active:bg-white/5 transition-colors duration-300 z-50 pointer-events-none" />
               </div>
             </Link>
           </motion.div>
