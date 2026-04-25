@@ -61,19 +61,20 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     3. educational: Direct problem-solution format. Focus on teaching one specific thing.
 
     Structure for EACH scenario:
-    - hook: 1-3 words, high impact (The Text Hook)
-    - intro: first 3 seconds
-    - story: the "meat" of the content
-    - cta: single sentence call to action
+    - hook: Strong opening (The Text Hook, 1-3 words)
+    - problem: The pain point, mystery, or conflict (3-5 seconds)
+    - good_news: The positive turn, revelation, or twist
+    - solution: The core value, answer, or lesson
+    - cta: Punchy, high-conversion call to action
     - visual_hook: A highly detailed, cinematic prompt for an AI image generator (like Midjourney) to create a viral COVER for this video. Use professional photography terms.
     - social_post: A short, engaging social media description/caption with 3 relevant emojis and 3 tags.
     
     REMEMBER: Detect the input language and generate content in THAT language. 
     Output ONLY valid JSON in format: 
     {
-      "evergreen": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "trend": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "educational": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
+      "evergreen": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "trend": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
+      "educational": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
     }
   `;
 
@@ -196,12 +197,13 @@ export async function refineScript(
     
     TASK: Refine the script based on the instruction. 
     You can update any of these parts:
-    - hook (text hook)
-    - intro
-    - story (body)
+    - hook
+    - problem
+    - good_news
+    - solution
     - cta
-    - visual_hook (cover image prompt)
-    - social_post (caption)
+    - visual_hook
+    - social_post
     
     CRITICAL: 
     - Maintain the user's digital shadow and style.

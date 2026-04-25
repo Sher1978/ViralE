@@ -60,23 +60,40 @@ export default function ScriptLabPage() {
     return () => clearInterval(interval);
   }, [isLoading, isGenerating, loadingSteps.length]);
   
-  const [scriptData, setScriptData] = useState({
-    hook: locale === 'ru' 
-      ? "Знаешь почему 90% покупателей переплачивают за авто?"
-      : "Do you know why 90% of buyers overpay for cars?",
-    story: locale === 'ru'
-      ? "Разбираю по-честному. Первое — VIN история. Второе — незавизимая диагностика."
-      : "I'm breaking it down honestly. First — VIN history. Second — independent diagnostics.",
-    cta: locale === 'ru'
-      ? "Пиши слово «МАШИНА» в комментариях."
-      : "Comment the word \"CAR\".",
-    visual_hook: locale === 'ru'
-      ? "Эстетичный кадр с дорогим авто в неоновом свете"
-      : "Aesthetic shot of a premium car in neon light",
-    social_post: locale === 'ru'
-      ? "Секреты автоподбора 2026. 🚗💨 #авто #советы #viral"
-      : "Car buying secrets 2026. 🚗💨 #cars #tips #viral"
+  const [selectionSources, setSelectionSources] = useState<Record<string, 'evergreen' | 'trend' | 'educational'>>({
+    hook: 'evergreen',
+    problem: 'evergreen',
+    good_news: 'evergreen',
+    solution: 'evergreen',
+    cta: 'evergreen',
+    visual_hook: 'evergreen',
+    social_post: 'evergreen'
   });
+
+  const [scriptData, setScriptData] = useState({
+    hook: '',
+    problem: '',
+    good_news: '',
+    solution: '',
+    cta: '',
+    visual_hook: '',
+    social_post: ''
+  });
+
+  const [masterTextOverride, setMasterTextOverride] = useState<string | null>(null);
+  const [copyFeedback, setCopyFeedback] = useState(false);
+
+  const scenarios: ('evergreen' | 'trend' | 'educational')[] = ['evergreen', 'trend', 'educational'];
+
+  const handleNextScenario = () => {
+    const nextIdx = (scenarios.indexOf(activeScenario) + 1) % scenarios.length;
+    setActiveScenario(scenarios[nextIdx]);
+  };
+
+  const handlePrevScenario = () => {
+    const prevIdx = (scenarios.indexOf(activeScenario) - 1 + scenarios.length) % scenarios.length;
+    setActiveScenario(scenarios[prevIdx]);
+  };
 
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [currentVersion, setCurrentVersion] = useState<ProjectVersion | null>(null);
@@ -180,14 +197,30 @@ export default function ScriptLabPage() {
   }, [projectIdParam, versionIdParam, searchParams]);
 
   const handleScenarioSwitch = (scenario: 'evergreen' | 'trend' | 'educational') => {
-    if (user?.tier === 'free' && scenario !== 'evergreen') {
-      router.push('/app/profile/subscription');
-      return;
-    }
     setActiveScenario(scenario);
-    if (allScenarios?.[scenario]) {
-      setScriptData(allScenarios[scenario]);
+  };
+
+  const handleBlockSelect = (type: string, source: 'evergreen' | 'trend' | 'educational') => {
+    setSelectionSources(prev => ({ ...prev, [type]: source }));
+  };
+
+  const getActiveBlockValue = (type: string) => {
+    if (allScenarios?.[activeScenario]?.[type]) {
+      return allScenarios[activeScenario][type];
     }
+    return scriptData[type as keyof typeof scriptData] || '';
+  };
+
+  const getFinalText = () => {
+    if (!allScenarios) return Object.values(scriptData).filter(v => v).join(' ');
+    const parts = [
+      allScenarios[selectionSources.hook]?.hook,
+      allScenarios[selectionSources.problem]?.problem,
+      allScenarios[selectionSources.good_news]?.good_news,
+      allScenarios[selectionSources.solution]?.solution,
+      allScenarios[selectionSources.cta]?.cta,
+    ];
+    return parts.filter(Boolean).join(' ');
   };
 
   const handleApplyRefinement = async (instruction: string) => {
@@ -317,43 +350,7 @@ export default function ScriptLabPage() {
       setError(locale === 'ru' ? 'Введите идею видео' : 'Please enter a video idea');
       return;
     }
-    setIsLoading(true);
-    setError(null);
-
-    try {
-      // Tier Check: Creator limit (20 generations/month)
-      if (user?.tier === 'creator') {
-        const { count, error: countError } = await profileService.getMonthlyGenerationCount(user.id);
-        if (countError) throw countError;
-        if ((count || 0) >= 20) {
-          setLimitModalData({
-            title: locale === 'ru' ? 'Лимит Создателя' : 'Creator Limit',
-            desc: locale === 'ru' 
-              ? 'Лимит в 20 генераций в месяц исчерпан. Перейдите на PRO для безлимитного создания.' 
-              : 'Monthly limit of 20 generations reached. Upgrade to PRO for unlimited creation.',
-            type: 'tier'
-          });
-          setShowLimitModal(true);
-          setIsLoading(false);
-          return;
-        }
-      }
-
-      // Warning for credits if user not pro
-      if (user?.tier !== 'pro') {
-        setShowConfirmModal(true);
-        setIsLoading(false);
-        return; // Flow continues in handleConfirmGenerate
-      }
-
-      await executeGeneration();
-    } catch (err: any) {
-      console.error('[ScriptLab] Generation failed:', err);
-      setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
-      setIsGenerating(false);
-    } finally {
-      setIsLoading(false);
-    }
+    await executeGeneration();
   };
 
   const executeGeneration = async () => {
@@ -828,200 +825,180 @@ export default function ScriptLabPage() {
         </button>
       </div>
 
-      {/* Script Blocks */}
-      <div className="space-y-4 relative">
-        {isRefining && (
-          <div className="absolute inset-0 bg-[#06060c]/40 backdrop-blur-[2px] z-10 rounded-3xl flex items-center justify-center flex-col space-y-3">
-             <div className="w-10 h-10 border-2 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-             <span className="text-[10px] font-black uppercase tracking-widest text-purple-400/80">Recalculating Style...</span>
-          </div>
-        )}
+      {/* Script Blocks Grid with Swipe Support */}
+      <div className="relative overflow-visible pb-64 px-1">
+        <AnimatePresence mode="popLayout" initial={false}>
+          <motion.div
+            key={activeScenario}
+            initial={{ opacity: 0, x: 50, scale: 0.95 }}
+            animate={{ opacity: 1, x: 0, scale: 1 }}
+            exit={{ opacity: 0, x: -50, scale: 0.95 }}
+            transition={{ type: "spring", damping: 25, stiffness: 200 }}
+            drag="x"
+            dragConstraints={{ left: 0, right: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(e, info) => {
+              const threshold = 100;
+              if (info.offset.x < -threshold) handleNextScenario();
+              else if (info.offset.x > threshold) handlePrevScenario();
+            }}
+            className="space-y-6 cursor-grab active:cursor-grabbing"
+          >
+            {[
+              { id: 'hook', label: t('tagHook') },
+              { id: 'problem', label: t('tagProblem') },
+              { id: 'good_news', label: t('tagGoodNews') },
+              { id: 'solution', label: t('tagSolution') },
+              { id: 'cta', label: t('tagCTA') }
+            ].map((block) => {
+              const isSelected = selectionSources[block.id] === activeScenario;
+              const scenarioColor = activeScenario === 'evergreen' ? '#00FFCC' : activeScenario === 'trend' ? '#A855F7' : '#FACC15';
+              
+              return (
+                <div key={block.id} className="group relative">
+                  <div 
+                    className={`absolute -left-2 top-0 bottom-0 w-1 rounded-full transition-all duration-500 ${isSelected ? 'scale-y-100 opacity-100 shadow-[0_0_10px_rgba(255,255,255,0.5)]' : 'scale-y-50 opacity-10'}`} 
+                    style={{ background: scenarioColor }}
+                  />
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between px-2">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[10px] font-black tracking-[0.2em] text-white/30 uppercase">{block.label}</span>
+                        {isSelected && <div className="w-1.5 h-1.5 rounded-full animate-pulse" style={{ background: scenarioColor }} />}
+                      </div>
+                      <button 
+                        onClick={() => handleBlockSelect(block.id, activeScenario)}
+                        className={`text-[9px] font-black uppercase tracking-widest px-4 py-1.5 rounded-xl transition-all border ${
+                          isSelected 
+                            ? 'bg-white text-black border-white shadow-[0_0_20px_rgba(255,255,255,0.2)] scale-105' 
+                            : 'border-white/10 text-white/40 hover:border-white/20 hover:text-white'
+                        }`}
+                      >
+                        {isSelected ? '✓ In Mix' : 'Select'}
+                      </button>
+                    </div>
+                    <textarea
+                      value={allScenarios?.[activeScenario]?.[block.id] || scriptData[block.id as keyof typeof scriptData] || ''}
+                      onChange={(e) => {
+                        const val = e.target.value;
+                        if (allScenarios) {
+                          const newScenarios = { ...allScenarios };
+                          newScenarios[activeScenario][block.id] = val;
+                          setAllScenarios(newScenarios);
+                        } else {
+                          setScriptData(prev => ({ ...prev, [block.id]: val }));
+                        }
+                      }}
+                      className={`w-full p-5 rounded-2xl bg-white/[0.02] border transition-all duration-300 text-sm leading-relaxed text-white/80 focus:outline-none resize-none min-h-[90px] ${
+                        isSelected ? 'border-white/20 bg-white/[0.05]' : 'border-white/5'
+                      }`}
+                    />
+                  </div>
+                </div>
+              );
+            })}
+          </motion.div>
+        </AnimatePresence>
 
-        {/* HOOK Block */}
-        <div className="group relative">
-          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-500 to-transparent rounded-full opacity-50" />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-2">
-              <span className="text-[10px] font-black tracking-[0.2em] text-white/30 uppercase">{t('tagHook')}</span>
-              <button 
-                onClick={() => handleApplyRefinement('Regenerate only the hook to be more viral')}
-                className="opacity-0 group-hover:opacity-100 transition-all text-[9px] font-bold text-purple-400 hover:text-white uppercase tracking-widest"
-              >
-                {t('regenerate')}
-              </button>
-            </div>
-            <textarea
-              value={scriptData.hook}
-              onChange={(e) => setScriptData({ ...scriptData, hook: e.target.value })}
-              className="w-full p-5 rounded-2xl bg-[#0d0d1a] border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.5)] relative overflow-hidden text-sm leading-relaxed text-white/90 font-medium focus:outline-none focus:border-purple-500/50 resize-none min-h-[100px] transition-all"
-            />
-          </div>
-        </div>
-
-        {/* STORY Block */}
-        <div className="group relative">
-          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-gradient-to-b from-purple-500/20 to-purple-500/20 rounded-full" />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-2">
-              <span className="text-[10px] font-black tracking-[0.2em] text-white/30 uppercase">{t('tagStory')}</span>
-              <button 
-                onClick={() => handleApplyRefinement('Regenerate the story/body to be more engaging and structured')}
-                className="opacity-0 group-hover:opacity-100 transition-all text-[9px] font-bold text-purple-400 hover:text-white uppercase tracking-widest"
-              >
-                {t('regenerate')}
-              </button>
-            </div>
-            <textarea
-              value={scriptData.story}
-              onChange={(e) => setScriptData({ ...scriptData, story: e.target.value })}
-              className="w-full p-5 rounded-2xl bg-white/[0.02] border border-white/5 text-sm leading-relaxed text-white/70 focus:outline-none focus:border-purple-500/30 resize-none min-h-[120px] transition-all"
-            />
-          </div>
-        </div>
-
-        {/* CTA Block */}
-        <div className="group relative">
-          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-gradient-to-t from-purple-500 to-transparent rounded-full opacity-50" />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-2">
-              <span className="text-[10px] font-black tracking-[0.2em] text-white/30 uppercase">{t('tagCTA')}</span>
-              <button 
-                onClick={() => handleApplyRefinement('Regenerate CTA to be more punchy and clear')}
-                className="opacity-0 group-hover:opacity-100 transition-all text-[9px] font-bold text-purple-400 hover:text-white uppercase tracking-widest"
-              >
-                {t('regenerate')}
-              </button>
-            </div>
-            <textarea
-              value={scriptData.cta}
-              onChange={(e) => setScriptData({ ...scriptData, cta: e.target.value })}
-              className="w-full p-5 rounded-2xl bg-white/[0.02] border border-white/5 text-sm leading-relaxed text-white/70 focus:outline-none focus:border-purple-500/30 resize-none min-h-[80px] transition-all"
-            />
-          </div>
-        </div>
-
-        {/* VISUAL HOOK Block */}
-        <div className="group relative">
-          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-cyan-500/40 rounded-full" />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-2">
-              <div className="flex items-center gap-1.5">
-                <span className="text-[10px] font-black tracking-[0.2em] text-cyan-400/50 uppercase">Visual Hook</span>
-                <div className="px-1.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-[8px] font-black text-cyan-400 uppercase tracking-tighter">AI Cover</div>
+        {/* Master Script Editor (The Frankenstein) - HIGHLIGHTED */}
+        <motion.div 
+          initial={{ opacity: 0, y: 30 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="mt-16 p-[2px] rounded-[2.5rem] bg-gradient-to-br from-yellow-400 via-purple-500 to-cyan-400 shadow-[0_30px_100px_rgba(250,204,21,0.15)] relative z-20 group/master"
+        >
+          <div className="bg-[#0c0c16] rounded-[2.4rem] p-6 border border-white/5">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-12 h-12 rounded-2xl bg-yellow-400/10 flex items-center justify-center border border-yellow-400/20 shadow-[0_0_20px_rgba(250,204,21,0.1)]">
+                  <Sparkles className="w-6 h-6 text-yellow-400" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white">Master Content</h3>
+                  <p className="text-[10px] text-yellow-400/50 uppercase tracking-widest font-bold">The Ultimate Frankenstein Mix</p>
+                </div>
               </div>
               <button 
-                onClick={() => handleApplyRefinement('Regenerate the visual hook prompt to be more cinematic and professional')}
-                className="opacity-0 group-hover:opacity-100 transition-all text-[9px] font-bold text-cyan-400 hover:text-white uppercase tracking-widest"
+                onClick={() => {
+                  const text = masterTextOverride || getFinalText();
+                  navigator.clipboard.writeText(text);
+                  setCopyFeedback(true);
+                  setTimeout(() => setCopyFeedback(false), 2000);
+                }}
+                className={`flex items-center gap-2 px-5 py-3 rounded-2xl transition-all text-[11px] font-black uppercase tracking-widest ${
+                  copyFeedback ? 'bg-emerald-500 text-white border-emerald-400' : 'bg-white/5 text-white/60 border-white/10 hover:bg-white/10 active:scale-95'
+                } border shadow-xl`}
               >
-                {t('regenerate')}
+                <History className={`w-4 h-4 ${copyFeedback ? 'animate-bounce' : ''}`} />
+                {copyFeedback ? 'Copied!' : 'Copy'}
               </button>
             </div>
-            <textarea
-              value={scriptData.visual_hook || ''}
-              onChange={(e) => setScriptData({ ...scriptData, visual_hook: e.target.value })}
-              placeholder={locale === 'ru' ? 'Описание для обложки (Midjourney prompt)...' : 'Description for cover (Midjourney prompt)...'}
-              className="w-full p-5 rounded-2xl bg-[#09121a]/50 border border-cyan-500/10 text-sm italic leading-relaxed text-cyan-100/60 focus:outline-none focus:border-cyan-500/30 resize-none min-h-[100px] transition-all"
+            
+            <textarea 
+              value={masterTextOverride !== null ? masterTextOverride : getFinalText()}
+              onChange={(e) => setMasterTextOverride(e.target.value)}
+              className="w-full bg-white/[0.03] border border-white/10 rounded-[1.5rem] p-5 text-base leading-[1.8] text-white/95 focus:outline-none focus:border-yellow-400/30 resize-none min-h-[250px] font-medium transition-all shadow-inner"
+              placeholder="Select blocks above or type here to craft your final script..."
             />
-          </div>
-        </div>
 
-        {/* SOCIAL POST Block */}
-        <div className="group relative">
-          <div className="absolute -left-2 top-0 bottom-0 w-1 bg-pink-500/40 rounded-full" />
-          <div className="space-y-2">
-            <div className="flex items-center justify-between px-2">
-              <span className="text-[10px] font-black tracking-[0.2em] text-pink-400/50 uppercase">Social Post</span>
-              <button 
-                onClick={() => handleApplyRefinement('Refine the social post caption to be more catchy with emojis')}
-                className="opacity-0 group-hover:opacity-100 transition-all text-[9px] font-bold text-pink-400 hover:text-white uppercase tracking-widest"
-              >
-                {t('regenerate')}
-              </button>
+            <div className="mt-5 pt-5 border-t border-white/5 flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <div className="flex -space-x-1.5">
+                  {['hook', 'problem', 'good_news', 'solution', 'cta'].map((id) => {
+                    const src = selectionSources[id];
+                    return (
+                      <div key={id} className={`w-4 h-4 rounded-full border-2 border-[#0c0c16] scale-110 shadow-lg ${src === 'evergreen' ? 'bg-emerald-400' : src === 'trend' ? 'bg-purple-500' : 'bg-yellow-400'}`} />
+                    );
+                  })}
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Nerve Synthesis</span>
+              </div>
+              <div className="px-4 py-1.5 rounded-full bg-white/5 border border-white/10 text-[10px] font-black text-white/50 uppercase tracking-tighter">
+                {(masterTextOverride || getFinalText()).split(/\s+/).filter(Boolean).length} words
+              </div>
             </div>
-            <textarea
-              value={scriptData.social_post || ''}
-              onChange={(e) => setScriptData({ ...scriptData, social_post: e.target.value })}
-              placeholder={locale === 'ru' ? 'Текст поста для соцсетей...' : 'Social post caption...'}
-              className="w-full p-5 rounded-2xl bg-[#1a0912]/50 border border-pink-500/10 text-sm leading-relaxed text-pink-100/60 focus:outline-none focus:border-pink-500/30 resize-none min-h-[100px] transition-all"
-            />
           </div>
-        </div>
+        </motion.div>
       </div>
 
-      {/* AI Controls */}
-      <div className="space-y-3">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 ml-2">
-          {t('aiCommands')}
-        </p>
-        <div className="grid grid-cols-2 gap-2">
+      {/* AI Narrative Controls */}
+      <div className="space-y-4 px-2">
+        <div className="flex items-center justify-between mb-2">
+           <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">AI Magic Refinement</p>
+           <div className="h-[1px] flex-1 bg-white/5 ml-4" />
+        </div>
+        <div className="grid grid-cols-2 gap-3">
           {[
-            { label: t('cmdSharper'), icon: '🔥', instruction: 'Make the tone sharper and more confident' },
-            { label: t('cmdShorter'), icon: '✂️', instruction: 'Make it much shorter and more minimalist' },
-            { label: t('cmdFunnier'), icon: '😂', instruction: 'Add some irony and humor' },
-            { label: t('cmdFormal'), icon: '💼', instruction: 'Make it more professional and official' },
+            { label: t('cmdSharper'), icon: '⚡', instruction: 'Make the tone sharper' },
+            { label: t('cmdShorter'), icon: '✂️', instruction: 'Make it much shorter' },
+            { label: t('cmdFunnier'), icon: '🎭', instruction: 'Add some irony' },
+            { label: t('cmdFormal'), icon: '💎', instruction: 'More professional' },
           ].map((cmd) => (
             <button
               key={cmd.label}
               onClick={() => handleApplyRefinement(cmd.instruction)}
-              disabled={isRefining}
-              className="flex items-center gap-2 p-3 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-500/30 transition-all text-left group/btn disabled:opacity-50"
+              className="flex items-center gap-3 p-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-purple-500/30 transition-all text-left group"
             >
-              <span className="text-sm group-hover/btn:scale-110 transition-transform">{cmd.icon}</span>
-              <span className="text-[11px] font-bold text-white/70 tracking-tight">{cmd.label}</span>
+              <div className="w-8 h-8 rounded-xl bg-white/5 flex items-center justify-center group-hover:scale-110 transition-transform">
+                <span className="text-base">{cmd.icon}</span>
+              </div>
+              <span className="text-xs font-bold text-white/70 tracking-tight">{cmd.label}</span>
             </button>
           ))}
         </div>
-        <div className="relative group/input">
-          <input
-            type="text"
-            value={customCommand}
-            onChange={(e) => setCustomCommand(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && handleApplyRefinement(customCommand)}
-            placeholder={t('cmdQuestion')}
-            className="w-full bg-[#12121f] border border-white/10 rounded-xl py-4 px-4 pr-12 text-[12px] text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500/50 focus:bg-[#16162a] transition-all"
-          />
-          <button 
-            onClick={() => handleApplyRefinement(customCommand)}
-            disabled={isRefining || !customCommand.trim()}
-            className="absolute right-2 top-1/2 -translate-y-1/2 p-2.5 bg-purple-500/20 text-purple-400 rounded-lg hover:bg-purple-500 hover:text-white transition-all disabled:opacity-30"
-          >
-            <Wand2 className="w-4 h-4" />
-          </button>
-        </div>
       </div>
 
-      {/* Strategist Advisor */}
       <StrategistChat 
         projectId={projectIdParam || ''}
         userId={user?.id || ''}
         context="script"
-        onApplySuggestion={(text) => {
-          // If the strategist provides a direct instruction, we use it to refine the script
-          setCustomCommand(text);
-          handleApplyRefinement(text);
-        }}
-      />
-
-      <PremiumLimitModal 
-        isOpen={showConfirmModal}
-        onClose={() => setShowConfirmModal(false)}
-        onConfirm={executeGeneration}
-        title={locale === 'ru' ? 'Подтверждение Сборки' : 'Confirm Assembly'}
-        description={locale === 'ru' ? 'Это действие потребует 10 кредитов. Стратег подготовил лучшие сценарии для этой идеи.' : 'This action requires 10 credits. The Strategist has prepared the best narratives for this idea.'}
-        advice={locale === 'ru' ? 'ИИ-мощности требуют ресурсов. Убедись, что идея сформулирована четко!' : 'AI compute requires resources. Ensure your idea is clearly stated!'}
-        type="confirm"
-        locale={locale}
+        onApplySuggestion={(text) => handleApplyRefinement(text)}
       />
 
       <PremiumLimitModal 
         isOpen={!!error || showLimitModal}
-        onClose={() => {
-          setError(null);
-          setShowLimitModal(false);
-        }}
+        onClose={() => { setError(null); setShowLimitModal(false); }}
         title={limitModalData.title || (locale === 'ru' ? 'Внимание' : 'Attention')}
         description={error || limitModalData.desc}
-        advice={error ? (locale === 'ru' ? 'Попробуй проверить соединение или переформулировать запрос.' : 'Try checking your connection or rephrasing your request.') : (limitModalData.type === 'credits' ? (locale === 'ru' ? 'Для работы ИИ нужен минимальный баланс.' : 'A minimum balance is required for AI processing.') : (locale === 'ru' ? 'Попробуй проверить баланс или изменить настройки ИИ.' : 'Try checking your balance or adjusting AI settings.'))}
         type={error ? 'error' : limitModalData.type}
         locale={locale}
       />
@@ -1029,21 +1006,27 @@ export default function ScriptLabPage() {
       {/* Footer Actions */}
       <div className="fixed bottom-28 left-0 right-0 p-4 z-50">
         <button 
-          onClick={handleApprove}
+          onClick={async () => {
+            const finalContent = masterTextOverride || getFinalText();
+            const finalData = {
+              hook: finalContent,
+              problem: '',
+              good_news: '',
+              solution: '',
+              cta: '',
+              visual_hook: allScenarios?.[selectionSources.visual_hook]?.visual_hook || scriptData.visual_hook,
+              social_post: allScenarios?.[selectionSources.social_post]?.social_post || scriptData.social_post,
+            };
+            setScriptData(finalData as any);
+            handleApprove();
+          }}
           disabled={isSaving || isRefining}
-          className="btn-primary w-full rounded-[2rem] py-6 flex items-center justify-center gap-3 group disabled:opacity-50 shadow-[0_20px_50px_rgba(0,180,255,0.4)] animate-pulse-glow"
+          className="btn-primary w-full rounded-[2.5rem] py-6 flex items-center justify-center gap-3 group shadow-[0_25px_60px_rgba(250,204,21,0.2)] animate-pulse-glow"
         >
-          {isSaving ? (
-            <Loader2 className="w-5 h-5 animate-spin" />
-          ) : (
-            <>
-              <span className="font-black text-sm uppercase tracking-[0.2em]">{t('approve')}</span>
-              <ChevronRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-            </>
-          )}
+          <span className="font-black text-sm uppercase tracking-[0.2em]">{t('approve')}</span>
+          <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
         </button>
       </div>
-
     </div>
   );
 }
