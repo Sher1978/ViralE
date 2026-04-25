@@ -26,8 +26,11 @@ export default function ProjectsPage() {
 
   const fetchProjects = useCallback(async () => {
     try {
-      const data = await projectService.getProjects();
-      setProjects(data);
+      const profile = await profileService.getOrCreateProfile();
+      if (profile?.id) {
+        const data = await projectService.listProjects(profile.id);
+        setProjects(data);
+      }
     } catch (err) {
       console.error('Error loading projects:', err);
     } finally {
