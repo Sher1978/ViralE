@@ -795,18 +795,17 @@ export default function StudioPage() {
            <div className="flex-1 flex flex-col bg-[#05050a] p-4 md:p-8 overflow-hidden">
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
                  <div>
-                    <div className="flex items-center gap-3 mb-1">
-                       <span className="px-2 py-0.5 rounded-full bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-[8px] font-black uppercase tracking-widest animate-pulse">Stage 0: Conceptualization</span>
-                    </div>
+                  <div>
                     <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase flex items-center gap-3">
-                       <Brain size={28} className="text-yellow-400" />
-                       Sherlock <span className="text-yellow-400">Strategist</span>
+                       <Brain size={28} className="text-purple-400" />
+                       Content <span className="text-purple-400">Blueprint</span>
                     </h2>
-                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">AI-Powered Content Blueprinting</p>
+                    <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">AI-Powered Research & Analysis</p>
+                  </div>
                  </div>
                  <button 
                   onClick={() => setActiveTab('teleprompter')}
-                  className="px-6 py-3 rounded-2xl bg-yellow-400 text-black font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-yellow-400/10 flex items-center gap-2"
+                  className="px-6 py-3 rounded-2xl bg-purple-500 text-white font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-purple-500/10 flex items-center gap-2"
                 >
                   Start Production <ChevronRight size={16} />
                 </button>
