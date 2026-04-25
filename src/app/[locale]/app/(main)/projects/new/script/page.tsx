@@ -128,7 +128,10 @@ export default function ScriptLabPage() {
   }, [projectIdParam, versionIdParam, searchParams]);
 
   const handleScenarioSwitch = (scenario: 'evergreen' | 'trend' | 'educational') => {
-    if (user?.tier === 'free' && scenario !== 'evergreen') return;
+    if (user?.tier === 'free' && scenario !== 'evergreen') {
+      router.push('/app/profile/subscription');
+      return;
+    }
     setActiveScenario(scenario);
     if (allScenarios?.[scenario]) {
       setScriptData(allScenarios[scenario]);
@@ -496,7 +499,7 @@ export default function ScriptLabPage() {
                 )}
               </button>
               <button
-                onClick={() => router.push('/app/profile')}
+                onClick={() => router.push('/app/profile/subscription')}
                 className="w-full bg-white text-black py-6 rounded-[2rem] flex items-center justify-center gap-4 group font-black text-lg uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all relative z-10"
               >
                 <Sparkles className="w-6 h-6 animate-pulse" />
