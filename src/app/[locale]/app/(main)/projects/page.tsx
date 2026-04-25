@@ -109,47 +109,62 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Main Visual Hubs - Single Column focused for maximum impact */}
-      <div className="grid grid-cols-1 gap-10">
-        {mainHubs.map((hub) => (
-          <Link key={hub.id} href={hub.href} className="group">
-            <div className="relative h-[200px] sm:h-[240px] md:h-[280px] rounded-[2.5rem] border border-white/10 overflow-hidden transition-all duration-700 hover:border-white/30 hover:scale-[1.01] active:scale-[0.99] shadow-2xl">
-              {/* Background with Professional Fallback Gradient */}
-              <div className={`absolute inset-0 bg-gradient-to-br ${
-                hub.id === 'lab' ? 'from-purple-600/30 to-indigo-900/60' :
-                hub.id === 'storyboard' ? 'from-orange-600/30 to-amber-900/60' :
-                'from-blue-600/30 to-cyan-900/60'
-              } z-0`} />
-              
-              <img 
-                src={hub.image} 
-                className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-70 transition-all duration-1000 group-hover:scale-105 z-10"
-                alt={hub.title}
-                onError={(e) => (e.currentTarget.style.opacity = '0')}
-              />
-              
-              <div className={`absolute inset-0 bg-gradient-to-t ${hub.color} via-[#0a0a14]/90 to-transparent z-20 transition-all duration-700`} />
-              
-              <div className="absolute inset-0 p-8 flex flex-col justify-end z-30">
-                <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/40 mb-1.5 transition-colors">Initialize Step</p>
-                <h3 className="text-2xl font-black text-white uppercase italic tracking-tighter leading-none mb-2">
-                  {hub.title}
-                </h3>
-                <p className="text-[10px] font-bold text-white/50 transition-colors uppercase tracking-widest leading-relaxed">
-                  {hub.desc}
-                </p>
+      {/* Professional Stage Collage - Monolithic Diagonal Layout */}
+      <div className="relative group/monolith overflow-hidden rounded-[3rem] border border-white/10 shadow-2xl bg-[#0a0a14]">
+        {mainHubs.map((hub, index) => (
+          <Link key={hub.id} href={hub.href} className="block relative group">
+            <div 
+              className={`relative h-[220px] transition-all duration-700 overflow-hidden active:scale-[0.98]
+                ${index === 0 ? 'z-30 h-[240px]' : index === 1 ? 'z-20 -mt-16 h-[260px]' : 'z-10 -mt-16 h-[220px]'}
+              `}
+              style={{
+                clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' :
+                          index === 1 ? 'polygon(0 20%, 100% 0, 100% 80%, 0 100%)' :
+                          'polygon(0 20%, 100% 0, 100% 100%, 0 100%)'
+              }}
+            >
+              {/* Image Layer */}
+              <div className="absolute inset-0">
+                <img 
+                  src={hub.image} 
+                  className="w-full h-full object-cover opacity-30 group-active:opacity-80 transition-all duration-1000 group-active:scale-105"
+                  alt={hub.title}
+                  onError={(e) => (e.currentTarget.style.opacity = '0')}
+                />
+                <div className={`absolute inset-0 bg-gradient-to-br ${
+                  hub.id === 'lab' ? 'from-purple-600/40 via-purple-900/40' :
+                  hub.id === 'storyboard' ? 'from-orange-600/40 via-orange-900/40' :
+                  'from-blue-600/40 via-blue-900/40'
+                } to-transparent`} />
               </div>
 
-              {/* Action Indicator - Always visible for Mobile */}
-              <div className="absolute top-6 right-6 w-10 h-10 rounded-xl bg-white/10 backdrop-blur-xl border border-white/10 flex items-center justify-center transition-all duration-500 z-40 active:scale-90">
-                <ArrowRight className="w-5 h-5 text-white" />
+              {/* Content Layer */}
+              <div className={`absolute inset-0 p-10 flex flex-col ${
+                index === 0 ? 'justify-start pt-12' : 
+                index === 1 ? 'justify-center' : 
+                'justify-end pb-12'
+              }`}>
+                <div className={`${index === 1 ? 'md:pl-12' : index === 2 ? 'md:pl-24' : ''} space-y-1`}>
+                  <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Step 0{index + 1}</p>
+                  <h3 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
+                    {hub.title.split(' ')[0]} <span className="text-white/50">{hub.title.split(' ')[1] || ''}</span>
+                  </h3>
+                  <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest leading-none">
+                    {hub.desc}
+                  </p>
+                </div>
+              </div>
+
+              {/* Action Circle */}
+              <div className="absolute top-1/2 -translate-y-1/2 right-10 w-12 h-12 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-center transition-all group-active:bg-white group-active:text-black">
+                <ArrowRight className="w-6 h-6" />
               </div>
             </div>
           </Link>
         ))}
       </div>
 
-      {/* Active Projects Section */}
+      {/* Active Projects Section - Horizontal Scroll Implementation */}
       <div className="space-y-6 pt-8">
         <div className="flex items-center justify-between px-2">
           <div className="flex items-center gap-3">
@@ -159,7 +174,7 @@ export default function StudioPage() {
              <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">Resume Creation</h2>
           </div>
           <Link href={`/${locale}/app/archive`} className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-purple-400 transition-colors">
-            View All in Library
+            View All
           </Link>
         </div>
 
@@ -168,13 +183,20 @@ export default function StudioPage() {
              <div className="w-8 h-8 border-2 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
           </div>
         ) : activeProjects.length > 0 ? (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {activeProjects.map((project) => (
-              <ProjectCard key={project.id} project={project} />
-            ))}
+          <div className="relative -mx-4">
+            {/* Gradient Mask for Scroll Suggestion */}
+            <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-[#05050a] to-transparent z-40 pointer-events-none" />
+            
+            <div className="flex overflow-x-auto gap-5 px-4 pb-8 no-scrollbar scroll-smooth snap-x snap-mandatory">
+              {activeProjects.map((project) => (
+                <div key={project.id} className="min-w-[280px] sm:min-w-[340px] flex-shrink-0 snap-start">
+                  <ProjectCard project={project} />
+                </div>
+              ))}
+            </div>
           </div>
         ) : (
-          <div className="p-12 rounded-[3rem] bg-white/[0.02] border border-dashed border-white/10 text-center space-y-4">
+          <div className="p-12 rounded-[3rem] bg-white/[0.02] border border-dashed border-white/10 text-center space-y-4 mx-2">
              <p className="text-xs font-bold text-white/20 uppercase tracking-widest">No active sequences found</p>
              <Link href={`/${locale}/app/projects/new`} className="text-[10px] font-black uppercase tracking-widest text-purple-400 hover:underline">
                Initialize First Project
