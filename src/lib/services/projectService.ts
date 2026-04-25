@@ -164,5 +164,11 @@ export const projectService = {
       return null;
     }
     return data;
+  },
+
+  async updateLatestVersionManifest(projectId: string, manifest: any): Promise<ProjectVersion | null> {
+    const latest = await this.getLatestVersion(projectId);
+    if (!latest) return null;
+    return this.updateVersion(latest.id, { script_data: manifest });
   }
 };

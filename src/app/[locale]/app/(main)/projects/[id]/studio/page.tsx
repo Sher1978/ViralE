@@ -332,7 +332,7 @@ export default function StudioPage() {
                      }));
                      const updatedManifest = { ...manifest, segments };
                      setManifest(updatedManifest);
-                     await projectService.updateVersionManifestByProject(projectId, updatedManifest);
+                     await projectService.updateLatestVersionManifest(projectId, updatedManifest);
                    }}
                    t={t}
                 />
