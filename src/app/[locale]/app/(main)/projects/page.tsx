@@ -96,9 +96,9 @@ export default function StudioPage() {
   ];
 
   return (
-    <div className="space-y-8 pb-32 max-w-7xl mx-auto px-4 overflow-x-hidden">
+    <div className="space-y-0 pb-32 max-w-7xl mx-auto overflow-x-hidden">
       {/* Professional Header - Aligned with Global Strategist */}
-      <div className="flex flex-col pt-4 mb-8 pl-16">
+      <div className="flex flex-col pt-4 mb-4 pl-16">
         <div className="space-y-0.5">
           <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
             Viral <span className="text-purple-500">Studio</span>
@@ -110,46 +110,38 @@ export default function StudioPage() {
       </div>
 
       {/* Professional Stage Collage - Monolithic Diagonal Layout with Maximum Visibility */}
-      <div className="relative group/monolith overflow-hidden rounded-[4rem] border-4 border-black shadow-2xl bg-black px-1.5 py-1.5 space-y-2">
+      <div className="relative group/monolith overflow-hidden border-y border-white/10 bg-black">
         {mainHubs.map((hub, index) => (
-          <motion.div
-            key={hub.id}
-            initial={{ x: -100, opacity: 0 }}
-            animate={{ x: 0, opacity: 1 }}
-            transition={{ 
-              duration: 0.8, 
-              delay: index * 0.2,
-              ease: "easeOut" 
-            }}
-            className="block relative group"
-          >
+            <motion.div
+              key={hub.title}
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              transition={{ delay: index * 0.1 }}
+              onClick={() => router.push(`/${locale}/app/projects/new/${hub.id}`)}
+              className="relative h-[250px] cursor-pointer group overflow-hidden border-b border-white/10 last:border-0"
+            >
             <Link href={hub.href}>
               <div 
-                className={`relative transition-all duration-700 overflow-hidden active:scale-[0.99]
-                  ${index === 0 ? 'z-30 h-[240px]' : index === 1 ? 'z-20 -mt-20 h-[300px]' : 'z-10 -mt-20 h-[240px]'}
-                `}
-                style={{
-                  clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' :
-                            index === 1 ? 'polygon(0 15%, 100% 0, 100% 85%, 0 100%)' :
-                            'polygon(0 15%, 100% 0, 100% 100%, 0 100%)'
-                }}
+                className="relative w-full h-full transition-all duration-700 overflow-hidden active:scale-[0.99]"
               >
                 {/* Subtle top shadow for depth */}
                 <div className="absolute top-0 left-0 w-full h-[80px] bg-gradient-to-b from-black/50 to-transparent z-40 pointer-events-none" />
 
-                {/* Image Layer with Better Visibility */}
-                <div className="absolute inset-0">
+                {/* Comic Background with sharp edges */}
+                <div className="absolute inset-0 z-0 overflow-hidden">
                   <img 
                     src={hub.image} 
-                    className="w-full h-full object-cover opacity-50 transition-all duration-1000 group-hover:scale-105"
-                    alt={hub.title}
-                    onError={(e) => (e.currentTarget.style.opacity = '0')}
+                    className="w-full h-full object-cover opacity-50 grayscale hover:grayscale-0 transition-all duration-700" 
+                    alt={hub.title} 
                   />
-                  <div className={`absolute inset-0 bg-gradient-to-br ${
-                    hub.id === 'lab' ? 'from-purple-600/50 via-purple-900/70' :
-                    hub.id === 'storyboard' ? 'from-orange-600/50 via-orange-900/70' :
-                    'from-blue-600/50 via-blue-900/70'
-                  } to-black/90`} />
+                  <div className={`absolute inset-0 bg-gradient-to-r from-purple-950/90 ${
+                    index === 0 ? 'via-purple-900/40' : 
+                    index === 1 ? 'via-orange-900/40' : 
+                    'via-blue-900/40'
+                  } to-transparent`} />
+                  
+                  {/* Subtle Comic Line Separators */}
+                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/10" />
                 </div>
 
                 {/* Giant Original Stylized Numbering - Better Visibility Watermark */}
@@ -227,6 +219,14 @@ export default function StudioPage() {
       {/* Decorative Assets */}
       <div className="fixed top-1/4 -right-64 w-[600px] h-[600px] bg-purple-600/5 blur-[150px] pointer-events-none -z-10 animate-pulse" />
       <div className="fixed bottom-1/4 -left-64 w-[600px] h-[600px] bg-blue-600/5 blur-[150px] pointer-events-none -z-10 animate-pulse [animation-delay:2s]" />
+      <PremiumLimitModal 
+        isOpen={!!error}
+        onClose={() => setError(null)}
+        title={locale === 'ru' ? 'Внимание' : 'Attention'}
+        description={error || ''}
+        type="tier"
+        locale={locale}
+      />
     </div>
   );
 }

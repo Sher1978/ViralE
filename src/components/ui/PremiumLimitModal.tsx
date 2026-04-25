@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Lock, Sparkles, X, ArrowRight, Zap } from 'lucide-react';
+import { Lock, Sparkles, X, ArrowRight, Zap, CheckCircle, Info } from 'lucide-react';
 import { useRouter } from '@/navigation';
 
 interface PremiumLimitModalProps {
@@ -10,7 +10,7 @@ interface PremiumLimitModalProps {
   onClose: () => void;
   title: string;
   description: string;
-  type?: 'trial' | 'credits' | 'tier';
+  type?: 'trial' | 'credits' | 'tier' | 'success' | 'info';
   locale?: string;
 }
 
@@ -25,6 +25,19 @@ export function PremiumLimitModal({
   const router = useRouter();
 
   if (!isOpen) return null;
+
+  const getTheme = () => {
+    switch (type) {
+      case 'success': return { icon: CheckCircle, color: 'text-green-400', bg: 'bg-green-500/20' };
+      case 'credits': return { icon: Zap, color: 'text-amber-400', bg: 'bg-amber-500/20' };
+      case 'info': return { icon: Info, color: 'text-cyan-400', bg: 'bg-cyan-500/20' };
+      case 'tier': return { icon: Sparkles, color: 'text-purple-400', bg: 'bg-purple-500/20' };
+      default: return { icon: Lock, color: 'text-red-400', bg: 'bg-red-500/20' };
+    }
+  };
+
+  const theme = getTheme();
+  const Icon = theme.icon;
 
   return (
     <AnimatePresence>
@@ -60,15 +73,9 @@ export function PremiumLimitModal({
           {/* Icon Header */}
           <div className="mb-8 flex justify-center">
             <div className="relative">
-              <div className="absolute -inset-4 rounded-full bg-purple-500/20 blur-xl animate-pulse" />
-              <div className="relative flex h-20 w-20 items-center justify-center rounded-3xl border border-white/10 bg-gradient-to-br from-purple-500/20 to-transparent shadow-inner">
-                {type === 'trial' ? (
-                  <Lock className="h-10 w-10 text-purple-400" />
-                ) : type === 'credits' ? (
-                  <Zap className="h-10 w-10 text-amber-400" />
-                ) : (
-                  <Sparkles className="h-10 w-10 text-cyan-400" />
-                )}
+              <div className={`absolute -inset-4 rounded-full ${theme.bg} blur-xl animate-pulse`} />
+              <div className={`relative flex h-20 w-20 items-center justify-center rounded-3xl border border-white/10 bg-gradient-to-br from-white/5 to-transparent shadow-inner`}>
+                <Icon className={`h-10 w-10 ${theme.color}`} />
               </div>
             </div>
           </div>
