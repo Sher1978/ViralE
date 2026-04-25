@@ -11,7 +11,8 @@ interface PremiumLimitModalProps {
   title: string;
   description: string;
   advice?: string;
-  type?: 'trial' | 'credits' | 'tier' | 'success' | 'info' | 'error' | 'warning';
+  type?: 'trial' | 'credits' | 'tier' | 'success' | 'info' | 'error' | 'warning' | 'confirm';
+  locale?: string;
   balance?: number;
   onConfirm?: () => void;
 }
