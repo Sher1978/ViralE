@@ -109,8 +109,8 @@ export default function StudioPage() {
         </div>
       </div>
 
-      {/* Professional Stage Collage - Monolithic Diagonal Layout with Cascade Animation */}
-      <div className="relative group/monolith overflow-hidden rounded-[3rem] border border-white/5 shadow-2xl bg-[#0a0a14]">
+      {/* Professional Stage Collage - Monolithic Diagonal Layout with Comic/Graphic Novel Aesthetic */}
+      <div className="relative group/monolith overflow-hidden rounded-[3rem] border-4 border-black shadow-2xl bg-black">
         {mainHubs.map((hub, index) => (
           <motion.div
             key={hub.id}
@@ -119,14 +119,14 @@ export default function StudioPage() {
             transition={{ 
               duration: 0.8, 
               delay: index * 0.2,
-              ease: [0.16, 1, 0.3, 1] // Custom smooth ease
+              ease: [0.16, 1, 0.3, 1] 
             }}
             className="block relative group"
           >
             <Link href={hub.href}>
               <div 
                 className={`relative h-[220px] transition-all duration-700 overflow-hidden active:scale-[0.98]
-                  ${index === 0 ? 'z-30 h-[240px]' : index === 1 ? 'z-20 -mt-20 h-[300px]' : 'z-10 -mt-20 h-[240px]'}
+                  ${index === 0 ? 'z-30 h-[240px]' : index === 1 ? 'z-20 -mt-20 h-[320px]' : 'z-10 -mt-20 h-[260px]'}
                 `}
                 style={{
                   clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 80%, 0 100%)' :
@@ -134,51 +134,58 @@ export default function StudioPage() {
                             'polygon(0 20%, 100% 0, 100% 100%, 0 100%)'
                 }}
               >
-                {/* Black Separator Line Logic */}
+                {/* Thick Comic-Style Separator Line */}
                 {index > 0 && (
                   <div 
-                    className="absolute top-0 left-0 w-full h-[2px] bg-black z-50 pointer-events-none opacity-60"
+                    className="absolute top-0 left-0 w-full h-[6px] bg-black z-50 pointer-events-none"
                     style={{
-                      clipPath: 'polygon(0 20%, 100% 0, 100% 1%, 0 21%)'
+                      clipPath: 'polygon(0 20%, 100% 0, 100% 2%, 0 22%)'
                     }}
                   />
                 )}
 
-                {/* Image Layer */}
+                {/* Image Layer with High Contrast Overlay */}
                 <div className="absolute inset-0">
                   <img 
                     src={hub.image} 
-                    className="w-full h-full object-cover opacity-30 group-active:opacity-80 transition-all duration-1000 group-active:scale-105"
+                    className="w-full h-full object-cover opacity-30 grayscale group-active:grayscale-0 group-active:opacity-80 transition-all duration-1000 group-active:scale-105"
                     alt={hub.title}
                     onError={(e) => (e.currentTarget.style.opacity = '0')}
                   />
                   <div className={`absolute inset-0 bg-gradient-to-br ${
-                    hub.id === 'lab' ? 'from-purple-600/40 via-purple-900/50' :
-                    hub.id === 'storyboard' ? 'from-orange-600/40 via-orange-900/50' :
-                    'from-blue-600/40 via-blue-900/50'
-                  } to-transparent`} />
+                    hub.id === 'lab' ? 'from-purple-600/40 via-purple-900/60' :
+                    hub.id === 'storyboard' ? 'from-orange-600/40 via-orange-900/60' :
+                    'from-blue-600/40 via-blue-900/60'
+                  } to-black/40`} />
+                </div>
+
+                {/* Giant Comic Numbering */}
+                <div className="absolute -left-4 top-1/2 -translate-y-1/2 select-none pointer-events-none z-40">
+                  <span className="text-[140px] font-black italic text-white/5 leading-none tracking-tighter">
+                    {index + 1}
+                  </span>
                 </div>
 
                 {/* Content Layer */}
                 <div className={`absolute inset-0 p-10 flex flex-col ${
-                  index === 0 ? 'justify-start pt-12' : 
+                  index === 0 ? 'justify-start pt-14' : 
                   index === 1 ? 'justify-center' : 
-                  'justify-end pb-12'
+                  'justify-end pb-14'
                 }`}>
-                  <div className={`${index === 1 ? 'md:pl-12' : index === 2 ? 'md:pl-24' : ''} space-y-1`}>
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30">Sequence Phase 0{index + 1}</p>
-                    <h3 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none">
+                  <div className={`${index === 1 ? 'md:pl-12' : index === 2 ? 'md:pl-24' : ''} space-y-1 z-30`}>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40">Sequence Step</p>
+                    <h3 className="text-4xl font-black text-white uppercase italic tracking-tighter leading-none shadow-black/50 drop-shadow-2xl">
                       {hub.title.split(' ')[0]} <span className="text-white/50">{hub.title.split(' ')[1] || ''}</span>
                     </h3>
-                    <p className="text-[11px] font-bold text-white/40 uppercase tracking-widest leading-none">
+                    <p className="text-[11px] font-bold text-white/30 uppercase tracking-widest leading-none">
                       {hub.desc}
                     </p>
                   </div>
                 </div>
 
-                {/* Action Circle */}
-                <div className="absolute top-1/2 -translate-y-1/2 right-10 w-12 h-12 rounded-full border border-white/10 bg-white/5 backdrop-blur-xl flex items-center justify-center transition-all group-active:bg-white group-active:text-black">
-                  <ArrowRight className="w-6 h-6" />
+                {/* Action Circle (Comic Style) */}
+                <div className="absolute top-1/2 -translate-y-1/2 right-10 w-14 h-14 rounded-full border-4 border-black bg-white flex items-center justify-center transition-all group-active:scale-110 shadow-2xl z-40">
+                  <ArrowRight className="w-8 h-8 text-black stroke-[3]" />
                 </div>
               </div>
             </Link>
