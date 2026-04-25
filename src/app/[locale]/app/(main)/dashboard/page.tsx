@@ -195,7 +195,7 @@ export default function DashboardPage() {
               className="group border-b border-white/10 last:border-0"
             >
               <div className="bg-white/[0.02] p-8 flex flex-col space-y-6 hover:bg-white/[0.05] transition-all duration-500 cursor-pointer relative overflow-hidden"
-                   onClick={() => router.push(`/${locale}/app/projects/new/script?topic=${encodeURIComponent(idea.topic)}`)}>
+                   onClick={() => router.push(`/app/projects/new/script?topic=${encodeURIComponent(idea.topic)}`)}>
                 
                 <div className="absolute top-0 right-0 p-8 opacity-0 group-hover:opacity-100 transition-opacity">
                    <ArrowRight className="w-6 h-6 text-[#00FFCC]" />

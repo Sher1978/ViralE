@@ -7,7 +7,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { PageShell } from "@/components/layout/PageShell";
-import { InstallPrompt } from "@/components/pwa/InstallPrompt";
+import { PageShell } from "@/components/layout/PageShell";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -29,12 +29,6 @@ export const metadata: Metadata = {
   title: "Viral Engine — AI Content Production",
   description: "Your digital shadow works while you rest. Premium AI content factory in your pocket.",
   keywords: ["viral engine", "AI content", "reels", "shorts", "content automation"],
-  manifest: "/manifest.json",
-  appleWebApp: {
-    capable: true,
-    statusBarStyle: "black-translucent",
-    title: "Viral Studio",
-  },
   icons: {
     apple: "/icon-512x512.png",
   },
@@ -71,7 +65,6 @@ export default async function LocaleLayout({
       >
         <NextIntlClientProvider locale={locale} messages={messages}>
           <SessionSync />
-          <InstallPrompt />
           
           {/* Decorative Orbs (Global) */}
           <div className="orb orb-gold" />

@@ -3,98 +3,67 @@
 import { useState, useEffect, useCallback } from 'react';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import Link from 'next/link';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { 
-  Plus, 
-  Search, 
-  Filter, 
-  RefreshCcw, 
-  LayoutGrid,
-  ChevronDown,
-  X,
-  Monitor,
-  CheckCircle2,
-  Archive,
-  FlaskConical,
-  Clapperboard,
-  Video,
-  Rocket,
-  Zap,
-  ArrowRight,
-  Clock
+  Sparkles, Layers, Video, Zap, Play, CheckCircle2, 
+  ChevronRight, Brain, Clock, Plus, Monitor, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { useParams } from 'next/navigation';
-import ProjectCard, { Project } from '@/components/projects/ProjectCard';
+import { projectService, Project } from '@/lib/services/projectService';
 import { useRouter } from '@/navigation';
+import { StrategistChat } from '@/components/studio/StrategistChat';
 
-const LIMIT = 12;
-
-type StudioTab = 'lab' | 'storyboard' | 'production';
-
-export default function StudioPage() {
-  const { locale } = useParams() as { locale: string };
+export default function ProjectsPage() {
   const t = useTranslations('projects');
+  const locale = useLocale();
   const router = useRouter();
-  
-  const [activeTab, setActiveTab] = useState<StudioTab>('lab');
+
+  const [isLoading, setIsLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const [mounted, setMounted] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
-  const [search, setSearch] = useState('');
-  const [error, setError] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
-      setLoading(true);
-      const res = await fetch(`/api/projects?limit=${LIMIT}&search=${search}`);
-      const data = await res.json();
-      setProjects(data.items || []);
-    } catch (error) {
-      console.error('Failed to fetch projects:', error);
+      const data = await projectService.getProjects();
+      setProjects(data);
+    } catch (err) {
+      console.error('Error loading projects:', err);
     } finally {
       setLoading(false);
     }
-  }, [search]);
+  }, []);
 
   useEffect(() => {
+    setMounted(true);
     fetchProjects();
   }, [fetchProjects]);
 
-  const filteredProjects = projects.filter(p => {
-    if (activeTab === 'lab') return ['ideation', 'scripting'].includes(p.status);
-    if (activeTab === 'storyboard') return ['storyboard'].includes(p.status);
-    if (activeTab === 'production') return ['rendering', 'completed'].includes(p.status);
-    return false;
-  });
-
-  const activeProjects = projects.filter(p => p.status !== 'completed' && p.status !== 'archived').slice(0, 3);
-  const finishedProjects = projects.filter(p => p.status === 'completed');
+  if (!mounted) return null;
 
   const mainHubs = [
-    { 
-      id: 'lab', 
-      title: t('stageLab'), 
-      desc: 'Craft your message with AI precision', 
-      href: `/${locale}/app/projects/new/script`, 
-      image: '/assets/studio/script_lab.png',
-      color: 'from-purple-600/40'
+    {
+      id: 'script',
+      title: 'Script lab',
+      desc: 'CRAFT YOUR MESSAGE WITH AI PRECISION',
+      href: '/app/projects/new/script',
+      image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059&auto=format&fit=crop',
     },
-    { 
-      id: 'storyboard', 
-      title: t('stageStoryboard'), 
-      desc: 'Visualize your cinematic sequence', 
-      href: `/${locale}/app/projects/new/storyboard`, 
-      image: '/assets/studio/storyboard.png',
-      color: 'from-orange-600/40'
+    {
+      id: 'storyboard',
+      title: 'Storyboard',
+      desc: 'VISUALIZE YOUR CINEMATIC SEQUENCE',
+      href: '/app/projects/new/storyboard',
+      image: 'https://images.unsplash.com/photo-1542204112-326922989632?q=80&w=1974&auto=format&fit=crop',
     },
-    { 
-      id: 'production', 
-      title: t('stageProduction'), 
-      desc: 'Launch professional rendering', 
-      href: `/${locale}/app/projects/new/production`, 
-      image: '/assets/studio/production.png',
-      color: 'from-cyan-600/40'
-    },
+    {
+      id: 'production',
+      title: 'Production hub',
+      desc: 'LAUNCH PROFESSIONAL RENDERING',
+      href: '/app/projects/new/production',
+      image: 'https://images.unsplash.com/photo-1492041944571-0800ed9d90c0?q=80&w=1974&auto=format&fit=crop',
+    }
   ];
 
   return (
@@ -105,24 +74,30 @@ export default function StudioPage() {
           <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
             Viral <span className="text-purple-500">Studio</span>
           </h1>
-          <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">
+          <p className="text-[10px] uppercase tracking-[0.4em] font-black text-white/20">
             AI Content Production Factory
           </p>
         </div>
       </div>
 
       {/* Professional Stage Collage - Monolithic Diagonal Layout with Maximum Visibility */}
-      <div className="relative group/monolith overflow-hidden border-y border-white/10 bg-black">
+      <div className="relative group/monolith overflow-hidden bg-black space-y-[-40px]">
         {mainHubs.map((hub, index) => (
             <motion.div
               key={hub.title}
               initial={{ opacity: 0, x: -20 }}
               animate={{ opacity: 1, x: 0 }}
               transition={{ delay: index * 0.1 }}
-              onClick={() => router.push(`/${locale}/app/projects/new/${hub.id}`)}
-              className="relative h-[250px] cursor-pointer group overflow-hidden border-b border-white/10 last:border-0"
+              onClick={() => router.push(hub.href)}
+              className={`relative h-[250px] cursor-pointer group overflow-hidden ${
+                index === 0 ? 'z-30' : index === 1 ? 'z-20' : 'z-10'
+              }`}
+              style={{
+                clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' :
+                          index === 1 ? 'polygon(0 12%, 100% 0, 100% 88%, 0 100%)' :
+                          'polygon(0 12%, 100% 0, 100% 100%, 0 100%)'
+              }}
             >
-            <Link href={hub.href}>
               <div 
                 className="relative w-full h-full transition-all duration-700 overflow-hidden active:scale-[0.99]"
               >
@@ -133,7 +108,7 @@ export default function StudioPage() {
                 <div className="absolute inset-0 z-0 overflow-hidden">
                   <img 
                     src={hub.image} 
-                    className="w-full h-full object-cover opacity-50 grayscale hover:grayscale-0 transition-all duration-700" 
+                    className="w-full h-full object-cover opacity-50 grayscale hover:grayscale-0 transition-all duration-700 hover:scale-105" 
                     alt={hub.title} 
                   />
                   <div className={`absolute inset-0 bg-gradient-to-r from-purple-950/90 ${
@@ -147,24 +122,19 @@ export default function StudioPage() {
                 </div>
 
                 {/* Giant Original Stylized Numbering - Better Visibility Watermark */}
-                <div className="absolute left-6 top-1/2 -translate-y-1/2 select-none pointer-events-none z-30">
-                  <span className="text-[200px] font-black italic text-white/[0.2] leading-none tracking-tighter">
-                    {index + 1}
-                  </span>
-                </div>
+                <span className="absolute bottom-0 right-4 text-[120px] font-black text-white/[0.2] italic leading-none z-1 tracking-tighter transition-all group-hover:scale-110 group-hover:text-white/30">
+                  {index + 1}
+                </span>
 
-                {/* Content Layer - Safe and Readable Positioning */}
-                <div className={`absolute inset-0 p-12 flex flex-col ${
-                  index === 0 ? 'justify-start pt-16' : 
-                  'justify-center'
-                }`}>
-                  <div className="space-y-1 z-40 max-w-lg">
-                    <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white/40 mb-1">Step {index + 1}</p>
-                    <h3 className="text-4xl sm:text-5xl font-black text-white uppercase italic tracking-tighter leading-none drop-shadow-2xl">
-                      {hub.title.split(' ')[0]} <span className="text-white/40">{hub.title.split(' ')[1] || hub.title.split(' ')[2] || ''}</span>
-                    </h3>
-                    <p className="text-xs font-bold text-white/30 uppercase tracking-[0.1em] leading-none mt-3">
-                       {hub.desc}
+                {/* Content Overlay */}
+                <div className="relative z-10 h-full flex flex-col justify-center px-8 pt-4">
+                  <div className="space-y-1">
+                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 block">Step {index + 1}</span>
+                    <h2 className="text-4xl font-black uppercase text-white tracking-tighter italic leading-tight">
+                      {hub.title}
+                    </h2>
+                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 max-w-[200px] leading-relaxed">
+                      {hub.desc}
                     </p>
                   </div>
                 </div>
@@ -172,55 +142,59 @@ export default function StudioPage() {
                 {/* Interaction Overlay */}
                 <div className="absolute inset-0 bg-white/0 group-active:bg-white/5 transition-colors duration-300 z-50 pointer-events-none" />
               </div>
-            </Link>
           </motion.div>
         ))}
       </div>
 
-      {/* Active Projects Section - Horizontal Scroll Implementation */}
-      <div className="space-y-6 pt-8">
-        <div className="flex items-center justify-between px-2">
-          <div className="flex items-center gap-3">
-             <div className="w-8 h-8 rounded-xl bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
+      {/* RECENT PROJECTS / RESUME - Professional Minimalism */}
+      <div className="mt-8 space-y-6">
+        <div className="flex items-center justify-between px-6">
+           <div className="flex items-center gap-3">
+              <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
                 <Clock className="w-4 h-4 text-orange-400" />
-             </div>
-             <h2 className="text-xl font-black uppercase italic tracking-tighter text-white">Resume Creation</h2>
-          </div>
-          <Link href={`/${locale}/app/archive`} className="text-[10px] font-black uppercase tracking-widest text-white/20 hover:text-purple-400 transition-colors">
-            View All
-          </Link>
+              </div>
+              <h2 className="text-sm font-black uppercase tracking-widest text-white italic">Resume Creation</h2>
+           </div>
+           <Link href="/app/library" className="text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white transition-colors">View All</Link>
         </div>
 
-        {loading ? (
-          <div className="h-48 flex items-center justify-center">
-             <div className="w-8 h-8 border-2 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
-          </div>
-        ) : activeProjects.length > 0 ? (
-          <div className="relative -mx-4">
-            {/* Gradient Mask for Scroll Suggestion */}
-            <div className="absolute inset-y-0 right-0 w-20 bg-gradient-to-l from-[#05050a] to-transparent z-40 pointer-events-none" />
-            
-            <div className="flex overflow-x-auto gap-5 px-4 pb-8 no-scrollbar scroll-smooth snap-x snap-mandatory">
-              {activeProjects.map((project) => (
-                <div key={project.id} className="min-w-[280px] sm:min-w-[340px] flex-shrink-0 snap-start">
-                  <ProjectCard project={project} />
+        {projects.length > 0 ? (
+          <div className="px-6 space-y-3">
+            {projects.slice(0, 3).map((project) => (
+               <div 
+                key={project.id}
+                onClick={() => router.push(`/app/projects/new/${project.id}`)}
+                className="flex items-center justify-between p-5 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all cursor-pointer group"
+              >
+                <div className="flex items-center gap-4">
+                   <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-white/5 group-hover:border-purple-500/30 transition-all">
+                      <Play className="h-5 w-5 text-white/50 group-hover:text-purple-400 transition-all" />
+                   </div>
+                   <div className="flex flex-col">
+                      <span className="text-xs font-black uppercase tracking-tight text-white/80">{project.topic}</span>
+                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-0.5">Updated recently</span>
+                   </div>
                 </div>
-              ))}
-            </div>
+                <ArrowRight className="h-4 w-4 text-white/10 group-hover:text-white transition-all group-hover:translate-x-1" />
+              </div>
+            ))}
           </div>
         ) : (
           <div className="p-12 rounded-[3rem] bg-white/[0.02] border border-dashed border-white/10 text-center space-y-4 mx-2">
              <p className="text-xs font-bold text-white/20 uppercase tracking-widest">No active sequences found</p>
-             <Link href={`/${locale}/app/projects/new`} className="text-[10px] font-black uppercase tracking-widest text-purple-400 hover:underline">
+             <Link href="/app/projects/new" className="text-[10px] font-black uppercase tracking-widest text-purple-400 hover:underline">
                Initialize First Project
              </Link>
           </div>
         )}
       </div>
 
+      <StrategistChat />
+
       {/* Decorative Assets */}
       <div className="fixed top-1/4 -right-64 w-[600px] h-[600px] bg-purple-600/5 blur-[150px] pointer-events-none -z-10 animate-pulse" />
       <div className="fixed bottom-1/4 -left-64 w-[600px] h-[600px] bg-blue-600/5 blur-[150px] pointer-events-none -z-10 animate-pulse [animation-delay:2s]" />
+      
       <PremiumLimitModal 
         isOpen={!!error}
         onClose={() => setError(null)}
