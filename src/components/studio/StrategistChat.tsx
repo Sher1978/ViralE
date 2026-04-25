@@ -12,6 +12,8 @@ import { ProductionManifest, SceneSegment } from '@/lib/types/studio';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import { VoiceVisualizer } from './VoiceVisualizer';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
+
 
 interface Message {
   role: 'user' | 'assistant';
@@ -54,6 +56,8 @@ export function StrategistChat({
   const [frequencyData, setFrequencyData] = useState<Uint8Array>(new Uint8Array(0));
   const [captions, setCaptions] = useState('');
   const [copiedId, setCopiedId] = useState<number | null>(null);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const audioContextRef = useRef<AudioContext | null>(null);
@@ -158,10 +162,7 @@ export function StrategistChat({
       });
 
       if (response.status === 403) {
-        setMessages(prev => [...prev, { 
-          role: 'assistant', 
-          content: "Your trial has expired. [Subscribe now](#) to keep your strategist active." 
-        }]);
+        setShowLimitModal(true);
         setIsStreaming(false);
         return;
       }
@@ -531,27 +532,16 @@ export function StrategistChat({
               </p>
             </div>
 
-            {/* Premium Gating Overlay (Visual Only for now) */}
-            {access?.hasAccess === false && (
-              <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center">
-                <div className="bg-purple-600 p-4 rounded-2xl mb-4 shadow-2xl">
-                  <Lock className="h-8 w-8 text-white" />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-2">Strategy Trial Ended</h3>
-                <p className="text-slate-400 text-sm mb-6">
-                  Upgrade your arsenal with the Viral Strategist for unlimited strategic support.
-                </p>
-                <button className="w-full py-3 bg-gradient-to-r from-purple-600 to-blue-600 rounded-xl text-white font-bold text-sm shadow-xl hover:shadow-purple-500/20 transition-all">
-                  Subscribe for $19/mo
-                </button>
-                <button onClick={() => setIsOpen(false)} className="mt-4 text-slate-500 text-xs hover:text-slate-300">
-                  Maybe later
-                </button>
-              </div>
-            )}
-          </motion.div>
-        )}
-      </AnimatePresence>
+      <PremiumLimitModal 
+        isOpen={showLimitModal || access?.hasAccess === false}
+        onClose={() => setShowLimitModal(false)}
+        title={locale === 'ru' ? 'Доступ ограничен' : 'Access Restricted'}
+        description={locale === 'ru' 
+          ? 'Ваш доступ к Стратегу закончился. Перейдите на премиум-план, чтобы продолжить работу.' 
+          : 'Your access to the Strategist has ended. Upgrade to a premium plan to continue.'}
+        type="trial"
+        locale={locale}
+      />
     </div>
   );
 }

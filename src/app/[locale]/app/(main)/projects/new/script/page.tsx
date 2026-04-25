@@ -11,6 +11,8 @@ import { StatusStepper } from '@/components/ui/StatusStepper';
 import { profileService, Profile } from '@/lib/services/profileService';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { StrategistChat } from '@/components/studio/StrategistChat';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
+
 
 export default function ScriptLabPage() {
   const t = useTranslations('scriptLab');
@@ -33,6 +35,9 @@ export default function ScriptLabPage() {
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
   const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('gemini');
   const [isAiLocked, setIsAiLocked] = useState(false);
+  const [showLimitModal, setShowLimitModal] = useState(false);
+  const [limitModalData, setLimitModalData] = useState({ title: '', desc: '', type: 'trial' as any });
+
 
   const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational'>('evergreen');
   const [allScenarios, setAllScenarios] = useState<any>(null);
@@ -143,7 +148,14 @@ export default function ScriptLabPage() {
     
     // Threshold check
     if ((user?.credits_balance || 0) < 50 && user?.tier !== 'pro') {
-      setError(locale === 'ru' ? 'Для редактирования нужно минимум 50 кредитов.' : 'Minimum 50 credits required for adjustment.');
+      setLimitModalData({
+        title: locale === 'ru' ? 'Лимит исчерпан' : 'Limit Reached',
+        desc: locale === 'ru' 
+          ? 'Для редактирования сценария нужно минимум 50 кредитов. Пополните баланс, чтобы продолжить.' 
+          : 'Minimum 50 credits required for adjustment. Please refill your balance to continue.',
+        type: 'credits'
+      });
+      setShowLimitModal(true);
       return;
     }
 
@@ -168,7 +180,14 @@ export default function ScriptLabPage() {
       const data = await response.json();
       if (!response.ok) {
         if (data.code === 'BALANCE_TOO_LOW') {
-          setError(locale === 'ru' ? 'Для редактирования нужно минимум 50 кредитов.' : 'Minimum 50 credits required for adjustment.');
+          setLimitModalData({
+            title: locale === 'ru' ? 'Недостаточно средств' : 'Insufficient Credits',
+            desc: locale === 'ru' 
+              ? 'На вашем балансе недостаточно кредитов для этой операции.' 
+              : 'You do not have enough credits for this operation.',
+            type: 'credits'
+          });
+          setShowLimitModal(true);
           return;
         }
         throw new Error(data.error || (locale === 'ru' ? 'Сбой при редактировании' : 'Refinement failed'));
@@ -250,9 +269,14 @@ export default function ScriptLabPage() {
         const { count, error: countError } = await profileService.getMonthlyGenerationCount(user.id);
         if (countError) throw countError;
         if ((count || 0) >= 20) {
-          setError(locale === 'ru' 
-            ? 'Лимит Создателя (20 генераций в месяц) исчерпан. Перейдите на PRO или купите кредиты.' 
-            : 'Creator limit (20 generations/month) reached. Upgrade to PRO or buy credits.');
+          setLimitModalData({
+            title: locale === 'ru' ? 'Лимит Создателя' : 'Creator Limit',
+            desc: locale === 'ru' 
+              ? 'Лимит в 20 генераций в месяц исчерпан. Перейдите на PRO для безлимитного создания.' 
+              : 'Monthly limit of 20 generations reached. Upgrade to PRO for unlimited creation.',
+            type: 'tier'
+          });
+          setShowLimitModal(true);
           setIsLoading(false);
           return;
         }
@@ -878,6 +902,14 @@ export default function ScriptLabPage() {
           )}
         </button>
       </div>
+      <PremiumLimitModal 
+        isOpen={showLimitModal}
+        onClose={() => setShowLimitModal(false)}
+        title={limitModalData.title}
+        description={limitModalData.desc}
+        type={limitModalData.type}
+        locale={locale}
+      />
     </div>
   );
 }
