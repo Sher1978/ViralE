@@ -98,21 +98,26 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
       <div className="flex-1 overflow-y-auto p-4 custom-scrollbar space-y-8">
         {/* Production Mode Switcher */}
         <div className="space-y-4">
-          <label className="text-[9px] font-black uppercase text-white/30 tracking-widest ml-1">Production Stage</label>
-          <div className="grid grid-cols-2 gap-2">
+          <label className="text-[9px] font-black uppercase text-white/30 tracking-widest ml-1">Production Pipeline</label>
+          <div className="grid grid-cols-1 gap-2">
             {[
-              { id: 'concept', icon: Brain, label: 'Strategy' },
-              { id: 'teleprompter', icon: Video, label: 'Reading' },
-              { id: 'assembly', icon: Scissors, label: 'Assembly' },
-              { id: 'knowledge', icon: Dna, label: 'Shadow' }
+              { id: 'concept', icon: Brain, label: '1. Лаборатория скрипта', desc: 'Смыслы и текст' },
+              { id: 'teleprompter', icon: Video, label: '2. Студия Записи', desc: 'Создание A-Roll' },
+              { id: 'assembly', icon: Scissors, label: '3. Продакшн', desc: 'Монтаж и B-Roll' },
+              { id: 'knowledge', icon: Dna, label: 'Shadow Analytics', desc: 'Настройка ДНК' }
             ].map((tab) => (
               <button 
                 key={tab.id}
                 onClick={() => setActiveTab(tab.id)}
-                className={`flex flex-col items-center justify-center p-4 rounded-3xl border transition-all duration-500 ${activeTab === tab.id ? 'bg-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)] text-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10 hover:border-white/20'}`}
+                className={`flex items-center gap-4 p-4 rounded-3xl border transition-all duration-500 text-left ${activeTab === tab.id ? 'bg-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)] text-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10 hover:border-white/20'}`}
               >
-                <tab.icon size={18} className={activeTab === tab.id ? 'animate-pulse' : ''} />
-                <span className="text-[8px] font-black uppercase mt-2 tracking-widest">{tab.label}</span>
+                <div className={`p-2 rounded-xl ${activeTab === tab.id ? 'bg-white/20' : 'bg-white/5'}`}>
+                  <tab.icon size={20} className={activeTab === tab.id ? 'animate-pulse' : ''} />
+                </div>
+                <div className="flex flex-col">
+                  <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>
+                  <span className="text-[7px] font-bold opacity-40 uppercase">{tab.desc}</span>
+                </div>
               </button>
             ))}
           </div>

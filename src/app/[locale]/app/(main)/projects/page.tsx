@@ -48,29 +48,6 @@ export default function ProjectsPage() {
 
   if (!mounted) return null;
 
-  const mainHubs = [
-    {
-      id: 'script',
-      title: 'Script lab',
-      desc: 'CRAFT YOUR MESSAGE WITH AI PRECISION',
-      href: '/app/projects/new/script',
-      image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1973&auto=format&fit=crop',
-    },
-    {
-      id: 'storyboard',
-      title: 'Storyboard',
-      desc: 'VISUALIZE YOUR CINEMATIC SEQUENCE',
-      href: '/app/projects/new/storyboard',
-      image: 'https://images.unsplash.com/photo-1590179068383-b9c69aacebd3?q=80&w=1974&auto=format&fit=crop',
-    },
-    {
-      id: 'production',
-      title: 'Production hub',
-      desc: 'LAUNCH PROFESSIONAL RENDERING',
-      href: '/app/projects/new/production',
-      image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059&auto=format&fit=crop',
-    }
-  ];
 
   return (
     <div className="space-y-0 pb-32 max-w-7xl mx-auto overflow-x-hidden">
@@ -78,7 +55,7 @@ export default function ProjectsPage() {
       <div className="flex flex-col pt-4 mb-4 pl-16">
         <div className="space-y-0.5">
           <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
-            Viral <span className="text-purple-500">Studio</span>
+            Viral<span className="text-purple-500">E</span>
           </h1>
           <p className="text-[10px] uppercase tracking-[0.4em] font-black text-white/20">
             AI Content Production Factory
@@ -88,7 +65,29 @@ export default function ProjectsPage() {
 
       {/* Professional Stage Collage - Monolithic Diagonal Layout with Maximum Visibility */}
       <div className="relative group/monolith overflow-hidden bg-black space-y-[-40px]">
-        {mainHubs.map((hub, index) => (
+        {[
+          {
+            id: 'script',
+            title: locale === 'ru' ? 'Лаборатория скрипта' : 'Script Lab',
+            desc: locale === 'ru' ? 'МАСТЕРСКАЯ СМЫСЛОВ И ГЕНЕРАЦИЯ ТЕКСТА' : 'CRAFT YOUR MESSAGE & GENERATE TEXT CONTENT',
+            href: '/app/projects/new/script',
+            image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1973&auto=format&fit=crop',
+          },
+          {
+            id: 'recording',
+            title: locale === 'ru' ? 'Студия Записи' : 'Recording Hub',
+            desc: locale === 'ru' ? 'ЗАПИСЬ СУФЛЕРА, АВАТАРЫ И AI-ВИДЕО' : 'RECORD TELEPROMPTER OR GENERATE AI VIDEO',
+            href: '/app/projects/new/storyboard',
+            image: 'https://images.unsplash.com/photo-1590179068383-b9c69aacebd3?q=80&w=1974&auto=format&fit=crop',
+          },
+          {
+            id: 'production',
+            title: locale === 'ru' ? 'Продакшн' : 'Production Hub',
+            desc: locale === 'ru' ? 'МОНТАЖ, B-ROLL И ПОСТ-ОБРАБОТКА' : 'MONTAGE, B-ROLL & FINAL POST-PROCESSING',
+            href: '/app/projects/new/production',
+            image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059&auto=format&fit=crop',
+          }
+        ].map((hub, index) => (
             <motion.div
               key={hub.title}
               initial={{ opacity: 0, x: -20 }}

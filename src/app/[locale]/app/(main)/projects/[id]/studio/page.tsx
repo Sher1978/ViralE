@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { useParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from '@/navigation';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { 
@@ -33,12 +33,15 @@ export default function StudioPage() {
   const router = useRouter();
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
 
+  const searchParams = useSearchParams();
+  const initialTab = searchParams.get('tab') as any || 'concept';
+
   const [isLoading, setIsLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'concept'>('concept');
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'concept'>(initialTab);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   
   // Teleprompter States
