@@ -37,8 +37,9 @@ export function StrategistChat({
   activeSegmentId,
   locale = 'en',
   context = 'studio',
-  onApplySuggestion
-}: StrategistChatProps) {
+  onApplySuggestion,
+  containerClassName
+}: StrategistChatProps & { containerClassName?: string }) {
   const t = useTranslations('Strategist');
   const [isOpen, setIsOpen] = useState(false);
   const [messages, setMessages] = useState<Message[]>([
@@ -281,7 +282,7 @@ export function StrategistChat({
   };
 
   return (
-    <div className="fixed top-1 left-6 z-[100] flex flex-col items-start">
+    <div className={containerClassName || "fixed top-[22px] left-6 z-[100] flex flex-col items-start"}>
       {/* Floating Toggle Button */}
       <motion.button
         whileHover={{ scale: 1.05 }}

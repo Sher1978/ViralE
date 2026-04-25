@@ -97,13 +97,8 @@ export default function StudioPage() {
 
   return (
     <div className="space-y-8 pb-32 max-w-7xl mx-auto px-4 overflow-x-hidden">
-      {/* Improved Pro Header - Aligned Logo and Title on one level */}
-      <div className="flex items-center gap-5 pt-4 mb-8 px-2">
-        {/* Strategist Logo Placeholder / Button */}
-        <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-purple-900/40 border border-purple-500/30 flex items-center justify-center shadow-lg active:scale-95 transition-transform cursor-pointer group">
-           <Zap className="w-6 h-6 text-purple-400 group-hover:scale-110 transition-transform" />
-        </div>
-
+      {/* Professional Header - Aligned with Global Strategist */}
+      <div className="flex flex-col pt-4 mb-8 pl-16">
         <div className="space-y-0.5">
           <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
             Viral <span className="text-purple-500">Studio</span>
@@ -157,25 +152,24 @@ export default function StudioPage() {
                   } to-black/90`} />
                 </div>
 
-                {/* Giant Original Stylized Numbering - Subtle White Watermark */}
+                {/* Giant Original Stylized Numbering - Better Visibility Watermark */}
                 <div className="absolute left-6 top-1/2 -translate-y-1/2 select-none pointer-events-none z-30">
-                  <span className="text-[200px] font-black italic text-white/[0.08] leading-none tracking-tighter">
+                  <span className="text-[200px] font-black italic text-white/[0.2] leading-none tracking-tighter">
                     {index + 1}
                   </span>
                 </div>
 
-                {/* Content Layer - Optimized for Fit */}
+                {/* Content Layer - Safe and Readable Positioning */}
                 <div className={`absolute inset-0 p-12 flex flex-col ${
                   index === 0 ? 'justify-start pt-16' : 
-                  index === 1 ? 'justify-center' : 
-                  'justify-end pb-16'
+                  'justify-center'
                 }`}>
-                  <div className={`${index === 1 ? 'md:pl-20' : index === 2 ? 'md:pl-32' : ''} space-y-1 z-40`}>
+                  <div className="space-y-1 z-40 max-w-lg">
                     <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white/40 mb-1">Step {index + 1}</p>
                     <h3 className="text-4xl sm:text-5xl font-black text-white uppercase italic tracking-tighter leading-none drop-shadow-2xl">
                       {hub.title.split(' ')[0]} <span className="text-white/40">{hub.title.split(' ')[1] || hub.title.split(' ')[2] || ''}</span>
                     </h3>
-                    <p className="text-xs font-bold text-white/30 uppercase tracking-[0.1em] leading-none mt-3 max-w-sm">
+                    <p className="text-xs font-bold text-white/30 uppercase tracking-[0.1em] leading-none mt-3">
                        {hub.desc}
                     </p>
                   </div>
