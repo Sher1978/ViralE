@@ -7,12 +7,12 @@ import { useInView } from 'react-intersection-observer';
 
 interface ScenarioCardProps {
   blockId: string;
-  scenarioId: string;
+  scenarioId: 'evergreen' | 'trend' | 'educational';
   content: string;
   isSelected: boolean;
   locale: string;
   t: (key: string) => string;
-  onSelect: (blockId: string, scenarioId: string) => void;
+  onSelect: (blockId: string, scenarioId: 'evergreen' | 'trend' | 'educational') => void;
   onRefine: (instruction: string) => void;
 }
 
@@ -111,7 +111,7 @@ interface ContentMatrixProps {
   scriptData: any;
   locale: string;
   t: (key: string) => string;
-  onBlockSelect: (blockId: string, scenarioId: string) => void;
+  onBlockSelect: (blockId: string, scenarioId: 'evergreen' | 'trend' | 'educational') => void;
   onRefine: (instruction: string) => void;
 }
 
