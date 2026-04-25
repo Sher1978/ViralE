@@ -1,28 +1,32 @@
 'use client';
 
-import { useEffect, useState } from 'react';
-import { useTranslations } from 'next-intl';
+import { useEffect, useState, Suspense } from 'react';
+import { useTranslations, useLocale } from 'next-intl';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { Bot, Loader2, CheckCircle2, Factory, Zap, Timer, User, ShieldCheck, ChevronRight, Video, Mic, RefreshCw } from 'lucide-react';
+import { 
+  Bot, Loader2, CheckCircle2, Factory, Zap, Timer, 
+  User, ShieldCheck, ChevronRight, Video, Mic, RefreshCw,
+  Camera, Cpu, Play
+} from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import AvatarHub from '@/components/production/AvatarHub';
 import AnimationTiers from '@/components/production/AnimationTiers';
 import StudioRecorder from '@/components/production/StudioRecorder';
 import { FactoryMonitor } from '@/components/production/FactoryMonitor';
-import { supabase } from '@/lib/supabase';
 import { profileService, Profile } from '@/lib/services/profileService';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
-import { renderService, RenderJob } from '@/lib/services/renderService';
+import { renderService } from '@/lib/services/renderService';
 import { StrategistChat } from '@/components/studio/StrategistChat';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
+import { motion, AnimatePresence } from 'framer-motion';
 
-export default function ProductionPage() {
+function ProductionContent() {
   const t = useTranslations('production');
+  const locale = useLocale();
   const router = useRouter();
-  const params = useParams();
   const searchParams = useSearchParams();
   const projectId = searchParams.get('projectId');
   const versionId = searchParams.get('versionId');
-  const locale = params.locale as string;
 
   const [user, setUser] = useState<Profile | null>(null);
   const [project, setProject] = useState<Project | null>(null);
@@ -34,6 +38,7 @@ export default function ProductionPage() {
   const [error, setError] = useState<string | null>(null);
   const [jobId, setJobId] = useState<string | null>(null);
   const [jobStatus, setJobStatus] = useState<string>('pending');
+  
   const [config, setConfig] = useState({
     mode: 'stock',
     tier: 'lite',
@@ -42,52 +47,33 @@ export default function ProductionPage() {
     recordedAssetId: null as string | null,
     recordingType: null as 'audio' | 'video' | null
   });
+  
   const [showStudio, setShowStudio] = useState(false);
   const [scriptData, setScriptData] = useState<{ hook: string; story: string; cta: string } | null>(null);
-
-  const [completedSteps, setCompletedSteps] = useState<number[]>([]);
   const [activeStep, setActiveStep] = useState(1);
 
-  const toggleStep = (step: number) => {
-    if (activeStep === step) return;
-    setActiveStep(step);
-  };
-
-  const confirmStep = (step: number) => {
-    if (!completedSteps.includes(step)) {
-      setCompletedSteps(prev => [...prev, step]);
-    }
-    setActiveStep(step + 1);
-  };
-
-  const calculateTotalCost = () => {
-    let base = config.tier === 'pro' ? 50 : config.tier === 'standard' ? 25 : 10;
-    if (config.mode === 'avatar') base += 20;
-    if (config.aiPolish) base += 10;
-    return base;
-  };
-
-  // ... (useEffect initials and polling remain same) ...
   useEffect(() => {
     async function init() {
+      if (!projectId) {
+        setError(locale === 'ru' ? 'Сначала выберите проект в Студии' : 'Please select a project in the Studio first');
+        return;
+      }
       try {
         const profile = await profileService.getOrCreateProfile();
         setUser(profile);
-        if (projectId) {
-          const proj = await projectService.getProject(projectId);
-          setProject(proj);
-          if (versionId) {
-            const ver = await projectService.getVersion(versionId);
-            setVersion(ver);
-            if (ver?.script_data) setScriptData(ver.script_data as any);
-          }
+        const proj = await projectService.getProject(projectId);
+        setProject(proj);
+        if (versionId) {
+          const ver = await projectService.getVersion(versionId);
+          setVersion(ver);
+          if (ver?.script_data) setScriptData(ver.script_data as any);
         }
       } catch (err) {
-        setError('Failed to load project details');
+        setError(locale === 'ru' ? 'Ошибка загрузки данных проекта' : 'Failed to load project details');
       }
     }
     init();
-  }, [projectId, versionId]);
+  }, [projectId, versionId, locale]);
 
   useEffect(() => {
     if (stage !== 'processing' || !jobId) return;
@@ -100,7 +86,7 @@ export default function ProductionPage() {
           const targetProgress = statusMap[job.status] || 0;
           setProgress(prev => prev < targetProgress ? prev + 1 : targetProgress);
           if (job.status === 'completed') {
-            setTimeout(() => router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}&jobId=${jobId}`), 2000);
+            setTimeout(() => router.push(`/app/projects/new/delivery?projectId=${projectId}&jobId=${jobId}`), 2000);
           }
         }
       } catch (err) { console.error(err); }
@@ -108,177 +94,201 @@ export default function ProductionPage() {
     const interval = setInterval(pollStatus, 3000);
     pollStatus();
     return () => clearInterval(interval);
-  }, [router, locale, stage, jobId, projectId]);
+  }, [router, stage, jobId, projectId]);
 
   const handleLaunch = async () => {
-    if (!projectId || !versionId) { setError('Missing project or version ID'); return; }
+    if (!projectId || !versionId) return;
     setIsLaunching(true);
-    setError(null);
     try {
       const job = await renderService.createJob({ projectId, versionId, config: { ...config, previewUrl: version?.preview_url } });
       setJobId(job.id);
       setJobStatus(job.status);
       setStage('processing');
     } catch (err: any) {
-      setError(err.message || 'Failed to launch project');
+      setError(err.message || 'Production initialization failed');
     } finally { setIsLaunching(false); }
   };
 
+  const calculateTotalCost = () => {
+    let base = config.tier === 'pro' ? 50 : config.tier === 'standard' ? 25 : 10;
+    if (config.mode === 'avatar') base += 20;
+    return base;
+  };
+
+  const steps = [
+    {
+      id: 1,
+      title: locale === 'ru' ? 'Визуальный Фундамент' : 'Visual Foundation',
+      instruction: locale === 'ru' ? 'Выберите цифрового аватара или загрузите свое фото, которое станет основой видео.' : 'Choose a digital avatar or upload your photo as the video base.',
+      icon: User,
+      summary: config.mode === 'avatar' ? 'AI Avatar Actor' : 'DNA Upload'
+    },
+    {
+      id: 2,
+      title: locale === 'ru' ? 'Интеллект Движения' : 'Motion Intelligence',
+      instruction: locale === 'ru' ? 'Выберите мощность ИИ-движка. Чем выше уровень, тем реалистичнее мимика.' : 'Choose the AI engine power. Higher tier means more realistic expressions.',
+      icon: Cpu,
+      summary: config.tier.toUpperCase() + ' Intelligence'
+    },
+    {
+      id: 3,
+      title: locale === 'ru' ? 'Голос и Референс' : 'Voice & Studio',
+      instruction: locale === 'ru' ? 'Вы можете записать эталон своего голоса или движений для максимального сходства.' : 'Optional: Record your voice or motion reference for maximum cinematic likeness.',
+      icon: Mic,
+      summary: config.recordedAssetId ? 'Reference Captured' : 'Stock Performance'
+    }
+  ];
+
   return (
-    <div className="space-y-8 animate-fade-in pb-32">
-      <StatusStepper currentStep="render" />
+    <div className="space-y-0 pb-32 max-w-7xl mx-auto overflow-x-hidden">
+      {/* Header - Aligned with Strategist */}
+      <div className="flex flex-col pt-4 mb-4 pl-16">
+        <div className="space-y-0.5">
+          <h1 className="text-4xl font-black uppercase tracking-tighter leading-none italic">
+            Production <span className="text-purple-500">Conveyor</span>
+          </h1>
+          <p className="text-[10px] uppercase tracking-[0.4em] font-black text-white/20">
+            Phase 03 — Final Assembly
+          </p>
+        </div>
+      </div>
+
+      <div className="mb-8">
+        <StatusStepper currentStep="render" />
+      </div>
 
       {stage === 'selection' ? (
-        <div className="max-w-4xl mx-auto space-y-6">
-          
-          {/* STEP 01: VISUAL IDENTITY */}
-          <div 
-            onClick={() => activeStep !== 1 && toggleStep(1)}
-            className={`relative transition-all duration-700 ${activeStep === 1 ? 'z-30 scale-100' : 'z-10 opacity-50 cursor-pointer overflow-hidden rounded-[2.5rem]'}`}
-          >
-            {activeStep !== 1 && (
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-md z-40 flex items-center justify-between px-10">
-                <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-black">1</div>
-                   <div>
-                     <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Step 01 / Completed</p>
-                     <p className="text-sm font-bold text-white italic">{config.mode === 'avatar' ? 'AI Avatar Actor' : 'Custom Upload Mode'}</p>
-                   </div>
-                </div>
-                <div className="px-5 py-2 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest bg-white/5">Tap to Edit</div>
-              </div>
-            )}
-            
-            <div className="space-y-6">
-               <div className="px-4 space-y-1">
-                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">01 Visual Identity</h3>
-                  <p className="text-xs text-white/40">Select your cinematic base: Viral Models or personal DNA.</p>
-               </div>
-               <AvatarHub onSelect={(c) => setConfig(prev => ({ ...prev, ...c }))} currentConfig={config} />
-               {activeStep === 1 && (
-                 <button onClick={() => confirmStep(1)} className="w-full bg-white text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
-                   Confirm Identity & Proceed <ChevronRight className="w-4 h-4" />
-                 </button>
-               )}
-            </div>
-          </div>
+        <div className="space-y-0 bg-black">
+          {steps.map((step) => (
+            <div key={step.id} className="relative transition-all duration-500 border-b border-white/5 last:border-0 overflow-hidden">
+              <AnimatePresence mode="wait">
+                {activeStep === step.id ? (
+                  <motion.div
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="bg-zinc-950/50"
+                  >
+                    <div className="p-8 space-y-6">
+                      <div className="space-y-2">
+                        <div className="flex items-center gap-3">
+                          <span className="text-3xl font-black text-purple-500 italic">0{step.id}</span>
+                          <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">{step.title}</h3>
+                        </div>
+                        <p className="text-xs text-white/40 max-w-md leading-relaxed">{step.instruction}</p>
+                      </div>
 
-          {/* STEP 02: ANIMATION TIER */}
-          <div 
-            onClick={() => activeStep !== 2 && toggleStep(2)}
-            className={`relative transition-all duration-700 ${activeStep === 2 ? 'z-30 scale-100' : 'z-10 opacity-50 cursor-pointer overflow-hidden rounded-[2.5rem]'}`}
-          >
-            {(activeStep !== 2) && (
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-md z-40 flex items-center justify-between px-10">
-                <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-black">2</div>
-                   <div>
-                     <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Step 02 / Quality</p>
-                     <p className="text-sm font-bold text-white italic">{config.tier.toUpperCase()} Intelligence</p>
-                   </div>
-                </div>
-                {activeStep > 2 && <div className="px-5 py-2 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest bg-white/5">Tap to Edit</div>}
-              </div>
-            )}
-            
-            <div className="space-y-6">
-               <div className="px-4 space-y-1">
-                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">02 Motion Intelligence</h3>
-                  <p className="text-xs text-white/40">Choose AI power level. Different engines provide different motion quality.</p>
-               </div>
-               <AnimationTiers onSelect={(c) => setConfig(prev => ({ ...prev, ...c }))} currentConfig={config} />
-               {activeStep === 2 && (
-                 <button onClick={() => confirmStep(2)} className="w-full bg-white text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
-                   Confirm Motion & Proceed <ChevronRight className="w-4 h-4" />
-                 </button>
-               )}
-            </div>
-          </div>
+                      <div className="py-4">
+                        {step.id === 1 && <AvatarHub onSelect={(c) => setConfig(prev => ({ ...prev, ...c }))} currentConfig={config} />}
+                        {step.id === 2 && <AnimationTiers onSelect={(c) => setConfig(prev => ({ ...prev, ...c }))} currentConfig={config} />}
+                        {step.id === 3 && (
+                          <div className="p-8 bg-white/[0.02] border border-white/5 flex items-center justify-between gap-8 group">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-purple-500/30 transition-all">
+                                <Video className="w-5 h-5 text-white/30" />
+                              </div>
+                              <div>
+                                <h4 className="text-sm font-black uppercase text-white tracking-widest">{locale === 'ru' ? 'Студия Референса' : 'Reference Studio'}</h4>
+                                <p className="text-[10px] text-white/20 uppercase tracking-widest mt-1">Capture your unique character DNA</p>
+                              </div>
+                            </div>
+                            <button onClick={() => setShowStudio(true)} className="px-6 py-4 bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] hover:bg-white/10 active:scale-95 transition-all">
+                              {config.recordedAssetId ? (locale === 'ru' ? "Обновить" : "Update") : (locale === 'ru' ? "Записать" : "Record")}
+                            </button>
+                          </div>
+                        )}
+                      </div>
 
-          {/* STEP 03: RECORDING STUDIO */}
-          <div 
-            onClick={() => activeStep !== 3 && toggleStep(3)}
-            className={`relative transition-all duration-700 ${activeStep === 3 ? 'z-30 scale-100' : 'z-10 opacity-50 cursor-pointer overflow-hidden rounded-[2.5rem]'}`}
-          >
-            {(activeStep !== 3) && (
-              <div className="absolute inset-0 bg-black/40 backdrop-blur-md z-40 flex items-center justify-between px-10">
-                <div className="flex items-center gap-4">
-                   <div className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center font-black">3</div>
-                   <div>
-                     <p className="text-[10px] font-black uppercase tracking-widest text-white/30">Step 03 / Studio</p>
-                     <p className="text-sm font-bold text-white italic">{config.recordedAssetId ? 'Reference Captured' : 'Stock Performance'}</p>
-                   </div>
-                </div>
-                {activeStep > 3 && <div className="px-5 py-2 rounded-full border border-white/10 text-[10px] font-black uppercase tracking-widest bg-white/5">Tap to Edit</div>}
-              </div>
-            )}
-            
-            <div className="space-y-6">
-               <div className="px-4 space-y-1">
-                  <h3 className="text-2xl font-black uppercase italic tracking-tighter text-white">03 Human Reference</h3>
-                  <p className="text-xs text-white/40">Optional: Record your voice or video to clone your behavior perfectly.</p>
-               </div>
-               
-               <div className="p-8 rounded-[2.5rem] bg-gradient-to-br from-white/5 to-white/[0.02] border border-white/10 flex items-center justify-between gap-8">
-                  <div className="space-y-4">
-                    <div className="flex items-center gap-3">
-                      <div className="w-10 h-10 rounded-2xl bg-cyan-500/20 flex items-center justify-center border border-cyan-500/30 font-bold text-cyan-400 italic">HD</div>
-                      <h3 className="text-xl font-black uppercase italic tracking-tighter text-white">Recording Studio</h3>
+                      <button 
+                        onClick={() => setActiveStep(prev => prev + 1)}
+                        className="w-full bg-white text-black py-6 font-black uppercase tracking-widest text-xs flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+                      >
+                        Confirm & Proceed <ChevronRight className="w-4 h-4" />
+                      </button>
                     </div>
+                  </motion.div>
+                ) : (
+                  <div 
+                    onClick={() => step.id < activeStep + 2 && setActiveStep(step.id)}
+                    className="p-8 group cursor-pointer hover:bg-white/[0.02] transition-all flex items-center justify-between"
+                  >
+                    <div className="flex items-center gap-6">
+                      <span className={`text-xl font-black italic ${step.id < activeStep ? 'text-purple-500/40' : 'text-white/10'}`}>0{step.id}</span>
+                      <div>
+                        <p className={`text-[9px] font-black uppercase tracking-[0.3em] ${step.id < activeStep ? 'text-purple-400' : 'text-white/10'}`}>
+                          {step.id < activeStep ? 'COMPLETED' : 'PENDING'}
+                        </p>
+                        <h3 className={`text-lg font-black uppercase tracking-tighter italic ${step.id < activeStep ? 'text-white/60' : 'text-white/20'}`}>
+                          {step.title}
+                        </h3>
+                      </div>
+                    </div>
+                    {step.id < activeStep && (
+                      <div className="flex flex-col items-end">
+                        <span className="text-[10px] font-black uppercase tracking-widest text-purple-500/60">{step.summary}</span>
+                        <CheckCircle2 className="w-4 h-4 text-purple-500/40 mt-1" />
+                      </div>
+                    )}
                   </div>
-                  <button onClick={() => setShowStudio(true)} className="px-8 py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] hover:bg-white/10 transition-all">
-                    {config.recordedAssetId ? "Update Reference" : "Record Live"}
-                  </button>
-               </div>
-
-               {activeStep === 3 && (
-                 <button onClick={() => confirmStep(3)} className="w-full bg-white text-black py-5 rounded-[2rem] font-black uppercase tracking-widest text-sm flex items-center justify-center gap-2 active:scale-95 transition-all">
-                   Finalize Selection <ChevronRight className="w-4 h-4" />
-                 </button>
-               )}
+                )}
+              </AnimatePresence>
             </div>
-          </div>
+          ))}
 
           {/* FINAL LAUNCH SECTION */}
           {activeStep >= 3 && (
-            <div className="pt-10 animate-in fade-in slide-in-from-bottom-10">
-               <div className="p-10 rounded-[3rem] bg-gradient-to-br from-purple-500/20 to-transparent border border-purple-500/30 text-center space-y-8">
-                  <div className="space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">Ready for Rendering</p>
-                    <h2 className="text-5xl font-black uppercase italic tracking-tighter text-white">Initialize Factory</h2>
-                  </div>
-                  
-                  <div className="flex justify-center gap-12">
-                     <div className="text-center">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/20 mb-1">Total Cost</p>
-                        <p className="text-3xl font-black text-white italic">{calculateTotalCost()} <span className="text-sm opacity-30">CREDITS</span></p>
-                     </div>
-                     <div className="text-center">
-                        <p className="text-[10px] font-black uppercase tracking-widest text-white/20 mb-1">Estimated Time</p>
-                        <p className="text-3xl font-black text-white italic">3-5 <span className="text-sm opacity-30">MIN</span></p>
-                     </div>
-                  </div>
+            <div className="bg-gradient-to-br from-purple-500/10 to-transparent border-t border-purple-500/20 p-12 text-center space-y-10">
+              <div className="space-y-2">
+                <p className="text-[10px] font-black uppercase tracking-[0.5em] text-purple-400">Step 04 — Launch Phase</p>
+                <h2 className="text-6xl font-black uppercase italic tracking-tighter text-white">Initialize Factory</h2>
+                <p className="text-xs text-white/20 uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
+                  {locale === 'ru' ? 'Конвейер готов к сборке вашего видео. Проверьте параметры и начните производство.' : 'Conveyor is ready for assembly. Check parameters and start production.'}
+                </p>
+              </div>
+              
+              <div className="flex justify-center gap-16 border-y border-white/5 py-8">
+                 <div className="text-center">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-2">Cost Analysis</p>
+                    <p className="text-4xl font-black text-white italic">{calculateTotalCost()} <span className="text-[10px] opacity-30">CREDITS</span></p>
+                 </div>
+                 <div className="text-center">
+                    <p className="text-[9px] font-black uppercase tracking-[0.2em] text-white/20 mb-2">Build Window</p>
+                    <p className="text-4xl font-black text-white italic">~5 <span className="text-[10px] opacity-30">MINUTES</span></p>
+                 </div>
+              </div>
 
-                  <button
-                    onClick={handleLaunch}
-                    disabled={isLaunching}
-                    className="w-full bg-white text-black font-black py-8 rounded-[2.5rem] text-xl uppercase tracking-tighter italic hover:scale-[0.98] active:scale-[0.95] transition-all flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.1)]"
-                  >
-                    {isLaunching ? <Loader2 className="w-6 h-6 animate-spin" /> : <Factory className="w-6 h-6" />}
-                    {isLaunching ? 'Waking up Agents...' : 'Start Production'}
-                  </button>
-               </div>
+              <button
+                onClick={handleLaunch}
+                disabled={isLaunching}
+                className="w-full bg-white text-black font-black py-10 text-2xl uppercase tracking-tighter italic hover:bg-purple-500 hover:text-white transition-all flex items-center justify-center gap-6 shadow-[0_20px_60px_rgba(168,85,247,0.2)]"
+              >
+                {isLaunching ? <Loader2 className="w-8 h-8 animate-spin" /> : <Factory className="w-8 h-8" />}
+                {isLaunching ? 'Waking up Agents...' : 'Start Production'}
+              </button>
             </div>
           )}
-
         </div>
       ) : (
-        <div className="space-y-12 py-10 animate-fade-in">
-          <FactoryMonitor progress={progress} status={jobStatus} />
+        <div className="py-10 animate-fade-in">
+          <div className="max-w-xl mx-auto px-6">
+            <FactoryMonitor progress={progress} status={jobStatus} />
+          </div>
         </div>
       )}
 
-      {/* Studio & Chat Overlays */}
+      {/* Overlays & Alerts */}
+      <PremiumLimitModal 
+        isOpen={!!error}
+        onClose={() => {
+          setError(null);
+          if (!projectId) router.push('/app/projects');
+        }}
+        title={locale === 'ru' ? 'Внимание' : 'Attention'}
+        description={error || ''}
+        type="tier"
+        locale={locale}
+      />
+
       {showStudio && scriptData && project && (
         <StudioRecorder 
           projectId={projectId as string}
@@ -290,6 +300,7 @@ export default function ProductionPage() {
           }}
         />
       )}
+
       <StrategistChat 
         projectId={projectId || ''}
         userId={user?.id || ''}
@@ -299,5 +310,13 @@ export default function ProductionPage() {
         }}
       />
     </div>
+  );
+}
+
+export default function ProductionPage() {
+  return (
+    <Suspense fallback={<div className="flex items-center justify-center min-h-screen"><Loader2 className="w-8 h-8 animate-spin text-purple-500" /></div>}>
+      <ProductionContent />
+    </Suspense>
   );
 }
