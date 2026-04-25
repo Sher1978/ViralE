@@ -20,7 +20,7 @@ import {
 } from 'lucide-react';
 import { motion } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
-import { useEffect, useState } from 'react';
+import React, { useEffect, useState } from 'react';
 import { profileService } from '@/lib/services/profileService';
 import { Profile } from '@/lib/services/profileService';
 
