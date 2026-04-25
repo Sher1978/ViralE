@@ -41,6 +41,7 @@ export default function StudioPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState('');
+  const [error, setError] = useState<string | null>(null);
 
   const fetchProjects = useCallback(async () => {
     try {
