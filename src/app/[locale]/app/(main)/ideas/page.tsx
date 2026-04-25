@@ -44,7 +44,7 @@ export default function IdeasPage() {
   }, [fetchIdeas, activeTab]);
 
   const handleToScript = (topic: string) => {
-    router.push(`/projects/new/script?topic=${encodeURIComponent(topic)}`);
+    router.push(`/app/projects/new/script?topic=${encodeURIComponent(topic)}`);
   };
 
   const handleToggleArchive = async (ideaId: string, currentStatus: string) => {

@@ -140,9 +140,12 @@ export default function ScriptLabPage() {
         const proj = await projectService.getProject(projectIdParam);
         setCurrentProject(proj);
         setTopicInput(proj?.title || '');
+        // Clear generating state once data is loaded
+        setIsGenerating(false);
       } catch (err) {
         console.error('Failed to load script:', err);
         setError('Failed to load project data');
+        setIsGenerating(false);
       } finally {
         setIsLoading(false);
       }
@@ -261,10 +264,12 @@ export default function ScriptLabPage() {
       
       if (!version) throw new Error(locale === 'ru' ? 'Не удалось создать версию' : 'Version creation failed');
       
+      setIsGenerating(true); // Keep UI in thinking mode during transition
       router.replace(`/app/projects/new/script?projectId=${project.id}&versionId=${version.id}`);
     } catch (err: any) {
       console.error('[ScriptLab] Manual start failed:', err);
       setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
+      setIsGenerating(false);
     } finally {
       setIsLoading(false);
     }
@@ -358,6 +363,8 @@ export default function ScriptLabPage() {
       setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
       setIsGenerating(false);
     } finally {
+      // Don't setIsLoading(false) if we are successfully generating to prevent flickering
+      // if (isGenerating) return; 
       setIsLoading(false);
     }
   };
@@ -948,7 +955,7 @@ export default function ScriptLabPage() {
         }}
         title={limitModalData.title || (locale === 'ru' ? 'Внимание' : 'Attention')}
         description={error || limitModalData.desc}
-        advice={locale === 'ru' ? 'Попробуй проверить баланс или изменить настройки ИИ.' : 'Try checking your balance or adjusting AI settings.'}
+        advice={error ? (locale === 'ru' ? 'Попробуй проверить соединение или переформулировать запрос.' : 'Try checking your connection or rephrasing your request.') : (limitModalData.type === 'credits' ? (locale === 'ru' ? 'Для работы ИИ нужен минимальный баланс.' : 'A minimum balance is required for AI processing.') : (locale === 'ru' ? 'Попробуй проверить баланс или изменить настройки ИИ.' : 'Try checking your balance or adjusting AI settings.'))}
         type={error ? 'error' : limitModalData.type}
         locale={locale}
       />
@@ -970,18 +977,7 @@ export default function ScriptLabPage() {
           )}
         </button>
       </div>
-      <PremiumLimitModal 
-        isOpen={!!error || showLimitModal}
-        onClose={() => {
-          setError(null);
-          setShowLimitModal(false);
-        }}
-        title={limitModalData.title || (locale === 'ru' ? 'Системное Уведомление' : 'System Notification')}
-        description={error || limitModalData.desc}
-        advice={error ? (locale === 'ru' ? 'Попробуй проверить соединение или переформулировать запрос. Конвейер иногда требует четкости.' : 'Try checking your connection or rephrasing your request. The engine loves clarity.') : (locale === 'ru' ? 'Это поможет нам поддерживать высокое качество ИИ для всех создателей.' : 'This helps us maintain high-quality AI for all creators.')}
-        type={error ? 'error' : limitModalData.type}
-        locale={locale}
-      />
+
     </div>
   );
 }
