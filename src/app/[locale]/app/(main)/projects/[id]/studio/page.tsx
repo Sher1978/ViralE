@@ -21,6 +21,7 @@ import { StudioSidebar } from './_components/StudioSidebar';
 import { TeleprompterView } from './_components/TeleprompterView';
 import { StoryboardGrid } from './_components/StoryboardGrid';
 import { RecordingReview } from './_components/RecordingReview';
+import { SourcePicker } from './_components/SourcePicker';
 
 // Global Shared Components
 import StudioTimeline from '@/components/studio/StudioTimeline';
@@ -41,8 +42,10 @@ export default function StudioPage() {
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'concept'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'production'| 'assembly' | 'knowledge' | 'assets' | 'concept'>(initialTab);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
+
+  const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
   
   // Teleprompter States
   const [isReading, setIsReading] = useState(false);
@@ -81,6 +84,8 @@ export default function StudioPage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({ title: '', desc: '', type: 'info' as any });
 
+  const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
+
   // Initial Load
   useEffect(() => {
     async function loadData() {
@@ -94,8 +99,11 @@ export default function StudioPage() {
         setCurrentProfile(profile);
         
         const latestVersion = await projectService.getLatestVersion(projectId);
-        if (latestVersion && latestVersion.script_data) {
-          setManifest(latestVersion.script_data as any);
+        if (latestVersion) {
+          setCurrentVersionId(latestVersion.id);
+          if (latestVersion.script_data) {
+            setManifest(latestVersion.script_data as any);
+          }
         } else {
           setManifest(createInitialManifest(projectId, uuidv4(), { hook: '', body: '', callToAction: '' }));
         }
@@ -264,8 +272,22 @@ export default function StudioPage() {
   const handleFinalExport = async () => {
     setIsSaving(true);
     try {
-      await renderService.saveManifest(projectId, manifest!);
-      router.push(`/app/projects/${projectId}/render`);
+      if (!manifest || !currentVersionId) return;
+      await projectService.updateLatestVersionManifest(projectId, manifest);
+      
+      // Start a real render job here via api
+      const response = await fetch('/api/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, versionId: currentVersionId })
+      });
+      const data = await response.json();
+      
+      if (data.jobId) {
+        router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}&jobId=${data.jobId}`);
+      } else {
+        router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}`);
+      }
     } catch (err) {
       console.error('Export failed:', err);
     } finally {
@@ -351,6 +373,22 @@ export default function StudioPage() {
                   </div>
                 )}
             </div>
+          )}
+
+          {activeTab === 'production' && (
+            <SourcePicker 
+              onSelect={(type) => {
+                if (type === 'record') setActiveTab('teleprompter');
+                else if (type === 'ai') {
+                  // Logic for AI generation choice
+                  setActiveTab('theory' as any || 'assembly');
+                } else if (type === 'upload') {
+                  // Trigger upload modal/flow
+                  setActiveTab('assembly');
+                }
+              }}
+              onBack={() => setActiveTab('concept')}
+            />
           )}
 
           {activeTab === 'assembly' && (

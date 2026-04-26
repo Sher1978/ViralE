@@ -35,30 +35,25 @@ export const StoryboardGrid: React.FC<StoryboardGridProps> = ({
 }) => {
   return (
     <div className="flex-1 flex flex-col bg-[#05050a] p-4 md:p-8 overflow-hidden animate-in fade-in zoom-in-95 duration-500">
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-8">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-6 mb-10">
         <div>
-          <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase flex items-center gap-3">
-            <Scissors size={28} className="text-purple-400" />
-            Storyboard <span className="text-purple-400">Assembly</span>
+          <h2 className="text-3xl font-black text-white italic tracking-tighter uppercase flex items-center gap-3">
+            <span className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center border border-purple-500/30">
+              <Scissors size={24} className="text-purple-400" />
+            </span>
+            Final <span className="text-purple-400">Assembly</span>
           </h2>
-          <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">Multi-Layer Visual Orchestration</p>
+          <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.3em] mt-2 ml-1">Sequence Orchestration Stage</p>
         </div>
-        <div className="flex items-center gap-4">
-          <div className="flex flex-col items-end mr-4">
-            <span className="text-[9px] font-black text-white/20 uppercase tracking-widest">Total Production</span>
-            <span className="text-xs font-black text-white">{manifest?.segments.length || 0} Scenes</span>
-          </div>
-          <button 
-            onClick={() => addSegment('animated_still')}
-            className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-[10px] uppercase tracking-widest hover:bg-white/10 transition-all flex items-center gap-2"
-          >
-            <Plus size={16} /> New Scene
-          </button>
+        <div className="flex items-center gap-6">
           <button 
             onClick={handleFinalExport}
-            className="px-8 py-3 rounded-2xl bg-purple-500 text-white font-black text-[10px] uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-xl shadow-purple-500/20 flex items-center gap-2"
+            className="group relative px-10 py-5 rounded-[2rem] bg-purple-500 text-white font-black text-xs uppercase tracking-[0.2em] transition-all hover:scale-105 active:scale-95 shadow-[0_20px_50px_rgba(168,85,247,0.3)] flex items-center gap-3"
           >
-            Final Assembly <ChevronRight size={16} />
+             Assemble Final Video
+             <div className="w-6 h-6 rounded-full bg-white/20 flex items-center justify-center group-hover:translate-x-1 transition-transform">
+               <ChevronRight size={14} />
+             </div>
           </button>
         </div>
       </div>
@@ -72,85 +67,71 @@ export const StoryboardGrid: React.FC<StoryboardGridProps> = ({
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: idx * 0.05 }}
               onClick={() => setSelectedSegmentId(s.id)}
-              className={`group relative flex flex-col rounded-[2rem] border transition-all duration-500 overflow-hidden ${selectedSegmentId === s.id ? 'bg-white/5 border-purple-500 ring-2 ring-purple-500/20 shadow-2xl scale-[1.02]' : 'bg-white/[0.02] border-white/5 hover:border-white/20'}`}
+              className={`group relative flex flex-col rounded-[2.5rem] border transition-all duration-500 overflow-hidden ${selectedSegmentId === s.id ? 'bg-white/10 border-purple-500 shadow-[0_0_40px_rgba(168,85,247,0.1)] scale-[1.02]' : 'bg-white/[0.03] border-white/5 hover:border-white/10'}`}
             >
-              {/* Card Header: Scene Index & Status */}
-              <div className="p-4 flex items-center justify-between border-b border-white/5 relative z-10">
-                <div className="flex items-center gap-2">
-                  <span className="w-6 h-6 rounded-lg bg-white/5 flex items-center justify-center text-[10px] font-black text-white/40">0{idx + 1}</span>
-                  <span className="text-[8px] font-black uppercase text-white/20 tracking-widest">{s.type.replace('_', ' ')}</span>
-                </div>
-                <button 
-                  onClick={(e) => { e.stopPropagation(); deleteSegment(s.id); }}
-                  className="opacity-0 group-hover:opacity-100 p-2 text-white/20 hover:text-red-500 transition-all"
-                >
-                  <Trash2 size={14} />
-                </button>
+              {/* Card HUD */}
+              <div className="absolute top-4 left-4 z-40 flex items-center gap-2">
+                <span className="w-8 h-8 rounded-xl bg-black/60 backdrop-blur-md flex items-center justify-center text-[10px] font-black text-white/60 border border-white/10">0{idx + 1}</span>
+                <span className="px-3 py-1.5 rounded-lg bg-black/60 backdrop-blur-md text-[7px] font-black uppercase text-white/40 tracking-[0.2em] border border-white/10">{s.type.replace('_', ' ')}</span>
               </div>
 
-              {/* Visual Preview Container (Dual Layer) */}
-              <div className="aspect-[9/16] bg-black relative overflow-hidden group-hover:cursor-pointer">
-                {/* Layer 1: Base Media (User Video or AI Gen) */}
+              {/* Visual Frame */}
+              <div className="aspect-[9/16] relative bg-black/40 overflow-hidden flex items-center justify-center">
                 <div className="absolute inset-0 z-0">
                   {s.assetUrl ? (
                     s.type === 'user_recording' ? (
-                      <video src={s.assetUrl} className="w-full h-full object-cover opacity-60" muted />
+                      <video src={s.assetUrl} className="w-full h-full object-cover" muted />
                     ) : (
-                      <div className="w-full h-full bg-cover bg-center opacity-60" style={{ backgroundImage: `url('${s.assetUrl}')` }} />
+                      <div className="w-full h-full bg-cover bg-center opacity-80" style={{ backgroundImage: `url('${s.assetUrl}')` }} />
                     )
                   ) : (
-                    <div className="w-full h-full flex flex-col items-center justify-center text-white/5 gap-3">
-                      <Monitor size={32} />
-                      <span className="text-[8px] font-black uppercase">Source Missing</span>
+                    <div className="flex flex-col items-center gap-3 opacity-10">
+                      <Monitor size={48} />
+                      <span className="text-[10px] font-black uppercase tracking-widest">No Media</span>
                     </div>
                   )}
                 </div>
 
-                {/* Layer 2: B-Roll Overlay Preview */}
+                {/* B-Roll Preview Overlay */}
                 <AnimatePresence>
                   {s.overlayBroll && (
                     <motion.div 
-                      initial={{ opacity: 0, scale: 1.1 }}
-                      animate={{ opacity: 1, scale: 1 }}
-                      exit={{ opacity: 0 }}
-                      className="absolute inset-4 rounded-3xl border border-white/10 shadow-2xl overflow-hidden z-20"
+                      initial={{ opacity: 0, y: 10 }}
+                      animate={{ opacity: 1, y: 0 }}
+                      className="absolute inset-6 rounded-[2rem] border border-white/20 shadow-2xl overflow-hidden z-20 group-hover:scale-95 transition-transform duration-500"
                     >
-                      <div className="absolute top-2 left-2 px-2 py-1 bg-purple-500 rounded-lg text-[7px] font-black uppercase z-30">B-ROLL</div>
+                      <div className="absolute top-3 left-1/2 -translate-x-1/2 px-3 py-1 bg-purple-500 rounded-full text-[7px] font-black uppercase z-30 shadow-lg">B-Roll Active</div>
                       <div className="w-full h-full bg-cover bg-center" style={{ backgroundImage: `url('${s.overlayBroll}')` }} />
                     </motion.div>
                   )}
                 </AnimatePresence>
 
-                {/* Hover Controls for B-Roll */}
-                <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity z-30 flex flex-col items-center justify-center p-6 gap-3">
+                {/* Hover States - Primary Actions only */}
+                <div className="absolute inset-0 bg-black/40 backdrop-blur-sm opacity-0 group-hover:opacity-100 transition-all duration-500 z-30 flex flex-col items-center justify-center p-8 gap-4">
                   <button 
                     onClick={(e) => { e.stopPropagation(); setIsBRollModalOpen(true); }}
-                    className="w-full py-3 rounded-2xl bg-white text-black text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-105 transition-all"
+                    className="w-full py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-purple-400 transition-all"
                   >
-                    <Plus size={14} /> Pick B-Roll
-                  </button>
-                  <button 
-                    onClick={(e) => { e.stopPropagation(); regenerateSegment(s.id); }}
-                    className="w-full py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-[9px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:bg-white/20 transition-all"
-                  >
-                    <RefreshCw size={14} className={isRegenerating === s.id ? 'animate-spin' : ''} />
-                    Regenerate
+                    <Plus size={16} /> {s.overlayBroll ? 'Change B-Roll' : 'Add B-Roll'}
                   </button>
                 </div>
               </div>
 
-              {/* Script / Text Block */}
-              <div className="p-5 bg-white/[0.02] border-t border-white/5 flex flex-col gap-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[8px] font-black uppercase text-white/20 tracking-widest italic">Act Transcript</span>
-                  <span className="text-[8px] font-black text-purple-400">10.5s</span>
+              {/* Minimal Script Editor */}
+              <div className="p-6 bg-black/20 backdrop-blur-md flex flex-col gap-3 relative z-10">
+                <div className="flex justify-between items-center mb-1">
+                  <div className="h-px bg-white/10 flex-1 mr-4" />
+                  <span className="text-[8px] font-black text-purple-400/60 tracking-widest uppercase">Transcript</span>
                 </div>
                 <textarea 
                   value={s.scriptText}
                   onChange={(e) => updateSegmentField(s.id, 'scriptText', e.target.value)}
-                  className="w-full bg-transparent border-none p-0 text-[11px] leading-relaxed italic text-white/60 focus:ring-0 resize-none h-16 scrollbar-none"
+                  className="w-full bg-transparent border-none p-0 text-xs leading-relaxed italic text-white/50 focus:text-white/90 focus:ring-0 resize-none h-16 transition-colors scrollbar-none"
+                  placeholder="Silence in this scene..."
                 />
               </div>
+            </motion.div>
+          ))}
             </motion.div>
           ))}
         </div>
