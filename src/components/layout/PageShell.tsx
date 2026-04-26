@@ -13,7 +13,7 @@ export function PageShell({ children }: PageShellProps) {
   const pathname = usePathname();
   const locale = useLocale();
 
-  const isAppPath = pathname.includes(`/${locale}/app`);
+  const isAppPath = pathname.includes('/app');
   const isMarketingPath = !isAppPath;
 
   if (isMarketingPath) {
