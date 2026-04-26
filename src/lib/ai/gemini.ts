@@ -63,7 +63,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
     ? client.getGenerativeModel({ 
-        model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
+        model: process.env.GEMINI_MODEL || FAST_MODEL,
         generationConfig: { responseMimeType: "application/json" }
       }) 
     : model;
@@ -172,7 +172,7 @@ export async function distillSyntheticKnowledge(rawData: string, locale: string 
     ${rawData}
   `;
 
-  const textModelName = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const textModelName = process.env.GEMINI_MODEL || FAST_MODEL;
   const textModel = genAI.getGenerativeModel({ model: textModelName });
   const result = await textModel.generateContent(prompt);
   const response = await result.response;
@@ -205,7 +205,7 @@ export async function updateDnaPersona(oldPersona: string, newData: string, loca
   `;
 
   // Note: For this one we don't need JSON response, just text
-  const textModelName = process.env.GEMINI_MODEL || DEFAULT_MODEL;
+  const textModelName = process.env.GEMINI_MODEL || FAST_MODEL;
   const textModel = genAI.getGenerativeModel({ model: textModelName });
   const result = await textModel.generateContent(prompt);
   const response = await result.response;
@@ -225,7 +225,7 @@ export async function refineScript(
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
     ? client.getGenerativeModel({ 
-        model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
+        model: process.env.GEMINI_MODEL || FAST_MODEL,
         generationConfig: { responseMimeType: "application/json" }
       }) 
     : model;
