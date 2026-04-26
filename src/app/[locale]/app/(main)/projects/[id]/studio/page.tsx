@@ -22,6 +22,7 @@ import { TeleprompterView } from './_components/TeleprompterView';
 import { StoryboardGrid } from './_components/StoryboardGrid';
 import { RecordingReview } from './_components/RecordingReview';
 import { SourcePicker } from './_components/SourcePicker';
+import { VideoEditor } from './_components/VideoEditor';
 
 // Global Shared Components
 import StudioTimeline from '@/components/studio/StudioTimeline';
@@ -388,20 +389,12 @@ export default function StudioPage() {
           )}
 
           {activeTab === 'assembly' && (
-            <div className="p-8 h-full">
-              <StoryboardGrid 
-                manifest={manifest}
-                selectedSegmentId={selectedSegmentId}
-                setSelectedSegmentId={setSelectedSegmentId}
-                isRegenerating={isRegenerating}
-                regenerateSegment={regenerateSegment}
-                deleteSegment={deleteSegment}
-                updateSegmentField={updateSegmentField}
-                addSegment={addSegment}
-                handleFinalExport={handleFinalExport}
-                setIsBRollModalOpen={setIsBRollModalOpen}
-              />
-            </div>
+            <VideoEditor
+              manifest={manifest}
+              updateSegmentField={updateSegmentField}
+              onBack={() => setActiveTab('production')}
+              onNext={handleFinalExport}
+            />
           )}
 
           {activeTab === 'knowledge' && (
