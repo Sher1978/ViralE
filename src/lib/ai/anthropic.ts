@@ -5,30 +5,32 @@ const DEFAULT_MODEL = "claude-3-5-sonnet-20240620";
 /**
  * Orchestrates the "Digital Shadow" prompt construction with locale support
  */
-export function getSystemPrompt(digitalShadow: string, locale: string = 'en') {
+export function getSystemPrompt(digitalShadow: string, locale: string = 'en', brandDna?: any) {
   const languageName = locale === 'ru' ? 'Russian' : 'English';
   
   const persona = digitalShadow && digitalShadow.trim() !== "" 
     ? digitalShadow 
     : (locale === 'ru' 
-        ? "Вы — опытный контент-стратег и экспертный автор. Ваш стиль: глубокий разбор темы, ироничный взгляд на индустрию, акцент на системность и результат. Вы говорите коротко, емко и по делу."
-        : "You are a seasoned content strategist and expert author. Your style is a deep dive into the topic, an ironic look at the industry, with an focus on systems and results. You speak concisely, powerfully, and to the point.");
+        ? "Вы — опытный контент-стратег и экспертный автор."
+        : "You are a seasoned content strategist and expert author.");
+
+  const industry = brandDna?.industry || "Marketing & Content Production";
+  const knowledgeBase = brandDna?.knowledgeBase ? JSON.stringify(brandDna.knowledgeBase) : "Standard viral patterns";
 
   return `
-    You are the "Viral Engine" Strategist. Your goal is to generate high-retention video scripts 
-    that stay true to the user's digital persona (The Digital Shadow).
+    You are an ELITE AI STRATEGIST and VIRAL CONTENT SCRIPTWRITER.
+    Your mission: Generate high-conversion scripts based on the user's DNA and industry context.
     
-    CRITICAL: All generated text content (hooks, body, calls-to-action) MUST BE IN ${languageName.toUpperCase()}.
+    SYSTEM CONTEXT:
+    - Industry: ${industry}
+    - User DNA/Shadow: ${persona}
+    - Knowledge Fragments: ${knowledgeBase}
     
-    CONTENT CONSTRAINT: The TOTAL duration of a script (sum of all 5 blocks: hook, problem, good_news, solution, cta) MUST NOT EXCEED 50 SECONDS of reading time (max 150 words total).
+    CRITICAL: All generated text content MUST BE IN ${languageName.toUpperCase()}.
     
-    USER'S DIGITAL SHADOW: 
-    ${persona}
-    
-    INSTRUCTIONS:
-    1. Tone: Ironic, Expert, Fast-paced.
-    2. Language: ${languageName}.
-    3. Output MUST be valid JSON.
+    CONTENT CONSTRAINT: 
+    - TOTAL duration MUST NOT EXCEED 50 SECONDS (max 150 words total).
+    - Output MUST be valid JSON.
   `;
 }
 
@@ -36,12 +38,13 @@ export async function generateScript(
   coreIdea: string, 
   digitalShadow: string, 
   locale: string = 'en',
-  apiKey?: string
+  apiKey?: string,
+  brandDna?: any
 ) {
   const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
   const anthropic = new Anthropic({ apiKey: authKey });
   
-  const systemPrompt = getSystemPrompt(digitalShadow, locale);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
@@ -98,12 +101,13 @@ export async function refineScript(
   instruction: string, 
   digitalShadow: string, 
   locale: string = 'en',
-  apiKey?: string
+  apiKey?: string,
+  brandDna?: any
 ) {
   const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
   const anthropic = new Anthropic({ apiKey: authKey });
   
-  const systemPrompt = getSystemPrompt(digitalShadow, locale);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
