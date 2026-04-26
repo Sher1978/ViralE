@@ -44,6 +44,8 @@ function ScenarioCard({
     storytelling: { color: '#06B6D4', label: 'Story' }
   }[scenarioId];
 
+  const displayContent = typeof content === 'string' ? content : (content as any)?.words || '';
+
   return (
     <motion.div
       ref={ref}
@@ -73,7 +75,7 @@ function ScenarioCard({
 
       <div className="p-6">
         <textarea
-          value={content}
+          value={displayContent}
           onChange={(e) => onUpdate(blockId, scenarioId, e.target.value)}
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
@@ -81,6 +83,12 @@ function ScenarioCard({
           className="w-full bg-transparent text-sm sm:text-base leading-relaxed text-white font-medium focus:outline-none focus:ring-1 focus:ring-white/20 rounded-lg p-2 transition-all resize-none min-h-[160px] no-scrollbar placeholder:text-white/10"
           placeholder="[Empty Node... Edit required]"
         />
+        {(content as any)?.visual && isSelected && (
+          <div className="mt-4 p-3 rounded-xl bg-white/5 border border-white/10 animate-in fade-in slide-in-from-top-2 duration-500">
+             <p className="text-[9px] font-black uppercase text-purple-400 mb-1 tracking-widest">Visual Prompt</p>
+             <p className="text-[10px] text-white/40 leading-snug italic">{(content as any).visual}</p>
+          </div>
+        )}
       </div>
     </motion.div>
   );
@@ -118,7 +126,8 @@ export function ContentMatrix({
   const [copied, setCopied] = React.useState(false);
   
   const totalWords = Object.entries(selectionSources).reduce((acc, [blockId, scenarioId]) => {
-    const text = allScenarios?.[scenarioId]?.[blockId] || scriptData[blockId] || '';
+    const content = allScenarios?.[scenarioId]?.[blockId] || scriptData[blockId] || '';
+    const text = typeof content === 'string' ? content : (content as any)?.words || '';
     return acc + text.split(/\s+/).filter(Boolean).length;
   }, 0);
   const totalSeconds = Math.ceil(totalWords / 2.8);

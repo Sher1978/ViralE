@@ -171,97 +171,67 @@ export async function POST(req: Request) {
       if (locale === 'ru') {
         scriptJson = {
           evergreen: {
-            hook: "Секрет раскрыт",
-            problem: "Многие тратят годы на изучение темы, но не получают результата.",
-            good_news: "Есть системный путь, который сокращает время в 10 раз.",
-            solution: "Нужно сосредоточиться на базе и автоматизации процессов через Viral Engine.",
-            cta: "Подпишись, чтобы качать свой Digital DNA!",
-            visual_hook: "Кинематографичный кадр: человек в очках дополненной реальности, неоновое синее освещение, 8k.",
-            social_post: "Как создавать контент будущего уже сегодня? 🧬 #ViralEngine #Marketing"
+            hook: { visual: "Кинематографичный кадр", screen_text: "Секрет раскрыт", words: "Секрет раскрыт." },
+            context: { words: "Многие тратят годы на изучение темы, но не получают результата." },
+            meat: { words: "Но правда в том, что есть системный путь, который сокращает время в 10 раз." },
+            cta: { words: "Так что если вы хотите качать свой Digital DNA, подпишитесь!" }
           },
           trend: {
-            hook: "Тренд 2026: залетаем",
-            problem: "Старые методы охвата больше не работают в новой экономике внимания.",
-            good_news: "Алгоритмы теперь любят динамику и быструю смену кадров.",
-            solution: "Используй резкие переходы и провокационные хуки.",
-            cta: "Ставь лайк, если в теме!",
-            visual_hook: "Динамичный коллаж из неоновых элементов, яркий фиолетовый фон, стиль Digital Zen.",
-            social_post: "2026 уже здесь! 🚀 Лови свежий тренд. #Trends2026 #Viral"
+            hook: { visual: "Динамичный коллаж", screen_text: "Тренд 2026", words: "Тренд 2026: залетаем." },
+            context: { words: "Старые методы охвата больше не работают в новой экономике внимания." },
+            meat: { words: "Однако алгоритмы теперь любят динамику и быструю смену кадров." },
+            cta: { words: "Именно поэтому я рекомендую использовать резкие переходы. Ставь лайк!" }
           },
           educational: {
-            hook: "Как это сделать",
-            problem: "Сложные темы отпугивают аудиторию, если поданы скучно.",
-            good_news: "Любой процесс можно разложить на 3 простых шага.",
-            solution: "План, Нейросети, Система. Всё просто.",
-            cta: "Сохрани, чтобы не потерять!",
-            visual_hook: "Минималистичный кадр: парящий кристалл с кодом внутри, мягкий свет.",
-            social_post: "Сложные вещи простыми словами. 🧠 #Education #AI"
+            hook: { visual: "Чистый фон", screen_text: "Как это сделать", words: "Как это сделать." },
+            context: { words: "Сложные темы отпугивают аудиторию, если поданы скучно." },
+            meat: { words: "Но любой процесс можно разложить на 3 простых шага: План, Нейросети, Система." },
+            cta: { words: "Сохрани, чтобы не потерять!" }
           },
           controversial: {
-            hook: "Всё это ложь",
-            problem: "Вам внушают, что успех — это удача, но это математика.",
-            good_news: "Если убрать эмоции, остается чистая стратегия.",
-            solution: "Перестаньте верить гуру и начните верить данным.",
-            cta: "Пиши 'МАТРИЦА' в комментах!",
-            visual_hook: "Драматичный красный свет, разбитое зеркало, в котором отражается код.",
-            social_post: "Горькая правда про охваты. 💣 #Matrix #Truth #System"
+            hook: { visual: "Драматичный свет", screen_text: "Всё это ложь", words: "Всё это ложь." },
+            context: { words: "Вам внушают, что успех — это удача, но это математика." },
+            meat: { words: "Однако если убрать эмоции, остается чистая стратегия." },
+            cta: { words: "Так что если вы готовы к правде, пишите МАТРИЦА в комментариях." }
           },
           storytelling: {
-            hook: "Я всё потерял",
-            problem: "Год назад мой аккаунт был в коме, охваты на нуле.",
-            good_news: "Одна случайная встреча изменила мой подход навсегда.",
-            solution: "Я понял, что контент — это не текст, а отражение вашей ДНК.",
-            cta: "Читай продолжение в закрепе!",
-            visual_hook: "Теплое закатное освещение, открытая книга, пыль в лучах света.",
-            social_post: "Мой личный путь от нуля до системы. 📖 #Story #MyPath"
+            hook: { visual: "Теплый свет", screen_text: "Я всё потерял", words: "Я всё потерял." },
+            context: { words: "Год назад мой аккаунт был в коме, охваты на нуле." },
+            meat: { words: "Но одна случайная встреча изменила мой подход к контенту навсегда." },
+            cta: { words: "Читай продолжение в описании." }
           }
         };
       } else {
         scriptJson = {
           evergreen: {
-            hook: "Secret Unlocked",
-            problem: "Most people spend years studying a topic without seeing real progress.",
-            good_news: "There is a systematic path that cuts that time by 10x.",
-            solution: "Focus on the core fundamentals and automate processes with Viral Engine.",
-            cta: "Follow to upgrade your Digital DNA!",
-            visual_hook: "Cinematic shot of a person wearing AR glasses, neon blue lighting, 8k.",
-            social_post: "How to create future-proof content today? 🧬 #ViralEngine #Marketing"
+            hook: { visual: "Cinematic shot", screen_text: "Secret Unlocked", words: "Secret Unlocked." },
+            context: { words: "Most people spend years studying a topic without seeing real progress." },
+            meat: { words: "But the truth is, there is a systematic path that cuts that time by 10x." },
+            cta: { words: "So if you want to upgrade your Digital DNA, follow me!" }
           },
           trend: {
-            hook: "2026 Trend Alert",
-            problem: "Legacy reach methods are dying in the new attention economy.",
-            good_news: "Algorithms now crave dynamics and rapid visual shifts.",
-            solution: "Leverage sharp transitions and provocative text hooks.",
-            cta: "Like for more alpha!",
-            visual_hook: "Dynamic collage of neon elements, vibrant purple background, Digital Zen style.",
-            social_post: "2026 is here! 🚀 Catch the latest trend. #Trends2026 #Viral"
+            hook: { visual: "Vibrant collage", screen_text: "2026 Trend", words: "2026 Trend Alert." },
+            context: { words: "Legacy reach methods are dying in the new attention economy." },
+            meat: { words: "However, algorithms now crave dynamics and rapid visual shifts." },
+            cta: { words: "That's why you should use sharp transitions. Like for more!" }
           },
           educational: {
-            hook: "The How-To Guide",
-            problem: "Complex topics bore your audience when presented poorly.",
-            good_news: "Any process can be distilled into 3 simple, actionable steps.",
-            solution: "Plan, AI integration, Systems. That is it.",
-            cta: "Save this for later!",
-            visual_hook: "Minimalist shot of a floating crystal with code inside, soft studio light.",
-            social_post: "Complex things made simple. 🧠 #Education #AI"
+            hook: { visual: "Minimalist background", screen_text: "How-To Guide", words: "The How-To Guide." },
+            context: { words: "Complex topics bore your audience when presented poorly." },
+            meat: { words: "But any process can be distilled into 3 simple, actionable steps." },
+            cta: { words: "Save this for later!" }
           },
           controversial: {
-            hook: "It Is All A Lie",
-            problem: "They tell you success is luck, but it is pure cold math.",
-            good_news: "Remove the emotion, and only strategy remains.",
-            solution: "Stop following gurus and start following the data arrays.",
-            cta: "Type 'MATRIX' below!",
-            visual_hook: "Dramatic red lighting, a shattered mirror reflecting code streams.",
-            social_post: "The bitter truth about growth. 💣 #Matrix #Truth #System"
+            hook: { visual: "Shattered mirror", screen_text: "It's All A Lie", words: "It's All A Lie." },
+            context: { words: "They tell you success is luck, but it is pure cold math." },
+            meat: { words: "However, remove the emotion, and only strategy remains." },
+            cta: { words: "So if you're ready, type MATRIX below!" }
           },
           storytelling: {
-            hook: "I Lost Everything",
-            problem: "A year ago, my account was dead, reach was at absolute zero.",
-            good_news: "One chance encounter changed my production approach forever.",
-            solution: "I realized content is not just text, it is a mirror of your DNA.",
-            cta: "Read my full story in the bio!",
-            visual_hook: "Warm sunset lighting, an open book, dust particles in light rays.",
-            social_post: "My personal journey from zero to system. 📖 #Story #MyPath"
+            hook: { visual: "Sunset lighting", screen_text: "I Lost Everything", words: "I Lost Everything." },
+            context: { words: "A year ago, my account was dead, reach was at absolute zero." },
+            meat: { words: "But one chance encounter changed my production approach forever." },
+            cta: { words: "Read the full story in bio." }
           }
         };
       }

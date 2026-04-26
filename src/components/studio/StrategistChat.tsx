@@ -13,6 +13,8 @@ import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import { VoiceVisualizer } from './VoiceVisualizer';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
+import { ScriptRotor } from '@/app/[locale]/app/(main)/projects/[id]/studio/_components/ScriptRotor';
+import { v4 as uuidv4 } from 'uuid';
 
 
 interface Message {
@@ -57,6 +59,7 @@ export function StrategistChat({
   const [captions, setCaptions] = useState('');
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
+  const [scriptMatrix, setScriptMatrix] = useState<any | null>(null);
 
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -190,6 +193,20 @@ export function StrategistChat({
         });
       }
 
+      // --- JSON DETECTOR ---
+      // Try to parse the entire assistant message for the 5x4 matrix
+      try {
+        const jsonMatch = assistantMessage.match(/\{[\s\S]*\}/);
+        if (jsonMatch) {
+          const parsed = JSON.parse(jsonMatch[0]);
+          if (parsed.styles && Array.isArray(parsed.styles) && parsed.styles.length >= 3) {
+            setScriptMatrix(parsed);
+          }
+        }
+      } catch (e) {
+        // Not a valid JSON or not a matrix, continue as text
+      }
+
       // If in voice mode, speak the final response
       if (isVoiceMode) {
         speakResponse(assistantMessage);
@@ -249,33 +266,52 @@ export function StrategistChat({
       onApplySuggestion(newText);
       setMessages(curr => [...curr, { 
         role: 'assistant', 
-        content: "Applied! Redirecting strategy to the creative canvas." 
+        content: "Applied! Your strategy is now part of the creative canvas." 
       }]);
       return;
     }
 
-    // 2. Fallback to active segment update if in studio and manifest exists
-    if (context === 'studio' && activeSegmentId && setManifest && manifest) {
+    // 2. Fallback to intelligent manifest update
+    if (setManifest && manifest) {
       const newManifest = { ...manifest };
-      const segmentIndex = newManifest.segments.findIndex(s => s.id === activeSegmentId);
       
-      if (segmentIndex !== -1) {
+      // Attempt to parse structured script (Hook/Body/CTA)
+      const hasStructure = /hook:|body:|cta:|intro:|outro:/i.test(newText);
+      
+      if (hasStructure) {
+        // Smart distribution
+        const segments = [...newManifest.segments];
+        
+        const hookMatch = newText.match(/(?:hook|intro):\s*([\s\S]*?)(?=\n(?:body|cta|outro):|$)/i);
+        const bodyMatch = newText.match(/body:\s*([\s\S]*?)(?=\n(?:cta|outro):|$)/i);
+        const ctaMatch = newText.match(/(?:cta|outro):\s*([\s\S]*?)$/i);
+
+        if (hookMatch && segments[0]) segments[0].scriptText = hookMatch[1].trim();
+        if (bodyMatch && segments[1]) segments[1].scriptText = bodyMatch[1].trim();
+        if (ctaMatch && segments[segments.length - 1]) segments[segments.length - 1].scriptText = ctaMatch[1].trim();
+        
+        newManifest.segments = segments;
+      } else if (activeSegmentId) {
+        // Single segment update
+        const segmentIndex = newManifest.segments.findIndex(s => s.id === activeSegmentId);
+        if (segmentIndex !== -1) {
           const segment = newManifest.segments[segmentIndex];
           if (segment.type === 'animated_still' || segment.type === 'broll') {
             newManifest.segments[segmentIndex].prompt = newText;
           } else {
             newManifest.segments[segmentIndex].scriptText = newText;
-            if (!segment.prompt || segment.prompt.length < 10) {
-              newManifest.segments[segmentIndex].prompt = `Visual for: ${newText.substring(0, 50)}...`;
-            }
           }
-          
-          setManifest(newManifest);
-          setMessages(curr => [...curr, { 
-            role: 'assistant', 
-            content: "Done! I've updated the segment with the new strategy." 
-          }]);
         }
+      } else {
+        // No active segment, but structured text not found - update first empty or first segment
+        if (newManifest.segments[0]) newManifest.segments[0].scriptText = newText;
+      }
+      
+      setManifest(newManifest);
+      setMessages(curr => [...curr, { 
+        role: 'assistant', 
+        content: "Matrix updated. The new narrative structure is now live in your production pipeline." 
+      }]);
     } else {
       // 3. Just copy to clipboard if no target action
       copyToClipboard(newText, messages.length);
@@ -543,6 +579,40 @@ export function StrategistChat({
         locale={locale}
       />
           </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Structured Rotor View */}
+      <AnimatePresence>
+        {scriptMatrix && (
+          <ScriptRotor 
+            matrix={scriptMatrix}
+            onClose={() => setScriptMatrix(null)}
+            onApply={(finalScriptText) => {
+              // Populate manifest with segments from the combined script
+              if (setManifest && manifest) {
+                const lines = finalScriptText.split('\n\n').filter(l => l.trim().length > 0);
+                const newSegments = lines.map((text, i) => ({
+                  id: uuidv4(),
+                  type: 'user_recording' as const,
+                  scriptText: text,
+                  status: 'completed' as const,
+                  prompt: `Visual for: ${text.substring(0, 40)}...`
+                }));
+                
+                setManifest({
+                  ...manifest,
+                  segments: newSegments
+                });
+                
+                setMessages(prev => [...prev, { 
+                  role: 'assistant', 
+                  content: "Success! The hybrid matrix is forged and pushed to the studio." 
+                }]);
+              }
+              setScriptMatrix(null);
+            }}
+          />
         )}
       </AnimatePresence>
     </div>

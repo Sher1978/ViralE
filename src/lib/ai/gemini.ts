@@ -74,12 +74,10 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     
     CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". No descriptions of what to say. ONLY the final words the actor will dictate.
     
-    CRITICAL: Each of the 4 blocks must be approximately 15-20 seconds of speech (approx. 40-55 words per block).
-    
-    1. BLOCK 1: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
-    2. BLOCK 2: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration".
-    3. BLOCK 3: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
-    4. BLOCK 4: Native CTA (15-20s dictation). ENTRY PHRASE: "That's why..." or "So if you want...". Call to leave a KEYWORD in comments.
+    1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
+    2. context: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration".
+    3. meat: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
+    4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: "That's why..." or "So if you want...". Call to leave a KEYWORD in comments.
 
     STYLES to generate for the idea:
     1. evergreen (Contrarian): Attacking popular myths.
@@ -90,10 +88,10 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
 
     Structure for EACH scenario (style):
     - style_name: evergreen | trend | educational | controversial | storytelling
-    - block1: { visual: "...", screen_text: "...", words: "..." }
-    - block2: { words: "..." }
-    - block3: { words: "..." }
-    - block4: { words: "..." }
+    - hook: { visual: "...", screen_text: "...", words: "..." }
+    - context: { words: "..." }
+    - meat: { words: "..." }
+    - cta: { words: "..." }
     - broll_prompt: Final action-semantic description for a 5s B-roll.
     - visual_hook: Detailed cinematic prompt for Midjourney cover.
     - social_post: Caption with 3 emojis + 3 tags.

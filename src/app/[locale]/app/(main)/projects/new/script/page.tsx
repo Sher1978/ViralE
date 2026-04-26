@@ -66,22 +66,16 @@ export default function ScriptLabPage() {
   
   const [selectionSources, setSelectionSources] = useState<Record<string, 'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>>({
     hook: 'evergreen',
-    problem: 'evergreen',
-    good_news: 'evergreen',
-    solution: 'evergreen',
-    cta: 'evergreen',
-    visual_hook: 'evergreen',
-    social_post: 'evergreen'
+    context: 'evergreen',
+    meat: 'evergreen',
+    cta: 'evergreen'
   });
 
   const [scriptData, setScriptData] = useState({
     hook: '',
-    problem: '',
-    good_news: '',
-    solution: '',
-    cta: '',
-    visual_hook: '',
-    social_post: ''
+    context: '',
+    meat: '',
+    cta: ''
   });
 
   const [masterTextOverride, setMasterTextOverride] = useState<string | null>(null);
@@ -219,13 +213,12 @@ export default function ScriptLabPage() {
   };
 
   const getFinalText = () => {
-    if (!allScenarios) return Object.values(scriptData).filter(v => v).join('\n\n');
+    if (!allScenarios) return Object.values(scriptData).filter(v => v).map(v => typeof v === 'string' ? v : v.words).join('\n\n');
     const parts = [
-      allScenarios[selectionSources.hook]?.hook,
-      allScenarios[selectionSources.problem]?.problem,
-      allScenarios[selectionSources.good_news]?.good_news,
-      allScenarios[selectionSources.solution]?.solution,
-      allScenarios[selectionSources.cta]?.cta,
+      allScenarios[selectionSources.hook]?.hook?.words || allScenarios[selectionSources.hook]?.hook,
+      allScenarios[selectionSources.context]?.context?.words || allScenarios[selectionSources.context]?.context,
+      allScenarios[selectionSources.meat]?.meat?.words || allScenarios[selectionSources.meat]?.meat,
+      allScenarios[selectionSources.cta]?.cta?.words || allScenarios[selectionSources.cta]?.cta,
     ];
     return parts.filter(Boolean).join('\n\n');
   };
@@ -765,11 +758,10 @@ export default function ScriptLabPage() {
       {/* The Matrix Carousel */}
       <ContentMatrix 
         blocks={[
-          { id: 'hook', label: t('tagHook') },
-          { id: 'problem', label: t('tagProblem') },
-          { id: 'good_news', label: t('tagGoodNews') },
-          { id: 'solution', label: t('tagSolution') },
-          { id: 'cta', label: t('tagCTA') }
+          { id: 'hook', label: locale === 'ru' ? 'ХУК' : 'HOOK' },
+          { id: 'context', label: locale === 'ru' ? 'КОНТЕКСТ' : 'CONTEXT' },
+          { id: 'meat', label: locale === 'ru' ? 'МЯСО' : 'MEAT' },
+          { id: 'cta', label: locale === 'ru' ? 'CTA' : 'CTA' }
         ]}
         scenarios={['evergreen', 'trend', 'educational', 'controversial', 'storytelling']}
         selectionSources={selectionSources}
@@ -783,9 +775,8 @@ export default function ScriptLabPage() {
         onAccept={async () => {
           const synthesizedScript = {
             hook: allScenarios[selectionSources.hook]?.hook || scriptData.hook,
-            problem: allScenarios[selectionSources.problem]?.problem || scriptData.problem,
-            good_news: allScenarios[selectionSources.good_news]?.good_news || scriptData.good_news,
-            solution: allScenarios[selectionSources.solution]?.solution || scriptData.solution,
+            context: allScenarios[selectionSources.context]?.context || scriptData.context,
+            meat: allScenarios[selectionSources.meat]?.meat || scriptData.meat,
             cta: allScenarios[selectionSources.cta]?.cta || scriptData.cta,
             visual_hook: allScenarios[selectionSources.hook]?.visual_hook || scriptData.visual_hook,
             social_post: allScenarios[selectionSources.hook]?.social_post || scriptData.social_post,
