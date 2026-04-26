@@ -84,7 +84,6 @@ export default function StudioPage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({ title: '', desc: '', type: 'info' as any });
 
-  const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
 
   // Initial Load
   useEffect(() => {

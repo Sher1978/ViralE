@@ -159,8 +159,6 @@ export const StoryboardGrid: React.FC<StoryboardGridProps> = ({
               </div>
             </motion.div>
           ))}
-            </motion.div>
-          ))}
         </div>
       </div>
     </div>
