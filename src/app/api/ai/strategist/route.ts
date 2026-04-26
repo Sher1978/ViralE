@@ -1,10 +1,11 @@
 import { model } from '@/lib/ai/gemini';
+import { SchemaType } from '@google/generative-ai';
 import { strategistService } from '@/lib/services/strategistService';
 import { supabase } from '@/lib/supabase';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
-export const runtime = 'nodejs'; // Changed from edge to nodejs because we need headers/cookies access for auth
+export const runtime = 'nodejs';
 
 export async function POST(req: Request) {
   try {
@@ -28,7 +29,7 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: 'Messages array is required' }), { status: 400 });
     }
 
-    // 1. Authenticate user using our robust helper
+    // 1. Authenticate user
     let user;
     try {
       user = await getAuthenticatedUser();
@@ -39,7 +40,6 @@ export async function POST(req: Request) {
     // 2. Check access
     let access = await strategistService.getAccessStatus(user.id);
     
-    // 3. Auto-activate trial if first time
     if (access.status === 'no_access') {
       const activated = await strategistService.activateTrial(user.id);
       if (!activated) {
@@ -48,18 +48,16 @@ export async function POST(req: Request) {
       access = await strategistService.getAccessStatus(user.id);
     }
 
-    // 4. Final check
     if (!access.hasAccess) {
       return new Response(JSON.stringify({ 
         error: 'TRIAL_EXPIRED', 
-        message: 'Your 24h trial has ended. Subscribe for $19/mo to continue.' 
+        message: 'Your 24h trial has ended.' 
       }), { status: 403 });
     }
 
-    // 5. Build prompt
+    // 3. Build prompt
     const systemPrompt = await strategistService.getStrategistSystemPrompt(user.id, locale);
     
-    // Add project context if available
     let projectContext = "";
     if (projectId) {
       const { data: project } = await supabase
@@ -72,15 +70,12 @@ export async function POST(req: Request) {
       }
     }
 
-    // Format history for Gemini
     const chatHistory = messages.slice(0, -1).map((m: any) => ({
       role: m.role === 'assistant' ? 'model' : 'user',
       parts: [{ text: m.content }]
     }));
 
     const currentMessage = messages[messages.length - 1].content;
-    
-    // 6. Build multimodal parts for current message
     const currentParts: any[] = [{ text: currentMessage }];
     
     if (audioFile) {
@@ -94,7 +89,7 @@ export async function POST(req: Request) {
       });
     }
 
-    // 7. Stream with Gemini (including Tool Use for DNA Updates)
+    // 4. Stream with Gemini (including Tool Use for DNA Updates)
     const chat = model.startChat({
       history: chatHistory,
       systemInstruction: systemPrompt + "\n" + projectContext,
@@ -103,10 +98,10 @@ export async function POST(req: Request) {
           name: "update_brand_dna",
           description: "Updates the user's permanent Brand DNA/Digital Shadow with new information synthesized from the conversation.",
           parameters: {
-            type: "object",
+            type: SchemaType.OBJECT,
             properties: {
               new_info: {
-                type: "string",
+                type: SchemaType.STRING,
                 description: "The new facts, style preferences, or audience insights to add to the DNA."
               }
             },
