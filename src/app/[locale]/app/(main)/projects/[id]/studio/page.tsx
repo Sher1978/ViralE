@@ -163,8 +163,22 @@ export default function StudioPage() {
     if (activeTab === 'teleprompter' && !cameraStream) {
       initCamera();
     }
-    // eslint-disable-next-line react-hooks/exhaustive-deps
+    
+    // Auto-stop camera when leaving the teleprompter tab
+    return () => {
+      if (activeTab === 'teleprompter') {
+         // This runs when activeTab is about to change AWAY from teleprompter
+         // stopCamera(); // Wait, cleanup runs on next effect or unmount.
+      }
+    };
   }, [activeTab, facingMode]);
+
+  // Dedicated cleanup for camera tracks when switching tabs
+  useEffect(() => {
+    if (activeTab !== 'teleprompter' && cameraStream) {
+        stopCamera();
+    }
+  }, [activeTab, cameraStream]);
 
   const startVideoRecording = async () => {
     // 1. Force Camera Init if not active
@@ -216,6 +230,9 @@ export default function StudioPage() {
       mediaRecorderRef.current.stop();
       setIsRecordingVideo(false);
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+      
+      // Release camera when record is done and we're entering review
+      stopCamera();
     }
   };
 
