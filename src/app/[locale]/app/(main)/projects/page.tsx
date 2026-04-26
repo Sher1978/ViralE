@@ -73,22 +73,21 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <div className="relative h-[100dvh] w-full overflow-hidden bg-[#0A0A10] flex flex-col touch-none">
+    <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-[#0A0A10] flex flex-col touch-none select-none">
       {/* Fixed Header */}
-      <header className="px-6 pb-2 flex items-center justify-between shrink-0 z-[60]">
-        <div className="flex flex-col pt-10 pl-6">
+      <header className="px-6 h-[12dvh] flex items-center justify-between shrink-0 z-50">
+        <div className="flex flex-col pt-4">
           <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
             VIRAL<span className="text-purple-500">E</span>
           </h1>
-          <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20 mt-1.5 leading-none">
+          <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20 mt-1 leading-none">
             AI CONTENT PRODUCTION FACTORY
           </p>
         </div>
 
-        {/* Visible Bookmark Trigger */}
         <div 
           onClick={() => setShowProjectsOverlay(true)}
-          className="w-14 h-14 relative cursor-pointer group mt-4"
+          className="w-12 h-12 relative cursor-pointer group"
         >
            <div className="absolute top-0 right-0 w-full h-full overflow-hidden">
               <div className="absolute top-0 right-0 w-[140%] h-[40%] bg-amber-500 border-b border-amber-400 origin-top-right rotate-45 translate-x-1/2 -translate-y-1/2 group-hover:bg-amber-400 transition-all flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.4)]">
@@ -98,27 +97,26 @@ export default function ProjectsPage() {
         </div>
       </header>
 
-      {/* Comic Blocks - Dynamic Stretch to fill viewport */}
-      <div className="flex-1 flex flex-col w-full min-h-0 relative z-10 pt-2 pb-20">
+      {/* Grid Blocks - Forced fit to remaining viewport */}
+      <div className="flex-1 grid grid-rows-3 w-full h-full relative z-10 overflow-hidden pb-[8dvh]">
         {hubs.map((hub, index) => (
           <motion.div
             key={hub.id}
-            initial={{ opacity: 0, scale: 0.98 }}
+            initial={{ opacity: 0, scale: 1.02 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.1 }}
             onClick={() => router.push(hub.href)}
-            className={`flex-1 relative cursor-pointer group overflow-hidden w-full transition-all duration-500 ${
+            className={`relative cursor-pointer group overflow-hidden w-full h-full transition-all duration-500 ${
               index === 0 ? 'z-30' : index === 1 ? 'z-20' : 'z-10'
             }`}
             style={{
-              marginTop: index > 0 ? '-5dvh' : '0',
-              paddingTop: index > 0 ? '5dvh' : '0',
-              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 90%, 0 100%)' :
-                        index === 1 ? 'polygon(0 10%, 100% 0, 100% 90%, 0 100%)' :
-                        'polygon(0 10%, 100% 0, 100% 100%, 0 100%)'
+              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 92%, 0 100%)' :
+                        index === 1 ? 'polygon(0 8%, 100% 0, 100% 92%, 0 100%)' :
+                        'polygon(0 8%, 100% 0, 100% 100%, 0 100%)',
+              marginTop: index === 0 ? '0' : '-4dvh'
             }}
           >
-            <div className="relative w-full h-full overflow-hidden active:scale-[0.99] transition-transform">
+            <div className="relative w-full h-[104%] -mt-[2%] overflow-hidden active:scale-[0.99] transition-transform">
               <div className="absolute inset-0 z-0">
                 <img 
                   src={hub.image} 
@@ -131,13 +129,13 @@ export default function ProjectsPage() {
                 } to-transparent`} />
               </div>
 
-              <span className="absolute bottom-4 right-6 text-[100px] lg:text-[140px] font-black text-white/[0.05] italic leading-none z-1 tracking-tighter transition-all group-hover:text-white/[0.12] select-none">
+              <span className="absolute bottom-6 right-8 text-[120px] font-black text-white/[0.03] italic leading-none z-1 tracking-tighter transition-all group-hover:text-white/[0.1] select-none">
                 {index + 1}
               </span>
 
-              <div className="relative z-10 h-full flex flex-col justify-center px-10">
-                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40 block mb-2">STEP {index + 1}</span>
-                <h2 className="text-4xl lg:text-5xl font-black uppercase text-white tracking-tighter italic leading-[0.9] mb-3 group-hover:translate-x-2 transition-all">
+              <div className="relative z-10 h-full flex flex-col justify-center px-12">
+                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40 block mb-1">STEP {index + 1}</span>
+                <h2 className="text-4xl lg:text-5xl font-black uppercase text-white tracking-tighter italic leading-[0.85] mb-2 group-hover:translate-x-2 transition-all">
                     {hub.title}
                 </h2>
                 <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/20 max-w-[240px] leading-relaxed">
@@ -146,7 +144,7 @@ export default function ProjectsPage() {
               </div>
 
               {/* Scanline Effect */}
-              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,.25)_50%),linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,111,.06))] bg-[length:100%_4px,3px_100%] opacity-15" />
+              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,.25)_50%),linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,111,.06))] bg-[length:100%_4px,3px_100%] opacity-10" />
             </div>
           </motion.div>
         ))}
