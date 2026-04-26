@@ -367,11 +367,17 @@ export default function StudioPage() {
                    onOpacityChange={(op) => setScriptOpacity(op)}
                    isRecordingVideo={isRecordingVideo}
                    onFinish={() => {
-                      if (lastRecordingUrl) {
-                         const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
-                         if (manifest) manifest.videoUrl = lastRecordingUrl;
-                         updateSegmentField(segmentId, 'assetUrl', lastRecordingUrl);
-                         updateSegmentField(segmentId, 'type', 'user_recording');
+                      if (lastRecordingUrl && manifest) {
+                         const segmentId = selectedSegmentId || manifest.segments[0]?.id || uuidv4();
+                         
+                         // Immutable update of manifest
+                         setManifest({
+                            ...manifest,
+                            videoUrl: lastRecordingUrl,
+                            segments: manifest.segments.map(s => 
+                               s.id === segmentId ? { ...s, assetUrl: lastRecordingUrl, type: 'user_recording' } : s
+                            )
+                         });
                       }
                       setShowRecordingReview(false);
                       setActiveTab('assembly');

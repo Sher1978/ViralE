@@ -255,32 +255,35 @@ export const VideoEditor = React.memo(({
     let words: TranscriptWord[] = [];
 
     // ALWAYS favor real AI transcription to get accurate word timings
-    // We try to transcribe if we have a raw file OR a remote URL (recorded video)
-    if (rawFile || aRollUrl) {
+    if (aRollUrl || rawFile) {
       setStageMessage('AI Analyzing Voice Hub...');
       try {
         const formData = new FormData();
         if (rawFile) {
           formData.append('file', rawFile);
-        } else if (aRollUrl) {
-          // If it's a blob/url from teleprompter, we fetch it first
+        } else if (aRollUrl && aRollUrl.startsWith('blob:')) {
           const blob = await fetch(aRollUrl).then(r => r.blob());
           formData.append('file', new File([blob], 'recording.webm', { type: 'video/webm' }));
+        } else if (aRollUrl) {
+          // It's a remote URL, pass it as a parameter or download it
+          const res = await fetch(aRollUrl);
+          const blob = await res.blob();
+          formData.append('file', new File([blob], 'remote_video.mp4', { type: 'video/mp4' }));
         }
 
         const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('Transcription API failed');
         const data = await res.json();
         
         if (data.transcript && data.transcript.length > 0) {
           words = data.transcript;
         } else {
-          console.warn('AI returned empty transcript, using script fallback');
           words = buildTranscript(manifest, dur);
         }
       } catch (err) {
         console.error('Transcription failed:', err);
         setStageMessage('Syncing with Script...');
-        await delay(800);
+        await delay(500);
         words = buildTranscript(manifest, dur);
       }
     } else {
@@ -468,6 +471,15 @@ export const VideoEditor = React.memo(({
   const phaseIndex = stage === 'empty' ? 0 : stage === 'transcribing' ? 1 : stage === 'editing' ? 1 : 2;
 
   // ── RENDER ───────────────────────────────────────────────────────────────
+  if (!manifest) {
+    return (
+      <div className="flex-1 bg-black flex flex-col items-center justify-center gap-6">
+        <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Initialising Production Canvas...</p>
+      </div>
+    );
+  }
+
   return (
     <div className="flex flex-col bg-[#050508] text-white select-none" style={{ height: '100%', maxHeight: '100dvh', position: 'relative' }}>
 
