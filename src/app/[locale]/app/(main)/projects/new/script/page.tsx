@@ -213,14 +213,14 @@ export default function ScriptLabPage() {
   };
 
   const getFinalText = () => {
-    if (!allScenarios) return Object.values(scriptData).filter(v => v).map(v => typeof v === 'string' ? v : v.words).join('\n\n');
+    if (!allScenarios) return Object.values(scriptData).filter(v => v).map((v: any) => typeof v === 'string' ? v : v.words).join('\n\n');
     const parts = [
       allScenarios[selectionSources.hook]?.hook?.words || allScenarios[selectionSources.hook]?.hook,
       allScenarios[selectionSources.context]?.context?.words || allScenarios[selectionSources.context]?.context,
       allScenarios[selectionSources.meat]?.meat?.words || allScenarios[selectionSources.meat]?.meat,
       allScenarios[selectionSources.cta]?.cta?.words || allScenarios[selectionSources.cta]?.cta,
     ];
-    return parts.filter(Boolean).join('\n\n');
+    return parts.filter(Boolean).map(v => typeof v === 'string' ? v : (v as any)?.words || '').join('\n\n');
   };
 
   const handleCopyToClipboard = () => {
