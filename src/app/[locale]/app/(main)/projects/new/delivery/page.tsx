@@ -7,6 +7,7 @@ import Link from 'next/link';
 import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { renderService, RenderJob } from '@/lib/services/renderService';
+import { socialService } from '@/lib/services/socialService';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 
 export default function DeliveryPage() {
@@ -101,12 +102,32 @@ export default function DeliveryPage() {
       text: scriptData ? `${scriptData.hook.substring(0, 100)}... #ViralEngine` : '',
     },
     {
+      platform: 'Instagram',
+      icon: '📸',
+      accent: '#E4405F',
+      text: scriptData ? `${scriptData.hook}\n\n${scriptData.story}\n\n#ViralEngine #Reels` : '',
+    },
+    {
+      platform: 'TikTok',
+      icon: '🎵',
+      accent: '#00F2EA',
+      text: scriptData ? `${scriptData.hook}\n\n#ViralEngine #Trends` : '',
+    },
+    {
       platform: 'LinkedIn',
       icon: '💼',
       accent: '#0077B5',
       text: scriptData ? `New insights on production:\n\n${scriptData.story}` : '',
     },
   ];
+
+  const getProviderKey = (platform: string): 'instagram' | 'tiktok' | 'youtube' | null => {
+    const p = platform.toLowerCase();
+    if (p.includes('instagram')) return 'instagram';
+    if (p.includes('tiktok')) return 'tiktok';
+    if (p.includes('youtube')) return 'youtube';
+    return null;
+  };
 
   return (
     <div className="space-y-5 animate-fade-in pb-10">
@@ -226,28 +247,49 @@ export default function DeliveryPage() {
                 border: '1px solid rgba(255,255,255,0.07)',
               }}
             >
-              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{output.icon}</span>
                   <span
                     className="text-[11px] font-black uppercase tracking-widest"
                     style={{ color: output.accent }}
                   >
-                    {output.platform === 'Twitter / X' ? t('platformX') : output.platform === 'Telegram' ? t('platformTg') : t('platformLn')}
+                    {output.platform}
                   </span>
                 </div>
-                <button
-                  className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
-                  style={{
-                    background: `${output.accent}15`,
-                    border: `1px solid ${output.accent}25`,
-                    color: output.accent,
-                  }}
-                  onClick={() => handleCopy(output.text)}
-                >
-                  <Copy className="w-3 h-3" />
-                  {t('copyBtn')}
-                </button>
+                <div className="flex gap-2">
+                  <button
+                    className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
+                    style={{
+                      background: `${output.accent}15`,
+                      border: `1px solid ${output.accent}25`,
+                      color: output.accent,
+                    }}
+                    onClick={() => handleCopy(output.text)}
+                  >
+                    <Copy className="w-3 h-3" />
+                    {t('copyBtn')}
+                  </button>
+                  
+                  {/* Automated Posting Button */}
+                  <button
+                    className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-80 active:scale-95"
+                    style={{
+                      background: output.accent,
+                      color: '#000',
+                    }}
+                    onClick={() => {
+                        const provider = getProviderKey(output.platform);
+                        if (provider) {
+                            window.location.href = socialService.getAuthUrl(provider);
+                        } else {
+                            handleCopy(output.text);
+                        }
+                    }}
+                  >
+                    <Share2 className="w-3 h-3" />
+                    Connect & Post
+                  </button>
+                </div>
               </div>
               <p className="text-[12px] text-white/60 leading-relaxed font-medium">
                 {output.text}

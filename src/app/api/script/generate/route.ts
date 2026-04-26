@@ -54,10 +54,10 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    // 2. Get Digital Shadow and Keys
+    // 2. Get Digital Shadow and Brand DNA
     const { data: profile, error: profileError } = await authorizedSupabase
       .from('profiles')
-      .select('digital_shadow_prompt, anthropic_api_key, groq_api_key, credits_balance, tier')
+      .select('digital_shadow_prompt, knowledge_base_json, industry_context, anthropic_api_key, groq_api_key, credits_balance, tier')
       .eq('id', userId)
       .single();
 
@@ -135,10 +135,14 @@ export async function POST(req: Request) {
       throw e;
     }
 
+    const brandDna = {
+      knowledgeBase: profile?.knowledge_base_json,
+      industry: profile?.industry_context
+    };
+
     // 4. Generate or Refine Script
     let scriptJson;
     try {
-      // Simple bypass for tests if needed, but we used factory now
       if (mode === 'refine') {
         console.log(`[ScriptGen] Refining script [Engine: ${engine}] with instruction: ${instruction}`);
         scriptJson = await factory.refineScript(currentScript, instruction, digitalShadow, {
@@ -146,7 +150,8 @@ export async function POST(req: Request) {
           locale,
           anthropicApiKey,
           groqApiKey,
-          geminiApiKey
+          geminiApiKey,
+          brandDna
         });
       } else {
         console.log(`[ScriptGen] Generating initial script [Engine: ${engine}] for idea: ${coreIdea}`);
@@ -155,7 +160,8 @@ export async function POST(req: Request) {
           locale,
           anthropicApiKey,
           groqApiKey,
-          geminiApiKey
+          geminiApiKey,
+          brandDna
         });
       }
     } catch (error: any) {

@@ -13,36 +13,45 @@ export const model = genAI.getGenerativeModel({
 });
 
 /**
- * Orchestrates the "Digital Shadow" prompt construction with locale support
+ * Orchestrates the "Digital Shadow" prompt construction with Brand DNA and Content Lego support
  */
-export function getSystemPrompt(digitalShadow: string, locale: string = 'en') {
+export function getSystemPrompt(digitalShadow: string, locale: string = 'en', brandDna?: any) {
   const languageName = locale === 'ru' ? 'Russian' : 'English';
   
   const persona = digitalShadow && digitalShadow.trim() !== "" 
     ? digitalShadow 
     : (locale === 'ru' 
-        ? "Вы — опытный контент-стратег и экспертный автор. Ваш стиль: глубокий разбор темы, ироничный взгляд на индустрию, акцент на системность и результат. Вы говорите коротко, емко и по делу."
-        : "You are a seasoned content strategist and expert author. Your style is a deep dive into the topic, an ironic look at the industry, with an focus on systems and results. You speak concisely, powerfully, and to the point.");
+        ? "Вы — опытный контент-стратег и экспертный автор. Ваш стиль: глубокий разбор темы, ироничный взгляд на индустрию."
+        : "You are a seasoned content strategist and expert author.");
+
+  const knowledgeBase = brandDna?.knowledgeBase ? JSON.stringify(brandDna.knowledgeBase, null, 2) : "None provided.";
+  const industry = brandDna?.industry || "General Content Creation";
 
   return `
-    You are the "Viral Engine" Strategist. Your goal is to generate high-retention video scripts 
-    that stay true to the user's digital persona (The Digital Shadow).
+    You are the "Viral Engine" Strategist. You operate at the intersection of two dynamic databases:
+    1. BRAND DNA: Defines "WHO is speaking" and "TO WHOM". (Extracted from User Profile)
+    2. CONTENT LEGO: Defines "HOW virality is technically built today" using modular building blocks.
     
-    CRITICAL: Detect the language of the user's input/idea. 
-    All generated text content (hooks, body, calls-to-action) MUST BE IN THE SAME LANGUAGE AS THE INPUT.
+    SYSTEM CONTEXT:
+    - Industry: ${industry}
+    - Brand/User DNA: ${persona}
+    - Deep Knowledge Base: ${knowledgeBase}
     
-    CONTENT CONSTRAINT: The TOTAL duration of a script (sum of all 5 blocks: hook, problem, news, solution, cta) MUST NOT EXCEED 50 SECONDS of reading time. This means roughly 130-150 words in total across all 5 blocks. Each block must be punchy and direct.
+    METHODOLOGY (CONTENT LEGO):
+    - Each video is a combination of independent building blocks.
+    - Focus on "Show what is being said" (Action-Semantic Continuity).
+    - Every B-Roll prompt must extract the KEY ACTION or KEY SUBJECT from the spoken text.
+    - Format B-Roll prompts: "[subject] [doing the exact action from the text], [camera style], [mood]".
     
-    USER'S DIGITAL SHADOW: 
-    ${persona}
-    
-    INSTRUCTIONS:
-    1. Output MUST be valid JSON.
-    2. Tone: Ironic, Expert, Fast-paced (iOS 26 Style).
+    CRITICAL CONSTRAINTS:
+    - The TOTAL duration of a script (5 acts) MUST NOT EXCEED 50 SECONDS of reading time (approx 130-150 words).
+    - Detect and use the INPUT LANGUAGE for all generation.
+    - Output MUST be valid JSON.
+    - Tone: Ironic, Expert, Fast-paced (iOS 26 Style).
   `;
 }
 
-export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string) {
+export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string, brandDna?: any) {
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
     ? client.getGenerativeModel({ 
@@ -51,7 +60,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
       }) 
     : model;
 
-  const systemPrompt = getSystemPrompt(digitalShadow, locale);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
@@ -71,16 +80,13 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     - solution: The core value, answer, or lesson
     - cta: Punchy, high-conversion call to action
     - visual_hook: A highly detailed, cinematic prompt for an AI image generator (like Midjourney) to create a viral COVER for this video. Use professional photography terms.
+    - broll_prompt: A direct action-semantic description for a 5-second B-roll. SHOW THE KEY ACTION.
     - social_post: A short, engaging social media description/caption with 3 relevant emojis and 3 tags.
     
-    REMEMBER: Detect the input language and generate content in THAT language. 
     Output ONLY valid JSON in format: 
     {
-      "evergreen": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "trend": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "educational": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "controversial": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "storytelling": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
+      "evergreen": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "broll_prompt": "...", "social_post": "..." },
+      ... (other 4 scenarios)
     }
   `;
 
@@ -88,7 +94,6 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
   const response = await result.response;
   const text = response.text().trim();
   
-  // Clean potential markdown code blocks
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
   return JSON.parse(jsonStr);
 }
@@ -182,7 +187,8 @@ export async function refineScript(
   instruction: string, 
   digitalShadow: string, 
   locale: string = 'en',
-  apiKey?: string
+  apiKey?: string,
+  brandDna?: any
 ) {
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
@@ -192,8 +198,7 @@ export async function refineScript(
       }) 
     : model;
 
-  const systemPrompt = getSystemPrompt(digitalShadow, locale);
-  const languageName = locale === 'ru' ? 'Russian' : 'English';
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
 
   const userPrompt = `
     EXISTING SCRIPT:
@@ -202,19 +207,8 @@ export async function refineScript(
     INSTRUCTION: "${instruction}"
     
     TASK: Refine the script based on the instruction. 
-    You can update any of these parts:
-    - hook
-    - problem
-    - good_news
-    - solution
-    - cta
-    - visual_hook
-    - social_post
-    
-    CRITICAL: 
-    - Maintain the user's digital shadow and style.
-    - Output in the same language as the instruction and existing script. 
-    - Output ONLY valid JSON in the same structure as the existing script.
+    Maintain Content Lego methodology and Brand DNA style.
+    Output ONLY valid JSON in the same structure.
   `;
 
   const result = await targetModel.generateContent([systemPrompt, userPrompt]);

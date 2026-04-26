@@ -17,6 +17,14 @@ export interface Profile {
   anthropic_api_key?: string | null;
   elevenlabs_api_key?: string | null;
   groq_api_key?: string | null;
+  
+  // Social Media Integrations
+  instagram_linked?: boolean;
+  instagram_token?: string | null;
+  tiktok_linked?: boolean;
+  tiktok_token?: string | null;
+  youtube_linked?: boolean;
+  youtube_token?: string | null;
 }
 
 export const profileService = {

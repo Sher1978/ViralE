@@ -10,6 +10,10 @@ export interface GenerationOptions {
   anthropicApiKey?: string;
   geminiApiKey?: string;
   groqApiKey?: string;
+  brandDna?: {
+    knowledgeBase?: any;
+    industry?: string;
+  };
 }
 
 export async function generateScript(
@@ -17,17 +21,17 @@ export async function generateScript(
   digitalShadow: string, 
   options: GenerationOptions = {}
 ) {
-  const { engine = 'gemini', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey } = options;
+  const { engine = 'gemini', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna } = options;
 
   switch (engine) {
     case 'claude':
     case 'claude-byok':
-      return anthropic.generateScript(coreIdea, digitalShadow, locale, anthropicApiKey);
+      return anthropic.generateScript(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna);
     case 'groq':
-      return groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey);
+      return groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna);
     case 'gemini':
     default:
-      return gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey);
+      return gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna);
   }
 }
 
@@ -37,16 +41,16 @@ export async function refineScript(
   digitalShadow: string,
   options: GenerationOptions = {}
 ) {
-  const { engine = 'gemini', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey } = options;
+  const { engine = 'gemini', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna } = options;
 
   switch (engine) {
     case 'claude':
     case 'claude-byok':
-      return anthropic.refineScript(currentScript, instruction, digitalShadow, locale, anthropicApiKey);
+      return anthropic.refineScript(currentScript, instruction, digitalShadow, locale, anthropicApiKey, brandDna);
     case 'groq':
-      return groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey);
+      return groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna);
     case 'gemini':
     default:
-      return gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey);
+      return gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna);
   }
 }
