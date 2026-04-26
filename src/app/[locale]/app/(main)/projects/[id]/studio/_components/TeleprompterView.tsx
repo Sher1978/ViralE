@@ -148,21 +148,27 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
       </AnimatePresence>
       
       {/* 🔮 Top HUD - Optimized with TO MONTAGE */}
-      <div className="absolute top-10 left-0 right-0 px-10 flex items-center justify-between z-40">
+      <div className="absolute top-8 left-0 right-0 px-6 flex items-center justify-between z-40">
         <button 
           onClick={onBack}
-          className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all active:scale-95"
+          className="w-12 h-12 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all active:scale-95"
         >
-          <X size={28} />
+          <X size={24} />
         </button>
         
-        <div className="flex items-center gap-4">
+        <div className="flex items-center gap-3">
+          <button 
+            onClick={handleStartEdit}
+            className="w-12 h-12 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all active:scale-95"
+          >
+            <Edit3 size={20} />
+          </button>
           <button 
             onClick={onFinish}
-            className="px-8 py-4 rounded-2xl bg-purple-600 text-white font-black uppercase tracking-widest text-[11px] shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-purple-500/30 flex items-center gap-3 hover:bg-purple-500 transition-all active:scale-95 leading-none"
+            className="px-6 h-12 rounded-2xl bg-purple-600 text-white font-black uppercase tracking-widest text-[10px] shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-purple-500/30 flex items-center gap-2 hover:bg-purple-500 transition-all active:scale-95 leading-none"
           >
             {locale === 'ru' ? 'В МОНТАЖ' : 'TO MONTAGE'}
-            <ArrowLeft className="w-4 h-4 rotate-180" />
+            <ArrowLeft className="w-3 h-3 rotate-180" />
           </button>
         </div>
       </div>
@@ -184,14 +190,46 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
         </div>
       </div>
 
+      {/* 🛠️ Side Control Bar - Restored and Optimized */}
+      <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-4 z-40">
+        <button 
+          onClick={rotateTextSize}
+          className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
+        >
+          <Type size={20} />
+          <span className="text-[7px] font-black uppercase mt-0.5">{textSize}</span>
+        </button>
+        <button 
+          onClick={rotateOpacity}
+          className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
+        >
+          <Palette size={20} />
+          <span className="text-[7px] font-black uppercase mt-0.5">{Math.round(scriptOpacity * 100)}%</span>
+        </button>
+        <button 
+          onClick={onFlipCamera}
+          className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
+        >
+          <RotateCw size={20} />
+          <span className="text-[7px] font-black uppercase mt-0.5">Flip</span>
+        </button>
+      </div>
+
       {/* Recording Button - Center Bottom Fixed */}
-      <div className="absolute bottom-16 left-0 right-0 flex justify-center z-50">
+      <div className="absolute bottom-12 left-0 right-0 flex justify-center z-50">
         <motion.button 
           whileTap={{ scale: 0.9 }}
           onClick={onToggleRecording}
-          className="w-24 h-24 rounded-full border-4 border-white flex items-center justify-center relative bg-black/40 backdrop-blur-md"
+          className="w-24 h-24 rounded-full border-4 border-white flex items-center justify-center relative bg-black/20 backdrop-blur-md shadow-2xl"
         >
-          <div className={`rounded-full transition-all duration-300 ${isRecordingVideo ? 'w-10 h-10 bg-red-600 rounded-md animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.8)]' : 'w-18 h-18 bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.5)]'}`} />
+          <div className={`rounded-full transition-all duration-300 ${isRecordingVideo ? 'w-10 h-10 bg-red-600 rounded-lg animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.8)]' : 'w-18 h-18 bg-red-600 shadow-[0_0_30px_rgba(239,68,68,0.5)]'}`} />
+          
+          {isRecordingVideo && (
+            <div className="absolute -top-12 px-4 py-1.5 rounded-full bg-red-600 border border-red-400 text-white text-[9px] font-black tracking-widest uppercase flex items-center gap-2">
+               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+               Recording
+            </div>
+          )}
         </motion.button>
       </div>
 

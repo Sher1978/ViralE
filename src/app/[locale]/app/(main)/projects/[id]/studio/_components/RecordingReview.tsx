@@ -100,7 +100,9 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
 
                  <button 
                     onClick={() => {
-                       const segmentId = selectedSegmentId || manifest?.segments[0].id || '';
+                       const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
+                       // Update root videoUrl for VideoEditor A-Roll Foundation
+                       manifest.videoUrl = lastRecordingUrl;
                        updateSegmentField(segmentId, 'assetUrl', lastRecordingUrl);
                        updateSegmentField(segmentId, 'type', 'user_recording');
                        setShowRecordingReview(false);

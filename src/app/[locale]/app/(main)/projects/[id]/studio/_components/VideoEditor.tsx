@@ -120,6 +120,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(60);
   const [videoSource, setVideoSource] = useState<'teleprompter' | 'upload' | null>(null);
+  const [rawFile, setRawFile] = useState<File | null>(null);
 
   // Transcript & Subtitles
   const [transcript, setTranscript] = useState<TranscriptWord[]>([]);
@@ -140,6 +141,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
   // Inspector
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
+  const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 120 }); // Global sub position on video canvas
 
   // Drag
   const dragRef = useRef<{
@@ -250,7 +252,34 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
     await delay(500);
 
     const dur = videoRef.current?.duration || duration;
-    const words = buildTranscript(manifest, dur);
+    let words: TranscriptWord[] = [];
+
+    // Prioritize manifest (Teleprompter script)
+    if (manifest?.segments?.some((s: any) => s.scriptText)) {
+      words = buildTranscript(manifest, dur);
+    } 
+    // Fallback to real AI transcription for manual uploads
+    else if (rawFile) {
+      setStageMessage('AI Analyzing Voice...');
+      try {
+        const formData = new FormData();
+        formData.append('file', rawFile);
+        const res = await fetch('/api/[locale]/api/ai/transcribe', { method: 'POST', body: formData });
+        const data = await res.json();
+        if (data.transcript) {
+          words = data.transcript;
+        } else {
+          throw new Error('Transcription failed');
+        }
+      } catch (err) {
+        console.error(err);
+        setStageMessage('AI analysis failed. Using fallback...');
+        await delay(1000);
+        words = buildTranscript(null, dur);
+      }
+    } else {
+      words = buildTranscript(null, dur);
+    }
 
     if (words.length === 0) {
       setStage('editing');
@@ -378,6 +407,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
   const handleVideoUpload = async (file: File) => {
     const localUrl = URL.createObjectURL(file);
     setARollUrl(localUrl);
+    setRawFile(file);
     setVideoSource('upload');
     setIsPlaying(false);
     setCurrentTime(0);
@@ -557,6 +587,42 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
             </div>
           </button>
         )}
+
+        {/* Subtitle Overlay */}
+        <AnimatePresence>
+          {aRollUrl && stage !== 'transcribing' && subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime) && (
+            <motion.div
+              drag
+              dragMomentum={false}
+              onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
+              initial={{ opacity: 0, scale: 0.9, y: subtitlePos.y, x: subtitlePos.x }}
+              animate={{ opacity: 1, scale: 1, y: subtitlePos.y, x: subtitlePos.x }}
+              exit={{ opacity: 0, scale: 0.9 }}
+              key={subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime)?.id}
+              className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-6"
+            >
+              {(() => {
+                const s = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime)!;
+                if (s.style === 'minimal') return (
+                  <span className="text-white text-lg font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-tight">
+                    {s.text}
+                  </span>
+                );
+                if (s.style === 'pop') return (
+                  <span className="bg-purple-600 text-white px-3 py-1 rounded-lg text-xl font-black italic uppercase tracking-tighter shadow-[0_0_20px_rgba(168,85,247,0.5)]">
+                    {s.text}
+                  </span>
+                );
+                if (s.style === 'bold') return (
+                  <span className="text-amber-400 text-3xl font-black uppercase tracking-tighter italic drop-shadow-[0_4px_0_rgba(0,0,0,1)] [-webkit-text-stroke:1px_black]">
+                    {s.text}
+                  </span>
+                );
+                return <span>{s.text}</span>;
+              })()}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* Processing Overlay */}
         <AnimatePresence>
