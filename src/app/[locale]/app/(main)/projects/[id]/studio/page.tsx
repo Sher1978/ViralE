@@ -249,14 +249,16 @@ export default function StudioPage() {
     alert('Sending to Telegram...');
   };
 
-  // Manifest Handlers
-  const updateSegmentField = (id: string, field: string, value: any) => {
-     if (!manifest) return;
-     setManifest({
-       ...manifest,
-       segments: manifest.segments.map(s => s.id === id ? { ...s, [field]: value } : s)
+  // Manifest Handlers - Memoized to prevent cascade re-renders
+  const updateSegmentField = React.useCallback((id: string, field: string, value: any) => {
+     setManifest(prev => {
+       if (!prev) return prev;
+       return {
+         ...prev,
+         segments: prev.segments.map(s => s.id === id ? { ...s, [field]: value } : s)
+       };
      });
-  };
+  }, []);
 
   const addSegment = (type: any = 'broll') => {
     if (!manifest) return;
@@ -360,13 +362,14 @@ export default function StudioPage() {
                    onOpacityChange={(op) => setScriptOpacity(op)}
                    isRecordingVideo={isRecordingVideo}
                    onFinish={() => {
-                     if (lastRecordingUrl) {
-                        const segmentId = selectedSegmentId || manifest?.segments[0].id || '';
-                        updateSegmentField(segmentId, 'assetUrl', lastRecordingUrl);
-                        updateSegmentField(segmentId, 'type', 'user_recording');
-                     }
-                     setShowRecordingReview(false);
-                     setActiveTab('assembly');
+                      if (lastRecordingUrl) {
+                         const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
+                         if (manifest) manifest.videoUrl = lastRecordingUrl;
+                         updateSegmentField(segmentId, 'assetUrl', lastRecordingUrl);
+                         updateSegmentField(segmentId, 'type', 'user_recording');
+                      }
+                      setShowRecordingReview(false);
+                      setActiveTab('assembly');
                    }}
                    onScriptUpdate={async (newText) => {
                      if (!manifest) return;
@@ -378,6 +381,8 @@ export default function StudioPage() {
                      setManifest(updatedManifest);
                      await projectService.updateLatestVersionManifest(projectId, updatedManifest);
                    }}
+                   scrollSpeed={scrollSpeed}
+                   onSpeedChange={(s) => setScrollSpeed(s)}
                    t={t}
                 />
                 

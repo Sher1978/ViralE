@@ -102,7 +102,7 @@ function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export const VideoEditor: React.FC<VideoEditorProps> = ({
+export const VideoEditor = React.memo(({
   manifest, onBack, onNext, updateSegmentField, projectId
 }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -960,26 +960,26 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
 
     </div>
   );
-};
+});
 
 // ── Track Row ─────────────────────────────────────────────────────────────
 
-const TrackRow: React.FC<{ label: string; color: string; children?: React.ReactNode; onClick?: () => void }> = ({ label, color, children, onClick }) => (
+const TrackRow = React.memo(({ label, color, children, onClick }: { label: string; color: string; children?: React.ReactNode; onClick?: () => void }) => (
   <div className="flex border-b border-white/[0.04]" style={{ height: 48 }} onClick={onClick}>
     <div className="w-14 flex-shrink-0 flex items-center justify-center border-r border-white/5 bg-black/40">
       <span className={`text-[11px] font-black uppercase ${color}`}>{label}</span>
     </div>
     <div className="flex-1 relative">{children}</div>
   </div>
-);
+));
 
 // ── B-Roll Timeline Clip ──────────────────────────────────────────────────
 
-const BRollTimelineClip: React.FC<{
+const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart }: {
   clip: BRollClip; duration: number; isSelected: boolean;
   onSelect: () => void;
   onDragStart: (e: React.MouseEvent | React.TouchEvent, h: 'move' | 'start' | 'end') => void;
-}> = ({ clip, duration, isSelected, onSelect, onDragStart }) => {
+}) => {
   const left = `${(clip.startTime / duration) * 100}%`;
   const width = `${((clip.endTime - clip.startTime) / duration) * 100}%`;
   return (
@@ -1002,15 +1002,15 @@ const BRollTimelineClip: React.FC<{
       </div>
     </div>
   );
-};
+});
 
 // ── Subtitle Clip ─────────────────────────────────────────────────────────
 
-const SubtitleTimelineClip: React.FC<{
+const SubtitleTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart }: {
   clip: SubtitleClip; duration: number; isSelected: boolean;
   onSelect: () => void;
   onDragStart: (e: React.MouseEvent | React.TouchEvent, h: 'move' | 'start' | 'end') => void;
-}> = ({ clip, duration, isSelected, onSelect, onDragStart }) => {
+}) => {
   const left = `${(clip.startTime / duration) * 100}%`;
   const width = `${((clip.endTime - clip.startTime) / duration) * 100}%`;
   return (
@@ -1033,7 +1033,7 @@ const SubtitleTimelineClip: React.FC<{
       </div>
     </div>
   );
-};
+});
 
 // ── Helpers ───────────────────────────────────────────────────────────────
 
