@@ -61,6 +61,17 @@ export default function ProfilePage() {
       title: t('sectionSettings'),
       items: [
         { icon: Bell, label: t('notifLabel'), sub: t('notifSub'), href: `/${locale}/app/profile/notifications`, accent: '#9B5FFF' },
+        { 
+          icon: Languages, 
+          label: locale === 'ru' ? 'Язык Интерфейса' : 'Interface Language', 
+          sub: locale === 'ru' ? 'Текущий: Русский' : 'Current: English', 
+          onClick: () => {
+            const nextLocale = locale === 'ru' ? 'en' : 'ru';
+            const newPath = window.location.pathname.replace(`/${locale}`, `/${nextLocale}`);
+            window.location.href = newPath;
+          }, 
+          accent: '#00FFCC' 
+        },
         { icon: Moon, label: t('themeLabel'), sub: theme === 'dark' ? 'Dark Mode (Deep Space)' : 'Light Mode (Industrial Gray)', onClick: toggleTheme, accent: '#4D9EFF' },
       ],
     },
