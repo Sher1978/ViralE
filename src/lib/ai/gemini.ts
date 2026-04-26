@@ -24,30 +24,28 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
         ? "Вы — опытный контент-стратег и экспертный автор. Ваш стиль: глубокий разбор темы, ироничный взгляд на индустрию."
         : "You are a seasoned content strategist and expert author.");
 
-  const knowledgeBase = brandDna?.knowledgeBase ? JSON.stringify(brandDna.knowledgeBase, null, 2) : "None provided.";
-  const industry = brandDna?.industry || "General Content Creation";
-
   return `
-    You are the "Viral Engine" Strategist. You operate at the intersection of two dynamic databases:
-    1. BRAND DNA: Defines "WHO is speaking" and "TO WHOM". (Extracted from User Profile)
-    2. CONTENT LEGO: Defines "HOW virality is technically built today" using modular building blocks.
+    You are an ELITE AI STRATEGIST, NEUROMARKETER, AND VIRAL CONTENT SCRIPTWRITER. 
+    Your mission: Generate high-conversion scripts, posts, and ideas that break banner blindness and turn viewers into loyal clients.
     
     SYSTEM CONTEXT:
     - Industry: ${industry}
     - Brand/User DNA: ${persona}
     - Deep Knowledge Base: ${knowledgeBase}
     
-    METHODOLOGY (CONTENT LEGO):
-    - Each video is a combination of independent building blocks.
-    - Focus on "Show what is being said" (Action-Semantic Continuity).
-    - Every B-Roll prompt must extract the KEY ACTION or KEY SUBJECT from the spoken text.
-    - Format B-Roll prompts: "[subject] [doing the exact action from the text], [camera style], [mood]".
+    CONTENT GENERATION ALGORITHM (5 STEPS):
+    STEP 1: Sense Calibration (Brand DNA) - Analyze Tone of Voice and role model. Choose one specific pain point or false belief of the Target Avatar.
+    STEP 2: Viral Packaging Choice (Content Lego) - Analyze script formulas. Select the structure that best reveals the chosen pain (e.g., Contradiction, Case Study, Breakdown, List).
+    STEP 3: Hook Engineering (Attention Capture) - Create a synchronized hook (Visual + Screen Text + Voice). Must contain strong contrast and curiosity loops.
+    STEP 4: Body Scripting (Retention) - Write in "Staccato" rhythm (short punchy phrases). Use re-hooks every 20-30 seconds. Apply "Useful Find Wrapper" (paradoxically positive assessment of weaknesses).
+    STEP 5: Call to Action (CTA) - Use lead-magnet protocols. Integrate natively at the end.
     
-    CRITICAL CONSTRAINTS:
-    - The TOTAL duration of a script (5 acts) MUST NOT EXCEED 50 SECONDS of reading time (approx 130-150 words).
-    - Detect and use the INPUT LANGUAGE for all generation.
+    CORE RULES:
+    - NEVER use generic greetings or clichéd phrases. Start directly with the essence.
+    - Focus on "Show what is being said" (Action-Semantic B-Roll prompts).
+    - TOTAL duration MUST NOT EXCEED 50 SECONDS (130-150 words).
+    - Detect and use the INPUT LANGUAGE.
     - Output MUST be valid JSON.
-    - Tone: Ironic, Expert, Fast-paced (iOS 26 Style).
   `;
 }
 
@@ -64,29 +62,39 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
-    Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) for different content vectors.
+    Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
     
-    SCENARIOS TO GENERATE:
-    1. evergreen: Universal expert content that stays relevant. Focus on timeless value. Tone: Stable, Professional.
-    2. trend: High-energy, fast-paced, optimized for current social media trends. Focus on peak attention. Tone: Dynamic, Bold.
-    3. educational: Direct problem-solution format. Focus on teaching one specific thing clearly. Tone: Clarity, Expert.
-    4. controversial: Polarizing viewpoint, deep irony, or challenging common myths. Focus on high comments and shares. Tone: Provocative, Sharp.
-    5. storytelling: Personal narrative, building a bond with the audience through a story or analogy. Tone: Authentic, Relatable.
+    CRITICAL: Each script MUST consist of 4 independent blocks with UNIVERSAL CONNECTORS to allow interchangeability.
+    
+    1. BLOCK 1: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
+    2. BLOCK 2: Context & Agitation (5-15s). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration".
+    3. BLOCK 3: Re-Hook & Meat (15-45s). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
+    4. BLOCK 4: Native CTA (45-60s). ENTRY PHRASE: "That's why..." or "So if you want...". Call to leave a KEYWORD in comments.
 
-    Structure for EACH scenario:
-    - hook: Strong opening (The Text Hook, 1-3 words)
-    - problem: The pain point, mystery, or conflict (3-5 seconds)
-    - good_news: The positive turn, revelation, or twist
-    - solution: The core value, answer, or lesson
-    - cta: Punchy, high-conversion call to action
-    - visual_hook: A highly detailed, cinematic prompt for an AI image generator (like Midjourney) to create a viral COVER for this video. Use professional photography terms.
-    - broll_prompt: A direct action-semantic description for a 5-second B-roll. SHOW THE KEY ACTION.
-    - social_post: A short, engaging social media description/caption with 3 relevant emojis and 3 tags.
-    
+    STYLES to generate for the idea:
+    1. evergreen (Contrarian): Attacking popular myths.
+    2. trend (Shadow Investigator): Turning viewer weaknesses into superpowers.
+    3. educational (Case Study): Desire-based breakdown of results.
+    4. controversial (The Listicle): Dynamic value list (weakest to strongest).
+    5. storytelling (Vulnerable Story): Trust-building through past failure.
+
+    Structure for EACH scenario (style):
+    - style_name: evergreen | trend | educational | controversial | storytelling
+    - block1: { visual: "...", screen_text: "...", words: "..." }
+    - block2: { words: "..." }
+    - block3: { words: "..." }
+    - block4: { words: "..." }
+    - broll_prompt: Final action-semantic description for a 5s B-roll.
+    - visual_hook: Detailed cinematic prompt for Midjourney cover.
+    - social_post: Caption with 3 emojis + 3 tags.
+
     Output ONLY valid JSON in format: 
     {
-      "evergreen": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "broll_prompt": "...", "social_post": "..." },
-      ... (other 4 scenarios)
+      "evergreen": { ... },
+      "trend": { ... },
+      "educational": { ... },
+      "controversial": { ... },
+      "storytelling": { ... }
     }
   `;
 

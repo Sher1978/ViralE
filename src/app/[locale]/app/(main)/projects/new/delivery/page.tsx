@@ -247,6 +247,7 @@ export default function DeliveryPage() {
                 border: '1px solid rgba(255,255,255,0.07)',
               }}
             >
+              <div className="flex items-center justify-between">
                 <div className="flex items-center gap-3">
                   <span className="text-xl">{output.icon}</span>
                   <span
