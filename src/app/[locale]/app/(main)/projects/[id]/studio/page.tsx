@@ -378,11 +378,8 @@ export default function StudioPage() {
             <SourcePicker 
               onSelect={(type) => {
                 if (type === 'record') setActiveTab('teleprompter');
-                else if (type === 'ai') {
-                  // Logic for AI generation choice
-                  setActiveTab('theory' as any || 'assembly');
-                } else if (type === 'upload') {
-                  // Trigger upload modal/flow
+                else {
+                  // Both AI and Upload lead to Assembly in the Waterfall flow
                   setActiveTab('assembly');
                 }
               }}
