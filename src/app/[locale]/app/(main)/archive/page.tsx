@@ -62,6 +62,7 @@ export default function LibraryPage() {
     setLoading(true);
     try {
       const profile = await profileService.getOrCreateProfile();
+      if (!profile) return;
       const projects = await projectService.listProjects(profile.id);
       const mockPacks = buildMockPacks(projects);
       setPacks(mockPacks);
