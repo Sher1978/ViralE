@@ -29,6 +29,7 @@ interface TeleprompterViewProps {
   onTextSizeChange?: (size: 'sm' | 'md' | 'lg') => void;
   onOpacityChange?: (opacity: number) => void;
   isRecordingVideo?: boolean;
+  onFinish?: () => void;
   t: (key: string, data?: any) => string;
 }
 
@@ -53,6 +54,7 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
   onTextSizeChange,
   onOpacityChange,
   isRecordingVideo,
+  onFinish,
   t,
 }) => {
   const router = useRouter();
@@ -149,7 +151,7 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
         
         <div className="flex items-center gap-4">
           <button 
-            onClick={() => router.push(`/app/projects/${(window.location.pathname.split('/')[4])}/studio?tab=editor`)}
+            onClick={onFinish}
             className="px-8 py-4 rounded-2xl bg-purple-600 text-white font-black uppercase tracking-widest text-[11px] shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-purple-500/30 flex items-center gap-3 hover:bg-purple-500 transition-all active:scale-95 leading-none"
           >
             {locale === 'ru' ? 'В МОНТАЖ' : 'TO MONTAGE'}

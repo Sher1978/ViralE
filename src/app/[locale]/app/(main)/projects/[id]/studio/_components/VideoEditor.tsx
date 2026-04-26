@@ -49,10 +49,13 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
   const [duration, setDuration] = useState(30);
 
   // A-Roll source
-  const [aRollUrl, setARollUrl] = useState<string | null>(() =>
-    manifest?.segments.find(s => s.type === 'user_recording' && s.assetUrl)?.assetUrl
-    || manifest?.segments[0]?.assetUrl || null
-  );
+  const [aRollUrl, setARollUrl] = useState<string | null>(null);
+
+  useEffect(() => {
+    const recording = manifest?.segments.find(s => s.type === 'user_recording' && s.assetUrl);
+    const url = recording?.assetUrl || manifest?.segments[0]?.assetUrl || null;
+    if (url) setARollUrl(url);
+  }, [manifest]);
 
   // Ingestion state
   const [isIngesting, setIsIngesting] = useState(false);

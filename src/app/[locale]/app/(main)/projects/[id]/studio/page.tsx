@@ -342,6 +342,15 @@ export default function StudioPage() {
                    onTextSizeChange={(size) => setTextSize(size)}
                    onOpacityChange={(op) => setScriptOpacity(op)}
                    isRecordingVideo={isRecordingVideo}
+                   onFinish={() => {
+                     if (lastRecordingUrl) {
+                        const segmentId = selectedSegmentId || manifest?.segments[0].id || '';
+                        updateSegmentField(segmentId, 'assetUrl', lastRecordingUrl);
+                        updateSegmentField(segmentId, 'type', 'user_recording');
+                     }
+                     setShowRecordingReview(false);
+                     setActiveTab('assembly');
+                   }}
                    onScriptUpdate={async (newText) => {
                      if (!manifest) return;
                      const segments = newText.split('\n\n').map((text, i) => ({
