@@ -24,6 +24,13 @@ export interface SceneSegment {
   brollSuggestions?: string[]; // Array of URLs from Giphy/Mixkit
   currentBrollIndex?: number;
   captionStyle?: string; // e.g. 'minimal', 'pop', 'bold'
+  wordTimings?: WordToken[]; // Karaoke word-level timestamps
+}
+
+export interface WordToken {
+  word: string;
+  start: number; // seconds
+  end: number;   // seconds
 }
 
 export interface ProductionManifest {
