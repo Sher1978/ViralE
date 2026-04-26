@@ -26,7 +26,7 @@ export const SourcePicker: React.FC<SourcePickerProps> = ({ onSelect, onBack }) 
           {/* AI Faceless Option */}
           <motion.button 
             whileHover={{ scale: 1.02, y: -5 }}
-            whileActive={{ scale: 0.98 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onSelect('ai')}
             className="group relative h-[400px] rounded-[3rem] bg-white/[0.03] border border-white/5 hover:border-purple-500/50 hover:bg-white/[0.06] transition-all overflow-hidden flex flex-col items-center justify-center p-8 text-center"
           >
@@ -44,7 +44,7 @@ export const SourcePicker: React.FC<SourcePickerProps> = ({ onSelect, onBack }) 
           {/* Upload Option */}
           <motion.button 
             whileHover={{ scale: 1.02, y: -5 }}
-            whileActive={{ scale: 0.98 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onSelect('upload')}
             className="group relative h-[400px] rounded-[3rem] bg-white/[0.03] border border-white/5 hover:border-cyan-500/50 hover:bg-white/[0.06] transition-all overflow-hidden flex flex-col items-center justify-center p-8 text-center"
           >
@@ -62,7 +62,7 @@ export const SourcePicker: React.FC<SourcePickerProps> = ({ onSelect, onBack }) 
           {/* Record Option */}
           <motion.button 
             whileHover={{ scale: 1.02, y: -5 }}
-            whileActive={{ scale: 0.98 }}
+            whileTap={{ scale: 0.98 }}
             onClick={() => onSelect('record')}
             className="group relative h-[400px] rounded-[3rem] bg-white/[0.03] border border-white/5 hover:border-emerald-500/50 hover:bg-white/[0.06] transition-all overflow-hidden flex flex-col items-center justify-center p-8 text-center"
           >
