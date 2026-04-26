@@ -107,19 +107,29 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
   const isComplete = completedCount >= 7;
 
   const handleSave = async () => {
+    if (saving) return;
     setSaving(true);
+    console.log('Saving DNA answers...', answers);
     try {
       const res = await fetch('/api/profile/dna/answers', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ answers, locale }),
       });
-      if (res.ok) {
+      
+      const result = await res.json();
+      console.log('Save result:', result);
+
+      if (res.ok || result.success) {
+        console.log('DNA saved successfully, closing...');
         onComplete(answers);
         setIsOpen(false);
+      } else {
+        alert(locale === 'ru' ? `Ошибка: ${result.error || 'Неизвестная ошибка'}` : `Error: ${result.error || 'Unknown error'}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Failed to save DNA answers:', err);
+      alert(locale === 'ru' ? `Ошибка сети: ${err.message}` : `Network error: ${err.message}`);
     } finally {
       setSaving(false);
     }
