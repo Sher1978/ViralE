@@ -190,7 +190,7 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
            initial={{ opacity: 0 }}
            animate={{ opacity: 1 }}
            exit={{ opacity: 0 }}
-           className="fixed inset-0 z-[1000] bg-black/95 backdrop-blur-2xl flex flex-col"
+           className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-2xl flex flex-col"
         >
            {/* Header */}
            <div className="px-8 pt-10 pb-6 flex items-center justify-between">
@@ -256,11 +256,11 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
            </div>
 
            {/* Footer Controls */}
-           <div className="p-8 border-t border-white/5 bg-black/40 flex items-center justify-between gap-6">
+           <div className="p-8 pb-16 border-t border-white/5 bg-black/80 flex items-center justify-between gap-6 z-[10010] relative">
               <button
                  disabled={activeIndex === 0}
                  onClick={() => setActiveQuestion(questions[activeIndex - 1].id)}
-                 className="px-8 py-5 rounded-[1.5rem] border border-white/10 text-white/50 font-black uppercase text-[10px] tracking-widest disabled:opacity-20 hover:bg-white/5 transition-all"
+                 className="px-6 py-4 rounded-[1.25rem] border border-white/10 text-white/50 font-black uppercase text-[10px] tracking-widest disabled:opacity-20 hover:bg-white/5 transition-all"
               >
                  {locale === 'ru' ? 'Назад' : 'Back'}
               </button>
@@ -269,16 +269,16 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
                  <button
                     disabled={!answers[activeQuestion] || answers[activeQuestion].length < 2}
                     onClick={() => setActiveQuestion(questions[activeIndex + 1].id)}
-                    className="flex-1 py-5 rounded-[1.5rem] bg-white text-black font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-3"
+                    className="flex-1 py-4 rounded-[1.25rem] bg-white text-black font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-3"
                  >
-                    {locale === 'ru' ? 'Следующий вопрос' : 'Next Question'}
+                    {locale === 'ru' ? 'След. вопрос' : 'Next Question'}
                     <ChevronRight className="w-4 h-4" />
                  </button>
               ) : (
                  <button
                     disabled={saving || !isComplete}
                     onClick={handleSave}
-                    className="flex-1 py-5 rounded-[1.5rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-3"
+                    className="flex-1 py-4 rounded-[1.25rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-3"
                  >
                     {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
                     {locale === 'ru' ? 'Активировать Матрицу' : 'Activate Matrix'}
