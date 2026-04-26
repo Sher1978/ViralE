@@ -6,7 +6,7 @@ import {
   Play, Pause, Volume2, VolumeX, Type, Film,
   SkipBack, Trash2, ArrowRight, ArrowLeft, X,
   Upload, Sparkles, Loader2, RefreshCw, Check, ChevronRight,
-  Mic, FileText, Wand2, Eye, RotateCw
+  Mic, FileText, Wand2, Eye, RotateCw, Cpu
 } from 'lucide-react';
 import { ProductionManifest } from '@/lib/types/studio';
 import BRollModal from '@/components/studio/BRollPickerModal';
@@ -60,11 +60,19 @@ interface VideoEditorProps {
 
 function buildTranscript(manifest: ProductionManifest | null, videoDuration: number): TranscriptWord[] {
   const segments = manifest?.segments?.filter((s: any) => s.scriptText) || [];
-  if (segments.length === 0) return [];
-
   const dur = videoDuration > 0 ? videoDuration : 60;
-  const timePerSeg = dur / segments.length;
 
+  if (segments.length === 0) {
+    // FALLBACK: Simulate AI recognition if no manifest provided (uploaded video)
+    return [
+      { text: "Welcome to Viral Engine production.", start: 0, end: dur * 0.2 },
+      { text: "This is a demonstration of AI audio analysis.", start: dur * 0.2, end: dur * 0.5 },
+      { text: "You can edit these subtitles or swap B-Roll moments.", start: dur * 0.5, end: dur * 0.8 },
+      { text: "Start creating your masterpiece now!", start: dur * 0.8, end: dur },
+    ];
+  }
+
+  const timePerSeg = dur / segments.length;
   return segments.map((s: any, i: number) => ({
     text: s.scriptText,
     start: i * timePerSeg,
@@ -244,6 +252,12 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
     const dur = videoRef.current?.duration || duration;
     const words = buildTranscript(manifest, dur);
 
+    if (words.length === 0) {
+      setStage('editing');
+      setStageMessage('');
+      return;
+    }
+
     const subs: SubtitleClip[] = words.map((w, i) => ({
       id: `sub_${i}_${Date.now()}`,
       text: w.text,
@@ -373,16 +387,8 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
     setStage('transcribing');
     setStageMessage('Detecting audio...');
     await delay(600);
-    // For user-uploaded video: use AI transcription (mock)
-    if (manifest?.segments?.some((s: any) => s.scriptText)) {
-      await runTranscription();
-    } else {
-      // No script: show manual transcription prompt
-      setStageMessage('No script found. Using AI audio analysis...');
-      await delay(800);
-      setStage('editing');
-      setStageMessage('');
-    }
+    // Always run transcription (if manifest exists it uses it, else uses fallback AI mock)
+    await runTranscription();
   };
 
   // ── Helpers ─────────────────────────────────────────────────────────────
@@ -433,8 +439,76 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
       <input ref={fileInputRef} type="file" accept="video/*" className="hidden"
         onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoUpload(f); e.target.value = ''; }} />
 
-      {/* ── NAV BAR ── */}
+      {/* ── FOUNDATION SELECTION (Empty State) ── */}
+      <AnimatePresence>
+        {!aRollUrl && (
+          <motion.div 
+            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+            className="absolute inset-0 z-50 bg-[#050508] flex flex-col px-6 pt-12 pb-10"
+          >
+            {/* Header */}
+            <div className="text-center mb-10">
+              <h1 className="text-[28px] font-black italic tracking-tighter uppercase leading-none mb-3">
+                A-ROLL <span className="text-purple-400">FOUNDATION</span>
+              </h1>
+              <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.25em] leading-relaxed max-w-[220px] mx-auto">
+                Select the primary visual anchor for your production
+              </p>
+            </div>
+
+            {/* Options */}
+            <div className="flex-1 flex flex-col gap-5">
+              {/* AI Faceless */}
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => alert('AI Faceless coming soon in next update')}
+                className="flex-1 relative rounded-[2.5rem] bg-white/[0.03] border border-white/5 overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-purple-500/[0.02] group-hover:bg-purple-500/[0.05] transition-colors" />
+                <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
+                  <div className="w-20 h-20 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
+                    <Cpu size={32} className="text-purple-400" />
+                  </div>
+                  <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2">AI Faceless</h3>
+                  <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[200px]">
+                    Generate cinematic AI avatars or abstract visuals using your expert DNA
+                  </p>
+                </div>
+              </motion.button>
+
+              {/* Upload Media */}
+              <motion.button
+                whileTap={{ scale: 0.98 }}
+                onClick={() => fileInputRef.current?.click()}
+                className="flex-1 relative rounded-[2.5rem] bg-white/[0.03] border border-white/5 overflow-hidden group"
+              >
+                <div className="absolute inset-0 bg-cyan-500/[0.02] group-hover:bg-cyan-500/[0.05] transition-colors" />
+                <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
+                  <div className="w-20 h-20 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(6,182,212,0.15)]">
+                    <Upload size={32} className="text-cyan-400" />
+                  </div>
+                  <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2">Upload Media</h3>
+                  <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[200px]">
+                    Import high-quality raw footage recorded on external devices
+                  </p>
+                </div>
+              </motion.button>
+            </div>
+
+            {/* Back button */}
+            <button 
+              onClick={onBack}
+              className="mt-8 py-4 rounded-2xl bg-white/5 text-white/30 text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
+            >
+              Cancel Production
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* ── NAV BAR (Only if video loaded) ── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 z-20 flex-shrink-0 bg-[#050508]">
+
         <button onClick={onBack}
           className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
           <ArrowLeft size={12} /> Back
@@ -509,9 +583,9 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
         {/* Play/pause + timecode */}
         {aRollUrl && stage !== 'transcribing' && (
           <button onClick={togglePlay}
-            className="absolute bottom-3 left-1/2 -translate-x-1/2 flex items-center gap-2 px-4 py-2 rounded-xl bg-black/70 backdrop-blur-sm border border-white/10">
-            {isPlaying ? <Pause size={12} fill="white" /> : <Play size={12} fill="white" className="ml-0.5" />}
-            <span className="text-[9px] font-black text-white/80 tabular-nums">{fmt(currentTime)} / {fmt(duration)}</span>
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 shadow-2xl">
+            {isPlaying ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" className="ml-0.5" />}
+            <span className="text-[11px] font-black text-white tabular-nums">{fmt(currentTime)} / {fmt(duration)}</span>
           </button>
         )}
 
@@ -528,32 +602,32 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
       <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0a0a12] border-y border-white/5 flex-shrink-0">
         {/* Transport */}
         <button onClick={() => { setCurrentTime(0); if (videoRef.current) videoRef.current.currentTime = 0; }}
-          className="p-2 rounded-xl bg-white/5 active:scale-95">
-          <SkipBack size={13} className="text-white/40" />
+          className="p-2.5 rounded-xl bg-white/5 active:scale-95">
+          <SkipBack size={15} className="text-white/50" />
         </button>
         <button onClick={togglePlay}
-          className="w-9 h-9 rounded-2xl bg-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20 active:scale-95">
-          {isPlaying ? <Pause size={15} fill="white" /> : <Play size={15} fill="white" className="ml-0.5" />}
+          className="w-10 h-10 rounded-2xl bg-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20 active:scale-95">
+          {isPlaying ? <Pause size={17} fill="white" /> : <Play size={17} fill="white" className="ml-0.5" />}
         </button>
-        <button onClick={() => setIsMuted(m => !m)} className="p-2 rounded-xl bg-white/5 active:scale-95">
-          {isMuted ? <VolumeX size={13} className="text-white/30" /> : <Volume2 size={13} className="text-white/40" />}
+        <button onClick={() => setIsMuted(m => !m)} className="p-2.5 rounded-xl bg-white/5 active:scale-95">
+          {isMuted ? <VolumeX size={15} className="text-white/40" /> : <Volume2 size={15} className="text-white/50" />}
         </button>
-        <span className="text-[10px] font-black text-purple-400 tabular-nums">{fmt(currentTime)}<span className="text-white/20">/{fmt(duration)}</span></span>
+        <span className="text-[12px] font-black text-purple-400 tabular-nums tracking-tight">{fmt(currentTime)}<span className="text-white/20">/{fmt(duration)}</span></span>
 
         <div className="flex-1" />
 
         {/* Stage Actions */}
         {(stage === 'editing' || stage === 'empty') && subtitleClips.length === 0 && aRollUrl && (
           <button onClick={runTranscription}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[9px] font-black uppercase active:scale-95 transition-all">
-            <Mic size={11} /> Transcribe
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[11px] font-black uppercase active:scale-95 transition-all">
+            <Mic size={14} /> Transcribe
           </button>
         )}
 
         {stage === 'editing' && subtitleClips.length > 0 && (
           <button onClick={runPhraseSelection}
-            className="flex items-center gap-1.5 px-3 py-2 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 text-[9px] font-black uppercase active:scale-95 transition-all">
-            <Sparkles size={11} /> AI B-Roll
+            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 text-[11px] font-black uppercase active:scale-95 transition-all">
+            <Sparkles size={14} /> B-Roll
           </button>
         )}
       </div>
@@ -573,7 +647,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
                   <div key={i} className="absolute top-0 flex flex-col items-start"
                     style={{ left: `${(i / duration) * 100}%` }}>
                     <div className={`w-px ${i % 5 === 0 ? 'h-3 bg-white/20' : 'h-1.5 bg-white/8'}`} />
-                    {i % 5 === 0 && <span className="text-[6px] text-white/20 font-black ml-0.5">{fmt(i)}</span>}
+                    {i % 5 === 0 && <span className="text-[9px] text-white/20 font-black ml-0.5">{fmt(i)}</span>}
                   </div>
                 )
               ))}
@@ -594,7 +668,7 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
                       <div key={i} className="w-0.5 bg-emerald-400 rounded-full" style={{ height: `${30 + Math.sin(i * 0.7) * 50}%` }} />
                     ))}
                   </div>
-                  <span className="text-[8px] font-black text-emerald-400 truncate">🎥 A-Roll</span>
+                  <span className="text-[11px] font-black text-emerald-400 truncate">🎥 A-Roll</span>
                 </div>
               ) : (
                 <div className="absolute inset-y-1 left-0 right-0 rounded-lg border border-dashed border-white/8 flex items-center justify-center cursor-pointer hover:border-purple-500/30 transition-all">
@@ -759,13 +833,13 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
               whileTap={{ scale: 0.97 }}
               onClick={() => { cancelAutoConfirm(); generateBRoll(); }}
               disabled={approvedCount === 0}
-              className={`w-full mt-3 py-3 rounded-2xl font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 transition-all ${
+              className={`w-full mt-3 py-4 rounded-2xl font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 transition-all ${
                 approvedCount > 0
-                  ? 'bg-purple-500 text-white shadow-[0_0_20px_rgba(168,85,247,0.3)]'
+                  ? 'bg-purple-500 text-white shadow-[0_0_25px_rgba(168,85,247,0.4)]'
                   : 'bg-white/5 text-white/20 cursor-not-allowed'
               }`}
             >
-              <Sparkles size={12} /> Generate Now ({approvedCount})
+              <Sparkles size={14} /> Generate Now ({approvedCount})
             </motion.button>
           </motion.div>
         )}
@@ -790,13 +864,13 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
               </button>
             </div>
 
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2">
+            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
               {allTranscript.map((word, i) => (
                 <button key={i} onClick={() => swapPhrase(word)}
-                  className="w-full text-left p-3 rounded-2xl bg-white/[0.03] border border-white/5 hover:bg-purple-500/10 hover:border-purple-500/20 active:scale-98 transition-all group">
-                  <div className="flex items-start gap-3">
-                    <span className="text-[8px] font-black text-white/20 tabular-nums pt-0.5 flex-shrink-0">{fmt(word.start)}</span>
-                    <span className="text-[11px] text-white/70 leading-snug group-hover:text-white transition-colors">{word.text}</span>
+                  className="w-full text-left p-4 rounded-2xl bg-white/[0.04] border border-white/8 hover:bg-purple-500/10 hover:border-purple-500/20 active:scale-98 transition-all group">
+                  <div className="flex items-start gap-4">
+                    <span className="text-[10px] font-black text-white/30 tabular-nums pt-0.5 flex-shrink-0">{fmt(word.start)}</span>
+                    <span className="text-[13px] text-white/80 leading-snug group-hover:text-white transition-colors">{word.text}</span>
                   </div>
                 </button>
               ))}
@@ -825,9 +899,9 @@ export const VideoEditor: React.FC<VideoEditorProps> = ({
 // ── Track Row ─────────────────────────────────────────────────────────────
 
 const TrackRow: React.FC<{ label: string; color: string; children?: React.ReactNode; onClick?: () => void }> = ({ label, color, children, onClick }) => (
-  <div className="flex border-b border-white/[0.03]" style={{ height: 38 }} onClick={onClick}>
-    <div className="w-14 flex-shrink-0 flex items-center justify-center border-r border-white/[0.03] bg-black/40">
-      <span className={`text-[8px] font-black uppercase ${color}`}>{label}</span>
+  <div className="flex border-b border-white/[0.04]" style={{ height: 48 }} onClick={onClick}>
+    <div className="w-14 flex-shrink-0 flex items-center justify-center border-r border-white/5 bg-black/40">
+      <span className={`text-[11px] font-black uppercase ${color}`}>{label}</span>
     </div>
     <div className="flex-1 relative">{children}</div>
   </div>
@@ -844,21 +918,21 @@ const BRollTimelineClip: React.FC<{
   const width = `${((clip.endTime - clip.startTime) / duration) * 100}%`;
   return (
     <div
-      className={`absolute inset-y-1 rounded-lg border bg-blue-500/20 border-blue-400/40 text-blue-300 ${isSelected ? 'ring-1 ring-white/30' : ''} flex items-center cursor-pointer touch-none`}
-      style={{ left, width, minWidth: 24 }}
+      className={`absolute inset-y-1.5 rounded-lg border bg-blue-500/20 border-blue-400/40 text-blue-300 ${isSelected ? 'ring-2 ring-white/40' : ''} flex items-center cursor-pointer touch-none`}
+      style={{ left, width, minWidth: 28 }}
       onClick={onSelect}
       onMouseDown={e => onDragStart(e, 'move')}
       onTouchStart={e => onDragStart(e, 'move')}>
-      <div className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize flex items-center justify-center"
+      <div className="absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center"
         onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'start'); }}
         onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'start'); }}>
-        <div className="w-0.5 h-3 bg-white/30 rounded-full" />
+        <div className="w-0.5 h-4 bg-white/40 rounded-full" />
       </div>
-      <span className="flex-1 text-[7px] font-black truncate px-3 select-none">{clip.label}</span>
-      <div className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize flex items-center justify-center"
+      <span className="flex-1 text-[9px] font-black truncate px-3 select-none">{clip.label}</span>
+      <div className="absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center"
         onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'end'); }}
         onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'end'); }}>
-        <div className="w-0.5 h-3 bg-white/30 rounded-full" />
+        <div className="w-0.5 h-4 bg-white/40 rounded-full" />
       </div>
     </div>
   );
