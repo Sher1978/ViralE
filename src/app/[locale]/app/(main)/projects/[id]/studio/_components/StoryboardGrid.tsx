@@ -3,7 +3,7 @@
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
-  Scissors, Plus, ChevronRight, Monitor, 
+  Scissors, Plus, ChevronRight, Monitor, Video,
   RefreshCw, Trash2 
 } from 'lucide-react';
 import { ProductionManifest } from '@/lib/types/studio';
@@ -117,18 +117,45 @@ export const StoryboardGrid: React.FC<StoryboardGridProps> = ({
                 </div>
               </div>
 
-              {/* Minimal Script Editor */}
-              <div className="p-6 bg-black/20 backdrop-blur-md flex flex-col gap-3 relative z-10">
-                <div className="flex justify-between items-center mb-1">
-                  <div className="h-px bg-white/10 flex-1 mr-4" />
-                  <span className="text-[8px] font-black text-purple-400/60 tracking-widest uppercase">Transcript</span>
+              {/* Minimal Script & Styling Editor */}
+              <div className="p-6 bg-black/40 backdrop-blur-xl border-t border-white/5 flex flex-col gap-4 relative z-10">
+                <div className="flex items-center justify-between">
+                   <div className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-pulse" />
+                      <span className="text-[9px] font-black text-white/40 tracking-[0.2em] uppercase">Narrative Layer</span>
+                   </div>
+                   {/* Subtitle Style Picker */}
+                   <div className="flex gap-1.5 p-1 bg-white/5 rounded-xl border border-white/5">
+                      {['minimal', 'pop', 'bold'].map(style => (
+                        <button 
+                          key={style}
+                          onClick={(e) => { e.stopPropagation(); updateSegmentField(s.id, 'captionStyle', style); }}
+                          className={`px-3 py-1.5 rounded-lg text-[7px] font-black uppercase tracking-widest transition-all ${s.captionStyle === style ? 'bg-purple-500 text-white shadow-lg' : 'text-white/20 hover:text-white/40'}`}
+                        >
+                          {style}
+                        </button>
+                      ))}
+                   </div>
                 </div>
+                
                 <textarea 
                   value={s.scriptText}
                   onChange={(e) => updateSegmentField(s.id, 'scriptText', e.target.value)}
-                  className="w-full bg-transparent border-none p-0 text-xs leading-relaxed italic text-white/50 focus:text-white/90 focus:ring-0 resize-none h-16 transition-colors scrollbar-none"
-                  placeholder="Silence in this scene..."
+                  className="w-full bg-transparent border-none p-0 text-[13px] font-medium leading-relaxed italic text-white/70 focus:text-white focus:ring-0 resize-none h-20 transition-colors scrollbar-none"
+                  placeholder="Tell your story here..."
                 />
+
+                {/* Layer Indicators (CapCut Style) */}
+                <div className="flex items-center gap-3 pt-2">
+                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${s.assetUrl ? 'bg-emerald-500/10 border-emerald-500/20 text-emerald-400' : 'bg-white/5 border-white/10 text-white/20'}`}>
+                      <Video size={10} />
+                      <span className="text-[7px] font-black uppercase">A-Roll</span>
+                   </div>
+                   <div className={`flex items-center gap-2 px-3 py-1.5 rounded-full border ${s.overlayBroll ? 'bg-blue-500/10 border-blue-500/20 text-blue-400' : 'bg-white/5 border-white/10 text-white/20'}`}>
+                      <Monitor size={10} />
+                      <span className="text-[7px] font-black uppercase">B-Roll</span>
+                   </div>
+                </div>
               </div>
             </motion.div>
           ))}
