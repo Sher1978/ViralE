@@ -94,20 +94,79 @@ export async function POST(req: Request) {
       });
     }
 
-    // 7. Stream with Gemini
+    // 7. Stream with Gemini (including Tool Use for DNA Updates)
     const chat = model.startChat({
       history: chatHistory,
       systemInstruction: systemPrompt + "\n" + projectContext,
+      tools: [{
+        functionDeclarations: [{
+          name: "update_brand_dna",
+          description: "Updates the user's permanent Brand DNA/Digital Shadow with new information synthesized from the conversation.",
+          parameters: {
+            type: "object",
+            properties: {
+              new_info: {
+                type: "string",
+                description: "The new facts, style preferences, or audience insights to add to the DNA."
+              }
+            },
+            required: ["new_info"]
+          }
+        }]
+      }],
+      toolConfig: {
+        functionCallingConfig: {
+          mode: "AUTO"
+        }
+      }
     });
 
     const result = await chat.sendMessageStream(currentParts);
     
-    // Create a streaming response
+    // Create a streaming response that also handles function calls
     const stream = new ReadableStream({
       async start(controller) {
+        let fullContent = "";
         for await (const chunk of result.stream) {
+          // Handle text chunks
           const chunkText = chunk.text();
-          controller.enqueue(new TextEncoder().encode(chunkText));
+          if (chunkText) {
+            controller.enqueue(new TextEncoder().encode(chunkText));
+            fullContent += chunkText;
+          }
+
+          // Handle function calls (DNA Updates)
+          const calls = chunk.functionCalls();
+          if (calls && calls.length > 0) {
+            for (const call of calls) {
+              if (call.name === 'update_brand_dna') {
+                const { new_info } = call.args as any;
+                console.log(`[Strategist Agent] AUTO-UPDATING DNA: ${new_info}`);
+                
+                try {
+                  // Direct call to enrich script or logic here
+                  // For simplicity, we trigger the update directly in Supabase
+                  const currentProfile = await supabase.from('profiles').select('digital_shadow_prompt').eq('id', user.id).single();
+                  const oldDna = currentProfile.data?.digital_shadow_prompt || "";
+                  
+                  // Use the helper we already have in DNA update (or just append for now)
+                  const { error } = await supabase
+                    .from('profiles')
+                    .update({ 
+                      digital_shadow_prompt: oldDna + "\n\n[Strategist Insight]: " + new_info,
+                      updated_at: new Date().toISOString()
+                    })
+                    .eq('id', user.id);
+                  
+                  if (!error) {
+                    controller.enqueue(new TextEncoder().encode("\n\n*(System Note: Brand DNA updated with new insights)*"));
+                  }
+                } catch (e) {
+                  console.error('Failed to auto-update DNA:', e);
+                }
+              }
+            }
+          }
         }
         controller.close();
       },
