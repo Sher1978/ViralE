@@ -249,64 +249,25 @@ export default function StudioPage() {
   const selectedSegment = manifest?.segments.find(s => s.id === selectedSegmentId);
 
   return (
-    <div className="flex h-screen bg-[#05050a] text-white overflow-hidden font-sans">
-      {activeTab !== 'teleprompter' && (
-        <StudioSidebar 
-          activeTab={activeTab as any}
-          setActiveTab={setActiveTab as any}
-          cameraStream={cameraStream}
-          isRecordingVideo={isRecordingVideo}
-          recordingTime={recordingTime}
-          facingMode={facingMode}
-          videoResolution={videoResolution}
-          videoDevices={videoDevices}
-          audioDevices={audioDevices}
-          selectedVideoDeviceId={selectedVideoDeviceId}
-          selectedAudioDeviceId={selectedAudioDeviceId}
-          initCamera={initCamera}
-          stopCamera={stopCamera}
-          setFacingMode={setFacingMode}
-          setIsVideoMirrored={setIsVideoMirrored}
-          isVideoMirrored={isVideoMirrored}
-          setVideoResolution={setVideoResolution}
-          setSelectedVideoDeviceId={setSelectedVideoDeviceId}
-          setSelectedAudioDeviceId={setSelectedAudioDeviceId}
-          useCustomScript={useCustomScript}
-          setUseCustomScript={setUseCustomScript}
-          customScript={customScript}
-          setCustomScript={setCustomScript}
-          manifest={manifest}
-          isMirrored={isMirrored}
-          setIsMirrored={setIsMirrored}
-          scrollSpeed={scrollSpeed}
-          setScrollSpeed={setScrollSpeed}
-          prompterWidth={prompterWidth}
-          setPrompterWidth={setPrompterWidth}
-          textSize={textSize}
-          setTextSize={setTextSize}
-          scriptOpacity={scriptOpacity}
-          setScriptOpacity={setScriptOpacity}
-          t={t}
-          currentProfile={currentProfile}
-        />
-      )}
-
-      <main className="flex-1 flex flex-col overflow-hidden relative bg-[#05050a]">
-        <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 blur-[120px] rounded-full pointer-events-none" />
+    <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
+      {/* 🚀 Pro Studio Mainframe - Full Screen Immersion */}
+      <main className="w-full h-full relative flex flex-col">
         
-        {/* Production Stage Rendering */}
-        <div className="flex-1 flex flex-col overflow-hidden">
+        {/* Stage Area */}
+        <div className="flex-1 relative overflow-hidden">
           {activeTab === 'concept' && (
-            <StrategistChat 
-              projectId={projectId}
-              userId={currentProfile?.id || ''}
-              manifest={manifest || undefined} 
-              setManifest={(m) => setManifest(m)} 
-            />
+            <div className="max-w-4xl mx-auto h-full">
+              <StrategistChat 
+                projectId={projectId}
+                userId={currentProfile?.id || ''}
+                manifest={manifest || undefined} 
+                setManifest={(m) => setManifest(m)} 
+              />
+            </div>
           )}
           
           {activeTab === 'teleprompter' && (
-            <div className="flex-1 flex flex-col z-10 relative">
+            <div className="w-full h-full relative">
                 <TeleprompterView 
                    cameraStream={cameraStream}
                    videoPreviewRef={videoPreviewRef}
@@ -325,6 +286,7 @@ export default function StudioPage() {
                      router.push(`/app/projects/new/script?projectId=${projectId}`);
                    }}
                    onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
+                   onFlipCamera={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
                    isRecordingVideo={isRecordingVideo}
                    onScriptUpdate={async (newText) => {
                      if (!manifest) return;
@@ -338,54 +300,48 @@ export default function StudioPage() {
                    }}
                    t={t}
                 />
-               <RecordingReview 
-                  showRecordingReview={showRecordingReview}
-                  lastRecordingUrl={lastRecordingUrl}
-                  currentProfile={currentProfile}
-                  downloadRawVideo={downloadRawVideo}
-                  sendRawToTelegram={sendRawToTelegram}
-                  setShowRecordingReview={setShowRecordingReview}
-                  setLastRecordingUrl={setLastRecordingUrl}
-                  updateSegmentField={updateSegmentField}
-                  setActiveTab={setActiveTab}
-                  manifest={manifest}
-                  selectedSegmentId={selectedSegmentId}
-               />
+                
+                {showRecordingReview && (
+                  <div className="absolute inset-x-0 bottom-0 z-[60]">
+                    <RecordingReview 
+                       showRecordingReview={showRecordingReview}
+                       lastRecordingUrl={lastRecordingUrl}
+                       currentProfile={currentProfile}
+                       downloadRawVideo={downloadRawVideo}
+                       sendRawToTelegram={sendRawToTelegram}
+                       setShowRecordingReview={setShowRecordingReview}
+                       setLastRecordingUrl={setLastRecordingUrl}
+                       updateSegmentField={updateSegmentField}
+                       setActiveTab={setActiveTab}
+                       manifest={manifest}
+                       selectedSegmentId={selectedSegmentId}
+                    />
+                  </div>
+                )}
             </div>
           )}
 
           {activeTab === 'assembly' && (
-            <StoryboardGrid 
-              manifest={manifest}
-              selectedSegmentId={selectedSegmentId}
-              setSelectedSegmentId={setSelectedSegmentId}
-              isRegenerating={isRegenerating}
-              regenerateSegment={regenerateSegment}
-              deleteSegment={deleteSegment}
-              updateSegmentField={updateSegmentField}
-              addSegment={addSegment}
-              handleFinalExport={handleFinalExport}
-              setIsBRollModalOpen={setIsBRollModalOpen}
-            />
+            <div className="p-8 h-full">
+              <StoryboardGrid 
+                manifest={manifest}
+                selectedSegmentId={selectedSegmentId}
+                setSelectedSegmentId={setSelectedSegmentId}
+                isRegenerating={isRegenerating}
+                regenerateSegment={regenerateSegment}
+                deleteSegment={deleteSegment}
+                updateSegmentField={updateSegmentField}
+                addSegment={addSegment}
+                handleFinalExport={handleFinalExport}
+                setIsBRollModalOpen={setIsBRollModalOpen}
+              />
+            </div>
           )}
 
           {activeTab === 'knowledge' && (
             <KnowledgeLab profile={currentProfile!} onProfileUpdate={setCurrentProfile} />
           )}
         </div>
-
-        {/* Global Timeline */}
-        {activeTab !== 'concept' && activeTab !== 'knowledge' && activeTab !== 'teleprompter' && (
-          <div className="hidden lg:block">
-            <StudioTimeline 
-              segments={manifest?.segments || []} 
-              activeIndex={activeIndex} 
-              selectedId={selectedSegmentId} 
-              onSelect={(id, idx) => { setSelectedSegmentId(id); setActiveIndex(idx); }}
-              onAdd={() => addSegment()}
-            />
-          </div>
-        )}
       </main>
 
       <BRollModal 
