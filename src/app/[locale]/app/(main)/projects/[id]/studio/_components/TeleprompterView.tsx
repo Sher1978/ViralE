@@ -63,6 +63,13 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
   const [editedText, setEditedText] = React.useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
+  // 📹 Critical: Bind camera stream to video element
+  React.useEffect(() => {
+    if (cameraStream && videoPreviewRef.current) {
+      videoPreviewRef.current.srcObject = cameraStream;
+    }
+  }, [cameraStream, videoPreviewRef]);
+
   const scriptText = (useCustomScript ? customScript : manifest?.segments.map((s: any) => s.scriptText).filter(Boolean).join('\n\n')) || "Put your text here! Put your text here! Put your text here! Put your text here! Put your text here! Put your text here!";
 
   // Auto-scroll logic
