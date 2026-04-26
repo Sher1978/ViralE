@@ -202,5 +202,5 @@ export default function IdeasPage() {
           </p>
         </div>
       )}
-    </div>
+    );
 }
