@@ -132,6 +132,12 @@ export function ContentMatrix({
   }, 0);
   const totalSeconds = Math.ceil(totalWords / 2.8);
 
+  const handleCopy = () => {
+    onCopy();
+    setCopied(true);
+    setTimeout(() => setCopied(false), 2000);
+  };
+
   const incompleteBlocks = blocks.filter(block => {
     const content = allScenarios?.[selectionSources[block.id]]?.[block.id] || scriptData[block.id];
     const text = typeof content === 'string' ? content : (content as any)?.words || '';
