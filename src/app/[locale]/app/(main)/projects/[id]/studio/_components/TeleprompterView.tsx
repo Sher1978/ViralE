@@ -187,7 +187,6 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
       </div>
 
       {/* Control elements removed per request */}
-      </div>
 
       {/* Countdown Overlay */}
       <AnimatePresence>
