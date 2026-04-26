@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from '@/navigation';
@@ -250,7 +250,7 @@ export default function StudioPage() {
   };
 
   // Manifest Handlers - Memoized to prevent cascade re-renders
-  const updateSegmentField = React.useCallback((id: string, field: string, value: any) => {
+  const updateSegmentField = useCallback((id: string, field: string, value: any) => {
      setManifest(prev => {
        if (!prev) return prev;
        return {
