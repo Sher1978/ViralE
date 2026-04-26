@@ -811,7 +811,7 @@ export default function ScriptLabPage() {
         type={error ? 'error' : limitModalData.type}
         locale={locale}
       />
-      <BottomNav locale={locale} />
+      <BottomNav />
     </div>
   );
 }
