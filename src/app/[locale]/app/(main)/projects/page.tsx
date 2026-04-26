@@ -73,10 +73,10 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#0A0A10] flex flex-col">
-      {/* Fixed Header - Zero top space */}
+    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#0A0A10] flex flex-col pb-24">
+      {/* Fixed Header - Adjusted for Strategist overlay */}
       <header className="px-6 pt-0 pb-2 flex items-center justify-between shrink-0">
-        <div className="flex flex-col pt-4">
+        <div className="flex flex-col pt-8 pl-14">
           <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
             VIRAL<span className="text-purple-500">E</span>
           </h1>
@@ -85,20 +85,20 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        {/* Visible Bookmark Trigger */}
+        {/* Visible Bookmark Trigger - High Visibility */}
         <div 
           onClick={() => setShowProjectsOverlay(true)}
           className="w-14 h-14 relative cursor-pointer group"
         >
            <div className="absolute top-0 right-0 w-full h-full overflow-hidden">
-              <div className="absolute top-0 right-0 w-[140%] h-[40%] bg-purple-500/20 border-b border-purple-500/30 origin-top-right rotate-45 translate-x-1/2 -translate-y-1/2 group-hover:bg-purple-500/30 transition-all flex items-center justify-center">
-                  <Hourglass className="w-5 h-5 text-purple-400 group-hover:text-amber-400 rotate-[-45deg] transition-all translate-x-[-8px] translate-y-[8px]" />
+              <div className="absolute top-0 right-0 w-[140%] h-[40%] bg-amber-500 border-b border-amber-400 origin-top-right rotate-45 translate-x-1/2 -translate-y-1/2 group-hover:bg-amber-400 transition-all flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.4)]">
+                  <Hourglass className="w-5 h-5 text-black group-hover:scale-110 rotate-[-45deg] transition-all translate-x-[-8px] translate-y-[8px]" />
               </div>
            </div>
         </div>
       </header>
 
-      {/* Comic Blocks - Rigidly Fixed to fit total screen */}
+      {/* Comic Blocks - Scaled Down to handle BottomNav space */}
       <div className="flex-1 flex flex-col min-h-0 w-full">
         {hubs.map((hub, index) => (
           <motion.div
@@ -130,7 +130,7 @@ export default function ProjectsPage() {
                 } to-transparent`} />
               </div>
 
-              <span className="absolute bottom-0 right-4 text-[140px] font-black text-white/[0.1] italic leading-none z-1 tracking-tighter transition-all group-hover:scale-110 group-hover:text-white/[0.15]">
+              <span className="absolute bottom-0 right-4 text-[120px] font-black text-white/[0.1] italic leading-none z-1 tracking-tighter transition-all group-hover:scale-110 group-hover:text-white/[0.15]">
                 {index + 1}
               </span>
 

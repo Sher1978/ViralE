@@ -37,8 +37,7 @@ export function PageShell({ children }: PageShellProps) {
     );
   }
 
-  const isStudioMode = pathname.includes('/projects') || 
-                      pathname.includes('/studio') || 
+  const isStudioMode = pathname.includes('/studio') || 
                       pathname.includes('/new/script') || 
                       pathname.includes('/new/delivery');
 
