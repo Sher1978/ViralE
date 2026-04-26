@@ -37,10 +37,10 @@ export function PageShell({ children }: PageShellProps) {
     );
   }
 
-  const isStudioMode = pathname.includes('/studio') || 
+  const isStudioMode = pathname.includes('/projects') || 
+                      pathname.includes('/studio') || 
                       pathname.includes('/new/script') || 
-                      pathname.includes('/new/delivery') ||
-                      pathname.includes('/projects/new');
+                      pathname.includes('/new/delivery');
 
   // Mobile-constrained shell for the App
   return (

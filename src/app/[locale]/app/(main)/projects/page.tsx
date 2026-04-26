@@ -73,9 +73,9 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <div className="relative h-[100dvh] max-w-7xl mx-auto overflow-hidden bg-[#0A0A10] flex flex-col">
+    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#0A0A10] flex flex-col">
       {/* Fixed Header - Zero top space */}
-      <header className="px-10 pt-0 pb-2 flex items-center justify-between shrink-0">
+      <header className="px-6 pt-0 pb-2 flex items-center justify-between shrink-0">
         <div className="flex flex-col pt-4">
           <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
             VIRAL<span className="text-purple-500">E</span>
@@ -98,8 +98,8 @@ export default function ProjectsPage() {
         </div>
       </header>
 
-      {/* Comic Blocks - Flexible Height to fit total screen */}
-      <div className="flex-1 flex flex-col min-h-0">
+      {/* Comic Blocks - Rigidly Fixed to fit total screen */}
+      <div className="flex-1 flex flex-col min-h-0 w-full">
         {hubs.map((hub, index) => (
           <motion.div
             key={hub.id}
@@ -107,14 +107,14 @@ export default function ProjectsPage() {
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.1 }}
             onClick={() => router.push(hub.href)}
-            className={`flex-1 relative cursor-pointer group overflow-hidden ${
+            className={`flex-1 relative cursor-pointer group overflow-hidden w-full ${
               index === 0 ? 'z-30' : index === 1 ? 'z-20' : 'z-10'
             }`}
             style={{
-              marginTop: index > 0 ? '-3vh' : '0',
-              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' :
-                        index === 1 ? 'polygon(0 15%, 100% 0, 100% 85%, 0 100%)' :
-                        'polygon(0 15%, 100% 0, 100% 100%, 0 100%)'
+              marginTop: index > 0 ? '-3.5dvh' : '0',
+              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' :
+                        index === 1 ? 'polygon(0 12%, 100% 0, 100% 88%, 0 100%)' :
+                        'polygon(0 12%, 100% 0, 100% 100%, 0 100%)'
             }}
           >
             <div className="relative w-full h-full transition-all duration-700 overflow-hidden active:scale-[0.99]">
@@ -130,11 +130,11 @@ export default function ProjectsPage() {
                 } to-transparent`} />
               </div>
 
-              <span className="absolute bottom-0 right-4 text-[160px] font-black text-white/[0.1] italic leading-none z-1 tracking-tighter transition-all group-hover:scale-110 group-hover:text-white/[0.15]">
+              <span className="absolute bottom-0 right-4 text-[140px] font-black text-white/[0.1] italic leading-none z-1 tracking-tighter transition-all group-hover:scale-110 group-hover:text-white/[0.15]">
                 {index + 1}
               </span>
 
-              <div className="relative z-10 h-full flex flex-col justify-center px-10 pt-4">
+              <div className="relative z-10 h-full flex flex-col justify-center px-8 pt-4">
                 <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 block mb-3">STEP {index + 1}</span>
                 <h2 className="text-5xl font-black uppercase text-white tracking-tighter italic leading-[0.9] mb-4 group-hover:translate-x-2 transition-transform">
                     {hub.title}
