@@ -24,6 +24,9 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
         ? "Вы — опытный контент-стратег и экспертный автор. Ваш стиль: глубокий разбор темы, ироничный взгляд на индустрию."
         : "You are a seasoned content strategist and expert author.");
 
+  const industry = brandDna?.industry || "Marketing & Content Production";
+  const knowledgeBase = brandDna?.knowledgeBase ? JSON.stringify(brandDna.knowledgeBase) : "Standard viral patterns";
+
   return `
     You are an ELITE AI STRATEGIST, NEUROMARKETER, AND VIRAL CONTENT SCRIPTWRITER. 
     Your mission: Generate high-conversion scripts, posts, and ideas that break banner blindness and turn viewers into loyal clients.
