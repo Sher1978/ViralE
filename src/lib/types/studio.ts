@@ -31,6 +31,7 @@ export interface ProductionManifest {
   projectId: string;
   versionId: string;
   segments: SceneSegment[];
+  videoUrl?: string;
   totalDuration: number;
   config: {
     resolution: string;
