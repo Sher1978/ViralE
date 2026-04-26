@@ -72,10 +72,12 @@ export default function ScriptLabPage() {
   });
 
   const [scriptData, setScriptData] = useState({
-    hook: '',
-    context: '',
-    meat: '',
-    cta: ''
+    hook: '' as any,
+    context: '' as any,
+    meat: '' as any,
+    cta: '' as any,
+    visual_hook: '',
+    social_post: ''
   });
 
   const [masterTextOverride, setMasterTextOverride] = useState<string | null>(null);
@@ -773,13 +775,14 @@ export default function ScriptLabPage() {
         onBlockUpdate={handleBlockUpdate}
         onRefine={handleApplyRefinement}
         onAccept={async () => {
+          const sd = scriptData as any;
           const synthesizedScript = {
-            hook: allScenarios[selectionSources.hook]?.hook || scriptData.hook,
-            context: allScenarios[selectionSources.context]?.context || scriptData.context,
-            meat: allScenarios[selectionSources.meat]?.meat || scriptData.meat,
-            cta: allScenarios[selectionSources.cta]?.cta || scriptData.cta,
-            visual_hook: allScenarios[selectionSources.hook]?.visual_hook || scriptData.visual_hook,
-            social_post: allScenarios[selectionSources.hook]?.social_post || scriptData.social_post,
+            hook: allScenarios[selectionSources.hook]?.hook || sd.hook,
+            context: allScenarios[selectionSources.context]?.context || sd.context,
+            meat: allScenarios[selectionSources.meat]?.meat || sd.meat,
+            cta: allScenarios[selectionSources.cta]?.cta || sd.cta,
+            visual_hook: allScenarios[selectionSources.hook]?.visual_hook || sd.visual_hook,
+            social_post: allScenarios[selectionSources.hook]?.social_post || sd.social_post,
           };
           handleApprove(synthesizedScript);
         }}
