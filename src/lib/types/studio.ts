@@ -23,6 +23,7 @@ export interface SceneSegment {
   // B-roll Cycling
   brollSuggestions?: string[]; // Array of URLs from Giphy/Mixkit
   currentBrollIndex?: number;
+  captionStyle?: string; // e.g. 'minimal', 'pop', 'bold'
 }
 
 export interface ProductionManifest {
