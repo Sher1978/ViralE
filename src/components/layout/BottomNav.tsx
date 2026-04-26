@@ -59,26 +59,26 @@ export function BottomNav() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1.5 py-3 transition-all duration-300 relative",
-                    isActive ? "" : "text-white/20 hover:text-white/50"
+                    "flex flex-col items-center justify-center gap-1 transition-all duration-500 relative",
+                    isActive ? "scale-110" : "text-white/20 hover:text-white/40"
                   )}
                   style={{ color: isActive ? activeColor : undefined }}
                 >
-                  <div className="relative flex flex-col items-center gap-1">
+                  <div className="relative flex flex-col items-center">
                     <Icon 
-                      className="w-6 h-6 transition-all duration-500" 
+                      className="w-7 h-7 transition-all duration-500" 
                       strokeWidth={isActive ? 2.5 : 2}
                       style={{
-                        filter: isActive ? `drop-shadow(0 0 8px ${activeColor})` : 'none'
+                        filter: isActive ? `drop-shadow(0 0 12px ${activeColor}) drop-shadow(0 0 2px ${activeColor})` : 'none'
                       }}
                     />
                     <span
                       className={cn(
-                        "text-[7px] font-black tracking-[0.2em] uppercase text-center transition-all duration-500",
-                        isActive ? "opacity-100" : "opacity-40"
+                        "text-[6px] font-black tracking-[0.2em] uppercase text-center transition-all duration-500 mt-1",
+                        isActive ? "opacity-100" : "opacity-0"
                       )}
                       style={{
-                         textShadow: isActive ? `0 0 10px ${activeColor}80` : 'none'
+                         textShadow: isActive ? `0 0 10px ${activeColor}` : 'none'
                       }}
                     >
                       {t(item.key as any)}

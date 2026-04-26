@@ -73,56 +73,48 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <div className="relative pb-32 max-w-7xl mx-auto overflow-hidden bg-[#0A0A10] min-h-screen">
-      {/* Header Aligned with Image */}
-      <header className="px-8 pt-10 pb-6 flex items-center gap-5">
-        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center p-2 backdrop-blur-xl shadow-2xl relative">
-             <div className="absolute inset-0 rounded-full border border-white/5 animate-pulse" />
-             <div className="w-full h-full rounded-full bg-[#12121A] flex items-center justify-center border border-white/10">
-                <Sparkles className="w-8 h-8 text-cyan-400" />
-             </div>
+    <div className="relative h-screen max-w-7xl mx-auto overflow-hidden bg-[#0A0A10] flex flex-col">
+      {/* Fixed Header */}
+      <header className="px-8 pt-8 pb-4 flex items-center justify-between shrink-0">
+        <div className="flex flex-col">
+          <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
+            VIRAL<span className="text-purple-500">E</span>
+          </h1>
+          <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mt-1.5 leading-none">
+            AI CONTENT PRODUCTION FACTORY
+          </p>
         </div>
 
-        <div className="flex-1 flex items-center justify-between">
-          <div className="flex flex-col">
-            <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
-              VIRAL<span className="text-purple-500">E</span>
-            </h1>
-            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mt-1.5">
-              AI CONTENT PRODUCTION <br className="sm:hidden" /> FACTORY
-            </p>
-          </div>
-
-          {/* Triangular Bookmark Trigger (Top Right of Header Area) */}
-          <div 
-            onClick={() => setShowProjectsOverlay(true)}
-            className="w-16 h-16 relative cursor-pointer group"
-          >
-             <div className="absolute top-0 right-0 w-full h-full overflow-hidden">
-                <div className="absolute top-0 right-0 w-[140%] h-[40%] bg-white/5 border-b border-white/10 origin-top-right rotate-45 translate-x-1/2 -translate-y-1/2 group-hover:bg-white/10 transition-all flex items-center justify-center">
-                    <Hourglass className="w-4 h-4 text-white/40 group-hover:text-amber-400 rotate-[-45deg] transition-all translate-x-[-10px] translate-y-[10px]" />
-                </div>
-             </div>
-          </div>
+        {/* Visible Bookmark Trigger */}
+        <div 
+          onClick={() => setShowProjectsOverlay(true)}
+          className="w-14 h-14 relative cursor-pointer group"
+        >
+           <div className="absolute top-0 right-0 w-full h-full overflow-hidden">
+              <div className="absolute top-0 right-0 w-[140%] h-[40%] bg-purple-500/20 border-b border-purple-500/30 origin-top-right rotate-45 translate-x-1/2 -translate-y-1/2 group-hover:bg-purple-500/30 transition-all flex items-center justify-center">
+                  <Hourglass className="w-5 h-5 text-purple-400 group-hover:text-amber-400 rotate-[-45deg] transition-all translate-x-[-8px] translate-y-[8px]" />
+              </div>
+           </div>
         </div>
       </header>
 
-      {/* Comic Blocks Section */}
-      <div className="space-y-[-45px]">
+      {/* Comic Blocks - Flexible Height to fit total screen */}
+      <div className="flex-1 flex flex-col min-h-0">
         {hubs.map((hub, index) => (
           <motion.div
             key={hub.id}
-            initial={{ opacity: 0, y: 30 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: index * 0.15 }}
+            initial={{ opacity: 0, scale: 0.95 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: index * 0.1 }}
             onClick={() => router.push(hub.href)}
-            className={`relative h-[280px] cursor-pointer group overflow-hidden ${
+            className={`flex-1 relative cursor-pointer group overflow-hidden ${
               index === 0 ? 'z-30' : index === 1 ? 'z-20' : 'z-10'
             }`}
             style={{
-              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' :
-                        index === 1 ? 'polygon(0 12%, 100% 0, 100% 88%, 0 100%)' :
-                        'polygon(0 12%, 100% 0, 100% 100%, 0 100%)'
+              marginTop: index > 0 ? '-3vh' : '0',
+              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 85%, 0 100%)' :
+                        index === 1 ? 'polygon(0 15%, 100% 0, 100% 85%, 0 100%)' :
+                        'polygon(0 15%, 100% 0, 100% 100%, 0 100%)'
             }}
           >
             <div className="relative w-full h-full transition-all duration-700 overflow-hidden active:scale-[0.99]">

@@ -5,6 +5,8 @@ import {
   Settings, Type, Timer, Palette, Mic2, Camera,
   MoreVertical, Edit3, Check, RotateCw
 } from 'lucide-react';
+import { useRouter } from '@/navigation';
+import { useLocale } from 'next-intl';
 
 interface TeleprompterViewProps {
   cameraStream: MediaStream | null;
@@ -53,9 +55,27 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
   isRecordingVideo,
   t,
 }) => {
+  const router = useRouter();
+  const locale = useLocale();
   const [isEditing, setIsEditing] = React.useState(false);
   const [editedText, setEditedText] = React.useState('');
   const fileInputRef = React.useRef<HTMLInputElement>(null);
+
+  const scriptText = (useCustomScript ? customScript : manifest?.segments.map((s: any) => s.scriptText).filter(Boolean).join('\n\n')) || "Put your text here! Put your text here! Put your text here! Put your text here! Put your text here! Put your text here!";
+
+  // Auto-scroll logic
+  React.useEffect(() => {
+    let interval: NodeJS.Timeout;
+    if (isReading && prompterRef.current) {
+        const speed = 1.5; // Optimized for 20s/block pace
+        interval = setInterval(() => {
+            if (prompterRef.current) {
+                prompterRef.current.scrollTop += speed;
+            }
+        }, 30);
+    }
+    return () => clearInterval(interval);
+  }, [isReading, prompterRef]);
 
   const rotateTextSize = () => {
     if (!onTextSizeChange) return;
@@ -74,10 +94,7 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
   };
 
   const handleStartEdit = () => {
-    const currentText = useCustomScript 
-      ? customScript 
-      : manifest?.segments.map((s: any) => s.scriptText).filter(Boolean).join('\n\n');
-    setEditedText(currentText || '');
+    setEditedText(scriptText);
     setIsEditing(true);
   };
 
@@ -88,18 +105,22 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
 
   return (
     <div className="w-full h-full relative flex flex-col items-center justify-center overflow-hidden bg-black rounded-[3rem] border border-white/10 shadow-2xl">
-      {/* 📹 Video Foundation */}
-      {cameraStream && (
-        <div className="absolute inset-0 z-0">
+      {/* 📹 Video Foundation - Full Opacity per request */}
+      <div className="absolute inset-0 z-0 bg-neutral-900">
+        {cameraStream ? (
           <video 
             ref={videoPreviewRef}
             autoPlay 
             muted 
             playsInline
-            className={`w-full h-full object-cover opacity-70 transition-transform duration-1000 ${isVideoMirrored ? 'scale-x-[-1]' : ''}`}
+            className={`w-full h-full object-cover opacity-100 transition-transform duration-1000 ${isVideoMirrored ? 'scale-x-[-1]' : ''}`}
           />
-        </div>
-      )}
+        ) : (
+          <div className="w-full h-full flex items-center justify-center">
+             <Camera className="w-20 h-20 text-white/10 animate-pulse" />
+          </div>
+        )}
+      </div>
       
       {/* ⏱️ Production Countdown Overlay */}
       <AnimatePresence>
@@ -117,104 +138,55 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
         )}
       </AnimatePresence>
       
-      {/* 🔮 Top HUD - Reference Style */}
-      <div className="absolute top-12 left-0 right-0 px-8 flex items-center justify-between z-40">
+      {/* 🔮 Top HUD - Optimized with TO MONTAGE */}
+      <div className="absolute top-10 left-0 right-0 px-10 flex items-center justify-between z-40">
         <button 
           onClick={onBack}
-          className="text-white/80 hover:text-white transition-all active:scale-95"
+          className="w-14 h-14 rounded-2xl bg-white/10 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 hover:text-white transition-all active:scale-95"
         >
-          <ArrowLeft size={32} />
+          <X size={28} />
         </button>
         
-        <div className="flex items-center gap-6">
-          <button onClick={handleStartEdit} className="text-white/80 hover:text-white transition-all">
-            <Edit3 size={32} />
-          </button>
-          <button className="text-white/80 hover:text-white transition-all">
-            <MoreVertical size={32} />
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={() => router.push(`/app/projects/${(window.location.pathname.split('/')[4])}/studio?tab=editor`)}
+            className="px-8 py-4 rounded-2xl bg-purple-600 text-white font-black uppercase tracking-widest text-[11px] shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-purple-500/30 flex items-center gap-3 hover:bg-purple-500 transition-all active:scale-95 leading-none"
+          >
+            {locale === 'ru' ? 'В МОНТАЖ' : 'TO MONTAGE'}
+            <ArrowLeft className="w-4 h-4 rotate-180" />
           </button>
         </div>
       </div>
 
-      {/* 📜 Scrolling Text Canvas with Focus Zone Effect */}
+      {/* 📜 Scrolling Text Canvas - Full Width Auto Wrap */}
       <div 
         ref={prompterRef}
-        className={`w-full h-full overflow-y-auto scrollbar-none transition-transform duration-700 relative z-10 ${isMirrored ? 'scale-x-[-1]' : ''}`}
-        style={{
-          paddingTop: '25vh',
-          paddingBottom: '60vh',
-          maskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 40%, transparent 100%)',
-          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 40%, transparent 100%)'
-        }}
+        className={`w-full h-full overflow-y-auto scrollbar-none transition-transform duration-700 relative z-10 pointer-events-none ${isMirrored ? 'scale-x-[-1]' : ''}`}
       >
         <div 
-          className="mx-auto space-y-32 transition-all duration-700 ease-out px-8 text-left"
-          style={{ maxWidth: `${prompterWidth}px` }}
+          id="scrolling-content"
+          className="w-full space-y-12 transition-all duration-700 ease-out px-10 text-center flex flex-col pt-[80vh] pb-[100vh]"
         >
-          <div className="space-y-12">
-            <p className={`font-black uppercase leading-[1.3] transition-all duration-500 tracking-tight ${
-              textSize === 'sm' ? 'text-3xl' : textSize === 'lg' ? 'text-7xl' : 'text-5xl'
-            }`} style={{ 
-              color: 'white',
-              opacity: isReading ? 1 : 0.7,
-              textShadow: '0 4px 15px rgba(0,0,0,1)'
-            }}>
-              {useCustomScript ? customScript : manifest?.segments.map((s: any) => s.scriptText).filter(Boolean).join('\n\n')}
-            </p>
-          </div>
+          <p className={`font-black uppercase leading-[1.3] transition-all duration-500 tracking-tight text-white drop-shadow-[0_4px_30px_rgba(0,0,0,1)] ${
+            textSize === 'sm' ? 'text-4xl' : textSize === 'lg' ? 'text-8xl' : 'text-6xl'
+          }`}>
+            {scriptText}
+          </p>
         </div>
       </div>
 
-      {/* 🔴 Primary Action Bar */}
-      <div className="absolute bottom-32 left-0 right-0 px-12 flex items-center justify-center gap-10 z-30">
-        <button 
-          onClick={() => fileInputRef.current?.click()}
-          className="text-white/40 hover:text-white transition-all flex flex-col items-center gap-1"
+      {/* Recording Button - Center Bottom Fixed */}
+      <div className="absolute bottom-16 left-0 right-0 flex justify-center z-50">
+        <motion.button 
+          whileTap={{ scale: 0.9 }}
+          onClick={onToggleRecording}
+          className="w-24 h-24 rounded-full border-4 border-white flex items-center justify-center relative bg-black/40 backdrop-blur-md"
         >
-          <div className="w-12 h-12 rounded-full border border-white/20 flex items-center justify-center hover:bg-white/10">
-            <Library size={24} />
-          </div>
-        </button>
-
-        <div className="flex items-center gap-6">
-          <motion.button 
-            whileTap={{ scale: 0.9 }}
-            onClick={onToggleRecording}
-            className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center relative bg-black/20 backdrop-blur-sm"
-          >
-            <div className={`rounded-full transition-all duration-300 ${isRecordingVideo ? 'w-10 h-10 bg-red-600 rounded-md animate-pulse' : 'w-16 h-16 bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.5)]'}`} />
-          </motion.button>
-          
-          <div className="flex flex-col gap-6">
-            <button 
-              onClick={() => {
-                if (isRecordingVideo) onToggleRecording?.();
-              }}
-              className="w-16 h-16 rounded-full bg-emerald-500/20 border-2 border-emerald-500 flex items-center justify-center text-emerald-400 shadow-[0_0_30px_rgba(16,185,129,0.3)] hover:bg-emerald-500 hover:text-white transition-all active:scale-90"
-              title="Finish Recording"
-            >
-              <Check size={36} strokeWidth={3} />
-            </button>
-            <button 
-              onClick={onFlipCamera}
-              className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/80 hover:text-blue-400 transition-all active:scale-90"
-            >
-               <RotateCw size={24} />
-            </button>
-          </div>
-        </div>
+          <div className={`rounded-full transition-all duration-300 ${isRecordingVideo ? 'w-10 h-10 bg-red-600 rounded-md animate-pulse shadow-[0_0_30px_rgba(239,68,68,0.8)]' : 'w-18 h-18 bg-red-600 shadow-[0_0_20px_rgba(239,68,68,0.5)]'}`} />
+        </motion.button>
       </div>
 
-      {/* 🛠️ Floating Settings Toolbar */}
-      <div className="absolute bottom-10 left-1/2 -translate-x-1/2 z-40">
-         <div className="flex items-center gap-8 bg-black/60 backdrop-blur-3xl px-8 py-5 rounded-[2rem] border border-white/10 shadow-[0_20px_50px_rgba(0,0,0,0.5)]">
-            <button onClick={onBack} className="text-white/40 hover:text-white transition-all"><X size={24} /></button>
-            <button onClick={rotateOpacity} className="text-white/40 hover:text-white transition-all active:scale-90" title="Opacity"><Palette size={24} /></button>
-            <button className="text-white/40 hover:text-white transition-all"><Mic2 size={24} /></button>
-            <div className="px-4 py-2 bg-white/10 rounded-full text-[10px] font-black uppercase tracking-[0.2em] text-blue-400 border border-blue-400/20 shadow-[0_0_15px_rgba(96,165,250,0.2)]">Floating</div>
-            <button onClick={rotateTextSize} className="text-white/40 hover:text-white transition-all active:scale-90" title="Text Size"><Type size={24} /></button>
-            <button className="text-white/40 hover:text-white transition-all"><Settings size={24} /></button>
-         </div>
+      {/* Control elements removed per request */}
       </div>
 
       {/* Countdown Overlay */}
