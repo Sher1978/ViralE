@@ -52,7 +52,7 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
   `;
 }
 
-export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string, brandDna?: any) {
+export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string, brandDna?: any, hook?: string, role?: string) {
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
     ? client.getGenerativeModel({ 
@@ -66,6 +66,9 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
 
   const userPrompt = `
     Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
+    
+    ${hook ? `CRITICAL: Every scenario MUST use this specific starting HOOK: "${hook}"` : ""}
+    ${role ? `CRITICAL: Every scenario MUST be written in the ROLE/STANCE of: "${role}"` : ""}
     
     CRITICAL: Each script MUST consist of 4 independent blocks with UNIVERSAL CONNECTORS to allow interchangeability.
     

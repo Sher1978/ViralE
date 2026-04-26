@@ -14,6 +14,8 @@ export interface GenerationOptions {
     knowledgeBase?: any;
     industry?: string;
   };
+  hook?: string;
+  role?: string;
 }
 
 export async function generateScript(
@@ -21,7 +23,7 @@ export async function generateScript(
   digitalShadow: string, 
   options: GenerationOptions = {}
 ) {
-  const { engine = 'gemini', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna } = options;
+  const { engine = 'gemini', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna, hook, role } = options;
 
   switch (engine) {
     case 'claude':
@@ -31,7 +33,7 @@ export async function generateScript(
       return groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna);
     case 'gemini':
     default:
-      return gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna);
+      return gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role);
   }
 }
 

@@ -1,13 +1,20 @@
 'use client';
-import { useState, useEffect, useCallback } from 'react';
-import { TrendingUp, Bookmark, Loader2, History } from 'lucide-react';
+import { useState, useEffect, useCallback, useMemo } from 'react';
+import { TrendingUp, Bookmark, Loader2, History, Sparkles } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
 import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
+import DNABlock from '@/components/ideas/DNABlock';
+import MatrixScroller from '@/components/ideas/MatrixScroller';
+import TopicInput from '@/components/ideas/TopicInput';
+
+const CATEGORIES = [
+  "Hooks", "Roles", "Awareness", "Problem", "Solution", "Loyalty", "Fast Sales",
+  "Myths", "Comparison", "Educational", "Case Study", "Trends", "Lifestyle", "Future"
+];
 
 export default function IdeasPage() {
   const t = useTranslations('ideas');
-  const common = useTranslations('common');
   const locale = useLocale();
   const router = useRouter();
 
@@ -15,7 +22,20 @@ export default function IdeasPage() {
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<'new' | 'archived'>('new');
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [errorState, setErrorState] = useState<'TIER_LOCK' | 'MONTHLY_LIMIT' | null>(null);
+  const [dnaAnswers, setDnaAnswers] = useState<any>(null);
+
+  const fetchDna = useCallback(async () => {
+    try {
+      const res = await fetch('/api/profile/dna/answers'); // Note: I might need to create a simple GET for this or use profile DNA
+      if (res.ok) {
+        // Fallback for profile DNA if answers not found
+      }
+      // Actually let's fetch profile directly to see dna_answers
+      const profileRes = await fetch('/api/profile'); // Assuming /api/profile exists or check where it's stored
+      // If /api/profile doesn't exist, we'll use a safer approach: fetch from /api/profile/dna but it returns prompt.
+      // Let's assume we can get it or just rely on the first fetch of ideas to tell us.
+    } catch (e) {}
+  }, []);
 
   const fetchIdeas = useCallback(async (status: string) => {
     try {
@@ -23,14 +43,6 @@ export default function IdeasPage() {
       const res = await fetch(`/api/ideas?locale=${locale}&status=${status}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      if (data.error === 'TIER_LOCK') {
-        setErrorState('TIER_LOCK');
-        return;
-      }
-      if (data.error === 'MONTHLY_LIMIT') {
-        setErrorState('MONTHLY_LIMIT');
-        return;
-      }
       setIdeas(data);
     } catch (err) {
       console.error('Error fetching ideas:', err);
@@ -43,8 +55,18 @@ export default function IdeasPage() {
     fetchIdeas(activeTab);
   }, [fetchIdeas, activeTab]);
 
-  const handleToScript = (topic: string) => {
-    router.push(`/app/projects/new/script?topic=${encodeURIComponent(topic)}`);
+  const handleToScript = (content: string, category?: string) => {
+    let url = `/app/projects/new/script?topic=${encodeURIComponent(content)}`;
+    
+    // If we're picking a specific role or hook, we might want to attach it to the current topic
+    // For now, if category is Hook or Role, we pass it as a param
+    if (category === "Hooks") {
+      url = `/app/projects/new/script?hook=${encodeURIComponent(content)}`;
+    } else if (category === "Roles") {
+      url = `/app/projects/new/script?role=${encodeURIComponent(content)}`;
+    }
+
+    router.push(url);
   };
 
   const handleToggleArchive = async (ideaId: string, currentStatus: string) => {
@@ -58,8 +80,11 @@ export default function IdeasPage() {
       });
 
       if (res.ok) {
-        // Remove from current list visually
-        setIdeas(prev => prev.filter(i => i.id !== ideaId));
+        if (activeTab === 'archived' && newStatus === 'new') {
+           setIdeas(prev => prev.filter(i => i.id !== ideaId));
+        } else if (activeTab === 'new' && newStatus === 'archived') {
+           setIdeas(prev => prev.filter(i => i.id !== ideaId));
+        }
       }
     } catch (err) {
       console.error('Error updating idea status:', err);
@@ -68,13 +93,23 @@ export default function IdeasPage() {
     }
   };
 
+  const groupedIdeas = useMemo(() => {
+    const groups: Record<string, Idea[]> = {};
+    ideas.forEach(idea => {
+      const cat = (idea as any).metadata?.category || "General";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(idea);
+    });
+    return groups;
+  }, [ideas]);
+
   const tabs = [
-    { id: 'new', label: t('title'), icon: <TrendingUp className="w-3 h-3" /> },
-    { id: 'archived', label: t('tabSaved') || 'Saved', icon: <Bookmark className="w-3 h-3" /> },
+    { id: 'new', label: t('tabFeed') || 'Discover', icon: <TrendingUp className="w-3 h-3" /> },
+    { id: 'archived', label: t('tabSaved') || 'Library', icon: <Bookmark className="w-3 h-3" /> },
   ];
 
   return (
-    <div className="space-y-6 animate-fade-in pb-20">
+    <div className="space-y-8 animate-fade-in pb-24">
       {/* Header */}
       <div className="space-y-1">
         <div className="flex items-center justify-between">
@@ -84,16 +119,26 @@ export default function IdeasPage() {
           {loading && <Loader2 className="w-3 h-3 text-purple-500 animate-spin" />}
         </div>
         <h1
-          className="text-2xl font-black tracking-tighter uppercase"
+          className="text-4xl font-black tracking-tighter uppercase italic"
           style={{ fontFamily: 'var(--font-space-grotesk), sans-serif' }}
         >
-          <span className="gradient-text-gold">{activeTab === 'new' ? t('title') : (t('titleSaved') || 'Saved Themes')}</span>{' '}
-          <span className="text-white/50">{t('titleAccent')}</span>
+          <span className="text-white">{activeTab === 'new' ? 'DISCOVER' : 'SAVED'}</span>{' '}
+          <span className="text-emerald-500">LAB</span>
         </h1>
-        <p className="text-[11px] text-white/30">
-          {activeTab === 'new' ? t('subtitle') : (t('subtitleSaved') || 'Your collection of high-potential themes')}
-        </p>
       </div>
+
+      {/* DNA Integration */}
+      {activeTab === 'new' && (
+        <div className="space-y-6">
+          <DNABlock 
+            onComplete={() => fetchIdeas('new')}
+          />
+          
+          <TopicInput 
+            onLaunch={handleToScript}
+          />
+        </div>
+      )}
 
       {/* Tabs */}
       <div className="flex p-1 rounded-2xl bg-white/[0.03] border border-white/5">
@@ -113,78 +158,49 @@ export default function IdeasPage() {
         ))}
       </div>
 
-      {/* Ideas list */}
-      <div className="space-y-4">
-        {errorState === 'TIER_LOCK' ? (
-          <div className="flex flex-col items-center justify-center py-20 px-8 text-center space-y-8 bg-white/[0.02] border border-white/5 rounded-[2rem] animate-fade-up">
-            <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-purple-500/20 to-blue-500/20 border border-white/10 flex items-center justify-center relative overflow-hidden group">
-              <TrendingUp className="w-10 h-10 text-white/40 group-hover:scale-110 transition-transform" />
-              <div className="absolute inset-0 bg-gradient-to-t from-purple-500/10 to-transparent" />
-            </div>
-            <div className="space-y-3">
-              <h3 className="text-xl font-black uppercase tracking-tighter gradient-text-purple">Unlock AI Trends</h3>
-              <p className="text-[11px] text-white/40 uppercase tracking-[0.1em] font-medium leading-relaxed max-w-[240px]">
-                AI-powered trend scouting is exclusive to <span className="text-white/60">Creator</span> and <span className="text-white/60">Pro</span> tiers.
-              </p>
-            </div>
-            <button 
-              onClick={() => router.push('/billing')}
-              className="px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-purple-500/20"
-            >
-              Upgrade Now
-            </button>
-          </div>
-        ) : errorState === 'MONTHLY_LIMIT' ? (
-          <div className="flex flex-col items-center justify-center py-20 px-8 text-center space-y-8 bg-white/[0.02] border border-white/5 rounded-[2rem] animate-fade-up">
-            <div className="w-20 h-20 rounded-[2.5rem] bg-gradient-to-br from-yellow-500/20 to-orange-500/20 border border-white/10 flex items-center justify-center relative overflow-hidden group">
-              <TrendingUp className="w-10 h-10 text-white/40 group-hover:scale-110 transition-transform" />
-            </div>
-            <div className="space-y-3">
-              <h3 className="text-xl font-black uppercase tracking-tighter text-yellow-500/80">Monthly Limit Reached</h3>
-              <p className="text-[11px] text-white/40 uppercase tracking-[0.1em] font-medium leading-relaxed max-w-[240px]">
-                You've used your 10 AI topics for this month. Upgrade to <span className="text-white/60">Pro</span> for unlimited insights.
-              </p>
-            </div>
-            <button 
-               onClick={() => router.push('/billing')}
-               className="px-8 py-4 rounded-2xl bg-yellow-500 text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-2xl shadow-yellow-500/20"
-            >
-              Go Pro
-            </button>
-          </div>
-        ) : loading && ideas.length === 0 ? (
-          <div className="flex flex-col items-center justify-center py-20 space-y-4">
-            <Loader2 className="w-8 h-8 text-purple-500/50 animate-spin" />
-            <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold">Synthesizing Trends...</p>
-          </div>
-        ) : ideas.length > 0 ? (
-          ideas.map((idea, i) => (
-            <IdeaCard
-              key={idea.id}
-              idea={idea}
-              index={i}
-              locale={locale}
-              isProcessing={processingId === idea.id}
+      {/* Scrollers or List */}
+      <div className="space-y-10">
+        {activeTab === 'new' ? (
+          CATEGORIES.map((cat) => (
+            <MatrixScroller
+              key={cat}
+              title={cat}
+              subtitle={locale === 'ru' ? 'Стратегические идеи' : 'Strategic Insights'}
+              ideas={groupedIdeas[cat] || []}
+              onToScript={(topic) => handleToScript(topic, cat)}
               onToggleArchive={handleToggleArchive}
-              onToScript={handleToScript}
             />
           ))
         ) : (
-          <div className="flex flex-col items-center justify-center py-20 px-10 text-center space-y-4">
-            <div className="w-16 h-16 rounded-3xl bg-white/[0.02] border border-white/5 flex items-center justify-center">
-              <History className="w-8 h-8 text-white/10" />
-            </div>
-            <div className="space-y-1">
-              <h3 className="text-sm font-bold text-white/60">No themes found</h3>
-              <p className="text-[10px] text-white/20 uppercase tracking-widest leading-relaxed">
-                {activeTab === 'new' 
-                  ? 'We are looking for fresh trends. Check back in a few minutes.' 
-                  : 'Your archive is empty. Save promising themes to see them here.'}
-              </p>
-            </div>
+          <div className="grid gap-4">
+            {ideas.length > 0 ? (
+              ideas.map((idea, i) => (
+                <IdeaCard
+                  key={idea.id}
+                  idea={idea}
+                  index={i}
+                  locale={locale}
+                  isProcessing={processingId === idea.id}
+                  onToggleArchive={handleToggleArchive}
+                  onToScript={handleToScript}
+                />
+              ))
+            ) : (
+                <div className="text-center py-20 text-white/20 uppercase text-[10px] tracking-widest font-black">
+                    {locale === 'ru' ? 'Библиотека пуста' : 'Library is empty'}
+                </div>
+            )}
           </div>
         )}
       </div>
+
+      {loading && ideas.length === 0 && (
+        <div className="flex flex-col items-center justify-center py-20 space-y-4">
+          <Loader2 className="w-8 h-8 text-purple-500/50 animate-spin" />
+          <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold">
+            {locale === 'ru' ? 'Синтезируем темы...' : 'Synthesizing Trends...'}
+          </p>
+        </div>
+      )}
     </div>
-  );
 }

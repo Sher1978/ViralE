@@ -5,8 +5,7 @@ import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { 
-  Sparkles, Layers, Video, Zap, Play, CheckCircle2, 
-  ChevronRight, Brain, Clock, Plus, Monitor, ArrowRight
+  Sparkles, Play, Clock, Monitor, ArrowRight, Video, Hourglass, X
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project } from '@/lib/services/projectService';
@@ -25,6 +24,7 @@ export default function ProjectsPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
+  const [showProjectsOverlay, setShowProjectsOverlay] = useState(false);
 
   const fetchProjects = useCallback(async () => {
     try {
@@ -48,172 +48,207 @@ export default function ProjectsPage() {
 
   if (!mounted) return null;
 
+  const hubs = [
+    {
+      id: 'script',
+      title: locale === 'ru' ? 'IDEA LAB' : 'IDEA LAB',
+      desc: locale === 'ru' ? 'CRAFT YOUR MESSAGE & GENERATE TEXT CONTENT' : 'CRAFT YOUR MESSAGE & GENERATE TEXT CONTENT',
+      href: '/app/projects/new/script',
+      image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1973&auto=format&fit=crop',
+    },
+    {
+      id: 'recording',
+      title: locale === 'ru' ? 'RECORDING HUB' : 'RECORDING HUB',
+      desc: locale === 'ru' ? 'RECORD TELEPROMPTER OR GENERATE AI VIDEO' : 'RECORD TELEPROMPTER OR GENERATE AI VIDEO',
+      href: '/app/projects/new/storyboard',
+      image: 'https://images.unsplash.com/photo-1590179068383-b9c69aacebd3?q=80&w=1974&auto=format&fit=crop',
+    },
+    {
+      id: 'production',
+      title: locale === 'ru' ? 'PRODUCTION HUB' : 'PRODUCTION HUB',
+      desc: locale === 'ru' ? 'MONTAGE, B-ROLL & FINAL POST-PROCESSING' : 'MONTAGE, B-ROLL & FINAL POST-PROCESSING',
+      href: '/app/projects/new/production',
+      image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059&auto=format&fit=crop',
+    }
+  ];
 
   return (
-    <div className="space-y-0 pb-32 max-w-7xl mx-auto overflow-x-hidden">
-      {/* Professional Header - Aligned with Global Strategist Logo */}
-      <div className="flex items-center gap-4 pt-6 mb-8 px-6 min-h-12">
-        {/* Spacer for the Fixed Strategist Orb (w-12) */}
-        <div className="w-12 flex-shrink-0" />
-        <div className="flex flex-col justify-center">
-          <div className="space-y-0">
-            <h1 className="text-4xl font-black uppercase tracking-tighter leading-[0.8] italic">
-              Viral<span className="text-purple-500">E</span>
+    <div className="relative pb-32 max-w-7xl mx-auto overflow-hidden bg-[#0A0A10] min-h-screen">
+      {/* Header Aligned with Image */}
+      <header className="px-8 pt-10 pb-6 flex items-center gap-5">
+        <div className="w-16 h-16 rounded-full bg-gradient-to-br from-cyan-500/20 to-purple-500/20 border border-white/10 flex items-center justify-center p-2 backdrop-blur-xl shadow-2xl relative">
+             <div className="absolute inset-0 rounded-full border border-white/5 animate-pulse" />
+             <div className="w-full h-full rounded-full bg-[#12121A] flex items-center justify-center border border-white/10">
+                <Sparkles className="w-8 h-8 text-cyan-400" />
+             </div>
+        </div>
+
+        <div className="flex-1 flex items-center justify-between">
+          <div className="flex flex-col">
+            <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
+              VIRAL<span className="text-purple-500">E</span>
             </h1>
-            <p className="text-[10px] uppercase tracking-[0.4em] font-black text-white/20 mt-1">
-              AI Content Production Factory
+            <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mt-1.5">
+              AI CONTENT PRODUCTION <br className="sm:hidden" /> FACTORY
             </p>
           </div>
+
+          {/* Triangular Bookmark Trigger (Top Right of Header Area) */}
+          <div 
+            onClick={() => setShowProjectsOverlay(true)}
+            className="w-16 h-16 relative cursor-pointer group"
+          >
+             <div className="absolute top-0 right-0 w-full h-full overflow-hidden">
+                <div className="absolute top-0 right-0 w-[140%] h-[40%] bg-white/5 border-b border-white/10 origin-top-right rotate-45 translate-x-1/2 -translate-y-1/2 group-hover:bg-white/10 transition-all flex items-center justify-center">
+                    <Hourglass className="w-4 h-4 text-white/40 group-hover:text-amber-400 rotate-[-45deg] transition-all translate-x-[-10px] translate-y-[10px]" />
+                </div>
+             </div>
+          </div>
         </div>
-      </div>
+      </header>
 
-      {/* Professional Stage Collage - Monolithic Diagonal Layout with Maximum Visibility */}
-      <div className="relative group/monolith overflow-hidden bg-black space-y-[-40px]">
-        {[
-          {
-            id: 'script',
-            title: locale === 'ru' ? 'Лаборатория идей' : 'Idea Lab',
-            desc: locale === 'ru' ? 'МАСТЕРСКАЯ СМЫСЛОВ И ГЕНЕРАЦИЯ ТЕКСТА' : 'CRAFT YOUR MESSAGE & GENERATE TEXT CONTENT',
-            href: '/app/projects/new/script',
-            image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1973&auto=format&fit=crop',
-          },
-          {
-            id: 'recording',
-            title: locale === 'ru' ? 'Студия Записи' : 'Recording Hub',
-            desc: locale === 'ru' ? 'ЗАПИСЬ СУФЛЕРА, АВАТАРЫ И AI-ВИДЕО' : 'RECORD TELEPROMPTER OR GENERATE AI VIDEO',
-            href: '/app/projects/new/storyboard',
-            image: 'https://images.unsplash.com/photo-1590179068383-b9c69aacebd3?q=80&w=1974&auto=format&fit=crop',
-          },
-          {
-            id: 'production',
-            title: locale === 'ru' ? 'Продакшн' : 'Production Hub',
-            desc: locale === 'ru' ? 'МОНТАЖ, B-ROLL И ПОСТ-ОБРАБОТКА' : 'MONTAGE, B-ROLL & FINAL POST-PROCESSING',
-            href: '/app/projects/new/production',
-            image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059&auto=format&fit=crop',
-          }
-        ].map((hub, index) => (
-            <motion.div
-              key={hub.title}
-              initial={{ opacity: 0, x: -20 }}
-              animate={{ opacity: 1, x: 0 }}
-              transition={{ delay: index * 0.1 }}
-              onClick={() => router.push(hub.href)}
-              className={`relative h-[250px] cursor-pointer group overflow-hidden ${
-                index === 0 ? 'z-30' : index === 1 ? 'z-20' : 'z-10'
-              }`}
-              style={{
-                clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' :
-                          index === 1 ? 'polygon(0 12%, 100% 0, 100% 88%, 0 100%)' :
-                          'polygon(0 12%, 100% 0, 100% 100%, 0 100%)'
-              }}
-            >
-              <div 
-                className="relative w-full h-full transition-all duration-700 overflow-hidden active:scale-[0.99]"
-              >
-                {/* Subtle top shadow for depth */}
-                <div className="absolute top-0 left-0 w-full h-[80px] bg-gradient-to-b from-black/50 to-transparent z-40 pointer-events-none" />
-
-                {/* Comic Background with sharp edges */}
-                <div className="absolute inset-0 z-0 overflow-hidden">
-                  <img 
-                    src={hub.image} 
-                    className="w-full h-full object-cover opacity-50 grayscale hover:grayscale-0 transition-all duration-700 hover:scale-105" 
-                    alt={hub.title} 
-                  />
-                  <div className={`absolute inset-0 bg-gradient-to-r from-purple-950/90 ${
-                    index === 0 ? 'via-purple-900/40' : 
-                    index === 1 ? 'via-orange-900/40' : 
-                    'via-blue-900/40'
-                  } to-transparent`} />
-                  
-                  {/* Subtle Comic Line Separators */}
-                  <div className="absolute bottom-0 left-0 right-0 h-[2px] bg-white/10" />
-                </div>
-
-                {/* Giant Original Stylized Numbering - Better Visibility Watermark */}
-                <span className="absolute bottom-0 right-4 text-[120px] font-black text-white/[0.2] italic leading-none z-1 tracking-tighter transition-all group-hover:scale-110 group-hover:text-white/30">
-                  {index + 1}
-                </span>
-
-                {/* Content Overlay */}
-                <div className="relative z-10 h-full flex flex-col justify-center px-8 pt-4">
-                  <div className="space-y-1">
-                    <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 block">Step {index + 1}</span>
-                    <h2 className="text-4xl font-black uppercase text-white tracking-tighter italic leading-tight">
-                      {hub.title}
-                    </h2>
-                    <p className="text-[9px] font-black uppercase tracking-[0.3em] text-white/30 max-w-[200px] leading-relaxed">
-                      {hub.desc}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Interaction Overlay */}
-                <div className="absolute inset-0 bg-white/0 group-active:bg-white/5 transition-colors duration-300 z-50 pointer-events-none" />
+      {/* Comic Blocks Section */}
+      <div className="space-y-[-45px]">
+        {hubs.map((hub, index) => (
+          <motion.div
+            key={hub.id}
+            initial={{ opacity: 0, y: 30 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: index * 0.15 }}
+            onClick={() => router.push(hub.href)}
+            className={`relative h-[280px] cursor-pointer group overflow-hidden ${
+              index === 0 ? 'z-30' : index === 1 ? 'z-20' : 'z-10'
+            }`}
+            style={{
+              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' :
+                        index === 1 ? 'polygon(0 12%, 100% 0, 100% 88%, 0 100%)' :
+                        'polygon(0 12%, 100% 0, 100% 100%, 0 100%)'
+            }}
+          >
+            <div className="relative w-full h-full transition-all duration-700 overflow-hidden active:scale-[0.99]">
+              <div className="absolute inset-0 z-0">
+                <img 
+                  src={hub.image} 
+                  className="w-full h-full object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-1000 hover:scale-110" 
+                  alt="" 
+                />
+                <div className={`absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent opacity-80`} />
+                <div className={`absolute inset-0 bg-gradient-to-r ${
+                  index === 0 ? 'from-purple-900/40' : index === 1 ? 'from-orange-900/40' : 'from-blue-900/40'
+                } to-transparent`} />
               </div>
+
+              <span className="absolute bottom-0 right-4 text-[160px] font-black text-white/[0.1] italic leading-none z-1 tracking-tighter transition-all group-hover:scale-110 group-hover:text-white/[0.15]">
+                {index + 1}
+              </span>
+
+              <div className="relative z-10 h-full flex flex-col justify-center px-10 pt-4">
+                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 block mb-3">STEP {index + 1}</span>
+                <h2 className="text-5xl font-black uppercase text-white tracking-tighter italic leading-[0.9] mb-4 group-hover:translate-x-2 transition-transform">
+                    {hub.title}
+                </h2>
+                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/20 max-w-[280px] leading-relaxed">
+                  {hub.desc}
+                </p>
+              </div>
+
+              {/* Scanline Effect */}
+              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,.25)_50%),linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,111,.06))] bg-[length:100%_4px,3px_100%] opacity-20" />
+            </div>
           </motion.div>
         ))}
       </div>
 
-      {/* RECENT PROJECTS / RESUME - Professional Minimalism */}
-      <div className="mt-8 space-y-6">
-        <div className="flex items-center justify-between px-6">
-           <div className="flex items-center gap-3">
-              <div className="w-8 h-8 rounded-full bg-orange-500/10 flex items-center justify-center border border-orange-500/20">
-                <Clock className="w-4 h-4 text-orange-400" />
-              </div>
-              <h2 className="text-sm font-black uppercase tracking-widest text-white italic">Resume Creation</h2>
-           </div>
-           <Link href="/app/library" className="text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white transition-colors">View All</Link>
-        </div>
-
-        {projects.length > 0 ? (
-          <div className="px-6 space-y-3">
-            {projects.slice(0, 3).map((project) => (
-               <div 
-                key={project.id}
-                onClick={() => router.push(`/app/projects/new/${project.id}`)}
-                className="flex items-center justify-between p-5 bg-white/[0.02] border border-white/5 rounded-2xl hover:bg-white/[0.05] transition-all cursor-pointer group"
+      {/* Projects Slide-over Overlay (90% width) */}
+      <AnimatePresence>
+        {showProjectsOverlay && (
+          <>
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowProjectsOverlay(false)}
+              className="fixed inset-0 bg-black/80 backdrop-blur-lg z-[100]"
+            />
+            <motion.div
+              initial={{ x: '100%' }}
+              animate={{ x: '10%' }}
+              exit={{ x: '100%' }}
+              transition={{ type: 'spring', damping: 25, stiffness: 200 }}
+              className="fixed top-0 right-0 w-[90%] h-full bg-[#12121A] border-l border-white/5 z-[101] shadow-2xl p-10 overflow-y-auto"
+            >
+              {/* Close Bookmark (Top Left of Overlay) */}
+              <div 
+                onClick={() => setShowProjectsOverlay(false)}
+                className="absolute top-0 left-0 w-24 h-24 overflow-hidden cursor-pointer group"
               >
-                <div className="flex items-center gap-4">
-                   <div className="w-12 h-12 rounded-xl bg-purple-500/10 flex items-center justify-center border border-white/5 group-hover:border-purple-500/30 transition-all">
-                      <Play className="h-5 w-5 text-white/50 group-hover:text-purple-400 transition-all" />
-                   </div>
-                   <div className="flex flex-col">
-                      <span className="text-xs font-black uppercase tracking-tight text-white/80">{project.title}</span>
-                      <span className="text-[9px] font-bold text-white/20 uppercase tracking-widest mt-0.5">Updated recently</span>
-                   </div>
-                </div>
-                <ArrowRight className="h-4 w-4 text-white/10 group-hover:text-white transition-all group-hover:translate-x-1" />
+                  <div className="absolute top-0 left-0 w-[140%] h-[40%] bg-white/5 border-b border-white/10 origin-top-left -rotate-45 -translate-x-1/2 -translate-y-1/2 group-hover:bg-white/10 transition-all flex items-center justify-center">
+                    <Video className="w-5 h-5 text-white/40 group-hover:text-purple-400 rotate-[45deg] transition-all translate-x-[12px] translate-y-[12px]" />
+                  </div>
               </div>
-            ))}
-          </div>
-        ) : (
-          <div className="p-12 rounded-[3rem] bg-white/[0.02] border border-dashed border-white/10 text-center space-y-4 mx-2">
-             <p className="text-xs font-bold text-white/20 uppercase tracking-widest">No active sequences found</p>
-             <Link href="/app/projects/new" className="text-[10px] font-black uppercase tracking-widest text-purple-400 hover:underline">
-               Initialize First Project
-             </Link>
-          </div>
+
+              <div className="flex items-center justify-between mb-12 ml-10">
+                <div className="flex flex-col">
+                  <h2 className="text-3xl font-black uppercase tracking-tighter italic text-white">RESUME FLOW</h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mt-1">ACTIVE PRODUCTION SEQUENCES</p>
+                </div>
+                <button
+                  onClick={() => setShowProjectsOverlay(false)}
+                   className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 text-white/40 hover:text-white transition-all"
+                >
+                  <X className="w-5 h-5" />
+                </button>
+              </div>
+
+              {projects.length > 0 ? (
+                <div className="grid gap-4">
+                  {projects.map((project) => (
+                    <div 
+                      key={project.id}
+                      onClick={() => router.push(`/app/projects/new/${project.id}`)}
+                      className="flex items-center justify-between p-6 bg-white/[0.03] border border-white/5 rounded-[2.5rem] hover:bg-white/[0.06] transition-all cursor-pointer group hover:border-purple-500/20"
+                    >
+                      <div className="flex items-center gap-5">
+                        <div className="w-16 h-16 rounded-3xl bg-amber-500/10 flex items-center justify-center border border-white/5 group-hover:border-amber-400/30 transition-all">
+                          <Play className="h-7 w-7 text-white/50 group-hover:text-amber-400 transition-all" />
+                        </div>
+                        <div className="flex flex-col">
+                          <span className="text-lg font-black uppercase tracking-tight text-white group-hover:text-amber-400 transition-colors italic">{project.title}</span>
+                          <div className="flex items-center gap-2 mt-1">
+                             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                             <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">In Progress • Updated recently</span>
+                          </div>
+                        </div>
+                      </div>
+                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-black transition-all">
+                        <ArrowRight size={20} />
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="p-20 rounded-[4rem] bg-white/[0.02] border border-dashed border-white/10 text-center space-y-5">
+                  <Monitor className="w-16 h-16 text-white/5 mx-auto" />
+                  <p className="text-xs font-black uppercase tracking-widest text-white/10">No unfinished projects detected in the grid</p>
+                </div>
+              )}
+            </motion.div>
+          </>
         )}
-      </div>
+      </AnimatePresence>
 
-      <StrategistChat 
-        projectId="" 
-        userId={profile?.id || ''} 
-        context="studio"
-      />
+      <StrategistChat projectId="" userId={profile?.id || ''} context="studio" />
 
-      {/* Decorative Assets */}
-      <div className="fixed top-1/4 -right-64 w-[600px] h-[600px] bg-purple-600/5 blur-[150px] pointer-events-none -z-10 animate-pulse" />
-      <div className="fixed bottom-1/4 -left-64 w-[600px] h-[600px] bg-blue-600/5 blur-[150px] pointer-events-none -z-10 animate-pulse [animation-delay:2s]" />
+      {/* Decorative Blur Assets */}
+      <div className="fixed top-1/4 -right-64 w-[800px] h-[800px] bg-purple-600/10 blur-[200px] pointer-events-none -z-10 animate-pulse" />
+      <div className="fixed bottom-1/4 -left-64 w-[800px] h-[800px] bg-cyan-600/10 blur-[200px] pointer-events-none -z-10 animate-pulse [animation-delay:2s]" />
       
       <PremiumLimitModal 
         isOpen={!!error}
         onClose={() => setError(null)}
         title={locale === 'ru' ? 'Сбой Системы' : 'System Notice'}
         description={error || ''}
-        advice={locale === 'ru' ? 'Попробуй проверить соединение или освежить сессию. Конвейер иногда требует перезагрузки.' : 'Try checking your connection or refreshing your session. The engine occasionally needs a restart.'}
+        advice={locale === 'ru' ? 'Проверьте соединение или обновите сессию.' : 'Check connection or refresh session.'}
         type="error"
         locale={locale}
       />

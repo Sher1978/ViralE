@@ -6,7 +6,7 @@ import { getAuthContext } from '@/lib/auth';
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
-    let { projectId, coreIdea, locale = 'en', mode = 'initial', instruction, currentScript, versionId: targetVersionId, engine = 'gemini' } = await req.json();
+    let { projectId, coreIdea, locale = 'en', mode = 'initial', instruction, currentScript, versionId: targetVersionId, engine = 'gemini', hook, role } = await req.json();
 
     console.log(`[ScriptGen] Mode: ${mode}, Locale: ${locale}, Engine: ${engine}, ProjectID: ${projectId || 'NEW'}`);
 

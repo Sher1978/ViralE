@@ -25,24 +25,64 @@ export async function GET(req: Request) {
                    .or('metadata->archived.is.null,metadata->archived.eq.false');
     }
 
+    const categories = [
+      "Awareness", "Problem", "Solution", "Loyalty", "Fast Sales",
+      "Myths", "Comparison", "Educational", "Case Study", "Trends", "Lifestyle", "Future"
+    ];
+
+    const categoryParam = searchParams.get('category');
+    if (categoryParam) {
+      query = query.eq('metadata->>category', categoryParam);
+    }
+
     const { data: existingIdeas, error: fetchError } = await query;
 
     if (fetchError) throw fetchError;
 
-    // 2. If we asked for 'new' ideas and didn't find any, generate fresh ones
-    if (requestedStatus === 'new' && (!existingIdeas || existingIdeas.length === 0)) {
-      const freshIdeas = await generateDailyIdeas(authorizedSupabase, userId, locale);
-      await saveIdeasToFeed(authorizedSupabase, userId, freshIdeas);
+    // 2. If we asked for 'new' ideas and didn't find enough, generate fresh ones
+    if (requestedStatus === 'new') {
+      const { data: profile } = await authorizedSupabase
+        .from('profiles')
+        .select('dna_answers')
+        .eq('id', userId)
+        .single();
       
-      // Fetch them again to get IDs and created_at
-      const { data: newlyCreated } = await authorizedSupabase
-        .from('ideation_feed')
-        .select('*')
-        .eq('user_id', userId)
-        .eq('status', 'new')
-        .or('metadata->archived.is.null,metadata->archived.eq.false');
+      const dnaAnswers = profile?.dna_answers || {};
+      const isDnaComplete = Object.values(dnaAnswers).filter((v: any) => v && v.toString().length > 2).length >= 7;
+
+      if (!existingIdeas || existingIdeas.length === 0) {
+        const categoriesToGenerate = categoryParam ? [categoryParam] : categories;
         
-      return NextResponse.json(newlyCreated);
+        const allFreshIdeas = [];
+        // Only generate for a few categories at a time if none exist, or the requested one
+        for (const cat of categoriesToGenerate) {
+           try {
+             const fresh = await generateDailyIdeas(authorizedSupabase, userId, locale, cat);
+             allFreshIdeas.push(...fresh);
+             if (allFreshIdeas.length > 15) break; // Limit initial batch
+           } catch (e) {
+             console.error(`Generation failed for category ${cat}:`, e);
+           }
+        }
+        
+        if (allFreshIdeas.length > 0) {
+          await saveIdeasToFeed(authorizedSupabase, userId, allFreshIdeas);
+        }
+        
+        // Fetch again
+        let finalQuery = authorizedSupabase
+          .from('ideation_feed')
+          .select('*')
+          .eq('user_id', userId)
+          .eq('status', 'new');
+        
+        if (categoryParam) {
+          finalQuery = finalQuery.eq('metadata->>category', categoryParam);
+        }
+        
+        const { data: newlyCreated } = await finalQuery;
+        return NextResponse.json(newlyCreated || []);
+      }
     }
 
     return NextResponse.json(existingIdeas || []);
