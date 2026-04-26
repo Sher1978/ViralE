@@ -35,23 +35,38 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
 }) => {
   const [activeSource, setActiveSource] = useState<'vault' | 'ai'>('vault');
   const [isGenerating, setIsGenerating] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
+  const [searchQuery, setSearchQuery] = useState(segmentText || '');
+  const [videos, setVideos] = useState<any[]>([]);
+
+  React.useEffect(() => {
+    if (isOpen && searchQuery) {
+      handleSearch();
+    }
+  }, [isOpen]);
+
+  const handleSearch = async () => {
+    if (!searchQuery) return;
+    setIsSearching(true);
+    try {
+      const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(searchQuery)}`);
+      const data = await res.json();
+      setVideos(data.videos || []);
+    } catch (err) {
+      console.error('Search failed', err);
+    } finally {
+      setIsSearching(false);
+    }
+  };
 
   if (!isOpen) return null;
-
-  // Movie Vault Mock Data
-  const movieItems: BRollOption[] = [
-    { id: 'mv-1', source: 'movie', title: 'The Great Gatsby', previewUrl: 'https://images.unsplash.com/photo-1492144534655-ae79c964c9d7?q=80&w=400&h=225&fit=crop' },
-    { id: 'mv-2', source: 'movie', title: 'The Wolf of Wall Street', previewUrl: 'https://images.unsplash.com/photo-1560179707-f14e90ef3623?q=80&w=400&h=225&fit=crop' },
-    { id: 'mv-3', source: 'movie', title: 'Interstellar', previewUrl: 'https://images.unsplash.com/photo-1446776811953-b23d57bd21aa?q=80&w=400&h=225&fit=crop' },
-    { id: 'mv-4', source: 'movie', title: 'Inception', previewUrl: 'https://images.unsplash.com/photo-1536440136628-849c177e76a1?q=80&w=400&h=225&fit=crop' },
-  ];
 
   const handleGenerateAI = async () => {
     if (!segmentText) return;
     setIsGenerating(true);
     try {
       // 1. Submit Generation Job
-      const res = await fetch('/api/[locale]/api/ai/generate-broll', {
+      const res = await fetch('/api/ai/generate-broll', {
         method: 'POST',
         body: JSON.stringify({ prompt: segmentText })
       });
@@ -63,7 +78,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
-        const statusRes = await fetch(`/api/[locale]/api/ai/generate-broll?jobId=${jobId}`);
+        const statusRes = await fetch(`/api/ai/generate-broll?jobId=${jobId}`);
         const { status, url } = await statusRes.json();
         
         if (status === 'completed' && url) {
@@ -84,9 +99,9 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   };
 
   return (
-    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl p-4 md:p-8 overflow-hidden flex flex-col">
+    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl p-4 md:p-8 overflow-y-auto flex flex-col no-scrollbar">
       {/* Header */}
-      <div className="flex items-center justify-between mb-8">
+      <div className="flex items-center justify-between mb-8 flex-none">
         <div>
           <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase flex items-center gap-3">
              <Film size={28} className="text-purple-500" />
@@ -94,19 +109,32 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
           </h2>
           <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">Finding visual energy for your scene</p>
         </div>
-        <button 
-          onClick={onClose}
-          className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all transform active:rotate-90"
-        >
-          <X size={24} />
-        </button>
+        <div className="flex items-center gap-4">
+          <div className="relative hidden md:block">
+             <input 
+               type="text"
+               value={searchQuery}
+               onChange={(e) => setSearchQuery(e.target.value)}
+               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
+               placeholder="Search Stock Library..."
+               className="w-64 h-12 bg-white/5 border border-white/10 rounded-2xl px-5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500/50 transition-all font-medium"
+             />
+             <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20" />
+          </div>
+          <button 
+            onClick={onClose}
+            className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all transform active:rotate-90"
+          >
+            <X size={24} />
+          </button>
+        </div>
       </div>
 
-      <div className="flex-1 flex flex-col min-h-0 gap-6">
+      <div className="flex-1 flex flex-col gap-6">
         {/* Search & Generation Section */}
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6 flex-none">
           {/* AI Generator Card */}
-          <div className="bg-gradient-to-br from-purple-900/60 to-blue-900/60 rounded-[2.5rem] border border-purple-500/30 p-10 relative overflow-hidden group shadow-[0_0_50px_rgba(168,85,247,0.1)]">
+          <div className="bg-gradient-to-br from-purple-900/60 to-blue-900/60 rounded-[2.5rem] border border-purple-500/30 p-10 relative overflow-hidden group shadow-[0_0_50px_rgba(168,85,247,0.15)]">
              <div className="absolute top-0 right-0 p-8 transform group-hover:scale-110 transition-transform">
                 <Sparkles size={64} className="text-purple-400 opacity-20" />
              </div>
@@ -158,11 +186,11 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
         </div>
 
         {/* Source Headers */}
-        <div className="flex items-center justify-between border-b border-white/5 pb-4">
+        <div className="flex items-center justify-between border-b border-white/5 pb-4 flex-none">
            <div className="flex gap-8">
               <button onClick={() => setActiveSource('vault')} 
                 className={`text-[12px] font-black uppercase tracking-widest transition-all ${activeSource === 'vault' ? 'text-white' : 'text-white/20'}`}>
-                Movie Vault
+                Pexels Engine
               </button>
               <button onClick={() => setActiveSource('ai')}
                 className={`text-[12px] font-black uppercase tracking-widest transition-all ${activeSource === 'ai' ? 'text-purple-400' : 'text-white/20'}`}>
@@ -171,30 +199,44 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
            </div>
         </div>
 
-         <div className="flex-1 overflow-y-auto pr-2 custom-scrollbar">
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-2 gap-6">
-               {movieItems.map((item) => (
-                  <div 
-                    key={item.id}
-                    onClick={() => onSelect(item.previewUrl)}
-                    className="group relative aspect-video rounded-[2rem] overflow-hidden bg-white/5 border border-white/5 hover:border-purple-500/50 cursor-pointer transition-all"
-                  >
-                     <img src={item.previewUrl} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
-                     <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-60 transition-opacity z-10" />
-                     
-                     <div className="absolute bottom-6 left-6 z-20">
-                        <span className="text-[10px] font-black uppercase text-white/40 mb-1 block">Movie Fragment</span>
-                        <h4 className="text-white font-black italic uppercase tracking-tighter text-lg">{item.title}</h4>
-                     </div>
- 
-                     <div className="absolute inset-0 z-30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-purple-600/30">
-                        <div className="w-16 h-16 rounded-full bg-white text-black flex items-center justify-center shadow-2xl scale-75 group-hover:scale-100 transition-transform">
-                           <Check size={28} />
-                        </div>
-                     </div>
-                  </div>
-               ))}
-            </div>
+         <div className="pb-20">
+            {isSearching ? (
+               <div className="py-20 flex flex-col items-center justify-center gap-4">
+                  <RefreshCcw size={40} className="text-white/10 animate-spin" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">Scanning Vault...</p>
+               </div>
+            ) : (
+              <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                 {videos.map((item) => (
+                    <div 
+                      key={item.id}
+                      onClick={() => onSelect(item.videoUrl)}
+                      className="group relative aspect-[9/16] rounded-[2rem] overflow-hidden bg-white/5 border border-white/5 hover:border-purple-500/50 cursor-pointer transition-all"
+                    >
+                       <img src={item.previewUrl} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-700" />
+                       <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/20 to-transparent opacity-80 group-hover:opacity-60 transition-opacity z-10" />
+                       
+                       <div className="absolute bottom-4 left-4 right-4 z-20">
+                          <span className="text-[9px] font-black uppercase text-purple-500 mb-1 block tracking-widest">Portrait Fragment</span>
+                          <h4 className="text-white font-black italic uppercase tracking-tighter text-[10px] leading-tight opacity-40 line-clamp-2">{item.title}</h4>
+                       </div>
+   
+                       <div className="absolute inset-0 z-30 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center bg-purple-600/30">
+                          <div className="w-12 h-12 rounded-full bg-white text-black flex items-center justify-center shadow-2xl scale-75 group-hover:scale-100 transition-transform">
+                             <Check size={20} />
+                          </div>
+                       </div>
+                    </div>
+                 ))}
+                 {videos.length === 0 && (
+                    <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4 border-2 border-dashed border-white/5 rounded-[3rem]">
+                       <Video size={40} className="text-white/10" />
+                       <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">No matching fragments found</p>
+                       <button onClick={handleSearch} className="px-6 py-3 bg-white/5 rounded-xl text-[10px] font-black uppercase text-white/40">Retry Search</button>
+                    </div>
+                 )}
+              </div>
+            )}
          </div>
       </div>
     </div>

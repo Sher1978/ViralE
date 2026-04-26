@@ -254,31 +254,37 @@ export const VideoEditor = React.memo(({
     const dur = videoRef.current?.duration || duration;
     let words: TranscriptWord[] = [];
 
-    // Prioritize manifest (Teleprompter script)
-    if (manifest?.segments?.some((s: any) => s.scriptText)) {
-      words = buildTranscript(manifest, dur);
-    } 
-    // Fallback to real AI transcription for manual uploads
-    else if (rawFile) {
-      setStageMessage('AI Analyzing Voice...');
+    // ALWAYS favor real AI transcription to get accurate word timings
+    // We try to transcribe if we have a raw file OR a remote URL (recorded video)
+    if (rawFile || aRollUrl) {
+      setStageMessage('AI Analyzing Voice Hub...');
       try {
         const formData = new FormData();
-        formData.append('file', rawFile);
-        const res = await fetch('/api/[locale]/api/ai/transcribe', { method: 'POST', body: formData });
+        if (rawFile) {
+          formData.append('file', rawFile);
+        } else if (aRollUrl) {
+          // If it's a blob/url from teleprompter, we fetch it first
+          const blob = await fetch(aRollUrl).then(r => r.blob());
+          formData.append('file', new File([blob], 'recording.webm', { type: 'video/webm' }));
+        }
+
+        const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
         const data = await res.json();
-        if (data.transcript) {
+        
+        if (data.transcript && data.transcript.length > 0) {
           words = data.transcript;
         } else {
-          throw new Error('Transcription failed');
+          console.warn('AI returned empty transcript, using script fallback');
+          words = buildTranscript(manifest, dur);
         }
       } catch (err) {
-        console.error(err);
-        setStageMessage('AI analysis failed. Using fallback...');
-        await delay(1000);
-        words = buildTranscript(null, dur);
+        console.error('Transcription failed:', err);
+        setStageMessage('Syncing with Script...');
+        await delay(800);
+        words = buildTranscript(manifest, dur);
       }
     } else {
-      words = buildTranscript(null, dur);
+      words = buildTranscript(manifest, dur);
     }
 
     if (words.length === 0) {
@@ -599,7 +605,7 @@ export const VideoEditor = React.memo(({
               animate={{ opacity: 1, scale: 1, y: subtitlePos.y, x: subtitlePos.x }}
               exit={{ opacity: 0, scale: 0.9 }}
               key={subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime)?.id}
-              className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-6"
+              className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-6 max-w-[85%] left-1/2 -translate-x-1/2 flex items-center justify-center whitespace-pre-wrap"
             >
               {(() => {
                 const s = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime)!;

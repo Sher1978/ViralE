@@ -21,11 +21,12 @@ export async function POST(req: NextRequest) {
         'X-Higgs-Key-Secret': keySecret,
       },
       body: JSON.stringify({
-        model: 'kling-3.0', // Our default cinematic engine
+        model: 'kling-3.0',
         prompt,
         options: {
           motion_bucket: 127,
-          frames: 120, // ~4 seconds
+          frames: 120,
+          aspect_ratio: '9:16'
         }
       }),
     });

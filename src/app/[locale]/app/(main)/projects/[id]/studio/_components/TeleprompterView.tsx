@@ -183,7 +183,8 @@ export const TeleprompterView = React.memo(({
       {/* 📜 Scrolling Text Canvas - Reading Zone at Lens (Top) */}
       <div 
         ref={prompterRef}
-        className={`w-full h-full overflow-y-auto scrollbar-none transition-transform duration-700 relative z-10 pointer-events-none ${isMirrored ? 'scale-x-[-1]' : ''}`}
+        className={`w-full h-full overflow-y-auto scrollbar-none relative z-10 ${isMirrored ? 'scale-x-[-1]' : ''}`}
+        style={{ scrollBehavior: 'auto' }}
       >
         <div 
           id="scrolling-content"
@@ -266,22 +267,6 @@ export const TeleprompterView = React.memo(({
 
       {/* Control elements removed per request */}
 
-      {/* Countdown Overlay */}
-      <AnimatePresence>
-        {countdown !== null && (
-          <motion.div 
-            initial={{ opacity: 0, scale: 2 }}
-            animate={{ opacity: 1, scale: 1 }}
-            exit={{ opacity: 0, scale: 0.5 }}
-            className="absolute inset-0 z-[100] flex items-center justify-center bg-black/80 backdrop-blur-2xl"
-          >
-            <span className="text-[15rem] font-black italic text-white drop-shadow-[0_0_80px_rgba(168,85,247,0.5)]">
-              {countdown}
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
-      
       {/* Editor Modal Overlay */}
       <AnimatePresence>
         {isEditing && (
