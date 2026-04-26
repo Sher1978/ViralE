@@ -394,6 +394,7 @@ export default function StudioPage() {
               updateSegmentField={updateSegmentField}
               onBack={() => setActiveTab('production')}
               onNext={handleFinalExport}
+              projectId={projectId}
             />
           )}
 

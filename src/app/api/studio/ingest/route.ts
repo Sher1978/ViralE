@@ -24,8 +24,8 @@ export async function POST(req: NextRequest) {
     
     const systemPrompt = `
       You are the "Viral Engine" Ingest Specialist. 
-      The user has uploaded a RAW video (60s max) from the street or a live environment.
-      Your task is to transcribe the speech and organize it into a professional 5-act production manifest.
+      The user has uploaded a RAW video (60s max).
+      Your task is to transcribe the speech and organize it into a production manifest.
       
       ACTS TO FILL:
       1. hook (0-5s)
@@ -35,15 +35,19 @@ export async function POST(req: NextRequest) {
       5. cta (50-60s)
       
       For each act, you MUST provide:
-      - transcript: The exact spoken words in that section.
-      - broll_prompt: A cinematic, high-motion description for an AI video generator (like Veo or Runway) 
-        to create a B-roll that visually complements the spoken words.
+      - text: The exact spoken words in that section.
+      - broll_prompt: CRITICAL RULE — The B-roll must SHOW what is being SAID, not abstract visuals.
+        Extract the KEY ACTION or KEY SUBJECT from the spoken text.
+        If the speaker says "I lost 10kg in 3 months" → show: "person stepping on a scale, the number dropping, cinematic close-up, 4K"
+        If the speaker says "I quit my corporate job" → show: "person handing in resignation letter, walking out of office building, slow motion"
+        If the speaker says "I made $50k" → show: "person counting cash on a desk, bank transfer notification on phone screen, cinematic"
+        ALWAYS: realistic action scene, 4K cinematic, matches the spoken moment EXACTLY.
+        Format: "[subject] [doing the exact action from the text], [camera style], [mood]"
       
-      OUTPUT FORMAT: Valid JSON only.
+      OUTPUT FORMAT: Valid JSON only, no markdown.
       {
         "acts": [
-          { "type": "hook", "text": "...", "broll_prompt": "..." },
-          ...
+          { "type": "hook", "text": "...", "broll_prompt": "..." }
         ]
       }
       
