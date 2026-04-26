@@ -1,9 +1,10 @@
 'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { Link } from '@/navigation';
 import LoginButtons from '@/components/auth/LoginButtons';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { Sparkles, Bot, Terminal } from 'lucide-react';
 import { useEffect } from 'react';
 import { useRouter } from 'next/navigation';
@@ -18,6 +19,7 @@ export default function AuthPage() {
     const checkUser = async () => {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
+        // Redirect to Studio (Projects hub)
         router.push(`/${locale}/app/projects`);
       }
     };

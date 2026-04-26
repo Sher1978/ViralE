@@ -22,15 +22,7 @@ export function BottomNav() {
     { key: 'profile', href: `/${locale}/app/profile`, icon: User },
   ];
 
-  const hideNav = [
-    `/${locale}`,
-    `/${locale}/auth`,
-    `/${locale}/app/onboarding`,
-  ].some(p => 
-    pathname === p || 
-    pathname.startsWith(`/${locale}/app/onboarding`) ||
-    pathname.includes('/auth')
-  );
+  const hideNav = pathname.includes('/auth') || pathname.includes('/onboarding');
 
   if (hideNav) return null;
 

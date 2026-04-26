@@ -5,6 +5,7 @@ import { useRouter, useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { 
   Sparkles, 
   Play, 
@@ -660,6 +661,7 @@ export default function LandingPage() {
           <span className="text-[15rem] font-black uppercase tracking-tighter select-none">{t('factoryFooter')}</span>
         </div>
       </footer>
+      <InstallPrompt />
     </div>
   );
 }
