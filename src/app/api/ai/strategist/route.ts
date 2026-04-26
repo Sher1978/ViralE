@@ -1,5 +1,5 @@
 import { model } from '@/lib/ai/gemini';
-import { SchemaType } from '@google/generative-ai';
+import { SchemaType, FunctionCallingMode } from '@google/generative-ai';
 import { strategistService } from '@/lib/services/strategistService';
 import { supabase } from '@/lib/supabase';
 import { getAuthenticatedUser } from '@/lib/auth';
@@ -111,7 +111,7 @@ export async function POST(req: Request) {
       }],
       toolConfig: {
         functionCallingConfig: {
-          mode: "AUTO"
+          mode: FunctionCallingMode.AUTO
         }
       }
     });
