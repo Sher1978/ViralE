@@ -2,7 +2,7 @@
 
 import React, { useEffect } from 'react';
 import { motion } from 'framer-motion';
-import { Activity, Cpu, Zap, Wand2, Share2 } from 'lucide-react';
+import { Activity, Cpu, Zap, Wand2, Share2, AlertTriangle, Info } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 
 interface ScenarioCardProps {
@@ -124,7 +124,7 @@ export function ContentMatrix({
   isSaving
 }: ContentMatrixProps) {
   const [copied, setCopied] = React.useState(false);
-  
+
   const totalWords = Object.entries(selectionSources).reduce((acc, [blockId, scenarioId]) => {
     const content = allScenarios?.[scenarioId]?.[blockId] || scriptData[blockId] || '';
     const text = typeof content === 'string' ? content : (content as any)?.words || '';
@@ -132,36 +132,67 @@ export function ContentMatrix({
   }, 0);
   const totalSeconds = Math.ceil(totalWords / 2.8);
 
-  const handleCopy = () => {
-    onCopy();
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
-  };
+  const incompleteBlocks = blocks.filter(block => {
+    const content = allScenarios?.[selectionSources[block.id]]?.[block.id] || scriptData[block.id];
+    const text = typeof content === 'string' ? content : (content as any)?.words || '';
+    return !text || text.trim().length < 10;
+  });
 
   return (
     <div className="relative pb-40">
-      {/* Narrative HUD - Reading Time Tracker */}
-      <div className="px-6 mb-8 mt-4">
+      {/* Narrative HUD - Reading Time Tracker & Validation */}
+      <div className="px-6 mb-8 mt-4 space-y-4">
         <div className={`p-5 rounded-2xl border transition-all duration-700 flex items-center justify-between ${
+          incompleteBlocks.length > 0 ? 'border-amber-500/60 bg-amber-500/10' :
           totalSeconds > 50 ? 'border-red-500/60 bg-red-500/10' : 'border-white/10 bg-white/5'
         }`}>
           <div className="flex flex-col">
-            <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">Audit: Narrative Duration</span>
-            <span className={`text-3xl font-black tabular-nums tracking-tighter ${totalSeconds > 50 ? 'text-red-400' : 'text-emerald-400'}`}>
-              {totalSeconds}s <span className="text-xs font-medium opacity-30 text-white">/ MAX 50s</span>
+            <span className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] mb-1">
+              {incompleteBlocks.length > 0 ? 'Integrity Alert: Empty Blocks' : 'Audit: Narrative Duration'}
             </span>
+            {incompleteBlocks.length > 0 ? (
+              <span className="text-xl font-black text-amber-400 tracking-tight uppercase italic">
+                {incompleteBlocks.length} Segment(s) Incomplete
+              </span>
+            ) : (
+              <span className={`text-3xl font-black tabular-nums tracking-tighter ${totalSeconds > 50 ? 'text-red-400' : 'text-emerald-400'}`}>
+                {totalSeconds}s <span className="text-xs font-medium opacity-30 text-white">/ MAX 50s</span>
+              </span>
+            )}
           </div>
           <div className="flex flex-col items-center gap-2">
              <motion.div 
-               animate={totalSeconds > 50 ? { scale: [1, 1.2, 1] } : {}}
+               animate={incompleteBlocks.length > 0 || totalSeconds > 50 ? { scale: [1, 1.2, 1] } : {}}
                transition={{ repeat: Infinity, duration: 1 }}
-               className={`w-10 h-10 rounded-full flex items-center justify-center ${totalSeconds > 50 ? 'bg-red-500/20 text-red-500' : 'bg-white/10 text-white/40'}`}
+               className={`w-10 h-10 rounded-full flex items-center justify-center ${
+                 incompleteBlocks.length > 0 ? 'bg-amber-500/20 text-amber-500' :
+                 totalSeconds > 50 ? 'bg-red-500/20 text-red-500' : 'bg-white/10 text-white/40'
+               }`}
              >
-               <Zap className="w-5 h-5 fill-current" />
+               {incompleteBlocks.length > 0 ? (
+                 <AlertTriangle className="w-5 h-5" />
+               ) : (
+                 <Zap className="w-5 h-5 fill-current" />
+               )}
              </motion.div>
-             <span className="text-[8px] font-bold uppercase text-white/20 whitespace-nowrap">Production Ready</span>
+             <span className="text-[8px] font-bold uppercase text-white/20 whitespace-nowrap">
+               {incompleteBlocks.length > 0 ? 'Fix Required' : 'Production Ready'}
+             </span>
           </div>
         </div>
+
+        {incompleteBlocks.length > 0 && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            className="p-4 rounded-xl bg-amber-500/5 border border-amber-500/20"
+          >
+            <p className="text-[10px] text-amber-400/80 leading-relaxed">
+              <span className="font-black uppercase tracking-widest mr-2">Warning:</span>
+              Some segments are missing content. Check the columns for empty fields or click "Refine" to regenerate the script.
+            </p>
+          </motion.div>
+        )}
       </div>
 
       {/* Content Tracks */}

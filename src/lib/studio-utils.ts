@@ -19,38 +19,59 @@ function splitStoryIntoSegments(text: string): string[] {
 export function createInitialManifest(projectId: string, versionId: string, scriptData: any): ProductionManifest {
   const segments: SceneSegment[] = [];
 
-  // 1. Intro Avatar (Hook beginning)
+  const extractText = (block: any) => {
+    if (!block) return '';
+    return typeof block === 'string' ? block : block.words || '';
+  };
+
+  const hookText = extractText(scriptData.hook);
+  const contextText = extractText(scriptData.context);
+  const meatText = extractText(scriptData.meat);
+  const ctaText = extractText(scriptData.cta);
+
+  // 1. Hook (Intro Avatar)
   segments.push({
     id: uuidv4(),
     type: 'intro_avatar',
-    scriptText: scriptData.hook || '',
-    prompt: `Professional high-quality portrait of a talking avatar, cinematic lighting, studio background, expressing: ${scriptData.hook?.substring(0, 60)}`,
+    scriptText: hookText,
+    prompt: `Professional cinematic avatar: ${hookText.substring(0, 80)}`,
     status: 'pending',
     animationStyle: 'none',
     duration: 5
   });
 
-  // 2. Split Story into multiple visual scenes
-  const storyChunks = splitStoryIntoSegments(scriptData.story || '');
-  
-  storyChunks.forEach((chunk, index) => {
+  // 2. Context (Visual Scene)
+  if (contextText) {
     segments.push({
       id: uuidv4(),
-      type: index % 2 === 0 ? 'animated_still' : 'broll', // Alternating or logic
-      scriptText: chunk,
-      prompt: `Cinematic visualization, hyper-realistic, 8k: ${chunk.substring(0, 100)}`,
+      type: 'animated_still',
+      scriptText: contextText,
+      prompt: `Cinematic visualization of the context: ${contextText.substring(0, 80)}`,
       status: 'pending',
-      animationStyle: index % 2 === 0 ? 'zoom-in' : 'glitch',
+      animationStyle: 'zoom-in',
       duration: 6
     });
-  });
+  }
 
-  // 3. Outro Avatar (CTA)
+  // 3. Meat (Value Scene)
+  if (meatText) {
+    segments.push({
+      id: uuidv4(),
+      type: 'broll',
+      scriptText: meatText,
+      prompt: `High-value cinematic B-Roll: ${meatText.substring(0, 80)}`,
+      status: 'pending',
+      animationStyle: 'glitch',
+      duration: 8
+    });
+  }
+
+  // 4. CTA (Outro Avatar)
   segments.push({
     id: uuidv4(),
     type: 'outro_avatar',
-    scriptText: scriptData.cta || '',
-    prompt: `Talking avatar, friendly gesture, call to action: ${scriptData.cta?.substring(0, 60)}`,
+    scriptText: ctaText,
+    prompt: `Portrait avatar, direct address, CTA: ${ctaText.substring(0, 80)}`,
     status: 'pending',
     animationStyle: 'none',
     duration: 5
@@ -59,7 +80,7 @@ export function createInitialManifest(projectId: string, versionId: string, scri
   const totalDuration = segments.reduce((acc, s) => acc + (s.duration || 5), 0);
 
   return {
-    version: '1.1',
+    version: '1.2',
     projectId,
     versionId,
     segments,

@@ -105,7 +105,12 @@ export default function StudioPage() {
             setManifest(latestVersion.script_data as any);
           }
         } else {
-          setManifest(createInitialManifest(projectId, uuidv4(), { hook: '', body: '', callToAction: '' }));
+          setManifest(createInitialManifest(projectId, uuidv4(), { 
+            hook: '' as any, 
+            context: '' as any, 
+            meat: '' as any, 
+            cta: '' as any 
+          }));
         }
       } catch (err) {
         console.error('Failed to load studio data:', err);

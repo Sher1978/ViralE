@@ -15,6 +15,7 @@ import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { ContentMatrix } from './_components/ContentMatrix';
 import { ScenarioLegend } from './_components/ScenarioLegend';
+import { createInitialManifest } from '@/lib/studio-utils';
 
 import { BottomNav } from '@/components/layout/BottomNav';
 
@@ -476,16 +477,27 @@ export default function ScriptLabPage() {
       // 2. Update version with latest script data
       if (!vId || vId === 'null') {
         console.log('[ScriptLab] No valid versionId, creating new version...');
+        
+        // Wrap raw script into a Production Manifest for the Studio
+        const initialManifest = createInitialManifest(pId, 'temp', activeScript);
+        
         const newVersion = await projectService.createVersion({
           projectId: pId,
-          scriptData: activeScript
+          scriptData: initialManifest
         });
         if (!newVersion) throw new Error(locale === 'ru' ? 'Не удалось создать версию сценария' : 'Failed to create script version');
         vId = newVersion.id;
+        // Update manifest with real versionId
+        initialManifest.versionId = vId;
+        await projectService.updateVersion(vId, { script_data: initialManifest });
       } else {
         console.log('[ScriptLab] Updating existing version:', vId);
+        
+        // Wrap raw script into a Production Manifest
+        const initialManifest = createInitialManifest(pId, vId, activeScript);
+        
         const version = await projectService.updateVersion(vId, {
-          script_data: activeScript
+          script_data: initialManifest
         });
         if (!version) throw new Error(locale === 'ru' ? 'Ошибка при обновлении версии' : 'Version update failed');
       }
