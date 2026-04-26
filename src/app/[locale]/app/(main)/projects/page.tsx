@@ -74,13 +74,13 @@ export default function ProjectsPage() {
 
   return (
     <div className="relative h-screen max-w-7xl mx-auto overflow-hidden bg-[#0A0A10] flex flex-col">
-      {/* Fixed Header */}
-      <header className="px-8 pt-8 pb-4 flex items-center justify-between shrink-0">
+      {/* Fixed Header - Minimized top space */}
+      <header className="px-10 pt-4 pb-4 flex items-center justify-between shrink-0">
         <div className="flex flex-col">
           <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
             VIRAL<span className="text-purple-500">E</span>
           </h1>
-          <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/30 mt-1.5 leading-none">
+          <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20 mt-1.5 leading-none">
             AI CONTENT PRODUCTION FACTORY
           </p>
         </div>
