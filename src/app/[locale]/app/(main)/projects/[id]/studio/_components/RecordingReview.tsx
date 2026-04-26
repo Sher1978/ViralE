@@ -2,7 +2,8 @@
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { Download, FileVideo, ChevronRight } from 'lucide-react';
+import { Download, FileVideo, ChevronRight, X } from 'lucide-react';
+import { useLocale } from 'next-intl';
 
 interface RecordingReviewProps {
   showRecordingReview: boolean;
@@ -31,6 +32,7 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
   manifest,
   selectedSegmentId,
 }) => {
+  const locale = useLocale();
   return (
     <AnimatePresence>
       {showRecordingReview && lastRecordingUrl && (
