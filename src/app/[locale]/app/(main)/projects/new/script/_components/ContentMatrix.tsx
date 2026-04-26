@@ -26,8 +26,8 @@ function ScenarioCard({
   onUpdate
 }: ScenarioCardProps) {
   const { ref, inView } = useInView({
-    threshold: 0.7,
-    rootMargin: '0px -15% 0px -15%',
+    threshold: 0.6,
+    rootMargin: '0px -25% 0px -25%',
   });
 
   useEffect(() => {
@@ -52,12 +52,12 @@ function ScenarioCard({
         opacity: isSelected ? 1 : 0.35,
         y: isSelected ? 0 : 5
       }}
-      className={`flex-none w-[80vw] sm:w-[350px] snap-center rounded-2xl border-l-4 transition-all duration-500 overflow-hidden relative backdrop-blur-xl group ${
+      className={`flex-none w-[80vw] sm:w-[350px] snap-center rounded-3xl border-2 transition-all duration-700 overflow-hidden relative backdrop-blur-3xl group ${
         isSelected 
-          ? 'border-white/40 bg-white/5 shadow-2xl' 
-          : 'border-white/5 bg-white/[0.02]'
+          ? 'border-purple-500/50 bg-purple-500/5 shadow-[0_0_40px_rgba(168,85,247,0.15)] scale-[1.02]' 
+          : 'border-white/5 bg-white/[0.02] opacity-40 grayscale hover:grayscale-0 hover:opacity-100'
       }`}
-      style={{ borderLeftColor: config.color }}
+      style={{ boxShadow: isSelected ? `0 0 30px ${config.color}20` : 'none' }}
     >
       <div className="px-5 py-3 flex items-center justify-between border-b border-white/[0.05]">
         <div className="flex items-center gap-2">
@@ -116,7 +116,6 @@ export function ContentMatrix({
   isSaving
 }: ContentMatrixProps) {
   const [copied, setCopied] = React.useState(false);
-  const infiniteScenarios = [...scenarios, ...scenarios, ...scenarios];
   
   const totalWords = Object.entries(selectionSources).reduce((acc, [blockId, scenarioId]) => {
     const text = allScenarios?.[scenarioId]?.[blockId] || scriptData[blockId] || '';
@@ -167,11 +166,12 @@ export function ContentMatrix({
               <div className="h-px flex-1 bg-white/[0.05]" />
             </div>
 
-            <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar px-[10vw] py-4 gap-6 scroll-smooth"
+            <div className="flex overflow-x-auto snap-x snap-mandatory no-scrollbar px-[10vw] py-8 gap-6 scroll-smooth"
                  style={{ scrollPaddingLeft: '10vw', scrollPaddingRight: '10vw' }}>
-              {infiniteScenarios.map((scenarioId, idx) => (
+              <div className="flex-none w-[5vw]" /> {/* Left padding for center snap */}
+              {scenarios.map((scenarioId, idx) => (
                 <ScenarioCard
-                  key={`${block.id}-${scenarioId}-${idx}`}
+                  key={`${block.id}-${scenarioId}`}
                   blockId={block.id}
                   scenarioId={scenarioId}
                   content={allScenarios?.[scenarioId]?.[block.id] || scriptData[block.id] || ''}
@@ -182,7 +182,7 @@ export function ContentMatrix({
                   index={idx}
                 />
               ))}
-              <div className="flex-none w-[10vw]" />
+              <div className="flex-none w-[15vw]" /> {/* Right padding for center snap */}
             </div>
           </div>
         ))}

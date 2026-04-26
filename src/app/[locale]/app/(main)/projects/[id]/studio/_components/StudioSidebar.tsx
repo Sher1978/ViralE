@@ -84,7 +84,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
   currentProfile,
 }) => {
   return (
-    <aside className="w-80 bg-[#0a0a14] border-r border-white/5 flex flex-col z-20 shadow-2xl">
+    <aside className="hidden lg:flex w-80 bg-[#0a0a14] border-r border-white/5 flex-col z-20 shadow-2xl">
       <div className="p-8 border-b border-white/5 flex items-center justify-between">
         <h1 className="text-sm font-black tracking-[0.2em] uppercase italic text-white flex items-center gap-3">
            <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />

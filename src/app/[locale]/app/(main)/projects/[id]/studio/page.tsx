@@ -250,44 +250,46 @@ export default function StudioPage() {
 
   return (
     <div className="flex h-screen bg-[#05050a] text-white overflow-hidden font-sans">
-      <StudioSidebar 
-        activeTab={activeTab as any}
-        setActiveTab={setActiveTab as any}
-        cameraStream={cameraStream}
-        isRecordingVideo={isRecordingVideo}
-        recordingTime={recordingTime}
-        facingMode={facingMode}
-        videoResolution={videoResolution}
-        videoDevices={videoDevices}
-        audioDevices={audioDevices}
-        selectedVideoDeviceId={selectedVideoDeviceId}
-        selectedAudioDeviceId={selectedAudioDeviceId}
-        initCamera={initCamera}
-        stopCamera={stopCamera}
-        setFacingMode={setFacingMode}
-        setIsVideoMirrored={setIsVideoMirrored}
-        isVideoMirrored={isVideoMirrored}
-        setVideoResolution={setVideoResolution}
-        setSelectedVideoDeviceId={setSelectedVideoDeviceId}
-        setSelectedAudioDeviceId={setSelectedAudioDeviceId}
-        useCustomScript={useCustomScript}
-        setUseCustomScript={setUseCustomScript}
-        customScript={customScript}
-        setCustomScript={setCustomScript}
-        manifest={manifest}
-        isMirrored={isMirrored}
-        setIsMirrored={setIsMirrored}
-        scrollSpeed={scrollSpeed}
-        setScrollSpeed={setScrollSpeed}
-        prompterWidth={prompterWidth}
-        setPrompterWidth={setPrompterWidth}
-        textSize={textSize}
-        setTextSize={setTextSize}
-        scriptOpacity={scriptOpacity}
-        setScriptOpacity={setScriptOpacity}
-        t={t}
-        currentProfile={currentProfile}
-      />
+      {activeTab !== 'teleprompter' && (
+        <StudioSidebar 
+          activeTab={activeTab as any}
+          setActiveTab={setActiveTab as any}
+          cameraStream={cameraStream}
+          isRecordingVideo={isRecordingVideo}
+          recordingTime={recordingTime}
+          facingMode={facingMode}
+          videoResolution={videoResolution}
+          videoDevices={videoDevices}
+          audioDevices={audioDevices}
+          selectedVideoDeviceId={selectedVideoDeviceId}
+          selectedAudioDeviceId={selectedAudioDeviceId}
+          initCamera={initCamera}
+          stopCamera={stopCamera}
+          setFacingMode={setFacingMode}
+          setIsVideoMirrored={setIsVideoMirrored}
+          isVideoMirrored={isVideoMirrored}
+          setVideoResolution={setVideoResolution}
+          setSelectedVideoDeviceId={setSelectedVideoDeviceId}
+          setSelectedAudioDeviceId={setSelectedAudioDeviceId}
+          useCustomScript={useCustomScript}
+          setUseCustomScript={setUseCustomScript}
+          customScript={customScript}
+          setCustomScript={setCustomScript}
+          manifest={manifest}
+          isMirrored={isMirrored}
+          setIsMirrored={setIsMirrored}
+          scrollSpeed={scrollSpeed}
+          setScrollSpeed={setScrollSpeed}
+          prompterWidth={prompterWidth}
+          setPrompterWidth={setPrompterWidth}
+          textSize={textSize}
+          setTextSize={setTextSize}
+          scriptOpacity={scriptOpacity}
+          setScriptOpacity={setScriptOpacity}
+          t={t}
+          currentProfile={currentProfile}
+        />
+      )}
 
       <main className="flex-1 flex flex-col overflow-hidden relative bg-[#05050a]">
         <div className="absolute top-1/4 left-1/4 w-96 h-96 bg-purple-600/10 blur-[120px] rounded-full pointer-events-none" />
@@ -304,7 +306,7 @@ export default function StudioPage() {
           )}
           
           {activeTab === 'teleprompter' && (
-            <div className="flex-1 flex items-center justify-center p-12 z-10 relative">
+            <div className="flex-1 flex flex-col z-10 relative">
                 <TeleprompterView 
                    cameraStream={cameraStream}
                    videoPreviewRef={videoPreviewRef}
@@ -373,14 +375,16 @@ export default function StudioPage() {
         </div>
 
         {/* Global Timeline */}
-        {activeTab !== 'concept' && activeTab !== 'knowledge' && (
-          <StudioTimeline 
-            segments={manifest?.segments || []} 
-            activeIndex={activeIndex} 
-            selectedId={selectedSegmentId} 
-            onSelect={(id, idx) => { setSelectedSegmentId(id); setActiveIndex(idx); }}
-            onAdd={() => addSegment()}
-          />
+        {activeTab !== 'concept' && activeTab !== 'knowledge' && activeTab !== 'teleprompter' && (
+          <div className="hidden lg:block">
+            <StudioTimeline 
+              segments={manifest?.segments || []} 
+              activeIndex={activeIndex} 
+              selectedId={selectedSegmentId} 
+              onSelect={(id, idx) => { setSelectedSegmentId(id); setActiveIndex(idx); }}
+              onAdd={() => addSegment()}
+            />
+          </div>
         )}
       </main>
 

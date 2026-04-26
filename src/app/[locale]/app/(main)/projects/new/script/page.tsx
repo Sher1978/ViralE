@@ -449,9 +449,11 @@ export default function ScriptLabPage() {
     }
   };
 
-  const handleApprove = async () => {
+  const handleApprove = async (manualScriptData?: any) => {
     setIsSaving(true);
     setError(null);
+
+    const activeScript = manualScriptData || scriptData;
 
     try {
       const profile = await profileService.getOrCreateProfile();
@@ -459,16 +461,16 @@ export default function ScriptLabPage() {
         setError(locale === 'ru' ? 'Ошибка авторизации. Попробуйте снова.' : 'Authorization failed. Please try again.');
         return;
       }
-      let pId = projectIdParam;
-      let vId = versionIdParam;
+      let pId = projectIdParam && projectIdParam !== 'null' ? projectIdParam : null;
+      let vId = versionIdParam && versionIdParam !== 'null' ? versionIdParam : null;
 
       // 1. Create project if doesn't exist
       if (!pId) {
         const fromProjectId = searchParams.get('fromProjectId');
         const project = await projectService.createProject({
-          title: topicInput || scriptData.hook.substring(0, 30) + '...',
+          title: topicInput || activeScript.hook.substring(0, 30) + '...',
           userId: profile.id,
-          parentId: fromProjectId || undefined
+          parentId: fromProjectId && fromProjectId !== 'null' ? fromProjectId : undefined
         });
         if (!project) throw new Error(locale === 'ru' ? 'Не удалось создать проект' : 'Project creation failed');
         pId = project.id;
@@ -479,14 +481,14 @@ export default function ScriptLabPage() {
         console.log('[ScriptLab] No valid versionId, creating new version...');
         const newVersion = await projectService.createVersion({
           projectId: pId,
-          scriptData: scriptData
+          scriptData: activeScript
         });
         if (!newVersion) throw new Error(locale === 'ru' ? 'Не удалось создать версию сценария' : 'Failed to create script version');
         vId = newVersion.id;
       } else {
         console.log('[ScriptLab] Updating existing version:', vId);
         const version = await projectService.updateVersion(vId, {
-          script_data: scriptData
+          script_data: activeScript
         });
         if (!version) throw new Error(locale === 'ru' ? 'Ошибка при обновлении версии' : 'Version update failed');
       }
@@ -786,8 +788,7 @@ export default function ScriptLabPage() {
             visual_hook: allScenarios[selectionSources.hook]?.visual_hook || scriptData.visual_hook,
             social_post: allScenarios[selectionSources.hook]?.social_post || scriptData.social_post,
           };
-          setScriptData(synthesizedScript as any);
-          handleApprove();
+          handleApprove(synthesizedScript);
         }}
         onCopy={handleCopyToClipboard}
         isSaving={isSaving}
