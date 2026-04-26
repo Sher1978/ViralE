@@ -807,6 +807,33 @@ export default function ScriptLabPage() {
         userId={user?.id || ''}
         context="script"
         onApplySuggestion={(text) => handleApplyRefinement(text)}
+        onMatrixUpdate={(matrix) => {
+          console.log('[ScriptLab] Matrix sync from Chat:', matrix);
+          if (matrix.evergreen || matrix.trend) {
+             setAllScenarios(matrix);
+             setScriptData(matrix[activeScenario] || matrix.evergreen);
+             if (typeof window !== 'undefined') {
+                sessionStorage.setItem('allScenarios', JSON.stringify(matrix));
+             }
+          } else if (matrix.styles && Array.isArray(matrix.styles)) {
+             // Map styles array to the 5-scenario format if possible, or just use styles[0]
+             const mapped: any = {};
+             matrix.styles.forEach((s: any, i: number) => {
+                const key = i === 0 ? 'evergreen' : i === 1 ? 'trend' : i === 2 ? 'educational' : i === 3 ? 'controversial' : 'storytelling';
+                mapped[key] = {
+                   hook: s.hook,
+                   context: s.context,
+                   meat: s.meat,
+                   cta: s.cta,
+                };
+             });
+             setAllScenarios(mapped);
+             setScriptData(mapped.evergreen);
+             if (typeof window !== 'undefined') {
+                sessionStorage.setItem('allScenarios', JSON.stringify(mapped));
+             }
+          }
+        }}
       />
 
       <PremiumLimitModal 

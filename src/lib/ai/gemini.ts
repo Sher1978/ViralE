@@ -108,10 +108,19 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
 
   const result = await targetModel.generateContent([systemPrompt, userPrompt]);
   const response = await result.response;
-  const text = response.text().trim();
+  let text = response.text().trim();
   
-  const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
-  return JSON.parse(jsonStr);
+  try {
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      text = text.substring(jsonStart, jsonEnd + 1);
+    }
+    return JSON.parse(text);
+  } catch (e) {
+    console.error('[Gemini] JSON Parse Error. Raw Text:', text);
+    throw new Error('AI returned invalid data format. Please try again.');
+  }
 }
 
 export async function synthesizeDigitalShadow(rawInputs: any, locale: string = 'en') {
@@ -229,8 +238,17 @@ export async function refineScript(
 
   const result = await targetModel.generateContent([systemPrompt, userPrompt]);
   const response = await result.response;
-  const text = response.text().trim();
+  let text = response.text().trim();
   
-  const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
-  return JSON.parse(jsonStr);
+  try {
+    const jsonStart = text.indexOf('{');
+    const jsonEnd = text.lastIndexOf('}');
+    if (jsonStart !== -1 && jsonEnd !== -1) {
+      text = text.substring(jsonStart, jsonEnd + 1);
+    }
+    return JSON.parse(text);
+  } catch (e) {
+    console.error('[Gemini] JSON Refinement Parse Error. Raw Text:', text);
+    throw new Error('AI returned invalid data format during refinement.');
+  }
 }

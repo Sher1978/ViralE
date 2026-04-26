@@ -165,76 +165,8 @@ export async function POST(req: Request) {
         });
       }
     } catch (error: any) {
-      console.warn('[ScriptGen] Generation failed or bypassed. Using mock fallback:', error.message);
-      
-      // Structured fallback content
-      if (locale === 'ru') {
-        scriptJson = {
-          evergreen: {
-            hook: { visual: "Кинематографичный кадр", screen_text: "Секрет раскрыт", words: "Секрет раскрыт." },
-            context: { words: "Многие тратят годы на изучение темы, но не получают результата." },
-            meat: { words: "Но правда в том, что есть системный путь, который сокращает время в 10 раз." },
-            cta: { words: "Так что если вы хотите качать свой Digital DNA, подпишитесь!" }
-          },
-          trend: {
-            hook: { visual: "Динамичный коллаж", screen_text: "Тренд 2026", words: "Тренд 2026: залетаем." },
-            context: { words: "Старые методы охвата больше не работают в новой экономике внимания." },
-            meat: { words: "Однако алгоритмы теперь любят динамику и быструю смену кадров." },
-            cta: { words: "Именно поэтому я рекомендую использовать резкие переходы. Ставь лайк!" }
-          },
-          educational: {
-            hook: { visual: "Чистый фон", screen_text: "Как это сделать", words: "Как это сделать." },
-            context: { words: "Сложные темы отпугивают аудиторию, если поданы скучно." },
-            meat: { words: "Но любой процесс можно разложить на 3 простых шага: План, Нейросети, Система." },
-            cta: { words: "Сохрани, чтобы не потерять!" }
-          },
-          controversial: {
-            hook: { visual: "Драматичный свет", screen_text: "Всё это ложь", words: "Всё это ложь." },
-            context: { words: "Вам внушают, что успех — это удача, но это математика." },
-            meat: { words: "Однако если убрать эмоции, остается чистая стратегия." },
-            cta: { words: "Так что если вы готовы к правде, пишите МАТРИЦА в комментариях." }
-          },
-          storytelling: {
-            hook: { visual: "Теплый свет", screen_text: "Я всё потерял", words: "Я всё потерял." },
-            context: { words: "Год назад мой аккаунт был в коме, охваты на нуле." },
-            meat: { words: "Но одна случайная встреча изменила мой подход к контенту навсегда." },
-            cta: { words: "Читай продолжение в описании." }
-          }
-        };
-      } else {
-        scriptJson = {
-          evergreen: {
-            hook: { visual: "Cinematic shot", screen_text: "Secret Unlocked", words: "Secret Unlocked." },
-            context: { words: "Most people spend years studying a topic without seeing real progress." },
-            meat: { words: "But the truth is, there is a systematic path that cuts that time by 10x." },
-            cta: { words: "So if you want to upgrade your Digital DNA, follow me!" }
-          },
-          trend: {
-            hook: { visual: "Vibrant collage", screen_text: "2026 Trend", words: "2026 Trend Alert." },
-            context: { words: "Legacy reach methods are dying in the new attention economy." },
-            meat: { words: "However, algorithms now crave dynamics and rapid visual shifts." },
-            cta: { words: "That's why you should use sharp transitions. Like for more!" }
-          },
-          educational: {
-            hook: { visual: "Minimalist background", screen_text: "How-To Guide", words: "The How-To Guide." },
-            context: { words: "Complex topics bore your audience when presented poorly." },
-            meat: { words: "But any process can be distilled into 3 simple, actionable steps." },
-            cta: { words: "Save this for later!" }
-          },
-          controversial: {
-            hook: { visual: "Shattered mirror", screen_text: "It's All A Lie", words: "It's All A Lie." },
-            context: { words: "They tell you success is luck, but it is pure cold math." },
-            meat: { words: "However, remove the emotion, and only strategy remains." },
-            cta: { words: "So if you're ready, type MATRIX below!" }
-          },
-          storytelling: {
-            hook: { visual: "Sunset lighting", screen_text: "I Lost Everything", words: "I Lost Everything." },
-            context: { words: "A year ago, my account was dead, reach was at absolute zero." },
-            meat: { words: "But one chance encounter changed my production approach forever." },
-            cta: { words: "Read the full story in bio." }
-          }
-        };
-      }
+      console.error('[ScriptGen] AI Generation failed:', error);
+      throw new Error(locale === 'ru' ? `Ошибка ИИ: ${error.message}` : `AI Error: ${error.message}`);
     }
 
     // 5. Save Version

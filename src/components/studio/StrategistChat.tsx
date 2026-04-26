@@ -31,6 +31,7 @@ interface StrategistChatProps {
   locale?: string;
   context?: 'script' | 'storyboard' | 'studio' | 'production';
   onApplySuggestion?: (text: string) => void;
+  onMatrixUpdate?: (matrix: any) => void;
 }
 
 export function StrategistChat({
@@ -42,6 +43,7 @@ export function StrategistChat({
   locale = 'en',
   context = 'studio',
   onApplySuggestion,
+  onMatrixUpdate,
   containerClassName
 }: StrategistChatProps & { containerClassName?: string }) {
   const t = useTranslations('Strategist');
@@ -201,6 +203,11 @@ export function StrategistChat({
           const parsed = JSON.parse(jsonMatch[0]);
           if (parsed.styles && Array.isArray(parsed.styles) && parsed.styles.length >= 3) {
             setScriptMatrix(parsed);
+            if (onMatrixUpdate) onMatrixUpdate(parsed);
+          } else if (parsed.evergreen && parsed.trend) {
+            // Support for the 5-scenario format too
+            setScriptMatrix(parsed);
+            if (onMatrixUpdate) onMatrixUpdate(parsed);
           }
         }
       } catch (e) {
