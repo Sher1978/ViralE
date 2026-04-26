@@ -104,7 +104,7 @@ function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
 
 export const VideoEditor = React.memo(({
   manifest, onBack, onNext, updateSegmentField, projectId
-}) => {
+}: VideoEditorProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);

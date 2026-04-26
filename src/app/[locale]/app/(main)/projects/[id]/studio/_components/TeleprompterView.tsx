@@ -60,7 +60,7 @@ export const TeleprompterView = React.memo(({
   scrollSpeed,
   onSpeedChange,
   t,
-}) => {
+}: TeleprompterViewProps) => {
   const router = useRouter();
   const locale = useLocale();
   const [isEditing, setIsEditing] = React.useState(false);
