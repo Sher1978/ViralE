@@ -39,18 +39,22 @@ export function BottomNav() {
   return (
     <nav className="fixed bottom-5 left-1/2 -translate-x-1/2 w-[92%] max-w-[440px] z-50">
       <div
-        className="relative rounded-[2rem] p-1.5"
+        className="relative rounded-[2.5rem] p-1.5"
         style={{
-          background: 'rgba(10, 10, 16, 0.85)',
-          backdropFilter: 'blur(32px) saturate(200%)',
-          WebkitBackdropFilter: 'blur(32px) saturate(200%)',
-          border: '1px solid rgba(255,255,255,0.08)',
-          boxShadow: '0 10px 40px -10px rgba(0,0,0,0.5)',
+          background: 'rgba(5, 5, 10, 0.9)',
+          backdropFilter: 'blur(30px) saturate(180%)',
+          WebkitBackdropFilter: 'blur(30px) saturate(180%)',
+          border: '1px solid rgba(255,255,255,0.1)',
+          boxShadow: '0 20px 50px -15px rgba(0,0,0,0.8)',
         }}
       >
-        <ul className="flex items-center justify-between px-2">
+        <ul className="flex items-center justify-between px-3">
           {navItems.map((item) => {
-            const isActive = pathname === item.href || pathname.startsWith(item.href + '/');
+            // Robust matching: strip locale from pathname or compare both versions
+            const isActive = pathname === item.href || 
+                             pathname.startsWith(item.href + '/') ||
+                             pathname.replace(`/${locale}`, '') === item.href.replace(`/${locale}`, '');
+            
             const Icon = item.icon;
             const activeColor = getActiveColor(item.key);
 
@@ -59,7 +63,7 @@ export function BottomNav() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex flex-col items-center justify-center gap-1 transition-all duration-500 relative",
+                    "flex flex-col items-center justify-center py-2 transition-all duration-500 relative",
                     isActive ? "scale-110" : "text-white/20 hover:text-white/40"
                   )}
                   style={{ color: isActive ? activeColor : undefined }}
@@ -69,26 +73,40 @@ export function BottomNav() {
                       className="w-7 h-7 transition-all duration-500" 
                       strokeWidth={isActive ? 2.5 : 2}
                       style={{
-                        filter: isActive ? `drop-shadow(0 0 12px ${activeColor}) drop-shadow(0 0 2px ${activeColor})` : 'none'
+                        filter: isActive ? `
+                          drop-shadow(0 0 15px ${activeColor}) 
+                          drop-shadow(0 0 4px ${activeColor})
+                          drop-shadow(0 0 1px ${activeColor})
+                        ` : 'none',
+                        color: isActive ? activeColor : 'currentColor'
                       }}
                     />
-                    <span
-                      className={cn(
-                        "text-[6px] font-black tracking-[0.2em] uppercase text-center transition-all duration-500 mt-1",
-                        isActive ? "opacity-100" : "opacity-0"
+                    <AnimatePresence>
+                      {isActive && (
+                        <motion.span
+                          initial={{ opacity: 0, y: 5 }}
+                          animate={{ opacity: 1, y: 0 }}
+                          exit={{ opacity: 0, y: 5 }}
+                          className="text-[7px] font-black tracking-[0.2em] uppercase text-center mt-2.5"
+                          style={{
+                             color: activeColor,
+                             textShadow: `0 0 12px ${activeColor}`
+                          }}
+                        >
+                          {t(item.key as any)}
+                        </motion.span>
                       )}
-                      style={{
-                         textShadow: isActive ? `0 0 10px ${activeColor}` : 'none'
-                      }}
-                    >
-                      {t(item.key as any)}
-                    </span>
+                    </AnimatePresence>
                     
                     {isActive && (
                       <motion.div
                         layoutId="activeIndicator"
-                        className="absolute -bottom-2 w-1 h-1 rounded-full"
-                        style={{ backgroundColor: activeColor, boxShadow: `0 0 10px ${activeColor}` }}
+                        className="absolute -top-1 w-1 h-1 rounded-full"
+                        style={{ 
+                          backgroundColor: activeColor, 
+                          boxShadow: `0 0 15px 2px ${activeColor}`,
+                          filter: `blur(0.5px)`
+                        }}
                       />
                     )}
                   </div>
