@@ -73,10 +73,10 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <div className="relative h-screen max-w-7xl mx-auto overflow-hidden bg-[#0A0A10] flex flex-col">
-      {/* Fixed Header - Minimized top space */}
-      <header className="px-10 pt-4 pb-4 flex items-center justify-between shrink-0">
-        <div className="flex flex-col">
+    <div className="relative h-[100dvh] max-w-7xl mx-auto overflow-hidden bg-[#0A0A10] flex flex-col">
+      {/* Fixed Header - Zero top space */}
+      <header className="px-10 pt-0 pb-2 flex items-center justify-between shrink-0">
+        <div className="flex flex-col pt-4">
           <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
             VIRAL<span className="text-purple-500">E</span>
           </h1>

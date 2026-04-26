@@ -74,8 +74,8 @@ export function BottomNav() {
                       strokeWidth={isActive ? 2.5 : 2}
                       style={{
                         filter: isActive ? `
-                          drop-shadow(0 0 15px ${activeColor}) 
-                          drop-shadow(0 0 4px ${activeColor})
+                          drop-shadow(0 0 8px ${activeColor}) 
+                          drop-shadow(0 0 2px ${activeColor})
                           drop-shadow(0 0 1px ${activeColor})
                         ` : 'none',
                         color: isActive ? activeColor : 'currentColor'
@@ -90,7 +90,7 @@ export function BottomNav() {
                           className="text-[7px] font-black tracking-[0.2em] uppercase text-center mt-2.5"
                           style={{
                              color: activeColor,
-                             textShadow: `0 0 12px ${activeColor}`
+                             textShadow: `0 0 6px ${activeColor}`
                           }}
                         >
                           {t(item.key as any)}
@@ -104,7 +104,7 @@ export function BottomNav() {
                         className="absolute -top-1 w-1 h-1 rounded-full"
                         style={{ 
                           backgroundColor: activeColor, 
-                          boxShadow: `0 0 15px 2px ${activeColor}`,
+                          boxShadow: `0 0 8px 1px ${activeColor}`,
                           filter: `blur(0.5px)`
                         }}
                       />
