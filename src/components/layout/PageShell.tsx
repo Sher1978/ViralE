@@ -37,17 +37,22 @@ export function PageShell({ children }: PageShellProps) {
     );
   }
 
+  const isStudioMode = pathname.includes('/studio') || 
+                      pathname.includes('/new/script') || 
+                      pathname.includes('/new/delivery') ||
+                      pathname.includes('/projects/new');
+
   // Mobile-constrained shell for the App
   return (
     <div
       className="relative mx-auto min-h-screen w-full overflow-x-hidden"
-      style={{ maxWidth: '500px' }}
+      style={{ maxWidth: isStudioMode ? '100%' : '500px' }}
     >
       {/* Constrained background gradient for the App */}
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
-          maxWidth: '500px',
+          maxWidth: isStudioMode ? '100%' : '500px',
           margin: '0 auto',
           background: `
             radial-gradient(ellipse at 30% 0%, rgba(155, 95, 255, 0.07) 0%, transparent 55%),
@@ -57,11 +62,11 @@ export function PageShell({ children }: PageShellProps) {
         }}
       />
 
-      <main className="relative z-10 pb-32 px-5 pt-14 min-h-screen">
+      <main className={isStudioMode ? "relative z-10 min-h-screen" : "relative z-10 pb-32 px-5 pt-14 min-h-screen"}>
         {children}
       </main>
-      <BottomNav />
-      <GlobalStrategist />
+      {!isStudioMode && <BottomNav />}
+      {!isStudioMode && <GlobalStrategist />}
     </div>
   );
 }
