@@ -101,6 +101,22 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
         </div>
       )}
       
+      {/* ⏱️ Production Countdown Overlay */}
+      <AnimatePresence>
+        {countdown !== null && (
+          <motion.div 
+            initial={{ scale: 2, opacity: 0 }}
+            animate={{ scale: 1, opacity: 1 }}
+            exit={{ scale: 0.5, opacity: 0 }}
+            className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+          >
+            <span className="text-[200px] font-black italic text-white drop-shadow-[0_0_50px_rgba(255,255,255,0.5)]">
+              {countdown}
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+      
       {/* 🔮 Top HUD - Reference Style */}
       <div className="absolute top-12 left-0 right-0 px-8 flex items-center justify-between z-40">
         <button 
@@ -120,21 +136,15 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
         </div>
       </div>
 
-      {/* 🔵 Reading Guide - The Blue Line + Triangle */}
-      <div className="absolute top-[30%] left-0 right-0 z-20 pointer-events-none flex items-center">
-         {/* Triangle Marker */}
-         <div className="absolute left-0 w-0 h-0 border-t-[8px] border-t-transparent border-b-[8px] border-b-transparent border-l-[12px] border-l-white ml-1" />
-         {/* The Blue Line */}
-         <div className="w-full h-[2px] bg-sky-500/80 shadow-[0_0_10px_rgba(14,165,233,0.5)]" />
-      </div>
-
-      {/* 📜 Scrolling Text Canvas */}
+      {/* 📜 Scrolling Text Canvas with Focus Zone Effect */}
       <div 
         ref={prompterRef}
         className={`w-full h-full overflow-y-auto scrollbar-none transition-transform duration-700 relative z-10 ${isMirrored ? 'scale-x-[-1]' : ''}`}
         style={{
-          paddingTop: '30vh',
-          paddingBottom: '50vh'
+          paddingTop: '25vh',
+          paddingBottom: '60vh',
+          maskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 40%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to bottom, transparent 0%, black 20%, black 40%, transparent 100%)'
         }}
       >
         <div 
@@ -142,11 +152,12 @@ export const TeleprompterView: React.FC<TeleprompterViewProps> = ({
           style={{ maxWidth: `${prompterWidth}px` }}
         >
           <div className="space-y-12">
-            <p className={`font-black uppercase leading-[1.2] transition-all duration-500 tracking-tight ${
+            <p className={`font-black uppercase leading-[1.3] transition-all duration-500 tracking-tight ${
               textSize === 'sm' ? 'text-3xl' : textSize === 'lg' ? 'text-7xl' : 'text-5xl'
             }`} style={{ 
-              color: `rgba(255, 255, 255, ${isReading ? scriptOpacity : 0.8})`,
-              textShadow: '0 4px 10px rgba(0,0,0,0.8)'
+              color: 'white',
+              opacity: isReading ? 1 : 0.7,
+              textShadow: '0 4px 15px rgba(0,0,0,1)'
             }}>
               {useCustomScript ? customScript : manifest?.segments.map((s: any) => s.scriptText).filter(Boolean).join('\n\n')}
             </p>

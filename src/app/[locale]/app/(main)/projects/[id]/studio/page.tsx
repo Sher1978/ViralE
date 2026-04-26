@@ -151,29 +151,59 @@ export default function StudioPage() {
   };
 
   // Recording Logic
-  const startVideoRecording = () => {
-    if (!cameraStream) return;
-    const localChunks: Blob[] = [];
-    const recorder = new MediaRecorder(cameraStream, { 
-      mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm' 
-    });
-    
-    recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
-    recorder.onstop = () => {
-      const blob = new Blob(localChunks, { type: 'video/webm' });
-      const url = URL.createObjectURL(blob);
-      setLastRecordingUrl(url);
-      setShowRecordingReview(true);
-    };
+  useEffect(() => {
+    if (activeTab === 'teleprompter' && !cameraStream) {
+      initCamera();
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [activeTab, facingMode]);
 
-    recorder.start(1000);
-    mediaRecorderRef.current = recorder;
-    setIsRecordingVideo(true);
-    setRecordingTime(0);
-    recordingTimerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
+  const startVideoRecording = async () => {
+    // 1. Force Camera Init if not active
+    if (!cameraStream) {
+      await initCamera();
+    }
+
+    // 2. Start Production Countdown
+    setCountdown(3);
+    const timer = setInterval(() => {
+      setCountdown(prev => {
+        if (prev === null || prev <= 1) {
+          clearInterval(timer);
+          return null;
+        }
+        return prev - 1;
+      });
+    }, 1000);
+
+    // 3. Delayed 'Action!' - Sync Recording & Scrolling
+    setTimeout(async () => {
+      if (!cameraStream) return;
+      
+      setIsReading(true);
+      const localChunks: Blob[] = [];
+      const recorder = new MediaRecorder(cameraStream, { 
+        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm' 
+      });
+      
+      recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
+      recorder.onstop = () => {
+        const blob = new Blob(localChunks, { type: 'video/webm' });
+        const url = URL.createObjectURL(blob);
+        setLastRecordingUrl(url);
+        setShowRecordingReview(true);
+      };
+
+      recorder.start(1000);
+      mediaRecorderRef.current = recorder;
+      setIsRecordingVideo(true);
+      setRecordingTime(0);
+      recordingTimerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
+    }, 3000);
   };
 
   const stopVideoRecording = () => {
+    setIsReading(false);
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
       setIsRecordingVideo(false);

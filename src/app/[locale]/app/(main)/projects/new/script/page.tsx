@@ -16,6 +16,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { ContentMatrix } from './_components/ContentMatrix';
 import { ScenarioLegend } from './_components/ScenarioLegend';
 
+import { BottomNav } from '@/components/layout/BottomNav';
+
 
 export default function ScriptLabPage() {
   const t = useTranslations('scriptLab');
@@ -809,6 +811,7 @@ export default function ScriptLabPage() {
         type={error ? 'error' : limitModalData.type}
         locale={locale}
       />
+      <BottomNav locale={locale} />
     </div>
   );
 }
