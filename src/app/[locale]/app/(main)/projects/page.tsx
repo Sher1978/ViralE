@@ -73,10 +73,10 @@ export default function ProjectsPage() {
   ];
 
   return (
-    <div className="relative h-[100dvh] w-screen overflow-hidden bg-[#0A0A10] flex flex-col pb-24">
-      {/* Fixed Header - Adjusted for Strategist overlay */}
-      <header className="px-6 pt-0 pb-2 flex items-center justify-between shrink-0">
-        <div className="flex flex-col pt-8 pl-14">
+    <div className="relative h-[100dvh] w-full overflow-hidden bg-[#0A0A10] flex flex-col touch-none">
+      {/* Fixed Header */}
+      <header className="px-6 pb-2 flex items-center justify-between shrink-0 z-[60]">
+        <div className="flex flex-col pt-10 pl-6">
           <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
             VIRAL<span className="text-purple-500">E</span>
           </h1>
@@ -85,10 +85,10 @@ export default function ProjectsPage() {
           </p>
         </div>
 
-        {/* Visible Bookmark Trigger - High Visibility */}
+        {/* Visible Bookmark Trigger */}
         <div 
           onClick={() => setShowProjectsOverlay(true)}
-          className="w-14 h-14 relative cursor-pointer group"
+          className="w-14 h-14 relative cursor-pointer group mt-4"
         >
            <div className="absolute top-0 right-0 w-full h-full overflow-hidden">
               <div className="absolute top-0 right-0 w-[140%] h-[40%] bg-amber-500 border-b border-amber-400 origin-top-right rotate-45 translate-x-1/2 -translate-y-1/2 group-hover:bg-amber-400 transition-all flex items-center justify-center shadow-[0_0_20px_rgba(245,158,11,0.4)]">
@@ -98,54 +98,55 @@ export default function ProjectsPage() {
         </div>
       </header>
 
-      {/* Comic Blocks - Scaled Down to handle BottomNav space */}
-      <div className="flex-1 flex flex-col min-h-0 w-full">
+      {/* Comic Blocks - Dynamic Stretch to fill viewport */}
+      <div className="flex-1 flex flex-col w-full min-h-0 relative z-10 pt-2 pb-20">
         {hubs.map((hub, index) => (
           <motion.div
             key={hub.id}
-            initial={{ opacity: 0, scale: 0.95 }}
+            initial={{ opacity: 0, scale: 0.98 }}
             animate={{ opacity: 1, scale: 1 }}
             transition={{ delay: index * 0.1 }}
             onClick={() => router.push(hub.href)}
-            className={`flex-1 relative cursor-pointer group overflow-hidden w-full ${
+            className={`flex-1 relative cursor-pointer group overflow-hidden w-full transition-all duration-500 ${
               index === 0 ? 'z-30' : index === 1 ? 'z-20' : 'z-10'
             }`}
             style={{
-              marginTop: index > 0 ? '-3.5dvh' : '0',
-              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 88%, 0 100%)' :
-                        index === 1 ? 'polygon(0 12%, 100% 0, 100% 88%, 0 100%)' :
-                        'polygon(0 12%, 100% 0, 100% 100%, 0 100%)'
+              marginTop: index > 0 ? '-5dvh' : '0',
+              paddingTop: index > 0 ? '5dvh' : '0',
+              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 90%, 0 100%)' :
+                        index === 1 ? 'polygon(0 10%, 100% 0, 100% 90%, 0 100%)' :
+                        'polygon(0 10%, 100% 0, 100% 100%, 0 100%)'
             }}
           >
-            <div className="relative w-full h-full transition-all duration-700 overflow-hidden active:scale-[0.99]">
+            <div className="relative w-full h-full overflow-hidden active:scale-[0.99] transition-transform">
               <div className="absolute inset-0 z-0">
                 <img 
                   src={hub.image} 
-                  className="w-full h-full object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-1000 hover:scale-110" 
+                  className="w-full h-full object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-1000 group-hover:scale-105" 
                   alt="" 
                 />
-                <div className={`absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent opacity-80`} />
+                <div className="absolute inset-0 bg-gradient-to-r from-black via-black/40 to-transparent opacity-80" />
                 <div className={`absolute inset-0 bg-gradient-to-r ${
                   index === 0 ? 'from-purple-900/40' : index === 1 ? 'from-orange-900/40' : 'from-blue-900/40'
                 } to-transparent`} />
               </div>
 
-              <span className="absolute bottom-0 right-4 text-[120px] font-black text-white/[0.1] italic leading-none z-1 tracking-tighter transition-all group-hover:scale-110 group-hover:text-white/[0.15]">
+              <span className="absolute bottom-4 right-6 text-[100px] lg:text-[140px] font-black text-white/[0.05] italic leading-none z-1 tracking-tighter transition-all group-hover:text-white/[0.12] select-none">
                 {index + 1}
               </span>
 
-              <div className="relative z-10 h-full flex flex-col justify-center px-8 pt-4">
-                <span className="text-[10px] font-black uppercase tracking-[0.4em] text-white/40 block mb-3">STEP {index + 1}</span>
-                <h2 className="text-5xl font-black uppercase text-white tracking-tighter italic leading-[0.9] mb-4 group-hover:translate-x-2 transition-transform">
+              <div className="relative z-10 h-full flex flex-col justify-center px-10">
+                <span className="text-[9px] font-black uppercase tracking-[0.4em] text-white/40 block mb-2">STEP {index + 1}</span>
+                <h2 className="text-4xl lg:text-5xl font-black uppercase text-white tracking-tighter italic leading-[0.9] mb-3 group-hover:translate-x-2 transition-all">
                     {hub.title}
                 </h2>
-                <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/20 max-w-[280px] leading-relaxed">
+                <p className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/20 max-w-[240px] leading-relaxed">
                   {hub.desc}
                 </p>
               </div>
 
               {/* Scanline Effect */}
-              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,.25)_50%),linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,111,.06))] bg-[length:100%_4px,3px_100%] opacity-20" />
+              <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,.25)_50%),linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,111,.06))] bg-[length:100%_4px,3px_100%] opacity-15" />
             </div>
           </motion.div>
         ))}
