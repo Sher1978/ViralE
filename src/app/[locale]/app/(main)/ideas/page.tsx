@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo } from 'react';
-import { TrendingUp, Bookmark, Loader2, History, Sparkles } from 'lucide-react';
+import { TrendingUp, Bookmark, Loader2, History, Sparkles, Lock } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
 import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
@@ -24,17 +24,20 @@ export default function IdeasPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [dnaAnswers, setDnaAnswers] = useState<any>(null);
 
+  const [isDnaComplete, setIsDnaComplete] = useState(false);
+
   const fetchDna = useCallback(async () => {
     try {
-      const res = await fetch('/api/profile/dna/answers'); // Note: I might need to create a simple GET for this or use profile DNA
+      const res = await fetch('/api/profile/dna/answers');
       if (res.ok) {
-        // Fallback for profile DNA if answers not found
+        const data = await res.json();
+        const answers = data?.answers || {};
+        const complete = Object.values(answers).filter((v: any) => v && v.toString().length > 2).length >= 7;
+        setIsDnaComplete(complete);
       }
-      // Actually let's fetch profile directly to see dna_answers
-      const profileRes = await fetch('/api/profile'); // Assuming /api/profile exists or check where it's stored
-      // If /api/profile doesn't exist, we'll use a safer approach: fetch from /api/profile/dna but it returns prompt.
-      // Let's assume we can get it or just rely on the first fetch of ideas to tell us.
-    } catch (e) {}
+    } catch (e) {
+      console.error('Failed to fetch DNA:', e);
+    }
   }, []);
 
   const fetchIdeas = useCallback(async (status: string) => {
@@ -52,14 +55,13 @@ export default function IdeasPage() {
   }, [locale]);
 
   useEffect(() => {
+    fetchDna();
     fetchIdeas(activeTab);
-  }, [fetchIdeas, activeTab]);
+  }, [fetchIdeas, activeTab, fetchDna]);
 
   const handleToScript = (content: string, category?: string) => {
     let url = `/app/projects/new/script?topic=${encodeURIComponent(content)}`;
     
-    // If we're picking a specific role or hook, we might want to attach it to the current topic
-    // For now, if category is Hook or Role, we pass it as a param
     if (category === "Hooks") {
       url = `/app/projects/new/script?hook=${encodeURIComponent(content)}`;
     } else if (category === "Roles") {
@@ -129,9 +131,12 @@ export default function IdeasPage() {
 
       {/* DNA Integration */}
       {activeTab === 'new' && (
-        <div className="space-y-6">
+        <div className="space-y-6" data-dna-block>
           <DNABlock 
-            onComplete={() => fetchIdeas('new')}
+            onComplete={() => {
+                fetchDna();
+                fetchIdeas('new');
+            }}
           />
           
           <TopicInput 
@@ -159,18 +164,48 @@ export default function IdeasPage() {
       </div>
 
       {/* Scrollers or List */}
-      <div className="space-y-10">
+      <div className="relative space-y-10">
         {activeTab === 'new' ? (
-          CATEGORIES.map((cat) => (
-            <MatrixScroller
-              key={cat}
-              title={cat}
-              subtitle={locale === 'ru' ? 'Стратегические идеи' : 'Strategic Insights'}
-              ideas={groupedIdeas[cat] || []}
-              onToScript={(topic) => handleToScript(topic, cat)}
-              onToggleArchive={handleToggleArchive}
-            />
-          ))
+          isDnaComplete ? (
+            CATEGORIES.map((cat) => (
+              <MatrixScroller
+                key={cat}
+                title={cat}
+                subtitle={locale === 'ru' ? 'Стратегические идеи' : 'Strategic Insights'}
+                ideas={groupedIdeas[cat] || []}
+                onToScript={(topic) => handleToScript(topic, cat)}
+                onToggleArchive={handleToggleArchive}
+              />
+            ))
+          ) : (
+            <div className="relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.01] p-12 text-center space-y-6">
+               <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent pointer-events-none" />
+               <div className="relative flex flex-col items-center gap-4">
+                  <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-2">
+                     <Lock className="w-8 h-8 text-white/20" />
+                  </div>
+                  <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
+                     {locale === 'ru' ? 'Лента заблокирована' : 'Idea Feed Locked'}
+                  </h2>
+                  <p className="text-xs text-white/30 max-w-xs mx-auto leading-relaxed uppercase tracking-wider font-medium">
+                     {locale === 'ru' 
+                       ? 'Заполните ДНК стратегию, чтобы активировать персональную матрицу идей' 
+                       : 'Calibrate your Creative DNA to activate the personalized idea matrix'}
+                  </p>
+                  <button 
+                    onClick={() => {
+                        const dnaBlock = document.querySelector('[data-dna-block]');
+                        if (dnaBlock) dnaBlock.scrollIntoView({ behavior: 'smooth' });
+                        // The DNABlock itself should handle the click if we make it auto-open or just guide them there.
+                        // I'll make DNABlock accept a ref or just rely on the user clicking the top block.
+                    }}
+                    className="mt-4 px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
+                  >
+                     {locale === 'ru' ? 'Пройти калибровку' : 'Start Calibration'}
+                  </button>
+               </div>
+            </div>
+          )
         ) : (
           <div className="grid gap-4">
             {ideas.length > 0 ? (
