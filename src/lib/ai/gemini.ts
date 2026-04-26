@@ -47,7 +47,7 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
     - NEVER use generic greetings or clichéd phrases. Start directly with the essence.
     - Focus on "Show what is being said" (Action-Semantic B-Roll prompts).
     - TOTAL duration MUST NOT EXCEED 50 SECONDS (130-150 words).
-    - Detect and use the INPUT LANGUAGE.
+    - CRITICAL: Generate content ONLY in the SAME LANGUAGE as the provided topic or idea. If input is Russian, output Russian. If input is Ukrainian, output Ukrainian. 
     - Output MUST be valid JSON.
   `;
 }
@@ -66,6 +66,8 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
 
   const userPrompt = `
     Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
+    
+    CRITICAL: ALL text content in these scripts MUST be in the SAME LANGUAGE as the input idea: "${coreIdea}". If the idea/topic is in Ukrainian, every word of the script must be in Ukrainian. If Russian, then Russian.
     
     ${hook ? `CRITICAL: Every scenario MUST use this specific starting HOOK: "${hook}"` : ""}
     ${role ? `CRITICAL: Every scenario MUST be written in the ROLE/STANCE of: "${role}"` : ""}
@@ -119,7 +121,7 @@ export async function synthesizeDigitalShadow(rawInputs: any, locale: string = '
     You are an AI Persona Architect. Based on the onboarding data below, 
     generate a high-density "Digital Shadow DNA" (Master Prompt).
     
-    The resulting DNA description MUST be in ${languageName}.
+    CRITICAL: The resulting DNA description MUST be in the SAME LANGUAGE as the onboarding data provided.
     
     ONBOARDING DATA:
     ${JSON.stringify(rawInputs, null, 2)}

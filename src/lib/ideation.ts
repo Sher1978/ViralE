@@ -58,7 +58,7 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
     
     TASK: Generate 5 fresh, high-retention video topic ideas for the category: "${targetCategory}".
     
-    CRITICAL: All generated text content MUST BE IN ${languageName.toUpperCase()}.
+    CRITICAL: All generated text content MUST BE IN THE SAME LANGUAGE as the user's input or the TEMPLATE THEMATIC provided below. If context is in Russian, output Russian. If Ukrainian, output Ukrainian. Default to ${languageName} only if language is ambiguous.
     
     ${isDnaComplete ? `USER DNA DATA: ${JSON.stringify(dnaAnswers)}` : `TEMPLATE THEMATIC: ${templateContext}`}
     
