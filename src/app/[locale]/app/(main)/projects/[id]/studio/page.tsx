@@ -287,6 +287,8 @@ export default function StudioPage() {
                    }}
                    onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
                    onFlipCamera={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
+                   onTextSizeChange={(size) => setTextSize(size)}
+                   onOpacityChange={(op) => setScriptOpacity(op)}
                    isRecordingVideo={isRecordingVideo}
                    onScriptUpdate={async (newText) => {
                      if (!manifest) return;
