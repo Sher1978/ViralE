@@ -46,7 +46,7 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
     CORE RULES:
     - NEVER use generic greetings or clichéd phrases. Start directly with the essence.
     - Focus on "Show what is being said" (Action-Semantic B-Roll prompts).
-    - TOTAL duration MUST NOT EXCEED 50 SECONDS (130-150 words).
+    - TOTAL duration: ~60-80 SECONDS total (approx. 180-220 words total).
     - CRITICAL: Generate content ONLY in the SAME LANGUAGE as the provided topic or idea. If input is Russian, output Russian. If input is Ukrainian, output Ukrainian. 
     - Output MUST be valid JSON.
   `;
@@ -72,12 +72,14 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     ${hook ? `CRITICAL: Every scenario MUST use this specific starting HOOK: "${hook}"` : ""}
     ${role ? `CRITICAL: Every scenario MUST be written in the ROLE/STANCE of: "${role}"` : ""}
     
-    CRITICAL: Each script MUST consist of 4 independent blocks with UNIVERSAL CONNECTORS to allow interchangeability.
+    CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". No descriptions of what to say. ONLY the final words the actor will dictate.
+    
+    CRITICAL: Each of the 4 blocks must be approximately 15-20 seconds of speech (approx. 40-55 words per block).
     
     1. BLOCK 1: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
-    2. BLOCK 2: Context & Agitation (5-15s). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration".
-    3. BLOCK 3: Re-Hook & Meat (15-45s). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
-    4. BLOCK 4: Native CTA (45-60s). ENTRY PHRASE: "That's why..." or "So if you want...". Call to leave a KEYWORD in comments.
+    2. BLOCK 2: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration".
+    3. BLOCK 3: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
+    4. BLOCK 4: Native CTA (15-20s dictation). ENTRY PHRASE: "That's why..." or "So if you want...". Call to leave a KEYWORD in comments.
 
     STYLES to generate for the idea:
     1. evergreen (Contrarian): Attacking popular myths.
