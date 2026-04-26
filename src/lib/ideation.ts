@@ -1,5 +1,5 @@
 import { SupabaseClient } from '@supabase/supabase-js';
-import { model } from './ai/gemini';
+import { getModel } from './ai/gemini';
 
 export interface IdeaSuggestion {
   id?: string;
@@ -85,7 +85,8 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
     ]
   `;
 
-  const result = await model.generateContent(prompt);
+  const fastModel = getModel('fast');
+  const result = await fastModel.generateContent(prompt);
   const response = await result.response;
   const text = response.text().trim();
   

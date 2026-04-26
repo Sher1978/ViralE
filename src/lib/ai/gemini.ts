@@ -3,14 +3,21 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
 
-const DEFAULT_MODEL = "gemini-2.5-pro";
+const FAST_MODEL = "gemini-2.5-flash";
+const PRO_MODEL = "gemini-2.5-pro";
 
-export const model = genAI.getGenerativeModel({ 
-  model: process.env.GEMINI_MODEL || DEFAULT_MODEL,
-  generationConfig: {
-    responseMimeType: "application/json",
-  }
-});
+export function getModel(tier: 'fast' | 'pro' = 'fast') {
+  const modelName = tier === 'fast' ? FAST_MODEL : PRO_MODEL;
+  return genAI.getGenerativeModel({ 
+    model: modelName,
+    generationConfig: {
+      responseMimeType: "application/json",
+    }
+  });
+}
+
+// Default export instance for compatibility - now using FAST by default for MVP
+export const model = getModel('fast');
 
 /**
  * Orchestrates the "Digital Shadow" prompt construction with Brand DNA and Content Lego support
