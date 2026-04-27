@@ -1,41 +1,41 @@
-import { supabase } from '../supabase';
+import fs from 'fs';
+import path from 'path';
 
-export interface AccessStatus {
-  hasAccess: boolean;
-  status: 'no_access' | 'trial' | 'active';
-  trialExpiresAt: string | null;
+// --- BIBLE_SOT LOADER ---
+function getBibleSOTContent(filename: string): string {
+  try {
+    const filePath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', filename);
+    return fs.readFileSync(filePath, 'utf-8');
+  } catch (err) {
+    console.error(`[BibleSOT] Failed to read ${filename}:`, err);
+    return '';
+  }
 }
 
-// --- MANDATORY DOCTRINES (HARDCODED BIBLE_SOT) ---
-
-const DOCTRINE_GENERAL = `
-ТВОЯ РОЛЬ: Ты — элитный ИИ-стратег, нейромаркетолог и сценарист вирального контента.
-Твоя главная задача — генерировать высококонверсионные сценарии, посты и идеи.
-
-ПОШАГОВЫЙ АЛГОРИТМ (5 ШАГОВ):
-ШАГ 1: Калибровка смыслов (Анализ Brand DNA). Считай Tone of Voice и ролевую модель.
-ШАГ 2: Выбор виральной упаковки (Content Lego). Подбери структуру: Противоречие, Кейс, Разбор или Список.
-ШАГ 3: Инженерия Хука. Создай синхронизированный хук (Визуал + Текст на экране + Голос). Сильный контраст и Curiosity Loop.
-ШАГ 4: Тело сценария (Удержание). Ритм "стаккато", короткие хлесткие фразы, Re-hooks каждые 20-30 секунд.
-ШАГ 5: Целевое действие (CTA). Нативный призыв оставить кодовое слово.
-
-ПРАВИЛО СТАККАТО: Никаких банальностей. Сразу в суть. Ритм: короткое-короткое-длинное-короткое.
-`;
-
-const DOCTRINE_LEGO = `
-ПРИНЦИП КОНТЕНТНОГО LEGO: Видео состоит из 4 независимых блоков с универсальными точками входа/выхода.
-БЛОК 1: Хук (0-5с). Выход: Curiosity Loop.
-БЛОК 2: Контекст (5-15с). Вход: "Дело вот в чем...", "На самом деле...".
-БЛОК 3: Мясо/Ценность (15-45с). Вход: "Но правда в том, что...", "Однако...".
-БЛОК 4: CTA (45-60с). Вход: "Именно поэтому...", "Так что если вы хотите...".
-
-5 ВИРАЛЬНЫХ СТИЛЕЙ:
-1. ПРОТИВОРЕЧИЕ (Contrarian) - Разрушение мифа.
-2. ТЕНЕВОЙ СЛЕДОВАТЕЛЬ - Превращение слабости в потенциал.
-3. КЕЙС - Разбор результата ("Как я получил X без Y").
-4. СПИСОК - Динамичная выдача 3-х ценностей.
-5. УЯЗВИМОСТЬ - Путь от ошибки к трансформации.
-`;
+function formatDNA(answers: any): string {
+  if (!answers) return "Missing DNA. Please conduct interview.";
+  
+  return `
+    🧬 ACTIVE BRAND DNA (Based on user answers):
+    
+    1. FOUNDATION & EXPERTISE:
+       - Niche: ${answers.niche || 'N/A'}
+       - Contrarian Views: ${answers.contrarian_views || 'N/A'}
+       - Authority/Expertise: ${answers.expertise || 'N/A'}
+    
+    2. AVATAR (ONE TRUE FAN):
+       - Who: ${answers.target_audience || 'N/A'}
+       - Deep Fears: ${answers.pain_points || 'N/A'}
+       - Desires/Goals: ${answers.desired_results || 'N/A'}
+    
+    3. TONE & STYLE:
+       - Tone of Voice: ${answers.tone_of_voice || 'N/A'}
+       - Archetype/Role: ${answers.tone_of_voice || 'N/A'}
+    
+    4. FUNNEL & OFFERS:
+       - Final Offer/Lead Magnet: ${answers.final_offer || 'N/A'}
+  `;
+}
 
 const DNA_INTERVIEW_TEMPLATE = `
 ТЫ ДОЛЖЕН ПРОВЕСТИ ИНТЕРВЬЮ ПО 5 БЛОКАМ:
@@ -89,30 +89,42 @@ export const strategistService = {
   async getStrategistSystemPrompt(userId: string, locale: string = 'en'): Promise<string> {
     const languageName = locale === 'ru' ? 'Russian' : 'English';
     
-    // Fetch current Profile DNA (Digital Shadow)
+    // 1. Fetch current Profile DNA (dna_answers)
     const { data: profile } = await supabase
       .from('profiles')
-      .select('digital_shadow_prompt, industry_context')
+      .select('dna_answers')
       .eq('id', userId)
       .single();
 
-    const dna = profile?.digital_shadow_prompt || "";
-    const isDnaComplete = dna.length > 500; 
+    const answers = profile?.dna_answers;
+    const isDnaComplete = answers && Object.keys(answers).length >= 5;
+
+    // 2. Load Bible_SOT doctrines from files
+    const generalScript = getBibleSOTContent('General_script.md');
+    const contentLego = getBibleSOTContent('Content_lego.md');
+    const brandDnaMethodology = getBibleSOTContent('Brand_DNA.md');
+
+    // 3. Construct formatted DNA context
+    const dnaContext = formatDNA(answers);
 
     return `
-      ${DOCTRINE_GENERAL}
-      ${DOCTRINE_LEGO}
+      ${generalScript}
+      ${contentLego}
 
+      --- DATABASE DATA (USING .md FILES) ---
+      BRAND_DNA_CONTEXT:
+      ${dnaContext}
+
+      BRAND_DNA_METHODOLOGY_REFERENCE:
+      ${brandDnaMethodology}
+
+      --- OPERATIONAL INSTRUCTIONS ---
       LANGUAGE: RESPOND EXCLUSIVELY IN ${languageName.toUpperCase()}.
       TONE: Analytical, expert, authoritative, "Sherlock" persona.
 
       --- MISSION: THE 5x4 CONTENT LEGO MATRIX ---
       If the user provides a TOPIC, you must generate a complete matrix of 5 DIFFERENT VIRAL STYLES.
-      Each style must have exactly 4 BLOCKS:
-      1. HOOK (0-5s)
-      2. CONTEXT (5-15s)
-      3. MEAT/VALUE (15-45s)
-      4. CTA (45-60s)
+      Each style must have exactly 4 BLOCKS as defined in Content_lego.md.
 
       FORMAT REQUIREMENTS:
       Your response should be a JSON-compatible block with the following structure:
@@ -129,20 +141,18 @@ export const strategistService = {
               { "type": "cta", "text": "...", "visual": "..." }
             ]
           },
-          ... (repeat for 5 styles: contrarian, investigator, case_study, listicle, vulnerability)
+          ... (styles: contrarian, investigator, case_study, listicle, vulnerability)
         ]
       }
 
-      --- MODE SELECTION ---
+      --- ACTIVE MODE ---
       ${!isDnaComplete ? `
       MODE: BRAND DNA INTERVIEW (PRIORITY)
-      User DNA is currently incomplete or non-existent.
-      YOUR MISSION: Conduct a professional interview to fill the Brand DNA matrix. 
-      Use the template: ${DNA_INTERVIEW_TEMPLATE}
+      User DNA is currently incomplete.
+      MISSION: Conduct a professional interview to fill the DNA based on Brand_DNA.md methodology. 
       ` : `
-      MODE: CONTENT LEGO ENGINEERING
-      Current Brand DNA: ${dna}
-      MISSION: Generate the 5x4 Matrix for the user's topic. Ensure blocks are interchangeable!
+      MODE: PRODUCTION (CONTENT LEGO)
+      DNA is complete. Use the provided DNA context to calibrate all scripts!
       `}
     `;
   }
