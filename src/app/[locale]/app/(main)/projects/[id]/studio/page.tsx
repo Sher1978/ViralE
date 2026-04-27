@@ -347,7 +347,7 @@ export default function StudioPage() {
           
           {activeTab === 'teleprompter' && (
             <div className="w-full h-full relative">
-                <TeleprompterView 
+                                <TeleprompterView 
                    cameraStream={cameraStream}
                    videoPreviewRef={videoPreviewRef}
                    isVideoMirrored={isVideoMirrored}
@@ -360,31 +360,19 @@ export default function StudioPage() {
                    manifest={manifest}
                    customScript={customScript}
                    textSize={textSize}
+                   onTextSizeChange={setTextSize}
+                   scriptColor={scriptColor}
+                   onColorChange={setScriptColor}
                    scriptOpacity={scriptOpacity}
+                   onOpacityChange={setScriptOpacity}
+                   scrollSpeed={scrollSpeed}
+                   onSpeedChange={setScrollSpeed}
+                   isRecordingVideo={isRecordingVideo}
                    onBack={() => {
                      router.push(`/app/projects/new/script?projectId=${projectId}`);
                    }}
                    onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
-                   onFlipCamera={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
-                   onTextSizeChange={(size) => setTextSize(size)}
-                   onOpacityChange={(op) => setScriptOpacity(op)}
-                   isRecordingVideo={isRecordingVideo}
-                   onFinish={() => {
-                      if (lastRecordingUrl && manifest) {
-                         const segmentId = selectedSegmentId || manifest.segments[0]?.id || uuidv4();
-                         
-                         // Immutable update of manifest
-                         setManifest({
-                            ...manifest,
-                            videoUrl: lastRecordingUrl,
-                            segments: manifest.segments.map(s => 
-                               s.id === segmentId ? { ...s, assetUrl: lastRecordingUrl, type: 'user_recording' } : s
-                            )
-                         });
-                      }
-                      setShowRecordingReview(false);
-                      setActiveTab('assembly');
-                   }}
+                   onFlipCamera={() => setIsMirrored(!isMirrored)}
                    onScriptUpdate={async (newText) => {
                      if (!manifest) return;
                      const segments = newText.split('\n\n').map((text, i) => ({
@@ -395,16 +383,10 @@ export default function StudioPage() {
                      setManifest(updatedManifest);
                      await projectService.updateLatestVersionManifest(projectId, updatedManifest);
                    }}
-                   scrollSpeed={scrollSpeed}
-                   onSpeedChange={(s) => setScrollSpeed(s)}
-                   textSize={textSize}
-                   onTextSizeChange={setTextSize}
-                   scriptColor={scriptColor}
-                   onColorChange={setScriptColor}
-                   scriptOpacity={scriptOpacity}
-                   onOpacityChange={setScriptOpacity}
-                   isMirrored={isMirrored}
-                   onFlipCamera={() => setIsMirrored(!isMirrored)}
+                   onFinish={() => {
+                      setShowRecordingReview(true);
+                      setActiveTab('assembly');
+                   }}
                    t={t}
                 />
                 
