@@ -88,20 +88,26 @@ export const TeleprompterView = React.memo(({
     return (useCustomScript ? customScript : manifest?.segments?.map((s: any) => s.scriptText).filter(Boolean).join('\n\n')) || "Put your text here!";
   }, [useCustomScript, customScript, manifest]);
 
-  // Auto-scroll logic with dynamic speed
+  // Auto-scroll logic with precision frequency for smoothness
   React.useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isReading && prompterRef.current && !isEditing && !isUserInteracting) {
+    if (isReading && prompterRef.current && !isEditing) {
         interval = setInterval(() => {
             if (prompterRef.current) {
-                // New formula: 1 -> 0.8px, 2 -> 1.0px, 3 -> 1.2px
-                // Provides smoother gap between 1 and 2
-                prompterRef.current.scrollTop += 0.6 + (scrollSpeed * 0.2); 
+                // Smoother formula: base 0.4px + (speed * 0.15px) per 8ms
+                // This targets 120fps-like smoothness
+                prompterRef.current.scrollTop += 0.4 + (scrollSpeed * 0.15); 
+                
+                // Keep scrollPosRef synced to avoid jumps
+                if (prompterRef.current.scrollTop >= prompterRef.current.scrollHeight - prompterRef.current.clientHeight) {
+                  // End of script reached - auto stop or loop
+                   // onFinish?.(); 
+                }
             }
-        }, 16); 
+        }, 8); 
     }
     return () => clearInterval(interval);
-  }, [isReading, prompterRef, scrollSpeed, isEditing, isUserInteracting]);
+  }, [isReading, prompterRef, scrollSpeed, isEditing]);
 
   const handleInteraction = () => {
     setIsUserInteracting(true);

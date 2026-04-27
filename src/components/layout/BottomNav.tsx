@@ -62,34 +62,48 @@ export function BottomNav() {
             const activeColor = getActiveColor(item.key);
 
             return (
-              <li key={item.href} className="flex-1">
+               <li key={item.href} className="flex-1">
                 <Link
                   href={item.href}
+                  onPointerDown={(e) => {
+                    // Instant prefetch/navigation start on mobile touch
+                    const link = e.currentTarget as HTMLAnchorElement;
+                    if (link.href) router.push(item.href);
+                  }}
                   className={cn(
-                    "flex flex-col items-center justify-center py-2 transition-all duration-200 relative select-none touch-manipulation",
+                    "flex flex-col items-center justify-center py-2 transition-all duration-100 relative select-none touch-manipulation",
                     isActive ? "scale-105" : "text-white/20"
                   )}
                   style={{ color: isActive ? activeColor : undefined, WebkitTapHighlightColor: 'transparent' }}
                 >
                   <div className="relative flex flex-col items-center transform-gpu">
-                    <Icon 
-                      className="w-7 h-7 transition-colors duration-200" 
-                      strokeWidth={isActive ? 2.5 : 2}
-                      style={{
-                        filter: isActive ? `drop-shadow(0 0 10px ${activeColor}88)` : 'none',
-                        color: isActive ? activeColor : 'currentColor'
-                      }}
-                    />
+                    <div className="relative">
+                      {isActive && (
+                        <motion.div 
+                          layoutId={`glow-${item.key}`}
+                          className="absolute inset-0 blur-[15px] opacity-60 scale-150"
+                          style={{ backgroundColor: activeColor }}
+                        />
+                      )}
+                      <Icon 
+                        className="w-7 h-7 relative z-10 transition-colors duration-75" 
+                        strokeWidth={isActive ? 2.5 : 2}
+                        style={{
+                          filter: isActive ? `drop-shadow(0 0 10px ${activeColor}) drop-shadow(0 0 2px ${activeColor})` : 'none',
+                          color: isActive ? activeColor : 'currentColor'
+                        }}
+                      />
+                    </div>
                     <AnimatePresence>
                       {isActive && (
                         <motion.span
-                          initial={{ opacity: 0, y: 5 }}
-                          animate={{ opacity: 1, y: 0 }}
-                          exit={{ opacity: 0, y: 5 }}
-                          className="text-[7px] font-black tracking-[0.2em] uppercase text-center mt-2.5"
+                          initial={{ opacity: 0, scale: 0.9 }}
+                          animate={{ opacity: 1, scale: 1 }}
+                          exit={{ opacity: 0, scale: 0.9 }}
+                          className="text-[7px] font-black tracking-[0.2em] uppercase text-center mt-2.5 relative z-10"
                           style={{
                              color: activeColor,
-                             textShadow: `0 0 6px ${activeColor}`
+                             textShadow: `0 0 12px ${activeColor}, 0 0 4px ${activeColor}`
                           }}
                         >
                           {t(item.key as any)}
@@ -100,10 +114,10 @@ export function BottomNav() {
                     {isActive && (
                       <motion.div
                         layoutId="activeIndicator"
-                        className="absolute -top-1 w-1 h-1 rounded-full"
+                        className="absolute -top-2 w-8 h-1 rounded-full opacity-50"
                         style={{ 
                           backgroundColor: activeColor, 
-                          boxShadow: `0 0 8px 1px ${activeColor}`,
+                          boxShadow: `0 0 15px 3px ${activeColor}`,
                           filter: `blur(0.5px)`
                         }}
                       />
