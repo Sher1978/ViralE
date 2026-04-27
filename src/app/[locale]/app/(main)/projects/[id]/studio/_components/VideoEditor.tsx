@@ -607,22 +607,28 @@ export const VideoEditor = React.memo(({
         </button>
 
         {/* Phase Indicator */}
-        <div className="flex items-center gap-1.5">
-          {phaseLabels.map((label, i) => (
-            <React.Fragment key={label}>
-              <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${
-                i === phaseIndex
-                  ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                  : i < phaseIndex
-                    ? 'text-white/30'
-                    : 'text-white/10'
-              }`}>
-                <div className={`w-1.5 h-1.5 rounded-full ${i <= phaseIndex ? 'bg-purple-400' : 'bg-white/10'}`} />
-                {label}
-              </div>
-              {i < phaseLabels.length - 1 && <ChevronRight size={8} className="text-white/10" />}
-            </React.Fragment>
-          ))}
+        <div className="flex flex-col items-center gap-1.5">
+          <div className="flex items-center gap-1.5">
+            {phaseLabels.map((label, i) => (
+              <React.Fragment key={label}>
+                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${
+                  i === phaseIndex
+                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
+                    : i < phaseIndex
+                      ? 'text-white/30'
+                      : 'text-white/10'
+                }`}>
+                  <div className={`w-1.5 h-1.5 rounded-full ${i <= phaseIndex ? 'bg-purple-400' : 'bg-white/10'}`} />
+                  {label}
+                </div>
+                {i < phaseLabels.length - 1 && <ChevronRight size={8} className="text-white/10" />}
+              </React.Fragment>
+            ))}
+          </div>
+          <div className="flex items-center gap-2 px-2 py-0.5 rounded-lg bg-white/5 border border-white/10">
+            <span className="text-[10px] font-black text-white/30 tracking-tighter uppercase">Dur:</span>
+            <span className="text-[10px] font-black text-white tabular-nums tracking-tighter">{fmt(duration)}</span>
+          </div>
         </div>
 
         <button onClick={onNext}
@@ -668,7 +674,7 @@ export const VideoEditor = React.memo(({
 
         {/* Subtitle Overlay – Karaoke Style */}
         <AnimatePresence mode="wait">
-          {aRollUrl && stage !== 'transcribing' && (() => {
+          {aRollUrl && (() => {
             const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
             if (!activeSub) return null;
             const accentWord = (activeSub as any).accentWord || '';
@@ -691,7 +697,7 @@ export const VideoEditor = React.memo(({
                     {words.map((word, wi) => (
                       <span
                         key={wi}
-                        className={`text-[22px] font-black leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,1)] tracking-tight transition-all duration-150 ${
+                        className={`text-[24px] font-bold leading-relaxed drop-shadow-[0_2px_12px_rgba(0,0,0,1)] tracking-normal transition-all duration-150 ${
                           word === accentWord
                             ? 'text-amber-400 scale-110 inline-block [text-shadow:0_0_20px_rgba(245,158,11,0.8)]'
                             : 'text-white'
@@ -720,29 +726,18 @@ export const VideoEditor = React.memo(({
         </AnimatePresence>
 
         {/* Processing Overlay */}
-        <AnimatePresence>
-          {stage === 'transcribing' && (
-            <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-              className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 z-10">
-              <div className="w-14 h-14 rounded-3xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
-                <Wand2 size={24} className="text-purple-400 animate-pulse" />
+        {stage === 'transcribing' && (
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 px-4 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/30 backdrop-blur-md">
+              <Wand2 size={12} className="text-purple-400 animate-pulse" />
+              <span className="text-[9px] font-black text-purple-200 uppercase tracking-widest">{stageMessage}</span>
+              <div className="flex gap-0.5">
+                {[0, 1, 2].map(i => <div key={i} className="w-1 h-1 rounded-full bg-purple-400/50" />)}
               </div>
-              <div className="text-center px-8">
-                <p className="text-xs font-black text-white uppercase tracking-widest">{stageMessage}</p>
-                <div className="flex gap-1 justify-center mt-3">
-                  {[0, 1, 2].map(i => (
-                    <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-purple-400"
-                      animate={{ opacity: [0.3, 1, 0.3] }}
-                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />
-                  ))}
-                </div>
-              </div>
-            </motion.div>
+            </div>
           )}
-        </AnimatePresence>
 
         {/* Play/pause + timecode */}
-        {aRollUrl && stage !== 'transcribing' && (
+        {aRollUrl && (
           <button onClick={togglePlay}
             className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 shadow-2xl">
             {isPlaying ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" className="ml-0.5" />}
@@ -1069,7 +1064,7 @@ const extractAudioOnly = async (blob: Blob): Promise<Blob> => {
   const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
   
   // Create mono buffer for minimal size
-  const offlineCtx = new OfflineAudioContext(1, audioBuffer.length, audioBuffer.sampleRate);
+  const offlineCtx = new OfflineAudioContext(1, Math.round(audioBuffer.duration * 16000), 16000);
   const source = offlineCtx.createBufferSource();
   source.buffer = audioBuffer;
   source.connect(offlineCtx.destination);

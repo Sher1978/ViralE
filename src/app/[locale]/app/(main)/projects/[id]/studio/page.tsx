@@ -368,6 +368,7 @@ export default function StudioPage() {
                    scrollSpeed={scrollSpeed}
                    onSpeedChange={setScrollSpeed}
                    isRecordingVideo={isRecordingVideo}
+                    recordingTime={recordingTime}
                    onBack={() => {
                      router.push(`/app/projects/new/script?projectId=${projectId}`);
                    }}

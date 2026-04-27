@@ -323,9 +323,9 @@ export const TeleprompterView = React.memo(({
           }`} />
           
           {isRecordingVideo && (
-            <div className="absolute -top-12 px-4 py-1.5 rounded-full bg-red-600 border border-red-400 text-white text-[9px] font-black tracking-widest uppercase flex items-center gap-2">
-               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
-               Recording
+            <div className="absolute -top-12 px-4 py-1.5 rounded-full bg-red-600 border border-red-400 text-white text-[9px] font-black tracking-widest uppercase flex items-center gap-2 shadow-[0_0_30px_rgba(220,38,38,0.5)]">
+              <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+              <span>REC {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
             </div>
           )}
         </motion.button>
