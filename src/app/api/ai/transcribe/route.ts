@@ -1,7 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const genAI = new GoogleGenerativeAI(process.env.GOOGLE_GENERATIVE_AI_API_KEY || '');
 
 export async function POST(req: NextRequest) {
   try {
@@ -13,62 +10,68 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Use Gemini 1.5 Flash (renamed for clarity in my tool, but using the correct version from SDK)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
-
-    // Convert file to base64
-    const buffer = await file.arrayBuffer();
-    const base64Data = Buffer.from(buffer).toString('base64');
-
-    const karaokePrompt = `
-      Transcribe this audio/video file. Output ONLY a raw JSON array of word-level timestamps.
-      EVERY single word must have its own entry with precise timing.
-      Format: [ { "text": "Hello", "start": 0.12, "end": 0.45 } ]
-      Rules:
-      - Timestamps in seconds
-      - No punctuation in word string
-      - Output ONLY raw JSON array
-    `;
-
-    const segmentsPrompt = `
-      Transcribe into a clean JSON array of subtitle segments.
-      Each segment: "text", "start", "end".
-    `;
-
-    const textPrompt = `Transcribe this audio file into clean, accurate text. Fix any minor stuttering or filler words. Output ONLY the raw transcript text.`;
-
-    let prompt = karaokePrompt;
-    if (mode === 'segments') prompt = segmentsPrompt;
-    if (mode === 'text') prompt = textPrompt;
-
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64Data,
-          mimeType: file.type || 'audio/webm'
-        }
-      },
-      prompt
-    ]);
-
-    const responseText = result.response.text();
-
-    if (mode === 'text') {
-      return NextResponse.json({ text: responseText.trim() });
+    const apiKey = process.env.OPENAI_API_KEY;
+    if (!apiKey) {
+      return NextResponse.json({ error: 'OpenAI API key not configured' }, { status: 500 });
     }
 
-    // Clean JSON markers for structural modes
-    const cleanedJson = responseText
-      .replace(/```json/g, '')
-      .replace(/```/g, '')
-      .trim();
-    
-    const parsed = JSON.parse(cleanedJson);
+    // Prepare Whisper formData
+    const whisperFormData = new FormData();
+    whisperFormData.append('file', file, 'audio.wav');
+    whisperFormData.append('model', 'whisper-1');
+    whisperFormData.append('response_format', 'verbose_json');
+    whisperFormData.append('timestamp_granularities[]', 'word');
+    whisperFormData.append('timestamp_granularities[]', 'segment');
+
+    // Send to OpenAI
+    const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${apiKey}`
+      },
+      body: whisperFormData
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error('Whisper error:', errText);
+      try {
+        const errJson = JSON.parse(errText);
+        return NextResponse.json({ error: errJson.error?.message || 'Whisper API failed' }, { status: response.status });
+      } catch {
+        return NextResponse.json({ error: 'Whisper API failed' }, { status: response.status });
+      }
+    }
+
+    // Process verbose_json response
+    const data = await response.json();
+
+    if (mode === 'text') {
+      return NextResponse.json({ text: data.text });
+    }
+
+    // Map OpenAI words to our internal format: [{text, start, end}]
+    const mappedWords = (data.words || []).map((w: any) => ({
+      text: w.word.trim(),
+      start: w.start,
+      end: w.end
+    }));
+
+    // Map OpenAI segments to our internal format: [{text, start, end}]
+    const mappedSegments = (data.segments || []).map((s: any) => ({
+      text: s.text.trim(),
+      start: s.start,
+      end: s.end
+    }));
 
     if (mode === 'karaoke') {
-      return NextResponse.json({ wordTimings: parsed, transcript: parsed });
+      // Prioritize words for karaoke
+      const transcript = mappedWords.length > 0 ? mappedWords : mappedSegments;
+      return NextResponse.json({ wordTimings: transcript, transcript: transcript });
     } else {
-      return NextResponse.json({ transcript: parsed });
+      // Prioritize segments natively
+      const transcript = mappedSegments.length > 0 ? mappedSegments : mappedWords;
+      return NextResponse.json({ transcript });
     }
 
   } catch (error: any) {
