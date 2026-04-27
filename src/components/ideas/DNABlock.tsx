@@ -291,7 +291,7 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
            </div>
 
            {/* Questions Content */}
-           <div className="flex-1 px-8 flex flex-col justify-center max-w-2xl mx-auto w-full">
+           <div className="flex-1 px-8 flex flex-col justify-start pt-12 max-w-2xl mx-auto w-full overflow-hidden">
               <AnimatePresence mode="wait">
                  <motion.div
                     key={activeQuestion}
