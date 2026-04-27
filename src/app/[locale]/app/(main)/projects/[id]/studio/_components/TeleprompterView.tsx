@@ -8,21 +8,10 @@ import {
 import { useRouter } from '@/navigation';
 import { useLocale } from 'next-intl';
 
-interface TeleprompterViewProps {
-  cameraStream: MediaStream | null;
-  videoPreviewRef: React.RefObject<HTMLVideoElement | null>;
-  isVideoMirrored: boolean;
-  prompterWidth: number;
-  isReading: boolean;
-  countdown: number | null;
-  prompterRef: React.RefObject<HTMLDivElement | null>;
-  isMirrored: boolean;
-  useCustomScript: boolean;
-  manifest: any;
-  customScript: string;
-  textSize: 'sm' | 'md' | 'lg';
   scriptOpacity: number;
+  scriptColor: string;
   onScriptUpdate: (newText: string) => void;
+  onColorChange?: (color: string) => void;
   onBack?: () => void;
   onToggleRecording?: () => void;
   onFlipCamera?: () => void;
@@ -59,6 +48,8 @@ export const TeleprompterView = React.memo(({
   onFinish,
   scrollSpeed,
   onSpeedChange,
+  scriptColor,
+  onColorChange,
   t,
 }: TeleprompterViewProps) => {
   const router = useRouter();
@@ -91,12 +82,12 @@ export const TeleprompterView = React.memo(({
     return () => clearInterval(interval);
   }, [isReading, prompterRef, scrollSpeed, isEditing]);
 
-  const rotateTextSize = () => {
-    if (!onTextSizeChange) return;
-    const sizes: ('sm' | 'md' | 'lg')[] = ['sm', 'md', 'lg'];
-    const currentIdx = sizes.indexOf(textSize);
-    const nextIdx = (currentIdx + 1) % sizes.length;
-    onTextSizeChange(sizes[nextIdx]);
+  const rotateColor = () => {
+    if (!onColorChange) return;
+    const colors = ['#ffffff', '#000000', '#FACC15', '#22C55E', '#3B82F6', '#A855F7', '#EF4444'];
+    const currentIdx = colors.indexOf(scriptColor);
+    const nextIdx = (currentIdx + 1) % colors.length;
+    onColorChange(colors[nextIdx]);
   };
 
   const rotateOpacity = () => {
@@ -137,15 +128,16 @@ export const TeleprompterView = React.memo(({
       </div>
       
       {/* ⏱️ Production Countdown Overlay */}
-      <AnimatePresence>
+      <AnimatePresence mode="wait">
         {countdown !== null && (
           <motion.div 
+            key={countdown}
             initial={{ scale: 2, opacity: 0 }}
             animate={{ scale: 1, opacity: 1 }}
             exit={{ scale: 0.5, opacity: 0 }}
-            className="absolute inset-0 z-50 flex items-center justify-center pointer-events-none"
+            className="absolute inset-0 z-[100] flex items-center justify-center pointer-events-none"
           >
-            <span className="text-[200px] font-black italic text-white drop-shadow-[0_0_50px_rgba(255,255,255,0.5)]">
+            <span className="text-[200px] font-black italic text-white drop-shadow-[0_0_50px_rgba(0,0,0,0.8)]">
               {countdown}
             </span>
           </motion.div>
@@ -194,10 +186,13 @@ export const TeleprompterView = React.memo(({
           <div className="absolute top-[18vh] inset-x-10 h-32 border-y border-white/5 pointer-events-none z-0" />
           
           <p 
-            className={`font-black uppercase leading-[1.1] transition-all duration-500 tracking-tighter text-white drop-shadow-[0_4px_40px_rgba(0,0,0,1)] ${
+            className={`font-black uppercase leading-[1.1] transition-all duration-500 tracking-tighter drop-shadow-[0_4px_40px_rgba(0,0,0,1)] ${
               textSize === 'sm' ? 'text-3xl' : textSize === 'lg' ? 'text-9xl' : 'text-7xl'
             }`}
-            style={{ wordSpacing: '0.12em' }}
+            style={{ 
+              wordSpacing: '0.12em',
+              color: scriptColor 
+            }}
           >
             {scriptText}
           </p>
@@ -228,11 +223,11 @@ export const TeleprompterView = React.memo(({
         </div>
 
         <button 
-          onClick={rotateTextSize}
+          onClick={rotateColor}
           className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
         >
-          <Type size={18} />
-          <span className="text-[7px] font-black uppercase mt-0.5">{textSize}</span>
+          <Type size={18} style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }} />
+          <span className="text-[6px] font-black uppercase mt-0.5" style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }}>COLOR</span>
         </button>
         <button 
           onClick={rotateOpacity}

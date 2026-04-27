@@ -61,6 +61,7 @@ export default function StudioPage() {
   const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
   const [showRecordingReview, setShowRecordingReview] = useState(false);
   const [scriptOpacity, setScriptOpacity] = useState(0.85);
+  const [scriptColor, setScriptColor] = useState('#ffffff');
   const [isBRollModalOpen, setIsBRollModalOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
@@ -396,6 +397,8 @@ export default function StudioPage() {
                    }}
                    scrollSpeed={scrollSpeed}
                    onSpeedChange={(s) => setScrollSpeed(s)}
+                   scriptColor={scriptColor}
+                   onColorChange={setScriptColor}
                    t={t}
                 />
                 
