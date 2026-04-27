@@ -579,7 +579,10 @@ export default function ScriptLabPage() {
            </div>
         </div>
 
-        {/* Matrix background deco */}
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.05)_0%,transparent_70%)] pointer-events-none z-10" />
+      </div>
+    );
+  }
 
   // Initial Ideation UI if no project exists yet AND we don't have generated data in memory
   if (!projectIdParam && !allScenarios) {
