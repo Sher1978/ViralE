@@ -180,32 +180,21 @@ export default function LandingPage() {
   const [isRedirecting, setIsRedirecting] = useState(false);
 
   useEffect(() => {
-    const checkRedirect = async () => {
+    // Immediate pre-fetch/check
+    supabase.auth.getSession().then(({ data: { session } }) => {
       const mode = searchParams?.get('mode');
-      const isStandalone = window.matchMedia('(display-mode: standalone)').matches || mode === 'standalone';
+      const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || mode === 'standalone');
       
-      // If PWA mode, we ALWAYS go to the flow
-      if (isStandalone) {
-        setIsRedirecting(true);
-        router.push(`/${locale}/app/projects`);
-        return;
-      }
-
-      // For standard browser users, redirect if they are logged in
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session && !session.user.is_anonymous) {
+      if (isStandalone || (session && !session.user.is_anonymous)) {
         setIsRedirecting(true);
         router.push(`/${locale}/app/projects`);
       }
-    };
-    
-    checkRedirect();
+    });
   }, [locale, router, searchParams]);
 
   if (isRedirecting) {
     return (
-      <div className="min-h-screen bg-[#020408] flex flex-col items-center justify-center relative overflow-hidden">
+      <div key="splash-container" className="min-h-screen bg-[#020408] flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-0">
         {/* Fullscreen zooming image */}
         <motion.div 
           initial={{ scale: 1, opacity: 0, filter: "brightness(0)" }}
@@ -215,9 +204,9 @@ export default function LandingPage() {
             filter: ["brightness(0)", "brightness(1)", "brightness(1)"] 
           }}
           transition={{ 
-            duration: 5, 
+            duration: 8, 
             ease: "easeOut",
-            times: [0, 0.4, 1] // Brightness and opacity hit peak at 40% of the 5s duration (2s)
+            times: [0, 0.2, 1] // Brightness and opacity hit peak at 20% of the 8s duration (1.6s)
           }}
           className="absolute inset-0 z-0 origin-center"
         >
