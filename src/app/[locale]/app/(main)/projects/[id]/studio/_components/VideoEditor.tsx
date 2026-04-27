@@ -154,6 +154,8 @@ export const VideoEditor = React.memo(({
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 120 }); // Global sub position on video canvas
+  const [subtitleSize, setSubtitleSize] = useState(28);
+  const [isSingleWordMode, setIsSingleWordMode] = useState(true);
 
   // Drag
   const dragRef = useRef<{
@@ -672,49 +674,75 @@ export const VideoEditor = React.memo(({
           </div>
         )}
 
-        {/* Subtitle Overlay – Karaoke Style */}
-        <AnimatePresence mode="wait">
+        {/* Subtitle Overlay – Interactive Style */}
+        <AnimatePresence mode="popLayout">
           {aRollUrl && (() => {
             const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
             if (!activeSub) return null;
+            
             const accentWord = (activeSub as any).accentWord || '';
             const words = activeSub.text.split(' ');
+            
+            // If in single word mode, find the specific word for the current time
+            // Or just use the accentWord if it matches the current duration fraction
+            let displayWords = words;
+            if (isSingleWordMode) {
+               displayWords = [accentWord || words[0]];
+            }
+
             return (
               <motion.div
                 drag
                 dragMomentum={false}
-                dragConstraints={{ left: -150, right: 150, top: -200, bottom: 200 }}
+                dragConstraints={{ left: -300, right: 300, top: -400, bottom: 400 }}
                 onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
-                key={`${activeSub.id}-${activeSub.style}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0, x: subtitlePos.x }}
-                exit={{ opacity: 0, y: -8 }}
-                className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-4 max-w-[90%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bottom-14"
-                style={{ top: `calc(50% + ${subtitlePos.y}px)` }}
+                key={`${activeSub.id}-${accentWord}-${activeSub.style}`}
+                initial={{ opacity: 0, scale: 0.8, rotate: -2 }}
+                animate={{ opacity: 1, scale: 1.1, rotate: 0, x: subtitlePos.x }}
+                exit={{ opacity: 0, scale: 1.5, filter: 'blur(10px)' }}
+                transition={{ type: 'spring', damping: 12, stiffness: 200 }}
+                className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-4 max-w-[95%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 bottom-14"
+                style={{ 
+                  top: `calc(50% + ${subtitlePos.y / 2}px)`,
+                  fontSize: `${subtitleSize}px`
+                }}
               >
                 {activeSub.style === 'minimal' && (
                   <div className="flex flex-wrap justify-center gap-x-2 gap-y-1">
-                    {words.map((word, wi) => (
-                      <span
-                        key={wi}
-                        className={`text-[24px] font-bold leading-relaxed drop-shadow-[0_2px_12px_rgba(0,0,0,1)] tracking-normal transition-all duration-150 ${
-                          word === accentWord
-                            ? 'text-amber-400 scale-110 inline-block [text-shadow:0_0_20px_rgba(245,158,11,0.8)]'
-                            : 'text-white'
-                        }`}
-                      >{word}</span>
-                    ))}
+                    {displayWords.map((word, wi) => {
+                      const isAccent = word === accentWord;
+                      return (
+                        <React.Fragment key={wi}>
+                          {isAccent && !isSingleWordMode && <div className="w-full h-0" />}
+                          <span
+                            className={`font-black tracking-tighter transition-all duration-150 drop-shadow-[0_4px_15px_rgba(0,0,0,0.8)] ${
+                              isAccent
+                                ? 'text-amber-400 scale-125 inline-block [text-shadow:0_0_20px_rgba(245,158,11,0.9)]'
+                                : 'text-white'
+                            }`}
+                          >{word}</span>
+                          {isAccent && !isSingleWordMode && <div className="w-full h-0" />}
+                        </React.Fragment>
+                      );
+                    })}
                   </div>
                 )}
                 {activeSub.style === 'pop' && (
-                  <span className="bg-purple-600 text-white px-4 py-2 rounded-xl text-xl font-black italic uppercase tracking-tighter shadow-[0_0_30px_rgba(168,85,247,0.8)] border border-purple-400/50">
-                    {activeSub.text}
-                  </span>
+                  <div className="flex flex-col items-center">
+                    {displayWords.map((word, wi) => (
+                      <span 
+                        key={wi}
+                        className="bg-gradient-to-br from-purple-600 to-pink-600 text-white px-6 py-3 rounded-[1.5rem] font-black italic uppercase tracking-tighter shadow-[0_15px_40px_rgba(168,85,247,0.6)] border-2 border-white/20 whitespace-nowrap"
+                      >
+                        {word}
+                      </span>
+                    ))}
+                  </div>
                 )}
                 {activeSub.style === 'bold' && (
-                  <div className="flex flex-wrap justify-center gap-x-2">
-                    {words.map((word, wi) => (
-                      <span key={wi} className={`text-3xl font-black uppercase tracking-tighter italic drop-shadow-[0_4px_0_rgba(0,0,0,1)] ${word === accentWord ? 'text-amber-400' : 'text-white'}`}>
+                  <div className="flex flex-wrap justify-center gap-x-3">
+                    {displayWords.map((word, wi) => (
+                      <span key={wi} className={`font-black uppercase tracking-tighter italic drop-shadow-[0_6px_0_rgba(0,0,0,1)] scale-110 ${word === accentWord ? 'text-amber-400' : 'text-white'}`}>
                         {word}
                       </span>
                     ))}
@@ -902,14 +930,32 @@ export const VideoEditor = React.memo(({
                   <textarea value={selSub.text} rows={2}
                     onChange={e => setSubtitleClips(p => p.map(c => c.id === selSub.id ? { ...c, text: e.target.value } : c))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none resize-none" />
-                  <div className="flex gap-2">
                     {(['minimal', 'pop', 'bold'] as const).map(s => (
                       <button key={s} onClick={() => setSubtitleClips(p => p.map(c => c.id === selSub.id ? { ...c, style: s } : c))}
-                        className={`flex-1 py-2.5 rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all ${selSub.style === s ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/30'}`}>
+                        className={`flex-1 py-2 rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all ${selSub.style === s ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/30'}`}>
                         {s}
                       </button>
                     ))}
                   </div>
+
+                  <div className="space-y-2 pt-2">
+                    <div className="flex justify-between text-[8px] font-black uppercase text-white/20 px-1">
+                      <span>Size</span>
+                      <span>{subtitleSize}px</span>
+                    </div>
+                    <input 
+                      type="range" min="12" max="100" value={subtitleSize} 
+                      onChange={(e) => setSubtitleSize(Number(e.target.value))}
+                      className="w-full accent-purple-500 bg-white/5 rounded-full h-1"
+                    />
+                  </div>
+
+                  <button 
+                    onClick={() => setIsSingleWordMode(!isSingleWordMode)}
+                    className={`w-full py-2.5 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-2 transition-all ${isSingleWordMode ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30' : 'bg-white/5 text-white/30 border border-transparent'}`}
+                  >
+                    {isSingleWordMode ? '🔥 Mode: Single Word' : '📝 Mode: Phrase'}
+                  </button>
                   <button onClick={() => { setSubtitleClips(p => p.filter(c => c.id !== selSub.id)); setSelectedClipId(null); setShowSheet(false); }}
                     className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
                     <Trash2 size={13} /> Delete

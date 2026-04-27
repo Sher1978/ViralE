@@ -40,6 +40,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState(segmentText || '');
   const [videos, setVideos] = useState<any[]>([]);
+  const [isOptimizing, setIsOptimizing] = useState(false);
 
   // ⚡ SYNC PRE-FETCHED RESULTS
   React.useEffect(() => {
@@ -70,6 +71,25 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
     }
   };
 
+  const handleOptimizePrompt = async () => {
+    if (!segmentText) return;
+    setIsOptimizing(true);
+    try {
+      const res = await fetch('/api/ai/optimize-prompt', {
+        method: 'POST',
+        body: JSON.stringify({ context: segmentText })
+      });
+      const data = await res.json();
+      if (data.optimized) {
+        setSearchQuery(data.optimized);
+      }
+    } catch (err) {
+      console.error('Optimization failed', err);
+    } finally {
+      setIsOptimizing(false);
+    }
+  };
+
   if (!isOpen) return null;
 
   const handleGenerateAI = async () => {
@@ -79,7 +99,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
       // 1. Submit Generation Job
       const res = await fetch('/api/ai/generate-broll', {
         method: 'POST',
-        body: JSON.stringify({ prompt: segmentText })
+        body: JSON.stringify({ prompt: searchQuery || segmentText })
       });
       const { jobId } = await res.json();
       
@@ -185,15 +205,33 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
         {/* ── FOOTER ACTIONS (Secondary) ── */}
         <div className="flex-none pt-6 border-t border-white/5 grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
             {/* Context (Left) */}
-            <div className="lg:col-span-2 bg-white/5 rounded-3xl p-6 border border-white/5">
-               <span className="text-[8px] font-black uppercase tracking-widest text-white/30 mb-2 block">Scene Context</span>
-               <p className="text-xs font-medium text-white italic line-clamp-2">"{segmentText}"</p>
+            <div className="lg:col-span-2 relative group">
+               <div className="bg-white/5 rounded-3xl p-6 border border-white/5 focus-within:border-purple-500/50 transition-all">
+                  <div className="flex justify-between items-center mb-2">
+                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30 block">Generation & Search Prompt</span>
+                    <button 
+                      onClick={handleOptimizePrompt}
+                      disabled={isOptimizing}
+                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[8px] font-black uppercase hover:bg-purple-500/20 transition-all active:scale-95"
+                    >
+                      {isOptimizing ? <RefreshCcw size={10} className="animate-spin" /> : <Sparkles size={10} />}
+                      AI Optimize
+                    </button>
+                  </div>
+                  <textarea 
+                    value={searchQuery}
+                    onChange={(e) => setSearchQuery(e.target.value)}
+                    rows={2}
+                    className="w-full bg-transparent text-xs font-medium text-white italic outline-none resize-none placeholder:text-white/10"
+                    placeholder="Enter visual description..."
+                  />
+               </div>
             </div>
 
             {/* AI Action (Right) */}
             <button 
                 onClick={handleGenerateAI}
-                disabled={isGenerating}
+                disabled={isGenerating || !searchQuery}
                 className="h-16 rounded-3xl bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all px-8 group"
             >
                 {isGenerating ? (
