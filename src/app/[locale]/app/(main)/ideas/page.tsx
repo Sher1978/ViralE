@@ -7,6 +7,7 @@ import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
 import DNABlock from '@/components/ideas/DNABlock';
 import MatrixScroller from '@/components/ideas/MatrixScroller';
 import TopicInput from '@/components/ideas/TopicInput';
+import { motion } from 'framer-motion';
 
 const CATEGORIES = [
   "Hooks", "Roles", "Awareness", "Problem", "Solution", "Loyalty", "Fast Sales",
