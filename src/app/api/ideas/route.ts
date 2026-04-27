@@ -32,15 +32,23 @@ export async function GET(req: Request) {
 
     const categoryParam = searchParams.get('category');
     if (categoryParam) {
-      query = query.eq('metadata->>category', categoryParam);
+      query = query.eq('category', categoryParam);
     }
 
     const { data: existingIdeas, error: fetchError } = await query;
-
     if (fetchError) throw fetchError;
 
     // 2. If we asked for 'new' ideas and didn't find enough, generate fresh ones
     if (requestedStatus === 'new') {
+      // 0. Check total count before generating
+      const { count: totalIdeas } = await authorizedSupabase
+        .from('ideation_feed')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (totalIdeas && totalIdeas >= 200) {
+        return NextResponse.json(existingIdeas || []);
+      }
       const { data: profile } = await authorizedSupabase
         .from('profiles')
         .select('dna_answers')
@@ -79,7 +87,7 @@ export async function GET(req: Request) {
           .eq('status', 'new');
         
         if (categoryParam) {
-          finalQuery = finalQuery.eq('metadata->>category', categoryParam);
+          finalQuery = finalQuery.eq('category', categoryParam);
         }
         
         const { data: newlyCreated } = await finalQuery;

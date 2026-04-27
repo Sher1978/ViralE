@@ -57,6 +57,9 @@ export default function IdeasPage() {
 
   const [isDnaComplete, setIsDnaComplete] = useState(false);
 
+  const [synthesisLoading, setSynthesisLoading] = useState(false);
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
   const fetchDna = useCallback(async () => {
     try {
       const res = await fetch('/api/profile/dna/answers');
@@ -73,24 +76,63 @@ export default function IdeasPage() {
     }
   }, []);
 
-  const fetchIdeas = useCallback(async (status: string) => {
+  const fetchIdeas = useCallback(async (status: string, category?: string) => {
     try {
-      setLoading(true);
-      const res = await fetch(`/api/ideas?locale=${locale}&status=${status}`);
+      if (!category) setLoading(true);
+      else setSynthesisLoading(true);
+      
+      const res = await fetch(`/api/ideas?locale=${locale}&status=${status}${category ? `&category=${category}` : ''}`);
       if (!res.ok) throw new Error('Failed to fetch');
       const data = await res.json();
-      setIdeas(data);
+      
+      if (category) {
+        setIdeas(prev => {
+          // Avoid duplicates
+          const existingIds = new Set(prev.map(i => i.id));
+          const filteredNew = data.filter((i: any) => !existingIds.has(i.id));
+          return [...prev, ...filteredNew];
+        });
+      } else {
+        setIdeas(data);
+      }
     } catch (err) {
       console.error('Error fetching ideas:', err);
     } finally {
       setLoading(false);
+      setSynthesisLoading(false);
     }
   }, [locale]);
+
+  const synthesizeNextCategory = useCallback(async () => {
+    if (synthesisLoading || loading || activeTab !== 'new') return;
+
+    // Find first category in CATEGORIES that has 0 ideas in groupedIdeas
+    const nextCat = CATEGORIES.find(cat => !groupedIdeas[cat] || groupedIdeas[cat].length === 0);
+    
+    if (nextCat) {
+      console.log('Synthesizing next category:', nextCat);
+      await fetchIdeas('new', nextCat);
+    }
+  }, [synthesisLoading, loading, activeTab, groupedIdeas, fetchIdeas]);
 
   useEffect(() => {
     fetchDna();
     fetchIdeas(activeTab);
   }, [fetchIdeas, activeTab, fetchDna]);
+
+  // Infinite Scroll Observer
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+
+    const observer = new IntersectionObserver((entries) => {
+      if (entries[0].isIntersecting) {
+        synthesizeNextCategory();
+      }
+    }, { threshold: 0.1 });
+
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [synthesizeNextCategory]);
 
   const handleToScript = (content: string, category?: string) => {
     let url = `/app/projects/new/script?topic=${encodeURIComponent(content)}`;
@@ -200,16 +242,30 @@ export default function IdeasPage() {
       <div className="relative space-y-10">
         {activeTab === 'new' ? (
           isDnaComplete ? (
-            CATEGORIES.map((cat) => (
-              <MatrixScroller
-                key={cat}
-                title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
-                subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
-                ideas={groupedIdeas[cat] || []}
-                onToScript={(topic) => handleToScript(topic, cat)}
-                onToggleArchive={handleToggleArchive}
-              />
-            ))
+            <>
+              {CATEGORIES.map((cat) => (
+                <MatrixScroller
+                  key={cat}
+                  title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
+                  subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
+                  ideas={groupedIdeas[cat] || []}
+                  onToScript={(topic) => handleToScript(topic, cat)}
+                  onToggleArchive={handleToggleArchive}
+                />
+              ))}
+              
+              {/* Infinite Scroll Sentinel */}
+              <div ref={sentinelRef} className="h-20 w-full flex items-center justify-center">
+                {synthesisLoading && (
+                  <div className="flex flex-col items-center gap-2 animate-pulse">
+                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
+                    <p className="text-[8px] text-white/20 uppercase tracking-[0.3em] font-black">
+                      {locale === 'ru' ? 'СИНТЕЗ СЛЕДУЮЩЕГО БЛОКА...' : 'SYNTHESIZING NEXT BATCH...'}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </>
           ) : (
             <div className="relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.01] p-12 text-center space-y-6">
                <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent pointer-events-none" />

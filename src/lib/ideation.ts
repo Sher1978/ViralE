@@ -27,7 +27,25 @@ function formatDNA(answers: any): string {
     - FINAL OFFER: ${answers.advantage || answers.final_offer || 'N/A'}
   `;
 }
+
+export async function generateDailyIdeas(
+  supabase: SupabaseClient,
+  userId: string,
+  locale: string = 'en',
+  category?: string
+): Promise<IdeaSuggestion[]> {
   const languageName = locale === 'ru' ? 'Russian' : 'English';
+  
+  // 0. Check total idea count for user
+  const { count: totalIdeas } = await supabase
+    .from('ideation_feed')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId);
+
+  if (totalIdeas && totalIdeas >= 200) {
+    console.log(`User ${userId} reached 200 idea limit. Generation paused.`);
+    return [];
+  }
   
   // 1. Fetch user persona DNA, answers and tier
   const { data: profile, error } = await supabase
@@ -43,7 +61,6 @@ function formatDNA(answers: any): string {
     throw error;
   }
 
-  const tier = profile?.tier || 'free';
   const userFilePath = path.join(process.cwd(), 'Bible_SOT', 'users', userId, 'Brand_DNA.md');
   const hasFileStrategy = fs.existsSync(userFilePath);
   
@@ -79,14 +96,11 @@ function formatDNA(answers: any): string {
     : "";
 
   const digitalShadow = profile?.digital_shadow_prompt || (isDnaComplete ? 'Expert Content Strategist.' : 'Dubai Car Industry Expert');
-  const industry = isDnaComplete ? (profile?.industry_context || 'General Content') : 'Cars Dubai';
-
-  const categories = [
-    "Hooks", "Roles", "Awareness", "Problem", "Solution", "Loyalty", "Fast Sales",
-    "Myths", "Comparison", "Educational", "Case Study", "Trends", "Lifestyle", "Future"
-  ];
-
   const targetCategory = category || "General";
+
+  // Pre-format context blocks to avoid complex template literal nesting
+  const brandContextBlock = isDnaComplete ? `USER BRAND DNA: ${dnaContext}` : `TEMPLATE THEMATIC: ${templateContext}`;
+  const strategicContextBlock = isDnaComplete ? `STRATEGIC CONTEXT: ${digitalShadow}` : "";
 
   const prompt = `
     You are the "Viral Engine" Strategic Consultant.
@@ -102,9 +116,9 @@ function formatDNA(answers: any): string {
     
     CRITICAL: All generated text content MUST BE IN THE SAME LANGUAGE as the user's input or the TEMPLATE THEMATIC provided below. If context is in Russian, output Russian. If Ukrainian, output Ukrainian. Default to ${languageName} only if language is ambiguous.
     
-    ${isDnaComplete ? `USER BRAND DNA: ${dnaContext}` : `TEMPLATE THEMATIC: ${templateContext}`}
+    ${brandContextBlock}
     
-    ${isDnaComplete ? `STRATEGIC CONTEXT: ${digitalShadow}` : ""}
+    ${strategicContextBlock}
 
     FOR CATEGORY "${targetCategory}":
     - If "Hooks": Generate ONLY the first 5 seconds of a script. These should be viral eye-catchers. 
@@ -142,7 +156,12 @@ function formatDNA(answers: any): string {
 
   try {
     const ideas = JSON.parse(jsonStr);
-    return ideas.map((i: any) => ({ ...i, category: targetCategory }));
+    return ideas.map((i: any) => ({ 
+      topic_title: i.topic_title,
+      rationale: i.rationale,
+      viral_potential_score: i.viral_potential_score,
+      category: targetCategory 
+    }));
   } catch (parseError) {
     console.error('Failed to parse AI response as JSON:', text);
     throw new Error('AI generated invalid data format.');
@@ -158,8 +177,8 @@ export async function saveIdeasToFeed(supabase: SupabaseClient, userId: string, 
         topic_title: idea.topic_title,
         rationale: idea.rationale,
         viral_potential_score: idea.viral_potential_score,
+        category: idea.category,
         metadata: { 
-          category: idea.category,
           created_at: new Date().toISOString()
         },
         status: 'new'
