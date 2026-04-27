@@ -307,9 +307,9 @@ export default function LandingPage() {
 
           {/* Headline */}
           <motion.div variants={itemVariants} className="space-y-8">
-            <h1 className="text-7xl md:text-[10rem] font-black tracking-[calc(-0.06em)] leading-[0.82] uppercase">
+            <h1 className="text-7xl md:text-[8rem] font-black tracking-[calc(-0.06em)] leading-[0.82] uppercase">
               {t('title')}<br />
-              <span className="gradient-text-cosmic text-glow-mint">
+              <span className="gradient-text-cosmic text-glow-mint whitespace-nowrap">
                 {t('titleAccent')}
               </span>
             </h1>
@@ -405,10 +405,14 @@ export default function LandingPage() {
               
               {/* Input Side */}
               <div className="w-full lg:w-2/5 space-y-10">
-                <div className="space-y-4">
-                  <div className="inline-flex px-4 py-1.5 rounded-lg bg-cyan-500/10 border border-cyan-500/20 text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400">Core Engine</div>
-                  <h3 className="text-5xl font-black uppercase tracking-tighter leading-[0.9]">{t('featureHub')}</h3>
-                  <p className="text-white/40 text-lg leading-relaxed font-medium">{t('featureHubSub')}</p>
+                <div className="relative z-10 space-y-4 mb-12 px-6">
+                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Viral Engine Digital Core</p>
+                  <h2 className="text-xl sm:text-3xl font-black italic uppercase text-white tracking-tighter leading-[0.9] max-w-lg mx-auto">
+                    {t('title')} <span className="gradient-text-purple">{t('titleAccent')}</span>
+                  </h2>
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest max-w-xs mx-auto">
+                    {t('subtitle')}
+                  </p>
                 </div>
                 
                 <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 space-y-6 backdrop-blur-3xl shadow-inner relative group overflow-hidden">

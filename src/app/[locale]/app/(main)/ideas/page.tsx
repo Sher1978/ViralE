@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { TrendingUp, Bookmark, Loader2, History, Sparkles, Lock, Dna, X } from 'lucide-react';
+import { TrendingUp, Bookmark, Loader2, Sparkles, Dna, X, TrendingDown, Target } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
 import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
@@ -44,6 +44,7 @@ const CATEGORIES = Object.keys(CATEGORY_LABELS);
 
 export default function IdeasPage() {
   const t = useTranslations('ideas');
+  const landingT = useTranslations('landing');
   const locale = useLocale();
   const router = useRouter();
 
@@ -58,9 +59,7 @@ export default function IdeasPage() {
   const [forcedLoading, setForcedLoading] = useState(true);
   
   useEffect(() => {
-    // Force splash for at least 4 seconds to show off the cinematic alley
     const timer = setTimeout(() => setForcedLoading(false), 4000);
-    
     if (typeof window !== 'undefined' && localStorage.getItem('hideWelcomeIdeas') === 'true') {
       setShowWelcome(false);
     }
@@ -134,20 +133,13 @@ export default function IdeasPage() {
     try {
       setProcessingId(ideaId);
       const newStatus = currentStatus === 'new' ? 'archived' : 'new';
-      
-      // Optimistic update
       moveIdeaLocally(ideaId, currentStatus, newStatus);
-      
       const res = await fetch('/api/ideas', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ideaId, status: newStatus }),
       });
-
-      if (!res.ok) {
-        // Revert on failure
-        moveIdeaLocally(ideaId, newStatus, currentStatus);
-      }
+      if (!res.ok) moveIdeaLocally(ideaId, newStatus, currentStatus);
     } finally {
       setProcessingId(null);
     }
@@ -174,9 +166,7 @@ export default function IdeasPage() {
                 <Dna size={14} className={showDnaEditor ? "text-purple-400 animate-pulse" : ""} />
                 {showDnaEditor ? (locale === 'ru' ? 'Скрыть ДНК' : 'Hide DNA') : (locale === 'ru' ? 'Настроить ДНК' : 'Tune DNA')}
               </button>
-              <InfoTooltip 
-                content={locale === 'ru' ? "Здесь вы можете обновить информацию о себе, чтобы ИИ точнее подбирал идеи под ваш бренд." : "Update your profile info here so AI can tailor ideas perfectly to your brand."} 
-              />
+              <InfoTooltip content={locale === 'ru' ? "Обновите ДНК для точности ИИ" : "Update DNA for AI accuracy"} />
             </div>
           )}
         </div>
@@ -187,140 +177,80 @@ export default function IdeasPage() {
 
       <AnimatePresence>
         {activeTab === 'new' && showWelcome && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0, scale: 0.95 }}
-            className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-4 text-white/70 shadow-lg relative group overflow-hidden"
-          >
-            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-cyan-500/5 pointer-events-none" />
-            <Sparkles className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
-            <div className="flex-1 pr-6">
-              <p className="text-[11px] sm:text-xs font-medium leading-relaxed">
-                 {locale === 'ru' 
-                   ? "Добро пожаловать в Инсайты. ИИ постоянно анализирует тренды и собирает идеи, подходящие вашей подаче. Если лента кажется пустой или идеи устарели — нажмите иконку обновить рядом с нужной категорией."
-                   : "Welcome to Insights. AI constantly scans trends to curate ideas fitting your style. If the feed looks empty or stale, hit the refresh icon next to any category."}
-              </p>
-            </div>
-            <button 
-              onClick={handleDismissWelcome}
-              className="absolute top-3 right-3 text-white/20 hover:text-white/60 transition-colors p-1"
-            >
-              <X size={14} />
-            </button>
+          <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0, scale: 0.95 }} className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-4 text-white/70 shadow-lg relative group overflow-hidden">
+             <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-cyan-500/5 pointer-events-none" />
+             <Sparkles className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+             <div className="flex-1 pr-6 text-[11px] font-medium leading-relaxed">
+                {locale === 'ru' ? "Добро пожаловать в Инсайты. ИИ постоянно анализирует тренды." : "Welcome to Insights. AI scans trends."}
+             </div>
+             <button onClick={handleDismissWelcome} className="absolute top-3 right-3 text-white/20 hover:text-white/60 p-1"><X size={14} /></button>
           </motion.div>
         )}
       </AnimatePresence>
 
-      {activeTab === 'new' && (
+      {(activeTab === 'new' || activeTab === 'archived') && (
         <div className="relative z-10 w-full max-w-xl">
           <TopicInput onLaunch={(topic) => handleToScript(topic)} />
         </div>
       )}
 
-      {activeTab === 'archived' && (
-        <div className="flex items-center justify-between gap-4">
-          <div className="flex-1">
-            <TopicInput onLaunch={(topic) => handleToScript(topic)} />
-          </div>
-        </div>
-      )}
-
       <div className="flex border-b border-white/5 gap-6">
         {tabs.map((tab) => (
-          <button
-            key={tab.id}
-            onClick={() => setActiveTab(tab.id as any)}
-            className={`flex items-center gap-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all relative ${
-              activeTab === tab.id ? 'text-white' : 'text-white/20 hover:text-white/40'
-            }`}
-          >
-            {tab.icon}
-            {tab.label}
-            {activeTab === tab.id && (
-              <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />
-            )}
+          <button key={tab.id} onClick={() => setActiveTab(tab.id as any)} className={`flex items-center gap-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all relative ${activeTab === tab.id ? 'text-white' : 'text-white/20 hover:text-white/40'}`}>
+            {tab.icon} {tab.label}
+            {activeTab === tab.id && <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />}
           </button>
         ))}
       </div>
 
       <div className="relative space-y-10">
-        {activeTab === 'new' ? (
-          (!isDnaComplete || showDnaEditor) ? (
-            <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-              <DNABlock onComplete={() => {
-                setShowDnaEditor(false);
-                window.location.reload();
-              }} />
-            </div>
-          ) : (
-            <>
-              {(globalLoading || forcedLoading) && ideas.length === 0 ? (
-                <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
-                  {/* Cinematic Backdrop for Loading */}
+        {activeTab === 'new' && (!isDnaComplete || showDnaEditor) ? (
+          <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+            <DNABlock onComplete={() => { setShowDnaEditor(false); window.location.reload(); }} />
+          </div>
+        ) : activeTab === 'new' ? (
+          <>
+            {(globalLoading || forcedLoading) && ideas.length === 0 ? (
+               <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
                   <div className="absolute inset-0 z-0">
-                    <img 
-                      src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" 
-                      className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110"
-                      alt="Splash Background"
-                    />
+                    <img src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110" alt="Splash Background" />
                     <div className="absolute inset-0 bg-[#050508]/60 backdrop-blur-md" />
                   </div>
-
-                  <div className="relative z-10 space-y-2 mb-12">
+                  <div className="relative z-10 space-y-4 mb-12 px-6">
                     <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Viral Engine Digital Core</p>
-                    <h2 className="text-xl sm:text-2xl font-black italic uppercase text-white tracking-widest leading-tight">
-                      {locale === 'ru' ? 'СИНТЕЗ МАТРИЦЫ ИДЕЙ' : 'IDEATION MATRIX SYNTHESIS'}
+                    <h2 className="text-2xl sm:text-4xl font-black italic uppercase text-white tracking-tighter leading-[0.9] max-w-lg mx-auto">
+                      {landingT('title')} <span className="text-purple-500">{landingT('titleAccent')}</span>
                     </h2>
+                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest max-w-xs mx-auto">{landingT('subtitle')}</p>
                   </div>
-
-                  <div className="relative z-10 w-32 h-32 mb-12">
+                  <div className="relative z-10 w-24 h-24 mb-12">
                     <div className="absolute inset-0 border-2 border-purple-500/10 rounded-full" />
                     <div className="absolute inset-0 border-2 border-t-purple-500 rounded-full animate-spin" />
-                    <div className="absolute inset-4 border border-cyan-500/20 rounded-full animate-reverse-spin" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                        <Sparkles className="w-8 h-8 text-purple-400 animate-pulse" />
-                    </div>
+                    <div className="absolute inset-0 flex items-center justify-center"><Sparkles className="w-6 h-6 text-purple-400 animate-pulse" /></div>
                   </div>
-                  
-                  <div className="relative z-10 space-y-4 max-w-sm">
-                    <p className="text-xl font-black uppercase italic tracking-tighter text-white animate-pulse">
-                      {locale === 'ru' ? 'КАЛИБРУЕМ ЦИФРОВОЙ СЛЕД...' : 'CALIBRATING DIGITAL SHADOW...'}
-                    </p>
-                    <div className="pt-4 space-y-2">
-                       <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em] leading-relaxed">
-                          SHER IS PROCESSING 24 GLOBAL CONTENT CATEGORIES
-                       </p>
-                    </div>
-                  </div>
-
-                  {/* Matrix background deco */}
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.05)_0%,transparent_70%)] pointer-events-none z-10" />
+               </div>
+            ) : (
+              displayCategories.map((cat) => (
+                <MatrixScroller
+                  key={cat}
+                  title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
+                  subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
+                  ideas={groupedIdeas[cat] || []}
+                  onToScript={(topic) => handleToScript(topic, cat)}
+                  onToggleArchive={handleToggleArchive}
+                  onRefresh={(force) => refreshIdeas('new', cat, force)}
+                />
+              ))
+            )}
+            <div ref={sentinelRef} className="h-20 w-full flex items-center justify-center">
+              {synthesisLoading && ideas.length > 0 && (
+                <div className="flex flex-col items-center gap-2 animate-pulse">
+                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
+                  <p className="text-[8px] text-white/20 uppercase tracking-[0.3em] font-black">{locale === 'ru' ? 'СИНТЕЗ...' : 'SYNTHESIZING...'}</p>
                 </div>
-              ) : (
-                displayCategories.map((cat) => (
-                  <MatrixScroller
-                    key={cat}
-                    title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
-                    subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
-                    ideas={groupedIdeas[cat] || []}
-                    onToScript={(topic) => handleToScript(topic, cat)}
-                    onToggleArchive={handleToggleArchive}
-                    onRefresh={(force) => refreshIdeas('new', cat, force)}
-                  />
-                ))
               )}
-              
-              <div ref={sentinelRef} className="h-20 w-full flex items-center justify-center">
-                {synthesisLoading && ideas.length > 0 && (
-                  <div className="flex flex-col items-center gap-2 animate-pulse">
-                    <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
-                    <p className="text-[8px] text-white/20 uppercase tracking-[0.3em] font-black">{locale === 'ru' ? 'СИНТЕЗ СЛЕДУЮЩЕГО БЛОКА...' : 'SYNTHESIZING NEXT BATCH...'}</p>
-                  </div>
-                )}
-              </div>
-            </>
-          )
+            </div>
+          </>
         ) : (
           <div className="grid gap-4">
             {globalLoading && ideas.length === 0 ? (
@@ -337,13 +267,8 @@ export default function IdeasPage() {
           </div>
         )}
       </div>
-      {/* Global Background Layer */}
       <div className="fixed inset-0 z-0 pointer-events-none">
-        <img 
-          src="/cyberpunk_alley_center_crop_vertical_1777280456497.png" 
-          className="w-full h-full object-cover opacity-10 animate-ken-burns scale-125 saturate-0"
-          alt="Page Background"
-        />
+        <img src="/cyberpunk_alley_center_crop_vertical_1777280456497.png" className="w-full h-full object-cover opacity-10 animate-ken-burns scale-125 saturate-0" alt="Page Background" />
         <div className="absolute inset-0 bg-[#050508]/80 backdrop-blur-[100px]" />
       </div>
     </div>
