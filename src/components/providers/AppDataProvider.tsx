@@ -12,7 +12,7 @@ interface AppDataContextType {
   archivedIdeas: Idea[];
   loadingIdeas: boolean;
   loadingArchived: boolean;
-  refreshIdeas: (status: 'new' | 'archived', category?: string) => Promise<void>;
+  refreshIdeas: (status: 'new' | 'archived', category?: string, force?: boolean) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => void;
 }
 
@@ -36,13 +36,14 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const fetchIdeas = useCallback(async (status: 'new' | 'archived', category?: string) => {
+  const fetchIdeas = useCallback(async (status: 'new' | 'archived', category?: string, force?: boolean) => {
     try {
       if (status === 'new') setLoadingIdeas(true);
       else setLoadingArchived(true);
 
       let url = `/api/ideas?status=${status}`;
       if (category) url += `&category=${encodeURIComponent(category)}`;
+      if (force) url += `&force=true`;
       
       const res = await fetch(url);
       if (res.ok) {

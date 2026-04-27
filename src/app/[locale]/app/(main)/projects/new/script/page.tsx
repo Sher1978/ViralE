@@ -502,8 +502,8 @@ export default function ScriptLabPage() {
         if (!version) throw new Error(locale === 'ru' ? 'Ошибка при обновлении версии' : 'Version update failed');
       }
 
-      // Redirect to Studio (Teleprompter)
-      router.push(`/app/projects/${pId}/studio?tab=teleprompter`);
+      // Redirect to Studio (Branch Selection)
+      router.push(`/app/projects/${pId}/studio?tab=branch`);
     } catch (err: any) {
       console.error('[ScriptLab] Save failed:', err);
       setError(err.message || (locale === 'ru' ? 'Не удалось сохранить проект' : 'Failed to save project'));

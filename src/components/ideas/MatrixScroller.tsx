@@ -12,7 +12,7 @@ interface MatrixScrollerProps {
   ideas: Idea[];
   onToScript: (topic: string) => void;
   onToggleArchive: (id: string, status: string) => void;
-  onRefresh?: () => void;
+  onRefresh?: (force?: boolean) => void;
 }
 
 export default function MatrixScroller({ title, subtitle, ideas, onToScript, onToggleArchive, onRefresh }: MatrixScrollerProps) {
@@ -37,7 +37,7 @@ export default function MatrixScroller({ title, subtitle, ideas, onToScript, onT
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              onRefresh?.();
+              onRefresh?.(true);
             }}
             className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-white/20 hover:text-purple-400 hover:bg-purple-500/10 transition-all active:rotate-180 duration-500"
             title="Force Regenerate"

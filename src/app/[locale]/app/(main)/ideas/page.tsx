@@ -58,6 +58,7 @@ export default function IdeasPage() {
   const [activeTab, setActiveTab] = useState<'new' | 'archived'>('new');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [synthesisLoading, setSynthesisLoading] = useState(false);
+  const [showDnaEditor, setShowDnaEditor] = useState(false);
   
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -95,7 +96,6 @@ export default function IdeasPage() {
     }
   }, [synthesisLoading, globalLoading, activeTab, groupedIdeas, refreshIdeas]);
 
-  // Infinite Scroll Observer
   useEffect(() => {
     if (!sentinelRef.current) return;
     const observer = new IntersectionObserver((entries) => {
@@ -141,16 +141,26 @@ export default function IdeasPage() {
   return (
     <div className="flex flex-col gap-8 pb-32 animate-fade-in relative">
       <div className="flex flex-col gap-1">
-        <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none">
-          {activeTab === 'new' ? (locale === 'ru' ? 'ИНСАЙТЫ' : 'INSIGHTS') : (locale === 'ru' ? 'БИБЛИОТЕКА' : 'LIBRARY')}
-        </h1>
+        <div className="flex items-center justify-between">
+          <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none">
+            {activeTab === 'new' ? (locale === 'ru' ? 'ИНСАЙТЫ' : 'INSIGHTS') : (locale === 'ru' ? 'БИБЛИОТЕКА' : 'LIBRARY')}
+          </h1>
+          {isDnaComplete && activeTab === 'new' && (
+            <button 
+              onClick={() => setShowDnaEditor(!showDnaEditor)}
+              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-purple-400 hover:border-purple-500/30 transition-all text-[9px] font-black uppercase tracking-widest"
+            >
+              <Dna size={14} className={showDnaEditor ? "text-purple-400 animate-pulse" : ""} />
+              {showDnaEditor ? (locale === 'ru' ? 'Скрыть ДНК' : 'Hide DNA') : (locale === 'ru' ? 'Настроить ДНК' : 'Tune DNA')}
+            </button>
+          )}
+        </div>
         <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-black">
           {activeTab === 'new' ? (locale === 'ru' ? 'СИНТЕЗ МАТРИЦЫ КОНТЕНТА' : 'CONTENT MATRIX SYNTHESIS') : (locale === 'ru' ? 'ЗАПАС ЗОЛОТЫХ ИДЕЙ' : 'GOLDEN IDEAS VAULT')}
         </p>
       </div>
 
       <div className="flex items-center justify-between gap-4">
-        {/* Quick Idea Gen */}
         <div className="flex-1">
           <TopicInput onLaunch={(topic) => handleToScript(topic)} />
         </div>
@@ -176,8 +186,13 @@ export default function IdeasPage() {
 
       <div className="relative space-y-10">
         {activeTab === 'new' ? (
-          !isDnaComplete ? (
-            <DNABlock onComplete={() => window.location.reload()} />
+          (!isDnaComplete || showDnaEditor) ? (
+            <div className="animate-in fade-in slide-in-from-top-4 duration-500">
+              <DNABlock onComplete={() => {
+                setShowDnaEditor(false);
+                window.location.reload();
+              }} />
+            </div>
           ) : (
             <>
               {globalLoading && ideas.length === 0 ? (
@@ -208,7 +223,7 @@ export default function IdeasPage() {
                     ideas={groupedIdeas[cat] || []}
                     onToScript={(topic) => handleToScript(topic, cat)}
                     onToggleArchive={handleToggleArchive}
-                    onRefresh={() => refreshIdeas('new', cat)}
+                    onRefresh={(force) => refreshIdeas('new', cat, force)}
                   />
                 ))
               )}
