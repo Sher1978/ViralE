@@ -84,7 +84,7 @@ export const TeleprompterView = React.memo(({
     if (isReading && prompterRef.current && !isEditing) {
         interval = setInterval(() => {
             if (prompterRef.current) {
-                prompterRef.current.scrollTop += (scrollSpeed / 10) * 1.5; 
+                prompterRef.current.scrollTop += (scrollSpeed / 5) * 2.5; 
             }
         }, 16); // 60fps for buttery smooth scroll
     }
@@ -183,7 +183,7 @@ export const TeleprompterView = React.memo(({
       {/* 📜 Scrolling Text Canvas - Reading Zone at Lens (Top) */}
       <div 
         ref={prompterRef}
-        className={`w-full h-full overflow-y-auto scrollbar-none relative z-10 ${isMirrored ? 'scale-x-[-1]' : ''}`}
+        className={`w-full h-full overflow-y-auto overflow-x-hidden scrollbar-none relative z-10 touch-pan-y ${isMirrored ? 'scale-x-[-1]' : ''}`}
         style={{ scrollBehavior: 'auto' }}
       >
         <div 
@@ -193,9 +193,12 @@ export const TeleprompterView = React.memo(({
           {/* Eye Contact Guide (Optional/Subtle) */}
           <div className="absolute top-[18vh] inset-x-10 h-32 border-y border-white/5 pointer-events-none z-0" />
           
-          <p className={`font-black uppercase leading-[1.2] transition-all duration-500 tracking-tighter text-white drop-shadow-[0_4px_30px_rgba(0,0,0,1)] ${
-            textSize === 'sm' ? 'text-4xl' : textSize === 'lg' ? 'text-8xl' : 'text-6xl'
-          }`}>
+          <p 
+            className={`font-black uppercase leading-[1.1] transition-all duration-500 tracking-tighter text-white drop-shadow-[0_4px_40px_rgba(0,0,0,1)] ${
+              textSize === 'sm' ? 'text-3xl' : textSize === 'lg' ? 'text-9xl' : 'text-7xl'
+            }`}
+            style={{ wordSpacing: '0.12em' }}
+          >
             {scriptText}
           </p>
         </div>

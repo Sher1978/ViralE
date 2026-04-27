@@ -27,8 +27,8 @@ export async function POST(req: NextRequest) {
       
       Format:
       [
-        { "word": "Hello", "start": 0.12, "end": 0.45 },
-        { "word": "world", "start": 0.51, "end": 0.90 }
+        { "text": "Hello", "start": 0.12, "end": 0.45 },
+        { "text": "world", "start": 0.51, "end": 0.90 }
       ]
       
       Rules:

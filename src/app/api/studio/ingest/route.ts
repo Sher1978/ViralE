@@ -36,18 +36,25 @@ export async function POST(req: NextRequest) {
       
       For each act, you MUST provide:
       - text: The exact spoken words in that section.
+      - word_timings: A detailed array of every single word with its precise "start" and "end" timestamps in seconds.
       - broll_prompt: CRITICAL RULE — The B-roll must SHOW what is being SAID, not abstract visuals.
         Extract the KEY ACTION or KEY SUBJECT from the spoken text.
-        If the speaker says "I lost 10kg in 3 months" → show: "person stepping on a scale, the number dropping, cinematic close-up, 4K"
-        If the speaker says "I quit my corporate job" → show: "person handing in resignation letter, walking out of office building, slow motion"
-        If the speaker says "I made $50k" → show: "person counting cash on a desk, bank transfer notification on phone screen, cinematic"
+        ...
         ALWAYS: realistic action scene, 4K cinematic, matches the spoken moment EXACTLY.
         Format: "[subject] [doing the exact action from the text], [camera style], [mood]"
       
       OUTPUT FORMAT: Valid JSON only, no markdown.
       {
         "acts": [
-          { "type": "hook", "text": "...", "broll_prompt": "..." }
+          { 
+            "type": "hook", 
+            "text": "...", 
+            "word_timings": [
+               { "text": "Hello", "start": 0.1, "end": 0.5 },
+               ...
+            ],
+            "broll_prompt": "..." 
+          }
         ]
       }
       
@@ -84,11 +91,12 @@ export async function POST(req: NextRequest) {
       id: uuidv4(),
       type: 'user_recording', // Important: tells production it's from the original video
       scriptText: act.text,
+      wordTimings: act.word_timings, // Added karaoke data
       prompt: act.broll_prompt,
       assetUrl: videoUrl, // Use the uploaded video as the base for all segments
       status: 'completed',
       animationStyle: 'none',
-      duration: 10, // Approximate, will be refined in montage
+      duration: act.word_timings?.[act.word_timings.length - 1]?.end || 10,
     }));
 
     const manifest = {
