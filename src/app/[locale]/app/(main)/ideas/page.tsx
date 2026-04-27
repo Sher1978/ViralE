@@ -9,7 +9,6 @@ import MatrixScroller from '@/components/ideas/MatrixScroller';
 import TopicInput from '@/components/ideas/TopicInput';
 import { motion } from 'framer-motion';
 import { useAppData } from '@/components/providers/AppDataProvider';
-import { v4 as uuidv4 } from 'uuid';
 
 const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
   "Hooks": { en: "Virality Hooks", ru: "Крючки виральности" },
