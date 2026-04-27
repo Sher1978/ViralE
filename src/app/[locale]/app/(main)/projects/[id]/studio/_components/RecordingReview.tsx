@@ -14,6 +14,7 @@ interface RecordingReviewProps {
   setShowRecordingReview: (show: boolean) => void;
   setLastRecordingUrl: (url: string | null) => void;
   updateSegmentField: (id: string, field: string, value: any) => void;
+  setManifest: (manifest: any) => void;
   setActiveTab: (tab: any) => void;
   manifest: any;
   selectedSegmentId: string | null;
@@ -28,6 +29,7 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
   setShowRecordingReview,
   setLastRecordingUrl,
   updateSegmentField,
+  setManifest,
   setActiveTab,
   manifest,
   selectedSegmentId,
@@ -101,10 +103,16 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
                  <button 
                     onClick={() => {
                        const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
-                       // Update root videoUrl for VideoEditor A-Roll Foundation
-                       manifest.videoUrl = lastRecordingUrl;
-                       updateSegmentField(segmentId, 'assetUrl', lastRecordingUrl);
-                       updateSegmentField(segmentId, 'type', 'user_recording');
+                       
+                       // Properly update manifest via parent state to trigger re-renders
+                       setManifest({
+                          ...manifest,
+                          videoUrl: lastRecordingUrl,
+                          segments: manifest.segments.map((s: any) => 
+                             s.id === segmentId ? { ...s, assetUrl: lastRecordingUrl, type: 'user_recording' } : s
+                          )
+                       });
+                       
                        setShowRecordingReview(false);
                        setActiveTab('assembly');
                     }}

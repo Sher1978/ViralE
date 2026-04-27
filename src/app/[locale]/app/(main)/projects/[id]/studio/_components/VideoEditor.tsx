@@ -154,12 +154,13 @@ export const VideoEditor = React.memo(({
   // ── Sync manifest A-Roll (for teleprompter/headless flow) ──
   useEffect(() => {
     const rec = manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl);
-    const url = rec?.assetUrl || manifest?.segments?.[0]?.assetUrl || null;
-    if (url && !aRollUrl) {
+    const url = rec?.assetUrl || manifest?.videoUrl || manifest?.segments?.[0]?.assetUrl || null;
+    
+    if (url && url !== aRollUrl) {
       setARollUrl(url);
       setStage('transcribing');
     }
-  }, [manifest]);
+  }, [manifest, aRollUrl]);
 
   // ── Auto-transcribe then auto-select phrases (zero friction) ──
   useEffect(() => {

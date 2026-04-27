@@ -408,6 +408,7 @@ export default function StudioPage() {
                        setShowRecordingReview={setShowRecordingReview}
                        setLastRecordingUrl={setLastRecordingUrl}
                        updateSegmentField={updateSegmentField}
+                       setManifest={setManifest}
                        setActiveTab={setActiveTab}
                        manifest={manifest}
                        selectedSegmentId={selectedSegmentId}
