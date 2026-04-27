@@ -11,7 +11,8 @@ import TopicInput from '@/components/ideas/TopicInput';
 const CATEGORIES = [
   "Hooks", "Roles", "Awareness", "Problem", "Solution", "Loyalty", "Fast Sales",
   "Controversial", "Evergreen", "Trends", "Lifestyle", "Future",
-  "Myths", "Comparison", "Educational", "Case Study"
+  "Myths", "Comparison", "Educational", "Case Study",
+  "Backstage", "Mistakes", "POV", "Manifesto", "Blitz", "Verdicts", "Humor", "Inside", "Results", "Toolkit"
 ];
 
 const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
@@ -30,7 +31,17 @@ const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
   "Myths": { en: "Myth Busting", ru: "Разоблачение мифов" },
   "Comparison": { en: "Product Battles", ru: "Битва продуктов" },
   "Educational": { en: "Expertise Vault", ru: "База экспертности" },
-  "Case Study": { en: "Results Factory (Cases)", ru: "Завод результатов (Кейсы)" }
+  "Case Study": { en: "Results Factory (Cases)", ru: "Завод результатов (Кейсы)" },
+  "Backstage": { en: "System Backstage", ru: "Закулисье системы" },
+  "Mistakes": { en: "Failure Breakdowns", ru: "Кладбище ошибок" },
+  "POV": { en: "Point of View (POV)", ru: "Твоими глазами (POV)" },
+  "Manifesto": { en: "Values & Manifesto", ru: "Манифест и Ценности" },
+  "Blitz": { en: "Blitz Q&A", ru: "Блиц-ответы (Q&A)" },
+  "Verdicts": { en: "Honest Verdicts", ru: "Честные вердикты" },
+  "Humor": { en: "Intellectual Humor", ru: "Интеллектуальный юмор" },
+  "Inside": { en: "Industry Insides", ru: "Инсайды индустрии" },
+  "Results": { en: "Results (Before/After)", ru: "Результаты (До/После)" },
+  "Toolkit": { en: "Master Toolkit", ru: "Тулкит мастера" }
 };
 
 export default function IdeasPage() {
