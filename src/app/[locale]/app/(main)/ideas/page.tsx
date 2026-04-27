@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { TrendingUp, Bookmark, Loader2, History, Sparkles, Lock } from 'lucide-react';
+import { TrendingUp, Bookmark, Loader2, History, Sparkles, Lock, Dna } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
 import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
