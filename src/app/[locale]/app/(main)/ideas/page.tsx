@@ -152,7 +152,7 @@ export default function IdeasPage() {
       <div className="flex items-center justify-between gap-4">
         {/* Quick Idea Gen */}
         <div className="flex-1">
-          <TopicInput onGenerated={() => refreshIdeas('new')} />
+          <TopicInput onLaunch={(topic) => handleToScript(topic)} />
         </div>
       </div>
 
