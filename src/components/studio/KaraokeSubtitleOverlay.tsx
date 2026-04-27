@@ -11,8 +11,8 @@ interface KaraokeSubtitleOverlayProps {
   accentColor?: string;
 }
 
-const WINDOW_BEFORE = 2; // words to show before active
-const WINDOW_AFTER = 3;  // words to show after active
+const WINDOW_BEFORE = 1; // 1 word before active
+const WINDOW_AFTER = 2;  // 2 words after active
 
 const KaraokeSubtitleOverlay: React.FC<KaraokeSubtitleOverlayProps> = ({
   wordTimings,
@@ -36,7 +36,7 @@ const KaraokeSubtitleOverlay: React.FC<KaraokeSubtitleOverlayProps> = ({
   const windowStart = Math.max(0, activeIndex - WINDOW_BEFORE);
   const windowEnd = Math.min(wordTimings.length, activeIndex + WINDOW_AFTER + 1);
   const visibleWords = wordTimings.slice(windowStart, windowEnd);
-  const windowKey = Math.floor(activeIndex / 5); // changes every 5 words → triggers AnimatePresence
+  const windowKey = Math.floor(activeIndex / 4); // changes every 4 words → triggers AnimatePresence
 
   if (!wordTimings.length || activeIndex < 0) return null;
 
