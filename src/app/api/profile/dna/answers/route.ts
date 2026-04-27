@@ -32,10 +32,10 @@ export async function POST(req: Request) {
     }
 
     // Save answers to profile
-    const { error } = await authorizedSupabase
       .from('profiles')
       .update({
         dna_answers: answers,
+        raw_onboarding_data: answers, // Fallback for schema compatibility
         updated_at: new Date().toISOString()
       })
       .eq('id', userId);

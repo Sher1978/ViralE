@@ -103,8 +103,8 @@ function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export const VideoEditor = React.memo(({
-  manifest, onBack, onNext, updateSegmentField, projectId
-}: VideoEditorProps) => {
+  manifest, onBack, onNext, updateSegmentField, projectId, preFetchedBrolls: parentPreFetched
+}: VideoEditorProps & { preFetchedBrolls?: Record<string, any[]> }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -136,6 +136,7 @@ export const VideoEditor = React.memo(({
   const [brollModalOpen, setBrollModalOpen] = useState(false);
   const [activeBrollPrompt, setActiveBrollPrompt] = useState('');
   const [activeBrollPhraseId, setActiveBrollPhraseId] = useState<string | null>(null);
+  const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({}); // Cache for pre-fetched B-rolls
   const [generatingPhraseIds, setGeneratingPhraseIds] = useState<Set<string>>(new Set());
 
   // Inspector
@@ -311,6 +312,31 @@ export const VideoEditor = React.memo(({
 
     const picked = pickAIPhrases(words);
     setPhrases(picked);
+
+    // 🏗️ CREATE TIMELINE PLACEHOLDERS (Visibility & Direct Editing)
+    const initialClips: BRollClip[] = picked.map(p => ({
+       id: `br-${p.id}`,
+       phraseId: p.id,
+       startTime: p.start,
+       endTime: p.end,
+       label: p.text,
+       assetUrl: undefined // Placeholder state
+    }));
+    setBrollClips(initialClips);
+
+    // 🔥 PRE-FETCH B-ROLLS IN BACKGROUND
+    picked.forEach(async (phrase) => {
+       try {
+          const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(phrase.text)}`);
+          const data = await res.json();
+          if (data.videos) {
+             setPreFetchedBrolls(prev => ({ ...prev, [phrase.id]: data.videos }));
+          }
+       } catch (err) {
+          console.error('BG Search failed for phrase', phrase.id, err);
+       }
+    });
+
     setStageMessage('');
     setStage('reviewing_phrases');
   };
@@ -973,6 +999,7 @@ export const VideoEditor = React.memo(({
         onSelect={handleBRollSelect}
         segmentText={activeBrollPrompt}
         projectId={projectId}
+        preFetchedResults={activeBrollPhraseId ? preFetchedBrolls[activeBrollPhraseId] : undefined}
       />
 
     </div>
@@ -1001,7 +1028,9 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
   const width = `${((clip.endTime - clip.startTime) / duration) * 100}%`;
   return (
     <div
-      className={`absolute inset-y-1.5 rounded-lg border bg-blue-500/20 border-blue-400/40 text-blue-300 ${isSelected ? 'ring-2 ring-white/40' : ''} flex items-center cursor-pointer touch-none`}
+      className={`absolute inset-y-1.5 rounded-lg border transition-all ${
+        clip.assetUrl ? 'bg-blue-500/20 border-blue-400/40 text-blue-300' : 'bg-white/5 border-dashed border-white/20 text-white/30'
+      } ${isSelected ? 'ring-2 ring-white/40' : ''} flex items-center cursor-pointer touch-none`}
       style={{ left, width, minWidth: 28 }}
       onClick={onSelect}
       onMouseDown={e => onDragStart(e, 'move')}
@@ -1011,7 +1040,10 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
         onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'start'); }}>
         <div className="w-0.5 h-4 bg-white/40 rounded-full" />
       </div>
-      <span className="flex-1 text-[9px] font-black truncate px-3 select-none">{clip.label}</span>
+      <span className="flex-1 text-[9px] font-black truncate px-3 select-none flex items-center gap-2">
+        {!clip.assetUrl && <Sparkles size={10} className="text-purple-400" />}
+        {clip.label}
+      </span>
       <div className="absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center"
         onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'end'); }}
         onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'end'); }}>
