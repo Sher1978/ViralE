@@ -183,29 +183,7 @@ export const VideoEditor = React.memo(({
     }
   }); // No deps — runs every render but guard ref prevents re-entry
 
-  // Auto-confirm countdown state
-  const [autoConfirmSeconds, setAutoConfirmSeconds] = useState(4);
-  const autoConfirmRef = useRef<NodeJS.Timeout | null>(null);
-
-  // Start countdown when phrases are shown
-  useEffect(() => {
-    if (stage === 'reviewing_phrases') {
-      setAutoConfirmSeconds(4);
-      autoConfirmRef.current = setInterval(() => {
-        setAutoConfirmSeconds(prev => {
-          if (prev <= 1) {
-            clearInterval(autoConfirmRef.current!);
-            generateBRoll();
-            return 0;
-          }
-          return prev - 1;
-        });
-      }, 1000);
-    } else {
-      if (autoConfirmRef.current) clearInterval(autoConfirmRef.current);
-    }
-    return () => { if (autoConfirmRef.current) clearInterval(autoConfirmRef.current); };
-  }, [stage]);
+  // ── Auto-confirm countdown ─ REMOVED (B-Roll Hunter should only open manually) ──
 
   // ── Video sync ──
   useEffect(() => {
@@ -257,21 +235,42 @@ export const VideoEditor = React.memo(({
     };
   }, [duration]);
 
-  // ── Stage 1+2: Transcription → Auto Phrase Selection (zero friction) ──
+  // ── Core Pipeline: Transcription → Karaoke Subs → Auto B-Roll placement ──
+
+  // Splits a sentence into karaoke chunks (max 4 words), last word is the accent
+  const buildKaraokeClips = (words: TranscriptWord[]): SubtitleClip[] => {
+    const CHUNK_SIZE = 4;
+    const chunks: SubtitleClip[] = [];
+    let i = 0;
+    const ts = Date.now();
+    while (i < words.length) {
+      const slice = words.slice(i, i + CHUNK_SIZE);
+      const text = slice.map(w => w.text).join(' ');
+      chunks.push({
+        id: `sub_${i}_${ts}`,
+        text,
+        startTime: slice[0].start,
+        endTime: slice[slice.length - 1].end,
+        style: 'minimal' as const,
+        // Store accent word (last) for overlay highlight
+        accentWord: slice[slice.length - 1].text,
+      } as any);
+      i += CHUNK_SIZE;
+    }
+    return chunks;
+  };
 
   const runTranscriptionAndPhrases = async () => {
     setStage('transcribing');
-    setStageMessage('Analysing audio...');
-    await delay(600);
-    setStageMessage('Generating subtitles...');
-    await delay(500);
+    setStageMessage('Анализ аудио...');
+    await delay(400);
 
     const dur = videoRef.current?.duration || duration;
     let words: TranscriptWord[] = [];
+    let transcriptionOk = false;
 
-    // ALWAYS favor real AI transcription to get accurate word timings
     if (aRollUrl || rawFile) {
-      setStageMessage('AI Analyzing Voice Hub...');
+      setStageMessage('AI расшифровка голоса...');
       try {
         const formData = new FormData();
         if (rawFile) {
@@ -280,7 +279,6 @@ export const VideoEditor = React.memo(({
           const blob = await fetch(aRollUrl).then(r => r.blob());
           formData.append('file', new File([blob], 'recording.webm', { type: 'video/webm' }));
         } else if (aRollUrl) {
-          // It's a remote URL, pass it as a parameter or download it
           const res = await fetch(aRollUrl);
           const blob = await res.blob();
           formData.append('file', new File([blob], 'remote_video.mp4', { type: 'video/mp4' }));
@@ -289,130 +287,88 @@ export const VideoEditor = React.memo(({
         const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
         if (!res.ok) throw new Error('Transcription API failed');
         const data = await res.json();
-        
+
         if (data.transcript && data.transcript.length > 0) {
           words = data.transcript;
-        } else {
-          words = buildTranscript(manifest, dur);
+          transcriptionOk = true;
         }
       } catch (err) {
         console.error('Transcription failed:', err);
-        setStageMessage('Syncing with Script...');
-        await delay(500);
-        words = buildTranscript(manifest, dur);
       }
-    } else {
-      words = buildTranscript(manifest, dur);
     }
 
-    if (words.length === 0) {
-      setStage('editing');
+    // If transcription failed — go to editing with empty state, show manual button
+    if (!transcriptionOk || words.length === 0) {
       setStageMessage('');
+      setStage('editing');
       return;
     }
 
-    const subs: SubtitleClip[] = words.map((w, i) => ({
-      id: `sub_${i}_${Date.now()}`,
-      text: w.text,
-      startTime: w.start,
-      endTime: w.end,
-      style: 'minimal' as const,
-    }));
-
+    // Build karaoke-style subtitle clips
+    setStageMessage('Генерация субтитров...');
+    await delay(300);
+    const karaokeClips = buildKaraokeClips(words);
     setTranscript(words);
-    setSubtitleClips(subs);
+    setSubtitleClips(karaokeClips);
 
-    setStageMessage('AI selecting B-Roll moments...');
-    await delay(700);
-
+    // Pick B-Roll anchor phrases
+    setStageMessage('Расстановка Б-ролла...');
+    await delay(400);
     const picked = pickAIPhrases(words);
     setPhrases(picked);
 
-    // 🏗️ CREATE TIMELINE PLACEHOLDERS (Visibility & Direct Editing)
-    const initialClips: BRollClip[] = picked.map(p => ({
-       id: `br-${p.id}`,
-       phraseId: p.id,
-       startTime: p.start,
-       endTime: p.end,
-       label: p.text,
-       url: '', // Placeholder
-       prompt: p.text,
-       track: 1
+    // Place B-Roll timeline placeholders immediately (no modal)
+    const brollPlaceholders: BRollClip[] = picked.map(p => ({
+      id: `br-${p.id}`,
+      phraseId: p.id,
+      startTime: p.start,
+      endTime: Math.min(p.end, p.start + 5),
+      label: p.text.slice(0, 24) + (p.text.length > 24 ? '…' : ''),
+      url: '', // Will be filled when user taps to pick
+      prompt: p.text,
+      track: 1,
     }));
-    setBrollClips(initialClips);
+    setBrollClips(brollPlaceholders);
 
-    // 🔥 PRE-FETCH B-ROLLS IN BACKGROUND
+    // 🔥 Background auto-fetch best B-Roll and attach to placeholders
     picked.forEach(async (phrase) => {
-       try {
-          const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(phrase.text)}`);
-          const data = await res.json();
-          if (data.videos) {
-             setPreFetchedBrolls(prev => ({ ...prev, [phrase.id]: data.videos }));
+      try {
+        const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(phrase.text)}`);
+        const data = await res.json();
+        if (data.videos && data.videos.length > 0) {
+          const bestUrl = data.videos[0].url || data.videos[0].video_files?.[0]?.link || '';
+          setPreFetchedBrolls(prev => ({ ...prev, [phrase.id]: data.videos }));
+          // Auto-attach the first result to the timeline placeholder
+          if (bestUrl) {
+            setBrollClips(prev => prev.map(c =>
+              c.phraseId === phrase.id ? { ...c, url: bestUrl } : c
+            ));
           }
-       } catch (err) {
-          console.error('BG Search failed for phrase', phrase.id, err);
-       }
+        }
+      } catch (err) {
+        console.error('BG BRoll fetch failed:', err);
+      }
     });
 
     setStageMessage('');
-    setStage('reviewing_phrases');
+    setStage('editing'); // Go straight to editing — no intermediate "review phrases" screen
   };
 
   const runTranscription = runTranscriptionAndPhrases;
 
-  // ── Stage 2: Manual trigger (for replay) ──────────────────────────────
-
-  const runPhraseSelection = async () => {
-    setStage('transcribing');
-    setStageMessage('AI selecting B-Roll moments...');
-    await delay(900);
-    const picked = pickAIPhrases(transcript.length > 0 ? transcript : buildTranscript(manifest, duration));
-    setPhrases(picked);
-    setStageMessage('');
-    setStage('reviewing_phrases');
+  // ── Manual B-Roll Hunter (opens modal for a specific phrase) ──
+  const openBRollHunterForClip = (phraseId: string, prompt: string) => {
+    setActiveBrollPhraseId(phraseId);
+    setActiveBrollPrompt(prompt);
+    setBrollModalOpen(true);
   };
 
-  const cancelAutoConfirm = () => {
-    if (autoConfirmRef.current) clearInterval(autoConfirmRef.current);
-  };
-
-  // ── Phrase Review Actions ───────────────────────────────────────────────
-
-  const removePhrase = (id: string) => {
-    setPhrases(prev => prev.filter(p => p.id !== id));
-  };
-
-  const openPhrasePicker = (phraseId: string) => {
-    setEditingPhraseId(phraseId);
-    setPhrasePickerOpen(true);
-  };
-
-  const swapPhrase = (word: TranscriptWord) => {
-    if (!editingPhraseId) return;
-    setPhrases(prev => prev.map(p =>
-      p.id === editingPhraseId
-        ? { ...p, text: word.text.slice(0, 60), start: word.start, end: word.end }
-        : p
-    ));
-    setPhrasePickerOpen(false);
-    setEditingPhraseId(null);
-  };
-
-  // ── Stage 3: B-Roll Generation ──────────────────────────────────────────
-
+  // ── Manual B-Roll generation (kept for toolbar button) ──
   const generateBRoll = async () => {
-    const approved = phrases.filter(p => p.approved);
-    if (approved.length === 0) return;
-    setStage('generating');
-
-    for (const phrase of approved) {
-      setGeneratingPhraseIds(prev => new Set([...prev, phrase.id]));
-      // Open BRoll modal pre-filled with the phrase as the search prompt
-      setActiveBrollPrompt(phrase.text);
-      setActiveBrollPhraseId(phrase.id);
-      setBrollModalOpen(true);
-      // Wait for user to select from modal (handled in handleBRollSelect)
-      break; // Open one at a time
+    // Just opens hunter for first un-filled phrase, or nothing if all set
+    const firstEmpty = brollClips.find(c => !c.url);
+    if (firstEmpty) {
+      openBRollHunterForClip(firstEmpty.phraseId || firstEmpty.id, firstEmpty.prompt);
     }
   };
 
@@ -659,11 +615,13 @@ export const VideoEditor = React.memo(({
           </button>
         )}
 
-        {/* Subtitle Overlay */}
+        {/* Subtitle Overlay – Karaoke Style */}
         <AnimatePresence mode="wait">
           {aRollUrl && stage !== 'transcribing' && (() => {
             const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
             if (!activeSub) return null;
+            const accentWord = (activeSub as any).accentWord || '';
+            const words = activeSub.text.split(' ');
             return (
               <motion.div
                 drag
@@ -671,15 +629,25 @@ export const VideoEditor = React.memo(({
                 dragConstraints={{ left: -150, right: 150, top: -200, bottom: 200 }}
                 onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
                 key={`${activeSub.id}-${activeSub.style}`}
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1, x: subtitlePos.x, y: subtitlePos.y }}
-                exit={{ opacity: 0, scale: 0.9 }}
-                className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-6 max-w-[85%] left-1/2 -translate-x-1/2 flex items-center justify-center whitespace-pre-wrap bottom-16"
+                initial={{ opacity: 0, y: 8 }}
+                animate={{ opacity: 1, y: 0, x: subtitlePos.x }}
+                exit={{ opacity: 0, y: -8 }}
+                className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-4 max-w-[90%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bottom-14"
+                style={{ top: `calc(50% + ${subtitlePos.y}px)` }}
               >
                 {activeSub.style === 'minimal' && (
-                  <span className="text-white text-xl font-bold drop-shadow-[0_2px_8px_rgba(0,0,0,1)] tracking-tight bg-black/30 px-3 py-1 rounded-lg backdrop-blur-sm">
-                    {activeSub.text}
-                  </span>
+                  <div className="flex flex-wrap justify-center gap-x-2 gap-y-1">
+                    {words.map((word, wi) => (
+                      <span
+                        key={wi}
+                        className={`text-[22px] font-black leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,1)] tracking-tight transition-all duration-150 ${
+                          word === accentWord
+                            ? 'text-amber-400 scale-110 inline-block [text-shadow:0_0_20px_rgba(245,158,11,0.8)]'
+                            : 'text-white'
+                        }`}
+                      >{word}</span>
+                    ))}
+                  </div>
                 )}
                 {activeSub.style === 'pop' && (
                   <span className="bg-purple-600 text-white px-4 py-2 rounded-xl text-xl font-black italic uppercase tracking-tighter shadow-[0_0_30px_rgba(168,85,247,0.8)] border border-purple-400/50">
@@ -687,12 +655,13 @@ export const VideoEditor = React.memo(({
                   </span>
                 )}
                 {activeSub.style === 'bold' && (
-                  <span className="text-amber-400 text-3xl font-black uppercase tracking-tighter italic drop-shadow-[0_4px_0_rgba(0,0,0,1)] [text-shadow:0_0_20px_rgba(245,158,11,0.8)] [-webkit-text-stroke:1px_black]">
-                    {activeSub.text}
-                  </span>
-                )}
-                {!['minimal','pop','bold'].includes(activeSub.style) && (
-                  <span className="text-white text-lg">{activeSub.text}</span>
+                  <div className="flex flex-wrap justify-center gap-x-2">
+                    {words.map((word, wi) => (
+                      <span key={wi} className={`text-3xl font-black uppercase tracking-tighter italic drop-shadow-[0_4px_0_rgba(0,0,0,1)] ${word === accentWord ? 'text-amber-400' : 'text-white'}`}>
+                        {word}
+                      </span>
+                    ))}
+                  </div>
                 )}
               </motion.div>
             );
@@ -823,7 +792,15 @@ export const VideoEditor = React.memo(({
               {brollClips.map(clip => (
                 <BRollTimelineClip key={clip.id} clip={clip} duration={duration}
                   isSelected={selectedClipId === clip.id}
-                  onSelect={() => { setSelectedClipId(clip.id); setShowSheet(true); }}
+                  onSelect={() => {
+                    if (!clip.url) {
+                      // Empty placeholder — open hunter immediately
+                      openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt);
+                    } else {
+                      setSelectedClipId(clip.id);
+                      setShowSheet(true);
+                    }
+                  }}
                   onDragStart={(e, h) => startDrag(e, clip.id, 'broll', h)}
                 />
               ))}
