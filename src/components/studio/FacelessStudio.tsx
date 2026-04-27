@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Mic, Image, Eye, Film, ChevronRight, Play, Pause,
   RefreshCw, Check, ArrowLeft, ArrowRight, Loader2,
-  Music, Sparkles, Wand2, X, RotateCw, Volume2
+  Music, Sparkles, Wand2, X, RotateCw, Volume2, Edit3
 } from 'lucide-react';
 import { ProductionManifest } from '@/lib/types/studio';
 
