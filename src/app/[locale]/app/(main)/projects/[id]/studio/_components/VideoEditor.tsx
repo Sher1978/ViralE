@@ -36,6 +36,7 @@ interface SubtitleClip {
   startTime: number;
   endTime: number;
   style: 'minimal' | 'pop' | 'bold';
+  accentWord?: string;
 }
 
 interface BRollClip {
@@ -58,50 +59,6 @@ interface VideoEditorProps {
   onFaceless?: () => void;
 }
 
-// ── Helper: Mock Transcription ─────────────────────────────────────────────
-
-function buildTranscript(manifest: ProductionManifest | null, videoDuration: number): TranscriptWord[] {
-  const segments = manifest?.segments?.filter((s: any) => s.scriptText) || [];
-  const dur = videoDuration > 0 ? videoDuration : 60;
-
-  if (segments.length === 0) {
-    // FALLBACK: Simulate AI recognition if no manifest provided (uploaded video)
-    return [
-      { text: "Welcome to Viral Engine production.", start: 0, end: dur * 0.2 },
-      { text: "This is a demonstration of AI audio analysis.", start: dur * 0.2, end: dur * 0.5 },
-      { text: "You can edit these subtitles or swap B-Roll moments.", start: dur * 0.5, end: dur * 0.8 },
-      { text: "Start creating your masterpiece now!", start: dur * 0.8, end: dur },
-    ];
-  }
-
-  const timePerSeg = dur / segments.length;
-  return segments.map((s: any, i: number) => ({
-    text: s.scriptText,
-    start: i * timePerSeg,
-    end: (i + 1) * timePerSeg,
-  }));
-}
-
-function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
-  if (transcript.length === 0) return [];
-  // Pick 2-3 phrases from middle 25%-85% of the video
-  const start = Math.floor(transcript.length * 0.25);
-  const end = Math.floor(transcript.length * 0.85);
-  const pool = transcript.slice(start, end);
-  const count = Math.min(pool.length, pool.length >= 3 ? 3 : 2);
-  const step = Math.floor(pool.length / count);
-  return Array.from({ length: count }, (_, i) => {
-    const seg = pool[i * step];
-    return {
-      id: `phrase_${i}_${Date.now()}`,
-      text: seg.text.slice(0, 60),
-      start: seg.start,
-      end: seg.end,
-      approved: true,
-    };
-  });
-}
-
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export const VideoEditor = React.memo(({
@@ -111,94 +68,66 @@ export const VideoEditor = React.memo(({
   const timelineRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Helper to extract initial A-Roll
   const getInitialARoll = () => {
     const rec = manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl);
     return rec?.assetUrl || manifest?.videoUrl || manifest?.segments?.[0]?.assetUrl || null;
   };
 
   const initialUrl = getInitialARoll();
-
-  // Stage machine
   const [stage, setStage] = useState<EditorStage>(initialUrl ? 'transcribing' : 'empty');
   const [stageMessage, setStageMessage] = useState('');
-
-  // Video
   const [aRollUrl, setARollUrl] = useState<string | null>(initialUrl);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(60);
-  const [videoSource, setVideoSource] = useState<'teleprompter' | 'upload' | null>(null);
   const [rawFile, setRawFile] = useState<File | null>(null);
-
-  // Transcript & Subtitles
   const [transcript, setTranscript] = useState<TranscriptWord[]>([]);
   const [subtitleClips, setSubtitleClips] = useState<SubtitleClip[]>([]);
-
-  // B-Roll Phrases (Stage 2)
   const [phrases, setPhrases] = useState<BRollPhrase[]>([]);
-  const [phrasePickerOpen, setPhrasePickerOpen] = useState(false);
-  const [editingPhraseId, setEditingPhraseId] = useState<string | null>(null);
-
-  // B-Roll Clips
   const [brollClips, setBrollClips] = useState<BRollClip[]>([]);
   const [brollModalOpen, setBrollModalOpen] = useState(false);
   const [activeBrollPrompt, setActiveBrollPrompt] = useState('');
   const [activeBrollPhraseId, setActiveBrollPhraseId] = useState<string | null>(null);
-  const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({}); // Cache for pre-fetched B-rolls
-  const [generatingPhraseIds, setGeneratingPhraseIds] = useState<Set<string>>(new Set());
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
-
-  // Inspector
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
-  const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 120 }); // Global sub position on video canvas
+  const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 120 });
   const [subtitleSize, setSubtitleSize] = useState(28);
   const [isSingleWordMode, setIsSingleWordMode] = useState(false);
 
-  // Drag
   const dragRef = useRef<{
     clipId: string; type: 'broll' | 'sub';
-    handle: 'move' | 'start' | 'end';
-    startX: number; origStart: number; origEnd: number;
+    handle: 'move' | 'start' | 'end' | 'preview_move';
+    startX: number; startY: number; origStart: number; origEnd: number;
+    origPosX: number; origPosY: number;
   } | null>(null);
 
-  // Guard to prevent double-transcription
   const transcriptionStartedRef = useRef(false);
 
-  // ── Sync manifest A-Roll + kick off transcription immediately ──
   useEffect(() => {
     const rec = manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl);
     const url = rec?.assetUrl || manifest?.videoUrl || manifest?.segments?.[0]?.assetUrl || null;
-    
     if (url && url !== aRollUrl) {
       setARollUrl(url);
       setStage('transcribing');
-      transcriptionStartedRef.current = false; // Reset guard for new URL
+      transcriptionStartedRef.current = false;
     }
-  }, [manifest]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [manifest]);
 
-  // ── Auto-transcribe: fires when stage=transcribing AND url is ready ──
   useEffect(() => {
     if (stage === 'transcribing' && aRollUrl && !transcriptionStartedRef.current) {
       transcriptionStartedRef.current = true;
-      runTranscriptionAndPhrases();
+      runTranscription();
     }
-  }); // No deps — runs every render but guard ref prevents re-entry
+  });
 
-  // ── Auto-confirm countdown ─ REMOVED (B-Roll Hunter should only open manually) ──
-
-  // ── Video sync ──
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !aRollUrl) return;
     v.src = aRollUrl;
     const onTime = () => setCurrentTime(v.currentTime);
-    const onLoad = () => {
-      const dur = v.duration > 0 ? v.duration : 60;
-      setDuration(dur);
-    };
+    const onLoad = () => setDuration(v.duration || 60);
     const onEnd = () => setIsPlaying(false);
     v.addEventListener('timeupdate', onTime);
     v.addEventListener('loadedmetadata', onLoad);
@@ -210,14 +139,22 @@ export const VideoEditor = React.memo(({
     };
   }, [aRollUrl]);
 
-  // ── Drag listeners ──
   useEffect(() => {
     const move = (e: MouseEvent | TouchEvent) => {
       if (!dragRef.current || !timelineRef.current) return;
-      const { clipId, type, handle, startX, origStart, origEnd } = dragRef.current;
+      const { clipId, type, handle, startX, startY, origStart, origEnd, origPosX, origPosY } = dragRef.current;
       const clientX = 'touches' in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
       const rect = timelineRef.current.getBoundingClientRect();
       const dSec = ((clientX - startX) / rect.width) * duration;
+      const dX = clientX - startX;
+      const dY = clientY - startY;
+
+      if (handle === 'preview_move') {
+        if (type === 'sub') setSubtitlePos({ x: origPosX + dX, y: origPosY + dY });
+        return;
+      }
+
       const upd = (prev: any[]) => prev.map(c => {
         if (c.id !== clipId) return c;
         if (handle === 'move') { const len = origEnd - origStart; const ns = Math.max(0, origStart + dSec); return { ...c, startTime: ns, endTime: Math.min(ns + len, duration) }; }
@@ -239,971 +176,245 @@ export const VideoEditor = React.memo(({
     };
   }, [duration]);
 
-  // ── Core Pipeline: Transcription → Karaoke Subs → Auto B-Roll placement ──
+  const runTranscription = async () => {
+    setStage('transcribing');
+    setStageMessage('Анализ аудио...');
+    setTranscriptionError(null);
+    try {
+       const formData = new FormData();
+       if (rawFile) formData.append('file', rawFile);
+       else if (aRollUrl) {
+         setStageMessage('AI расшифровка...');
+         const res = await fetch(aRollUrl);
+         const blob = await res.blob();
+         formData.append('file', new File([blob], 'video.mp4', { type: 'video/mp4' }));
+       }
+       const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
+       const data = await res.json();
+       if (data.transcript) {
+         setTranscript(data.transcript);
+         const karaoke = buildKaraokeClips(data.transcript);
+         setSubtitleClips(karaoke);
+         
+         setStageMessage('Поиск Би-роллов...');
+         // Optimized visual phrasing
+         const picked = pickVisualPhrases(data.transcript);
+         const brolls: BRollClip[] = [];
+         for (const p of picked) {
+            const clip: BRollClip = {
+               id: `br-${p.id}`,
+               phraseId: p.id,
+               startTime: p.start,
+               endTime: Math.min(p.end, p.start + 4),
+               label: p.text.slice(0, 15),
+               url: '',
+               prompt: p.text,
+               track: 1
+            };
+            brolls.push(clip);
+            // Async fetch
+            fetch(`/api/ai/broll-search?query=${encodeURIComponent(p.text)}`)
+              .then(r => r.json())
+              .then(d => {
+                if (d.videos?.length) {
+                  setBrollClips(prev => prev.map(c => c.id === clip.id ? { ...c, url: d.videos[0].videoUrl } : c));
+                }
+              });
+         }
+         setBrollClips(brolls);
+       }
+    } catch (e: any) { setTranscriptionError(e.message); }
+    setStage('editing');
+  };
 
-  // Splits a sentence into karaoke chunks (max 4 words), last word is the accent
   const buildKaraokeClips = (words: TranscriptWord[]): SubtitleClip[] => {
-    const CHUNK_SIZE = 4;
     const chunks: SubtitleClip[] = [];
-    let i = 0;
-    const ts = Date.now();
-    while (i < words.length) {
-      const slice = words.slice(i, i + CHUNK_SIZE);
-      const text = slice.map(w => w.text).join(' ');
+    for (let i = 0; i < words.length; i += 4) {
+      const slice = words.slice(i, i + 4);
       chunks.push({
-        id: `sub_${i}_${ts}`,
-        text,
+        id: `sub_${i}`,
+        text: slice.map(w => w.text).join(' '),
         startTime: slice[0].start,
         endTime: slice[slice.length - 1].end,
-        style: 'minimal' as const,
-        // Store accent word (last) for overlay highlight
-        accentWord: slice[slice.length - 1].text,
-      } as any);
-      i += CHUNK_SIZE;
+        style: 'minimal',
+        accentWord: slice[slice.length - 1].text
+      });
     }
     return chunks;
   };
 
-  const runTranscriptionAndPhrases = async () => {
-    setStage('transcribing');
-    setStageMessage('Анализ аудио...');
-    setTranscriptionError(null);
-    await delay(400);
-
-    const dur = videoRef.current?.duration || duration;
-    let words: TranscriptWord[] = [];
-    let transcriptionOk = false;
-
-    if (aRollUrl || rawFile) {
-      setStageMessage('Извлечение аудио...');
-      try {
-        const formData = new FormData();
-        let audioToTranscribe: Blob | null = null;
-        
-        // ── Step: Extract Audio to avoid 4.5MB payload limit ──
-        try {
-          const sourceBlob = rawFile || (aRollUrl?.startsWith('blob:') ? await fetch(aRollUrl).then(r => r.blob()) : null);
-          if (sourceBlob) {
-            audioToTranscribe = await extractAudioOnly(sourceBlob);
-          }
-        } catch (e) {
-          console.warn('Advanced audio extraction failed, falling back to raw file:', e);
-        }
-
-        setStageMessage('AI расшифровка голоса...');
-        if (audioToTranscribe) {
-          formData.append('file', new File([audioToTranscribe], 'audio.wav', { type: 'audio/wav' }));
-        } else if (rawFile) {
-          formData.append('file', rawFile);
-        } else if (aRollUrl) {
-          const res = await fetch(aRollUrl);
-          const blob = await res.blob();
-          formData.append('file', new File([blob], 'video.mp4', { type: 'video/mp4' }));
-        }
-
-        const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Transcription API failed');
-        }
-        const data = await res.json();
-
-        if (data.transcript && data.transcript.length > 0) {
-          words = data.transcript;
-          transcriptionOk = true;
-        }
-      } catch (err: any) {
-        console.error('Transcription failed:', err);
-        setTranscriptionError(err.message || 'Ошибка расшифровки');
-      }
-    }
-
-    // If transcription failed — show error and stay in transcribing stage or go to editing
-    if (!transcriptionOk || words.length === 0) {
-      setStageMessage('');
-      if (!transcriptionOk) {
-         // Stay in transcribing to show error and retry
-      } else {
-         setStage('editing');
-      }
-      return;
-    }
-
-    // Build karaoke-style subtitle clips
-    setStageMessage('Генерация субтитров...');
-    await delay(300);
-    const karaokeClips = buildKaraokeClips(words);
-    setTranscript(words);
-    setSubtitleClips(karaokeClips);
-
-    // Pick B-Roll anchor phrases
-    setStageMessage('Расстановка Б-ролла...');
-    await delay(400);
-    const picked = pickAIPhrases(words);
-    setPhrases(picked);
-
-    // Place B-Roll timeline placeholders immediately (no modal)
-    const brollPlaceholders: BRollClip[] = picked.map(p => ({
-      id: `br-${p.id}`,
-      phraseId: p.id,
-      startTime: p.start,
-      endTime: Math.min(p.end, p.start + 5),
-      label: p.text.slice(0, 24) + (p.text.length > 24 ? '…' : ''),
-      url: '', // Will be filled when user taps to pick
-      prompt: p.text,
-      track: 1,
-    }));
-    setBrollClips(brollPlaceholders);
-
-    // 🔥 Background auto-fetch best B-Roll and attach to placeholders
-    picked.forEach(async (phrase) => {
-      try {
-        const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(phrase.text)}`);
-        const data = await res.json();
-        if (data.videos && data.videos.length > 0) {
-          const bestUrl = data.videos[0].url || data.videos[0].video_files?.[0]?.link || '';
-          setPreFetchedBrolls(prev => ({ ...prev, [phrase.id]: data.videos }));
-          // Auto-attach the first result to the timeline placeholder
-          if (bestUrl) {
-            setBrollClips(prev => prev.map(c =>
-              c.phraseId === phrase.id ? { ...c, url: bestUrl } : c
-            ));
-          }
-        }
-      } catch (err) {
-        console.error('BG BRoll fetch failed:', err);
-      }
-    });
-
-    setStageMessage('');
-    setStage('editing'); // Go straight to editing — no intermediate "review phrases" screen
+  const pickVisualPhrases = (words: TranscriptWord[]) => {
+    // Pick 3 interesting points
+    return [
+      { id: 'v1', text: words[Math.floor(words.length*0.2)]?.text || '', start: words[Math.floor(words.length*0.2)]?.start || 0, end: words[Math.floor(words.length*0.2)]?.end || 2 },
+      { id: 'v2', text: words[Math.floor(words.length*0.5)]?.text || '', start: words[Math.floor(words.length*0.5)]?.start || 0, end: words[Math.floor(words.length*0.5)]?.end || 2 },
+      { id: 'v3', text: words[Math.floor(words.length*0.8)]?.text || '', start: words[Math.floor(words.length*0.8)]?.start || 0, end: words[Math.floor(words.length*0.8)]?.end || 2 },
+    ].filter(v => v.text.length > 2);
   };
 
-  const runTranscription = runTranscriptionAndPhrases;
-
-  // ── Manual B-Roll Hunter (opens modal for a specific phrase) ──
-  const openBRollHunterForClip = (phraseId: string, prompt: string) => {
-    setActiveBrollPhraseId(phraseId);
-    setActiveBrollPrompt(prompt);
+  const openBRollHunterForClip = (id: string, prompt: string) => {
+    const clip = brollClips.find(c => c.id === id);
+    setActiveBrollPhraseId(clip?.phraseId || id);
+    setActiveBrollPrompt(prompt || clip?.label || '');
     setBrollModalOpen(true);
   };
 
-  // ── Manual B-Roll generation (kept for toolbar button) ──
-  const generateBRoll = async () => {
-    // Just opens hunter for first un-filled phrase, or nothing if all set
-    const firstEmpty = brollClips.find(c => !c.url);
-    if (firstEmpty) {
-      openBRollHunterForClip(firstEmpty.phraseId || firstEmpty.id, firstEmpty.prompt);
-    }
-  };
-
   const handleBRollSelect = (url: string) => {
-    if (activeBrollPhraseId) {
-      const phrase = phrases.find(p => p.id === activeBrollPhraseId);
-      if (phrase) {
-        setBrollClips(prev => {
-          const existingIdx = prev.findIndex(c => c.id === `br-${activeBrollPhraseId}`);
-          if (existingIdx !== -1) {
-            // Update placeholder
-            const next = [...prev];
-            next[existingIdx] = { ...next[existingIdx], url, track: 0 };
-            return next;
-          } else {
-            // Fallback: Create new if not found
-            const newClip: BRollClip = {
-              id: `br_${Date.now()}`,
-              url,
-              label: phrase.text.slice(0, 20) + '...',
-              prompt: phrase.text,
-              startTime: phrase.start,
-              endTime: Math.min(phrase.end, phrase.start + 6),
-              track: 0,
-            };
-            return [...prev, newClip];
-          }
-        });
-        setGeneratingPhraseIds(prev => { const n = new Set(prev); n.delete(activeBrollPhraseId!); return n; });
-
-        // Check if more approved phrases need BRoll
-        const remaining = phrases.filter(p =>
-          p.approved &&
-          p.id !== activeBrollPhraseId &&
-          !brollClips.some(c => c.prompt === p.text)
-        );
-        if (remaining.length > 0) {
-          const next = remaining[0];
-          setActiveBrollPrompt(next.text);
-          setActiveBrollPhraseId(next.id);
-          setBrollModalOpen(true);
-          return;
-        }
-      }
-    }
+    setBrollClips(prev => prev.map(c => 
+      (c.id === activeBrollPhraseId || c.phraseId === activeBrollPhraseId || c.id === selectedClipId) 
+      ? { ...c, url } : c
+    ));
     setBrollModalOpen(false);
-    setActiveBrollPhraseId(null);
-    setStage('editing');
-    setPhrases([]);
   };
 
-  // ── Video Upload ────────────────────────────────────────────────────────
-
-  const handleVideoUpload = async (file: File) => {
-    const localUrl = URL.createObjectURL(file);
-    setARollUrl(localUrl);
-    setRawFile(file);
-    setVideoSource('upload');
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setSubtitleClips([]);
-    setBrollClips([]);
-    setTranscript([]);
-    setStage('transcribing');
-    setStageMessage('Detecting audio...');
-    await delay(600);
-    // Always run transcription (if manifest exists it uses it, else uses fallback AI mock)
-    await runTranscription();
+  const handleAddBrollManual = (time: number) => {
+    const id = `br_new_${Date.now()}`;
+    setBrollClips(prev => [...prev, {
+      id, url: '', label: 'Manual Clip', prompt: '',
+      startTime: time, endTime: Math.min(time + 3, duration), track: 1
+    }]);
+    setSelectedClipId(id);
+    openBRollHunterForClip(id, '');
   };
 
-  const handleSwapPhrase = (word: TranscriptWord) => {
-    if (!editingPhraseId) return;
-    setPhrases(prev => prev.map(p => p.id === editingPhraseId ? {
-      ...p,
-      text: word.text,
-      start: word.start,
-      end: word.end
-    } : p));
-    setPhrasePickerOpen(false);
-    setEditingPhraseId(null);
-  };
-
-  // ── Helpers ─────────────────────────────────────────────────────────────
-
-  const togglePlay = () => {
-    const v = videoRef.current;
-    if (!v || !aRollUrl) return;
-    if (isPlaying) v.pause(); else v.play();
-    setIsPlaying(p => !p);
-  };
-
-  const startDrag = (e: React.MouseEvent | React.TouchEvent, clipId: string, type: 'broll' | 'sub', handle: 'move' | 'start' | 'end') => {
-    e.stopPropagation();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+  const startDrag = (e: any, clipId: string, type: 'broll' | 'sub', handle: 'move' | 'start' | 'end' | 'preview_move') => {
+    const clientX = e.touches ? e.touches[0].clientX : e.clientX;
+    const clientY = e.touches ? e.touches[0].clientY : e.clientY;
     const clip = type === 'broll' ? brollClips.find(c => c.id === clipId) : subtitleClips.find(c => c.id === clipId);
     if (!clip) return;
-    dragRef.current = { clipId, type, handle, startX: clientX, origStart: clip.startTime, origEnd: clip.endTime };
+    dragRef.current = {
+      clipId, type, handle, startX: clientX, startY: clientY,
+      origStart: clip.startTime, origEnd: clip.endTime,
+      origPosX: type === 'sub' ? subtitlePos.x : 0,
+      origPosY: type === 'sub' ? subtitlePos.y : 0
+    };
   };
 
-  const handleTimelineTap = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
-    if (dragRef.current) return;
-    const rect = timelineRef.current?.getBoundingClientRect();
-    if (!rect) return;
-    const t = ((e.clientX - rect.left) / rect.width) * duration;
-    const clamped = Math.max(0, Math.min(t, duration));
-    setCurrentTime(clamped);
-    if (videoRef.current) videoRef.current.currentTime = clamped;
-  }, [duration]);
+  const togglePlay = () => {
+    if (!videoRef.current) return;
+    if (isPlaying) videoRef.current.pause(); else videoRef.current.play();
+    setIsPlaying(!isPlaying);
+  };
 
-  const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+  const fmt = (s: number) => `${Math.floor(s/60)}:${Math.floor(s%60).toString().padStart(2, '0')}`;
 
   const selBR = brollClips.find(c => c.id === selectedClipId);
   const selSub = subtitleClips.find(c => c.id === selectedClipId);
-  const approvedCount = phrases.filter(p => p.approved).length;
-  const allTranscript = transcript.length > 0
-    ? transcript
-    : buildTranscript(manifest, duration);
-
-  // Phase labels
-  const phaseLabels = ['Upload', 'Subtitles', 'B-Roll'];
-  const phaseIndex = stage === 'empty' ? 0 : stage === 'transcribing' ? 1 : stage === 'editing' ? 1 : 2;
-
-  // ── RENDER ───────────────────────────────────────────────────────────────
-  if (!manifest) {
-    return (
-      <div className="flex-1 bg-black flex flex-col items-center justify-center gap-6">
-        <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Initialising Production Canvas...</p>
-      </div>
-    );
-  }
 
   return (
-    <div className="flex flex-col bg-[#050508] text-white select-none" style={{ height: '100%', maxHeight: '100dvh', position: 'relative' }}>
-
-      {/* Hidden file input */}
-      <input ref={fileInputRef} type="file" accept="video/*" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoUpload(f); e.target.value = ''; }} />
-
-      {/* ── FOUNDATION SELECTION (Empty State) ── */}
-      <AnimatePresence>
-        {!aRollUrl && (
-          <motion.div 
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 z-50 bg-[#050508] flex flex-col px-6 pt-12 pb-10"
-          >
-            {/* Header */}
-            <div className="text-center mb-10">
-              <h1 className="text-[28px] font-black italic tracking-tighter uppercase leading-none mb-3">
-                A-ROLL <span className="text-purple-400">FOUNDATION</span>
-              </h1>
-              <p className="text-[9px] font-bold text-white/30 uppercase tracking-[0.25em] leading-relaxed max-w-[220px] mx-auto">
-                Select the primary visual anchor for your production
-              </p>
-            </div>
-
-            {/* Options */}
-            <div className="flex-1 flex flex-col gap-5">
-              {/* AI Faceless */}
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={onFaceless}
-                className="flex-1 relative rounded-[2.5rem] bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 overflow-hidden group"
-              >
-                <div className="absolute inset-0 bg-purple-500/[0.05] group-hover:bg-purple-500/[0.1] transition-colors" />
-                <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
-                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(168,85,247,0.3)]">
-                    <Sparkles size={32} className="text-white" />
-                  </div>
-                  <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2">AI Faceless</h3>
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-relaxed max-w-[200px]">
-                    Генерация кинематографичных сцен и озвучки на базе вашего экспертного ДНК
-                  </p>
-                </div>
-              </motion.button>
-
-              {/* Upload Media */}
-              <motion.button
-                whileTap={{ scale: 0.98 }}
-                onClick={() => fileInputRef.current?.click()}
-                className="flex-1 relative rounded-[2.5rem] bg-white/[0.03] border border-white/5 overflow-hidden group"
-              >
-                <div className="absolute inset-0 bg-cyan-500/[0.02] group-hover:bg-cyan-500/[0.05] transition-colors" />
-                <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
-                  <div className="w-20 h-20 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(6,182,212,0.15)]">
-                    <Upload size={32} className="text-cyan-400" />
-                  </div>
-                  <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2">Upload Media</h3>
-                  <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[200px]">
-                    Import high-quality raw footage recorded on external devices
-                  </p>
-                </div>
-              </motion.button>
-            </div>
-
-            {/* Back button */}
-            <button 
-              onClick={onBack}
-              className="mt-8 py-4 rounded-2xl bg-white/10 text-white/60 text-[11px] font-black uppercase tracking-[0.4em] active:scale-95 transition-all border border-white/10"
-            >
-              ВЕРНУТЬСЯ
-            </button>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── NAV BAR (Only if video loaded) ── */}
-      <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 z-20 flex-shrink-0 bg-[#050508]">
-
-        <button onClick={onBack}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
-          <ArrowLeft size={12} /> Back
-        </button>
-
-        {/* Phase Indicator */}
-        <div className="flex flex-col items-center gap-1.5">
-          <div className="flex items-center gap-1.5">
-            {phaseLabels.map((label, i) => (
-              <React.Fragment key={label}>
-                <div className={`flex items-center gap-1 px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest transition-all ${
-                  i === phaseIndex
-                    ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30'
-                    : i < phaseIndex
-                      ? 'text-white/30'
-                      : 'text-white/10'
-                }`}>
-                  <div className={`w-1.5 h-1.5 rounded-full ${i <= phaseIndex ? 'bg-purple-400' : 'bg-white/10'}`} />
-                  {label}
-                </div>
-                {i < phaseLabels.length - 1 && <ChevronRight size={8} className="text-white/10" />}
-              </React.Fragment>
-            ))}
-          </div>
-          <div className="flex items-center gap-2 px-2 py-0.5 rounded-lg bg-white/5 border border-white/10">
-            <span className="text-[10px] font-black text-white/30 tracking-tighter uppercase">Dur:</span>
-            <span className="text-[10px] font-black text-white tabular-nums tracking-tighter">{fmt(duration)}</span>
-          </div>
-        </div>
-
-        <button onClick={onNext}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all">
-          Export <ArrowRight size={12} />
-        </button>
+    <div className="flex flex-col bg-black text-white h-full overflow-hidden">
+      <div className="flex items-center justify-between p-4 border-b border-white/5">
+        <button onClick={onBack} className="p-2 bg-white/5 rounded-xl"><ArrowLeft size={18}/></button>
+        <div className="text-[10px] uppercase font-black tracking-widest text-purple-400">Studio Editor 2.0</div>
+        <button onClick={onNext} className="px-4 py-2 bg-purple-500 rounded-xl font-black uppercase text-[10px]">Export</button>
       </div>
 
-      {/* ── VIDEO PREVIEW ── */}
-      <div className="relative bg-black flex items-center justify-center flex-shrink-0 overflow-hidden"
-        style={{ height: '38%' }}>
-
-        {aRollUrl ? (
-          <video ref={videoRef} muted={isMuted} className="w-full h-full object-contain" playsInline onClick={togglePlay} />
-        ) : (
-          <div className="flex flex-col items-center justify-center gap-4 w-full h-full p-6">
-            {/* Upload Own Video */}
-            <button onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-4 w-full px-6 py-5 rounded-2xl bg-white/[0.03] border-2 border-dashed border-white/10 hover:border-purple-500/40 transition-all active:scale-[0.98]">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 flex-shrink-0">
-                <Upload size={20} className="text-purple-400" />
-              </div>
-              <div className="text-left">
-                <p className="text-[11px] font-black text-white/60 uppercase tracking-widest">Загрузить видео</p>
-                <p className="text-[9px] text-white/20 mt-0.5 font-bold uppercase tracking-widest">A-Roll · Своя съёмка</p>
-              </div>
-            </button>
-            {/* AI Faceless */}
-            {onFaceless && (
-              <button onClick={onFaceless}
-                className="flex items-center gap-4 w-full px-6 py-5 rounded-2xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all active:scale-[0.98]">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(168,85,247,0.4)]">
-                  <Sparkles size={20} className="text-white" />
-                </div>
-                <div className="text-left">
-                  <p className="text-[11px] font-black text-purple-300 uppercase tracking-widest">AI Faceless</p>
-                  <p className="text-[9px] text-white/30 mt-0.5 font-bold uppercase tracking-widest">Генерация картинок + анимация</p>
-                </div>
-              </button>
-            )}
-          </div>
-        )}
-
-        {/* Subtitle Overlay – Interactive Style */}
-        <AnimatePresence mode="popLayout">
-          {aRollUrl && (() => {
-            const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
-            if (!activeSub) return null;
-            
-            const accentWord = (activeSub as any).accentWord || '';
-            const words = activeSub.text.split(' ');
-            
-            // If in single word mode, find the specific word for the current time
-            // Or just use the accentWord if it matches the current duration fraction
-            let displayWords = words;
-            if (isSingleWordMode) {
-               displayWords = [accentWord || words[0]];
-            }
-
-            return (
-              <motion.div
-                drag
-                dragMomentum={false}
-                dragConstraints={{ left: -300, right: 300, top: -400, bottom: 400 }}
-                onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
-                key={`${activeSub.id}-${accentWord}-${activeSub.style}`}
-                initial={{ opacity: 0, scale: 0.8, rotate: -2 }}
-                animate={{ opacity: 1, scale: 1.1, rotate: 0, x: subtitlePos.x }}
-                exit={{ opacity: 0, scale: 1.5, filter: 'blur(10px)' }}
-                transition={{ type: 'spring', damping: 12, stiffness: 200 }}
-                className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-4 max-w-[95%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 bottom-14"
-                style={{ 
-                  top: `calc(50% + ${subtitlePos.y / 2}px)`,
-                  fontSize: `${subtitleSize}px`
-                }}
-              >
-                {activeSub.style === 'minimal' && (
-                  <div className="flex flex-wrap justify-center gap-x-2 gap-y-1">
-                    {displayWords.map((word, wi) => {
-                      const isAccent = word === accentWord;
-                      return (
-                        <React.Fragment key={wi}>
-                          {isAccent && !isSingleWordMode && <div className="w-full h-0" />}
-                          <span
-                            className={`font-black tracking-tighter transition-all duration-150 drop-shadow-[0_4px_15px_rgba(0,0,0,0.8)] ${
-                              isAccent
-                                ? 'text-amber-400 scale-125 inline-block [text-shadow:0_0_20px_rgba(245,158,11,0.9)]'
-                                : 'text-white'
-                            }`}
-                          >{word}</span>
-                          {isAccent && !isSingleWordMode && <div className="w-full h-0" />}
-                        </React.Fragment>
-                      );
-                    })}
-                  </div>
-                )}
-                {activeSub.style === 'pop' && (
-                  <div className="flex flex-col items-center">
-                    {displayWords.map((word, wi) => (
-                      <span 
-                        key={wi}
-                        className="bg-gradient-to-br from-purple-600 to-pink-600 text-white px-6 py-3 rounded-[1.5rem] font-black italic uppercase tracking-tighter shadow-[0_15px_40px_rgba(168,85,247,0.6)] border-2 border-white/20 whitespace-nowrap"
-                      >
-                        {word}
-                      </span>
-                    ))}
-                  </div>
-                )}
-                {activeSub.style === 'bold' && (
-                  <div className="flex flex-wrap justify-center gap-x-3">
-                    {displayWords.map((word, wi) => (
-                      <span key={wi} className={`font-black uppercase tracking-tighter italic drop-shadow-[0_6px_0_rgba(0,0,0,1)] scale-110 ${word === accentWord ? 'text-amber-400' : 'text-white'}`}>
-                        {word}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            );
-          })()}
-        </AnimatePresence>
-
-        {/* Processing Overlay */}
-        {stage === 'transcribing' && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex items-center gap-3 px-4 py-1.5 rounded-full bg-black/90 border border-white/10 backdrop-blur-md shadow-2xl">
-              {transcriptionError ? (
-                <div className="flex items-center gap-3">
-                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-[10px] font-black text-red-100 tracking-wide max-w-[200px] truncate" title={transcriptionError}>{transcriptionError}</span>
-                  <button onClick={() => runTranscriptionAndPhrases()} className="bg-red-500 px-3 py-1 rounded-full text-[9px] font-black uppercase hover:bg-red-600 transition-colors">Повторить</button>
-                  <button onClick={() => setStage('editing')} className="text-white/20 hover:text-white/40 text-[9px] font-black uppercase underline p-1">Пропустить</button>
-                </div>
-              ) : (
-                <div className="flex items-center gap-3">
-                  <RotateCw size={12} className="text-purple-400 animate-spin" />
-                  <span className="text-[10px] font-black text-purple-100 uppercase tracking-widest">{stageMessage}</span>
-                  <div className="flex gap-1">
-                    {[0,1,2].map(i => <div key={i} className="w-1 h-1 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />)}
-                  </div>
-                </div>
-              )}
-            </div>
-          )}
-
-        {/* Play/pause + timecode */}
+      <div className="relative h-[40%] bg-black flex items-center justify-center overflow-hidden">
         {aRollUrl && (
-          <button onClick={togglePlay}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 shadow-2xl">
-            {isPlaying ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" className="ml-0.5" />}
-            <span className="text-[11px] font-black text-white tabular-nums">{fmt(currentTime)} / {fmt(duration)}</span>
-          </button>
-        )}
+          <div className="relative w-full h-full flex items-center justify-center">
+            <video ref={videoRef} className="max-w-full max-h-full z-0" onClick={togglePlay} playsInline />
+            
+            {/* B-Roll Layer (Z-10) */}
+            {(() => {
+               const active = brollClips.find(c => c.url && currentTime >= c.startTime && currentTime <= c.endTime);
+               if (!active) return null;
+               return (
+                 <div className={`absolute inset-0 z-10 ${selectedClipId === active.id ? 'ring-2 ring-blue-500' : ''}`}>
+                   <video src={active.url} autoPlay muted loop className="w-full h-full object-cover" />
+                 </div>
+               );
+            })()}
 
-        {/* Change video */}
-        {aRollUrl && (
-          <button onClick={() => fileInputRef.current?.click()}
-            className="absolute top-3 right-3 p-2 rounded-xl bg-black/60 backdrop-blur-sm border border-white/10 active:scale-95 z-20">
-            <Upload size={12} className="text-white/50" />
-          </button>
-        )}
-      </div>
-
-      {/* ── ACTION BAR ── */}
-      <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0a0a12] border-y border-white/5 flex-shrink-0">
-        {/* Transport */}
-        <button onClick={() => { setCurrentTime(0); if (videoRef.current) videoRef.current.currentTime = 0; }}
-          className="p-2.5 rounded-xl bg-white/5 active:scale-95">
-          <SkipBack size={15} className="text-white/50" />
-        </button>
-        <button onClick={togglePlay}
-          className="w-10 h-10 rounded-2xl bg-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20 active:scale-95">
-          {isPlaying ? <Pause size={17} fill="white" /> : <Play size={17} fill="white" className="ml-0.5" />}
-        </button>
-        <button onClick={() => setIsMuted(m => !m)} className="p-2.5 rounded-xl bg-white/5 active:scale-95">
-          {isMuted ? <VolumeX size={15} className="text-white/40" /> : <Volume2 size={15} className="text-white/50" />}
-        </button>
-        <span className="text-[12px] font-black text-purple-400 tabular-nums tracking-tight">{fmt(currentTime)}<span className="text-white/20">/{fmt(duration)}</span></span>
-
-        <div className="flex-1" />
-
-        {/* Stage Actions */}
-        {(stage === 'editing' || stage === 'empty') && subtitleClips.length === 0 && aRollUrl && (
-          <button onClick={runTranscription}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[11px] font-black uppercase active:scale-95 transition-all">
-            <Mic size={14} /> Transcribe
-          </button>
-        )}
-
-        {stage === 'editing' && subtitleClips.length > 0 && (
-          <button onClick={generateBRoll}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 text-[11px] font-black uppercase active:scale-95 transition-all">
-            <Sparkles size={14} /> B-Roll
-          </button>
-        )}
-      </div>
-
-      {/* ── TIMELINE ── */}
-      <div className="flex-1 bg-[#080810] overflow-hidden flex flex-col min-h-0">
-        <div className="flex-1 overflow-x-auto overflow-y-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="flex flex-col" style={{ minWidth: `${Math.max(duration * 18, 320)}px`, height: '100%' }}>
-
-            {/* Ruler */}
-            <div ref={timelineRef}
-              className="h-6 bg-[#0c0c1c] border-b border-white/5 relative flex-shrink-0 cursor-pointer ml-14"
-              style={{ width: 'calc(100% - 56px)' }}
-              onClick={handleTimelineTap}>
-              {Array.from({ length: Math.ceil(duration) + 1 }, (_, i) => (
-                i <= duration && (
-                  <div key={i} className="absolute top-0 flex flex-col items-start"
-                    style={{ left: `${(i / duration) * 100}%` }}>
-                    <div className={`w-px ${i % 5 === 0 ? 'h-3 bg-white/20' : 'h-1.5 bg-white/8'}`} />
-                    {i % 5 === 0 && <span className="text-[9px] text-white/20 font-black ml-0.5">{fmt(i)}</span>}
-                  </div>
-                )
-              ))}
-              {/* Playhead */}
-              <div className="absolute top-0 bottom-0 pointer-events-none z-20"
-                style={{ left: `${Math.min((currentTime / duration) * 100, 100)}%` }}>
-                <div className="absolute top-0 w-px h-[999px] bg-purple-400 shadow-[0_0_4px_rgba(168,85,247,0.8)]" style={{ transform: 'translateX(-0.5px)' }} />
-                <div className="absolute -top-0 -left-[4px] w-[9px] h-[9px] rounded-full bg-purple-400 border-2 border-purple-200" />
-              </div>
-            </div>
-
-            {/* A-Roll track */}
-            <TrackRow label="A" color="text-emerald-400" onClick={aRollUrl ? undefined : () => fileInputRef.current?.click()}>
-              {aRollUrl ? (
-                <div className="absolute inset-y-1 left-0 right-0 rounded-lg bg-emerald-500/15 border border-emerald-500/25 flex items-center px-3 overflow-hidden">
-                  <div className="flex gap-0.5 items-center h-4 mr-2 opacity-30">
-                    {Array.from({ length: 22 }).map((_, i) => (
-                      <div key={i} className="w-0.5 bg-emerald-400 rounded-full" style={{ height: `${30 + Math.sin(i * 0.7) * 50}%` }} />
-                    ))}
-                  </div>
-                  <span className="text-[11px] font-black text-emerald-400 truncate">🎥 A-Roll</span>
-                </div>
-              ) : (
-                <div className="absolute inset-y-1 left-0 right-0 rounded-lg border border-dashed border-white/8 flex items-center justify-center cursor-pointer hover:border-purple-500/30 transition-all">
-                  <span className="text-[7px] font-black text-white/15 uppercase">Tap toolbar to upload</span>
-                </div>
-              )}
-            </TrackRow>
-
-            {/* Subtitles Track */}
-            <TrackRow label="TXT" color="text-amber-400">
-              {subtitleClips.map(clip => (
-                <SubtitleTimelineClip key={clip.id} clip={clip} duration={duration}
-                  isSelected={selectedClipId === clip.id}
-                  onSelect={() => { 
-                    setSelectedClipId(clip.id); 
-                    setShowSheet(true); 
-                    // Seek video to the start of this subtitle
-                    setCurrentTime(clip.startTime);
-                    if (videoRef.current) videoRef.current.currentTime = clip.startTime;
-                  }}
-                  onDragStart={(e, h) => startDrag(e, clip.id, 'sub', h)}
-                />
-              ))}
-            </TrackRow>
-
-            {/* B-Roll Track */}
-            <TrackRow label="B" color="text-blue-400">
-              {brollClips.map(clip => (
-                <BRollTimelineClip key={clip.id} clip={clip} duration={duration}
-                  isSelected={selectedClipId === clip.id}
-                  onSelect={() => {
-                    setSelectedClipId(clip.id);
-                    setShowSheet(true);
-                  }}
-                  onOpenHunter={() => openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt)}
-                  onDragStart={(e, h) => startDrag(e, clip.id, 'broll', h)}
-                />
-              ))}
-            </TrackRow>
-
+            {/* Subtitles (Z-40) */}
+            <AnimatePresence>
+              {(() => {
+                const sub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
+                if (!sub) return null;
+                return (
+                  <motion.div
+                    onMouseDown={e => startDrag(e, sub.id, 'sub', 'preview_move')}
+                    className={`absolute z-40 cursor-move text-center p-2 rounded-2xl ${selectedClipId === sub.id ? 'ring-2 ring-amber-500 bg-black/40' : ''}`}
+                    style={{ 
+                      transform: `translate(calc(-0% + ${subtitlePos.x}px), calc(-0% + ${subtitlePos.y}px))`,
+                      fontSize: `${subtitleSize}px`,
+                      fontWeight: 900
+                    }}
+                  >
+                    {sub.text}
+                  </motion.div>
+                );
+              })()}
+            </AnimatePresence>
           </div>
+        )}
+        <div className="absolute bottom-4 flex items-center gap-4 bg-black/60 p-2 rounded-2xl border border-white/10">
+          <button onClick={togglePlay}>{isPlaying ? <Pause/> : <Play/>}</button>
+          <span className="text-[10px] font-black">{fmt(currentTime)}/{fmt(duration)}</span>
         </div>
       </div>
 
-      {/* ── INSPECTOR SHEET ── */}
+      <div className="flex-1 bg-[#050510] flex flex-col overflow-hidden">
+        <div className="flex items-center gap-2 p-2 px-4 border-b border-white/5">
+           <button onClick={runTranscription} className="px-3 py-1 bg-white/5 rounded-lg text-[9px] font-black uppercase">Transcription</button>
+           {/* ... etc ... */}
+        </div>
+        
+        <div className="flex-1 overflow-auto p-4 space-y-4">
+           {/* Timeline placeholder */}
+           <div ref={timelineRef} className="space-y-4 relative">
+              {/* Subs track */}
+              <div className="h-12 bg-white/5 rounded-xl relative flex items-center px-14">
+                {subtitleClips.map(c => (
+                  <div key={c.id} onClick={() => { setSelectedClipId(c.id); setShowSheet(true); setCurrentTime(c.startTime); if(videoRef.current)videoRef.current.currentTime=c.startTime; }}
+                    className={`absolute h-8 rounded-lg bg-amber-500/20 border border-amber-500/40 flex items-center px-2 text-[8px] font-black uppercase transition-all ${selectedClipId === c.id ? 'ring-2 ring-amber-500' : ''}`}
+                    style={{ left: `${(c.startTime/duration)*100}%`, width: `${((c.endTime-c.startTime)/duration)*100}%` }}>{c.text}</div>
+                ))}
+              </div>
+              {/* B-Roll track */}
+              <div className="h-16 bg-white/10 rounded-xl relative flex items-center px-14 cursor-crosshair group"
+                onClick={e => { const rect=e.currentTarget.getBoundingClientRect(); handleAddBrollManual(((e.clientX-rect.left)/rect.width)*duration); }}>
+                <div className="absolute inset-0 flex justify-between px-4 items-center opacity-10 pointer-events-none">
+                  {[...Array(10)].map((_,i)=><Plus key={i} size={14}/>)}
+                </div>
+                {brollClips.map(c => (
+                  <div key={c.id} onClick={e => { e.stopPropagation(); setSelectedClipId(c.id); setShowSheet(true); }}
+                    className={`absolute h-12 rounded-xl flex items-center justify-center overflow-hidden border ${c.url ? 'bg-blue-500/40 border-blue-400' : 'bg-white/5 border-dashed border-white/20'} ${selectedClipId === c.id ? 'ring-2 ring-blue-500' : ''}`}
+                    style={{ left: `${(c.startTime/duration)*100}%`, width: `${((c.endTime-c.startTime)/duration)*100}%` }}>
+                      {c.url ? <video src={c.url} className="w-full h-full object-cover opacity-50"/> : <Plus size={16}/>}
+                  </div>
+                ))}
+              </div>
+           </div>
+        </div>
+      </div>
+
       <AnimatePresence>
         {showSheet && (selBR || selSub) && (
-          <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
-            transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="absolute bottom-0 left-0 right-0 z-50 bg-[#0f0f1e]/95 backdrop-blur-xl border-t border-white/10 rounded-t-[2.5rem] shadow-[0_-20px_40px_rgba(0,0,0,0.5)]"
-            style={{ height: '52dvh' }}>
-            <div className="flex items-center justify-between px-6 pt-6 pb-2">
-              <div className="absolute top-3 left-1/2 -track-x-1/2 w-12 h-1.5 rounded-full bg-white/10" />
-              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 mt-1">
-                {selBR ? 'B-Roll Clip' : 'Subtitle'}
-              </span>
-              <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setShowSheet(false)} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:scale-95 transition-all">
-                  <X size={14} className="text-white/60" />
-                </button>
+          <motion.div initial={{y:'100%'}} animate={{y:0}} exit={{y:'100%'}} className="absolute bottom-0 inset-x-0 h-[50dvh] bg-[#101020] border-t border-white/10 z-50 rounded-t-3xl p-6 space-y-6">
+            <div className="flex justify-between items-center">
+              <div className="text-[10px] font-black uppercase text-purple-400">{selBR ? 'B-Roll Clip' : 'Subtitle'}</div>
+              <button onClick={()=>setShowSheet(false)}><X/></button>
+            </div>
+            {selSub && (
+              <div className="space-y-4">
+                <textarea value={selSub.text} onChange={e=>setSubtitleClips(p=>p.map(c=>c.id===selSub.id?{...c,text:e.target.value}:c))} className="w-full bg-white/5 p-4 rounded-2xl outline-none"/>
+                <div className="flex gap-2">
+                  <input type="range" min="10" max="80" value={subtitleSize} onChange={e=>setSubtitleSize(Number(e.target.value))} className="flex-1"/>
+                  <span className="text-[10px] font-black">{subtitleSize}px</span>
+                </div>
               </div>
-            </div>
-            <div className="overflow-y-auto px-6 pb-8 pt-2 space-y-5 custom-scrollbar" style={{ height: 'calc(100% - 70px)' }}>
-              {selSub && (
-                <>
-                  <textarea value={selSub.text} rows={2}
-                    onChange={e => setSubtitleClips(p => p.map(c => c.id === selSub.id ? { ...c, text: e.target.value } : c))}
-                    className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none resize-none" />
-                  <div className="flex gap-2">
-                    {(['minimal', 'pop', 'bold'] as const).map(s => (
-                      <button key={s} onClick={() => setSubtitleClips(p => p.map(c => c.id === selSub.id ? { ...c, style: s } : c))}
-                        className={`flex-1 py-2 rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all ${selSub.style === s ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/30'}`}>
-                        {s}
-                      </button>
-                    ))}
-                  </div>
-
-                  <div className="space-y-2 pt-2">
-                    <div className="flex justify-between text-[8px] font-black uppercase text-white/20 px-1">
-                      <span>Size</span>
-                      <span>{subtitleSize}px</span>
-                    </div>
-                    <input 
-                      type="range" min="12" max="100" value={subtitleSize} 
-                      onChange={(e) => setSubtitleSize(Number(e.target.value))}
-                      className="w-full accent-purple-500 bg-white/5 rounded-full h-1"
-                    />
-                  </div>
-
-                  <button 
-                    onClick={() => setIsSingleWordMode(!isSingleWordMode)}
-                    className={`w-full py-2.5 rounded-xl text-[8px] font-black uppercase flex items-center justify-center gap-2 transition-all ${isSingleWordMode ? 'bg-purple-600/20 text-purple-400 border border-purple-500/30' : 'bg-white/5 text-white/30 border border-transparent'}`}
-                  >
-                    {isSingleWordMode ? '🔥 Mode: Single Word' : '📝 Mode: Phrase'}
-                  </button>
-                  {selBR && (
-                     <button
-                       onClick={() => openBRollHunterForClip(selBR.phraseId || selBR.id, selBR.prompt)}
-                       className="w-full py-2.5 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[8px] font-black uppercase flex items-center justify-center gap-2 transition-all active:scale-95"
-                     >
-                       <RefreshCw size={10} /> Change Visual
-                     </button>
-                  )}
-                  <button onClick={() => { 
-                    if (selSub) setSubtitleClips(p => p.filter(c => c.id !== selSub.id));
-                    if (selBR) setBrollClips(p => p.filter(c => c.id !== selBR.id));
-                    setSelectedClipId(null); 
-                    setShowSheet(false); 
-                  }}
-                    className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
-                    <Trash2 size={13} /> Delete
-                  </button>
-                </>
-              )}
-              {selBR && (
-                <>
-                  <div className="text-[9px] font-black text-white/30 uppercase tracking-widest">{selBR.label}</div>
-                  <button onClick={() => { setBrollClips(p => p.filter(c => c.id !== selBR.id)); setSelectedClipId(null); setShowSheet(false); }}
-                    className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
-                    <Trash2 size={13} /> Delete Clip
-                  </button>
-                </>
-              )}
-            </div>
+            )}
+            {selBR && (
+               <button onClick={()=>openBRollHunterForClip(selBR.id, '')} className="w-full py-4 bg-blue-500 rounded-2xl font-black uppercase text-[12px]">Change Footage</button>
+            )}
+            <button onClick={()=>{ if(selBR)setBrollClips(p=>p.filter(c=>c.id!==selBR.id)); if(selSub)setSubtitleClips(p=>p.filter(c=>c.id!==selSub.id)); setShowSheet(false); }} className="w-full py-4 bg-red-500/20 text-red-500 rounded-2xl font-black uppercase text-[12px]">Delete</button>
           </motion.div>
         )}
       </AnimatePresence>
 
-
-
-
-
-      {/* ── PHRASE PICKER MODAL ── */}
-      <AnimatePresence>
-        {phrasePickerOpen && (
-          <motion.div
-            initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[70] bg-black/90 backdrop-blur-md flex flex-col"
-          >
-            <div className="flex items-center justify-between px-5 pt-6 pb-4 border-b border-white/5">
-              <div>
-                <h3 className="text-[12px] font-black uppercase tracking-widest text-white">Select Phrase</h3>
-                <p className="text-[9px] text-white/30 mt-0.5">Tap a line to use as the B-Roll moment</p>
-              </div>
-              <button onClick={() => { setPhrasePickerOpen(false); setEditingPhraseId(null); }}
-                className="p-2.5 rounded-2xl bg-white/5 border border-white/10 active:scale-95">
-                <X size={15} className="text-white/60" />
-              </button>
-            </div>
-
-            <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
-              {transcript.map((word, i) => (
-                <button key={i} onClick={() => handleSwapPhrase(word)}
-                  className="w-full text-left p-4 rounded-2xl bg-white/[0.04] border border-white/8 hover:bg-purple-500/10 hover:border-purple-500/20 active:scale-98 transition-all group">
-                  <div className="flex items-start gap-4">
-                    <span className="text-[10px] font-black text-white/30 tabular-nums pt-0.5 flex-shrink-0">{fmt(word.start)}</span>
-                    <span className="text-[13px] text-white/80 leading-snug group-hover:text-white transition-colors">{word.text}</span>
-                  </div>
-                </button>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
-
-      {/* ── B-ROLL AI MODAL ── */}
-      <BRollModal
-        isOpen={brollModalOpen}
-        onClose={() => {
-          setBrollModalOpen(false);
-          setActiveBrollPhraseId(null);
-          setStage('editing');
-        }}
-        onSelect={handleBRollSelect}
-        segmentText={activeBrollPrompt}
-        projectId={projectId}
-        preFetchedResults={activeBrollPhraseId ? preFetchedBrolls[activeBrollPhraseId] : undefined}
-      />
-
+      <BRollModal isOpen={brollModalOpen} onClose={()=>setBrollModalOpen(false)} onSelect={handleBRollSelect} segmentText={activeBrollPrompt} />
     </div>
   );
 });
 
-// ── Track Row ─────────────────────────────────────────────────────────────
-
-const TrackRow = React.memo(({ label, color, children, onClick }: { label: string; color: string; children?: React.ReactNode; onClick?: () => void }) => (
-  <div className="flex border-b border-white/[0.04]" style={{ height: 48 }} onClick={onClick}>
-    <div className="w-14 flex-shrink-0 flex items-center justify-center border-r border-white/5 bg-black/40">
-      <span className={`text-[11px] font-black uppercase ${color}`}>{label}</span>
-    </div>
-    <div className="flex-1 relative">{children}</div>
-  </div>
-));
-
-// ── B-Roll Timeline Clip ──────────────────────────────────────────────────
-
-const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart, onOpenHunter }: {
-  clip: BRollClip; duration: number; isSelected: boolean;
-  onSelect: () => void;
-  onDragStart: (e: React.MouseEvent | React.TouchEvent, h: 'move' | 'start' | 'end') => void;
-  onOpenHunter: () => void;
-}) => {
-  const left = `${(clip.startTime / duration) * 100}%`;
-  const width = `${((clip.endTime - clip.startTime) / duration) * 100}%`;
-  return (
-    <div
-      className={`absolute inset-y-1.5 rounded-lg border transition-all ${
-        clip.url ? 'bg-blue-500/20 border-blue-400/40 text-blue-300' : 'bg-white/5 border-dashed border-white/20 text-white/30'
-      } ${isSelected ? 'ring-2 ring-white/40' : ''} flex items-center cursor-pointer touch-none`}
-      style={{ left, width, minWidth: 28 }}
-      onClick={(e) => {
-        e.stopPropagation();
-        onSelect();
-      }}
-      onMouseDown={e => onDragStart(e, 'move')}
-      onTouchStart={e => onDragStart(e, 'move')}>
-      <div className="absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center z-10"
-        onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'start'); }}
-        onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'start'); }}>
-        <div className="w-0.5 h-4 bg-white/40 rounded-full" />
-      </div>
-      <div className="flex-1 flex items-center gap-2 px-3 select-none overflow-hidden h-full">
-        {!clip.url && <Sparkles size={10} className="text-purple-400" />}
-        <span className="text-[9px] font-black truncate">{clip.label}</span>
-        {isSelected && !clip.url && (
-           <button 
-             onClick={(e) => { e.stopPropagation(); onOpenHunter(); }}
-             className="ml-auto w-5 h-5 rounded-md bg-purple-500 flex items-center justify-center"
-           >
-             <Plus size={10} className="text-white" />
-           </button>
-        )}
-      </div>
-      <div className="absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center z-10"
-        onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'end'); }}
-        onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'end'); }}>
-        <div className="w-0.5 h-4 bg-white/40 rounded-full" />
-      </div>
-    </div>
-  );
-});
-
-// ── Subtitle Clip ─────────────────────────────────────────────────────────
-
-const SubtitleTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart }: {
-  clip: SubtitleClip; duration: number; isSelected: boolean;
-  onSelect: () => void;
-  onDragStart: (e: React.MouseEvent | React.TouchEvent, h: 'move' | 'start' | 'end') => void;
-}) => {
-  const left = `${(clip.startTime / duration) * 100}%`;
-  const width = `${((clip.endTime - clip.startTime) / duration) * 100}%`;
-  return (
-    <div
-      className={`absolute inset-y-1 rounded-lg border bg-amber-500/15 border-amber-400/30 text-amber-300 ${isSelected ? 'ring-1 ring-white/30' : ''} flex items-center cursor-pointer touch-none`}
-      style={{ left, width, minWidth: 24 }}
-      onClick={onSelect}
-      onMouseDown={e => onDragStart(e, 'move')}
-      onTouchStart={e => onDragStart(e, 'move')}>
-      <div className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize flex items-center justify-center"
-        onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'start'); }}
-        onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'start'); }}>
-        <div className="w-0.5 h-3 bg-white/30 rounded-full" />
-      </div>
-      <span className="flex-1 text-[7px] font-black truncate px-3 select-none">{clip.text}</span>
-      <div className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize flex items-center justify-center"
-        onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'end'); }}
-        onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'end'); }}>
-        <div className="w-0.5 h-3 bg-white/30 rounded-full" />
-      </div>
-    </div>
-  );
-});
-
-// ── Helpers ───────────────────────────────────────────────────────────────
-
-const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
-
-// ── Advanced Audio Extraction ─────────────────────────────────────────────
-
-const extractAudioOnly = async (blob: Blob): Promise<Blob> => {
-  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  const arrayBuffer = await blob.arrayBuffer();
-  const audioBuffer = await audioCtx.decodeAudioData(arrayBuffer);
-  
-  // Create mono buffer for minimal size
-  const offlineCtx = new OfflineAudioContext(1, Math.round(audioBuffer.duration * 16000), 16000);
-  const source = offlineCtx.createBufferSource();
-  source.buffer = audioBuffer;
-  source.connect(offlineCtx.destination);
-  source.start();
-  
-  const renderedBuffer = await offlineCtx.startRendering();
-  return bufferToWav(renderedBuffer);
-};
-
-function bufferToWav(abuffer: AudioBuffer) {
-  const numOfChan = abuffer.numberOfChannels;
-  const length = abuffer.length * numOfChan * 2 + 44;
-  const buffer = new ArrayBuffer(length);
-  const view = new DataView(buffer);
-  const channels = [];
-  let i;
-  let sample;
-  let offset = 0;
-  let pos = 0;
-
-  function setUint16(data: number) { view.setUint16(pos, data, true); pos += 2; }
-  function setUint32(data: number) { view.setUint32(pos, data, true); pos += 4; }
-
-  // write WAVE header
-  setUint32(0x46464952); // "RIFF"
-  setUint32(length - 8); // file length - 8
-  setUint32(0x45564157); // "WAVE"
-
-  setUint32(0x20746d66); // "fmt " chunk
-  setUint32(16); // length = 16
-  setUint16(1); // PCM (uncompressed)
-  setUint16(numOfChan);
-  setUint32(abuffer.sampleRate);
-  setUint32(abuffer.sampleRate * 2 * numOfChan); // avg. bytes/sec
-  setUint16(numOfChan * 2); // block-align
-  setUint16(16); // 16-bit (hardcoded)
-
-  setUint32(0x61746164); // "data" - chunk
-  setUint32(length - pos - 4); // chunk length
-
-  // write interleaved data
-  for (i = 0; i < abuffer.numberOfChannels; i++)
-    channels.push(abuffer.getChannelData(i));
-
-  while (pos < length) {
-    for (i = 0; i < numOfChan; i++) {
-      // interleave channels
-      sample = Math.max(-1, Math.min(1, channels[i][offset])); // clamp
-      sample = (sample < 0 ? sample * 0x8000 : sample * 0x7FFF) | 0; // scale to 16-bit signed int
-      view.setInt16(pos, sample, true); // write 16-bit sample
-      pos += 2;
-    }
-    offset++; // next source sample
-  }
-
-  return new Blob([buffer], { type: "audio/wav" });
-}
+VideoEditor.displayName = 'VideoEditor';
