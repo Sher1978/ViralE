@@ -255,11 +255,11 @@ export default function LandingPage() {
   };
 
   const itemVariants = {
-    hidden: { y: 20, opacity: 0 },
+    hidden: { y: 40, opacity: 0 },
     visible: { 
       y: 0, 
       opacity: 1,
-      transition: { duration: 0.8, ease: [0.16, 1, 0.3, 1] as any }
+      transition: { duration: 1, ease: [0.16, 1, 0.3, 1] as any }
     }
   };
 
@@ -546,16 +546,23 @@ export default function LandingPage() {
         </motion.section>
 
         {/* KILLER FEATURES GRID */}
-        <section className="space-y-16">
-          <div className="text-center space-y-6">
+        <motion.section 
+          initial="hidden"
+          whileInView="visible"
+          viewport={{ once: true, margin: "-100px" }}
+          variants={containerVariants}
+          className="space-y-16"
+        >
+          <motion.div variants={itemVariants} className="text-center space-y-6">
             <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter italic">{t('stackTitle').split(' ')[0]} <span className="text-cyan-400 underline decoration-cyan-500/30">{t('stackTitle').split(' ').slice(1).join(' ')}</span></h2>
             <p className="text-white/30 uppercase text-[11px] font-black tracking-[0.6em]">{t('stackSub')}</p>
-          </div>
+          </motion.div>
 
           <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
             
             {/* Feature 1: AI Consultant */}
             <motion.div 
+              variants={itemVariants}
               whileHover={{ y: -12 }}
               className="group glass-card rounded-[3rem] p-10 space-y-12 border-white/5 hover:border-cyan-500/30 transition-all overflow-hidden relative shadow-2xl"
             >
@@ -574,6 +581,7 @@ export default function LandingPage() {
 
             {/* Feature 2: Teleprompter */}
             <motion.div 
+              variants={itemVariants}
               whileHover={{ y: -12 }}
               className="group glass-card rounded-[3rem] p-10 space-y-12 border-white/5 hover:border-purple-500/30 transition-all relative overflow-hidden shadow-2xl"
             >
@@ -592,6 +600,7 @@ export default function LandingPage() {
 
             {/* Feature 3: Factory */}
             <motion.div 
+              variants={itemVariants}
               whileHover={{ y: -12 }}
               className="group glass-card rounded-[3rem] p-10 space-y-12 border-white/5 hover:border-white/20 transition-all relative overflow-hidden shadow-2xl"
             >
@@ -609,7 +618,7 @@ export default function LandingPage() {
             </motion.div>
 
           </div>
-        </section>
+        </motion.section>
 
         {/* BOTTOM CTA */}
         <motion.section 
