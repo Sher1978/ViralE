@@ -39,6 +39,7 @@ export interface ProductionManifest {
   versionId: string;
   segments: SceneSegment[];
   videoUrl?: string;
+  transcript?: any[]; // Persistent subtitles/timing across studio stages
   totalDuration: number;
   config: {
     resolution: string;

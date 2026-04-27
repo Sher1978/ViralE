@@ -459,12 +459,13 @@ export default function StudioPage() {
                 setShowFaceless(false);
                 setActiveTab('concept');
               }}
-              onComplete={(videoBlob) => {
+              onComplete={(videoBlob, transcript) => {
                 const url = URL.createObjectURL(videoBlob);
-                // Inject as A-Roll into manifest
+                // Inject as A-Roll into manifest and save transcript
                 setManifest(prev => prev ? {
                   ...prev,
                   videoUrl: url,
+                  transcript: transcript, // Save the high-level transcript generated in Faceless
                   segments: prev.segments?.map((s, i) =>
                     i === 0 ? { ...s, assetUrl: url, type: 'user_recording' } : s
                   ) || prev.segments,

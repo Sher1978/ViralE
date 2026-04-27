@@ -275,7 +275,16 @@ export const VideoEditor = React.memo(({
     let words: TranscriptWord[] = [];
     let transcriptionOk = false;
 
-    if (aRollUrl || rawFile) {
+    // 🔥 Optimization: If we already have a transcript (from Faceless Studio), use it!
+    if (manifest?.transcript && Array.isArray(manifest.transcript)) {
+      console.log('[Editor] Using pre-existing transcript from manifest');
+      words = manifest.transcript.map((t: any) => ({
+        text: t.text,
+        start: t.start,
+        end: t.end
+      }));
+      transcriptionOk = true;
+    } else if (aRollUrl || rawFile) {
       setStageMessage('Извлечение аудио...');
       try {
         const formData = new FormData();
