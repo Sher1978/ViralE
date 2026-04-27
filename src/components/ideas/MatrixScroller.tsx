@@ -3,8 +3,9 @@
 import { Idea } from '@/components/ideas/IdeaCard';
 import IdeaCard from '@/components/ideas/IdeaCard';
 import { motion } from 'framer-motion';
-import { ChevronRight, RefreshCw } from 'lucide-react';
+import { ChevronRight, RefreshCw, Loader2 } from 'lucide-react';
 import { useLocale } from 'next-intl';
+import { useState } from 'react';
 
 interface MatrixScrollerProps {
   title: string;
@@ -12,13 +13,24 @@ interface MatrixScrollerProps {
   ideas: Idea[];
   onToScript: (topic: string) => void;
   onToggleArchive: (id: string, status: string) => void;
-  onRefresh?: (force?: boolean) => void;
+  onRefresh?: (force?: boolean) => Promise<void>;
 }
 
 export default function MatrixScroller({ title, subtitle, ideas, onToScript, onToggleArchive, onRefresh }: MatrixScrollerProps) {
   const locale = useLocale();
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   const isEmpty = !ideas || ideas.length === 0;
+
+  const handleRefresh = async () => {
+    if (isRefreshing || !onRefresh) return;
+    try {
+      setIsRefreshing(true);
+      await onRefresh(true);
+    } finally {
+      setIsRefreshing(false);
+    }
+  };
 
   return (
     <div className="space-y-4 py-2 overflow-visible">
@@ -37,12 +49,21 @@ export default function MatrixScroller({ title, subtitle, ideas, onToScript, onT
           <button 
             onClick={(e) => {
               e.stopPropagation();
-              onRefresh?.(true);
+              handleRefresh();
             }}
-            className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-white/20 hover:text-purple-400 hover:bg-purple-500/10 transition-all active:rotate-180 duration-500"
+            disabled={isRefreshing}
+            className={`p-2.5 rounded-xl border transition-all duration-300 flex items-center justify-center min-w-[32px] min-h-[32px] ${
+              isRefreshing 
+                ? 'bg-purple-500/20 border-purple-500/40 text-purple-400' 
+                : 'bg-white/5 border-white/10 text-white/40 hover:text-purple-400 hover:bg-purple-500/10 active:scale-90'
+            }`}
             title="Force Regenerate"
           >
-            <RefreshCw size={12} />
+            {isRefreshing ? (
+              <Loader2 size={14} className="animate-spin" />
+            ) : (
+              <RefreshCw size={14} className="transition-transform duration-500" />
+            )}
           </button>
           {!isEmpty && (
             <button className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-white/40 transition-colors">

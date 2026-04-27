@@ -42,8 +42,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       else setLoadingArchived(true);
 
       let url = `/api/ideas?status=${status}`;
-      if (category) url += `&category=${encodeURIComponent(category)}`;
-      if (force) url += `&force=true`;
+      if (category) {
+        url += `&category=${encodeURIComponent(category)}`;
+        if (force) {
+          setIdeas(prev => prev.filter(i => (i as any).category !== category));
+          url += `&force=true`;
+        }
+      }
       
       const res = await fetch(url);
       if (res.ok) {
