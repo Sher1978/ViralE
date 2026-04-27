@@ -206,22 +206,24 @@ export default function LandingPage() {
   if (isRedirecting) {
     return (
       <div className="min-h-screen bg-[#020408] flex flex-col items-center justify-center relative overflow-hidden">
-        {/* Glow effect */}
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-64 h-64 bg-cyan-500/20 blur-[100px] rounded-full pointer-events-none" />
-        
+        {/* Fullscreen zooming image */}
         <motion.div 
-          animate={{ opacity: [0.6, 1, 0.6], scale: [0.98, 1, 0.98], filter: ["brightness(1)", "brightness(1.2)", "brightness(1)"] }}
-          transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-          className="relative w-64 h-96 sm:w-80 sm:h-[30rem] rounded-3xl overflow-hidden shadow-[0_0_80px_rgba(34,211,238,0.15)] border border-white/10 z-10"
+          initial={{ scale: 1, opacity: 0 }}
+          animate={{ scale: 1.15, opacity: 0.7 }}
+          transition={{ duration: 6, ease: "easeOut" }}
+          className="absolute inset-0 z-0 origin-center"
         >
           <img src="/cyberpunk_splash.png" alt="Viral Engine" className="w-full h-full object-cover" />
-          <div className="absolute inset-0 bg-gradient-to-t from-[#020408] via-transparent to-transparent opacity-80" />
         </motion.div>
-        
+
+        {/* Gradients to blend content with edges and darken for text readability */}
+        <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#020408] via-transparent to-[#020408]/30" />
+        <div className="absolute inset-0 z-10 bg-[#020408]/40" />
+
         <motion.div
            animate={{ opacity: [0.3, 1, 0.3] }}
-           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut", delay: 0.5 }}
-           className="mt-8 text-cyan-400 font-black tracking-[0.5em] uppercase text-[10px] z-10"
+           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
+           className="absolute bottom-16 text-cyan-400 font-black tracking-[0.5em] uppercase text-[10px] z-20"
         >
            LOADING KERNEL...
         </motion.div>
