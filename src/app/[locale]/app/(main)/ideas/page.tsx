@@ -212,14 +212,6 @@ export default function IdeasPage() {
           <>
             {(globalLoading || forcedLoading) && ideas.length === 0 ? (
                <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
-                  <div className="absolute inset-0 z-0">
-                    <img 
-                      src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" 
-                      className="w-full h-full object-cover opacity-80 animate-ken-burns scale-110" 
-                      alt="Splash Background" 
-                    />
-                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
-                  </div>
                   <div className="relative z-10 space-y-6 mb-12 px-6">
                     <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 drop-shadow-lg">Viral Engine Digital Core</p>
                     <h2 className="text-4xl sm:text-6xl font-black italic uppercase text-white tracking-tighter leading-[0.85] max-w-2xl mx-auto drop-shadow-2xl">
@@ -273,10 +265,7 @@ export default function IdeasPage() {
           </div>
         )}
       </div>
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <img src="/cyberpunk_alley_center_crop_vertical_1777280456497.png" className="w-full h-full object-cover opacity-10 animate-ken-burns scale-125 saturate-0" alt="Page Background" />
-        <div className="absolute inset-0 bg-[#050508]/80 backdrop-blur-[100px]" />
-      </div>
+      <div className="fixed inset-0 z-0 pointer-events-none bg-black" />
     </div>
   );
 }
