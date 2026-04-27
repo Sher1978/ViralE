@@ -323,7 +323,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
       // @ts-ignore
       const audioStream = audioRef.current?.captureStream?.() || audioRef.current?.mozCaptureStream?.();
       if (audioStream) {
-        audioStream.getAudioTracks().forEach(t => stream.addTrack(t));
+        audioStream.getAudioTracks().forEach((t: MediaStreamTrack) => stream.addTrack(t));
       }
     } catch (e) {
       console.warn('Audio capture failed, video will be silent:', e);
@@ -335,7 +335,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
       videoBitsPerSecond: 5_000_000 
     });
 
-    mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
+    mr.ondataavailable = (e: BlobEvent) => { if (e.data.size > 0) chunks.push(e.data); };
     
     await new Promise<void>(res => {
       mr.onstop = () => res();
