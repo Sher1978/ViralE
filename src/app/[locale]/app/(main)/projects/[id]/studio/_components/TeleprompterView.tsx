@@ -34,6 +34,7 @@ interface TeleprompterViewProps {
   onSpeedChange: (speed: number) => void;
   isRecordingVideo?: boolean;
   onFinish?: () => void;
+  recordingTime?: number;
   t: (key: string, data?: any) => string;
 }
 
@@ -63,6 +64,7 @@ export const TeleprompterView = React.memo(({
   onSpeedChange,
   scriptColor,
   onColorChange,
+  recordingTime = 0,
   t,
 }: TeleprompterViewProps) => {
   const router = useRouter();

@@ -80,7 +80,13 @@ export async function POST(req: Request) {
     if (!response.ok) {
       const err = await response.text();
       console.error('ElevenLabs TTS error:', err);
-      return NextResponse.json({ error: 'TTS generation failed' }, { status: 500 });
+      let errorMessage = 'TTS generation failed';
+      try {
+          const errData = JSON.parse(err);
+          if (errData.detail?.status === 'quota_exceeded') errorMessage = 'ElevenLabs quota exceeded: На счету недостаточно минут.';
+          else if (errData.detail?.message) errorMessage = errData.detail.message;
+      } catch { }
+      return NextResponse.json({ error: errorMessage }, { status: response.status });
     }
 
     const audioBuffer = await response.arrayBuffer();
