@@ -440,6 +440,18 @@ export const VideoEditor = React.memo(({
     await runTranscription();
   };
 
+  const handleSwapPhrase = (word: TranscriptWord) => {
+    if (!editingPhraseId) return;
+    setPhrases(prev => prev.map(p => p.id === editingPhraseId ? {
+      ...p,
+      text: word.text,
+      start: word.start,
+      end: word.end
+    } : p));
+    setPhrasePickerOpen(false);
+    setEditingPhraseId(null);
+  };
+
   // ── Helpers ─────────────────────────────────────────────────────────────
 
   const togglePlay = () => {
@@ -913,8 +925,8 @@ export const VideoEditor = React.memo(({
             </div>
 
             <div className="flex-1 overflow-y-auto px-5 py-4 space-y-2.5">
-              {allTranscript.map((word, i) => (
-                <button key={i} onClick={() => swapPhrase(word)}
+              {transcript.map((word, i) => (
+                <button key={i} onClick={() => handleSwapPhrase(word)}
                   className="w-full text-left p-4 rounded-2xl bg-white/[0.04] border border-white/8 hover:bg-purple-500/10 hover:border-purple-500/20 active:scale-98 transition-all group">
                   <div className="flex items-start gap-4">
                     <span className="text-[10px] font-black text-white/30 tabular-nums pt-0.5 flex-shrink-0">{fmt(word.start)}</span>
