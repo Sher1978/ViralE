@@ -32,6 +32,7 @@ export async function POST(req: Request) {
     }
 
     // Save answers to profile
+    const { error } = await authorizedSupabase
       .from('profiles')
       .update({
         dna_answers: answers,

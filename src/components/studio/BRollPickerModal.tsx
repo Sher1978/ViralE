@@ -197,7 +197,6 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
             </button>
         </div>
       </div>
-    </div>
   );
 };
 

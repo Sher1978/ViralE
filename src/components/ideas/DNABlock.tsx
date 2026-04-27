@@ -247,54 +247,54 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
                        <h3 className="text-4xl font-black text-white leading-none tracking-tighter uppercase italic">{questions[activeIndex].label}</h3>
                     </div>
 
-                    <div className="relative group">
-                       <textarea
-                          autoFocus
-                          value={answers[activeQuestion]}
-                          onChange={(e) => setAnswers(prev => ({ ...prev, [activeQuestion]: e.target.value }))}
-                          placeholder={questions[activeIndex].placeholder}
-                          className="w-full bg-white/[0.03] border-2 border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500 transition-all min-h-[200px] resize-none shadow-2xl"
-                       />
-                       <div className="absolute right-6 bottom-6 flex items-center gap-3">
-                          <button className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
-                             <Mic className="w-5 h-5 text-purple-400" />
-                          </button>
-                       </div>
-                    </div>
-                 </motion.div>
-              </AnimatePresence>
-           </div>
+                     <div className="relative group">
+                        <textarea
+                           autoFocus
+                           value={answers[activeQuestion]}
+                           onChange={(e) => setAnswers(prev => ({ ...prev, [activeQuestion]: e.target.value }))}
+                           placeholder={questions[activeIndex].placeholder}
+                           className="w-full bg-white/[0.03] border-2 border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500 transition-all min-h-[160px] resize-none shadow-2xl"
+                        />
+                        <div className="absolute right-6 bottom-6 flex items-center gap-3">
+                           <button className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
+                              <Mic className="w-5 h-5 text-purple-400" />
+                           </button>
+                        </div>
+                     </div>
 
-           {/* Footer Controls */}
-           <div className="p-8 pb-16 border-t border-white/5 bg-black/80 flex items-center justify-between gap-6 z-[10010] relative">
-              <button
-                 disabled={activeIndex === 0}
-                 onClick={() => setActiveQuestion(questions[activeIndex - 1].id)}
-                 className="px-6 py-4 rounded-[1.25rem] border border-white/10 text-white/50 font-black uppercase text-[10px] tracking-widest disabled:opacity-20 hover:bg-white/5 transition-all"
-              >
-                 {locale === 'ru' ? 'Назад' : 'Back'}
-              </button>
+                     {/* Mobile-Friendly Controls (Inline) */}
+                     <div className="flex items-center gap-4 pt-4">
+                        <button
+                           disabled={activeIndex === 0}
+                           onClick={() => setActiveQuestion(questions[activeIndex - 1].id)}
+                           className="px-6 py-4 rounded-2xl border border-white/10 text-white/50 font-black uppercase text-[10px] tracking-widest disabled:opacity-10 hover:bg-white/5 transition-all"
+                        >
+                           {locale === 'ru' ? 'Назад' : 'Back'}
+                        </button>
 
-              {activeIndex < 6 ? (
-                 <button
-                    disabled={!answers[activeQuestion] || answers[activeQuestion].length < 2}
-                    onClick={() => setActiveQuestion(questions[activeIndex + 1].id)}
-                    className="flex-1 py-4 rounded-[1.25rem] bg-white text-black font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-3"
-                 >
-                    {locale === 'ru' ? 'След. вопрос' : 'Next Question'}
-                    <ChevronRight className="w-4 h-4" />
-                 </button>
-              ) : (
-                 <button
-                    disabled={saving || !isComplete}
-                    onClick={handleSave}
-                    className="flex-1 py-4 rounded-[1.25rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-3"
-                 >
-                    {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
-                    {locale === 'ru' ? 'Активировать Матрицу' : 'Activate Matrix'}
-                 </button>
-              )}
-           </div>
+                        {activeIndex < 6 ? (
+                           <button
+                              disabled={!answers[activeQuestion] || answers[activeQuestion].length < 2}
+                              onClick={() => setActiveQuestion(questions[activeIndex + 1].id)}
+                              className="flex-1 py-4 rounded-2xl bg-white text-black font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-3"
+                           >
+                              {locale === 'ru' ? 'След. вопрос' : 'Next Question'}
+                              <ChevronRight className="w-4 h-4" />
+                           </button>
+                        ) : (
+                           <button
+                              disabled={saving || !isComplete}
+                              onClick={handleSave}
+                              className="flex-1 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black uppercase text-[10px] tracking-widest shadow-2xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30 flex items-center justify-center gap-3"
+                           >
+                              {saving ? <Loader2 className="w-4 h-4 animate-spin" /> : <Sparkles className="w-4 h-4" />}
+                              {locale === 'ru' ? 'Активировать Матрицу' : 'Activate Matrix'}
+                           </button>
+                        )}
+                     </div>
+                  </motion.div>
+               </AnimatePresence>
+            </div>
         </motion.div>
       )}
     </AnimatePresence>

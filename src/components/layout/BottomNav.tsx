@@ -32,7 +32,10 @@ export function BottomNav() {
     }
   };
 
-  const hideNav = pathname.includes('/auth') || pathname.includes('/onboarding');
+  const hideNav = pathname.includes('/auth') || 
+                   pathname.includes('/onboarding') || 
+                   pathname.includes('/studio') || 
+                   pathname.includes('/dna');
 
   if (hideNav) return null;
 
