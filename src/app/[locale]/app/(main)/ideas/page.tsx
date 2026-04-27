@@ -55,10 +55,16 @@ export default function IdeasPage() {
   const [showDnaEditor, setShowDnaEditor] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   
+  const [forcedLoading, setForcedLoading] = useState(true);
+  
   useEffect(() => {
+    // Force splash for at least 4 seconds to show off the cinematic alley
+    const timer = setTimeout(() => setForcedLoading(false), 4000);
+    
     if (typeof window !== 'undefined' && localStorage.getItem('hideWelcomeIdeas') === 'true') {
       setShowWelcome(false);
     }
+    return () => clearTimeout(timer);
   }, []);
 
   const handleDismissWelcome = () => {
@@ -249,7 +255,7 @@ export default function IdeasPage() {
             </div>
           ) : (
             <>
-              {globalLoading && ideas.length === 0 ? (
+              {(globalLoading || forcedLoading) && ideas.length === 0 ? (
                 <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
                   {/* Cinematic Backdrop for Loading */}
                   <div className="absolute inset-0 z-0">
