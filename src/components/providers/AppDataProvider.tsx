@@ -14,6 +14,7 @@ interface AppDataContextType {
   loadingArchived: boolean;
   refreshIdeas: (status: 'new' | 'archived', category?: string, force?: boolean) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => void;
+  moveIdeaLocally: (ideaId: string, fromStatus: string, toStatus: string) => void;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -93,6 +94,28 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     setProfile(prev => prev ? { ...prev, ...updates } : null);
   };
 
+  const moveIdeaLocally = useCallback((ideaId: string, fromStatus: string, toStatus: string) => {
+    let ideaToMove: Idea | undefined;
+    
+    if (fromStatus === 'new') {
+      setIdeas(prev => {
+        ideaToMove = prev.find(i => i.id === ideaId);
+        return prev.filter(i => i.id !== ideaId);
+      });
+      if (ideaToMove) {
+        setArchivedIdeas(prev => [{...ideaToMove!, status: 'archived'}, ...prev]);
+      }
+    } else {
+      setArchivedIdeas(prev => {
+        ideaToMove = prev.find(i => i.id === ideaId);
+        return prev.filter(i => i.id !== ideaId);
+      });
+      if (ideaToMove) {
+        setIdeas(prev => [{...ideaToMove!, status: 'new'}, ...prev]);
+      }
+    }
+  }, []);
+
   return (
     <AppDataContext.Provider value={{
       profile,
@@ -102,7 +125,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       loadingIdeas,
       loadingArchived,
       refreshIdeas: fetchIdeas,
-      updateProfile: updateProfileState
+      updateProfile: updateProfileState,
+      moveIdeaLocally
     }}>
       {children}
     </AppDataContext.Provider>

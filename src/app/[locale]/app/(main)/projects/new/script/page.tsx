@@ -738,6 +738,26 @@ export default function ScriptLabPage() {
     <div className="space-y-6 animate-fade-in pb-40">
       <StatusStepper currentStep="script" />
 
+      {/* Explanation Block */}
+      <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 to-cyan-500/5 border border-white/10 flex flex-col gap-2 text-white/80 shadow-lg relative overflow-hidden group">
+        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03] pointer-events-none" />
+        <div className="flex items-start gap-3 relative z-10">
+          <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center border border-purple-500/30 shrink-0">
+            <Cpu className="w-4 h-4 text-purple-400" />
+          </div>
+          <div className="space-y-2">
+            <h3 className="text-xs sm:text-sm font-black uppercase tracking-widest text-white">
+              {locale === 'ru' ? 'Сборка по методу «Контент-Lego»' : 'Content-Lego Assembly Method'}
+            </h3>
+            <p className="text-[11px] sm:text-xs font-medium leading-relaxed text-white/60">
+              {locale === 'ru' 
+                ? 'Здесь представлены несколько стилей написания сценария на заданную тему. Однако они разбиты на составляющие блоки (Хук, Контекст, Мясо, Призыв). С помощью контент-Lego можно сопоставлять эти блоки из разных матриц, собирая как конструктор свой идеальный гибридный текст, а также редактировать любой из них. Когда всё будет готово, нажмите кнопку в самом низу, чтобы перейти на этап Студии.'
+                : 'Here are several styles of writing a script on a given topic. However, they are broken down into component blocks (Hook, Context, Meat, CTA). With Content-Lego, you can mix and match these blocks from different matrices, assembling your ideal hybrid text like a constructor, and edit any of them. When you are ready, click the button at the very bottom to proceed to the Studio stage.'}
+            </p>
+          </div>
+        </div>
+      </div>
+
       {error && (
         <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-[10px] font-black uppercase tracking-widest animate-shake">
           {error}

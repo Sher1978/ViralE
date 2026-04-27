@@ -7,7 +7,7 @@ import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
 import DNABlock from '@/components/ideas/DNABlock';
 import MatrixScroller from '@/components/ideas/MatrixScroller';
 import TopicInput from '@/components/ideas/TopicInput';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useAppData } from '@/components/providers/AppDataProvider';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
@@ -47,14 +47,7 @@ export default function IdeasPage() {
   const locale = useLocale();
   const router = useRouter();
 
-  const { 
-    ideas: allNewIdeas, 
-    archivedIdeas,
-    loadingIdeas, 
-    loadingArchived,
-    dnaComplete: isDnaComplete,
-    refreshIdeas 
-  } = useAppData();
+  const { ideas: allNewIdeas, archivedIdeas, refreshIdeas, loadingIdeas, updateProfile, moveIdeaLocally, dnaComplete: isDnaComplete, loadingArchived } = useAppData();
 
   const [activeTab, setActiveTab] = useState<'new' | 'archived'>('new');
   const [processingId, setProcessingId] = useState<string | null>(null);
@@ -122,10 +115,12 @@ export default function IdeasPage() {
     return () => observer.disconnect();
   }, [synthesizeNextCategory]);
 
-  const handleToScript = (content: string, category?: string) => {
-    let url = `/app/projects/new/script?topic=${encodeURIComponent(content)}`;
-    if (category === "Hooks") url = `/app/projects/new/script?hook=${encodeURIComponent(content)}`;
-    else if (category === "Roles") url = `/app/projects/new/script?role=${encodeURIComponent(content)}`;
+  const handleToScript = (content: string, rationale?: string) => {
+    let finalContent = content;
+    if (rationale && rationale.length > 5 && !rationale.includes('(')) {
+      finalContent = `${content}: ${rationale}`;
+    }
+    let url = `/app/projects/new/script?topic=${encodeURIComponent(finalContent)}`;
     router.push(url);
   };
 
@@ -133,15 +128,19 @@ export default function IdeasPage() {
     try {
       setProcessingId(ideaId);
       const newStatus = currentStatus === 'new' ? 'archived' : 'new';
+      
+      // Optimistic update
+      moveIdeaLocally(ideaId, currentStatus, newStatus);
+      
       const res = await fetch('/api/ideas', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ ideaId, status: newStatus }),
       });
 
-      if (res.ok) {
-        await refreshIdeas('new');
-        await refreshIdeas('archived');
+      if (!res.ok) {
+        // Revert on failure
+        moveIdeaLocally(ideaId, newStatus, currentStatus);
       }
     } finally {
       setProcessingId(null);

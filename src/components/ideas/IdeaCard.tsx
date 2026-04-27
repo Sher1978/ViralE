@@ -19,7 +19,7 @@ interface IdeaCardProps {
   locale: string;
   isProcessing: boolean;
   onToggleArchive: (id: string, status: string) => void;
-  onToScript: (topic: string) => void;
+  onToScript: (topic: string, rationale?: string) => void;
 }
 
 export default function IdeaCard({ 
@@ -120,7 +120,7 @@ export default function IdeaCard({
       {/* Invisible overlay for tap-to-script */}
       <div 
         className="absolute inset-0 cursor-pointer z-10 rounded-[2rem]" 
-        onClick={() => onToScript(idea.topic_title)}
+        onClick={() => onToScript(idea.topic_title, idea.rationale)}
       />
 
       {/* Content Header */}
@@ -144,7 +144,7 @@ export default function IdeaCard({
         <button
           onClick={(e) => {
             e.stopPropagation();
-            onToScript(idea.topic_title);
+            onToScript(idea.topic_title, idea.rationale);
           }}
           className="group flex items-center gap-4 pl-6 pr-1.5 py-1.5 rounded-[1.5rem] bg-white text-black hover:bg-purple-600 hover:text-white transition-all font-black text-[9px] uppercase tracking-[0.2em] shadow-[0_10px_30px_-10px_rgba(255,255,255,0.3)] active:scale-95"
         >
