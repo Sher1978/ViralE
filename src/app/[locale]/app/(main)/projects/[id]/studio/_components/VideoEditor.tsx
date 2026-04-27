@@ -262,6 +262,8 @@ export const VideoEditor = React.memo(({
     return chunks;
   };
 
+  const runTranscriptionAndPhrases = async () => {
+    setStage('transcribing');
     setStageMessage('Анализ аудио...');
     setTranscriptionError(null);
     await delay(400);
