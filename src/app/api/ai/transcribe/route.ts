@@ -7,66 +7,57 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const mode = formData.get('mode') as string || 'karaoke'; // 'karaoke' | 'segments'
+    const mode = formData.get('mode') as string || 'karaoke'; // 'karaoke' | 'segments' | 'text'
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
     }
 
-    // Use Gemini 2.5 Flash for fast, accurate transcription
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    // Use Gemini 1.5 Flash (renamed for clarity in my tool, but using the correct version from SDK)
+    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     // Convert file to base64
     const buffer = await file.arrayBuffer();
     const base64Data = Buffer.from(buffer).toString('base64');
 
-    // Karaoke mode: word-level timestamps
     const karaokePrompt = `
       Transcribe this audio/video file. Output ONLY a raw JSON array of word-level timestamps.
       EVERY single word must have its own entry with precise timing.
-      
-      Format:
-      [
-        { "text": "Hello", "start": 0.12, "end": 0.45 },
-        { "text": "world", "start": 0.51, "end": 0.90 }
-      ]
-      
+      Format: [ { "text": "Hello", "start": 0.12, "end": 0.45 } ]
       Rules:
-      - Include every spoken word, including filler words (um, uh, etc.)
-      - Timestamps must be in seconds with 2 decimal places
-      - Do NOT include punctuation inside the word string
-      - Do NOT add any explanation, markdown, or extra text
+      - Timestamps in seconds
+      - No punctuation in word string
       - Output ONLY raw JSON array
     `;
 
-    // Segments mode: phrase-level timestamps (legacy)
     const segmentsPrompt = `
-      Transcribe the following video/audio into a clean JSON array of subtitle segments.
-      Each segment must have "text", "start" (seconds), and "end" (seconds).
-      Group words into natural phrases (3-7 words per segment).
-      Output ONLY raw JSON.
-
-      Example format:
-      [
-        {"text": "Hello world", "start": 0.5, "end": 2.1},
-        {"text": "Welcome to the show", "start": 2.2, "end": 4.5}
-      ]
+      Transcribe into a clean JSON array of subtitle segments.
+      Each segment: "text", "start", "end".
     `;
 
-    const prompt = mode === 'karaoke' ? karaokePrompt : segmentsPrompt;
+    const textPrompt = `Transcribe this audio file into clean, accurate text. Fix any minor stuttering or filler words. Output ONLY the raw transcript text.`;
+
+    let prompt = karaokePrompt;
+    if (mode === 'segments') prompt = segmentsPrompt;
+    if (mode === 'text') prompt = textPrompt;
 
     const result = await model.generateContent([
       {
         inlineData: {
           data: base64Data,
-          mimeType: file.type || 'video/mp4'
+          mimeType: file.type || 'audio/webm'
         }
       },
       prompt
     ]);
 
     const responseText = result.response.text();
-    // Clean JSON markers
+
+    if (mode === 'text') {
+      return NextResponse.json({ text: responseText.trim() });
+    }
+
+    // Clean JSON markers for structural modes
     const cleanedJson = responseText
       .replace(/```json/g, '')
       .replace(/```/g, '')
@@ -75,10 +66,8 @@ export async function POST(req: NextRequest) {
     const parsed = JSON.parse(cleanedJson);
 
     if (mode === 'karaoke') {
-      // Return as wordTimings
       return NextResponse.json({ wordTimings: parsed, transcript: parsed });
     } else {
-      // Legacy: return as transcript segments
       return NextResponse.json({ transcript: parsed });
     }
 

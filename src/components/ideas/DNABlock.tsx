@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { Dna, CheckCircle2, Circle, Mic, Sparkles, ChevronRight, ChevronDown, Info, X, Loader2 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
@@ -38,6 +38,9 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
 
   const [activeQuestion, setActiveQuestion] = useState<keyof DnaAnswers>('sphere');
   const [saving, setSaving] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   const questions: { id: keyof DnaAnswers, label: string, placeholder: string, hint: string }[] = [
     { 
@@ -105,6 +108,61 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
 
   const completedCount = Object.values(answers).filter(v => v && v.length > 2).length;
   const isComplete = completedCount >= 7;
+
+  // 🎙️ VOICE PROTOCOL LOGIC
+  const startRecording = async () => {
+     try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new MediaRecorder(stream);
+        mediaRecorderRef.current = recorder;
+        audioChunksRef.current = [];
+
+        recorder.ondataavailable = (e) => {
+           if (e.data.size > 0) audioChunksRef.current.push(e.data);
+        };
+
+        recorder.onstop = async () => {
+           const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+           await handleVoiceTranscription(audioBlob);
+           stream.getTracks().forEach(track => track.stop());
+        };
+
+        recorder.start();
+        setIsRecording(true);
+     } catch (err) {
+        console.error('Failed to start recording:', err);
+     }
+  };
+
+  const stopRecording = () => {
+     if (mediaRecorderRef.current && isRecording) {
+        mediaRecorderRef.current.stop();
+        setIsRecording(false);
+     }
+  };
+
+  const handleVoiceTranscription = async (blob: Blob) => {
+     try {
+        const formData = new FormData();
+        formData.append('file', blob, 'audio.webm');
+        formData.append('mode', 'text');
+
+        const res = await fetch('/api/ai/transcribe', {
+           method: 'POST',
+           body: formData
+        });
+
+        const data = await res.json();
+        if (data.text) {
+           setAnswers(prev => ({
+              ...prev,
+              [activeQuestion]: (prev[activeQuestion] + ' ' + data.text).trim()
+           }));
+        }
+     } catch (err) {
+        console.error('Transcription failed:', err);
+     }
+  };
 
   const handleSave = async () => {
     if (saving) return;
@@ -247,7 +305,7 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
                        <h3 className="text-4xl font-black text-white leading-none tracking-tighter uppercase italic">{questions[activeIndex].label}</h3>
                     </div>
 
-                     <div className="relative group">
+                      <div className="relative group">
                         <textarea
                            autoFocus
                            value={answers[activeQuestion]}
@@ -256,8 +314,24 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
                            className="w-full bg-white/[0.03] border-2 border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500 transition-all min-h-[160px] resize-none shadow-2xl"
                         />
                         <div className="absolute right-6 bottom-6 flex items-center gap-3">
-                           <button className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all">
-                              <Mic className="w-5 h-5 text-purple-400" />
+                           {isRecording && (
+                              <motion.div 
+                                 animate={{ scale: [1, 1.2, 1], opacity: [0.5, 1, 0.5] }}
+                                 transition={{ repeat: Infinity, duration: 1 }}
+                                 className="text-[10px] font-black uppercase text-red-500 tracking-widest mr-2"
+                              >
+                                 Listening...
+                              </motion.div>
+                           )}
+                           <button 
+                              onMouseDown={startRecording}
+                              onMouseUp={stopRecording}
+                              onMouseLeave={stopRecording}
+                              onTouchStart={startRecording}
+                              onTouchEnd={stopRecording}
+                              className={`p-4 rounded-2xl transition-all ${isRecording ? 'bg-red-500 text-white shadow-[0_0_20px_rgba(239,68,68,0.5)]' : 'bg-white/5 border border-white/10 hover:bg-white/10'}`}
+                           >
+                              <Mic className={`w-5 h-5 ${isRecording ? 'text-white' : 'text-purple-400'}`} />
                            </button>
                         </div>
                      </div>
