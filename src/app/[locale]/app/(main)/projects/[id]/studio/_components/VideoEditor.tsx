@@ -156,17 +156,16 @@ export const VideoEditor = React.memo(({
     const url = rec?.assetUrl || manifest?.segments?.[0]?.assetUrl || null;
     if (url && !aRollUrl) {
       setARollUrl(url);
-      setVideoSource('teleprompter');
       setStage('transcribing');
     }
   }, [manifest]);
 
   // ── Auto-transcribe then auto-select phrases (zero friction) ──
   useEffect(() => {
-    if (stage === 'transcribing' && videoSource === 'teleprompter') {
+    if (stage === 'transcribing' && aRollUrl) {
       runTranscriptionAndPhrases();
     }
-  }, [stage, videoSource]);
+  }, [stage, aRollUrl]);
 
   // Auto-confirm countdown state
   const [autoConfirmSeconds, setAutoConfirmSeconds] = useState(4);
