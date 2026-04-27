@@ -122,11 +122,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         });
       } else {
         // Fallback for cases where idea came from outside the local state
-        refreshIdeas('new');
-        refreshIdeas('archived');
+        fetchIdeas('new');
+        fetchIdeas('archived');
       }
     }
-  }, [ideas, refreshIdeas]);
+  }, [ideas, fetchIdeas]);
 
   return (
     <AppDataContext.Provider value={{
