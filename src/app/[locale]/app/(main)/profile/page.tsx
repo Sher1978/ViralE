@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
-import Link from 'next/link';
+import { useRouter, usePathname, Link } from '@/navigation';
 import { 
   ChevronRight, 
   LogOut, 
@@ -30,6 +30,8 @@ export default function ProfilePage() {
   const t = useTranslations('profile');
   const commonT = useTranslations('common');
   const locale = useLocale();
+  const router = useRouter();
+  const pathname = usePathname();
   const { theme, setTheme } = useTheme();
   const [profile, setProfile] = useState<Profile | null>(null);
 
@@ -67,8 +69,7 @@ export default function ProfilePage() {
           sub: locale === 'ru' ? 'Текущий: Русский' : 'Current: English', 
           onClick: () => {
             const nextLocale = locale === 'ru' ? 'en' : 'ru';
-            const newPath = window.location.pathname.replace(`/${locale}`, `/${nextLocale}`);
-            window.location.href = newPath;
+            router.replace(pathname, { locale: nextLocale });
           }, 
           accent: '#00FFCC' 
         },
