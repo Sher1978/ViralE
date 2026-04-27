@@ -238,8 +238,6 @@ export const VideoEditor = React.memo(({
   }, [duration]);
 
   // ── Core Pipeline: Transcription → Karaoke Subs → Auto B-Roll placement ──
-
-  // Splits a sentence into karaoke chunks (max 4 words), last word is the accent
   const buildKaraokeClips = (words: TranscriptWord[]): SubtitleClip[] => {
     const CHUNK_SIZE = 4;
     const chunks: SubtitleClip[] = [];
@@ -262,6 +260,13 @@ export const VideoEditor = React.memo(({
     return chunks;
   };
 
+  const extractAudioOnly = async (blob: Blob): Promise<Blob> => {
+    // Placeholder implementation: in a real scenarios, we'd use ffmpeg.wasm or similar
+    // For now, return the blob as-is or handle it as a fallback
+    return blob;
+  };
+
+  const runTranscriptionAndPhrases = async () => {
     setStageMessage('Анализ аудио...');
     setTranscriptionError(null);
     await delay(400);
