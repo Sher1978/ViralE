@@ -23,6 +23,7 @@ interface BRollPickerModalProps {
   segmentText?: string;
   emotionTags?: string[];
   projectId?: string;
+  preFetchedResults?: any[];
 }
 
 const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
@@ -31,13 +32,23 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   onSelect,
   segmentText,
   emotionTags = ['cinematic', 'dynamic', 'hollywood'],
-  projectId
+  projectId,
+  preFetchedResults
 }) => {
   const [activeSource, setActiveSource] = useState<'vault' | 'ai'>('vault');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState(segmentText || '');
   const [videos, setVideos] = useState<any[]>([]);
+
+  // ⚡ SYNC PRE-FETCHED RESULTS
+  React.useEffect(() => {
+    if (isOpen && preFetchedResults && preFetchedResults.length > 0) {
+      setVideos(preFetchedResults);
+    } else if (isOpen && (!videos.length || searchQuery !== segmentText)) {
+      handleSearch();
+    }
+  }, [isOpen, preFetchedResults]);
 
   React.useEffect(() => {
     if (isOpen && searchQuery) {
