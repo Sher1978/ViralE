@@ -701,7 +701,7 @@ export const VideoEditor = React.memo(({
                 animate={{ opacity: 1, scale: 1.1, rotate: 0, x: subtitlePos.x }}
                 exit={{ opacity: 0, scale: 1.5, filter: 'blur(10px)' }}
                 transition={{ type: 'spring', damping: 12, stiffness: 200 }}
-                className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-4 max-w-[95%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-x-3 gap-y-2 bottom-14"
+                className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-4 max-w-[95%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-x-3 gap-y-0.5 bottom-14"
                 style={{ 
                   top: `calc(50% + ${subtitlePos.y / 2}px)`,
                   fontSize: `${subtitleSize}px`
