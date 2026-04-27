@@ -29,6 +29,7 @@ import StudioTimeline from '@/components/studio/StudioTimeline';
 import BRollModal from '@/components/studio/BRollPickerModal';
 import KnowledgeLab from '@/components/studio/KnowledgeLab';
 import { StrategistChat } from '@/components/studio/StrategistChat';
+import FacelessStudio from '@/components/studio/FacelessStudio';
 
 export default function StudioPage() {
   const t = useTranslations('studio');
@@ -63,6 +64,7 @@ export default function StudioPage() {
   const [isBRollModalOpen, setIsBRollModalOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
+  const [showFaceless, setShowFaceless] = useState(false);
   
   // Camera & Device States
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
@@ -422,8 +424,10 @@ export default function StudioPage() {
             <SourcePicker 
               onSelect={(type) => {
                 if (type === 'record') setActiveTab('teleprompter');
-                else {
-                  // Both AI and Upload lead to Assembly in the Waterfall flow
+                else if (type === 'ai') {
+                  setShowFaceless(true);
+                  setActiveTab('assembly');
+                } else {
                   setActiveTab('assembly');
                 }
               }}
@@ -431,13 +435,33 @@ export default function StudioPage() {
             />
           )}
 
-          {activeTab === 'assembly' && (
+          {activeTab === 'assembly' && !showFaceless && (
             <VideoEditor
               manifest={manifest}
               updateSegmentField={updateSegmentField}
               onBack={() => setActiveTab('production')}
               onNext={handleFinalExport}
               projectId={projectId}
+              onFaceless={() => setShowFaceless(true)}
+            />
+          )}
+
+          {activeTab === 'assembly' && showFaceless && (
+            <FacelessStudio
+              manifest={manifest}
+              onBack={() => setShowFaceless(false)}
+              onComplete={(videoBlob) => {
+                const url = URL.createObjectURL(videoBlob);
+                // Inject as A-Roll into manifest
+                setManifest(prev => prev ? {
+                  ...prev,
+                  videoUrl: url,
+                  segments: prev.segments?.map((s, i) =>
+                    i === 0 ? { ...s, assetUrl: url, type: 'user_recording' } : s
+                  ) || prev.segments,
+                } : prev);
+                setShowFaceless(false);
+              }}
             />
           )}
 

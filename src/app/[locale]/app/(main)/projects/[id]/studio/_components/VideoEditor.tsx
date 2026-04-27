@@ -55,6 +55,7 @@ interface VideoEditorProps {
   onNext: () => void;
   updateSegmentField: (id: string, field: string, value: any) => void;
   projectId?: string;
+  onFaceless?: () => void;
 }
 
 // ── Helper: Mock Transcription ─────────────────────────────────────────────
@@ -104,7 +105,7 @@ function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export const VideoEditor = React.memo(({
-  manifest, onBack, onNext, updateSegmentField, projectId, preFetchedBrolls: parentPreFetched
+  manifest, onBack, onNext, updateSegmentField, projectId, preFetchedBrolls: parentPreFetched, onFaceless
 }: VideoEditorProps & { preFetchedBrolls?: Record<string, any[]> }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -603,16 +604,32 @@ export const VideoEditor = React.memo(({
         {aRollUrl ? (
           <video ref={videoRef} muted={isMuted} className="w-full h-full object-contain" playsInline onClick={togglePlay} />
         ) : (
-          <button onClick={() => fileInputRef.current?.click()}
-            className="flex flex-col items-center gap-3 w-full h-full justify-center bg-white/[0.02] border-2 border-dashed border-white/10 hover:border-purple-500/40 transition-all active:scale-[0.98]">
-            <div className="w-14 h-14 rounded-3xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
-              <Upload size={24} className="text-purple-400" />
-            </div>
-            <div className="text-center">
-              <p className="text-sm font-black text-white/50 uppercase tracking-widest">Tap to Upload</p>
-              <p className="text-[9px] text-white/20 mt-0.5 font-bold uppercase tracking-widest">A-Roll Source Video</p>
-            </div>
-          </button>
+          <div className="flex flex-col items-center justify-center gap-4 w-full h-full p-6">
+            {/* Upload Own Video */}
+            <button onClick={() => fileInputRef.current?.click()}
+              className="flex items-center gap-4 w-full px-6 py-5 rounded-2xl bg-white/[0.03] border-2 border-dashed border-white/10 hover:border-purple-500/40 transition-all active:scale-[0.98]">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 flex-shrink-0">
+                <Upload size={20} className="text-purple-400" />
+              </div>
+              <div className="text-left">
+                <p className="text-[11px] font-black text-white/60 uppercase tracking-widest">Загрузить видео</p>
+                <p className="text-[9px] text-white/20 mt-0.5 font-bold uppercase tracking-widest">A-Roll · Своя съёмка</p>
+              </div>
+            </button>
+            {/* AI Faceless */}
+            {onFaceless && (
+              <button onClick={onFaceless}
+                className="flex items-center gap-4 w-full px-6 py-5 rounded-2xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all active:scale-[0.98]">
+                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(168,85,247,0.4)]">
+                  <Sparkles size={20} className="text-white" />
+                </div>
+                <div className="text-left">
+                  <p className="text-[11px] font-black text-purple-300 uppercase tracking-widest">AI Faceless</p>
+                  <p className="text-[9px] text-white/30 mt-0.5 font-bold uppercase tracking-widest">Генерация картинок + анимация</p>
+                </div>
+              </button>
+            )}
+          </div>
         )}
 
         {/* Subtitle Overlay – Karaoke Style */}
