@@ -320,7 +320,9 @@ export const VideoEditor = React.memo(({
        startTime: p.start,
        endTime: p.end,
        label: p.text,
-       assetUrl: undefined // Placeholder state
+       url: '', // Placeholder
+       prompt: p.text,
+       track: 1
     }));
     setBrollClips(initialClips);
 
@@ -403,16 +405,27 @@ export const VideoEditor = React.memo(({
     if (activeBrollPhraseId) {
       const phrase = phrases.find(p => p.id === activeBrollPhraseId);
       if (phrase) {
-        const newClip: BRollClip = {
-          id: `br_${Date.now()}`,
-          url,
-          label: phrase.text.slice(0, 20) + '...',
-          prompt: phrase.text,
-          startTime: phrase.start,
-          endTime: Math.min(phrase.end, phrase.start + 6),
-          track: 0,
-        };
-        setBrollClips(prev => [...prev, newClip]);
+        setBrollClips(prev => {
+          const existingIdx = prev.findIndex(c => c.id === `br-${activeBrollPhraseId}`);
+          if (existingIdx !== -1) {
+            // Update placeholder
+            const next = [...prev];
+            next[existingIdx] = { ...next[existingIdx], url, track: 0 };
+            return next;
+          } else {
+            // Fallback: Create new if not found
+            const newClip: BRollClip = {
+              id: `br_${Date.now()}`,
+              url,
+              label: phrase.text.slice(0, 20) + '...',
+              prompt: phrase.text,
+              startTime: phrase.start,
+              endTime: Math.min(phrase.end, phrase.start + 6),
+              track: 0,
+            };
+            return [...prev, newClip];
+          }
+        });
         setGeneratingPhraseIds(prev => { const n = new Set(prev); n.delete(activeBrollPhraseId!); return n; });
 
         // Check if more approved phrases need BRoll
@@ -1029,7 +1042,7 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
   return (
     <div
       className={`absolute inset-y-1.5 rounded-lg border transition-all ${
-        clip.assetUrl ? 'bg-blue-500/20 border-blue-400/40 text-blue-300' : 'bg-white/5 border-dashed border-white/20 text-white/30'
+        clip.url ? 'bg-blue-500/20 border-blue-400/40 text-blue-300' : 'bg-white/5 border-dashed border-white/20 text-white/30'
       } ${isSelected ? 'ring-2 ring-white/40' : ''} flex items-center cursor-pointer touch-none`}
       style={{ left, width, minWidth: 28 }}
       onClick={onSelect}
@@ -1041,7 +1054,7 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
         <div className="w-0.5 h-4 bg-white/40 rounded-full" />
       </div>
       <span className="flex-1 text-[9px] font-black truncate px-3 select-none flex items-center gap-2">
-        {!clip.assetUrl && <Sparkles size={10} className="text-purple-400" />}
+        {!clip.url && <Sparkles size={10} className="text-purple-400" />}
         {clip.label}
       </span>
       <div className="absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center"
