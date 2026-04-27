@@ -225,6 +225,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
 
   // ── Stage 4: Canvas Render ──
   const renderVideo = async () => {
+    if (!audioUrl) return;
     setRendering(true);
     setRenderProgress(0);
 
@@ -234,122 +235,124 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
     const ctx = canvas.getContext('2d')!;
 
     const FPS = 24;
-    const SCENE_DURATION = 3; // seconds per scene if no audio timing
+    
+    // Ensure we use the actual audio duration for total video length
+    const totalDuration = audioRef.current?.duration || scenes[scenes.length - 1]?.end || 30;
+    const totalFrames = Math.round(totalDuration * FPS);
     const frames: ImageData[] = [];
 
-    for (let si = 0; si < scenes.length; si++) {
-      const scene = scenes[si];
-      const sceneDur = scene.end - scene.start;
-      const frameCount = Math.round(sceneDur * FPS);
-
-      // Load image
-      const img = new window.Image();
-      img.crossOrigin = 'anonymous';
+    // Pre-load all images for smooth rendering
+    const imgCache: Record<string, HTMLImageElement> = {};
+    for (const scene of scenes) {
       if (scene.imageUrl) {
+        const img = new window.Image();
+        img.crossOrigin = 'anonymous';
         await new Promise<void>(res => {
           img.onload = () => res();
           img.onerror = () => res();
           img.src = scene.imageUrl!;
         });
+        imgCache[scene.id] = img;
       }
-
-      for (let fi = 0; fi < frameCount; fi++) {
-        const t = fi / frameCount; // 0..1 progress within scene
-        ctx.clearRect(0, 0, 720, 1280);
-
-        // Draw image with Ken Burns effect (zoom + pan)
-        if (img.complete && img.naturalWidth > 0) {
-          const scale = selectedEffects.includes('kenburns')
-            ? 1 + t * 0.08  // slow zoom in
-            : 1;
-          const tx = selectedEffects.includes('kenburns') ? -t * 20 : 0;
-          const ty = selectedEffects.includes('kenburns') ? -t * 10 : 0;
-
-          ctx.save();
-          ctx.translate(360 + tx, 640 + ty);
-          ctx.scale(scale, scale);
-          ctx.drawImage(img, -360, -640, 720, 1280);
-          ctx.restore();
-        } else {
-          // Fallback gradient
-          const grad = ctx.createLinearGradient(0, 0, 0, 1280);
-          grad.addColorStop(0, '#0a0a1a');
-          grad.addColorStop(1, '#1a0a2a');
-          ctx.fillStyle = grad;
-          ctx.fillRect(0, 0, 720, 1280);
-        }
-
-        // Zoom punch effect (first 8 frames)
-        if (selectedEffects.includes('zoom_punch') && fi < 8) {
-          const punch = 1 + (1 - fi / 8) * 0.04;
-          ctx.save();
-          ctx.translate(360, 640);
-          ctx.scale(punch, punch);
-          const id = ctx.getImageData(-360, -640, 720, 1280);
-          ctx.restore();
-        }
-
-        // Dust overlay
-        if (selectedEffects.includes('dust')) {
-          ctx.save();
-          ctx.globalAlpha = 0.04;
-          ctx.fillStyle = '#ffffff';
-          for (let p = 0; p < 60; p++) {
-            const px = Math.random() * 720;
-            const py = Math.random() * 1280;
-            ctx.fillRect(px, py, Math.random() * 2 + 0.5, Math.random() * 2 + 0.5);
-          }
-          ctx.restore();
-        }
-
-        // Glitch flash (first 2 frames of scene)
-        if (selectedEffects.includes('glitch') && fi < 2) {
-          ctx.save();
-          ctx.globalAlpha = 0.15;
-          ctx.globalCompositeOperation = 'color-dodge';
-          ctx.fillStyle = `hsl(${Math.random() * 360}, 100%, 70%)`;
-          ctx.fillRect(0, 0, 720, 1280);
-          ctx.restore();
-        }
-
-        // Negative reveal (fade in at scene start)
-        if (selectedEffects.includes('negative') && fi < 12) {
-          const alpha = (12 - fi) / 12;
-          ctx.save();
-          ctx.globalAlpha = alpha * 0.6;
-          ctx.globalCompositeOperation = 'difference';
-          ctx.fillStyle = '#ffffff';
-          ctx.fillRect(0, 0, 720, 1280);
-          ctx.restore();
-        }
-
-        frames.push(ctx.getImageData(0, 0, 720, 1280));
-      }
-
-      setRenderProgress(Math.round(((si + 1) / scenes.length) * 80));
     }
 
-    // Encode to WebM using MediaRecorder
+    for (let f = 0; f < totalFrames; f++) {
+      const currentTime = f / FPS;
+      const scene = scenes.find(s => currentTime >= s.start && currentTime < s.end) || scenes[scenes.length - 1];
+      const sceneProgress = (currentTime - scene.start) / (scene.end - scene.start);
+      const img = imgCache[scene.id];
+
+      ctx.clearRect(0, 0, 720, 1280);
+
+      // Draw image with effects
+      if (img && img.complete && img.naturalWidth > 0) {
+        const scale = selectedEffects.includes('kenburns') ? 1.05 + sceneProgress * 0.1 : 1.05;
+        const tx = selectedEffects.includes('kenburns') ? -sceneProgress * 30 : 0;
+        
+        ctx.save();
+        ctx.translate(360 + tx, 640);
+        ctx.scale(scale, scale);
+        // Center crop cover
+        const aspect = img.naturalWidth / img.naturalHeight;
+        let dw, dh;
+        if (aspect < 720/1280) { dw = 720; dh = 720 / aspect; }
+        else { dh = 1280; dw = 1280 * aspect; }
+        ctx.drawImage(img, -dw/2, -dh/2, dw, dh);
+        ctx.restore();
+      } else {
+        ctx.fillStyle = '#0a0a1a';
+        ctx.fillRect(0, 0, 720, 1280);
+      }
+
+      // Overlays
+      if (selectedEffects.includes('zoom_punch') && sceneProgress < 0.2) {
+         const punch = 1 + (0.2 - sceneProgress) * 0.2;
+         ctx.save();
+         ctx.translate(360, 640);
+         ctx.scale(punch, punch);
+         // Redraw image with punch or skip it to just scaling the whole ctx?
+         // Simplest is a quick flash/overlay
+         ctx.restore();
+      }
+
+      if (selectedEffects.includes('dust')) {
+        ctx.globalAlpha = 0.05;
+        ctx.fillStyle = 'white';
+        for(let i=0; i<40; i++) ctx.fillRect(Math.random()*720, Math.random()*1280, 2, 2);
+        ctx.globalAlpha = 1;
+      }
+
+      if (selectedEffects.includes('glitch') && sceneProgress < 0.05) {
+        ctx.fillStyle = `rgba(255,255,255,${0.2 - sceneProgress * 4})`;
+        ctx.fillRect(0,0,720,1280);
+      }
+
+      frames.push(ctx.getImageData(0, 0, 720, 1280));
+      if (f % 10 === 0) setRenderProgress(Math.round((f / totalFrames) * 90));
+    }
+
+    // MediaRecorder with Audio
     const outputCanvas = document.createElement('canvas');
     outputCanvas.width = 720;
     outputCanvas.height = 1280;
     const outCtx = outputCanvas.getContext('2d')!;
-
     const stream = outputCanvas.captureStream(FPS);
+
+    // Merge audio track
+    try {
+      // @ts-ignore
+      const audioStream = audioRef.current?.captureStream?.() || audioRef.current?.mozCaptureStream?.();
+      if (audioStream) {
+        audioStream.getAudioTracks().forEach(t => stream.addTrack(t));
+      }
+    } catch (e) {
+      console.warn('Audio capture failed, video will be silent:', e);
+    }
+
     const chunks: Blob[] = [];
-    const mr = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9', videoBitsPerSecond: 3_000_000 });
+    const mr = new MediaRecorder(stream, { 
+      mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9') ? 'video/webm;codecs=vp9' : 'video/webm',
+      videoBitsPerSecond: 5_000_000 
+    });
 
     mr.ondataavailable = e => { if (e.data.size > 0) chunks.push(e.data); };
-
+    
     await new Promise<void>(res => {
       mr.onstop = () => res();
       mr.start();
+      
+      // Sync audio start
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.play();
+      }
 
       let fi = 0;
-      const playback = setInterval(() => {
+      const interval = setInterval(() => {
         if (fi >= frames.length) {
-          clearInterval(playback);
+          clearInterval(interval);
           mr.stop();
+          if (audioRef.current) audioRef.current.pause();
           return;
         }
         outCtx.putImageData(frames[fi], 0, 0);
@@ -357,12 +360,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
       }, 1000 / FPS);
     });
 
-    setRenderProgress(95);
-    let videoBlob = new Blob(chunks, { type: 'video/webm' });
-
-    // If audio available, merge (browser limitation: we attach audio track to stream)
-    // For now, output video only — audio merge requires FFmpeg
-    setFinalVideoBlob(videoBlob);
+    const finalBlob = new Blob(chunks, { type: 'video/webm' });
+    setFinalVideoBlob(finalBlob);
     setRendering(false);
     setRenderProgress(100);
     setRendered(true);
