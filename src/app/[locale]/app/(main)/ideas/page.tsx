@@ -10,7 +10,8 @@ import TopicInput from '@/components/ideas/TopicInput';
 
 const CATEGORIES = [
   "Hooks", "Roles", "Awareness", "Problem", "Solution", "Loyalty", "Fast Sales",
-  "Myths", "Comparison", "Educational", "Case Study", "Trends", "Lifestyle", "Future"
+  "Controversial", "Evergreen", "Trends", "Lifestyle", "Future",
+  "Myths", "Comparison", "Educational", "Case Study"
 ];
 
 export default function IdeasPage() {
@@ -232,11 +233,48 @@ export default function IdeasPage() {
       </div>
 
       {loading && ideas.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-20 space-y-4">
-          <Loader2 className="w-8 h-8 text-purple-500/50 animate-spin" />
-          <p className="text-[10px] text-white/20 uppercase tracking-[0.2em] font-bold">
-            {locale === 'ru' ? 'Синтезируем темы...' : 'Synthesizing Trends...'}
-          </p>
+        <div className="flex flex-col items-center justify-center py-24 animate-fade-in">
+          <div className="relative w-32 h-32 mb-12">
+             <motion.div
+                animate={{ rotate: 360 }}
+                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 border-2 border-dashed border-purple-500/20 rounded-full"
+             />
+             <motion.div
+                animate={{ rotate: -360 }}
+                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-4 border border-dashed border-emerald-500/10 rounded-full"
+             />
+             <div className="absolute inset-0 flex items-center justify-center">
+                <div className="relative">
+                   <motion.div
+                      animate={{ 
+                         scale: [1, 1.2, 1],
+                         opacity: [0.3, 0.7, 0.3]
+                      }}
+                      transition={{ duration: 2, repeat: Infinity }}
+                      className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full"
+                   />
+                   <Dna className="w-16 h-16 text-purple-500 animate-pulse relative z-10" />
+                </div>
+             </div>
+          </div>
+          <div className="space-y-4 text-center">
+             <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">
+                {locale === 'ru' ? 'Синтез Матрицы' : 'Matrix Synthesis'}
+             </h3>
+             <div className="flex flex-col items-center gap-2">
+                <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-black animate-pulse">
+                   {locale === 'ru' ? 'Калибруем цифровой след...' : 'Calibrating digital shadow...'}
+                </p>
+                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                   <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                   <p className="text-[8px] text-emerald-500/60 uppercase tracking-[0.2em] font-black">
+                      {locale === 'ru' ? 'Метод Бена Ханта: Активен' : 'Ben Hunt Ladder: Active'}
+                   </p>
+                </div>
+             </div>
+          </div>
         </div>
       )}
     </div>
