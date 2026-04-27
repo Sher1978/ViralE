@@ -12,7 +12,21 @@ export interface IdeaSuggestion {
   created_at?: string;
 }
 
-export async function generateDailyIdeas(supabase: SupabaseClient, userId: string, locale: string = 'en', category?: string): Promise<IdeaSuggestion[]> {
+function formatDNA(answers: any): string {
+  if (!answers) return "Missing DNA.";
+  
+  // Map developer keys (from DNABlock.tsx) to methodology terms (from Bible_SOT)
+  return `
+    🧬 BRAND IDENTITY:
+    - NICHE (Super-niша): ${answers.sphere || answers.niche || 'N/A'}
+    - TARGET AUDIENCE (Avatar/Who): ${answers.audience || answers.target_audience || 'N/A'}
+    - DEEP FEARS/PAINS (Pain Point): ${answers.painPoint || answers.pain_points || 'N/A'}
+    - UNIQUE METHOD (Secret Sauce): ${answers.approach || answers.expertise || 'N/A'}
+    - CONTENT GOAL: ${answers.goal || 'N/A'}
+    - TONE OF VOICE: ${answers.tone || 'N/A'}
+    - FINAL OFFER: ${answers.advantage || answers.final_offer || 'N/A'}
+  `;
+}
   const languageName = locale === 'ru' ? 'Russian' : 'English';
   
   // 1. Fetch user persona DNA, answers and tier
@@ -48,7 +62,7 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
   if (!dnaContext) {
     const dnaAnswers = profile?.dna_answers || {};
     isDnaComplete = Object.values(dnaAnswers).filter((v: any) => v && v.toString().length > 2).length >= 7;
-    dnaContext = isDnaComplete ? JSON.stringify(dnaAnswers) : "";
+    dnaContext = isDnaComplete ? formatDNA(dnaAnswers) : "";
   }
 
   // Load Content Lego for ideation constraints
@@ -80,7 +94,11 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
     GUIDING METHODOLOGY (Content Lego):
     ${contentLego}
 
-    TASK: Generate 5 fresh, high-retention video topic ideas for the category: "${targetCategory}".
+    TASK: Generate 5 high-retention video topic ideas for the category: "${targetCategory}".
+    
+    CONTENT STRATEGY (Ben Hunt's Ladder):
+    Each category matches a stage in the awareness ladder. 
+    Focus this specific generation on: "${targetCategory}".
     
     CRITICAL: All generated text content MUST BE IN THE SAME LANGUAGE as the user's input or the TEMPLATE THEMATIC provided below. If context is in Russian, output Russian. If Ukrainian, output Ukrainian. Default to ${languageName} only if language is ambiguous.
     

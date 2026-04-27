@@ -54,14 +54,16 @@ export async function GET(req: Request) {
         const categoriesToGenerate = categoryParam ? [categoryParam] : categories;
         
         const allFreshIdeas = [];
-        // Only generate for a few categories at a time if none exist, or the requested one
+        // Limit initial generation to 2 categories to fit within Vercel's 10s timeout
+        let count = 0;
         for (const cat of categoriesToGenerate) {
            try {
              const fresh = await generateDailyIdeas(authorizedSupabase, userId, locale, cat);
              allFreshIdeas.push(...fresh);
-             if (allFreshIdeas.length > 15) break; // Limit initial batch
+             count++;
+             if (count >= 2) break; 
            } catch (e) {
-             console.error(`Generation failed for category ${cat}:`, e);
+             console.error(`Initial generation failed for category ${cat}:`, e);
            }
         }
         

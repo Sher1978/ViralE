@@ -1,6 +1,6 @@
 'use client';
 
-import { TrendingUp, ArrowRight, Bookmark, BookmarkCheck, Loader2 } from 'lucide-react';
+import { Star, ArrowRight, Loader2 } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 export interface Idea {
@@ -77,19 +77,38 @@ export default function IdeaCard({
       {/* Scanline Effect - Same as Studio */}
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,.25)_50%),linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,111,.06))] bg-[length:100%_4px,3px_100%] opacity-10" />
 
+      {/* Action: Save/Star (Top Right) */}
+      <button
+        onClick={(e) => {
+          e.stopPropagation();
+          onToggleArchive(idea.id, idea.status);
+        }}
+        disabled={isProcessing}
+        className="absolute top-4 right-4 z-30 p-2.5 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 hover:scale-110 active:scale-95 transition-all group/star"
+      >
+        {isProcessing ? (
+          <Loader2 className="w-5 h-5 animate-spin text-amber-500/50" />
+        ) : (
+          <Star 
+            className={`w-5 h-5 transition-all duration-500 ${
+              idea.status === 'archived' 
+                ? 'text-amber-500 fill-amber-500 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]' 
+                : 'text-white/20 group-hover/star:text-white/50'
+            }`} 
+          />
+        )}
+      </button>
+
       <div 
         className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity cursor-pointer z-10" 
         onClick={() => onToScript(idea.topic_title)}
       />
 
-      <div className="flex items-start justify-between gap-4 relative z-20 pointer-events-none">
+      <div className="flex items-start justify-between gap-4 relative z-20 pointer-events-none pr-12">
         <div className="flex-1 space-y-2">
           <div className="flex items-center gap-2">
             <span className={`text-[7px] font-black uppercase tracking-[0.3em] px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-white/40`}>
               {idea.category || t('tagTrend')}
-            </span>
-            <span className="text-[7px] text-white/20 font-black uppercase tracking-widest">
-              ID: {idea.id.substring(0, 5)}
             </span>
           </div>
           <h3 className="text-xl font-black text-white italic tracking-tighter uppercase leading-none drop-shadow-2xl">
@@ -97,46 +116,28 @@ export default function IdeaCard({
           </h3>
         </div>
 
-        <div className="flex flex-col items-center shrink-0">
-          <div className="w-12 h-12 rounded-xl flex items-center justify-center font-black text-base bg-white/5 border border-white/10 text-white shadow-2xl backdrop-blur-md italic">
+        <div className="flex flex-col items-center shrink-0 pt-1">
+          <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm bg-white/5 border border-white/10 text-white/80 shadow-2xl backdrop-blur-md italic">
             {idea.viral_potential_score}
           </div>
-          <span className="text-[6px] font-black uppercase tracking-tighter text-white/30 mt-1.5">Potential</span>
+          <span className="text-[6px] font-black uppercase tracking-tighter text-white/20 mt-1">Potential</span>
         </div>
       </div>
 
-      <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-relaxed relative z-20 pointer-events-none max-w-[80%]">
+      <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-relaxed relative z-20 pointer-events-none max-w-[85%]">
         {idea.rationale}
       </p>
 
-      <div className="flex items-center justify-between pt-3 relative z-20">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToggleArchive(idea.id, idea.status);
-          }}
-          disabled={isProcessing}
-          className="flex items-center gap-3 px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/30 hover:bg-white/10 hover:text-white/70 transition-all text-[9px] font-black uppercase tracking-widest"
-        >
-          {isProcessing ? (
-            <Loader2 className="w-3 h-3 animate-spin" />
-          ) : idea.status === 'archived' ? (
-            <BookmarkCheck className="w-3.5 h-3.5 text-amber-500" />
-          ) : (
-            <Bookmark className="w-3.5 h-3.5" />
-          )}
-          {idea.status === 'archived' ? t('btnSaved') : t('btnSave')}
-        </button>
-
+      <div className="flex items-center justify-end pt-2 relative z-20">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onToScript(idea.topic_title);
           }}
-          className="group flex items-center gap-4 pl-5 pr-2 py-2 rounded-xl bg-white text-black hover:bg-emerald-500 hover:text-white transition-all font-black text-[9px] uppercase tracking-wider shadow-2xl"
+          className="group flex items-center gap-4 pl-6 pr-2 py-2 rounded-2xl bg-white text-black hover:bg-emerald-500 hover:text-white transition-all font-black text-[10px] uppercase tracking-wider shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
         >
           {t('btnScript')}
-          <div className="w-8 h-8 rounded-lg bg-black text-white flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
+          <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
             <ArrowRight className="w-4 h-4" />
           </div>
         </button>
