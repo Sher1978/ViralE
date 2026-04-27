@@ -250,23 +250,46 @@ export default function IdeasPage() {
           ) : (
             <>
               {globalLoading && ideas.length === 0 ? (
-                <div className="flex flex-col items-center justify-center py-24 animate-fade-in w-full">
-                  <div className="relative w-32 h-32 mb-12">
-                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute inset-0 border-2 border-dashed border-purple-500/20 rounded-full" />
-                     <motion.div animate={{ rotate: -360 }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }} className="absolute inset-4 border border-dashed border-emerald-500/10 rounded-full" />
-                     <div className="absolute inset-0 flex items-center justify-center">
-                        <div className="relative">
-                           <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full" />
-                           <Dna className="w-16 h-16 text-purple-500 animate-pulse relative z-10" />
-                        </div>
-                     </div>
+                <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
+                  {/* Cinematic Backdrop for Loading */}
+                  <div className="absolute inset-0 z-0">
+                    <img 
+                      src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" 
+                      className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110"
+                      alt="Splash Background"
+                    />
+                    <div className="absolute inset-0 bg-[#050508]/60 backdrop-blur-md" />
                   </div>
-                  <div className="space-y-4 text-center">
-                     <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">{locale === 'ru' ? 'Синтез Матрицы' : 'Matrix Synthesis'}</h3>
-                     <div className="flex flex-col items-center gap-2">
-                        <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-black animate-pulse">{locale === 'ru' ? 'Калибруем цифровой след...' : 'Calibrating digital shadow...'}</p>
-                     </div>
+
+                  <div className="relative z-10 space-y-2 mb-12">
+                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Viral Engine Digital Core</p>
+                    <h2 className="text-xl sm:text-2xl font-black italic uppercase text-white tracking-widest leading-tight">
+                      {locale === 'ru' ? 'СИНТЕЗ МАТРИЦЫ ИДЕЙ' : 'IDEATION MATRIX SYNTHESIS'}
+                    </h2>
                   </div>
+
+                  <div className="relative z-10 w-32 h-32 mb-12">
+                    <div className="absolute inset-0 border-2 border-purple-500/10 rounded-full" />
+                    <div className="absolute inset-0 border-2 border-t-purple-500 rounded-full animate-spin" />
+                    <div className="absolute inset-4 border border-cyan-500/20 rounded-full animate-reverse-spin" />
+                    <div className="absolute inset-0 flex items-center justify-center">
+                        <Sparkles className="w-8 h-8 text-purple-400 animate-pulse" />
+                    </div>
+                  </div>
+                  
+                  <div className="relative z-10 space-y-4 max-w-sm">
+                    <p className="text-xl font-black uppercase italic tracking-tighter text-white animate-pulse">
+                      {locale === 'ru' ? 'КАЛИБРУЕМ ЦИФРОВОЙ СЛЕД...' : 'CALIBRATING DIGITAL SHADOW...'}
+                    </p>
+                    <div className="pt-4 space-y-2">
+                       <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em] leading-relaxed">
+                          SHER IS PROCESSING 24 GLOBAL CONTENT CATEGORIES
+                       </p>
+                    </div>
+                  </div>
+
+                  {/* Matrix background deco */}
+                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.05)_0%,transparent_70%)] pointer-events-none z-10" />
                 </div>
               ) : (
                 displayCategories.map((cat) => (
@@ -307,6 +330,15 @@ export default function IdeasPage() {
             )}
           </div>
         )}
+      </div>
+      {/* Global Background Layer */}
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <img 
+          src="/cyberpunk_alley_center_crop_vertical_1777280456497.png" 
+          className="w-full h-full object-cover opacity-10 animate-ken-burns scale-125 saturate-0"
+          alt="Page Background"
+        />
+        <div className="absolute inset-0 bg-[#050508]/80 backdrop-blur-[100px]" />
       </div>
     </div>
   );
