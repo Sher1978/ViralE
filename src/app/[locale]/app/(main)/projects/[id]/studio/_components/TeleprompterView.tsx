@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, ArrowLeft, Library, Square, 
   Settings, Type, Timer, Palette, Mic2, Camera,
-  MoreVertical, Edit3, Check, RotateCw
+  MoreVertical, Edit3, Check, RotateCw, Sparkles
 } from 'lucide-react';
 import { useRouter } from '@/navigation';
 import { useLocale } from 'next-intl';
@@ -69,6 +69,8 @@ export const TeleprompterView = React.memo(({
   const locale = useLocale();
   const [isEditing, setIsEditing] = React.useState(false);
   const [editedText, setEditedText] = React.useState('');
+  const [isGenerating, setIsGenerating] = React.useState(false);
+  const [suggestion, setSuggestion] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // 📹 Critical: Bind camera stream to video element
@@ -119,6 +121,24 @@ export const TeleprompterView = React.memo(({
   const handleSaveEdit = () => {
     onScriptUpdate(editedText);
     setIsEditing(false);
+    setSuggestion(null);
+  };
+
+  const handleAIRewrite = async (style: string) => {
+    setIsGenerating(true);
+    try {
+      const res = await fetch('/api/ai/script-editor', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: editedText, style, locale })
+      });
+      const data = await res.json();
+      if (data.text) setSuggestion(data.text);
+    } catch (err) {
+      console.error('AI Rewrite failed:', err);
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   return (
@@ -294,12 +314,83 @@ export const TeleprompterView = React.memo(({
                 <button onClick={handleSaveEdit} className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs flex items-center gap-3"><Check size={18} /> Apply</button>
               </div>
             </div>
-            <textarea
-              autoFocus
-              value={editedText}
-              onChange={(e) => setEditedText(e.target.value)}
-              className="flex-1 bg-transparent border border-white/5 rounded-[2rem] p-8 text-2xl font-bold text-white focus:outline-none focus:border-purple-500/30 transition-all resize-none shadow-inner leading-relaxed"
-            />
+            <div className="flex-1 flex flex-col gap-6 overflow-hidden">
+              <div className="flex-1 relative">
+                <textarea
+                  autoFocus
+                  value={editedText}
+                  onChange={(e) => {
+                    setEditedText(e.target.value);
+                    if (suggestion) setSuggestion(null);
+                  }}
+                  className="w-full h-full bg-transparent border border-white/5 rounded-[2rem] p-8 text-2xl font-bold text-white focus:outline-none focus:border-purple-500/30 transition-all resize-none shadow-inner leading-relaxed"
+                />
+                
+                {isGenerating && (
+                  <div className="absolute inset-0 bg-black/40 backdrop-blur-sm rounded-[2rem] flex items-center justify-center z-10">
+                    <div className="flex flex-col items-center gap-4">
+                      <div className="w-10 h-10 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin" />
+                      <span className="text-xs font-black uppercase tracking-[0.2em] text-purple-400">AI Thinking...</span>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              {/* AI Suggestion Box */}
+              <AnimatePresence>
+                {suggestion && (
+                  <motion.div 
+                    initial={{ y: 20, opacity: 0 }}
+                    animate={{ y: 0, opacity: 1 }}
+                    exit={{ y: 20, opacity: 0 }}
+                    className="p-6 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex flex-col gap-4 shadow-xl"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-2">
+                        <Sparkles size={14} className="text-purple-400" />
+                        <span className="text-[10px] font-black uppercase tracking-widest text-purple-300">Suggestion</span>
+                      </div>
+                      <div className="flex gap-2">
+                        <button 
+                          onClick={() => setSuggestion(null)}
+                          className="px-4 py-1.5 rounded-full bg-white/5 text-white/40 text-[9px] font-black uppercase tracking-tighter"
+                        >
+                          Discard
+                        </button>
+                        <button 
+                          onClick={() => { setEditedText(suggestion); setSuggestion(null); }}
+                          className="px-4 py-1.5 rounded-full bg-purple-600 text-white text-[9px] font-black uppercase tracking-tighter shadow-lg shadow-purple-900/40"
+                        >
+                          Use This Version
+                        </button>
+                      </div>
+                    </div>
+                    <p className="text-sm text-white/90 leading-relaxed italic">"{suggestion}"</p>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              {/* AI Style Buttons */}
+              <div className="flex flex-wrap items-center gap-3">
+                <span className="text-[9px] font-black uppercase text-white/30 tracking-widest mr-2">Refine with AI:</span>
+                {[
+                  { id: 'shorter', label: 'Shorter', icon: Square },
+                  { id: 'specific', label: 'Concrete', icon: Check },
+                  { id: 'warmer', label: 'Warm', icon: Palette },
+                  { id: 'humor', label: 'Funny', icon: Timer },
+                ].map((style) => (
+                  <button
+                    key={style.id}
+                    onClick={() => handleAIRewrite(style.id)}
+                    disabled={isGenerating}
+                    className="px-5 py-2.5 rounded-2xl bg-white/5 border border-white/10 flex items-center gap-2 text-[10px] font-black uppercase text-white/60 hover:bg-white/10 hover:border-white/20 transition-all active:scale-95 disabled:opacity-30"
+                  >
+                    <style.icon size={12} className="text-purple-400" />
+                    {style.label}
+                  </button>
+                ))}
+              </div>
+            </div>
           </motion.div>
         )}
       </AnimatePresence>
