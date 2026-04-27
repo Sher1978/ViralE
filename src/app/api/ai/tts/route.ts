@@ -12,9 +12,7 @@ const FALLBACK_VOICES = [
 ];
 
 async function getElevenLabsKey(authHeader: string | null): Promise<string | null> {
-  const key = process.env.ELEVENLABS_API_KEY;
-  if (key) return key;
-  // Try to get from user profile
+  // Try to get from user profile first
   if (authHeader) {
     try {
       const supabase = createClient(
@@ -25,10 +23,17 @@ async function getElevenLabsKey(authHeader: string | null): Promise<string | nul
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
         const { data: profile } = await supabase.from('profiles').select('elevenlabs_api_key').eq('id', user.id).single();
-        return profile?.elevenlabs_api_key || null;
+        if (profile?.elevenlabs_api_key && profile.elevenlabs_api_key.trim() !== '') {
+          return profile.elevenlabs_api_key.trim();
+        }
       }
     } catch { /* ignore */ }
   }
+
+  // Fallback to global proxy key
+  const key = process.env.ELEVENLABS_API_KEY;
+  if (key) return key;
+
   return null;
 }
 

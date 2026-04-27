@@ -141,17 +141,6 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
           <p className="text-white/40 text-[10px] font-bold uppercase tracking-widest mt-1">Finding visual energy for your scene</p>
         </div>
         <div className="flex items-center gap-4">
-          <div className="relative hidden md:block">
-             <input 
-               type="text"
-               value={searchQuery}
-               onChange={(e) => setSearchQuery(e.target.value)}
-               onKeyDown={(e) => e.key === 'Enter' && handleSearch()}
-               placeholder="Search Stock Library..."
-               className="w-64 h-12 bg-white/5 border border-white/10 rounded-2xl px-5 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-purple-500/50 transition-all font-medium"
-             />
-             <Search size={18} className="absolute right-4 top-1/2 -translate-y-1/2 text-white/20" />
-          </div>
           <button 
             onClick={onClose}
             className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all transform active:rotate-90"
@@ -203,44 +192,55 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
         </div>
 
         {/* ── FOOTER ACTIONS (Secondary) ── */}
-        <div className="flex-none pt-6 border-t border-white/5 grid grid-cols-1 lg:grid-cols-3 gap-6 items-center">
-            {/* Context (Left) */}
-            <div className="lg:col-span-2 relative group">
-               <div className="bg-white/5 rounded-3xl p-6 border border-white/5 focus-within:border-purple-500/50 transition-all">
-                  <div className="flex justify-between items-center mb-2">
-                    <span className="text-[8px] font-black uppercase tracking-widest text-white/30 block">Generation & Search Prompt</span>
+        <div className="flex-none pt-6 border-t border-white/5 flex flex-col gap-5">
+            <div className="relative group">
+               <div className="bg-white/5 rounded-[2.5rem] p-6 border border-white/5 focus-within:border-purple-500/50 transition-all">
+                  <div className="flex justify-between items-center mb-3">
+                    <span className="text-[10px] font-black uppercase tracking-widest text-white/30 block ml-1">Search & Generation Prompt</span>
                     <button 
                       onClick={handleOptimizePrompt}
                       disabled={isOptimizing}
-                      className="flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[8px] font-black uppercase hover:bg-purple-500/20 transition-all active:scale-95"
+                      className="flex items-center gap-1.5 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[9px] font-black uppercase hover:bg-purple-500/20 transition-all active:scale-95"
                     >
-                      {isOptimizing ? <RefreshCcw size={10} className="animate-spin" /> : <Sparkles size={10} />}
-                      AI Optimize
+                      {isOptimizing ? <RefreshCcw size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                      AI Optimize Prompt
                     </button>
                   </div>
-                  <textarea 
-                    value={searchQuery}
-                    onChange={(e) => setSearchQuery(e.target.value)}
-                    rows={2}
-                    className="w-full bg-transparent text-xs font-medium text-white italic outline-none resize-none placeholder:text-white/10"
-                    placeholder="Enter visual description..."
-                  />
+                  <div className="flex gap-4 items-center">
+                    <textarea 
+                      value={searchQuery}
+                      onChange={(e) => setSearchQuery(e.target.value)}
+                      onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSearch())}
+                      rows={2}
+                      className="flex-1 bg-transparent text-sm font-bold text-white italic outline-none resize-none placeholder:text-white/10 leading-relaxed"
+                      placeholder="What should we find or generate?..."
+                    />
+                    <div className="flex flex-col gap-2">
+                       <button
+                         onClick={handleSearch}
+                         disabled={isSearching}
+                         className="h-10 px-6 rounded-2xl bg-white/10 hover:bg-white/20 border border-white/10 text-white text-[10px] font-black uppercase flex items-center gap-2 transition-all active:scale-95 whitespace-nowrap"
+                       >
+                         {isSearching ? <RefreshCcw size={14} className="animate-spin" /> : <Search size={14} />}
+                         Search Library
+                       </button>
+                    </div>
+                  </div>
                </div>
             </div>
 
-            {/* AI Action (Right) */}
             <button 
                 onClick={handleGenerateAI}
                 disabled={isGenerating || !searchQuery}
-                className="h-16 rounded-3xl bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all px-8 group"
+                className="w-full h-16 rounded-[2rem] bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-[0.2em] text-xs flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all group"
             >
                 {isGenerating ? (
-                    <RefreshCcw size={16} className="animate-spin" />
+                    <RefreshCcw size={18} className="animate-spin" />
                 ) : (
                     <>
-                        <Sparkles size={16} className="group-hover:rotate-12 transition-transform" />
-                        Synthesize AI-Clip ($0.10)
-                        <ArrowRight size={14} />
+                        <Sparkles size={18} className="group-hover:rotate-12 transition-transform" />
+                        Synthesize Unique AI Video Segment ($0.10)
+                        <ArrowRight size={16} />
                     </>
                 )}
             </button>

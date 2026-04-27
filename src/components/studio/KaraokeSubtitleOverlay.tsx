@@ -52,7 +52,7 @@ const KaraokeSubtitleOverlay: React.FC<KaraokeSubtitleOverlayProps> = ({
           animate={{ opacity: 1, y: 0 }}
           exit={{ opacity: 0, y: -10 }}
           transition={{ duration: 0.22, ease: 'easeOut' }}
-          className="flex flex-wrap justify-center items-center gap-x-2 gap-y-1 max-w-[85%]"
+          className="flex flex-wrap justify-center items-center gap-x-2 gap-y-0 max-w-[85%]"
           style={{
             filter: 'drop-shadow(0 2px 12px rgba(0,0,0,0.9))',
           }}
@@ -77,7 +77,8 @@ const KaraokeSubtitleOverlay: React.FC<KaraokeSubtitleOverlayProps> = ({
                   fontWeight: 900,
                   fontFamily: "'Inter', 'SF Pro Display', sans-serif",
                   letterSpacing: '-0.01em',
-                  lineHeight: 1.15,
+                  lineHeight: 1,
+                  paddingTop: '2px', // Slight visual balance adjusting for tight line height
                   color: isActive ? accentColor : '#FFFFFF',
                   textShadow: isActive
                     ? `0 0 20px ${accentColor}88, 0 2px 8px rgba(0,0,0,1)`

@@ -71,7 +71,7 @@ export default function ScriptLabPage() {
     if (isLoading || isGenerating) {
       interval = setInterval(() => {
         setGenerationStep(prev => (prev + 1) % loadingSteps.length);
-      }, 2000);
+      }, 4000);
     }
     return () => clearInterval(interval);
   }, [isLoading, isGenerating, loadingSteps.length]);
@@ -525,8 +525,25 @@ export default function ScriptLabPage() {
 
   if (isLoading || isGenerating) {
     return (
-      <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in">
-        <div className="relative w-32 h-32 mb-12">
+      <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
+        {/* Cinematic Backdrop for Loading */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" 
+            className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110"
+            alt="Splash Background"
+          />
+          <div className="absolute inset-0 bg-[#050508]/60 backdrop-blur-md" />
+        </div>
+
+        <div className="relative z-10 space-y-2 mb-12">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Viral Engine Core</p>
+          <h2 className="text-xl sm:text-2xl font-black italic uppercase text-white tracking-widest leading-tight">
+            {locale === 'ru' ? 'Начата генерация Контентного Лего' : 'Content Lego Assembly Started'}
+          </h2>
+        </div>
+
+        <div className="relative z-10 w-32 h-32 mb-12">
            <div className="absolute inset-0 border-2 border-purple-500/10 rounded-full" />
            <div className="absolute inset-0 border-2 border-t-purple-500 rounded-full animate-spin" />
            <div className="absolute inset-4 border border-cyan-500/20 rounded-full animate-reverse-spin" />
@@ -535,7 +552,7 @@ export default function ScriptLabPage() {
            </div>
         </div>
         
-        <div className="space-y-4 max-w-sm">
+        <div className="relative z-10 space-y-4 max-w-sm">
            <AnimatePresence mode="wait">
              <motion.div 
                key={generationStep}
@@ -563,11 +580,6 @@ export default function ScriptLabPage() {
         </div>
 
         {/* Matrix background deco */}
-        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.05)_0%,transparent_70%)] pointer-events-none" />
-        <div className="absolute top-0 left-0 w-full h-full opacity-[0.02] pointer-events-none bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')]" />
-      </div>
-    );
-  }
 
   // Initial Ideation UI if no project exists yet AND we don't have generated data in memory
   if (!projectIdParam && !allScenarios) {

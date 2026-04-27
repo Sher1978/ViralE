@@ -155,7 +155,7 @@ export const VideoEditor = React.memo(({
   const [showSheet, setShowSheet] = useState(false);
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 120 }); // Global sub position on video canvas
   const [subtitleSize, setSubtitleSize] = useState(28);
-  const [isSingleWordMode, setIsSingleWordMode] = useState(true);
+  const [isSingleWordMode, setIsSingleWordMode] = useState(false);
 
   // Drag
   const dragRef = useRef<{
@@ -759,7 +759,7 @@ export const VideoEditor = React.memo(({
               {transcriptionError ? (
                 <div className="flex items-center gap-3">
                   <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
-                  <span className="text-[10px] font-black text-red-100 uppercase tracking-widest">{transcriptionError}</span>
+                  <span className="text-[10px] font-black text-red-100 tracking-wide max-w-[200px] truncate" title={transcriptionError}>{transcriptionError}</span>
                   <button onClick={() => runTranscriptionAndPhrases()} className="bg-red-500 px-3 py-1 rounded-full text-[9px] font-black uppercase hover:bg-red-600 transition-colors">Повторить</button>
                   <button onClick={() => setStage('editing')} className="text-white/20 hover:text-white/40 text-[9px] font-black uppercase underline p-1">Пропустить</button>
                 </div>
@@ -872,32 +872,34 @@ export const VideoEditor = React.memo(({
               )}
             </TrackRow>
 
+            {/* Subtitles Track */}
+            <TrackRow label="TXT" color="text-amber-400">
+              {subtitleClips.map(clip => (
+                <SubtitleTimelineClip key={clip.id} clip={clip} duration={duration}
+                  isSelected={selectedClipId === clip.id}
+                  onSelect={() => { 
+                    setSelectedClipId(clip.id); 
+                    setShowSheet(true); 
+                    // Seek video to the start of this subtitle
+                    setCurrentTime(clip.startTime);
+                    if (videoRef.current) videoRef.current.currentTime = clip.startTime;
+                  }}
+                  onDragStart={(e, h) => startDrag(e, clip.id, 'sub', h)}
+                />
+              ))}
+            </TrackRow>
+
             {/* B-Roll Track */}
             <TrackRow label="B" color="text-blue-400">
               {brollClips.map(clip => (
                 <BRollTimelineClip key={clip.id} clip={clip} duration={duration}
                   isSelected={selectedClipId === clip.id}
                   onSelect={() => {
-                    if (!clip.url) {
-                      // Empty placeholder — open hunter immediately
-                      openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt);
-                    } else {
-                      setSelectedClipId(clip.id);
-                      setShowSheet(true);
-                    }
+                    setSelectedClipId(clip.id);
+                    setShowSheet(true);
                   }}
+                  onOpenHunter={() => openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt)}
                   onDragStart={(e, h) => startDrag(e, clip.id, 'broll', h)}
-                />
-              ))}
-            </TrackRow>
-
-            {/* Subtitles Track */}
-            <TrackRow label="TXT" color="text-amber-400">
-              {subtitleClips.map(clip => (
-                <SubtitleTimelineClip key={clip.id} clip={clip} duration={duration}
-                  isSelected={selectedClipId === clip.id}
-                  onSelect={() => { setSelectedClipId(clip.id); setShowSheet(true); }}
-                  onDragStart={(e, h) => startDrag(e, clip.id, 'sub', h)}
                 />
               ))}
             </TrackRow>
@@ -911,20 +913,20 @@ export const VideoEditor = React.memo(({
         {showSheet && (selBR || selSub) && (
           <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
             transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-            className="absolute bottom-0 left-0 right-0 z-50 bg-[#0f0f1e] border-t border-white/10 rounded-t-3xl"
-            style={{ maxHeight: '45%' }}>
-            <div className="flex items-center justify-between px-5 pt-5 pb-2">
-              <div className="absolute top-3 left-1/2 -translate-x-1/2 w-8 h-1 rounded-full bg-white/15" />
-              <span className="text-[10px] font-black uppercase tracking-widest text-white/40 mt-1">
+            className="absolute bottom-0 left-0 right-0 z-50 bg-[#0f0f1e]/95 backdrop-blur-xl border-t border-white/10 rounded-t-[2.5rem] shadow-[0_-20px_40px_rgba(0,0,0,0.5)]"
+            style={{ height: '52dvh' }}>
+            <div className="flex items-center justify-between px-6 pt-6 pb-2">
+              <div className="absolute top-3 left-1/2 -track-x-1/2 w-12 h-1.5 rounded-full bg-white/10" />
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 mt-1">
                 {selBR ? 'B-Roll Clip' : 'Subtitle'}
               </span>
               <div className="flex items-center gap-2 mt-1">
-                <button onClick={() => setShowSheet(false)} className="p-2 rounded-xl bg-white/5 active:scale-95">
-                  <X size={13} className="text-white/40" />
+                <button onClick={() => setShowSheet(false)} className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center active:scale-95 transition-all">
+                  <X size={14} className="text-white/60" />
                 </button>
               </div>
             </div>
-            <div className="overflow-y-auto px-5 pb-6 space-y-3" style={{ maxHeight: '35%' }}>
+            <div className="overflow-y-auto px-6 pb-8 pt-2 space-y-5 custom-scrollbar" style={{ height: 'calc(100% - 70px)' }}>
               {selSub && (
                 <>
                   <textarea value={selSub.text} rows={2}
@@ -957,7 +959,20 @@ export const VideoEditor = React.memo(({
                   >
                     {isSingleWordMode ? '🔥 Mode: Single Word' : '📝 Mode: Phrase'}
                   </button>
-                  <button onClick={() => { setSubtitleClips(p => p.filter(c => c.id !== selSub.id)); setSelectedClipId(null); setShowSheet(false); }}
+                  {selBR && (
+                     <button
+                       onClick={() => openBRollHunterForClip(selBR.phraseId || selBR.id, selBR.prompt)}
+                       className="w-full py-2.5 rounded-xl bg-purple-500/20 text-purple-400 border border-purple-500/30 text-[8px] font-black uppercase flex items-center justify-center gap-2 transition-all active:scale-95"
+                     >
+                       <RefreshCw size={10} /> Change Visual
+                     </button>
+                  )}
+                  <button onClick={() => { 
+                    if (selSub) setSubtitleClips(p => p.filter(c => c.id !== selSub.id));
+                    if (selBR) setBrollClips(p => p.filter(c => c.id !== selBR.id));
+                    setSelectedClipId(null); 
+                    setShowSheet(false); 
+                  }}
                     className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
                     <Trash2 size={13} /> Delete
                   </button>
@@ -1045,10 +1060,11 @@ const TrackRow = React.memo(({ label, color, children, onClick }: { label: strin
 
 // ── B-Roll Timeline Clip ──────────────────────────────────────────────────
 
-const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart }: {
+const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart, onOpenHunter }: {
   clip: BRollClip; duration: number; isSelected: boolean;
   onSelect: () => void;
   onDragStart: (e: React.MouseEvent | React.TouchEvent, h: 'move' | 'start' | 'end') => void;
+  onOpenHunter: () => void;
 }) => {
   const left = `${(clip.startTime / duration) * 100}%`;
   const width = `${((clip.endTime - clip.startTime) / duration) * 100}%`;
@@ -1058,19 +1074,30 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
         clip.url ? 'bg-blue-500/20 border-blue-400/40 text-blue-300' : 'bg-white/5 border-dashed border-white/20 text-white/30'
       } ${isSelected ? 'ring-2 ring-white/40' : ''} flex items-center cursor-pointer touch-none`}
       style={{ left, width, minWidth: 28 }}
-      onClick={onSelect}
+      onClick={(e) => {
+        e.stopPropagation();
+        onSelect();
+      }}
       onMouseDown={e => onDragStart(e, 'move')}
       onTouchStart={e => onDragStart(e, 'move')}>
-      <div className="absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center"
+      <div className="absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center z-10"
         onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'start'); }}
         onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'start'); }}>
         <div className="w-0.5 h-4 bg-white/40 rounded-full" />
       </div>
-      <span className="flex-1 text-[9px] font-black truncate px-3 select-none flex items-center gap-2">
+      <div className="flex-1 flex items-center gap-2 px-3 select-none overflow-hidden h-full">
         {!clip.url && <Sparkles size={10} className="text-purple-400" />}
-        {clip.label}
-      </span>
-      <div className="absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center"
+        <span className="text-[9px] font-black truncate">{clip.label}</span>
+        {isSelected && !clip.url && (
+           <button 
+             onClick={(e) => { e.stopPropagation(); onOpenHunter(); }}
+             className="ml-auto w-5 h-5 rounded-md bg-purple-500 flex items-center justify-center"
+           >
+             <Plus size={10} className="text-white" />
+           </button>
+        )}
+      </div>
+      <div className="absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center z-10"
         onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'end'); }}
         onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'end'); }}>
         <div className="w-0.5 h-4 bg-white/40 rounded-full" />

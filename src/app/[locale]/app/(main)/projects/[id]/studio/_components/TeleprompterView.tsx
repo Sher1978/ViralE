@@ -241,11 +241,12 @@ export const TeleprompterView = React.memo(({
           <div className="absolute top-[18vh] inset-x-10 h-32 border-y border-white/5 pointer-events-none z-0" />
           
           <p 
-            className={`font-black uppercase leading-[1.1] transition-all duration-500 tracking-tighter drop-shadow-[0_4px_40px_rgba(0,0,0,1)] ${
-              textSize === 'sm' ? 'text-3xl' : textSize === 'lg' ? 'text-9xl' : 'text-7xl'
+            className={`font-medium leading-[1.3] transition-all duration-500 tracking-normal drop-shadow-[0_4px_40px_rgba(0,0,0,1)] ${
+              textSize === 'sm' ? 'text-3xl' : textSize === 'lg' ? 'text-7xl sm:text-8xl' : 'text-5xl sm:text-6xl'
             }`}
             style={{ 
-              wordSpacing: '0.12em',
+              fontFamily: "'Roboto', 'Inter', sans-serif",
+              wordSpacing: '0.05em',
               color: scriptColor 
             }}
           >
@@ -320,8 +321,8 @@ export const TeleprompterView = React.memo(({
         >
           <div className={`transition-all duration-300 ${
             isRecordingVideo 
-              ? 'w-10 h-10 bg-red-600 rounded-lg animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.8)]' 
-              : 'w-18 h-18 bg-red-600 rounded-full shadow-[0_0_30px_rgba(239,68,68,0.5)]'
+              ? 'w-10 h-10 bg-red-600 rounded-xl animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.8)]' 
+              : 'w-20 h-20 bg-red-600 rounded-full shadow-[0_0_30px_rgba(239,68,68,0.5)]'
           }`} />
           
           {isRecordingVideo && (

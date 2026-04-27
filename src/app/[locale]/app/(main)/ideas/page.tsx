@@ -206,11 +206,19 @@ export default function IdeasPage() {
         )}
       </AnimatePresence>
 
-      <div className="flex items-center justify-between gap-4">
-        <div className="flex-1">
+      {activeTab === 'new' && (
+        <div className="relative z-10 w-full max-w-xl">
           <TopicInput onLaunch={(topic) => handleToScript(topic)} />
         </div>
-      </div>
+      )}
+
+      {activeTab === 'archived' && (
+        <div className="flex items-center justify-between gap-4">
+          <div className="flex-1">
+            <TopicInput onLaunch={(topic) => handleToScript(topic)} />
+          </div>
+        </div>
+      )}
 
       <div className="flex border-b border-white/5 gap-6">
         {tabs.map((tab) => (
