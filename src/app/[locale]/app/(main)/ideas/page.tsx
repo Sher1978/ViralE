@@ -103,6 +103,16 @@ export default function IdeasPage() {
     }
   }, [locale]);
 
+  const groupedIdeas = useMemo(() => {
+    const groups: Record<string, Idea[]> = {};
+    ideas.forEach(idea => {
+      const cat = idea.category || (idea as any).metadata?.category || "General";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(idea);
+    });
+    return groups;
+  }, [ideas]);
+
   const synthesizeNextCategory = useCallback(async () => {
     if (synthesisLoading || loading || activeTab !== 'new') return;
 
@@ -170,15 +180,7 @@ export default function IdeasPage() {
     }
   };
 
-  const groupedIdeas = useMemo(() => {
-    const groups: Record<string, Idea[]> = {};
-    ideas.forEach(idea => {
-      const cat = (idea as any).metadata?.category || "General";
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(idea);
-    });
-    return groups;
-  }, [ideas]);
+
 
   const tabs = [
     { id: 'new', label: t('tabFeed') || 'Discover', icon: <TrendingUp className="w-3 h-3" /> },
