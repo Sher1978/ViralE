@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Play, Pause, Volume2, VolumeX, Type, Film,
-  SkipBack, Trash2, ArrowRight, ArrowLeft, X,
+  SkipBack, Trash2, ArrowRight, ArrowLeft, X, Plus,
   Upload, Sparkles, Loader2, RefreshCw, Check, ChevronRight,
   Mic, FileText, Wand2, Eye, RotateCw, Cpu
 } from 'lucide-react';
