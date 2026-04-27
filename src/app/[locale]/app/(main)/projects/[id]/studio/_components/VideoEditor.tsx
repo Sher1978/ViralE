@@ -109,12 +109,18 @@ export const VideoEditor = React.memo(({
   const timelineRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
+  // Helper to extract initial A-Roll
+  const getInitialARoll = useCallback(() => {
+    const rec = manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl);
+    return rec?.assetUrl || manifest?.videoUrl || manifest?.segments?.[0]?.assetUrl || null;
+  }, [manifest]);
+
   // Stage machine
-  const [stage, setStage] = useState<EditorStage>('empty');
+  const [stage, setStage] = useState<EditorStage>(getInitialARoll() ? 'transcribing' : 'empty');
   const [stageMessage, setStageMessage] = useState('');
 
   // Video
-  const [aRollUrl, setARollUrl] = useState<string | null>(null);
+  const [aRollUrl, setARollUrl] = useState<string | null>(getInitialARoll());
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
