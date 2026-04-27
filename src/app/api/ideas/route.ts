@@ -1,13 +1,10 @@
-import { createRouteHandlerClient } from '@supabase/auth-helpers-nextjs';
-import { cookies } from 'next/headers';
 import { NextResponse } from 'next/server';
-import { generateDailyIdeas } from '@/lib/ai/ideation';
+import { generateDailyIdeas } from '@/lib/ideation';
+import { getAuthContext } from '@/lib/auth';
 
 export async function GET(req: Request) {
   try {
-    const cookieStore = cookies();
-    const authorizedSupabase = createRouteHandlerClient({ cookies: () => cookieStore });
-    const { data: { user } } = await authorizedSupabase.auth.getUser();
+    const { user, supabase: authorizedSupabase } = await getAuthContext();
 
     if (!user) {
       return new NextResponse('Unauthorized', { status: 401 });
@@ -75,21 +72,12 @@ export async function GET(req: Request) {
         return NextResponse.json(existingIdeas || []);
       }
 
-      const { data: profile } = await authorizedSupabase
-        .from('profiles')
-        .select('dna_answers')
-        .eq('id', userId)
-        .single();
-      
-      const dnaAnswers = profile?.dna_answers || {};
-      const isDnaComplete = Object.values(dnaAnswers).filter((v: any) => v && v.toString().length > 2).length >= 7;
-
       if (force || !existingIdeas || existingIdeas.length === 0) {
         const categoriesToGenerate = categoryParam ? [categoryParam] : categories;
         
         const allFreshIdeas = [];
         for (const cat of categoriesToGenerate) {
-           const fresh = await generateDailyIdeas(userId, cat);
+           const fresh = await generateDailyIdeas(authorizedSupabase, userId, locale, cat);
            allFreshIdeas.push(...fresh);
         }
         return NextResponse.json(allFreshIdeas);
@@ -105,8 +93,7 @@ export async function GET(req: Request) {
 
 export async function PATCH(req: Request) {
   try {
-    const cookieStore = cookies();
-    const authorizedSupabase = createRouteHandlerClient({ cookies: () => cookieStore });
+    const { supabase: authorizedSupabase } = await getAuthContext();
     const { ideaId, status, metadata } = await req.json();
 
     const updateData: any = { status };
@@ -115,8 +102,6 @@ export async function PATCH(req: Request) {
     }
 
     if (status === 'archived') {
-       // We usually set a flag in metadata rather than changing status string if we want to keep it in 'new' but hidden
-       // But here we'll just update status or metadata based on how the UI calls it
        updateData.metadata = { ...metadata, archived: true };
     }
 
