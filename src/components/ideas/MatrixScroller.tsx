@@ -6,6 +6,7 @@ import { motion } from 'framer-motion';
 import { ChevronRight, RefreshCw, Loader2 } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { useState } from 'react';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 interface MatrixScrollerProps {
   title: string;
@@ -46,25 +47,29 @@ export default function MatrixScroller({ title, subtitle, ideas, onToScript, onT
           )}
         </div>
         <div className="flex items-center gap-4">
-          <button 
-            onClick={(e) => {
-              e.stopPropagation();
-              handleRefresh();
-            }}
-            disabled={isRefreshing}
-            className={`p-2.5 rounded-xl border transition-all duration-300 flex items-center justify-center min-w-[32px] min-h-[32px] ${
-              isRefreshing 
-                ? 'bg-purple-500/20 border-purple-500/40 text-purple-400' 
-                : 'bg-white/5 border-white/10 text-white/40 hover:text-purple-400 hover:bg-purple-500/10 active:scale-90'
-            }`}
-            title="Force Regenerate"
+          <InfoTooltip 
+            content={locale === 'ru' ? "Сгенерировать свежие идеи для этой категории" : "Force regenerate ideas for this category"}
+            position="bottom"
           >
-            {isRefreshing ? (
-              <Loader2 size={14} className="animate-spin" />
-            ) : (
-              <RefreshCw size={14} className="transition-transform duration-500" />
-            )}
-          </button>
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                handleRefresh();
+              }}
+              disabled={isRefreshing}
+              className={`p-2.5 rounded-xl border transition-all duration-300 flex items-center justify-center min-w-[32px] min-h-[32px] ${
+                isRefreshing 
+                  ? 'bg-purple-500/20 border-purple-500/40 text-purple-400' 
+                  : 'bg-white/5 border-white/10 text-white/40 hover:text-purple-400 hover:bg-purple-500/10 active:scale-90'
+              }`}
+            >
+              {isRefreshing ? (
+                <Loader2 size={14} className="animate-spin" />
+              ) : (
+                <RefreshCw size={14} className="transition-transform duration-500" />
+              )}
+            </button>
+          </InfoTooltip>
           {!isEmpty && (
             <button className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-white/40 transition-colors">
               {locale === 'ru' ? 'ВСЕ' : 'ALL'}

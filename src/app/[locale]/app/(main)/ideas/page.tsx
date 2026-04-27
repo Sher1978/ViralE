@@ -9,6 +9,7 @@ import MatrixScroller from '@/components/ideas/MatrixScroller';
 import TopicInput from '@/components/ideas/TopicInput';
 import { motion } from 'framer-motion';
 import { useAppData } from '@/components/providers/AppDataProvider';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 
 const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
   "Hooks": { en: "Virality Hooks", ru: "Крючки виральности" },
@@ -146,19 +147,35 @@ export default function IdeasPage() {
             {activeTab === 'new' ? (locale === 'ru' ? 'ИНСАЙТЫ' : 'INSIGHTS') : (locale === 'ru' ? 'БИБЛИОТЕКА' : 'LIBRARY')}
           </h1>
           {isDnaComplete && activeTab === 'new' && (
-            <button 
-              onClick={() => setShowDnaEditor(!showDnaEditor)}
-              className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-purple-400 hover:border-purple-500/30 transition-all text-[9px] font-black uppercase tracking-widest"
-            >
-              <Dna size={14} className={showDnaEditor ? "text-purple-400 animate-pulse" : ""} />
-              {showDnaEditor ? (locale === 'ru' ? 'Скрыть ДНК' : 'Hide DNA') : (locale === 'ru' ? 'Настроить ДНК' : 'Tune DNA')}
-            </button>
+            <div className="flex items-center gap-2">
+              <button 
+                onClick={() => setShowDnaEditor(!showDnaEditor)}
+                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-purple-400 hover:border-purple-500/30 transition-all text-[9px] font-black uppercase tracking-widest"
+              >
+                <Dna size={14} className={showDnaEditor ? "text-purple-400 animate-pulse" : ""} />
+                {showDnaEditor ? (locale === 'ru' ? 'Скрыть ДНК' : 'Hide DNA') : (locale === 'ru' ? 'Настроить ДНК' : 'Tune DNA')}
+              </button>
+              <InfoTooltip 
+                content={locale === 'ru' ? "Здесь вы можете обновить информацию о себе, чтобы ИИ точнее подбирал идеи под ваш бренд." : "Update your profile info here so AI can tailor ideas perfectly to your brand."} 
+              />
+            </div>
           )}
         </div>
         <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-black">
           {activeTab === 'new' ? (locale === 'ru' ? 'СИНТЕЗ МАТРИЦЫ КОНТЕНТА' : 'CONTENT MATRIX SYNTHESIS') : (locale === 'ru' ? 'ЗАПАС ЗОЛОТЫХ ИДЕЙ' : 'GOLDEN IDEAS VAULT')}
         </p>
       </div>
+
+      {activeTab === 'new' && (
+        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex gap-3 text-white/70 shadow-lg">
+          <Sparkles className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+          <p className="text-[11px] sm:text-xs font-medium leading-relaxed">
+             {locale === 'ru' 
+               ? "Добро пожаловать в Инсайты. ИИ постоянно анализирует тренды и собирает идеи, подходящие вашей подаче. Если лента кажется пустой — нажмите иконку обновить рядом с нужной категорией."
+               : "Welcome to Insights. AI constantly scans trends to curate ideas fitting your style. If the feed looks empty, hit the refresh icon next to any category."}
+          </p>
+        </div>
+      )}
 
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1">

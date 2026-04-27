@@ -13,6 +13,7 @@ import { projectService, Project, ProjectVersion } from '@/lib/services/projectS
 import { StrategistChat } from '@/components/studio/StrategistChat';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { motion, AnimatePresence } from 'framer-motion';
+import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { ContentMatrix } from './_components/ContentMatrix';
 import { ScenarioLegend } from './_components/ScenarioLegend';
 import { createInitialManifest } from '@/lib/studio-utils';
@@ -52,8 +53,18 @@ export default function ScriptLabPage() {
   const [showConfirmModal, setShowConfirmModal] = useState(false);
 
   const loadingSteps = locale === 'ru' 
-    ? ['Анализируем идею...', 'Калибруем Digital DNA...', 'Прошиваем смыслы...', 'Финальная сборка...']
-    : ['Analyzing Idea...', 'Calibrating Digital DNA...', 'Injecting Narrative...', 'Final Assembly...'];
+    ? [
+        { title: 'Анализируем идею...', desc: 'Нейросеть ищет лучшие паттерны под ваш запрос' },
+        { title: 'Калибруем Digital DNA...', desc: 'Адаптируем стиль под ваш профиль' },
+        { title: 'Прошиваем смыслы...', desc: 'Логически выстраиваем структуру видео' },
+        { title: 'Финальная сборка...', desc: 'Создаем 5 вариантов подачи (от хайпа до классики)' }
+      ]
+    : [
+        { title: 'Analyzing Idea...', desc: 'AI is searching for optimal narrative patterns' },
+        { title: 'Calibrating Digital DNA...', desc: 'Adapting style to match your profile' },
+        { title: 'Injecting Narrative...', desc: 'Structuring logical video flow' },
+        { title: 'Final Assembly...', desc: 'Generating 5 delivery variations' }
+      ];
 
   useEffect(() => {
     let interval: any;
@@ -526,19 +537,29 @@ export default function ScriptLabPage() {
         
         <div className="space-y-4 max-w-sm">
            <AnimatePresence mode="wait">
-             <motion.p 
+             <motion.div 
                key={generationStep}
                initial={{ opacity: 0, y: 10 }}
                animate={{ opacity: 1, y: 0 }}
                exit={{ opacity: 0, y: -10 }}
-               className="text-xl font-black uppercase italic tracking-tighter text-white"
+               className="space-y-2"
              >
-               {loadingSteps[generationStep]}
-             </motion.p>
+               <p className="text-xl font-black uppercase italic tracking-tighter text-white">
+                 {loadingSteps[generationStep].title}
+               </p>
+               <p className="text-xs font-medium text-white/60">
+                 {loadingSteps[generationStep].desc}
+               </p>
+             </motion.div>
            </AnimatePresence>
-           <p className="text-[9px] font-bold text-white/20 uppercase tracking-[0.4em] leading-relaxed">
-              SHER DIGITAL CORE IS ASSEMBLING YOUR NARRATIVE MATRIX
-           </p>
+           <div className="pt-4 space-y-2">
+             <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em] leading-relaxed">
+                SHER DIGITAL CORE IS ASSEMBLING YOUR NARRATIVE MATRIX
+             </p>
+             <p className="text-[10px] font-bold text-purple-400 capitalize pt-2">
+                {locale === 'ru' ? 'Обычно это занимает 15-20 секунд 👇' : 'This usually takes 15-20 seconds 👇'}
+             </p>
+           </div>
         </div>
 
         {/* Matrix background deco */}
@@ -572,8 +593,18 @@ export default function ScriptLabPage() {
               {error}
             </div>
           )}
-          <div className="relative group">
-            <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000" />
+          <div className="relative group space-y-2">
+            <div className="flex items-center gap-2 px-1">
+               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 ml-2">
+                 {locale === 'ru' ? 'СУТЬ РОЛИКА' : 'VIDEO ESSENCE'}
+               </span>
+               <InfoTooltip 
+                 content={locale === 'ru' 
+                   ? "Опишите коротко, о чем ваше видео (например, '5 ошибок новичков в инвестициях'). Чем точнее запрос — тем мощнее сценарий." 
+                   : "Briefly describe your video idea. The clearer the prompt, the more powerful the script."} 
+               />
+            </div>
+            <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 top-6" />
             <textarea
               id="topic-textarea"
               value={topicInput}
@@ -588,9 +619,16 @@ export default function ScriptLabPage() {
 
           {!isAiLocked && (
             <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <label className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 ml-2">
-                {locale === 'ru' ? 'Выбор ИИ' : 'AI Engine'}
-              </label>
+              <div className="flex items-center gap-2 ml-2">
+                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60">
+                  {locale === 'ru' ? 'Выбор ИИ' : 'AI Engine'}
+                </label>
+                <InfoTooltip 
+                  content={locale === 'ru' 
+                    ? "Gemini — быстрая классика. Claude — глубокий анализ. Groq — моментальная генерация." 
+                    : "Gemini — fast classic. Claude — deep analysis. Groq — lightning fast generation."} 
+                />
+              </div>
               <div className="flex flex-wrap gap-2 p-1.5 bg-black/40 rounded-[1.5rem] border border-white/5 backdrop-blur-xl">
                 <button
                   onClick={() => setSelectedEngine('gemini')}
@@ -678,8 +716,13 @@ export default function ScriptLabPage() {
                 <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
               ) : (
                 <>
-                  <span className="font-black text-lg uppercase tracking-widest">
+                  <span className="font-black text-lg uppercase tracking-widest flex items-center gap-3">
                     {locale === 'ru' ? 'Создать сценарий' : 'Generate Script'}
+                    <InfoTooltip 
+                      content={locale === 'ru' ? "На следующем шаге система выдаст вам целую Матрицу (5 разных сценариев на выбор). Смело жмите!" : "The system will generate a full Content Matrix with 5 scenarios for you to choose from."} 
+                      iconClassName="text-white hover:text-white/80"
+                      size={18}
+                    />
                   </span>
                   <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                 </>
