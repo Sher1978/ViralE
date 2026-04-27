@@ -95,26 +95,38 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const moveIdeaLocally = useCallback((ideaId: string, fromStatus: string, toStatus: string) => {
-    let ideaToMove: Idea | undefined;
-    
     if (fromStatus === 'new') {
-      setIdeas(prev => {
-        ideaToMove = prev.find(i => i.id === ideaId);
-        return prev.filter(i => i.id !== ideaId);
-      });
-      if (ideaToMove) {
-        setArchivedIdeas(prev => [{...ideaToMove!, status: 'archived'}, ...prev]);
+      // If we are in 'New' tab, just update the status so the star turns gold
+      // We don't remove it from the list here anymore to allow the user to see the saved state
+      setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, status: toStatus as any } : i));
+      
+      // Also add to archived list for global state consistency
+      const ideaToMove = ideas.find(i => i.id === ideaId);
+      if (ideaToMove && toStatus === 'archived') {
+        setArchivedIdeas(prev => {
+          if (prev.find(p => p.id === ideaId)) return prev;
+          return [{...ideaToMove, status: 'archived'}, ...prev];
+        });
       }
     } else {
+      // If we are in 'Archived' tab, removing it and moving back to 'new' is correct
+      let ideaToMove: Idea | undefined;
       setArchivedIdeas(prev => {
         ideaToMove = prev.find(i => i.id === ideaId);
         return prev.filter(i => i.id !== ideaId);
       });
       if (ideaToMove) {
-        setIdeas(prev => [{...ideaToMove!, status: 'new'}, ...prev]);
+        setIdeas(prev => {
+          if (prev.find(p => p.id === ideaId)) return prev;
+          return [{...ideaToMove!, status: 'new'}, ...prev];
+        });
+      } else {
+        // Fallback for cases where idea came from outside the local state
+        refreshIdeas('new');
+        refreshIdeas('archived');
       }
     }
-  }, []);
+  }, [ideas, refreshIdeas]);
 
   return (
     <AppDataContext.Provider value={{

@@ -105,13 +105,13 @@ export default function IdeaCard({
         className="absolute top-5 right-5 w-10 h-10 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 active:scale-90 transition-all group/star shadow-2xl z-50 pointer-events-auto"
       >
         {isProcessing ? (
-          <Loader2 className="w-4 h-4 animate-spin text-white/20" />
+          <Loader2 className="w-4 h-4 animate-spin text-purple-400" />
         ) : (
           <Star 
-            className={`w-4 h-4 transition-all duration-500 ${
+            className={`w-4 h-4 transition-all duration-300 ${
               idea.status === 'archived' 
-                ? 'text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]' 
-                : 'text-white/10 group-hover/star:text-white/40'
+                ? 'text-amber-400 fill-amber-400 scale-110 drop-shadow-[0_0_12px_rgba(245,158,11,0.8)]' 
+                : 'text-white/20 group-hover/star:text-white/60 group-hover/star:scale-110'
             }`} 
           />
         )}
