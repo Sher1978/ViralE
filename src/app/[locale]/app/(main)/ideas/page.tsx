@@ -8,13 +8,8 @@ import DNABlock from '@/components/ideas/DNABlock';
 import MatrixScroller from '@/components/ideas/MatrixScroller';
 import TopicInput from '@/components/ideas/TopicInput';
 import { motion } from 'framer-motion';
-
-const CATEGORIES = [
-  "Hooks", "Roles", "Awareness", "Problem", "Solution", "Loyalty", "Fast Sales",
-  "Controversial", "Evergreen", "Trends", "Lifestyle", "Future",
-  "Myths", "Comparison", "Educational", "Case Study",
-  "Backstage", "Mistakes", "POV", "Manifesto", "Blitz", "Verdicts", "Humor", "Inside", "Results", "Toolkit"
-];
+import { useAppData } from '@/components/providers/AppDataProvider';
+import { v4 as uuidv4 } from 'uuid';
 
 const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
   "Hooks": { en: "Virality Hooks", ru: "Крючки виральности" },
@@ -45,64 +40,30 @@ const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
   "Toolkit": { en: "Master Toolkit", ru: "Тулкит мастера" }
 };
 
+const CATEGORIES = Object.keys(CATEGORY_LABELS);
+
 export default function IdeasPage() {
   const t = useTranslations('ideas');
   const locale = useLocale();
   const router = useRouter();
 
-  const [ideas, setIdeas] = useState<Idea[]>([]);
-  const [loading, setLoading] = useState(true);
+  const { 
+    ideas: allNewIdeas, 
+    archivedIdeas,
+    loadingIdeas, 
+    loadingArchived,
+    dnaComplete: isDnaComplete,
+    refreshIdeas 
+  } = useAppData();
+
   const [activeTab, setActiveTab] = useState<'new' | 'archived'>('new');
   const [processingId, setProcessingId] = useState<string | null>(null);
-  const [dnaAnswers, setDnaAnswers] = useState<any>(null);
-
-  const [isDnaComplete, setIsDnaComplete] = useState(false);
-
   const [synthesisLoading, setSynthesisLoading] = useState(false);
+  
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const fetchDna = useCallback(async () => {
-    try {
-      const res = await fetch('/api/profile/dna/answers');
-      if (res.ok) {
-        const data = await res.json();
-        const answers = data?.answers || {};
-        const hasFile = data?.hasFileStrategy || false;
-        
-        const interviewComplete = Object.values(answers).filter((v: any) => v && v.toString().length > 2).length >= 7;
-        setIsDnaComplete(hasFile || interviewComplete);
-      }
-    } catch (e) {
-      console.error('Failed to fetch DNA:', e);
-    }
-  }, []);
-
-  const fetchIdeas = useCallback(async (status: string, category?: string) => {
-    try {
-      if (!category) setLoading(true);
-      else setSynthesisLoading(true);
-      
-      const res = await fetch(`/api/ideas?locale=${locale}&status=${status}${category ? `&category=${category}` : ''}`);
-      if (!res.ok) throw new Error('Failed to fetch');
-      const data = await res.json();
-      
-      if (category) {
-        setIdeas(prev => {
-          // Avoid duplicates
-          const existingIds = new Set(prev.map(i => i.id));
-          const filteredNew = data.filter((i: any) => !existingIds.has(i.id));
-          return [...prev, ...filteredNew];
-        });
-      } else {
-        setIdeas(data);
-      }
-    } catch (err) {
-      console.error('Error fetching ideas:', err);
-    } finally {
-      setLoading(false);
-      setSynthesisLoading(false);
-    }
-  }, [locale]);
+  const ideas = activeTab === 'new' ? allNewIdeas : archivedIdeas;
+  const globalLoading = activeTab === 'new' ? loadingIdeas : loadingArchived;
 
   const groupedIdeas = useMemo(() => {
     const groups: Record<string, Idea[]> = {};
@@ -115,7 +76,6 @@ export default function IdeasPage() {
   }, [ideas]);
 
   const displayCategories = useMemo(() => {
-    // Show non-empty ones first
     return [...CATEGORIES].sort((a, b) => {
       const countA = (groupedIdeas[a] || []).length;
       const countB = (groupedIdeas[b] || []).length;
@@ -126,45 +86,32 @@ export default function IdeasPage() {
   }, [groupedIdeas]);
 
   const synthesizeNextCategory = useCallback(async () => {
-    if (synthesisLoading || loading || activeTab !== 'new') return;
-
-    // Find first category in CATEGORIES that has 0 ideas in groupedIdeas
+    if (synthesisLoading || globalLoading || activeTab !== 'new') return;
     const nextCat = CATEGORIES.find(cat => !groupedIdeas[cat] || groupedIdeas[cat].length === 0);
     
     if (nextCat) {
-      console.log('Synthesizing next category:', nextCat);
-      await fetchIdeas('new', nextCat);
+      setSynthesisLoading(true);
+      await refreshIdeas('new', nextCat);
+      setSynthesisLoading(false);
     }
-  }, [synthesisLoading, loading, activeTab, groupedIdeas, fetchIdeas]);
-
-  useEffect(() => {
-    fetchDna();
-    fetchIdeas(activeTab);
-  }, [fetchIdeas, activeTab, fetchDna]);
+  }, [synthesisLoading, globalLoading, activeTab, groupedIdeas, refreshIdeas]);
 
   // Infinite Scroll Observer
   useEffect(() => {
     if (!sentinelRef.current) return;
-
     const observer = new IntersectionObserver((entries) => {
       if (entries[0].isIntersecting) {
         synthesizeNextCategory();
       }
     }, { threshold: 0.1 });
-
     observer.observe(sentinelRef.current);
     return () => observer.disconnect();
   }, [synthesizeNextCategory]);
 
   const handleToScript = (content: string, category?: string) => {
     let url = `/app/projects/new/script?topic=${encodeURIComponent(content)}`;
-    
-    if (category === "Hooks") {
-      url = `/app/projects/new/script?hook=${encodeURIComponent(content)}`;
-    } else if (category === "Roles") {
-      url = `/app/projects/new/script?role=${encodeURIComponent(content)}`;
-    }
-
+    if (category === "Hooks") url = `/app/projects/new/script?hook=${encodeURIComponent(content)}`;
+    else if (category === "Roles") url = `/app/projects/new/script?role=${encodeURIComponent(content)}`;
     router.push(url);
   };
 
@@ -179,20 +126,13 @@ export default function IdeasPage() {
       });
 
       if (res.ok) {
-        if (activeTab === 'archived' && newStatus === 'new') {
-           setIdeas(prev => prev.filter(i => i.id !== ideaId));
-        } else if (activeTab === 'new' && newStatus === 'archived') {
-           setIdeas(prev => prev.filter(i => i.id !== ideaId));
-        }
+        await refreshIdeas('new');
+        await refreshIdeas('archived');
       }
-    } catch (err) {
-      console.error('Error updating idea status:', err);
     } finally {
       setProcessingId(null);
     }
   };
-
-
 
   const tabs = [
     { id: 'new', label: t('tabFeed') || 'Discover', icon: <TrendingUp className="w-3 h-3" /> },
@@ -200,104 +140,63 @@ export default function IdeasPage() {
   ];
 
   return (
-    <div className="space-y-8 animate-fade-in pb-24">
-      {/* Header */}
-      <div className="space-y-1">
-        <div className="flex items-center justify-between">
-          <p className="text-[9px] font-black uppercase tracking-[0.25em] text-white/25">
-            {t('supertitle')}
-          </p>
-          {loading && <Loader2 className="w-3 h-3 text-purple-500 animate-spin" />}
-        </div>
-        <h1
-          className="text-4xl font-black tracking-tighter uppercase italic"
-          style={{ fontFamily: 'var(--font-space-grotesk), sans-serif' }}
-        >
-          <span className="text-white">{activeTab === 'new' ? 'DISCOVER' : 'SAVED'}</span>{' '}
-          <span className="text-emerald-500">LAB</span>
+    <div className="flex flex-col gap-8 pb-32 animate-fade-in relative">
+      <div className="flex flex-col gap-1">
+        <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none">
+          {activeTab === 'new' ? (locale === 'ru' ? 'ИНСАЙТЫ' : 'INSIGHTS') : (locale === 'ru' ? 'БИБЛИОТЕКА' : 'LIBRARY')}
         </h1>
+        <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-black">
+          {activeTab === 'new' ? (locale === 'ru' ? 'СИНТЕЗ МАТРИЦЫ КОНТЕНТА' : 'CONTENT MATRIX SYNTHESIS') : (locale === 'ru' ? 'ЗАПАС ЗОЛОТЫХ ИДЕЙ' : 'GOLDEN IDEAS VAULT')}
+        </p>
       </div>
 
-      {/* DNA Integration */}
-      {activeTab === 'new' && (
-        <div className="space-y-6" data-dna-block>
-          <DNABlock 
-            onComplete={() => {
-                fetchDna();
-                fetchIdeas('new');
-            }}
-          />
-          
-          <TopicInput 
-            onLaunch={handleToScript}
-          />
+      <div className="flex items-center justify-between gap-4">
+        {/* Quick Idea Gen */}
+        <div className="flex-1">
+          <TopicInput onGenerated={() => refreshIdeas('new')} />
         </div>
-      )}
+      </div>
 
-      {/* Tabs */}
-      <div className="flex p-1 rounded-2xl bg-white/[0.03] border border-white/5">
+      <div className="flex border-b border-white/5 gap-6">
         {tabs.map((tab) => (
           <button
             key={tab.id}
             onClick={() => setActiveTab(tab.id as any)}
-            className={`flex-1 flex items-center justify-center gap-2 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
-              activeTab === tab.id 
-                ? 'bg-white/10 text-white shadow-lg' 
-                : 'text-white/30 hover:text-white/50'
+            className={`flex items-center gap-2 py-4 text-[10px] font-black uppercase tracking-widest transition-all relative ${
+              activeTab === tab.id ? 'text-white' : 'text-white/20 hover:text-white/40'
             }`}
           >
             {tab.icon}
             {tab.label}
+            {activeTab === tab.id && (
+              <motion.div layoutId="activeTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />
+            )}
           </button>
         ))}
       </div>
 
-      {/* Scrollers or List */}
       <div className="relative space-y-10">
         {activeTab === 'new' ? (
-          isDnaComplete ? (
+          !isDnaComplete ? (
+            <DNABlock onComplete={() => window.location.reload()} />
+          ) : (
             <>
-              {(loading || synthesisLoading) && ideas.length === 0 ? (
+              {globalLoading && ideas.length === 0 ? (
                 <div className="flex flex-col items-center justify-center py-24 animate-fade-in w-full">
                   <div className="relative w-32 h-32 mb-12">
-                     <motion.div
-                        animate={{ rotate: 360 }}
-                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                        className="absolute inset-0 border-2 border-dashed border-purple-500/20 rounded-full"
-                     />
-                     <motion.div
-                        animate={{ rotate: -360 }}
-                        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-                        className="absolute inset-4 border border-dashed border-emerald-500/10 rounded-full"
-                     />
+                     <motion.div animate={{ rotate: 360 }} transition={{ duration: 4, repeat: Infinity, ease: "linear" }} className="absolute inset-0 border-2 border-dashed border-purple-500/20 rounded-full" />
+                     <motion.div animate={{ rotate: -360 }} transition={{ duration: 6, repeat: Infinity, ease: "linear" }} className="absolute inset-4 border border-dashed border-emerald-500/10 rounded-full" />
                      <div className="absolute inset-0 flex items-center justify-center">
                         <div className="relative">
-                           <motion.div
-                              animate={{ 
-                                 scale: [1, 1.2, 1],
-                                 opacity: [0.3, 0.7, 0.3]
-                              }}
-                              transition={{ duration: 2, repeat: Infinity }}
-                              className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full"
-                           />
+                           <motion.div animate={{ scale: [1, 1.2, 1], opacity: [0.3, 0.7, 0.3] }} transition={{ duration: 2, repeat: Infinity }} className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full" />
                            <Dna className="w-16 h-16 text-purple-500 animate-pulse relative z-10" />
                         </div>
                      </div>
                   </div>
                   <div className="space-y-4 text-center">
-                     <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">
-                        {locale === 'ru' ? 'Синтез Матрицы' : 'Matrix Synthesis'}
-                     </h3>
+                     <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">{locale === 'ru' ? 'Синтез Матрицы' : 'Matrix Synthesis'}</h3>
                      <div className="flex flex-col items-center gap-2">
-                        <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-black animate-pulse">
-                           {locale === 'ru' ? 'Калибруем цифровой след...' : 'Calibrating digital shadow...'}
-                        </p>
-                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                           <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                           <p className="text-[8px] text-emerald-500 font-bold uppercase tracking-widest">
-                             {locale === 'ru' ? 'СТРАТЕГИЯ: АКТИВНО' : 'STRATEGY: ACTIVE'}
-                           </p>
-                        </div>
+                        <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-black animate-pulse">{locale === 'ru' ? 'Калибруем цифровой след...' : 'Calibrating digital shadow...'}</p>
                      </div>
                   </div>
                 </div>
@@ -314,115 +213,32 @@ export default function IdeasPage() {
                 ))
               )}
               
-              {/* Infinite Scroll Sentinel */}
               <div ref={sentinelRef} className="h-20 w-full flex items-center justify-center">
                 {synthesisLoading && ideas.length > 0 && (
                   <div className="flex flex-col items-center gap-2 animate-pulse">
                     <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
-                    <p className="text-[8px] text-white/20 uppercase tracking-[0.3em] font-black">
-                      {locale === 'ru' ? 'СИНТЕЗ СЛЕДУЮЩЕГО БЛОКА...' : 'SYNTHESIZING NEXT BATCH...'}
-                    </p>
+                    <p className="text-[8px] text-white/20 uppercase tracking-[0.3em] font-black">{locale === 'ru' ? 'СИНТЕЗ СЛЕДУЮЩЕГО БЛОКА...' : 'SYNTHESIZING NEXT BATCH...'}</p>
                   </div>
                 )}
               </div>
             </>
-          ) : (
-            <div className="relative overflow-hidden rounded-[2.5rem] border border-white/5 bg-white/[0.01] p-12 text-center space-y-6">
-               <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent pointer-events-none" />
-               <div className="relative flex flex-col items-center gap-4">
-                  <div className="w-20 h-20 rounded-3xl bg-white/5 border border-white/10 flex items-center justify-center mb-2">
-                     <Lock className="w-8 h-8 text-white/20" />
-                  </div>
-                  <h2 className="text-2xl font-black uppercase tracking-tighter text-white">
-                     {locale === 'ru' ? 'Лента заблокирована' : 'Idea Feed Locked'}
-                  </h2>
-                  <p className="text-xs text-white/30 max-w-xs mx-auto leading-relaxed uppercase tracking-wider font-medium">
-                     {locale === 'ru' 
-                       ? 'Заполните ДНК стратегию, чтобы активировать персональную матрицу идей' 
-                       : 'Calibrate your Creative DNA to activate the personalized idea matrix'}
-                  </p>
-                  <button 
-                    onClick={() => {
-                        const dnaBlock = document.querySelector('[data-dna-block]');
-                        if (dnaBlock) dnaBlock.scrollIntoView({ behavior: 'smooth' });
-                        // The DNABlock itself should handle the click if we make it auto-open or just guide them there.
-                        // I'll make DNABlock accept a ref or just rely on the user clicking the top block.
-                    }}
-                    className="mt-4 px-8 py-4 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all"
-                  >
-                     {locale === 'ru' ? 'Пройти калибровку' : 'Start Calibration'}
-                  </button>
-               </div>
-            </div>
           )
         ) : (
           <div className="grid gap-4">
-            {ideas.length > 0 ? (
+            {globalLoading && ideas.length === 0 ? (
+               <div className="flex items-center justify-center py-20"><Loader2 className="w-6 h-6 animate-spin text-white/10" /></div>
+            ) : ideas.length > 0 ? (
               ideas.map((idea, i) => (
-                <IdeaCard
-                  key={idea.id}
-                  idea={idea}
-                  index={i}
-                  locale={locale}
-                  isProcessing={processingId === idea.id}
-                  onToggleArchive={handleToggleArchive}
-                  onToScript={handleToScript}
-                />
+                <IdeaCard key={idea.id} idea={idea} index={i} locale={locale} isProcessing={processingId === idea.id} onToggleArchive={handleToggleArchive} onToScript={handleToScript} />
               ))
             ) : (
-                <div className="text-center py-20 text-white/20 uppercase text-[10px] tracking-widest font-black">
-                    {locale === 'ru' ? 'Библиотека пуста' : 'Library is empty'}
-                </div>
+              <div className="text-center py-20 text-white/20 uppercase text-[10px] tracking-widest font-black">
+                  {locale === 'ru' ? 'Библиотека пуста' : 'Library is empty'}
+              </div>
             )}
           </div>
         )}
       </div>
-
-      {loading && ideas.length === 0 && (
-        <div className="flex flex-col items-center justify-center py-24 animate-fade-in">
-          <div className="relative w-32 h-32 mb-12">
-             <motion.div
-                animate={{ rotate: 360 }}
-                transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-0 border-2 border-dashed border-purple-500/20 rounded-full"
-             />
-             <motion.div
-                animate={{ rotate: -360 }}
-                transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
-                className="absolute inset-4 border border-dashed border-emerald-500/10 rounded-full"
-             />
-             <div className="absolute inset-0 flex items-center justify-center">
-                <div className="relative">
-                   <motion.div
-                      animate={{ 
-                         scale: [1, 1.2, 1],
-                         opacity: [0.3, 0.7, 0.3]
-                      }}
-                      transition={{ duration: 2, repeat: Infinity }}
-                      className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full"
-                   />
-                   <Dna className="w-16 h-16 text-purple-500 animate-pulse relative z-10" />
-                </div>
-             </div>
-          </div>
-          <div className="space-y-4 text-center">
-             <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">
-                {locale === 'ru' ? 'Синтез Матрицы' : 'Matrix Synthesis'}
-             </h3>
-             <div className="flex flex-col items-center gap-2">
-                <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-black animate-pulse">
-                   {locale === 'ru' ? 'Калибруем цифровой след...' : 'Calibrating digital shadow...'}
-                </p>
-                <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
-                   <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
-                   <p className="text-[8px] text-emerald-500/60 uppercase tracking-[0.2em] font-black">
-                      {locale === 'ru' ? 'Метод Бена Ханта: Активен' : 'Ben Hunt Ladder: Active'}
-                   </p>
-                </div>
-             </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

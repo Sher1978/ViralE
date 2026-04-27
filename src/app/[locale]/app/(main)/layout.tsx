@@ -1,6 +1,7 @@
 import { getAuthContext } from '@/lib/auth';
 import { redirect } from '@/navigation';
 import { getLocale } from 'next-intl/server';
+import { AppDataProvider } from '@/components/providers/AppDataProvider';
 
 export default async function MainLayout({
   children,
@@ -31,5 +32,9 @@ export default async function MainLayout({
     redirect({ href: '/app/onboarding', locale });
   }
 
-  return <>{children}</>;
+  return (
+    <AppDataProvider>
+      {children}
+    </AppDataProvider>
+  );
 }
