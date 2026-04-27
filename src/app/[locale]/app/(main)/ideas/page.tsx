@@ -210,25 +210,64 @@ export default function IdeasPage() {
           </div>
         ) : activeTab === 'new' ? (
           <>
-            {(globalLoading || forcedLoading) && ideas.length === 0 ? (
-               <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
-                  <div className="relative z-10 space-y-6 mb-12 px-6">
-                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 drop-shadow-lg">Viral Engine Digital Core</p>
-                    <h2 className="text-4xl sm:text-6xl font-black italic uppercase text-white tracking-tighter leading-[0.85] max-w-2xl mx-auto drop-shadow-2xl">
-                      {landingT('title')} <span className="text-purple-500 [text-shadow:0_0_30px_rgba(168,85,247,0.5)]">{landingT('titleAccent')}</span>
-                    </h2>
-                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.3em] max-w-sm mx-auto drop-shadow-lg">{landingT('subtitle')}</p>
-                  </div>
-                  <div className="relative z-10 w-24 h-24 mb-12">
-                    <div className="absolute inset-0 border-2 border-purple-500/10 rounded-full" />
-                    <div className="absolute inset-0 border-2 border-t-purple-500 rounded-full animate-spin" />
-                    <div className="absolute inset-0 flex items-center justify-center">
-                       <Sparkles className="w-10 h-10 text-purple-400 animate-pulse" />
+            {/* 🎬 CINEMATIC SPLASH OVERLAY */}
+            <AnimatePresence>
+              {(globalLoading || forcedLoading) && ideas.length === 0 && (
+                <motion.div 
+                  initial={{ opacity: 1 }}
+                  exit={{ opacity: 0, transition: { duration: 0.8, ease: "easeInOut" } }}
+                  className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center overflow-hidden"
+                >
+                    <div className="absolute inset-0 z-0 scale-105">
+                      <img 
+                        src="/splash_bg.png" 
+                        className="w-full h-full object-cover opacity-60 animate-ken-burns" 
+                        alt="Splash Background" 
+                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                      />
+                      <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
                     </div>
-                  </div>
-               </div>
-            ) : (
-              displayCategories.map((cat) => (
+                    
+                    <div className="relative z-10 space-y-6 mb-12 px-6">
+                      <motion.p 
+                        initial={{ opacity: 0, y: 10 }}
+                        animate={{ opacity: 1, y: 0 }}
+                        className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 drop-shadow-lg"
+                      >
+                        Viral Engine Digital Core
+                      </motion.p>
+                      <motion.h2 
+                        initial={{ opacity: 0, scale: 0.9 }}
+                        animate={{ opacity: 1, scale: 1 }}
+                        transition={{ delay: 0.2 }}
+                        className="text-4xl sm:text-6xl font-black italic uppercase text-white tracking-tighter leading-[0.85] max-w-2xl mx-auto drop-shadow-2xl"
+                      >
+                        {landingT('title')} <span className="text-purple-500 [text-shadow:0_0_30px_rgba(168,85,247,0.5)]">{landingT('titleAccent')}</span>
+                      </motion.h2>
+                      <motion.p 
+                        initial={{ opacity: 0 }}
+                        animate={{ opacity: 1 }}
+                        transition={{ delay: 0.4 }}
+                        className="text-[10px] font-bold text-white/50 uppercase tracking-[0.3em] max-w-sm mx-auto drop-shadow-lg"
+                      >
+                        {landingT('subtitle')}
+                      </motion.p>
+                    </div>
+
+                    <div className="relative z-10 w-24 h-24 mb-12">
+                      <div className="absolute inset-0 border-2 border-purple-500/10 rounded-full" />
+                      <div className="absolute inset-0 border-2 border-t-purple-500 rounded-full animate-spin" />
+                      <div className="absolute inset-0 flex items-center justify-center">
+                         <Sparkles className="w-10 h-10 text-purple-400 animate-pulse" />
+                      </div>
+                    </div>
+                </motion.div>
+              )}
+            </AnimatePresence>
+
+            {/* Matrix Scroller Content */}
+            <div className="space-y-12 min-h-screen">
+              {displayCategories.map((cat) => (
                 <MatrixScroller
                   key={cat}
                   title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
@@ -238,15 +277,26 @@ export default function IdeasPage() {
                   onToggleArchive={handleToggleArchive}
                   onRefresh={(force) => refreshIdeas('new', cat, force)}
                 />
-              ))
-            )}
-            <div ref={sentinelRef} className="h-20 w-full flex items-center justify-center">
-              {synthesisLoading && ideas.length > 0 && (
-                <div className="flex flex-col items-center gap-2 animate-pulse">
-                  <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
-                  <p className="text-[8px] text-white/20 uppercase tracking-[0.3em] font-black">{locale === 'ru' ? 'СИНТЕЗ...' : 'SYNTHESIZING...'}</p>
-                </div>
-              )}
+              ))}
+              
+              <div ref={sentinelRef} className="h-40 w-full flex items-center justify-center pb-20">
+                {synthesisLoading && (
+                  <div className="flex flex-col items-center gap-3 animate-pulse">
+                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-ping" />
+                    <p className="text-[10px] text-white/40 uppercase tracking-[0.4em] font-black italic">
+                      {locale === 'ru' ? 'СИНТЕЗИРУЮ СЛЕДУЮЩИЙ СЛОЙ...' : 'SYNTHESIZING NEXT LAYER...'}
+                    </p>
+                  </div>
+                )}
+                {!synthesisLoading && ideas.length < 20 && (
+                   <button 
+                    onClick={synthesizeNextCategory}
+                    className="px-10 py-5 rounded-[2rem] bg-white/5 border border-white/10 text-[10px] font-black uppercase tracking-[0.3em] text-white/30 hover:text-white hover:border-white/30 transition-all active:scale-95"
+                   >
+                      {locale === 'ru' ? 'СИНТЕЗИРОВАТЬ ЕЩЕ' : 'SYNTHESIZE MORE'}
+                   </button>
+                )}
+              </div>
             </div>
           </>
         ) : (
@@ -265,7 +315,15 @@ export default function IdeasPage() {
           </div>
         )}
       </div>
-      <div className="fixed inset-0 z-0 pointer-events-none bg-black" />
+      <div className="fixed inset-0 z-0 pointer-events-none">
+        <img 
+          src="/ideas_bg.png" 
+          className="w-full h-full object-cover opacity-10 animate-ken-burns scale-125 saturate-0" 
+          alt="Page Background" 
+          onError={(e) => (e.currentTarget.style.display = 'none')}
+        />
+        <div className="absolute inset-0 bg-[#020617]/90 backdrop-blur-[100px]" />
+      </div>
     </div>
   );
 }
