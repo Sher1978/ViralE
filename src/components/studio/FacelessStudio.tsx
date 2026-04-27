@@ -25,6 +25,7 @@ interface FacelessStudioProps {
   manifest: ProductionManifest | null;
   onBack: () => void;
   onComplete: (videoBlob: Blob) => void;
+  onJumpToConcept?: () => void;
 }
 
 type FStage = 'voice' | 'images' | 'review' | 'render';
@@ -44,7 +45,7 @@ type PostEffect = 'kenburns' | 'dust' | 'glitch' | 'negative' | 'zoom_punch';
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export default function FacelessStudio({ manifest, onBack, onComplete }: FacelessStudioProps) {
+export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToConcept }: FacelessStudioProps) {
   const [stage, setStage] = useState<string>('scenario');
   const [editableScript, setEditableScript] = useState('');
 
@@ -463,6 +464,15 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
               >
                 Подтвердить Сценарий <ChevronRight size={18} />
               </button>
+
+              {onJumpToConcept && (
+                <button
+                  onClick={onJumpToConcept}
+                  className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-[0.2em] hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                >
+                  <Brain size={14} className="text-purple-400" /> Вернуться к генерации идей (AI Strategist)
+                </button>
+              )}
             </motion.div>
           )}
 

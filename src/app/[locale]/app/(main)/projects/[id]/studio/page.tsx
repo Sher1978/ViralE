@@ -455,6 +455,10 @@ export default function StudioPage() {
             <FacelessStudio
               manifest={manifest}
               onBack={() => setShowFaceless(false)}
+              onJumpToConcept={() => {
+                setShowFaceless(false);
+                setActiveTab('concept');
+              }}
               onComplete={(videoBlob) => {
                 const url = URL.createObjectURL(videoBlob);
                 // Inject as A-Roll into manifest
