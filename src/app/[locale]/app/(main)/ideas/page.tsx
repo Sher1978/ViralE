@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { TrendingUp, Bookmark, Loader2, History, Sparkles, Lock, Dna } from 'lucide-react';
+import { TrendingUp, Bookmark, Loader2, History, Sparkles, Lock, Dna, X } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
 import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
@@ -60,6 +60,20 @@ export default function IdeasPage() {
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [synthesisLoading, setSynthesisLoading] = useState(false);
   const [showDnaEditor, setShowDnaEditor] = useState(false);
+  const [showWelcome, setShowWelcome] = useState(true);
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined' && localStorage.getItem('hideWelcomeIdeas') === 'true') {
+      setShowWelcome(false);
+    }
+  }, []);
+
+  const handleDismissWelcome = () => {
+    setShowWelcome(false);
+    if (typeof window !== 'undefined') {
+      localStorage.setItem('hideWelcomeIdeas', 'true');
+    }
+  };
   
   const sentinelRef = useRef<HTMLDivElement>(null);
 
@@ -166,16 +180,32 @@ export default function IdeasPage() {
         </p>
       </div>
 
-      {activeTab === 'new' && (
-        <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex gap-3 text-white/70 shadow-lg">
-          <Sparkles className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
-          <p className="text-[11px] sm:text-xs font-medium leading-relaxed">
-             {locale === 'ru' 
-               ? "Добро пожаловать в Инсайты. ИИ постоянно анализирует тренды и собирает идеи, подходящие вашей подаче. Если лента кажется пустой — нажмите иконку обновить рядом с нужной категорией."
-               : "Welcome to Insights. AI constantly scans trends to curate ideas fitting your style. If the feed looks empty, hit the refresh icon next to any category."}
-          </p>
-        </div>
-      )}
+      <AnimatePresence>
+        {activeTab === 'new' && showWelcome && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0, scale: 0.95 }}
+            className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-4 text-white/70 shadow-lg relative group overflow-hidden"
+          >
+            <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-cyan-500/5 pointer-events-none" />
+            <Sparkles className="w-5 h-5 text-purple-400 shrink-0 mt-0.5" />
+            <div className="flex-1 pr-6">
+              <p className="text-[11px] sm:text-xs font-medium leading-relaxed">
+                 {locale === 'ru' 
+                   ? "Добро пожаловать в Инсайты. ИИ постоянно анализирует тренды и собирает идеи, подходящие вашей подаче. Если лента кажется пустой или идеи устарели — нажмите иконку обновить рядом с нужной категорией."
+                   : "Welcome to Insights. AI constantly scans trends to curate ideas fitting your style. If the feed looks empty or stale, hit the refresh icon next to any category."}
+              </p>
+            </div>
+            <button 
+              onClick={handleDismissWelcome}
+              className="absolute top-3 right-3 text-white/20 hover:text-white/60 transition-colors p-1"
+            >
+              <X size={14} />
+            </button>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <div className="flex items-center justify-between gap-4">
         <div className="flex-1">
