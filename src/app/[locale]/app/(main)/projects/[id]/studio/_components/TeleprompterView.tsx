@@ -8,6 +8,19 @@ import {
 import { useRouter } from '@/navigation';
 import { useLocale } from 'next-intl';
 
+interface TeleprompterViewProps {
+  cameraStream: MediaStream | null;
+  videoPreviewRef: React.RefObject<HTMLVideoElement | null>;
+  isVideoMirrored: boolean;
+  prompterWidth: number;
+  isReading: boolean;
+  countdown: number | null;
+  prompterRef: React.RefObject<HTMLDivElement | null>;
+  isMirrored: boolean;
+  useCustomScript: boolean;
+  manifest: any;
+  customScript: string;
+  textSize: 'sm' | 'md' | 'lg';
   scriptOpacity: number;
   scriptColor: string;
   onScriptUpdate: (newText: string) => void;
