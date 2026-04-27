@@ -40,6 +40,7 @@ interface SubtitleClip {
 
 interface BRollClip {
   id: string;
+  phraseId?: string;
   url: string;
   label: string;
   prompt: string;
@@ -110,17 +111,19 @@ export const VideoEditor = React.memo(({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Helper to extract initial A-Roll
-  const getInitialARoll = useCallback(() => {
+  const getInitialARoll = () => {
     const rec = manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl);
     return rec?.assetUrl || manifest?.videoUrl || manifest?.segments?.[0]?.assetUrl || null;
-  }, [manifest]);
+  };
+
+  const initialUrl = getInitialARoll();
 
   // Stage machine
-  const [stage, setStage] = useState<EditorStage>(getInitialARoll() ? 'transcribing' : 'empty');
+  const [stage, setStage] = useState<EditorStage>(initialUrl ? 'transcribing' : 'empty');
   const [stageMessage, setStageMessage] = useState('');
 
   // Video
-  const [aRollUrl, setARollUrl] = useState<string | null>(getInitialARoll());
+  const [aRollUrl, setARollUrl] = useState<string | null>(initialUrl);
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -157,7 +160,10 @@ export const VideoEditor = React.memo(({
     startX: number; origStart: number; origEnd: number;
   } | null>(null);
 
-  // ── Sync manifest A-Roll (for teleprompter/headless flow) ──
+  // Guard to prevent double-transcription
+  const transcriptionStartedRef = useRef(false);
+
+  // ── Sync manifest A-Roll + kick off transcription immediately ──
   useEffect(() => {
     const rec = manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl);
     const url = rec?.assetUrl || manifest?.videoUrl || manifest?.segments?.[0]?.assetUrl || null;
@@ -165,15 +171,17 @@ export const VideoEditor = React.memo(({
     if (url && url !== aRollUrl) {
       setARollUrl(url);
       setStage('transcribing');
+      transcriptionStartedRef.current = false; // Reset guard for new URL
     }
-  }, [manifest, aRollUrl]);
+  }, [manifest]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  // ── Auto-transcribe then auto-select phrases (zero friction) ──
+  // ── Auto-transcribe: fires when stage=transcribing AND url is ready ──
   useEffect(() => {
-    if (stage === 'transcribing' && aRollUrl) {
+    if (stage === 'transcribing' && aRollUrl && !transcriptionStartedRef.current) {
+      transcriptionStartedRef.current = true;
       runTranscriptionAndPhrases();
     }
-  }, [stage, aRollUrl]);
+  }); // No deps — runs every render but guard ref prevents re-entry
 
   // Auto-confirm countdown state
   const [autoConfirmSeconds, setAutoConfirmSeconds] = useState(4);
@@ -652,39 +660,43 @@ export const VideoEditor = React.memo(({
         )}
 
         {/* Subtitle Overlay */}
-        <AnimatePresence>
-          {aRollUrl && stage !== 'transcribing' && subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime) && (
-            <motion.div
-              drag
-              dragMomentum={false}
-              onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
-              initial={{ opacity: 0, scale: 0.9, y: subtitlePos.y, x: subtitlePos.x }}
-              animate={{ opacity: 1, scale: 1, y: subtitlePos.y, x: subtitlePos.x }}
-              exit={{ opacity: 0, scale: 0.9 }}
-              key={subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime)?.id}
-              className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-6 max-w-[85%] left-1/2 -translate-x-1/2 flex items-center justify-center whitespace-pre-wrap"
-            >
-              {(() => {
-                const s = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime)!;
-                if (s.style === 'minimal') return (
-                  <span className="text-white text-lg font-bold drop-shadow-[0_2px_4px_rgba(0,0,0,0.8)] tracking-tight">
-                    {s.text}
+        <AnimatePresence mode="wait">
+          {aRollUrl && stage !== 'transcribing' && (() => {
+            const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
+            if (!activeSub) return null;
+            return (
+              <motion.div
+                drag
+                dragMomentum={false}
+                dragConstraints={{ left: -150, right: 150, top: -200, bottom: 200 }}
+                onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
+                key={`${activeSub.id}-${activeSub.style}`}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1, x: subtitlePos.x, y: subtitlePos.y }}
+                exit={{ opacity: 0, scale: 0.9 }}
+                className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-6 max-w-[85%] left-1/2 -translate-x-1/2 flex items-center justify-center whitespace-pre-wrap bottom-16"
+              >
+                {activeSub.style === 'minimal' && (
+                  <span className="text-white text-xl font-bold drop-shadow-[0_2px_8px_rgba(0,0,0,1)] tracking-tight bg-black/30 px-3 py-1 rounded-lg backdrop-blur-sm">
+                    {activeSub.text}
                   </span>
-                );
-                if (s.style === 'pop') return (
-                  <span className="bg-purple-600 text-white px-3 py-1 rounded-lg text-xl font-black italic uppercase tracking-tighter shadow-[0_0_20px_rgba(168,85,247,0.5)]">
-                    {s.text}
+                )}
+                {activeSub.style === 'pop' && (
+                  <span className="bg-purple-600 text-white px-4 py-2 rounded-xl text-xl font-black italic uppercase tracking-tighter shadow-[0_0_30px_rgba(168,85,247,0.8)] border border-purple-400/50">
+                    {activeSub.text}
                   </span>
-                );
-                if (s.style === 'bold') return (
-                  <span className="text-amber-400 text-3xl font-black uppercase tracking-tighter italic drop-shadow-[0_4px_0_rgba(0,0,0,1)] [-webkit-text-stroke:1px_black]">
-                    {s.text}
+                )}
+                {activeSub.style === 'bold' && (
+                  <span className="text-amber-400 text-3xl font-black uppercase tracking-tighter italic drop-shadow-[0_4px_0_rgba(0,0,0,1)] [text-shadow:0_0_20px_rgba(245,158,11,0.8)] [-webkit-text-stroke:1px_black]">
+                    {activeSub.text}
                   </span>
-                );
-                return <span>{s.text}</span>;
-              })()}
-            </motion.div>
-          )}
+                )}
+                {!['minimal','pop','bold'].includes(activeSub.style) && (
+                  <span className="text-white text-lg">{activeSub.text}</span>
+                )}
+              </motion.div>
+            );
+          })()}
         </AnimatePresence>
 
         {/* Processing Overlay */}
