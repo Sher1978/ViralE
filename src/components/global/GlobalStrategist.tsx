@@ -32,7 +32,9 @@ export function GlobalStrategist() {
   // We don't render the strategist on onboarding or auth pages
   const isExcluded = typeof window !== 'undefined' && (
     window.location.pathname.includes('/onboarding') || 
-    window.location.pathname.includes('/auth')
+    window.location.pathname.includes('/auth') ||
+    window.location.pathname.includes('/studio') ||
+    window.location.pathname.includes('/dna')
   );
 
   if (isExcluded) return null;
