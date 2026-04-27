@@ -213,20 +213,26 @@ export default function IdeasPage() {
             {(globalLoading || forcedLoading) && ideas.length === 0 ? (
                <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
                   <div className="absolute inset-0 z-0">
-                    <img src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110" alt="Splash Background" />
-                    <div className="absolute inset-0 bg-[#050508]/60 backdrop-blur-md" />
+                    <img 
+                      src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" 
+                      className="w-full h-full object-cover opacity-80 animate-ken-burns scale-110" 
+                      alt="Splash Background" 
+                    />
+                    <div className="absolute inset-0 bg-black/40 backdrop-blur-[2px]" />
                   </div>
-                  <div className="relative z-10 space-y-4 mb-12 px-6">
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Viral Engine Digital Core</p>
-                    <h2 className="text-2xl sm:text-4xl font-black italic uppercase text-white tracking-tighter leading-[0.9] max-w-lg mx-auto">
-                      {landingT('title')} <span className="text-purple-500">{landingT('titleAccent')}</span>
+                  <div className="relative z-10 space-y-6 mb-12 px-6">
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 drop-shadow-lg">Viral Engine Digital Core</p>
+                    <h2 className="text-4xl sm:text-6xl font-black italic uppercase text-white tracking-tighter leading-[0.85] max-w-2xl mx-auto drop-shadow-2xl">
+                      {landingT('title')} <span className="text-purple-500 [text-shadow:0_0_30px_rgba(168,85,247,0.5)]">{landingT('titleAccent')}</span>
                     </h2>
-                    <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest max-w-xs mx-auto">{landingT('subtitle')}</p>
+                    <p className="text-[10px] font-bold text-white/50 uppercase tracking-[0.3em] max-w-sm mx-auto drop-shadow-lg">{landingT('subtitle')}</p>
                   </div>
                   <div className="relative z-10 w-24 h-24 mb-12">
                     <div className="absolute inset-0 border-2 border-purple-500/10 rounded-full" />
                     <div className="absolute inset-0 border-2 border-t-purple-500 rounded-full animate-spin" />
-                    <div className="absolute inset-0 flex items-center justify-center"><Sparkles className="w-6 h-6 text-purple-400 animate-pulse" /></div>
+                    <div className="absolute inset-0 flex items-center justify-center">
+                       <Sparkles className="w-10 h-10 text-purple-400 animate-pulse" />
+                    </div>
                   </div>
                </div>
             ) : (
