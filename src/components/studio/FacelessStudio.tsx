@@ -29,14 +29,15 @@ interface FacelessStudioProps {
 
 type FStage = 'voice' | 'images' | 'review' | 'render';
 
-const STAGE_LABELS: Record<FStage, string> = {
+const STAGE_LABELS: Record<string, string> = {
+  scenario: 'Сценарий',
   voice: 'Голос',
   images: 'Сцены',
   review: 'Превью',
   render: 'Рендер',
 };
 
-const STAGES: FStage[] = ['voice', 'images', 'review', 'render'];
+const STAGES: string[] = ['scenario', 'voice', 'images', 'review', 'render'];
 
 // TikTok-style post-effect types
 type PostEffect = 'kenburns' | 'dust' | 'glitch' | 'negative' | 'zoom_punch';
@@ -44,7 +45,8 @@ type PostEffect = 'kenburns' | 'dust' | 'glitch' | 'negative' | 'zoom_punch';
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export default function FacelessStudio({ manifest, onBack, onComplete }: FacelessStudioProps) {
-  const [stage, setStage] = useState<FStage>('voice');
+  const [stage, setStage] = useState<string>('scenario');
+  const [editableScript, setEditableScript] = useState('');
 
   // Voice state
   const [voices, setVoices] = useState<any[]>([]);
@@ -85,33 +87,43 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
     .join(' ') || 'Ваш сценарий здесь.';
 
   // ── Build scenes from manifest segments ──
-  const buildScenes = useCallback(() => {
-    const segs = manifest?.segments || [];
-    if (segs.length > 0) {
-      return segs.map((s: any, i: number) => {
-        const text = s.scriptText || s.text || `Сцена ${i + 1}`;
-        const dur = segs.length;
-        return {
-          id: `scene_${i}`,
-          text,
-          start: (i / dur) * 60, // distributed over ~60s
-          end: ((i + 1) / dur) * 60,
-          imagePrompt: text,
-        };
-      });
-    }
-    // Fallback: split script into ~3 scenes
-    const sentences = scriptText.split(/[.!?]+/).filter(s => s.trim().length > 5).slice(0, 6);
+  const buildScenesFromScript = useCallback((text: string) => {
+    // split script into ~5 scenes or by paragraphs
+    const paragraphs = text.split('\n\n').filter(p => p.trim().length > 5);
+    const parts = paragraphs.length > 0 ? paragraphs : text.split(/[.!?]+/).filter(s => s.trim().length > 5).slice(0, 8);
+    
     const dur = 60;
-    const perScene = dur / sentences.length;
-    return sentences.map((text, i) => ({
+    const perScene = dur / parts.length;
+    return parts.map((text, i) => ({
       id: `scene_${i}`,
       text: text.trim(),
       start: i * perScene,
       end: (i + 1) * perScene,
       imagePrompt: text.trim(),
     }));
-  }, [manifest, scriptText]);
+  }, []);
+
+  const buildScenes = useCallback(() => {
+    if (manifest?.segments && manifest.segments.length > 0) {
+      return manifest.segments.map((s: any, i: number) => {
+        const text = s.scriptText || s.text || `Сцена ${i + 1}`;
+        const dur = manifest.segments.length;
+        return {
+          id: `scene_${i}`,
+          text,
+          start: (i / dur) * 60,
+          end: ((i + 1) / dur) * 60,
+          imagePrompt: text,
+        };
+      });
+    }
+    return buildScenesFromScript(editableScript || scriptText);
+  }, [manifest, scriptText, editableScript, buildScenesFromScript]);
+
+  // Sync editableScript from scriptText once
+  useEffect(() => {
+    if (scriptText) setEditableScript(scriptText);
+  }, [scriptText]);
 
   // Load voices on mount
   useEffect(() => {
@@ -129,7 +141,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
       const res = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: scriptText, voice_id: selectedVoice }),
+        body: JSON.stringify({ text: editableScript, voice_id: selectedVoice }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -420,6 +432,39 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
       {/* Stage Content */}
       <div className="flex-1 overflow-y-auto px-5 pb-32">
         <AnimatePresence mode="wait">
+
+          {/* ── STAGE 0: SCENARIO ── */}
+          {stage === 'scenario' && (
+            <motion.div key="scenario" initial={{ opacity: 0, x: 30 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: -30 }} className="space-y-6">
+              <div>
+                <h2 className="text-2xl font-black italic uppercase tracking-tighter mb-1">Сценарий Видео</h2>
+                <p className="text-[10px] text-white/30 uppercase tracking-widest">Текст который будет озвучен ИИ</p>
+              </div>
+
+              <div className="relative">
+                <textarea
+                  value={editableScript}
+                  onChange={(e) => setEditableScript(e.target.value)}
+                  placeholder="Ваш текст здесь..."
+                  className="w-full h-80 bg-white/[0.03] border border-white/10 rounded-[2rem] p-6 text-[13px] text-white/80 leading-relaxed outline-none focus:border-purple-500/30 transition-all font-sans"
+                />
+                <div className="absolute top-4 right-4 animate-pulse">
+                   <Edit3 size={16} className="text-purple-500/50" />
+                </div>
+              </div>
+
+              <button
+                disabled={!editableScript.trim()}
+                onClick={() => {
+                  setScenes(buildScenesFromScript(editableScript));
+                  setStage('voice');
+                }}
+                className="w-full py-5 rounded-[2rem] bg-purple-500 text-white font-black italic uppercase tracking-widest shadow-[0_10px_30px_rgba(168,85,247,0.3)] disabled:opacity-30 flex items-center justify-center gap-3 active:scale-[0.98] transition-all"
+              >
+                Подтвердить Сценарий <ChevronRight size={18} />
+              </button>
+            </motion.div>
+          )}
 
           {/* ── STAGE 1: VOICE ── */}
           {stage === 'voice' && (

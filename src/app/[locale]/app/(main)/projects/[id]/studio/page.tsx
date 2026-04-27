@@ -23,6 +23,7 @@ import { StoryboardGrid } from './_components/StoryboardGrid';
 import { RecordingReview } from './_components/RecordingReview';
 import { SourcePicker } from './_components/SourcePicker';
 import { VideoEditor } from './_components/VideoEditor';
+import { ProductionBranch } from './_components/ProductionBranch';
 
 // Global Shared Components
 import StudioTimeline from '@/components/studio/StudioTimeline';
@@ -44,7 +45,7 @@ export default function StudioPage() {
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'production'| 'assembly' | 'knowledge' | 'assets' | 'concept'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept'>(initialTab);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
 
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
@@ -335,16 +336,45 @@ export default function StudioPage() {
         {/* Stage Area */}
         <div className="flex-1 relative overflow-hidden">
           {activeTab === 'concept' && (
-            <div className="max-w-4xl mx-auto h-full">
+            <div className="max-w-4xl mx-auto h-full relative">
               <StrategistChat 
                 projectId={projectId}
                 userId={currentProfile?.id || ''}
                 manifest={manifest || undefined} 
                 setManifest={(m) => setManifest(m)} 
+                containerClassName="relative h-full"
               />
+
+              {manifest && (
+                <motion.div 
+                  initial={{ opacity: 0, y: 20 }}
+                  animate={{ opacity: 1, y: 0 }}
+                  className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[110]"
+                >
+                  <button
+                    onClick={() => setActiveTab('branch')}
+                    className="flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.4)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.6)] active:scale-95 transition-all group"
+                  >
+                    ПЕРЕЙТИ К ПРОДАКШНУ <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                  </button>
+                </motion.div>
+              )}
             </div>
           )}
           
+          {activeTab === 'branch' && (
+            <ProductionBranch
+              onSelect={(type) => {
+                if (type === 'record') setActiveTab('teleprompter');
+                else if (type === 'faceless') {
+                  setShowFaceless(true);
+                  setActiveTab('assembly');
+                }
+              }}
+              onBack={() => setActiveTab('concept')}
+            />
+          )}
+
           {activeTab === 'teleprompter' && (
             <div className="w-full h-full relative">
                                 <TeleprompterView 
@@ -369,8 +399,7 @@ export default function StudioPage() {
                    onSpeedChange={setScrollSpeed}
                    isRecordingVideo={isRecordingVideo}
                     recordingTime={recordingTime}
-                   onBack={() => {
-                     router.push(`/app/projects/new/script?projectId=${projectId}`);
+                   onBack={() => setActiveTab('branch')}`);
                    }}
                    onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
                    onFlipCamera={() => setIsMirrored(!isMirrored)}
@@ -416,7 +445,7 @@ export default function StudioPage() {
             <VideoEditor
               manifest={manifest}
               updateSegmentField={updateSegmentField}
-              onBack={() => setActiveTab('teleprompter')}
+              onBack={() => setActiveTab('branch')}
               onNext={handleFinalExport}
               projectId={projectId}
               onFaceless={() => setShowFaceless(true)}
