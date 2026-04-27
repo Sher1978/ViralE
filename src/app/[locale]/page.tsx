@@ -209,8 +209,16 @@ export default function LandingPage() {
         {/* Fullscreen zooming image */}
         <motion.div 
           initial={{ scale: 1, opacity: 0, filter: "brightness(0)" }}
-          animate={{ scale: 1.15, opacity: 0.7, filter: "brightness(1)" }}
-          transition={{ duration: 8, ease: "easeOut" }}
+          animate={{ 
+            scale: 1.15, 
+            opacity: [0, 0.7, 0.7], 
+            filter: ["brightness(0)", "brightness(1)", "brightness(1)"] 
+          }}
+          transition={{ 
+            duration: 5, 
+            ease: "easeOut",
+            times: [0, 0.4, 1] // Brightness and opacity hit peak at 40% of the 5s duration (2s)
+          }}
           className="absolute inset-0 z-0 origin-center"
         >
           <img 
