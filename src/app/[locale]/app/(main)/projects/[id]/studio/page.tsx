@@ -311,9 +311,9 @@ export default function StudioPage() {
       const data = await response.json();
       
       if (data.jobId) {
-        router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}&jobId=${data.jobId}`);
+        router.push(`/app/projects/new/delivery?projectId=${projectId}&jobId=${data.jobId}`);
       } else {
-        router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}`);
+        router.push(`/app/projects/new/delivery?projectId=${projectId}`);
       }
     } catch (err) {
       console.error('Export failed:', err);
@@ -412,26 +412,11 @@ export default function StudioPage() {
             </div>
           )}
 
-          {activeTab === 'production' && (
-            <SourcePicker 
-              onSelect={(type) => {
-                if (type === 'record') setActiveTab('teleprompter');
-                else if (type === 'ai') {
-                  setShowFaceless(true);
-                  setActiveTab('assembly');
-                } else {
-                  setActiveTab('assembly');
-                }
-              }}
-              onBack={() => setActiveTab('concept')}
-            />
-          )}
-
           {activeTab === 'assembly' && !showFaceless && (
             <VideoEditor
               manifest={manifest}
               updateSegmentField={updateSegmentField}
-              onBack={() => setActiveTab('production')}
+              onBack={() => setActiveTab('teleprompter')}
               onNext={handleFinalExport}
               projectId={projectId}
               onFaceless={() => setShowFaceless(true)}

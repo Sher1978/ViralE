@@ -553,17 +553,17 @@ export const VideoEditor = React.memo(({
               {/* AI Faceless */}
               <motion.button
                 whileTap={{ scale: 0.98 }}
-                onClick={() => alert('AI Faceless coming soon in next update')}
-                className="flex-1 relative rounded-[2.5rem] bg-white/[0.03] border border-white/5 overflow-hidden group"
+                onClick={onFaceless}
+                className="flex-1 relative rounded-[2.5rem] bg-gradient-to-br from-purple-500/10 to-pink-500/10 border border-purple-500/20 overflow-hidden group"
               >
-                <div className="absolute inset-0 bg-purple-500/[0.02] group-hover:bg-purple-500/[0.05] transition-colors" />
+                <div className="absolute inset-0 bg-purple-500/[0.05] group-hover:bg-purple-500/[0.1] transition-colors" />
                 <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
-                  <div className="w-20 h-20 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
-                    <Cpu size={32} className="text-purple-400" />
+                  <div className="w-20 h-20 rounded-full bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(168,85,247,0.3)]">
+                    <Sparkles size={32} className="text-white" />
                   </div>
                   <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2">AI Faceless</h3>
-                  <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[200px]">
-                    Generate cinematic AI avatars or abstract visuals using your expert DNA
+                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-relaxed max-w-[200px]">
+                    Генерация кинематографичных сцен и озвучки на базе вашего экспертного ДНК
                   </p>
                 </div>
               </motion.button>
@@ -590,9 +590,9 @@ export const VideoEditor = React.memo(({
             {/* Back button */}
             <button 
               onClick={onBack}
-              className="mt-8 py-4 rounded-2xl bg-white/5 text-white/30 text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
+              className="mt-8 py-4 rounded-2xl bg-white/10 text-white/60 text-[11px] font-black uppercase tracking-[0.4em] active:scale-95 transition-all border border-white/10"
             >
-              Cancel Production
+              ВЕРНУТЬСЯ
             </button>
           </motion.div>
         )}
@@ -727,12 +727,23 @@ export const VideoEditor = React.memo(({
 
         {/* Processing Overlay */}
         {stage === 'transcribing' && (
-            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 flex items-center gap-3 px-4 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/30 backdrop-blur-md">
-              <Wand2 size={12} className="text-purple-400 animate-pulse" />
-              <span className="text-[9px] font-black text-purple-200 uppercase tracking-widest">{stageMessage}</span>
-              <div className="flex gap-0.5">
-                {[0, 1, 2].map(i => <div key={i} className="w-1 h-1 rounded-full bg-purple-400/50" />)}
-              </div>
+            <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 flex items-center gap-3 px-4 py-1.5 rounded-full bg-black/90 border border-white/10 backdrop-blur-md shadow-2xl">
+              {transcriptionError ? (
+                <div className="flex items-center gap-3">
+                  <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+                  <span className="text-[10px] font-black text-red-100 uppercase tracking-widest">{transcriptionError}</span>
+                  <button onClick={() => runTranscriptionAndPhrases()} className="bg-red-500 px-3 py-1 rounded-full text-[9px] font-black uppercase hover:bg-red-600 transition-colors">Повторить</button>
+                  <button onClick={() => setStage('editing')} className="text-white/20 hover:text-white/40 text-[9px] font-black uppercase underline p-1">Пропустить</button>
+                </div>
+              ) : (
+                <div className="flex items-center gap-3">
+                  <RotateCw size={12} className="text-purple-400 animate-spin" />
+                  <span className="text-[10px] font-black text-purple-100 uppercase tracking-widest">{stageMessage}</span>
+                  <div className="flex gap-1">
+                    {[0,1,2].map(i => <div key={i} className="w-1 h-1 rounded-full bg-purple-400 animate-bounce" style={{ animationDelay: `${i * 0.2}s` }} />)}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
