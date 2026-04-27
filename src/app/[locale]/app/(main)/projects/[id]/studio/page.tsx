@@ -399,9 +399,8 @@ export default function StudioPage() {
                    onSpeedChange={setScrollSpeed}
                    isRecordingVideo={isRecordingVideo}
                     recordingTime={recordingTime}
-                   onBack={() => setActiveTab('branch')}`);
-                   }}
-                   onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
+                    onBack={() => setActiveTab('branch')}
+                    onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
                    onFlipCamera={() => setIsMirrored(!isMirrored)}
                    onScriptUpdate={async (newText) => {
                      if (!manifest) return;
