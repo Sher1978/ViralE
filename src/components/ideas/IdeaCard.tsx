@@ -1,6 +1,6 @@
 'use client';
 
-import { Star, ArrowRight, Loader2 } from 'lucide-react';
+import { Star, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 
 export interface Idea {
@@ -53,29 +53,46 @@ export default function IdeaCard({
   };
 
   const theme = getCategoryTheme(idea.category);
+  const score = idea.viral_potential_score;
+  
+  const getScoreStyle = (s: number) => {
+    if (s >= 95) return { border: 'border-amber-500/40', glow: 'shadow-[0_0_20px_-2px_rgba(245,158,11,0.3)]', text: 'text-amber-400', label: 'ELITE' };
+    if (s >= 90) return { border: 'border-purple-500/40', glow: 'shadow-[0_0_20px_-2px_rgba(168,85,247,0.3)]', text: 'text-purple-400', label: 'HIGH' };
+    return { border: 'border-white/10', glow: 'shadow-none', text: 'text-white/60', label: 'MID' };
+  };
+
+  const scoreStyle = getScoreStyle(score);
 
   return (
     <div
-      className="card-idea p-5 space-y-4 animate-slide-up opacity-0 group/card relative overflow-hidden border border-white/5 rounded-2xl"
+      className={`card-idea p-6 space-y-4 animate-slide-up opacity-0 group/card relative overflow-visible border ${scoreStyle.border} ${scoreStyle.glow} rounded-[2rem] transition-all duration-500 hover:scale-[1.01]`}
       style={{
         animationFillMode: 'forwards',
         animationDelay: `${0.05 + index * 0.07}s`,
       }}
     >
-      {/* Background Image with Studio Grading */}
-      <div className="absolute inset-0 z-0 overflow-hidden">
-        <img 
-          src={theme.img + "?q=80&w=400&auto=format&fit=crop"} 
-          className="w-full h-full object-cover opacity-30 grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-1000" 
-          alt="" 
-        />
-        <div className={`absolute inset-0 bg-gradient-to-r from-black via-black/60 to-transparent`} />
-        {/* Color Tint Tint Overlay */}
-        <div className={`absolute inset-0 opacity-20 pointer-events-none bg-${theme.color}-500/20`} />
+      {/* Dynamic Over-the-Border Badge (Potential) */}
+      <div className={`absolute -top-3 left-8 z-40 px-3 py-1.5 rounded-xl bg-black border ${scoreStyle.border} flex items-center gap-2 shadow-2xl scale-90 group-hover/card:scale-100 transition-transform`}>
+        <Sparkles className={`w-3 h-3 ${scoreStyle.text}`} />
+        <span className={`text-[10px] font-black italic ${scoreStyle.text} tracking-tighter`}>{score}%</span>
+        <div className="w-[1px] h-3 bg-white/10 mx-1" />
+        <span className="text-[7px] font-black text-white/30 uppercase tracking-[0.2em]">{scoreStyle.label}</span>
       </div>
 
-      {/* Scanline Effect - Same as Studio */}
-      <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,.25)_50%),linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,111,.06))] bg-[length:100%_4px,3px_100%] opacity-10" />
+      {/* Background Image with Studio Grading */}
+      <div className="absolute inset-0 z-0 overflow-hidden rounded-[2rem]">
+        <img 
+          src={theme.img + "?q=80&w=400&auto=format&fit=crop"} 
+          className="w-full h-full object-cover opacity-20 grayscale group-hover:grayscale-0 group-hover:scale-105 transition-all duration-1000" 
+          alt="" 
+        />
+        <div className={`absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent`} />
+        {/* Color Tint Tint Overlay */}
+        <div className={`absolute inset-0 opacity-10 pointer-events-none bg-${theme.color}-500/20`} />
+      </div>
+
+      {/* Scanline Effect */}
+      <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,.25)_50%),linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,111,.06))] bg-[length:100%_4px,3px_100%] opacity-10 rounded-[2rem]" />
 
       {/* Action: Save/Star (Top Right) */}
       <button
@@ -84,57 +101,51 @@ export default function IdeaCard({
           onToggleArchive(idea.id, idea.status);
         }}
         disabled={isProcessing}
-        className="absolute top-4 right-4 z-30 p-2.5 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 hover:scale-110 active:scale-95 transition-all group/star"
+        className="absolute top-5 right-5 z-30 w-10 h-10 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 active:scale-90 transition-all group/star shadow-2xl"
       >
         {isProcessing ? (
-          <Loader2 className="w-5 h-5 animate-spin text-amber-500/50" />
+          <Loader2 className="w-4 h-4 animate-spin text-white/20" />
         ) : (
           <Star 
-            className={`w-5 h-5 transition-all duration-500 ${
+            className={`w-4 h-4 transition-all duration-500 ${
               idea.status === 'archived' 
-                ? 'text-amber-500 fill-amber-500 drop-shadow-[0_0_12px_rgba(245,158,11,0.6)]' 
-                : 'text-white/20 group-hover/star:text-white/50'
+                ? 'text-amber-400 fill-amber-400 drop-shadow-[0_0_8px_rgba(245,158,11,0.6)]' 
+                : 'text-white/10 group-hover/star:text-white/40'
             }`} 
           />
         )}
       </button>
 
+      {/* Invisible overlay for tap-to-script */}
       <div 
-        className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent opacity-0 group-hover/card:opacity-100 transition-opacity cursor-pointer z-10" 
+        className="absolute inset-0 cursor-pointer z-10 rounded-[2rem]" 
         onClick={() => onToScript(idea.topic_title)}
       />
 
-      <div className="flex items-start justify-between gap-4 relative z-20 pointer-events-none pr-12">
-        <div className="flex-1 space-y-2">
-          <div className="flex items-center gap-2">
-            <span className={`text-[7px] font-black uppercase tracking-[0.3em] px-2.5 py-1 rounded-md bg-white/5 border border-white/10 text-white/40`}>
-              {idea.category || t('tagTrend')}
-            </span>
-          </div>
-          <h3 className="text-xl font-black text-white italic tracking-tighter uppercase leading-none drop-shadow-2xl">
-            {idea.topic_title}
-          </h3>
+      {/* Content Header */}
+      <div className="flex flex-col gap-3 relative z-20 pointer-events-none pr-12">
+        <div className="flex items-center gap-2">
+          <span className={`text-[7px] font-black uppercase tracking-[0.3em] px-2.5 py-1 rounded-lg bg-black/40 border border-white/10 text-white/40 drop-shadow-sm`}>
+            {idea.category || t('tagTrend')}
+          </span>
         </div>
-
-        <div className="flex flex-col items-center shrink-0 pt-1">
-          <div className="w-10 h-10 rounded-xl flex items-center justify-center font-black text-sm bg-white/5 border border-white/10 text-white/80 shadow-2xl backdrop-blur-md italic">
-            {idea.viral_potential_score}
-          </div>
-          <span className="text-[6px] font-black uppercase tracking-tighter text-white/20 mt-1">Potential</span>
-        </div>
+        <h3 className="text-2xl font-black text-white italic tracking-tighter uppercase leading-[0.95] drop-shadow-2xl max-w-[280px]">
+          {idea.topic_title}
+        </h3>
       </div>
 
-      <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest leading-relaxed relative z-20 pointer-events-none max-w-[85%]">
+      <p className="text-[10px] font-bold text-white/30 uppercase tracking-[0.15em] leading-relaxed relative z-20 pointer-events-none max-w-[90%] line-clamp-3">
         {idea.rationale}
       </p>
 
+      {/* Actions */}
       <div className="flex items-center justify-end pt-2 relative z-20">
         <button
           onClick={(e) => {
             e.stopPropagation();
             onToScript(idea.topic_title);
           }}
-          className="group flex items-center gap-4 pl-6 pr-2 py-2 rounded-2xl bg-white text-black hover:bg-emerald-500 hover:text-white transition-all font-black text-[10px] uppercase tracking-wider shadow-2xl hover:scale-[1.02] active:scale-[0.98]"
+          className="group flex items-center gap-4 pl-6 pr-1.5 py-1.5 rounded-[1.5rem] bg-white text-black hover:bg-purple-600 hover:text-white transition-all font-black text-[9px] uppercase tracking-[0.2em] shadow-[0_10px_30px_-10px_rgba(255,255,255,0.3)] active:scale-95"
         >
           {t('btnScript')}
           <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">

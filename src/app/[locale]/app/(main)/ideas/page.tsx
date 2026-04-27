@@ -114,6 +114,17 @@ export default function IdeasPage() {
     return groups;
   }, [ideas]);
 
+  const displayCategories = useMemo(() => {
+    // Show non-empty ones first
+    return [...CATEGORIES].sort((a, b) => {
+      const countA = (groupedIdeas[a] || []).length;
+      const countB = (groupedIdeas[b] || []).length;
+      if (countA > 0 && countB === 0) return -1;
+      if (countA === 0 && countB > 0) return 1;
+      return 0;
+    });
+  }, [groupedIdeas]);
+
   const synthesizeNextCategory = useCallback(async () => {
     if (synthesisLoading || loading || activeTab !== 'new') return;
 
@@ -291,7 +302,7 @@ export default function IdeasPage() {
                   </div>
                 </div>
               ) : (
-                CATEGORIES.map((cat) => (
+                displayCategories.map((cat) => (
                   <MatrixScroller
                     key={cat}
                     title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
