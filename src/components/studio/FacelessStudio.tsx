@@ -522,9 +522,35 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
               </button>
 
               {voiceError && (
-                <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center">
-                  ⚠️ {voiceError}
-                </div>
+                <motion.div 
+                  initial={{ opacity: 0, scale: 0.95 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="p-5 rounded-3xl bg-red-500/10 border border-red-500/20 space-y-4"
+                >
+                  <div className="flex items-start gap-3">
+                    <X className="w-5 h-5 text-red-500 shrink-0 mt-0.5" />
+                    <div>
+                      <p className="text-[11px] font-black text-white uppercase tracking-tight">Ошибка системы</p>
+                      <p className="text-[10px] text-red-400/80 font-medium leading-relaxed mt-1">
+                        {voiceError.includes('quota') || voiceError.includes('balance') 
+                          ? (locale === 'ru' ? 'Недостаточно лимитов ElevenLabs для генерации озвучки.' : 'Insufficient ElevenLabs quota for generation.')
+                          : voiceError}
+                      </p>
+                    </div>
+                  </div>
+                  
+                  {(voiceError.includes('quota') || voiceError.includes('balance') || voiceError.includes('ELEVENLABS')) && (
+                    <a 
+                      href="https://elevenlabs.io/app/subscription" 
+                      target="_blank" 
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-2xl bg-red-500 text-white text-[10px] font-black uppercase tracking-widest hover:bg-red-400 transition-all active:scale-95 shadow-[0_10px_25px_rgba(239,68,68,0.3)]"
+                    >
+                      <Sparkles size={14} />
+                      {locale === 'ru' ? 'ПОПОЛНИТЬ БАЛАНС' : 'TOP UP BALANCE'}
+                    </a>
+                  )}
+                </motion.div>
               )}
 
               {/* Audio Player */}
