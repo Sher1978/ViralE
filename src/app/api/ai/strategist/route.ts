@@ -1,6 +1,7 @@
 import { model } from '@/lib/ai/gemini';
 import { SchemaType, FunctionCallingMode } from '@google/generative-ai';
 import { strategistService } from '@/lib/services/strategistService';
+import { strategistServerService } from '@/lib/services/strategistServerService';
 import { supabase } from '@/lib/supabase';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { NextResponse } from 'next/server';
@@ -56,7 +57,7 @@ export async function POST(req: Request) {
     }
 
     // 3. Build prompt
-    const systemPrompt = await strategistService.getStrategistSystemPrompt(user.id, locale);
+    const systemPrompt = await strategistServerService.getStrategistSystemPrompt(user.id, locale);
     
     let projectContext = "";
     if (projectId) {

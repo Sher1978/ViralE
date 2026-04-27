@@ -1,5 +1,7 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getModel } from './ai/gemini';
+import fs from 'fs';
+import path from 'path';
 
 export interface IdeaSuggestion {
   id?: string;
@@ -28,12 +30,34 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
   }
 
   const tier = profile?.tier || 'free';
-  const dnaAnswers = profile?.dna_answers || {};
-  const isDnaComplete = Object.values(dnaAnswers).filter((v: any) => v && v.toString().length > 2).length >= 7;
+  const userFilePath = path.join(process.cwd(), 'Bible_SOT', 'users', userId, 'Brand_DNA.md');
+  const hasFileStrategy = fs.existsSync(userFilePath);
+  
+  let dnaContext = "";
+  let isDnaComplete = false;
 
-  // FAST PATH: If DNA is not complete, return one of the pre-baked template ideas for the category
-  if (!isDnaComplete && !category) {
-      // If no category specified, we'll return a sample for General
+  if (hasFileStrategy) {
+    try {
+      dnaContext = fs.readFileSync(userFilePath, 'utf-8');
+      isDnaComplete = true;
+    } catch (e) {
+      console.error('Failed to read DNA file in ideation:', e);
+    }
+  }
+
+  if (!dnaContext) {
+    const dnaAnswers = profile?.dna_answers || {};
+    isDnaComplete = Object.values(dnaAnswers).filter((v: any) => v && v.toString().length > 2).length >= 7;
+    dnaContext = isDnaComplete ? JSON.stringify(dnaAnswers) : "";
+  }
+
+  // Load Content Lego for ideation constraints
+  let contentLego = "";
+  try {
+    const legoPath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', 'Content_lego.md');
+    contentLego = fs.readFileSync(legoPath, 'utf-8');
+  } catch (e) {
+    console.warn('Content Lego file not found for ideation');
   }
 
   const templateContext = !isDnaComplete 
@@ -42,9 +66,6 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
 
   const digitalShadow = profile?.digital_shadow_prompt || (isDnaComplete ? 'Expert Content Strategist.' : 'Dubai Car Industry Expert');
   const industry = isDnaComplete ? (profile?.industry_context || 'General Content') : 'Cars Dubai';
-
-  // Enforcement of Tier Gating for AI Topic Generation (Optional: might want to skip for the 12 scrollers demo)
-  // ... current tier logic ...
 
   const categories = [
     "Hooks", "Roles", "Awareness", "Problem", "Solution", "Loyalty", "Fast Sales",
@@ -56,13 +77,16 @@ export async function generateDailyIdeas(supabase: SupabaseClient, userId: strin
   const prompt = `
     You are the "Viral Engine" Strategic Consultant.
     
+    GUIDING METHODOLOGY (Content Lego):
+    ${contentLego}
+
     TASK: Generate 5 fresh, high-retention video topic ideas for the category: "${targetCategory}".
     
     CRITICAL: All generated text content MUST BE IN THE SAME LANGUAGE as the user's input or the TEMPLATE THEMATIC provided below. If context is in Russian, output Russian. If Ukrainian, output Ukrainian. Default to ${languageName} only if language is ambiguous.
     
-    ${isDnaComplete ? `USER DNA DATA: ${JSON.stringify(dnaAnswers)}` : `TEMPLATE THEMATIC: ${templateContext}`}
+    ${isDnaComplete ? `USER BRAND DNA: ${dnaContext}` : `TEMPLATE THEMATIC: ${templateContext}`}
     
-    ${isDnaComplete ? `CONTEXT: ${digitalShadow}` : ""}
+    ${isDnaComplete ? `STRATEGIC CONTEXT: ${digitalShadow}` : ""}
 
     FOR CATEGORY "${targetCategory}":
     - If "Hooks": Generate ONLY the first 5 seconds of a script. These should be viral eye-catchers. 
