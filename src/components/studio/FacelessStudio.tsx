@@ -184,6 +184,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       setScenes([...updated]);
 
       try {
+        console.log(`[Studio] Generating scene ${i+1}/${updated.length}:`, updated[i].imagePrompt);
         const res = await fetch('/api/ai/image-gen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -193,9 +194,17 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             aspect_ratio: '9:16',
           }),
         });
+        
         const data = await res.json();
-        updated[i] = { ...updated[i], imageUrl: data.url, generating: false };
-      } catch {
+        
+        if (!res.ok) {
+           console.error('[Studio] Scene generation failed:', data.error);
+           updated[i] = { ...updated[i], generating: false };
+        } else {
+           updated[i] = { ...updated[i], imageUrl: data.url, generating: false };
+        }
+      } catch (err) {
+        console.error('[Studio] Network error during generation:', err);
         updated[i] = { ...updated[i], generating: false };
       }
       setScenes([...updated]);
@@ -209,14 +218,21 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     const scene = scenes.find(s => s.id === sceneId);
     if (!scene) return;
     try {
+      console.log(`[Studio] Regenerating scene ${sceneId}:`, scene.imagePrompt);
       const res = await fetch('/api/ai/image-gen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: scene.imagePrompt, style_prefix: stylePrompt, aspect_ratio: '9:16' }),
       });
       const data = await res.json();
-      setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, imageUrl: data.url, generating: false } : s));
-    } catch {
+      if (!res.ok) {
+        console.error('[Studio] Single scene regeneration failed:', data.error);
+        setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, generating: false } : s));
+      } else {
+        setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, imageUrl: data.url, generating: false } : s));
+      }
+    } catch (err) {
+      console.error('[Studio] Network error during regeneration:', err);
       setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, generating: false } : s));
     }
   };
