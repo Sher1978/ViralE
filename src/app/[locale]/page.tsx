@@ -208,12 +208,16 @@ export default function LandingPage() {
       <div className="min-h-screen bg-[#020408] flex flex-col items-center justify-center relative overflow-hidden">
         {/* Fullscreen zooming image */}
         <motion.div 
-          initial={{ scale: 1, opacity: 0 }}
-          animate={{ scale: 1.15, opacity: 0.7 }}
-          transition={{ duration: 6, ease: "easeOut" }}
+          initial={{ scale: 1, opacity: 0, filter: "brightness(0)" }}
+          animate={{ scale: 1.15, opacity: 0.7, filter: "brightness(1)" }}
+          transition={{ duration: 8, ease: "easeOut" }}
           className="absolute inset-0 z-0 origin-center"
         >
-          <img src="/cyberpunk_splash.png" alt="Viral Engine" className="w-full h-full object-cover" />
+          <img 
+            src="/cyberpunk_splash.png" 
+            alt="Viral Engine" 
+            className="w-full h-full object-cover" 
+          />
         </motion.div>
 
         {/* Gradients to blend content with edges and darken for text readability */}
