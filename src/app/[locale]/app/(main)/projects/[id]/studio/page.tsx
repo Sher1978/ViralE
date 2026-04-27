@@ -52,7 +52,7 @@ export default function StudioPage() {
   // Teleprompter States
   const [isReading, setIsReading] = useState(false);
   const [scrollSpeed, setScrollSpeed] = useState(2);
-  const [textSize, setTextSize] = useState<'sm' | 'md' | 'lg'>('md');
+  const [textSize, setTextSize] = useState<'sm' | 'md' | 'lg'>('sm');
   const [isMirrored, setIsMirrored] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [prompterWidth, setPrompterWidth] = useState(600);

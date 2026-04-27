@@ -277,7 +277,7 @@ export const TeleprompterView = React.memo(({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="absolute inset-0 z-[110] bg-black/95 backdrop-blur-3xl p-10 flex flex-col gap-10"
+            className="absolute inset-0 z-[110] bg-black/60 backdrop-blur-md p-10 flex flex-col gap-10"
           >
             <div className="flex items-center justify-between text-white">
               <h3 className="text-2xl font-black italic uppercase">Edit Script</h3>
