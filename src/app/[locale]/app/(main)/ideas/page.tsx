@@ -14,6 +14,25 @@ const CATEGORIES = [
   "Myths", "Comparison", "Educational", "Case Study"
 ];
 
+const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
+  "Hooks": { en: "Attention Magnets", ru: "Магниты внимания" },
+  "Roles": { en: "Hero Masks", ru: "Маски героя" },
+  "Awareness": { en: "Recognition Ladder", ru: "Лестница признания" },
+  "Problem": { en: "Mirror of Pain", ru: "Зеркало боли" },
+  "Solution": { en: "Result Elevator", ru: "Лифт к результату" },
+  "Loyalty": { en: "Trust Code", ru: "Кодекс доверия" },
+  "Fast Sales": { en: "Cash Sprint", ru: "Кэш-спринт" },
+  "Controversial": { en: "Hype Territory", ru: "Территория хайпа" },
+  "Evergreen": { en: "Eternal Meanings", ru: "Вечные смыслы" },
+  "Trends": { en: "Now Wave", ru: "Волна сейчас" },
+  "Lifestyle": { en: "Style DNA", ru: "ДНК стиля" },
+  "Future": { en: "Synthesis of Tomorrow", ru: "Синтез будущего" },
+  "Myths": { en: "Myth Busting", ru: "Разрушение мифов" },
+  "Comparison": { en: "Meaning Combat", ru: "Поединок смыслов" },
+  "Educational": { en: "Expert School", ru: "Школа эксперта" },
+  "Case Study": { en: "Success Trophies", ru: "Трофеи успеха" }
+};
+
 export default function IdeasPage() {
   const t = useTranslations('ideas');
   const locale = useLocale();
@@ -173,8 +192,8 @@ export default function IdeasPage() {
             CATEGORIES.map((cat) => (
               <MatrixScroller
                 key={cat}
-                title={cat}
-                subtitle={locale === 'ru' ? 'Стратегические идеи' : 'Strategic Insights'}
+                title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
+                subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
                 ideas={groupedIdeas[cat] || []}
                 onToScript={(topic) => handleToScript(topic, cat)}
                 onToggleArchive={handleToggleArchive}

@@ -170,5 +170,18 @@ export const projectService = {
     const latest = await this.getLatestVersion(projectId);
     if (!latest) return null;
     return this.updateVersion(latest.id, { script_data: manifest });
+  },
+
+  async deleteProject(projectId: string): Promise<boolean> {
+    const { error } = await supabase
+      .from('projects')
+      .delete()
+      .eq('id', projectId);
+
+    if (error) {
+      console.error('Error deleting project:', error);
+      return false;
+    }
+    return true;
   }
 };

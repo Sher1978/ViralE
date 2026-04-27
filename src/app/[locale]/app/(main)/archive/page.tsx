@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useLocale } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from '@/navigation';
@@ -74,6 +74,14 @@ export default function LibraryPage() {
   }, []);
 
   useEffect(() => { load(); }, [load]);
+
+  const handleDelete = async (id: string) => {
+    if (!confirm(locale === 'ru' ? 'Удалить этот проект навсегда?' : 'Delete this project permanently?')) return;
+    const ok = await projectService.deleteProject(id);
+    if (ok) {
+      setPacks(prev => prev.filter(p => p.projectId !== id));
+    }
+  };
 
   const filtered = packs.filter(p => {
     const matchJTBD = activeJTBD === 'all' || p.jtbd === activeJTBD;
@@ -183,7 +191,7 @@ export default function LibraryPage() {
                       animate={{ opacity: 1, y: 0 }}
                       transition={{ delay: i * 0.06 }}
                     >
-                      <PackCard pack={pack} locale={locale} router={router} />
+                      <PackCard pack={pack} locale={locale} router={router} onDelete={handleDelete} />
                     </motion.div>
                   ))}
                 </div>
@@ -197,8 +205,34 @@ export default function LibraryPage() {
 }
 
 // ── Pack Card ─────────────────────────────────────────────────────────────
-function PackCard({ pack, locale, router }: { pack: ContentPack; locale: string; router: any }) {
-  const meta = JTBD_META[pack.jtbd];
+function PackCard({ 
+  pack, 
+  locale, 
+  router, 
+  onDelete 
+}: { 
+  pack: ContentPack; 
+  locale: string; 
+  router: any;
+  onDelete: (id: string) => void;
+}) {
+  const [isLongPressing, setIsLongPressing] = useState(false);
+  const [showMenu, setShowMenu] = useState(false);
+  const timerRef = useRef<any>(null);
+
+  const handleStart = () => {
+    setIsLongPressing(true);
+    timerRef.current = setTimeout(() => {
+      setShowMenu(true);
+      setIsLongPressing(false);
+      if (window.navigator.vibrate) window.navigator.vibrate(50);
+    }, 600);
+  };
+
+  const handleEnd = () => {
+    setIsLongPressing(false);
+    if (timerRef.current) clearTimeout(timerRef.current);
+  };
 
   const assetReady = [
     !!pack.videoUrl,
@@ -208,53 +242,89 @@ function PackCard({ pack, locale, router }: { pack: ContentPack; locale: string;
     (pack.galleryImages?.length ?? 0) > 0,
   ];
 
+  const meta = JTBD_META[pack.jtbd];
+
   return (
-    <motion.div
-      whileTap={{ scale: 0.98 }}
-      onClick={() => router.push(`/app/archive/${pack.id}`)}
-      className="flex items-center gap-4 p-4 rounded-3xl bg-white/[0.03] border border-white/5 hover:border-cyan-500/15 active:bg-white/[0.05] transition-all cursor-pointer group"
-    >
-      {/* Thumbnail / Status badge */}
-      <div className="relative flex-shrink-0">
-        <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/5 flex items-center justify-center overflow-hidden">
-          {pack.coverImageUrl ? (
-            <img src={pack.coverImageUrl} className="w-full h-full object-cover" alt="" />
-          ) : (
-            <Video size={24} className="text-white/10" />
-          )}
+    <div className="relative">
+      <motion.div
+        whileTap={{ scale: 0.96 }}
+        onPointerDown={handleStart}
+        onPointerUp={handleEnd}
+        onPointerLeave={handleEnd}
+        onClick={() => !showMenu && router.push(`/app/archive/${pack.id}`)}
+        className={`flex items-center gap-4 p-4 rounded-3xl bg-white/[0.03] border transition-all cursor-pointer group relative z-10 ${
+          showMenu ? 'border-cyan-500/50 bg-white/[0.08] blur-[2px]' : 'border-white/5 hover:border-cyan-500/15'
+        }`}
+      >
+        {/* Thumbnail */}
+        <div className="relative flex-shrink-0">
+          <div className="w-16 h-16 rounded-2xl bg-white/[0.04] border border-white/5 flex items-center justify-center overflow-hidden">
+            {pack.coverImageUrl ? (
+              <img src={pack.coverImageUrl} className="w-full h-full object-cover" alt="" />
+            ) : (
+              <Video size={24} className="text-white/10" />
+            )}
+          </div>
+          <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${meta.dot} border-2 border-[#0A0A10]`} />
         </div>
-        {/* JTBD dot */}
-        <div className={`absolute -top-1 -right-1 w-3 h-3 rounded-full ${meta.dot} border-2 border-[#0A0A10]`} />
-      </div>
 
-      {/* Info */}
-      <div className="flex-1 min-w-0">
-        <p className="text-[12px] font-black text-white uppercase tracking-tight italic truncate group-hover:text-cyan-300 transition-colors">
-          {pack.title}
-        </p>
-        <p className="text-[8px] text-white/25 font-bold mt-0.5">
-          {new Date(pack.createdAt).toLocaleDateString(locale === 'ru' ? 'ru-RU' : 'en-US', { month: 'short', day: 'numeric' })}
-        </p>
-
-        {/* Asset dots */}
-        <div className="flex items-center gap-1.5 mt-2">
-          {ASSET_DOTS.map(({ key, Icon, color }, idx) => (
-            <div key={key} title={key}
-              className={`w-5 h-5 rounded-full flex items-center justify-center transition-all ${
-                assetReady[idx] ? `bg-white/8 ${color}` : 'bg-white/[0.02] text-white/10'
-              }`}>
-              <Icon size={9} />
-            </div>
-          ))}
-          <span className="text-[8px] text-white/20 font-black ml-1">
-            {pack.assetsReady}/5
-          </span>
+        {/* Info */}
+        <div className="flex-1 min-w-0">
+          <p className="text-[12px] font-black text-white uppercase tracking-tight italic truncate group-hover:text-cyan-300 transition-colors">
+            {pack.title}
+          </p>
+          <div className="flex items-center gap-1.5 mt-2">
+            {ASSET_DOTS.map(({ key, Icon, color }, idx) => (
+              <div key={key} className={`w-5 h-5 rounded-full flex items-center justify-center ${assetReady[idx] ? `bg-white/8 ${color}` : 'bg-white/[0.02] text-white/10'}`}>
+                <Icon size={9} />
+              </div>
+            ))}
+          </div>
         </div>
-      </div>
+        <ChevronRight size={16} className="text-white/15 group-hover:text-cyan-400 transition-colors flex-shrink-0" />
+      </motion.div>
 
-      {/* Arrow */}
-      <ChevronRight size={16} className="text-white/15 group-hover:text-cyan-400 transition-colors flex-shrink-0" />
-    </motion.div>
+      <AnimatePresence>
+        {showMenu && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setShowMenu(false)}
+              className="fixed inset-0 z-40 bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-50 w-48 bg-[#111118] border border-white/10 rounded-2xl p-2 shadow-2xl"
+            >
+              <button
+                onClick={() => {
+                  setShowMenu(false);
+                  onDelete(pack.projectId);
+                }}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-400 transition-colors"
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                  {locale === 'ru' ? 'Удалить' : 'Delete'}
+                </span>
+                <Archive size={14} />
+              </button>
+              <button
+                onClick={() => setShowMenu(false)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-white/5 text-white/40 transition-colors"
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest">
+                  {locale === 'ru' ? 'Отмена' : 'Cancel'}
+                </span>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
   );
 }
 
