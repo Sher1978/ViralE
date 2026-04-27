@@ -110,10 +110,10 @@ export default function ProjectsPage() {
               index === 0 ? 'z-30' : index === 1 ? 'z-20' : 'z-10'
             }`}
             style={{
-              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 92%, 0 100%)' :
-                        index === 1 ? 'polygon(0 8%, 100% 0, 100% 92%, 0 100%)' :
-                        'polygon(0 8%, 100% 0, 100% 100%, 0 100%)',
-              marginTop: index === 0 ? '0' : '-4dvh'
+              clipPath: index === 0 ? 'polygon(0 0, 100% 0, 100% 96%, 0 100%)' :
+                        index === 1 ? 'polygon(0 4%, 100% 0, 100% 96%, 0 100%)' :
+                        'polygon(0 4%, 100% 0, 100% 100%, 0 100%)',
+              marginTop: index === 0 ? '0' : '-2dvh'
             }}
           >
             <div className="relative w-full h-[104%] -mt-[2%] overflow-hidden active:scale-[0.99] transition-transform">
