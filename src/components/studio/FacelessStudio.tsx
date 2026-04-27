@@ -7,6 +7,7 @@ import {
   RefreshCw, Check, ArrowLeft, ArrowRight, Loader2,
   Music, Sparkles, Wand2, X, RotateCw, Volume2, Edit3, Brain
 } from 'lucide-react';
+import { useLocale } from 'next-intl';
 import { ProductionManifest } from '@/lib/types/studio';
 
 // ── Types ──────────────────────────────────────────────────────────────────
@@ -46,6 +47,7 @@ type PostEffect = 'kenburns' | 'dust' | 'glitch' | 'negative' | 'zoom_punch';
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToConcept }: FacelessStudioProps) {
+  const locale = useLocale();
   const [stage, setStage] = useState<string>('scenario');
   const [editableScript, setEditableScript] = useState('');
 
