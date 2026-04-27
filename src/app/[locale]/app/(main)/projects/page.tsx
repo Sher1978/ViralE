@@ -13,6 +13,84 @@ import { profileService } from '@/lib/services/profileService';
 import { useRouter } from '@/navigation';
 import { StrategistChat } from '@/components/studio/StrategistChat';
 
+// ── Project Card Helper ───────────────────────────────────────────────────
+function ProjectCard({ project, locale, router, onDelete }: { project: Project, locale: string, router: any, onDelete: (id: string) => void }) {
+  const [showMenu, setShowMenu] = useState(false);
+  const timerRef = useRef<any>(null);
+
+  const handleStart = () => {
+    timerRef.current = setTimeout(() => {
+      setShowMenu(true);
+      if (window.navigator.vibrate) window.navigator.vibrate(50);
+    }, 600);
+  };
+
+  const handleEnd = () => {
+    if (timerRef.current) clearTimeout(timerRef.current);
+  };
+
+  return (
+    <div className="relative">
+      <motion.div 
+        whileTap={{ scale: 0.96 }}
+        onPointerDown={handleStart}
+        onPointerUp={handleEnd}
+        onPointerLeave={handleEnd}
+        onClick={() => !showMenu && router.push(`/app/projects/new/${project.id}`)}
+        className="flex items-center justify-between p-6 bg-white/[0.03] border border-white/5 rounded-[2.5rem] hover:bg-white/[0.06] transition-all cursor-pointer group hover:border-purple-500/20"
+      >
+        <div className="flex items-center gap-5">
+          <div className="w-16 h-16 rounded-3xl bg-amber-500/10 flex items-center justify-center border border-white/5 group-hover:border-amber-400/30 transition-all">
+            <Play className="h-7 w-7 text-white/50 group-hover:text-amber-400 transition-all" />
+          </div>
+          <div className="flex flex-col">
+            <span className="text-lg font-black uppercase tracking-tight text-white group-hover:text-amber-400 transition-colors italic truncate max-w-[140px]">{project.title}</span>
+            <div className="flex items-center gap-2 mt-1">
+                <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
+                <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">In Progress</span>
+            </div>
+          </div>
+        </div>
+        <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-black transition-all">
+          <ArrowRight size={20} />
+        </div>
+      </motion.div>
+
+      <AnimatePresence>
+        {showMenu && (
+          <>
+            <motion.div 
+              initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+              onClick={() => setShowMenu(false)}
+              className="fixed inset-0 z-[110] bg-black/40 backdrop-blur-sm"
+            />
+            <motion.div
+              initial={{ opacity: 0, scale: 0.9, y: 10 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.9, y: 10 }}
+              className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 z-[111] w-48 bg-[#111118] border border-white/10 rounded-2xl p-2 shadow-2xl"
+            >
+              <button
+                onClick={(e) => { e.stopPropagation(); setShowMenu(false); onDelete(project.id); }}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-red-500/10 text-red-400 transition-colors"
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest">{locale === 'ru' ? 'Удалить' : 'Delete'}</span>
+                <X size={14} />
+              </button>
+              <button
+                onClick={() => setShowMenu(false)}
+                className="w-full flex items-center justify-between px-4 py-3 rounded-xl hover:bg-white/5 text-white/40 transition-colors"
+              >
+                <span className="text-[10px] font-black uppercase tracking-widest">{locale === 'ru' ? 'Отмена' : 'Cancel'}</span>
+              </button>
+            </motion.div>
+          </>
+        )}
+      </AnimatePresence>
+    </div>
+  );
+}
+
 export default function ProjectsPage() {
   const t = useTranslations('projects');
   const locale = useLocale();
@@ -194,26 +272,17 @@ export default function ProjectsPage() {
               {projects.length > 0 ? (
                 <div className="grid gap-4">
                   {projects.map((project) => (
-                    <div 
-                      key={project.id}
-                      onClick={() => router.push(`/app/projects/new/${project.id}`)}
-                      className="flex items-center justify-between p-6 bg-white/[0.03] border border-white/5 rounded-[2.5rem] hover:bg-white/[0.06] transition-all cursor-pointer group hover:border-purple-500/20"
-                    >
-                      <div className="flex items-center gap-5">
-                        <div className="w-16 h-16 rounded-3xl bg-amber-500/10 flex items-center justify-center border border-white/5 group-hover:border-amber-400/30 transition-all">
-                          <Play className="h-7 w-7 text-white/50 group-hover:text-amber-400 transition-all" />
-                        </div>
-                        <div className="flex flex-col">
-                          <span className="text-lg font-black uppercase tracking-tight text-white group-hover:text-amber-400 transition-colors italic">{project.title}</span>
-                          <div className="flex items-center gap-2 mt-1">
-                             <div className="w-1.5 h-1.5 rounded-full bg-amber-500 animate-pulse" />
-                             <span className="text-[10px] font-bold text-white/20 uppercase tracking-widest">In Progress • Updated recently</span>
-                          </div>
-                        </div>
-                      </div>
-                      <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-amber-500 group-hover:text-black transition-all">
-                        <ArrowRight size={20} />
-                      </div>
+                    <div key={project.id} className="relative">
+                      <ProjectCard 
+                        project={project} 
+                        locale={locale} 
+                        router={router} 
+                        onDelete={async (id) => {
+                          if (!confirm(locale === 'ru' ? 'Удалить этот проект навсегда?' : 'Delete this project permanently?')) return;
+                          const ok = await projectService.deleteProject(id);
+                          if (ok) setProjects(prev => prev.filter(p => p.id !== id));
+                        }} 
+                      />
                     </div>
                   ))}
                 </div>
