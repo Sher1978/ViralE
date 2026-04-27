@@ -13,6 +13,7 @@ function cn(...classes: (string | boolean | undefined)[]) {
 export function BottomNav() {
   const pathname = usePathname();
   const locale = useLocale();
+  const router = useRouter();
   const t = useTranslations('nav');
 
   const navItems = [
