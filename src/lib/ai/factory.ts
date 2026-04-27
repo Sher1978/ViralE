@@ -23,7 +23,7 @@ export async function generateScript(
   digitalShadow: string, 
   options: GenerationOptions = {}
 ) {
-  const { engine = 'gemini', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna, hook, role } = options;
+  const { engine = 'groq', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna, hook, role } = options;
 
   switch (engine) {
     case 'claude':
@@ -43,7 +43,7 @@ export async function refineScript(
   digitalShadow: string,
   options: GenerationOptions = {}
 ) {
-  const { engine = 'gemini', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna } = options;
+  const { engine = 'groq', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna } = options;
 
   switch (engine) {
     case 'claude':
