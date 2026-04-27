@@ -752,7 +752,7 @@ export const VideoEditor = React.memo(({
         )}
 
         {stage === 'editing' && subtitleClips.length > 0 && (
-          <button onClick={runPhraseSelection}
+          <button onClick={generateBRoll}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 text-[11px] font-black uppercase active:scale-95 transition-all">
             <Sparkles size={14} /> B-Roll
           </button>
