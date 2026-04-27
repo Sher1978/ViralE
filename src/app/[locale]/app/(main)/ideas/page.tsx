@@ -15,22 +15,22 @@ const CATEGORIES = [
 ];
 
 const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
-  "Hooks": { en: "Attention Magnets", ru: "Магниты внимания" },
-  "Roles": { en: "Hero Masks", ru: "Маски героя" },
-  "Awareness": { en: "Recognition Ladder", ru: "Лестница признания" },
-  "Problem": { en: "Mirror of Pain", ru: "Зеркало боли" },
-  "Solution": { en: "Result Elevator", ru: "Лифт к результату" },
-  "Loyalty": { en: "Trust Code", ru: "Кодекс доверия" },
-  "Fast Sales": { en: "Cash Sprint", ru: "Кэш-спринт" },
-  "Controversial": { en: "Hype Territory", ru: "Территория хайпа" },
-  "Evergreen": { en: "Eternal Meanings", ru: "Вечные смыслы" },
-  "Trends": { en: "Now Wave", ru: "Волна сейчас" },
-  "Lifestyle": { en: "Style DNA", ru: "ДНК стиля" },
-  "Future": { en: "Synthesis of Tomorrow", ru: "Синтез будущего" },
-  "Myths": { en: "Myth Busting", ru: "Разрушение мифов" },
-  "Comparison": { en: "Meaning Combat", ru: "Поединок смыслов" },
-  "Educational": { en: "Expert School", ru: "Школа эксперта" },
-  "Case Study": { en: "Success Trophies", ru: "Трофеи успеха" }
+  "Hooks": { en: "Virality Hooks", ru: "Крючки виральности" },
+  "Roles": { en: "Persona Masks", ru: "Маски личности" },
+  "Awareness": { en: "Warming Cold Leads", ru: "Прогрев холодных" },
+  "Problem": { en: "Deep Pain Mirror", ru: "Зеркало болей" },
+  "Solution": { en: "Solution Proofs", ru: "Доказательства решения" },
+  "Loyalty": { en: "Fan Club & Loyalty", ru: "Клуб фанатов и Лояльность" },
+  "Fast Sales": { en: "Turbo Sales Today", ru: "Турбо-продажи сегодня" },
+  "Controversial": { en: "Provocations & Hype", ru: "Провокации и Хайп" },
+  "Evergreen": { en: "Golden Fund (Evergreen)", ru: "Золотой фонд (Вечное)" },
+  "Trends": { en: "Trend Hunting", ru: "Охота на тренды" },
+  "Lifestyle": { en: "Personal Brand 360", ru: "Личный бренд 360°" },
+  "Future": { en: "Vision & Forecasts", ru: "Визионерство и Прогнозы" },
+  "Myths": { en: "Myth Busting", ru: "Разоблачение мифов" },
+  "Comparison": { en: "Product Battles", ru: "Битва продуктов" },
+  "Educational": { en: "Expertise Vault", ru: "База экспертности" },
+  "Case Study": { en: "Results Factory (Cases)", ru: "Завод результатов (Кейсы)" }
 };
 
 export default function IdeasPage() {
