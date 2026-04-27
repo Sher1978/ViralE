@@ -930,6 +930,7 @@ export const VideoEditor = React.memo(({
                   <textarea value={selSub.text} rows={2}
                     onChange={e => setSubtitleClips(p => p.map(c => c.id === selSub.id ? { ...c, text: e.target.value } : c))}
                     className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2.5 text-sm text-white focus:ring-1 focus:ring-purple-500 outline-none resize-none" />
+                  <div className="flex gap-2">
                     {(['minimal', 'pop', 'bold'] as const).map(s => (
                       <button key={s} onClick={() => setSubtitleClips(p => p.map(c => c.id === selSub.id ? { ...c, style: s } : c))}
                         className={`flex-1 py-2 rounded-xl text-[8px] font-black uppercase active:scale-95 transition-all ${selSub.style === s ? 'bg-amber-500 text-black' : 'bg-white/5 text-white/30'}`}>
