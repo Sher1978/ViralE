@@ -66,21 +66,17 @@ export function BottomNav() {
                 <Link
                   href={item.href}
                   className={cn(
-                    "flex flex-col items-center justify-center py-2 transition-all duration-500 relative",
-                    isActive ? "scale-110" : "text-white/20 hover:text-white/40"
+                    "flex flex-col items-center justify-center py-2 transition-all duration-200 relative select-none touch-manipulation",
+                    isActive ? "scale-105" : "text-white/20"
                   )}
-                  style={{ color: isActive ? activeColor : undefined }}
+                  style={{ color: isActive ? activeColor : undefined, WebkitTapHighlightColor: 'transparent' }}
                 >
-                  <div className="relative flex flex-col items-center">
+                  <div className="relative flex flex-col items-center transform-gpu">
                     <Icon 
-                      className="w-7 h-7 transition-all duration-500" 
+                      className="w-7 h-7 transition-colors duration-200" 
                       strokeWidth={isActive ? 2.5 : 2}
                       style={{
-                        filter: isActive ? `
-                          drop-shadow(0 0 8px ${activeColor}) 
-                          drop-shadow(0 0 2px ${activeColor})
-                          drop-shadow(0 0 1px ${activeColor})
-                        ` : 'none',
+                        filter: isActive ? `drop-shadow(0 0 10px ${activeColor}88)` : 'none',
                         color: isActive ? activeColor : 'currentColor'
                       }}
                     />
