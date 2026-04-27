@@ -246,20 +246,66 @@ export default function IdeasPage() {
         {activeTab === 'new' ? (
           isDnaComplete ? (
             <>
-              {CATEGORIES.map((cat) => (
-                <MatrixScroller
-                  key={cat}
-                  title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
-                  subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
-                  ideas={groupedIdeas[cat] || []}
-                  onToScript={(topic) => handleToScript(topic, cat)}
-                  onToggleArchive={handleToggleArchive}
-                />
-              ))}
+              {(loading || synthesisLoading) && ideas.length === 0 ? (
+                <div className="flex flex-col items-center justify-center py-24 animate-fade-in w-full">
+                  <div className="relative w-32 h-32 mb-12">
+                     <motion.div
+                        animate={{ rotate: 360 }}
+                        transition={{ duration: 4, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-0 border-2 border-dashed border-purple-500/20 rounded-full"
+                     />
+                     <motion.div
+                        animate={{ rotate: -360 }}
+                        transition={{ duration: 6, repeat: Infinity, ease: "linear" }}
+                        className="absolute inset-4 border border-dashed border-emerald-500/10 rounded-full"
+                     />
+                     <div className="absolute inset-0 flex items-center justify-center">
+                        <div className="relative">
+                           <motion.div
+                              animate={{ 
+                                 scale: [1, 1.2, 1],
+                                 opacity: [0.3, 0.7, 0.3]
+                              }}
+                              transition={{ duration: 2, repeat: Infinity }}
+                              className="absolute inset-0 bg-purple-500/20 blur-2xl rounded-full"
+                           />
+                           <Dna className="w-16 h-16 text-purple-500 animate-pulse relative z-10" />
+                        </div>
+                     </div>
+                  </div>
+                  <div className="space-y-4 text-center">
+                     <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">
+                        {locale === 'ru' ? 'Синтез Матрицы' : 'Matrix Synthesis'}
+                     </h3>
+                     <div className="flex flex-col items-center gap-2">
+                        <p className="text-[10px] text-white/30 uppercase tracking-[0.4em] font-black animate-pulse">
+                           {locale === 'ru' ? 'Калибруем цифровой след...' : 'Calibrating digital shadow...'}
+                        </p>
+                        <div className="flex items-center gap-2 px-3 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20">
+                           <div className="w-1 h-1 rounded-full bg-emerald-500 animate-pulse" />
+                           <p className="text-[8px] text-emerald-500 font-bold uppercase tracking-widest">
+                             {locale === 'ru' ? 'СТРАТЕГИЯ: АКТИВНО' : 'STRATEGY: ACTIVE'}
+                           </p>
+                        </div>
+                     </div>
+                  </div>
+                </div>
+              ) : (
+                CATEGORIES.map((cat) => (
+                  <MatrixScroller
+                    key={cat}
+                    title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
+                    subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
+                    ideas={groupedIdeas[cat] || []}
+                    onToScript={(topic) => handleToScript(topic, cat)}
+                    onToggleArchive={handleToggleArchive}
+                  />
+                ))
+              )}
               
               {/* Infinite Scroll Sentinel */}
               <div ref={sentinelRef} className="h-20 w-full flex items-center justify-center">
-                {synthesisLoading && (
+                {synthesisLoading && ideas.length > 0 && (
                   <div className="flex flex-col items-center gap-2 animate-pulse">
                     <div className="w-1.5 h-1.5 rounded-full bg-purple-500 animate-ping" />
                     <p className="text-[8px] text-white/20 uppercase tracking-[0.3em] font-black">
