@@ -9,8 +9,10 @@ interface AppDataContextType {
   profile: Profile | null;
   dnaComplete: boolean;
   ideas: Idea[];
+  archivedIdeas: Idea[];
   loadingIdeas: boolean;
-  refreshIdeas: (category?: string) => Promise<void>;
+  loadingArchived: boolean;
+  refreshIdeas: (status: 'new' | 'archived', category?: string) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => void;
 }
 
