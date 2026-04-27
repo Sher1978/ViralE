@@ -1,5 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/auth';
+import fs from 'fs';
+import path from 'path';
 
 export async function GET(req: Request) {
   try {
@@ -25,7 +27,14 @@ export async function GET(req: Request) {
       }
     }
 
-    return NextResponse.json({ answers: profile?.dna_answers || {} });
+    // Check for user-specific Brand_DNA.md file
+    const userFilePath = path.join(process.cwd(), 'Bible_SOT', 'users', userId, 'Brand_DNA.md');
+    const hasFileStrategy = fs.existsSync(userFilePath);
+
+    return NextResponse.json({ 
+      answers: profile?.dna_answers || {},
+      hasFileStrategy
+    });
   } catch (error: any) {
     console.error('Fetch DNA answers failed:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });

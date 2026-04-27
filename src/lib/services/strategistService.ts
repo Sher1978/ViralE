@@ -89,32 +89,47 @@ export const strategistService = {
   async getStrategistSystemPrompt(userId: string, locale: string = 'en'): Promise<string> {
     const languageName = locale === 'ru' ? 'Russian' : 'English';
     
-    // 1. Fetch current Profile DNA (dna_answers)
-    const { data: profile } = await supabase
-      .from('profiles')
-      .select('dna_answers')
-      .eq('id', userId)
-      .single();
+    // 1. Check for user-specific Brand_DNA.md file (Priority 1)
+    const userFilePath = path.join(process.cwd(), 'Bible_SOT', 'users', userId, 'Brand_DNA.md');
+    let dnaContext = '';
+    let isDnaComplete = false;
 
-    const answers = profile?.dna_answers;
-    const isDnaComplete = answers && Object.keys(answers).length >= 5;
+    if (fs.existsSync(userFilePath)) {
+      try {
+        dnaContext = fs.readFileSync(userFilePath, 'utf-8');
+        isDnaComplete = true; // File exists = Strategy is custom and complete
+        console.log(`[Strategist] Using CUSTOM file strategy for user ${userId}`);
+      } catch (err) {
+        console.error(`[Strategist] Failed to read user DNA file:`, err);
+      }
+    }
 
-    // 2. Load Bible_SOT doctrines from files
+    // 2. Fetch current Profile DNA from database if no file strategy (Priority 2)
+    if (!dnaContext) {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('dna_answers')
+        .eq('id', userId)
+        .single();
+      
+      const answers = profile?.dna_answers;
+      isDnaComplete = answers && Object.keys(answers).length >= 5;
+      dnaContext = formatDNA(answers);
+    }
+
+    // 3. Load Bible_SOT doctrines (Global)
     const generalScript = getBibleSOTContent('General_script.md');
     const contentLego = getBibleSOTContent('Content_lego.md');
     const brandDnaMethodology = getBibleSOTContent('Brand_DNA.md');
-
-    // 3. Construct formatted DNA context
-    const dnaContext = formatDNA(answers);
 
     return `
       ${generalScript}
       ${contentLego}
 
-      --- DATABASE DATA (USING .md FILES) ---
-      BRAND_DNA_CONTEXT:
+      --- BRAND DNA CONTEXT ---
       ${dnaContext}
 
+      --- DATABASE DATA (USING .md FILES) ---
       BRAND_DNA_METHODOLOGY_REFERENCE:
       ${brandDnaMethodology}
 

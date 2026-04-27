@@ -32,8 +32,10 @@ export default function IdeasPage() {
       if (res.ok) {
         const data = await res.json();
         const answers = data?.answers || {};
-        const complete = Object.values(answers).filter((v: any) => v && v.toString().length > 2).length >= 7;
-        setIsDnaComplete(complete);
+        const hasFile = data?.hasFileStrategy || false;
+        
+        const interviewComplete = Object.values(answers).filter((v: any) => v && v.toString().length > 2).length >= 7;
+        setIsDnaComplete(hasFile || interviewComplete);
       }
     } catch (e) {
       console.error('Failed to fetch DNA:', e);
