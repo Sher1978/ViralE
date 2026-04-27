@@ -315,14 +315,6 @@ export default function IdeasPage() {
           </div>
         )}
       </div>
-      <div className="fixed inset-0 z-0 pointer-events-none">
-        <img 
-          src="/ideas_bg.png" 
-          className="w-full h-full object-cover opacity-10 animate-ken-burns scale-125 saturate-0" 
-          alt="Page Background" 
-          onError={(e) => (e.currentTarget.style.display = 'none')}
-        />
-        <div className="absolute inset-0 bg-[#020617]/90 backdrop-blur-[100px]" />
       </div>
     </div>
   );
