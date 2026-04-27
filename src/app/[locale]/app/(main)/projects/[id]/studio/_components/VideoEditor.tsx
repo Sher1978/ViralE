@@ -148,6 +148,7 @@ export const VideoEditor = React.memo(({
   const [activeBrollPhraseId, setActiveBrollPhraseId] = useState<string | null>(null);
   const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({}); // Cache for pre-fetched B-rolls
   const [generatingPhraseIds, setGeneratingPhraseIds] = useState<Set<string>>(new Set());
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
 
   // Inspector
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
@@ -261,9 +262,8 @@ export const VideoEditor = React.memo(({
     return chunks;
   };
 
-  const runTranscriptionAndPhrases = async () => {
-    setStage('transcribing');
     setStageMessage('Анализ аудио...');
+    setTranscriptionError(null);
     await delay(400);
 
     const dur = videoRef.current?.duration || duration;
@@ -271,37 +271,57 @@ export const VideoEditor = React.memo(({
     let transcriptionOk = false;
 
     if (aRollUrl || rawFile) {
-      setStageMessage('AI расшифровка голоса...');
+      setStageMessage('Извлечение аудио...');
       try {
         const formData = new FormData();
-        if (rawFile) {
+        let audioToTranscribe: Blob | null = null;
+        
+        // ── Step: Extract Audio to avoid 4.5MB payload limit ──
+        try {
+          const sourceBlob = rawFile || (aRollUrl?.startsWith('blob:') ? await fetch(aRollUrl).then(r => r.blob()) : null);
+          if (sourceBlob) {
+            audioToTranscribe = await extractAudioOnly(sourceBlob);
+          }
+        } catch (e) {
+          console.warn('Advanced audio extraction failed, falling back to raw file:', e);
+        }
+
+        setStageMessage('AI расшифровка голоса...');
+        if (audioToTranscribe) {
+          formData.append('file', new File([audioToTranscribe], 'audio.wav', { type: 'audio/wav' }));
+        } else if (rawFile) {
           formData.append('file', rawFile);
-        } else if (aRollUrl && aRollUrl.startsWith('blob:')) {
-          const blob = await fetch(aRollUrl).then(r => r.blob());
-          formData.append('file', new File([blob], 'recording.webm', { type: 'video/webm' }));
         } else if (aRollUrl) {
           const res = await fetch(aRollUrl);
           const blob = await res.blob();
-          formData.append('file', new File([blob], 'remote_video.mp4', { type: 'video/mp4' }));
+          formData.append('file', new File([blob], 'video.mp4', { type: 'video/mp4' }));
         }
 
         const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
-        if (!res.ok) throw new Error('Transcription API failed');
+        if (!res.ok) {
+          const err = await res.json();
+          throw new Error(err.error || 'Transcription API failed');
+        }
         const data = await res.json();
 
         if (data.transcript && data.transcript.length > 0) {
           words = data.transcript;
           transcriptionOk = true;
         }
-      } catch (err) {
+      } catch (err: any) {
         console.error('Transcription failed:', err);
+        setTranscriptionError(err.message || 'Ошибка расшифровки');
       }
     }
 
-    // If transcription failed — go to editing with empty state, show manual button
+    // If transcription failed — show error and stay in transcribing stage or go to editing
     if (!transcriptionOk || words.length === 0) {
       setStageMessage('');
-      setStage('editing');
+      if (!transcriptionOk) {
+         // Stay in transcribing to show error and retry
+      } else {
+         setStage('editing');
+      }
       return;
     }
 

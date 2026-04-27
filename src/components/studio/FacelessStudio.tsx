@@ -52,6 +52,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [generatingVoice, setGeneratingVoice] = useState(false);
+  const [voiceError, setVoiceError] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
   const audioRef = useRef<HTMLAudioElement | null>(null);
 
@@ -123,19 +124,24 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
   // ── Stage 1: Generate TTS ──
   const generateVoice = async () => {
     setGeneratingVoice(true);
+    setVoiceError(null);
     try {
       const res = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ text: scriptText, voice_id: selectedVoice }),
       });
-      if (!res.ok) throw new Error('TTS failed');
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'TTS failed');
+      }
       const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       setAudioBlob(blob);
       setAudioUrl(url);
-    } catch (err) {
+    } catch (err: any) {
       console.error('TTS error:', err);
+      setVoiceError(err.message || 'Ошибка генерации голоса. Проверьте API ключи.');
     } finally {
       setGeneratingVoice(false);
     }
@@ -459,6 +465,12 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
                 {generatingVoice ? <Loader2 size={18} className="animate-spin" /> : <Mic size={18} />}
                 {generatingVoice ? 'Генерация озвучки...' : 'Создать Озвучку'}
               </button>
+
+              {voiceError && (
+                <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center">
+                  ⚠️ {voiceError}
+                </div>
+              )}
 
               {/* Audio Player */}
               {audioUrl && (

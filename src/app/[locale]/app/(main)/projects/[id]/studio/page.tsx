@@ -397,8 +397,14 @@ export default function StudioPage() {
                    }}
                    scrollSpeed={scrollSpeed}
                    onSpeedChange={(s) => setScrollSpeed(s)}
+                   textSize={textSize}
+                   onTextSizeChange={setTextSize}
                    scriptColor={scriptColor}
                    onColorChange={setScriptColor}
+                   scriptOpacity={scriptOpacity}
+                   onOpacityChange={setScriptOpacity}
+                   isMirrored={isMirrored}
+                   onFlipCamera={() => setIsMirrored(!isMirrored)}
                    t={t}
                 />
                 

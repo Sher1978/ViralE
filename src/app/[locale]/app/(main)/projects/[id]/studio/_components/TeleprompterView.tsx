@@ -71,6 +71,8 @@ export const TeleprompterView = React.memo(({
   const [editedText, setEditedText] = React.useState('');
   const [isGenerating, setIsGenerating] = React.useState(false);
   const [suggestion, setSuggestion] = React.useState<string | null>(null);
+  const [isUserInteracting, setIsUserInteracting] = React.useState(false);
+  const interactionTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // 📹 Critical: Bind camera stream to video element
@@ -87,15 +89,31 @@ export const TeleprompterView = React.memo(({
   // Auto-scroll logic with dynamic speed
   React.useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isReading && prompterRef.current && !isEditing) {
+    if (isReading && prompterRef.current && !isEditing && !isUserInteracting) {
         interval = setInterval(() => {
             if (prompterRef.current) {
-                prompterRef.current.scrollTop += (scrollSpeed / 5) * 2.5; 
+                // New formula: 1 -> 0.8px, 2 -> 1.0px, 3 -> 1.2px
+                // Provides smoother gap between 1 and 2
+                prompterRef.current.scrollTop += 0.6 + (scrollSpeed * 0.2); 
             }
-        }, 16); // 60fps for buttery smooth scroll
+        }, 16); 
     }
     return () => clearInterval(interval);
-  }, [isReading, prompterRef, scrollSpeed, isEditing]);
+  }, [isReading, prompterRef, scrollSpeed, isEditing, isUserInteracting]);
+
+  const handleInteraction = () => {
+    setIsUserInteracting(true);
+    if (interactionTimeout.current) clearTimeout(interactionTimeout.current);
+    interactionTimeout.current = setTimeout(() => setIsUserInteracting(false), 1500);
+  };
+
+  const rotateTextSize = () => {
+    if (!onTextSizeChange) return;
+    const steps: ('sm' | 'md' | 'lg')[] = ['sm', 'md', 'lg'];
+    const currentIdx = steps.indexOf(textSize);
+    const nextIdx = (currentIdx + 1) % steps.length;
+    onTextSizeChange(steps[nextIdx]);
+  };
 
   const rotateColor = () => {
     if (!onColorChange) return;
@@ -208,6 +226,8 @@ export const TeleprompterView = React.memo(({
       {/* 📜 Scrolling Text Canvas - Reading Zone at Lens (Top) */}
       <div 
         ref={prompterRef}
+        onScroll={handleInteraction}
+        onTouchStart={handleInteraction}
         className={`w-full h-full overflow-y-auto overflow-x-hidden scrollbar-none relative z-10 touch-pan-y ${isMirrored ? 'scale-x-[-1]' : ''}`}
         style={{ scrollBehavior: 'auto' }}
       >
@@ -256,17 +276,28 @@ export const TeleprompterView = React.memo(({
         </div>
 
         <button 
+          onClick={rotateTextSize}
+          className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
+        >
+          <Type size={18} />
+          <span className="text-[6px] font-black uppercase mt-0.5">{textSize}</span>
+        </button>
+
+        <button 
           onClick={rotateColor}
           className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
         >
-          <Type size={18} style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }} />
+          <Palette size={18} style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }} />
           <span className="text-[6px] font-black uppercase mt-0.5" style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }}>COLOR</span>
         </button>
+
         <button 
           onClick={rotateOpacity}
           className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
         >
-          <Palette size={18} />
+          <div className="w-4 h-4 rounded-full border border-white/40 overflow-hidden flex flex-col">
+             <div className="flex-1 bg-white" style={{ opacity: scriptOpacity }} />
+          </div>
           <span className="text-[7px] font-black uppercase mt-0.5">{Math.round(scriptOpacity * 100)}%</span>
         </button>
         <button 
@@ -285,7 +316,11 @@ export const TeleprompterView = React.memo(({
           onClick={onToggleRecording}
           className="w-24 h-24 rounded-full border-4 border-white flex items-center justify-center relative bg-black/20 backdrop-blur-md shadow-2xl"
         >
-          <div className={`rounded-full transition-all duration-300 ${isRecordingVideo ? 'w-10 h-10 bg-red-600 rounded-lg animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.8)]' : 'w-18 h-18 bg-red-600 shadow-[0_0_30px_rgba(239,68,68,0.5)]'}`} />
+          <div className={`transition-all duration-300 ${
+            isRecordingVideo 
+              ? 'w-10 h-10 bg-red-600 rounded-lg animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.8)]' 
+              : 'w-18 h-18 bg-red-600 rounded-full shadow-[0_0_30px_rgba(239,68,68,0.5)]'
+          }`} />
           
           {isRecordingVideo && (
             <div className="absolute -top-12 px-4 py-1.5 rounded-full bg-red-600 border border-red-400 text-white text-[9px] font-black tracking-widest uppercase flex items-center gap-2">
