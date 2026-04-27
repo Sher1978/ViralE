@@ -3,7 +3,7 @@
 import { Idea } from '@/components/ideas/IdeaCard';
 import IdeaCard from '@/components/ideas/IdeaCard';
 import { motion } from 'framer-motion';
-import { ChevronRight } from 'lucide-react';
+import { ChevronRight, RefreshCw } from 'lucide-react';
 import { useLocale } from 'next-intl';
 
 interface MatrixScrollerProps {
@@ -12,15 +12,16 @@ interface MatrixScrollerProps {
   ideas: Idea[];
   onToScript: (topic: string) => void;
   onToggleArchive: (id: string, status: string) => void;
+  onRefresh?: () => void;
 }
 
-export default function MatrixScroller({ title, subtitle, ideas, onToScript, onToggleArchive }: MatrixScrollerProps) {
+export default function MatrixScroller({ title, subtitle, ideas, onToScript, onToggleArchive, onRefresh }: MatrixScrollerProps) {
   const locale = useLocale();
 
   const isEmpty = !ideas || ideas.length === 0;
 
   return (
-    <div className="space-y-4 py-2">
+    <div className="space-y-4 py-2 overflow-visible">
       <div className="flex items-center justify-between px-1">
         <div className="space-y-0.5">
           <h3 className="text-sm font-black uppercase tracking-tighter text-white">
@@ -32,17 +33,29 @@ export default function MatrixScroller({ title, subtitle, ideas, onToScript, onT
             </p>
           )}
         </div>
-        {!isEmpty && (
-          <button className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-white/40 transition-colors">
-            {locale === 'ru' ? 'ВСЕ' : 'ALL'}
-            <ChevronRight size={12} />
+        <div className="flex items-center gap-4">
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              onRefresh?.();
+            }}
+            className="p-1.5 rounded-lg bg-white/5 border border-white/5 text-white/20 hover:text-purple-400 hover:bg-purple-500/10 transition-all active:rotate-180 duration-500"
+            title="Force Regenerate"
+          >
+            <RefreshCw size={12} />
           </button>
-        )}
+          {!isEmpty && (
+            <button className="flex items-center gap-1 text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-white/40 transition-colors">
+              {locale === 'ru' ? 'ВСЕ' : 'ALL'}
+              <ChevronRight size={12} />
+            </button>
+          )}
+        </div>
       </div>
 
-      <div className="relative group">
+      <div className="relative group overflow-visible">
         {/* Horizontal Scroll Container */}
-        <div className="flex gap-4 overflow-x-auto pb-4 px-1 no-scrollbar snap-x">
+        <div className="flex gap-4 overflow-x-auto pt-4 pb-4 px-1 no-scrollbar snap-x overflow-y-visible">
           {isEmpty ? (
             // Skeleton state
             [...Array(3)].map((_, i) => (

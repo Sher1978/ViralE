@@ -209,6 +209,7 @@ export default function IdeasPage() {
                     ideas={groupedIdeas[cat] || []}
                     onToScript={(topic) => handleToScript(topic, cat)}
                     onToggleArchive={handleToggleArchive}
+                    onRefresh={() => refreshIdeas('new', cat)}
                   />
                 ))
               )}

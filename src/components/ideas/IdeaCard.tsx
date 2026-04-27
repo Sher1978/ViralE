@@ -94,14 +94,15 @@ export default function IdeaCard({
       {/* Scanline Effect */}
       <div className="absolute inset-0 pointer-events-none bg-[linear-gradient(rgba(18,16,16,0)_50%,rgba(0,0,0,.25)_50%),linear-gradient(90deg,rgba(255,0,0,.06),rgba(0,255,0,.02),rgba(0,0,111,.06))] bg-[length:100%_4px,3px_100%] opacity-10 rounded-[2rem]" />
 
-      {/* Action: Save/Star (Top Right) */}
+      {/* Action: Save/Star (Top Right) - Increased Z and added Haptics */}
       <button
         onClick={(e) => {
           e.stopPropagation();
+          if (window.navigator?.vibrate) window.navigator.vibrate(50);
           onToggleArchive(idea.id, idea.status);
         }}
         disabled={isProcessing}
-        className="absolute top-5 right-5 z-30 w-10 h-10 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 active:scale-90 transition-all group/star shadow-2xl"
+        className="absolute top-5 right-5 w-10 h-10 rounded-2xl bg-black/40 backdrop-blur-xl border border-white/10 flex items-center justify-center hover:bg-white/10 active:scale-90 transition-all group/star shadow-2xl z-50 pointer-events-auto"
       >
         {isProcessing ? (
           <Loader2 className="w-4 h-4 animate-spin text-white/20" />
