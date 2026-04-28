@@ -181,7 +181,7 @@ export default function LandingPage() {
 
   useEffect(() => {
     // Immediate pre-fetch/check
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
       const mode = searchParams?.get('mode');
       const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || mode === 'standalone');
       
