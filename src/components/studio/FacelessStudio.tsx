@@ -98,17 +98,17 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     .join(' ') || '';
 
   const buildScenesFromScript = useCallback((text: string, totalDur: number = 30) => {
-    const paragraphs = text.split('\n\n').filter(p => p.trim().length > 5);
-    const parts = paragraphs.length > 0 ? paragraphs : text.split(/[.!?]+/).filter(s => s.trim().length > 5);
-    const limitedParts = parts.slice(0, 6);
+    const parts = text.split(/[.!?\n]+/).map(p => p.trim()).filter(p => p.length > 10);
+    const limitedParts = parts.slice(0, 10);
     const perScene = totalDur / Math.max(1, limitedParts.length);
     return limitedParts.map((t, i) => ({
       id: `scene_${i}_${Date.now()}`,
-      text: t.trim(),
+      text: t,
       start: i * perScene,
       end: (i + 1) * perScene,
-      imagePrompt: t.trim(),
+      imagePrompt: t,
     }));
+
   }, []);
 
 
@@ -834,6 +834,10 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                             </div>
                           )}
 
+                          <div className="absolute top-1 left-2 px-1.5 py-0.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-[8px] font-black text-white/80 z-20">
+                            #{i + 1}
+                          </div>
+
                           <div 
                             className="absolute left-0 top-0 bottom-0 w-2 bg-purple-500/30 hover:bg-purple-500 cursor-ew-resize opacity-0 hover:opacity-100 transition-all z-20" 
                             onMouseDown={(e) => handleResize(s.id, 'left', e)}
@@ -851,22 +855,43 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                     <button
                       onClick={() => {
                         if (duration >= 60) return;
-                        const nextEnd = Math.min(60, duration + 5);
+                        const defaultPos = scenes.length + 1;
+                        const posStr = window.prompt(`Введите номер новой сцены (от 1 до ${defaultPos}):`, defaultPos.toString());
+                        if (posStr === null) return;
+                        
+                        let pos = parseInt(posStr, 10);
+                        if (isNaN(pos) || pos < 1) pos = 1;
+                        if (pos > defaultPos) pos = defaultPos;
+                        
                         const newS = {
                           id: `scene_${Date.now()}`,
                           text: 'Новая сцена',
-                          start: duration,
-                          end: nextEnd,
+                          start: 0,
+                          end: 5,
                           imagePrompt: 'Опишите кадр для генерации...',
                         };
-                        setDuration(nextEnd);
-                        setScenes([...scenes, newS]);
+                        
+                        const updated = [...scenes];
+                        updated.splice(pos - 1, 0, newS);
+                        
+                        let currentStart = 0;
+                        const finalScenes = updated.map(s => {
+                          const dur = s.end - s.start;
+                          const end = Math.min(60, currentStart + dur);
+                          const res = { ...s, start: currentStart, end };
+                          currentStart = end;
+                          return res;
+                        });
+                        
+                        setDuration(currentStart);
+                        setScenes(finalScenes);
                       }}
                       className="px-4 py-2 rounded-2xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1.5 shadow-lg shadow-purple-500/20 hover:bg-purple-500"
                     >
                       <Plus size={14} /> Добавить Сцену
                     </button>
                   </div>
+
 
                 </div>
 
