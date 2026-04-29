@@ -787,26 +787,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                 <div className="flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl p-4 overflow-hidden">
                   <div className="flex items-center justify-between mb-4">
                     <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Многодорожечный таймлайн</span>
-                    <button
-                      onClick={() => {
-                        if (duration >= 60) return;
-                        const nextEnd = Math.min(60, duration + 5);
-                        const newS = {
-                          id: `scene_${Date.now()}`,
-                          text: 'Новая сцена',
-                          start: duration,
-                          end: nextEnd,
-                          imagePrompt: 'Опишите кадр для генерации...',
-                        };
-                        setDuration(nextEnd);
-                        setScenes([...scenes, newS]);
-                      }}
-
-                      className="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[9px] font-black uppercase tracking-widest hover:bg-purple-500/20 transition-all flex items-center gap-1.5"
-                    >
-                      <Plus size={12} /> Добавить Сцену
-                    </button>
                   </div>
+
 
                   <div className="relative flex flex-col gap-4 overflow-x-auto pb-3 hide-scrollbar w-full">
                     {/* Track 1: TEXT */}
@@ -864,6 +846,28 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                       ))}
                     </div>
                   </div>
+                  
+                  <div className="flex justify-end mt-4">
+                    <button
+                      onClick={() => {
+                        if (duration >= 60) return;
+                        const nextEnd = Math.min(60, duration + 5);
+                        const newS = {
+                          id: `scene_${Date.now()}`,
+                          text: 'Новая сцена',
+                          start: duration,
+                          end: nextEnd,
+                          imagePrompt: 'Опишите кадр для генерации...',
+                        };
+                        setDuration(nextEnd);
+                        setScenes([...scenes, newS]);
+                      }}
+                      className="px-4 py-2 rounded-2xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1.5 shadow-lg shadow-purple-500/20 hover:bg-purple-500"
+                    >
+                      <Plus size={14} /> Добавить Сцену
+                    </button>
+                  </div>
+
                 </div>
 
               </motion.div>
