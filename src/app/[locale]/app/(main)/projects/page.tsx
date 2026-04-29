@@ -36,7 +36,8 @@ function ProjectCard({ project, locale, router, onDelete }: { project: Project, 
         onPointerDown={handleStart}
         onPointerUp={handleEnd}
         onPointerLeave={handleEnd}
-        onClick={() => !showMenu && router.push(`/app/projects/new/${project.id}`)}
+        onClick={() => !showMenu && router.push(`/app/projects/new/script?projectId=${project.id}`)}
+
         className="flex items-center justify-between p-6 bg-white/[0.03] border border-white/5 rounded-[2.5rem] hover:bg-white/[0.06] transition-all cursor-pointer group hover:border-purple-500/20"
       >
         <div className="flex items-center gap-5">

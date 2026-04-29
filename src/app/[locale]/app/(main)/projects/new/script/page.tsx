@@ -166,8 +166,12 @@ export default function ScriptLabPage() {
       
       setIsLoading(true);
       try {
-        const ver = await projectService.getVersion(versionIdParam!);
+        const ver = versionIdParam 
+          ? await projectService.getVersion(versionIdParam)
+          : await projectService.getLatestVersion(projectIdParam);
+          
         if (ver?.script_data) {
+
           const data = ver.script_data as any;
           if (data.evergreen) {
             setAllScenarios(data);
