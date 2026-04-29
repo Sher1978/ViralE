@@ -402,11 +402,21 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
               {/* Mini player */}
               <div className="absolute bottom-3 inset-x-3 h-12 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/10 flex items-center px-4 gap-3">
                 <button
-                  onClick={() => setIsPlayingAudio(p => !p)}
+                  onClick={() => {
+                    if (!audioRef.current) return;
+                    if (isPlayingAudio) {
+                      audioRef.current.pause();
+                      setIsPlayingAudio(false);
+                    } else {
+                      audioRef.current.play().catch(e => console.error('Play error:', e));
+                      setIsPlayingAudio(true);
+                    }
+                  }}
                   className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center shrink-0 active:scale-90 transition-all shadow-lg shadow-purple-500/40"
                 >
                   {isPlayingAudio ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" className="ml-0.5" />}
                 </button>
+
                 <div className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden">
                   <div className="h-full bg-purple-400 transition-all" style={{ width: `${(currentTime / duration) * 100}%` }} />
                 </div>
