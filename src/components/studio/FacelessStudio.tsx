@@ -723,11 +723,15 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
                     >
                       {selectedScene.generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                       Перегенерировать кадр
+                    </button>
+
+
                     {imageGenError && (
                       <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20">
                         <p className="text-red-400 text-[11px] font-black">{imageGenError}</p>
                       </div>
                     )}
+
 
                     {/* Scene text */}
                     <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/6">
