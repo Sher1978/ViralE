@@ -642,11 +642,14 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
                   >
                     {generatingImages ? <Loader2 size={18} className="animate-spin text-white" /> : <RotateCw size={18} className="text-white" />}
                   </button>
+                </div>
+
                 {imageGenError && (
                   <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20">
                     <p className="text-red-400 text-[11px] font-black">{imageGenError}</p>
                   </div>
                 )}
+
 
                 {/* Scene list */}
                 <div className="space-y-2">
