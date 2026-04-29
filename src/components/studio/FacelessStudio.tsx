@@ -257,6 +257,76 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     }
   };
 
+  const executeFullAutogeneration = async () => {
+
+    setSelectedVoice(defaultVoiceId);
+    setGeneratingVoice(true);
+    setVoiceError(null);
+    try {
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: editableScript, voice_id: defaultVoiceId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'TTS failed');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setAudioBlob(blob);
+      setAudioUrl(url);
+      const estimatedDur = Math.max(10, Math.min(60, editableScript.length / 15));
+      setDuration(estimatedDur);
+      const newScenes = buildScenesFromScript(editableScript, estimatedDur);
+      setScenes(newScenes);
+      setTranscript(newScenes.map(s => ({ text: s.text, start: s.start, end: s.end })));
+      setActiveStage('editor');
+      setActiveTab('scenes');
+      setSheetExpanded(false);
+
+      // Stage 2: Images automatically
+      setGeneratingImages(true);
+      setImagesProgress(0);
+      setImageGenError(null);
+      const updated: Scene[] = [...newScenes];
+
+      let errorCount = 0;
+      let lastErrorMsg = '';
+
+      for (let i = 0; i < updated.length; i++) {
+        if (updated[i].imageUrl) continue;
+        updated[i] = { ...updated[i], generating: true };
+        setScenes([...updated]);
+        try {
+          const resImg = await fetch('/api/ai/image-gen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ prompt: updated[i].imagePrompt, style_prefix: stylePrompt, aspect_ratio: '9:16' }),
+          });
+          const dataImg = await resImg.json();
+          if (!resImg.ok) throw new Error(dataImg.error || dataImg.detail || `API Error ${resImg.status}`);
+          updated[i] = { ...updated[i], imageUrl: dataImg.url, generating: false };
+        } catch (e: any) {
+          errorCount++;
+          lastErrorMsg = e.message || 'Unknown error';
+          updated[i] = { ...updated[i], generating: false };
+        }
+        setScenes([...updated]);
+        setImagesProgress(Math.round(((i + 1) / updated.length) * 100));
+      }
+      if (errorCount > 0) {
+        setImageGenError(`Ошибка генерации (${errorCount} кадров): ${lastErrorMsg}`);
+      }
+      setGeneratingImages(false);
+    } catch (err: any) {
+      setVoiceError(err.message || 'Ошибка автогенерации.');
+    } finally {
+      setGeneratingVoice(false);
+    }
+  };
+
+
   // ── Stage 2: Generate All Images ──
   const generateAllImages = async () => {
     setGeneratingImages(true);
@@ -436,11 +506,16 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       {/* ── TOP HEADER ── */}
       <div className="flex items-center justify-between px-5 pt-4 pb-3 z-50 shrink-0">
         <button
-          onClick={onBack}
+          onClick={() => {
+            if (activeStage === 'rendering') setActiveStage('editor');
+            else if (activeStage === 'editor') setActiveStage('setup');
+            else onBack();
+          }}
           className="flex items-center gap-1.5 text-white/40 text-[11px] font-black uppercase tracking-widest active:opacity-60"
         >
           <ArrowLeft size={14} /> Назад
         </button>
+
 
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-xl bg-purple-500/20 flex items-center justify-center">
@@ -498,7 +573,25 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                 </div>
               ))}
             </div>
+
+            <button
+              onClick={executeFullAutogeneration}
+              disabled={generatingVoice || generatingImages || !editableScript.trim()}
+              className="w-full max-w-xs py-4 rounded-full bg-purple-600 text-white text-xs font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.3)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.5)] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
+            >
+              {generatingVoice || generatingImages ? (
+                <>
+                  <Loader2 size={16} className="animate-spin" />
+                  Генерирую ({generatingVoice ? 'Голос' : `${imagesProgress}% Кадры`})...
+                </>
+              ) : (
+                <>
+                  АВТОГЕНЕРАЦИЯ <ChevronRight size={16} />
+                </>
+              )}
+            </button>
           </motion.div>
+
         ) : (
           /* ── EDITOR PREVIEW ── */
           <div className="relative w-full h-full flex items-center justify-center p-4">
