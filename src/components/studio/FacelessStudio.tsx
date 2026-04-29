@@ -61,12 +61,15 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
   const [duration, setDuration] = useState(30);
   const [stylePrompt] = useState('cinematic, high quality, dramatic lighting, 4K, consistent visual style');
 
-  // Generation State
   const [transcript, setTranscript] = useState<any[]>([]);
   const [generatingImages, setGeneratingImages] = useState(false);
-  const [imagesProgress, setImagesProgress] = useState(0);
 
+  const [imagesProgress, setImagesProgress] = useState(0);
+  const [imageGenError, setImageGenError] = useState<string | null>(null);
+  
   // Render state
+
+
   const [rendering, setRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderDone, setRendered] = useState(false);
@@ -143,7 +146,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
   const generateAllImages = async () => {
     setGeneratingImages(true);
     setImagesProgress(0);
+    setImageGenError(null);
     const updated = [...scenes];
+    let errorCount = 0;
+    let lastErrorMsg = '';
+
     for (let i = 0; i < updated.length; i++) {
       if (updated[i].imageUrl) continue;
       updated[i] = { ...updated[i], generating: true };
@@ -155,12 +162,23 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
           body: JSON.stringify({ prompt: updated[i].imagePrompt, style_prefix: stylePrompt, aspect_ratio: '9:16' }),
         });
         const data = await res.json();
-        updated[i] = { ...updated[i], imageUrl: res.ok ? data.url : undefined, generating: false };
-      } catch {
+        
+        if (!res.ok) {
+          throw new Error(data.error || data.detail || `API Error ${res.status}`);
+        }
+        
+        updated[i] = { ...updated[i], imageUrl: data.url, generating: false };
+      } catch (e: any) {
+        errorCount++;
+        lastErrorMsg = e.message || 'Unknown error';
         updated[i] = { ...updated[i], generating: false };
       }
       setScenes([...updated]);
       setImagesProgress(Math.round(((i + 1) / updated.length) * 100));
+    }
+
+    if (errorCount > 0) {
+      setImageGenError(`Ошибка генерации (${errorCount} кадров): ${lastErrorMsg}`);
     }
     setGeneratingImages(false);
   };
@@ -171,6 +189,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
     const updated = [...scenes];
     updated[idx] = { ...updated[idx], generating: true };
     setScenes(updated);
+    setImageGenError(null);
     try {
       const res = await fetch('/api/ai/image-gen', {
         method: 'POST',
@@ -178,12 +197,19 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
         body: JSON.stringify({ prompt: updated[idx].imagePrompt, style_prefix: stylePrompt, aspect_ratio: '9:16' }),
       });
       const data = await res.json();
-      updated[idx] = { ...updated[idx], imageUrl: res.ok ? data.url : undefined, generating: false };
+      
+      if (!res.ok) {
+        throw new Error(data.error || data.detail || `API Error ${res.status}`);
+      }
+      
+      updated[idx] = { ...updated[idx], imageUrl: data.url, generating: false };
       setScenes([...updated]);
-    } catch {
+    } catch (e: any) {
+      setImageGenError(e.message || 'Ошибка генерации кадра');
       setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, generating: false } : s));
     }
   };
+
 
   // ── Audio sync ──
   useEffect(() => {
@@ -616,10 +642,15 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
                   >
                     {generatingImages ? <Loader2 size={18} className="animate-spin text-white" /> : <RotateCw size={18} className="text-white" />}
                   </button>
-                </div>
+                {imageGenError && (
+                  <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20">
+                    <p className="text-red-400 text-[11px] font-black">{imageGenError}</p>
+                  </div>
+                )}
 
                 {/* Scene list */}
                 <div className="space-y-2">
+
                   {scenes.map((s, i) => (
                     <button
                       key={s.id}
@@ -692,10 +723,15 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
                     >
                       {selectedScene.generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
                       Перегенерировать кадр
-                    </button>
+                    {imageGenError && (
+                      <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20">
+                        <p className="text-red-400 text-[11px] font-black">{imageGenError}</p>
+                      </div>
+                    )}
 
                     {/* Scene text */}
                     <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/6">
+
                       <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Текст субтитров</p>
                       <p className="text-[12px] text-white/50 leading-relaxed">{selectedScene.text}</p>
                     </div>

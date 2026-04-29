@@ -1,79 +1,87 @@
 import { NextResponse } from 'next/server';
+import { v4 as uuidv4 } from 'uuid';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
 
-const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
-
-// FLUX 1.1 Pro — best quality/speed balance for portrait (9:16) images
-const FLUX_MODEL = 'black-forest-labs/flux-1.1-pro';
+const RUNWARE_API_KEY = process.env.RUNWARE_API_KEY;
 
 export async function POST(req: Request) {
   try {
-    const { prompt, style_prefix = '', aspect_ratio = '9:16', seed } = await req.json();
+    const { prompt, style_prefix = '', aspect_ratio = '9:16' } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    if (!REPLICATE_API_TOKEN) {
-      return NextResponse.json({ error: 'Replicate API token not configured' }, { status: 500 });
+    if (!RUNWARE_API_KEY) {
+      return NextResponse.json({ error: 'Runware API key not configured' }, { status: 500 });
     }
 
     const fullPrompt = style_prefix
       ? `${style_prefix}, ${prompt}`
       : prompt;
 
-    // Create prediction
-    const createRes = await fetch('https://api.replicate.com/v1/models/black-forest-labs/flux-1.1-pro/predictions', {
+    console.log('[Runware Image Gen] Generating with prompt:', fullPrompt);
+
+    // Calculate aspect ratio dimensions for 9:16
+    // 768 x 1344 is an excellent native portrait resolution for Flux.1 Schnell
+    const width = 768;
+    const height = 1344;
+
+    const payload = [
+      {
+        taskType: 'authentication',
+        apiKey: RUNWARE_API_KEY
+      },
+      {
+        taskType: 'imageInference',
+        taskUUID: uuidv4(),
+        positivePrompt: fullPrompt,
+        width: width,
+        height: height,
+        model: 'runware:100@1', // Flux.1 Schnell
+        numberResults: 1,
+        outputFormat: 'webp'
+      }
+    ];
+
+    const response = await fetch('https://api.runware.ai/v1', {
       method: 'POST',
       headers: {
-        'Authorization': `Bearer ${REPLICATE_API_TOKEN}`,
-        'Content-Type': 'application/json',
-        'Prefer': 'wait', // Wait for result synchronously (up to 60s)
+        'Content-Type': 'application/json'
       },
-      body: JSON.stringify({
-        input: {
-          prompt: fullPrompt,
-          aspect_ratio,
-          output_format: 'webp',
-          output_quality: 85,
-          safety_tolerance: 2,
-          prompt_upsampling: false,
-          ...(seed ? { seed } : {}),
-        },
-      }),
+      body: JSON.stringify(payload)
     });
 
-    if (!createRes.ok) {
-      const err = await createRes.text();
-      console.error('[image-gen] Replicate error:', err);
-      return NextResponse.json({ error: 'Image generation failed', detail: err }, { status: 500 });
+    if (!response.ok) {
+      const errorText = await response.text();
+      console.error('[Runware Image Gen] HTTP Error:', errorText);
+      return NextResponse.json({ error: 'Image generation failed', detail: errorText }, { status: 500 });
     }
 
-    const prediction = await createRes.json();
-
-    // If not done yet, poll
-    let result = prediction;
-    let attempts = 0;
-    while (result.status !== 'succeeded' && result.status !== 'failed' && attempts < 30) {
-      await new Promise(r => setTimeout(r, 2000));
-      const pollRes = await fetch(`https://api.replicate.com/v1/predictions/${result.id}`, {
-        headers: { 'Authorization': `Bearer ${REPLICATE_API_TOKEN}` },
-      });
-      result = await pollRes.json();
-      attempts++;
+    const data = await response.json();
+    
+    if (data.errors) {
+      console.error('[Runware Image Gen] API Errors:', data.errors);
+      return NextResponse.json({ error: 'Generation failed in API', detail: data.errors }, { status: 500 });
     }
 
-    if (result.status === 'failed' || !result.output) {
-      return NextResponse.json({ error: 'Generation failed', detail: result.error }, { status: 500 });
+    const inferenceResult = data.data?.find((d: any) => d.taskType === 'imageInference');
+    
+    if (!inferenceResult || !inferenceResult.imageURL) {
+      console.error('[Runware Image Gen] No image URL in result:', data);
+      return NextResponse.json({ error: 'No image returned from Runware' }, { status: 500 });
     }
 
-    const imageUrl = Array.isArray(result.output) ? result.output[0] : result.output;
-    return NextResponse.json({ url: imageUrl, id: result.id });
+    return NextResponse.json({ 
+      url: inferenceResult.imageURL, 
+      id: inferenceResult.taskUUID 
+    });
 
   } catch (err: any) {
-    console.error('[image-gen] Error:', err);
+    console.error('[Runware Image Gen] Catch Error:', err);
     return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 });
   }
 }
+
