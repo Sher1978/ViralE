@@ -6,10 +6,17 @@ import {
   Mic, Image as ImageIcon, Film, ChevronRight, Play, Pause,
   RefreshCw, Check, ArrowLeft, ArrowRight, Loader2,
   Sparkles, X, RotateCw, Edit3, Brain,
-  Clock, Layers, Wand2, Zap
+  Clock, Layers, Wand2, Zap, Star, Plus, Upload
 } from 'lucide-react';
+
+
+
 import { useLocale } from 'next-intl';
 import { ProductionManifest } from '@/lib/types/studio';
+import { projectService } from '@/lib/services/projectService';
+import { renderService } from '@/lib/services/renderService';
+
+
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -28,14 +35,17 @@ interface FacelessStudioProps {
   onBack: () => void;
   onComplete: (videoBlob: Blob, transcript?: any[]) => void;
   onJumpToConcept?: () => void;
+  projectId?: string;
 }
+
 
 type PostEffect = 'kenburns' | 'dust' | 'glitch' | 'negative' | 'zoom_punch';
 type BottomTab = 'setup' | 'scenes' | 'inspector';
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export default function FacelessStudio({ manifest, onBack, onComplete }: FacelessStudioProps) {
+export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToConcept, projectId }: FacelessStudioProps) {
+
   const locale = useLocale();
   const [editableScript, setEditableScript] = useState('');
 
@@ -47,6 +57,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
   // Voice state
   const [voices, setVoices] = useState<any[]>([]);
   const [selectedVoice, setSelectedVoice] = useState('EXAVITQu4vr4xnSDxMaL');
+  const [defaultVoiceId, setDefaultVoiceId] = useState('EXAVITQu4vr4xnSDxMaL');
+
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
   const [generatingVoice, setGeneratingVoice] = useState(false);
@@ -88,8 +100,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
   const buildScenesFromScript = useCallback((text: string, totalDur: number = 30) => {
     const paragraphs = text.split('\n\n').filter(p => p.trim().length > 5);
     const parts = paragraphs.length > 0 ? paragraphs : text.split(/[.!?]+/).filter(s => s.trim().length > 5);
-    const limitedParts = parts.slice(0, 10);
-    const perScene = totalDur / limitedParts.length;
+    const limitedParts = parts.slice(0, 6);
+    const perScene = totalDur / Math.max(1, limitedParts.length);
     return limitedParts.map((t, i) => ({
       id: `scene_${i}_${Date.now()}`,
       text: t.trim(),
@@ -99,9 +111,42 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
     }));
   }, []);
 
+
   useEffect(() => {
-    if (scriptText) setEditableScript(scriptText);
-  }, [scriptText]);
+    if (manifest && (manifest as any).faceless) {
+      const f = (manifest as any).faceless;
+      if (f.scenes) setScenes(f.scenes);
+      if (f.audioUrl) setAudioUrl(f.audioUrl);
+      if (f.editableScript) setEditableScript(f.editableScript);
+      if (f.selectedVoice) setSelectedVoice(f.selectedVoice);
+      if (f.defaultVoiceId) setDefaultVoiceId(f.defaultVoiceId);
+      if (f.duration) setDuration(f.duration);
+      if (f.activeStage) setActiveStage(f.activeStage);
+    } else if (scriptText) {
+      setEditableScript(scriptText);
+    }
+  }, [manifest, scriptText]);
+
+  useEffect(() => {
+    if (!projectId || scenes.length === 0) return;
+    const saveFacelessData = async () => {
+      await projectService.updateLatestVersionManifest(projectId, {
+        ...manifest,
+        faceless: {
+          scenes,
+          audioUrl,
+          editableScript,
+          selectedVoice,
+          defaultVoiceId,
+          duration,
+          activeStage
+        }
+      });
+    };
+    saveFacelessData();
+  }, [scenes, audioUrl, editableScript, selectedVoice, defaultVoiceId, duration, activeStage, projectId]);
+
+
 
   useEffect(() => {
     fetch('/api/ai/tts').then(r => r.json()).then(d => {
@@ -109,7 +154,77 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
     }).catch(() => {});
   }, []);
 
+  const skipVoiceGeneration = async () => {
+    setSelectedVoice(defaultVoiceId);
+    setGeneratingVoice(true);
+    setVoiceError(null);
+    try {
+      const res = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: editableScript, voice_id: defaultVoiceId }),
+      });
+      if (!res.ok) {
+        const err = await res.json();
+        throw new Error(err.error || 'TTS failed');
+      }
+      const blob = await res.blob();
+      const url = URL.createObjectURL(blob);
+      setAudioBlob(blob);
+      setAudioUrl(url);
+      const estimatedDur = Math.max(10, Math.min(60, editableScript.length / 15));
+      setDuration(estimatedDur);
+      const newScenes = buildScenesFromScript(editableScript, estimatedDur);
+      setScenes(newScenes);
+      setTranscript(newScenes.map(s => ({ text: s.text, start: s.start, end: s.end })));
+      setActiveStage('editor');
+      setActiveTab('scenes');
+      setSheetExpanded(false);
+    } catch (err: any) {
+      setVoiceError(err.message || 'Ошибка пропуска озвучки.');
+    } finally {
+      setGeneratingVoice(false);
+    }
+  };
+
+  const handleResize = (id: string, edge: 'left' | 'right', e: React.MouseEvent) => {
+    e.preventDefault();
+    const startX = e.clientX;
+    const scene = scenes.find(s => s.id === id);
+    if (!scene) return;
+    const startStart = scene.start;
+    const startEnd = scene.end;
+
+    const onMouseMove = (moveEvent: MouseEvent) => {
+      const deltaX = moveEvent.clientX - startX;
+      const deltaSeconds = deltaX / 15;
+      
+      setScenes(prev => prev.map(s => {
+        if (s.id !== id) return s;
+        if (edge === 'left') {
+          const newStart = Math.max(0, Math.min(startEnd - 1, startStart + deltaSeconds));
+          return { ...s, start: newStart };
+        } else {
+          const newEnd = Math.max(startStart + 1, Math.min(60, startEnd + deltaSeconds));
+          return { ...s, end: newEnd };
+        }
+
+      }));
+
+    };
+
+    const onMouseUp = () => {
+      document.removeEventListener('mousemove', onMouseMove);
+      document.removeEventListener('mouseup', onMouseUp);
+    };
+
+    document.addEventListener('mousemove', onMouseMove);
+    document.addEventListener('mouseup', onMouseUp);
+  };
+
   // ── Stage 1: Generate Voice ──
+
+
   const startProduction = async () => {
     setGeneratingVoice(true);
     setVoiceError(null);
@@ -589,15 +704,23 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
                       { voice_id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', labels: { accent: 'English' } },
                       { voice_id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel', labels: { accent: 'British' } },
                     ]).map(v => (
-                      <button
+                      <div
                         key={v.voice_id}
-                        onClick={() => setSelectedVoice(v.voice_id)}
-                        className={`p-3.5 rounded-2xl border text-left transition-all active:scale-95 ${selectedVoice === v.voice_id ? 'border-purple-500/60 bg-purple-500/10 shadow-lg shadow-purple-500/10' : 'border-white/6 bg-white/[0.03]'}`}
+                        className={`p-3.5 rounded-2xl border text-left transition-all relative flex items-center justify-between ${selectedVoice === v.voice_id ? 'border-purple-500/60 bg-purple-500/10 shadow-lg shadow-purple-500/10' : 'border-white/6 bg-white/[0.03]'}`}
                       >
-                        <p className="text-[11px] font-black">{v.name}</p>
-                        <p className="text-[9px] text-white/30 uppercase tracking-wider mt-0.5">{v.labels?.accent}</p>
-                      </button>
+                        <div className="flex-1 cursor-pointer" onClick={() => setSelectedVoice(v.voice_id)}>
+                          <p className="text-[11px] font-black">{v.name}</p>
+                          <p className="text-[9px] text-white/30 uppercase tracking-wider mt-0.5">{v.labels?.accent}</p>
+                        </div>
+                        <button 
+                          onClick={(e) => { e.stopPropagation(); setDefaultVoiceId(v.voice_id); }}
+                          className={`p-1.5 rounded-xl transition-all active:scale-90 flex items-center justify-center ${defaultVoiceId === v.voice_id ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20' : 'text-white/20 hover:text-white/40'}`}
+                        >
+                          <Star size={14} fill={defaultVoiceId === v.voice_id ? 'currentColor' : 'none'} />
+                        </button>
+                      </div>
                     ))}
+
                   </div>
                 </div>
 
@@ -618,7 +741,16 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
                     <><Mic size={18} /> Начать Генерацию</>
                   )}
                 </button>
+
+                <button
+                  onClick={skipVoiceGeneration}
+                  disabled={generatingVoice || !editableScript.trim()}
+                  className="w-full py-3 rounded-[1rem] border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all mt-2 disabled:opacity-30 flex items-center justify-center gap-2"
+                >
+                  <Star size={12} className="text-amber-400" fill="currentColor" /> Пропустить и взять голос по умолчанию
+                </button>
               </motion.div>
+
             )}
 
             {/* SCENES TAB */}
@@ -652,31 +784,88 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
 
 
                 {/* Scene list */}
-                <div className="space-y-2">
-
-                  {scenes.map((s, i) => (
+                <div className="flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl p-4 overflow-hidden">
+                  <div className="flex items-center justify-between mb-4">
+                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Многодорожечный таймлайн</span>
                     <button
-                      key={s.id}
-                      onClick={() => { setSelectedSceneId(s.id); setCurrentTime(s.start); setActiveTab('inspector'); }}
-                      className={`w-full flex items-center gap-3 p-3.5 rounded-2xl border transition-all text-left active:scale-[0.98] ${selectedSceneId === s.id ? 'border-purple-500/50 bg-purple-500/8' : 'border-white/6 bg-white/[0.02]'}`}
+                      onClick={() => {
+                        if (duration >= 60) return;
+                        const nextEnd = Math.min(60, duration + 5);
+                        const newS = {
+                          id: `scene_${Date.now()}`,
+                          text: 'Новая сцена',
+                          start: duration,
+                          end: nextEnd,
+                          imagePrompt: 'Опишите кадр для генерации...',
+                        };
+                        setDuration(nextEnd);
+                        setScenes([...scenes, newS]);
+                      }}
+
+                      className="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[9px] font-black uppercase tracking-widest hover:bg-purple-500/20 transition-all flex items-center gap-1.5"
                     >
-                      <div className="w-12 h-16 rounded-xl overflow-hidden shrink-0 bg-white/5 flex items-center justify-center border border-white/8">
-                        {s.imageUrl ? (
-                          <img src={s.imageUrl} className="w-full h-full object-cover" alt="" />
-                        ) : s.generating ? (
-                          <Loader2 size={14} className="animate-spin text-purple-400" />
-                        ) : (
-                          <ImageIcon size={14} className="text-white/15" />
-                        )}
-                      </div>
-                      <div className="flex-1 min-w-0">
-                        <p className="text-[10px] font-black uppercase tracking-wider text-purple-400 mb-1">Сцена {i + 1} · {Math.round(s.end - s.start)}с</p>
-                        <p className="text-[11px] text-white/50 leading-snug line-clamp-2">{s.text}</p>
-                      </div>
-                      <ChevronRight size={16} className="text-white/20 shrink-0" />
+                      <Plus size={12} /> Добавить Сцену
                     </button>
-                  ))}
+                  </div>
+
+                  <div className="relative flex flex-col gap-4 overflow-x-auto pb-3 hide-scrollbar w-full">
+                    {/* Track 1: TEXT */}
+                    <div className="flex gap-2 items-center min-w-max">
+                      <div className="w-20 text-right pr-3 flex items-center justify-end text-[8px] font-black text-white/30 uppercase tracking-[0.2em] border-r border-white/5 h-12">
+                        Субтитры
+                      </div>
+                      {scenes.map((s, i) => (
+                        <div 
+                          key={`txt_${s.id}`}
+                          onClick={() => { setSelectedSceneId(s.id); setActiveTab('inspector'); }}
+                          className={`h-12 rounded-xl border p-2 flex items-center cursor-pointer relative select-none transition-all ${selectedSceneId === s.id ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_20px_rgba(168,85,247,0.15)]' : 'border-white/5 bg-white/[0.03]'}`}
+                          style={{ width: `${Math.max(120, (s.end - s.start) * 18)}px` }}
+                        >
+                          <p className="text-[9px] font-bold text-white/70 leading-snug line-clamp-2">{s.text}</p>
+                          <div className="absolute bottom-1 right-2 text-[7px] font-black text-purple-400/60">{i + 1}</div>
+                        </div>
+                      ))}
+                    </div>
+
+                    {/* Track 2: IMAGES */}
+                    <div className="flex gap-2 items-center min-w-max">
+                      <div className="w-20 text-right pr-3 flex items-center justify-end text-[8px] font-black text-white/30 uppercase tracking-[0.2em] border-r border-white/5 h-16">
+                        Кадры
+                      </div>
+                      {scenes.map((s, i) => (
+                        <div 
+                          key={`img_${s.id}`}
+                          onClick={() => { setSelectedSceneId(s.id); setActiveTab('inspector'); }}
+                          className={`h-16 rounded-xl border overflow-hidden cursor-pointer relative transition-all select-none ${selectedSceneId === s.id ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_20px_rgba(168,85,247,0.15)]' : 'border-white/5 bg-white/[0.03]'}`}
+                          style={{ width: `${Math.max(120, (s.end - s.start) * 18)}px` }}
+                        >
+                          {s.imageUrl ? (
+                            <img src={s.imageUrl} className="w-full h-full object-cover" alt="" />
+                          ) : s.generating ? (
+                            <div className="w-full h-full flex items-center justify-center bg-purple-500/5">
+                              <Loader2 size={16} className="animate-spin text-purple-400" />
+                            </div>
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-white/[0.01] text-white/20 gap-1 hover:text-purple-400 transition-colors">
+                              <ImageIcon size={14} />
+                              <span className="text-[6px] font-black uppercase tracking-wider">Создать кадр</span>
+                            </div>
+                          )}
+
+                          <div 
+                            className="absolute left-0 top-0 bottom-0 w-2 bg-purple-500/30 hover:bg-purple-500 cursor-ew-resize opacity-0 hover:opacity-100 transition-all z-20" 
+                            onMouseDown={(e) => handleResize(s.id, 'left', e)}
+                          />
+                          <div 
+                            className="absolute right-0 top-0 bottom-0 w-2 bg-purple-500/30 hover:bg-purple-500 cursor-ew-resize opacity-0 hover:opacity-100 transition-all z-20" 
+                            onMouseDown={(e) => handleResize(s.id, 'right', e)}
+                          />
+                        </div>
+                      ))}
+                    </div>
+                  </div>
                 </div>
+
               </motion.div>
             )}
 
@@ -719,14 +908,43 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
                       />
                     </div>
 
-                    <button
-                      onClick={() => regenerateScene(selectedScene.id)}
-                      disabled={selectedScene.generating}
-                      className="w-full py-4 rounded-2xl bg-white/[0.04] border border-white/8 text-white/70 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
-                    >
-                      {selectedScene.generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
-                      Перегенерировать кадр
-                    </button>
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => regenerateScene(selectedScene.id)}
+                        disabled={selectedScene.generating}
+                        className="flex-1 py-4 rounded-2xl bg-white/[0.04] border border-white/8 text-white/70 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-30"
+                      >
+                        {selectedScene.generating ? <Loader2 size={14} className="animate-spin" /> : <RefreshCw size={14} />}
+                        Сгенерировать
+                      </button>
+                      
+                      <label className="flex-1 py-4 rounded-2xl bg-white/[0.04] border border-white/8 text-white/70 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer hover:bg-white/[0.06]">
+                        <Upload size={14} />
+                        Своё фото
+                        <input 
+                          type="file" 
+                          accept="image/*" 
+                          className="hidden" 
+                          onChange={async (e) => {
+                            const file = e.target.files?.[0];
+                            if (file && projectId) {
+                              try {
+                                setScenes(prev => prev.map(s => s.id === selectedScene.id ? { ...s, generating: true } : s));
+                                const res = await renderService.uploadMedia(projectId, file, 'image');
+                                if (res.publicUrl) {
+                                  setScenes(prev => prev.map(s => s.id === selectedScene.id ? { ...s, imageUrl: res.publicUrl, generating: false } : s));
+                                }
+                              } catch (err) {
+                                console.error('Upload error:', err);
+                                setScenes(prev => prev.map(s => s.id === selectedScene.id ? { ...s, generating: false } : s));
+                              }
+                            }
+                          }}
+
+                        />
+                      </label>
+                    </div>
+
 
 
                     {imageGenError && (
@@ -823,18 +1041,42 @@ export default function FacelessStudio({ manifest, onBack, onComplete }: Faceles
                   {renderDone ? 'Видео Готово!' : 'Рендер...'}
                 </h2>
                 <p className="text-[12px] font-black uppercase tracking-widest text-white/30 mt-2">
-                  {renderDone ? 'A-Roll собран. Переходим в монтажку.' : `Склеиваю кадры · ${renderProgress}%`}
+                  {renderDone ? 'Просмотрите результат перед монтажом' : `Склеиваю кадры · ${renderProgress}%`}
                 </p>
               </div>
 
-              {renderDone && (
-                <button
-                  onClick={() => onComplete(finalVideoBlob!, transcript)}
-                  className="w-full py-5 rounded-[1.5rem] bg-white text-black font-black italic uppercase tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"
-                >
-                  В Монтажку <ArrowRight size={20} />
-                </button>
+              {renderDone && finalVideoBlob && (
+                <div className="space-y-4">
+                  <div className="relative aspect-[9/16] w-full max-w-[240px] mx-auto rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
+                    <video 
+                      src={URL.createObjectURL(finalVideoBlob)} 
+                      controls 
+                      autoPlay 
+                      className="w-full h-full object-cover"
+                    />
+                  </div>
+                  
+                  <div className="flex gap-3 max-w-[280px] mx-auto">
+                    <button
+                      onClick={() => {
+                        setRendered(false);
+                        setActiveStage('editor');
+                      }}
+                      className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/8 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      <ArrowLeft size={14} /> Редактор
+                    </button>
+
+                    <button
+                      onClick={() => onComplete(finalVideoBlob!, transcript)}
+                      className="flex-1 py-4 rounded-2xl bg-purple-600 text-white font-black italic uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      В Монтажку <ArrowRight size={14} />
+                    </button>
+                  </div>
+                </div>
               )}
+
             </div>
           </motion.div>
         )}

@@ -69,8 +69,10 @@ export const renderService = {
   /**
    * Uploads recorded media to Supabase storage
    */
-  async uploadMedia(projectId: string, blob: Blob, type: 'video' | 'audio'): Promise<{ assetId: string, publicUrl: string }> {
-    const fileName = `${projectId}/${type}_${Date.now()}.${type === 'video' ? 'webm' : 'mp3'}`;
+  async uploadMedia(projectId: string, blob: Blob, type: 'video' | 'audio' | 'image'): Promise<{ assetId: string, publicUrl: string }> {
+    const ext = type === 'video' ? 'webm' : type === 'audio' ? 'mp3' : 'png';
+    const fileName = `${projectId}/${type}_${Date.now()}.${ext}`;
+
     const filePath = `user_recordings/${fileName}`;
 
     // 1. Upload to Storage

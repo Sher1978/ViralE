@@ -453,25 +453,43 @@ export default function StudioPage() {
 
           {activeTab === 'assembly' && showFaceless && (
             <FacelessStudio
+              projectId={projectId}
               manifest={manifest}
               onBack={() => setShowFaceless(false)}
+
               onJumpToConcept={() => {
                 setShowFaceless(false);
                 setActiveTab('concept');
               }}
-              onComplete={(videoBlob, transcript) => {
-                const url = URL.createObjectURL(videoBlob);
-                // Inject as A-Roll into manifest and save transcript
-                setManifest(prev => prev ? {
-                  ...prev,
-                  videoUrl: url,
-                  transcript: transcript, // Save the high-level transcript generated in Faceless
-                  segments: prev.segments?.map((s, i) =>
-                    i === 0 ? { ...s, assetUrl: url, type: 'user_recording' } : s
-                  ) || prev.segments,
-                } : prev);
+              onComplete={async (videoBlob) => {
+                try {
+                  const res = await renderService.uploadMedia(projectId, videoBlob, 'video');
+                  if (res.publicUrl) {
+                    setManifest(prev => prev ? {
+                      ...prev,
+                      videoUrl: res.publicUrl,
+                      // Removing transcript forces VideoEditor to re-transcribe
+                      transcript: undefined, 
+                      segments: prev.segments?.map((s, i) =>
+                        i === 0 ? { ...s, assetUrl: res.publicUrl, type: 'user_recording' } : s
+                      ) || prev.segments,
+                    } : prev);
+                  }
+                } catch (e) {
+                  console.error('Failed to upload completed faceless video:', e);
+                  const url = URL.createObjectURL(videoBlob);
+                  setManifest(prev => prev ? {
+                    ...prev,
+                    videoUrl: url,
+                    transcript: undefined,
+                    segments: prev.segments?.map((s, i) =>
+                      i === 0 ? { ...s, assetUrl: url, type: 'user_recording' } : s
+                    ) || prev.segments,
+                  } : prev);
+                }
                 setShowFaceless(false);
               }}
+
             />
           )}
 

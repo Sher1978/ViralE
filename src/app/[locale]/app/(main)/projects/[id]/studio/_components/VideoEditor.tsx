@@ -565,9 +565,10 @@ export const VideoEditor = React.memo(({
               {/* AI Faceless */}
               <motion.button
                 whileTap={{ scale: 0.98 }}
-                onClick={() => alert('AI Faceless coming soon in next update')}
+                onClick={() => onFaceless?.()}
                 className="flex-1 relative rounded-[2.5rem] bg-white/[0.03] border border-white/5 overflow-hidden group"
               >
+
                 <div className="absolute inset-0 bg-purple-500/[0.02] group-hover:bg-purple-500/[0.05] transition-colors" />
                 <div className="relative h-full flex flex-col items-center justify-center p-8 text-center">
                   <div className="w-20 h-20 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(168,85,247,0.15)]">
