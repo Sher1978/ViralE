@@ -563,16 +563,54 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             </div>
             <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
               {[
-                { icon: <Mic size={16} />, label: 'Голос ИИ' },
-                { icon: <ImageIcon size={16} />, label: 'AI Кадры' },
-                { icon: <Film size={16} />, label: 'A-Roll' },
+                { 
+                  icon: <Mic size={16} />, 
+                  label: 'Голос ИИ', 
+                  done: !!audioUrl,
+                  onClick: () => {
+                    setActiveStage('setup');
+                    setActiveTab('setup');
+                    setSheetExpanded(true);
+                  }
+                },
+                { 
+                  icon: <ImageIcon size={16} />, 
+                  label: 'AI Кадры', 
+                  done: scenes.length > 0 && scenes.every(s => !!s.imageUrl),
+                  onClick: () => {
+                    setActiveStage('editor');
+                    setActiveTab('scenes');
+                    setSheetExpanded(true);
+                  }
+                },
+                { 
+                  icon: <Film size={16} />, 
+                  label: 'A-Roll', 
+                  done: selectedEffects.length > 0,
+                  onClick: () => {
+                    setActiveStage('editor');
+                    setActiveTab('setup');
+                    setSheetExpanded(true);
+                  }
+                },
               ].map((item, i) => (
-                <div key={i} className="flex flex-col items-center gap-2 p-3 rounded-2xl bg-white/[0.03] border border-white/5">
-                  <div className="text-purple-400">{item.icon}</div>
-                  <span className="text-[9px] font-black uppercase tracking-wider text-white/30">{item.label}</span>
-                </div>
+                <button 
+                  key={i} 
+                  onClick={item.onClick}
+                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all active:scale-95 border ${
+                    item.done 
+                      ? 'bg-purple-600 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]' 
+                      : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.06]'
+                  }`}
+                >
+                  <div className={item.done ? 'text-white' : 'text-purple-400'}>{item.icon}</div>
+                  <span className={`text-[9px] font-black uppercase tracking-wider ${item.done ? 'text-white/80' : 'text-white/30'}`}>
+                    {item.label}
+                  </span>
+                </button>
               ))}
             </div>
+
 
             <button
               onClick={executeFullAutogeneration}
