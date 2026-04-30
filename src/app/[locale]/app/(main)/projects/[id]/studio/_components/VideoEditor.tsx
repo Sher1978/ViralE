@@ -333,14 +333,11 @@ export const VideoEditor = React.memo(({
 
     // If transcription failed — show error and stay in transcribing stage or go to editing
     if (!transcriptionOk || words.length === 0) {
-      setStageMessage('');
-      if (!transcriptionOk) {
-         // Stay in transcribing to show error and retry
-      } else {
-         setStage('editing');
-      }
+      setStageMessage(transcriptionError || 'Ошибка анализа аудио');
+      // We don't automatically leave the stage so the user can see the error
       return;
     }
+
 
     // Build karaoke-style subtitle clips
     setStageMessage('Генерация субтитров...');
@@ -753,14 +750,29 @@ export const VideoEditor = React.memo(({
               </div>
               <div className="text-center px-8">
                 <p className="text-xs font-black text-white uppercase tracking-widest">{stageMessage}</p>
-                <div className="flex gap-1 justify-center mt-3">
-                  {[0, 1, 2].map(i => (
-                    <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-purple-400"
-                      animate={{ opacity: [0.3, 1, 0.3] }}
-                      transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />
-                  ))}
-                </div>
+                {transcriptionError ? (
+                  <div className="mt-4 space-y-3">
+                    <button 
+                      onClick={() => setStage('editing')}
+                      className="px-6 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all"
+                    >
+                      Использовать черновик
+                    </button>
+                    <p className="text-[8px] text-white/40 uppercase tracking-widest">
+                      Ошибка AI-анализа. Можно продолжить с базовыми субтитрами.
+                    </p>
+                  </div>
+                ) : (
+                  <div className="flex gap-1 justify-center mt-3">
+                    {[0, 1, 2].map(i => (
+                      <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-purple-400"
+                        animate={{ opacity: [0.3, 1, 0.3] }}
+                        transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />
+                    ))}
+                  </div>
+                )}
               </div>
+
             </motion.div>
           )}
         </AnimatePresence>
@@ -798,8 +810,20 @@ export const VideoEditor = React.memo(({
           {isMuted ? <VolumeX size={15} className="text-white/40" /> : <Volume2 size={15} className="text-white/50" />}
         </button>
         <span className="text-[12px] font-black text-purple-400 tabular-nums tracking-tight">{fmt(currentTime)}<span className="text-white/20">/{fmt(duration)}</span></span>
-
+        
         <div className="flex-1" />
+
+        <button 
+          onClick={() => {
+            setStage('transcribing');
+            transcriptionStartedRef.current = false;
+            runTranscription();
+          }}
+          className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 text-[9px] font-black uppercase tracking-widest hover:text-purple-400 hover:border-purple-500/30 transition-all"
+        >
+          <Sparkles size={12} /> Refine AI Subtitles
+        </button>
+
 
         {/* Stage Actions */}
         {(stage === 'editing' || stage === 'empty') && subtitleClips.length === 0 && aRollUrl && (

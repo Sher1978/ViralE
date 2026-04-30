@@ -489,7 +489,7 @@ export default function StudioPage() {
                 setManifest(prev => prev ? {
                   ...prev,
                   videoUrl: localUrl,
-                  transcript: undefined,
+                  transcript: transcriptData, // Use scene-based timings as initial transcript
                   segments: prev.segments?.map((s, i) =>
                     i === 0 ? { ...s, assetUrl: localUrl, type: 'user_recording' } : s
                   ) || prev.segments,
