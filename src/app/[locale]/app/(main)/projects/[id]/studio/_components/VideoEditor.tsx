@@ -10,6 +10,8 @@ import {
 } from 'lucide-react';
 import { ProductionManifest } from '@/lib/types/studio';
 import BRollModal from '@/components/studio/BRollPickerModal';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -294,9 +296,33 @@ export const VideoEditor = React.memo(({
   };
 
   const extractAudioOnly = async (blob: Blob): Promise<Blob> => {
-    // Placeholder implementation: in a real scenarios, we'd use ffmpeg.wasm or similar
-    // For now, return the blob as-is or handle it as a fallback
-    return blob;
+    try {
+      setStageMessage('Инициализация аудио-мотора...');
+      const ffmpeg = new FFmpeg();
+      
+      // Load FFmpeg from CDN (stable version for v0.12)
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+      await ffmpeg.load({
+        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      });
+
+      setStageMessage('Извлечение звуковой дорожки...');
+      const inputFileName = 'input_video';
+      const outputFileName = 'output_audio.mp3';
+
+      await ffmpeg.writeFile(inputFileName, await fetchFile(blob));
+      
+      // Extract audio to mp3 (mono, 44k, 64kbps is enough for transcription and small enough)
+      await ffmpeg.exec(['-i', inputFileName, '-vn', '-acodec', 'libmp3lame', '-ac', '1', '-ar', '44100', '-b:a', '64k', outputFileName]);
+      
+      const data = await ffmpeg.readFile(outputFileName);
+      // @ts-ignore - Handle potential Uint8Array/SharedArrayBuffer issues in Next.js build
+      return new Blob([data], { type: 'audio/mp3' });
+    } catch (e) {
+      console.warn('[FFmpeg] Audio extraction failed, using original file:', e);
+      return blob; // Fallback to original blob
+    }
   };
 
   const runTranscriptionAndPhrases = async () => {
@@ -344,27 +370,64 @@ export const VideoEditor = React.memo(({
           formData.append('file', new File([blob], 'video.mp4', { type: 'video/mp4' }));
         }
 
-        const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
-        if (!res.ok) {
-          const err = await res.json();
-          throw new Error(err.error || 'Transcription API failed');
-        }
-        const data = await res.json();
+        // ── Fetch with Timeout ──
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
 
-        if (data.transcript && data.transcript.length > 0) {
-          words = data.transcript;
-          transcriptionOk = true;
+        try {
+          const res = await fetch('/api/ai/transcribe', { 
+            method: 'POST', 
+            body: formData,
+            signal: controller.signal 
+          });
+          clearTimeout(timeoutId);
+          
+          // Robust check for JSON response
+          const contentType = res.headers.get('content-type');
+          const isJson = contentType && contentType.includes('application/json');
+
+          if (!res.ok) {
+            if (isJson) {
+              const err = await res.json();
+              throw new Error(err.error || `Server error (${res.status})`);
+            } else {
+              if (res.status === 413) throw new Error('Файл слишком велик для анализа. Попробуйте видео покороче.');
+              throw new Error(`Ошибка сервера (${res.status}). Пожалуйста, попробуйте позже.`);
+            }
+          }
+
+          if (!isJson) {
+            throw new Error('Сервер вернул некорректный ответ. Попробуйте еще раз.');
+          }
+
+          const data = await res.json();
+
+          if (data.transcript && data.transcript.length > 0) {
+            words = data.transcript;
+            transcriptionOk = true;
+          }
+        } catch (fetchErr: any) {
+          clearTimeout(timeoutId);
+          if (fetchErr.name === 'AbortError') {
+            throw new Error('Превышено время ожидания. Попробуйте файл поменьше или повторите позже.');
+          }
+          throw fetchErr;
         }
       } catch (err: any) {
         console.error('Transcription failed:', err);
-        setTranscriptionError(err.message || 'Ошибка расшифровки');
+        let msg = err.message || 'Ошибка расшифровки';
+        if (msg.includes('Unexpected token') || msg.includes('is not valid JSON')) {
+          msg = 'Ошибка формата данных. Попробуйте загрузить видео повторно.';
+        }
+        setTranscriptionError(msg);
       }
     }
 
-    // If transcription failed — show error and stay in transcribing stage or go to editing
+    // If transcription failed — show error and stay in transcribing stage
     if (!transcriptionOk || words.length === 0) {
       setStageMessage(transcriptionError || 'Ошибка анализа аудио');
-      // We don't automatically leave the stage so the user can see the error
+      // Force error state if it's somehow missing
+      if (!transcriptionError) setTranscriptionError('Не удалось получить текст. Вы можете использовать базовые субтитры.');
       return;
     }
 
@@ -809,26 +872,40 @@ export const VideoEditor = React.memo(({
                 <Wand2 size={24} className="text-purple-400 animate-pulse" />
               </div>
               <div className="text-center px-8">
-                <p className="text-xs font-black text-white uppercase tracking-widest">{stageMessage}</p>
+                <p className="text-xs font-black text-white uppercase tracking-widest leading-relaxed">{stageMessage}</p>
                 {transcriptionError ? (
-                  <div className="mt-4 space-y-3">
+                  <div className="mt-5 space-y-4">
+                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
+                      <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest leading-tight">
+                        {transcriptionError}
+                      </p>
+                    </div>
                     <button 
                       onClick={() => setStage('editing')}
-                      className="px-6 py-2.5 rounded-xl bg-white/10 border border-white/20 text-white text-[10px] font-black uppercase tracking-widest hover:bg-white/20 transition-all"
+                      className="w-full px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95"
                     >
                       Использовать черновик
                     </button>
-                    <p className="text-[8px] text-white/40 uppercase tracking-widest">
-                      Ошибка AI-анализа. Можно продолжить с базовыми субтитрами.
+                    <p className="text-[9px] text-white/30 uppercase tracking-widest leading-relaxed">
+                      AI-анализ не удался. Вы можете продолжить монтаж с базовыми субтитрами из сценария.
                     </p>
                   </div>
                 ) : (
-                  <div className="flex gap-1 justify-center mt-3">
-                    {[0, 1, 2].map(i => (
-                      <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-purple-400"
-                        animate={{ opacity: [0.3, 1, 0.3] }}
-                        transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />
-                    ))}
+                  <div className="flex flex-col items-center gap-4">
+                    <div className="flex gap-1 justify-center mt-3">
+                      {[0, 1, 2].map(i => (
+                        <motion.div key={i} className="w-1.5 h-1.5 rounded-full bg-purple-400"
+                          animate={{ opacity: [0.3, 1, 0.3] }}
+                          transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />
+                      ))}
+                    </div>
+                    {/* Emergency skip after some time */}
+                    <button 
+                      onClick={() => setStage('editing')}
+                      className="mt-4 px-4 py-2 rounded-xl text-white/20 text-[9px] font-bold uppercase tracking-widest hover:text-white/40 transition-colors"
+                    >
+                      Пропустить анализ
+                    </button>
                   </div>
                 )}
               </div>

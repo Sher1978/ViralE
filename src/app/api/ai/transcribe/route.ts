@@ -4,10 +4,16 @@ export async function POST(req: NextRequest) {
   try {
     const formData = await req.formData();
     const file = formData.get('file') as File;
-    const mode = formData.get('mode') as string || 'karaoke'; // 'karaoke' | 'segments' | 'text'
+    const mode = formData.get('mode') as string || 'karaoke';
 
     if (!file) {
       return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    }
+
+    // Vercel/Next.js body limit is usually 4.5MB. 
+    // We check here even though the proxy might have already rejected it.
+    if (file.size > 10 * 1024 * 1024) { // 10MB limit (internal check)
+      return NextResponse.json({ error: 'File too large for analysis. Please upload a smaller clip or just audio.' }, { status: 413 });
     }
 
     const apiKey = process.env.OPENAI_API_KEY;
@@ -17,7 +23,9 @@ export async function POST(req: NextRequest) {
 
     // Prepare Whisper formData
     const whisperFormData = new FormData();
-    whisperFormData.append('file', file, 'audio.wav');
+    // Use a generic name if the original one is missing or too long
+    const fileName = file.name || 'audio.wav';
+    whisperFormData.append('file', file, fileName);
     whisperFormData.append('model', 'whisper-1');
     whisperFormData.append('response_format', 'verbose_json');
     whisperFormData.append('timestamp_granularities[]', 'word');
@@ -34,12 +42,20 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error('Whisper error:', errText);
+      console.error('Whisper API Error Status:', response.status);
+      console.error('Whisper API Error Body:', errText);
+      
       try {
         const errJson = JSON.parse(errText);
-        return NextResponse.json({ error: errJson.error?.message || 'Whisper API failed' }, { status: response.status });
+        return NextResponse.json(
+          { error: errJson.error?.message || `Whisper API failed with status ${response.status}` }, 
+          { status: response.status }
+        );
       } catch {
-        return NextResponse.json({ error: 'Whisper API failed' }, { status: response.status });
+        return NextResponse.json(
+          { error: `OpenAI returned an error (${response.status}) and it could not be parsed.` }, 
+          { status: response.status }
+        );
       }
     }
 
@@ -64,18 +80,17 @@ export async function POST(req: NextRequest) {
       end: s.end
     }));
 
+    let transcript = [];
     if (mode === 'karaoke') {
-      // Prioritize words for karaoke
-      const transcript = mappedWords.length > 0 ? mappedWords : mappedSegments;
+      transcript = mappedWords.length > 0 ? mappedWords : mappedSegments;
       return NextResponse.json({ wordTimings: transcript, transcript: transcript });
     } else {
-      // Prioritize segments natively
-      const transcript = mappedSegments.length > 0 ? mappedSegments : mappedWords;
+      transcript = mappedSegments.length > 0 ? mappedSegments : mappedWords;
       return NextResponse.json({ transcript });
     }
 
   } catch (error: any) {
-    console.error('Transcription error:', error);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    console.error('Transcription route error:', error);
+    return NextResponse.json({ error: error.message || 'Internal server error during transcription' }, { status: 500 });
   }
 }
