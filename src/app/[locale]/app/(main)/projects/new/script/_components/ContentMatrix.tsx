@@ -1,7 +1,8 @@
 'use client';
 
 import React, { useEffect } from 'react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
+
 import { Activity, Cpu, Zap, Wand2, Share2, AlertTriangle, Info } from 'lucide-react';
 import { useInView } from 'react-intersection-observer';
 
@@ -146,7 +147,9 @@ interface ContentMatrixProps {
   onAccept: () => void;
   onCopy: () => void;
   isSaving?: boolean;
+  isGenerating?: boolean;
 }
+
 
 export function ContentMatrix({
   blocks,
@@ -159,8 +162,11 @@ export function ContentMatrix({
   onBlockUpdate,
   onAccept,
   onCopy,
-  isSaving
+  isSaving,
+  isGenerating
 }: ContentMatrixProps) {
+
+
   const [copied, setCopied] = React.useState(false);
 
   const totalWords = Object.entries(selectionSources).reduce((acc, [blockId, scenarioId]) => {
@@ -184,6 +190,38 @@ export function ContentMatrix({
 
   return (
     <div className="relative pb-40">
+      {/* Background Processing Indicator */}
+      <AnimatePresence>
+        {isGenerating && (
+          <motion.div 
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full bg-purple-600/90 border border-purple-400/30 backdrop-blur-xl shadow-[0_10px_30px_rgba(168,85,247,0.4)] flex items-center gap-3 pointer-events-none"
+          >
+            <div className="flex gap-1">
+              <div className="w-1.5 h-4 bg-white/40 rounded-full animate-pulse" />
+              <div className="w-1.5 h-6 bg-white/80 rounded-full animate-pulse delay-75" />
+              <div className="w-1.5 h-4 bg-white/40 rounded-full animate-pulse delay-150" />
+            </div>
+            <span className="text-[10px] font-black uppercase tracking-widest text-white">
+              Digital DNA Ingesting... Matrix Update Active
+            </span>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <AnimatePresence>
+        {isGenerating && (
+           <motion.div 
+             initial={{ opacity: 0 }} 
+             animate={{ opacity: 0.15 }} 
+             exit={{ opacity: 0 }}
+             className="fixed inset-0 z-40 bg-purple-500 pointer-events-none" 
+           />
+        )}
+      </AnimatePresence>
+
       {/* Narrative HUD - Reading Time Tracker & Validation */}
       <div className="px-6 mb-10 mt-6 space-y-4">
         <motion.div 

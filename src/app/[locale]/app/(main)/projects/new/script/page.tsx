@@ -47,7 +47,38 @@ export default function ScriptLabPage() {
 
 
   const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>('evergreen');
-  const [allScenarios, setAllScenarios] = useState<any>(null);
+  const [allScenarios, setAllScenarios] = useState<any>(() => {
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('allScenarios');
+      if (saved) {
+        try { return JSON.parse(saved); } catch (e) { return null; }
+      }
+    }
+    return null;
+  });
+
+  const [scriptData, setScriptData] = useState(() => {
+    const defaultData = {
+      hook: '' as any,
+      context: '' as any,
+      meat: '' as any,
+      cta: '' as any,
+      visual_hook: '',
+      social_post: ''
+    };
+    if (typeof window !== 'undefined') {
+      const saved = sessionStorage.getItem('allScenarios');
+      if (saved) {
+        try {
+          const parsed = JSON.parse(saved);
+          return parsed.evergreen || parsed || defaultData;
+        } catch (e) { return defaultData; }
+      }
+    }
+    return defaultData;
+  });
+
+
   const [isGenerating, setIsGenerating] = useState(false);
   const [generationStep, setGenerationStep] = useState(0);
   const [showConfirmModal, setShowConfirmModal] = useState(false);
@@ -83,17 +114,9 @@ export default function ScriptLabPage() {
     cta: 'evergreen'
   });
 
-  const [scriptData, setScriptData] = useState({
-    hook: '' as any,
-    context: '' as any,
-    meat: '' as any,
-    cta: '' as any,
-    visual_hook: '',
-    social_post: ''
-  });
-
   const [masterTextOverride, setMasterTextOverride] = useState<string | null>(null);
   const [copyFeedback, setCopyFeedback] = useState(false);
+
 
   const scenarios: ('evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling')[] = ['evergreen', 'trend', 'educational', 'controversial', 'storytelling'];
 
@@ -171,34 +194,37 @@ export default function ScriptLabPage() {
           : await projectService.getLatestVersion(projectIdParam);
           
         if (ver?.script_data) {
-
           const data = ver.script_data as any;
           if (data.evergreen) {
             setAllScenarios(data);
             setScriptData(data[activeScenario] || data.evergreen);
+            
+            // Sync with session cache immediately
+            if (typeof window !== 'undefined') {
+              sessionStorage.setItem('allScenarios', JSON.stringify(data));
+            }
           } else {
-            // Legacy format
             setScriptData(data);
           }
           setCurrentVersion(ver);
         }
+        
         const proj = await projectService.getProject(projectIdParam);
         setCurrentProject(proj);
-        setTopicInput(proj?.title || '');
-        // Clear generating state and session cache once data is loaded from DB
+        if (proj?.title) setTopicInput(proj.title);
+        
+        // Stop global loading
+        setIsLoading(false);
         setIsGenerating(false);
-        if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('isGenerating');
-          sessionStorage.removeItem('allScenarios');
-        }
+        
       } catch (err) {
         console.error('Failed to load script:', err);
         setError('Failed to load project data');
-        setIsGenerating(false);
-      } finally {
         setIsLoading(false);
+        setIsGenerating(false);
       }
     }
+
     loadData();
   }, [projectIdParam, versionIdParam, searchParams]);
 
@@ -302,8 +328,13 @@ export default function ScriptLabPage() {
       
       // Update allScenarios if it's a multi-scenario object
       if (allScenarios) {
-        setAllScenarios({ ...allScenarios, [activeScenario]: newScript });
+        const updatedMatrix = { ...allScenarios, [activeScenario]: newScript };
+        setAllScenarios(updatedMatrix);
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('allScenarios', JSON.stringify(updatedMatrix));
+        }
       }
+
 
       if (data.onboardingIncomplete) {
         setOnboardingIncomplete(true);
@@ -527,7 +558,9 @@ export default function ScriptLabPage() {
     }
   };
 
-  if (isLoading || isGenerating) {
+  // Only show full-screen loader if we have NO data to show yet
+  if ((isLoading || isGenerating) && !allScenarios) {
+
     return (
       <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
         {/* Cinematic Backdrop for Loading */}
@@ -851,9 +884,11 @@ export default function ScriptLabPage() {
         </div>
       </div>
 
-      {/* The Matrix Carousel */}
       <ContentMatrix 
+        isGenerating={isGenerating || isRefining}
         blocks={[
+
+
           { id: 'hook', label: locale === 'ru' ? 'ХУК' : 'HOOK' },
           { id: 'context', label: locale === 'ru' ? 'КОНТЕКСТ' : 'CONTEXT' },
           { id: 'meat', label: locale === 'ru' ? 'МЯСО' : 'MEAT' },
