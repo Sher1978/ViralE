@@ -106,7 +106,14 @@ export default function StudioPage() {
         if (latestVersion) {
           setCurrentVersionId(latestVersion.id);
           if (latestVersion.script_data) {
-            setManifest(latestVersion.script_data as any);
+            const m = latestVersion.script_data as any;
+            setManifest(m);
+            
+            // Restore faceless mode if data exists
+            if (m.faceless) {
+              setShowFaceless(true);
+              setActiveTab('assembly');
+            }
           }
         } else {
           setManifest(createInitialManifest(projectId, uuidv4(), { 
@@ -116,6 +123,7 @@ export default function StudioPage() {
             cta: '' as any 
           }));
         }
+
       } catch (err) {
         console.error('Failed to load studio data:', err);
       } finally {

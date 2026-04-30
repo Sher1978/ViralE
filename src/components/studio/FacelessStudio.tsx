@@ -130,6 +130,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   useEffect(() => {
     if (!projectId || scenes.length === 0) return;
     const saveFacelessData = async () => {
+      // Small delay to debounce rapid updates
       await projectService.updateLatestVersionManifest(projectId, {
         ...manifest,
         faceless: {
@@ -139,12 +140,21 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
           selectedVoice,
           defaultVoiceId,
           duration,
-          activeStage
+          activeStage,
+          lastUpdated: Date.now()
         }
       });
+      
+      // Save voice selection to local storage as fallback
+      if (typeof window !== 'undefined') {
+        localStorage.setItem(`faceless_voice_${projectId}`, selectedVoice);
+        localStorage.setItem(`faceless_default_voice_${projectId}`, defaultVoiceId);
+      }
     };
-    saveFacelessData();
+    const timer = setTimeout(saveFacelessData, 1000);
+    return () => clearTimeout(timer);
   }, [scenes, audioUrl, editableScript, selectedVoice, defaultVoiceId, duration, activeStage, projectId]);
+
 
 
 
@@ -776,10 +786,20 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       >
         {/* Drag handle + tab bar */}
         <div
-          className="shrink-0 px-5 pt-3 pb-1 cursor-pointer"
+          className="shrink-0 px-5 pt-3 pb-1 cursor-pointer touch-none"
           onClick={() => setSheetExpanded(p => !p)}
         >
-          <div className="w-10 h-1 rounded-full bg-white/15 mx-auto mb-3" />
+          <motion.div 
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={0.2}
+            onDragEnd={(_, info) => {
+              if (info.offset.y < -50) setSheetExpanded(true);
+              if (info.offset.y > 50) setSheetExpanded(false);
+            }}
+            className="w-10 h-1 rounded-full bg-white/15 mx-auto mb-3" 
+          />
+
           <div className="flex gap-1">
             {(activeStage === 'setup'
               ? [{ id: 'setup' as BottomTab, label: 'Настройка', icon: <Sparkles size={13} /> }]
