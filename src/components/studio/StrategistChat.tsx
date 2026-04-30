@@ -78,8 +78,14 @@ export function StrategistChat({
       try {
         const status = await strategistService.getAccessStatus(userId);
         setAccess(status);
-      } catch (err) {
-        console.error('Failed to check strategist access:', err);
+      } catch (err: any) {
+        console.error('[StrategistChat] Access Check Failed:', {
+          userId,
+          error: err,
+          message: err?.message,
+          code: err?.code,
+          status: err?.status || err?.response?.status
+        });
       }
     };
     checkAccess();

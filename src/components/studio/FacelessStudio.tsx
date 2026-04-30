@@ -93,6 +93,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
+  const renderingRef = useRef(false);
+
 
   // ── Extract script from manifest ──
   const scriptText = manifest?.segments
@@ -510,8 +512,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     const ctx = canvas.getContext('2d')!;
     const FPS = 24;
     const totalFrames = Math.round(duration * FPS);
-    const frames: ImageData[] = [];
     const imgCache: Record<string, HTMLImageElement> = {};
+
     
     // Assign a random motion style to each scene for variety
     const sceneMotionStyles: Record<string, any> = {};
@@ -527,46 +529,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         imgCache[scene.id] = img;
       }
     }
-    for (let f = 0; f < totalFrames; f++) {
-      const time = f / FPS;
-      const scene = scenes.find(s => time >= s.start && time < s.end) || scenes[scenes.length - 1];
-      const prog = (time - scene.start) / (scene.end - scene.start);
-      const img = imgCache[scene.id];
-      ctx.clearRect(0, 0, 720, 1280);
-      if (img?.complete) {
-        const motion = sceneMotionStyles[scene.id];
-        let scale = 1.05;
-        let tx = 0;
-        let ty = 0;
-
-        // More aggressive movement combinations
-        if (motion === 'zoom_in') scale = 1.05 + prog * 0.15;
-        else if (motion === 'zoom_out') scale = 1.2 - prog * 0.15;
-        else if (motion === 'pan_right') tx = -40 + prog * 80;
-        else if (motion === 'pan_left') tx = 40 - prog * 80;
-        else if (motion === 'diagonal_br') { tx = -30 + prog * 60; ty = -30 + prog * 60; scale = 1.1; }
-        else if (motion === 'diagonal_tr') { tx = -30 + prog * 60; ty = 30 - prog * 60; scale = 1.1; }
-
-        ctx.save(); 
-        ctx.translate(360 + tx, 640 + ty); 
-        ctx.scale(scale, scale);
-        
-        const aspect = img.naturalWidth / img.naturalHeight;
-        let dw, dh;
-        if (aspect < 720 / 1280) { dw = 720; dh = 720 / aspect; } else { dh = 1280; dw = 1280 * aspect; }
-        ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
-        ctx.restore();
-      } else {
-        ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, 720, 1280);
-      }
-
-      frames.push(ctx.getImageData(0, 0, 720, 1280));
-      if (f % 10 === 0) setRenderProgress(Math.round((f / totalFrames) * 90));
-    }
-    const outputCanvas = document.createElement('canvas');
-    outputCanvas.width = 720; outputCanvas.height = 1280;
-    const outCtx = outputCanvas.getContext('2d')!;
-    const stream = outputCanvas.captureStream(FPS);
+    const stream = canvas.captureStream(FPS);
     if (audioRef.current) {
       // @ts-ignore
       const as = audioRef.current?.captureStream?.() || audioRef.current?.mozCaptureStream?.();
@@ -575,21 +538,66 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     const chunks: Blob[] = [];
     const mr = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
     mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
-    await new Promise<void>(res => {
-      mr.onstop = () => res();
+    
+    await new Promise<void>(async (resolve) => {
+      mr.onstop = () => resolve();
       mr.start();
+      
       if (audioRef.current) { 
         audioRef.current.currentTime = 0; 
-        audioRef.current.muted = true; // Mute while rendering so user doesn't hear it
-        audioRef.current.play(); 
+        audioRef.current.muted = true; 
+        await audioRef.current.play(); 
       }
 
-      let fi = 0;
-      const t = setInterval(() => {
-        if (fi >= frames.length) { clearInterval(t); mr.stop(); return; }
-        outCtx.putImageData(frames[fi], 0, 0); fi++;
-      }, 1000 / FPS);
+      const renderLoop = () => {
+        if (!renderingRef.current) return;
+        
+        const currentTime = audioRef.current?.currentTime || 0;
+        if (currentTime >= duration) {
+          mr.stop();
+          return;
+        }
+
+        const scene = scenes.find(s => currentTime >= s.start && currentTime < s.end) || scenes[scenes.length - 1];
+        const prog = (currentTime - scene.start) / (scene.end - scene.start);
+        const img = imgCache[scene.id];
+        
+        ctx.clearRect(0, 0, 720, 1280);
+        if (img?.complete) {
+          const motion = sceneMotionStyles[scene.id];
+          let scale = 1.05;
+          let tx = 0;
+          let ty = 0;
+
+          if (motion === 'zoom_in') scale = 1.05 + prog * 0.15;
+          else if (motion === 'zoom_out') scale = 1.2 - prog * 0.15;
+          else if (motion === 'pan_right') tx = -40 + prog * 80;
+          else if (motion === 'pan_left') tx = 40 - prog * 80;
+          else if (motion === 'diagonal_br') { tx = -30 + prog * 60; ty = -30 + prog * 60; scale = 1.1; }
+          else if (motion === 'diagonal_tr') { tx = -30 + prog * 60; ty = 30 - prog * 60; scale = 1.1; }
+
+          ctx.save(); 
+          ctx.translate(360 + tx, 640 + ty); 
+          ctx.scale(scale, scale);
+          
+          const aspect = img.naturalWidth / img.naturalHeight;
+          let dw, dh;
+          if (aspect < 720 / 1280) { dw = 720; dh = 720 / aspect; } else { dh = 1280; dw = 1280 * aspect; }
+          ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
+          ctx.restore();
+        } else {
+          ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, 720, 1280);
+        }
+
+        setRenderProgress(Math.round((currentTime / duration) * 100));
+        requestAnimationFrame(renderLoop);
+      };
+      
+      renderingRef.current = true;
+      renderLoop();
     });
+
+
     const blob = new Blob(chunks, { type: 'video/webm' });
     setFinalVideoBlob(blob);
     setRendering(false);

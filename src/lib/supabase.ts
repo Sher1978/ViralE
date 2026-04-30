@@ -10,7 +10,11 @@ if (!supabaseUrl || !supabaseAnonKey) {
 // Create the client, but guard against empty values if the library allows it, 
 // or export a proxied version that handles missing keys gracefully.
 export const supabase = (supabaseUrl && supabaseAnonKey) 
-  ? createClient(supabaseUrl, supabaseAnonKey)
+  ? createClient(supabaseUrl, supabaseAnonKey, {
+      auth: {
+        lock: { enabled: false }
+      }
+    })
   : new Proxy({} as any, {
       get: () => {
         throw new Error('Supabase client called without valid NEXT_PUBLIC_SUPABASE_URL or NEXT_PUBLIC_SUPABASE_ANON_KEY. Check your .env.local file.');
