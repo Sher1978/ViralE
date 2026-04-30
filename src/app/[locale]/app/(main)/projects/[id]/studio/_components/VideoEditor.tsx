@@ -165,25 +165,28 @@ export const VideoEditor = React.memo(({
   // Guard to prevent double-transcription
   const transcriptionStartedRef = useRef(false);
 
-  // ── Sync manifest A-Roll + kick off transcription immediately ──
+  // ── Auto-transcribe: fires when stage=transcribing AND url is ready ──
+  useEffect(() => {
+    if (stage === 'transcribing' && aRollUrl && !transcriptionStartedRef.current) {
+      console.log('[VideoEditor] Starting auto-transcription for:', aRollUrl);
+      transcriptionStartedRef.current = true;
+      runTranscriptionAndPhrases();
+    }
+  }, [stage, aRollUrl]); // Explicit dependencies
+
+  // ── Sync manifest A-Roll ──
   useEffect(() => {
     const rec = manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl);
     const url = rec?.assetUrl || manifest?.videoUrl || manifest?.segments?.[0]?.assetUrl || null;
     
     if (url && url !== aRollUrl) {
+      console.log('[VideoEditor] Manifest updated with new A-Roll:', url);
       setARollUrl(url);
       setStage('transcribing');
       transcriptionStartedRef.current = false; // Reset guard for new URL
     }
-  }, [manifest]); // eslint-disable-line react-hooks/exhaustive-deps
+  }, [manifest]); 
 
-  // ── Auto-transcribe: fires when stage=transcribing AND url is ready ──
-  useEffect(() => {
-    if (stage === 'transcribing' && aRollUrl && !transcriptionStartedRef.current) {
-      transcriptionStartedRef.current = true;
-      runTranscriptionAndPhrases();
-    }
-  }); // No deps — runs every render but guard ref prevents re-entry
 
   // ── Auto-confirm countdown ─ REMOVED (B-Roll Hunter should only open manually) ──
 
@@ -649,8 +652,16 @@ export const VideoEditor = React.memo(({
         style={{ height: '38%' }}>
 
         {aRollUrl ? (
-          <video ref={videoRef} muted={isMuted} className="w-full h-full object-contain" playsInline onClick={togglePlay} />
+          <video 
+            key={aRollUrl}
+            ref={videoRef} 
+            muted={isMuted} 
+            className="w-full h-full object-contain" 
+            playsInline 
+            onClick={togglePlay} 
+          />
         ) : (
+
           <div className="flex flex-col items-center justify-center gap-4 w-full h-full p-6">
             {/* Upload Own Video */}
             <button onClick={() => fileInputRef.current?.click()}

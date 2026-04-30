@@ -491,11 +491,12 @@ export default function StudioPage() {
                     setManifest(prev => prev ? {
                       ...prev,
                       videoUrl: res.publicUrl,
-                      transcript: transcriptData || prev.transcript, 
+                      transcript: undefined, // Force fresh AI transcription for precision
                       segments: prev.segments?.map((s, i) =>
                         i === 0 ? { ...s, assetUrl: res.publicUrl, type: 'user_recording' } : s
                       ) || prev.segments,
                     } : prev);
+
                   }
                 } catch (e) {
                   console.error('Failed to upload completed faceless video:', e);
@@ -503,7 +504,8 @@ export default function StudioPage() {
                   setManifest(prev => prev ? {
                     ...prev,
                     videoUrl: url,
-                    transcript: transcriptData || prev.transcript,
+                    transcript: undefined,
+
                     segments: prev.segments?.map((s, i) =>
                       i === 0 ? { ...s, assetUrl: url, type: 'user_recording' } : s
                     ) || prev.segments,
