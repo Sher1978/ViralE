@@ -301,31 +301,43 @@ export const VideoEditor = React.memo(({
 
   const extractAudioOnly = async (blob: Blob): Promise<Blob> => {
     try {
-      setStageMessage('Инициализация аудио-мотора...');
+      setStageMessage('Инициализация аудио-мотора (FFmpeg)...');
       const ffmpeg = new FFmpeg();
       
-      // Load FFmpeg from CDN (stable version for v0.12)
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      // Monitor logs for debugging
+      ffmpeg.on('log', ({ message }) => {
+        console.log('[FFmpeg LOG]', message);
       });
 
-      setStageMessage('Извлечение звуковой дорожки...');
+      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+      try {
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+      } catch (loadError: any) {
+        throw new Error(`Не удалось загрузить аудио-движок: ${loadError.message}. Убедитесь, что заголовки COOP/COEP активны.`);
+      }
+
+      setStageMessage('Извлечение звука (MP3)...');
       const inputFileName = 'input_video';
       const outputFileName = 'output_audio.mp3';
 
       await ffmpeg.writeFile(inputFileName, await fetchFile(blob));
       
-      // Extract audio to mp3 (mono, 44k, 64kbps is enough for transcription and small enough)
+      // Use faster settings for extraction
       await ffmpeg.exec(['-i', inputFileName, '-vn', '-acodec', 'libmp3lame', '-ac', '1', '-ar', '44100', '-b:a', '64k', outputFileName]);
       
       const data = await ffmpeg.readFile(outputFileName);
-      // @ts-ignore - Handle potential Uint8Array/SharedArrayBuffer issues in Next.js build
+      if (data.length === 0) throw new Error('Получен пустой аудио-файл');
+      
+      // @ts-ignore
       return new Blob([data], { type: 'audio/mp3' });
-    } catch (e) {
-      console.warn('[FFmpeg] Audio extraction failed, using original file:', e);
-      return blob; // Fallback to original blob
+    } catch (e: any) {
+      console.error('[FFmpeg] Detailed error:', e);
+      // We don't throw here to allow fallback attempt, but we log the failure
+      setTranscriptionError(`Ошибка подготовки аудио: ${e.message}. Попробуем отправить оригинал...`);
+      return blob; 
     }
   };
 
