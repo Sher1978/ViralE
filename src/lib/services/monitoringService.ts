@@ -15,7 +15,7 @@ export const monitoringService = {
   async getElevenLabsBalance(): Promise<ApiBalanceReport> {
     const apiKey = process.env.ELEVENLABS_API_KEY;
     if (!apiKey) {
-      return { provider: 'ElevenLabs', remaining: 0, unit: 'chars', status: 'critical' };
+      return { provider: 'ElevenLabs', remaining: 'Missing Key', unit: 'chars', status: 'critical' };
     }
 
     try {
@@ -33,42 +33,70 @@ export const monitoringService = {
         remaining,
         limit: data.character_limit,
         unit: 'chars',
-        status: percent < 10 ? 'critical' : percent < 25 ? 'warning' : 'ok'
+        status: percent < 15 ? 'critical' : percent < 30 ? 'warning' : 'ok'
       };
     } catch (err) {
-      console.error('[Monitoring] ElevenLabs fetch failed:', err);
       return { provider: 'ElevenLabs', remaining: 'Error', unit: 'chars', status: 'critical' };
     }
   },
 
   /**
-   * Estimates OpenAI usage based on internal logs (Credits Transactions)
+   * Fetches HeyGen credits/quota
    */
-  async getOpenAIUsage(): Promise<ApiBalanceReport> {
+  async getHeyGenBalance(): Promise<ApiBalanceReport> {
+    const apiKey = process.env.HEYGEN_API_KEY;
+    if (!apiKey) {
+      return { provider: 'HeyGen', remaining: 'Missing Key', unit: 'credits', status: 'critical' };
+    }
+
     try {
-      const now = new Date();
-      const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();
+      // HeyGen V2 remaining quota endpoint
+      const res = await fetch('https://api.heygen.com/v2/user/remaining_quota', {
+        headers: { 'X-Api-Key': apiKey }
+      });
+      if (!res.ok) throw new Error('HeyGen API failed');
+      const data = await res.json();
       
-      // We check our credits_transactions table for AI-related costs
-      const { data, error } = await supabase
-        .from('credits_transactions')
-        .select('amount')
-        .eq('transaction_type', 'SCRIPT_GEN')
-        .gte('created_at', firstDay);
+      const remaining = data.data?.remaining_quota || 0;
 
-      if (error || !data) throw error || new Error('No transaction data');
-
-      const totalSpentCredits = data.reduce((acc: number, curr: any) => acc + Math.abs(curr.amount || 0), 0);
-      
       return {
-        provider: 'OpenAI (Monthly)',
-        remaining: totalSpentCredits, // This is actually "spent" in our internal currency
+        provider: 'HeyGen',
+        remaining,
         unit: 'credits',
-        status: 'ok'
+        status: remaining < 5 ? 'critical' : remaining < 15 ? 'warning' : 'ok'
       };
     } catch (err) {
-      return { provider: 'OpenAI', remaining: 'Error', unit: 'credits', status: 'critical' };
+      return { provider: 'HeyGen', remaining: 'Error', unit: 'credits', status: 'critical' };
     }
+  },
+
+  /**
+   * Higgsfield - Dashboard only (no public balance API found)
+   */
+  async getHiggsfieldBalance(): Promise<ApiBalanceReport> {
+    const keyId = process.env.HIGGSFIELD_API_KEY_ID;
+    if (!keyId) {
+      return { provider: 'Higgsfield', remaining: 'Missing Key', unit: 'credits', status: 'critical' };
+    }
+    // Higgsfield current API (v1) doesn't expose a balance endpoint yet.
+    return {
+      provider: 'Higgsfield',
+      remaining: 'Check Dashboard',
+      unit: 'credits',
+      status: 'ok'
+    };
+  },
+
+  /**
+   * Google Gemini - Usage tracking not possible via API key
+   */
+  async getGeminiBalance(): Promise<ApiBalanceReport> {
+    return {
+      provider: 'Google Gemini',
+      remaining: 'Pay-as-you-go',
+      unit: 'requests',
+      status: 'ok'
+    };
   },
 
   /**
@@ -77,7 +105,9 @@ export const monitoringService = {
   async getFullSystemReport(): Promise<ApiBalanceReport[]> {
     const results = await Promise.all([
       this.getElevenLabsBalance(),
-      this.getOpenAIUsage()
+      this.getHeyGenBalance(),
+      this.getHiggsfieldBalance(),
+      this.getGeminiBalance()
     ]);
     return results;
   }
