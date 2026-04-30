@@ -192,8 +192,10 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       setTranscript(newScenes.map(s => ({ text: s.text, start: s.start, end: s.end })));
       setActiveStage('editor');
       setActiveTab('scenes');
-      setSheetExpanded(false);
+      setSheetExpanded(true);
+      generateAllImages(); // Auto-start image generation
     } catch (err: any) {
+
       setVoiceError(err.message || 'Ошибка пропуска озвучки.');
     } finally {
       setGeneratingVoice(false);
@@ -292,8 +294,10 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
 
       setActiveStage('editor');
       setActiveTab('scenes');
-      setSheetExpanded(false);
+      setSheetExpanded(true);
+      generateAllImages(); // Auto-start image generation
     } catch (err: any) {
+
       setVoiceError(err.message || 'Ошибка генерации голоса.');
     } finally {
       setGeneratingVoice(false);
@@ -508,8 +512,15 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     const totalFrames = Math.round(duration * FPS);
     const frames: ImageData[] = [];
     const imgCache: Record<string, HTMLImageElement> = {};
+    
+    // Assign a random motion style to each scene for variety
+    const sceneMotionStyles: Record<string, any> = {};
+    const motionTypes = ['zoom_in', 'zoom_out', 'pan_right', 'pan_left', 'diagonal_br', 'diagonal_tr'];
+    
     for (const scene of scenes) {
+      sceneMotionStyles[scene.id] = motionTypes[Math.floor(Math.random() * motionTypes.length)];
       if (scene.imageUrl) {
+
         const img = new window.Image();
         img.crossOrigin = 'anonymous';
         await new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); img.src = scene.imageUrl!; });
@@ -523,9 +534,23 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       const img = imgCache[scene.id];
       ctx.clearRect(0, 0, 720, 1280);
       if (img?.complete) {
-        const scale = selectedEffects.includes('kenburns') ? 1.05 + prog * 0.1 : 1.05;
-        const tx = selectedEffects.includes('kenburns') ? -prog * 30 : 0;
-        ctx.save(); ctx.translate(360 + tx, 640); ctx.scale(scale, scale);
+        const motion = sceneMotionStyles[scene.id];
+        let scale = 1.05;
+        let tx = 0;
+        let ty = 0;
+
+        // More aggressive movement combinations
+        if (motion === 'zoom_in') scale = 1.05 + prog * 0.15;
+        else if (motion === 'zoom_out') scale = 1.2 - prog * 0.15;
+        else if (motion === 'pan_right') tx = -40 + prog * 80;
+        else if (motion === 'pan_left') tx = 40 - prog * 80;
+        else if (motion === 'diagonal_br') { tx = -30 + prog * 60; ty = -30 + prog * 60; scale = 1.1; }
+        else if (motion === 'diagonal_tr') { tx = -30 + prog * 60; ty = 30 - prog * 60; scale = 1.1; }
+
+        ctx.save(); 
+        ctx.translate(360 + tx, 640 + ty); 
+        ctx.scale(scale, scale);
+        
         const aspect = img.naturalWidth / img.naturalHeight;
         let dw, dh;
         if (aspect < 720 / 1280) { dw = 720; dh = 720 / aspect; } else { dh = 1280; dw = 1280 * aspect; }
@@ -534,6 +559,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       } else {
         ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, 720, 1280);
       }
+
       frames.push(ctx.getImageData(0, 0, 720, 1280));
       if (f % 10 === 0) setRenderProgress(Math.round((f / totalFrames) * 90));
     }
@@ -682,16 +708,17 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                   onClick={item.onClick}
                   className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all active:scale-95 border ${
                     item.done 
-                      ? 'bg-purple-600 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)]' 
-                      : 'bg-white/[0.03] border-white/5 hover:bg-white/[0.06]'
+                      ? 'bg-purple-600/80 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.2)]' 
+                      : 'bg-transparent border-white/20 hover:bg-white/5'
                   }`}
                 >
                   <div className={item.done ? 'text-white' : 'text-purple-400'}>{item.icon}</div>
-                  <span className={`text-[9px] font-black uppercase tracking-wider ${item.done ? 'text-white/80' : 'text-white/30'}`}>
+                  <span className={`text-[9px] font-black uppercase tracking-wider ${item.done ? 'text-white' : 'text-white/40'}`}>
                     {item.label}
                   </span>
                 </button>
               ))}
+
             </div>
 
 
@@ -745,14 +772,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
               {/* Gradient vignette */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
 
-              {/* Subtitle overlay */}
-              {activeScene?.text && (
-                <div className="absolute bottom-20 left-0 right-0 px-5 text-center pointer-events-none">
-                  <p className="text-white text-[15px] font-black italic leading-snug drop-shadow-[0_2px_12px_rgba(0,0,0,1)]">
-                    {activeScene.text.slice(0, 80)}{activeScene.text.length > 80 ? '…' : ''}
-                  </p>
-                </div>
-              )}
+              {/* Subtitle overlay REMOVED per user request */}
+
 
               {/* Mini player */}
               <div className="absolute bottom-3 inset-x-3 h-12 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/10 flex items-center px-4 gap-3">
@@ -803,19 +824,19 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       >
         {/* Drag handle + tab bar */}
         <div
-          className="shrink-0 px-5 pt-3 pb-1 cursor-pointer touch-none"
-          onClick={() => setSheetExpanded(p => !p)}
+          className="shrink-0 px-5 pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
         >
           <motion.div 
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
-            dragElastic={0.2}
+            dragElastic={0.05}
             onDragEnd={(_, info) => {
-              if (info.offset.y < -50) setSheetExpanded(true);
-              if (info.offset.y > 50) setSheetExpanded(false);
+              if (info.offset.y < -30) setSheetExpanded(true);
+              if (info.offset.y > 30) setSheetExpanded(false);
             }}
-            className="w-10 h-1 rounded-full bg-white/15 mx-auto mb-3" 
+            className="w-12 h-1.5 rounded-full bg-white/20 mx-auto mb-3 shadow-lg" 
           />
+
 
           <div className="flex gap-1">
             {(activeStage === 'setup'
