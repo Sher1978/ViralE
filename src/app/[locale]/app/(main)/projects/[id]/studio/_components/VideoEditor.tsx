@@ -6,7 +6,7 @@ import {
   Play, Pause, Volume2, VolumeX, Type, Film,
   SkipBack, Trash2, ArrowRight, ArrowLeft, X,
   Upload, Sparkles, Loader2, RefreshCw, Check, ChevronRight,
-  Mic, FileText, Wand2, Eye, RotateCw, Cpu
+  Mic, FileText, Wand2, Eye, RotateCw, Cpu, Plus
 } from 'lucide-react';
 import { ProductionManifest } from '@/lib/types/studio';
 import BRollModal from '@/components/studio/BRollPickerModal';
@@ -89,14 +89,11 @@ function buildTranscript(manifest: ProductionManifest | null, videoDuration: num
 
 function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
   if (transcript.length === 0) return [];
-  // Pick 2-3 phrases from middle 25%-85% of the video
-  const start = Math.floor(transcript.length * 0.25);
-  const end = Math.floor(transcript.length * 0.85);
-  const pool = transcript.slice(start, end);
-  const count = Math.min(pool.length, pool.length >= 3 ? 3 : 2);
-  const step = Math.floor(pool.length / count);
+  // Pick 5-8 phrases across the whole video
+  const count = Math.min(transcript.length, 8);
+  const step = Math.floor(transcript.length / count);
   return Array.from({ length: count }, (_, i) => {
-    const seg = pool[i * step];
+    const seg = transcript[i * step];
     return {
       id: `phrase_${i}_${Date.now()}`,
       text: seg.text.slice(0, 60),
@@ -1093,7 +1090,14 @@ export const VideoEditor = React.memo(({
             </TrackRow>
 
             {/* B-Roll Track */}
-            <TrackRow label="B" color="text-blue-400">
+            <TrackRow 
+              label="B" 
+              color="text-blue-400"
+              onAdd={() => {
+                setPhrasePickerOpen(true);
+                setEditingPhraseId(null);
+              }}
+            >
               {brollClips.map(clip => (
                 <BRollTimelineClip key={clip.id} clip={clip} duration={duration}
                   isSelected={selectedClipId === clip.id}
@@ -1256,10 +1260,24 @@ export const VideoEditor = React.memo(({
 
 // ── Track Row ─────────────────────────────────────────────────────────────
 
-const TrackRow = React.memo(({ label, color, children, onClick }: { label: string; color: string; children?: React.ReactNode; onClick?: () => void }) => (
-  <div className="flex border-b border-white/[0.04]" style={{ height: 48 }} onClick={onClick}>
-    <div className="w-14 flex-shrink-0 flex items-center justify-center border-r border-white/5 bg-black/40">
+const TrackRow = React.memo(({ label, color, children, onClick, onAdd }: { 
+  label: string; 
+  color: string; 
+  children?: React.ReactNode; 
+  onClick?: () => void;
+  onAdd?: () => void;
+}) => (
+  <div className="flex border-b border-white/[0.04] group/track" style={{ height: 48 }} onClick={onClick}>
+    <div className="w-14 flex-shrink-0 flex flex-col items-center justify-center border-r border-white/5 bg-black/40 relative">
       <span className={`text-[11px] font-black uppercase ${color}`}>{label}</span>
+      {onAdd && (
+        <button 
+          onClick={(e) => { e.stopPropagation(); onAdd(); }}
+          className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors opacity-0 group-hover/track:opacity-100"
+        >
+          <Plus size={10} className="text-white" />
+        </button>
+      )}
     </div>
     <div className="flex-1 relative">{children}</div>
   </div>
@@ -1277,8 +1295,8 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
   return (
     <div
       className={`absolute inset-y-1.5 rounded-lg border transition-all ${
-        clip.url ? 'bg-blue-500/20 border-blue-400/40 text-blue-300' : 'bg-white/5 border-dashed border-white/20 text-white/30'
-      } ${isSelected ? 'ring-2 ring-white/40' : ''} flex items-center cursor-pointer touch-none`}
+        clip.url ? 'bg-blue-600/40 border-blue-400 text-blue-100 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-purple-500/20 border-dashed border-purple-400/50 text-purple-200'
+      } ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : ''} flex items-center cursor-pointer touch-none z-10`}
       style={{ left, width, minWidth: 28 }}
       onClick={onSelect}
       onMouseDown={e => onDragStart(e, 'move')}
