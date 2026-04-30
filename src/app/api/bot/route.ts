@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { monitoringService } from '@/lib/services/monitoringService';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -91,6 +92,25 @@ export async function POST(req: NextRequest) {
           })
         });
       }
+    } else if (text.startsWith('/balance')) {
+      const report = await monitoringService.getFullSystemReport();
+      const statusEmoji = (s: string) => s === 'critical' ? '🔴' : s === 'warning' ? '🟡' : '🟢';
+      
+      const reportText = report.map(r => 
+        `${statusEmoji(r.status)} *${r.provider}*\n` +
+        `Remaining: ${typeof r.remaining === 'number' ? r.remaining.toLocaleString() : r.remaining} ${r.unit}` +
+        (r.limit ? ` / ${typeof r.limit === 'number' ? r.limit.toLocaleString() : r.limit}` : '')
+      ).join('\n\n');
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: `📊 *System API Balance Report*\n\n${reportText}`,
+          parse_mode: 'Markdown'
+        })
+      });
     }
 
     return NextResponse.json({ ok: true });
