@@ -299,21 +299,26 @@ export const VideoEditor = React.memo(({
 
   const extractAudioOnly = async (blob: Blob): Promise<Blob> => {
     try {
-      setStageMessage('Подготовка аудио-движка (WebAudio)...');
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      setStageMessage('Подготовка аудио (Resampling)...');
       const arrayBuffer = await blob.arrayBuffer();
-      
-      setStageMessage('Декодирование звука...');
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
       const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
       
-      setStageMessage('Конвертация в WAV...');
-      // Simple WAV encoding logic
-      const numOfChannels = audioBuffer.numberOfChannels;
-      const length = audioBuffer.length * numOfChannels * 2 + 44;
+      // Resample to 16kHz Mono to keep file size very small (~2MB for 60s)
+      const targetSampleRate = 16000;
+      const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * targetSampleRate, targetSampleRate);
+      const source = offlineCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(offlineCtx.destination);
+      source.start();
+      
+      const resampledBuffer = await offlineCtx.startRendering();
+      
+      setStageMessage('Конвертация (16kHz Mono)...');
+      const length = resampledBuffer.length * 2 + 44;
       const buffer = new ArrayBuffer(length);
       const view = new DataView(buffer);
       
-      // WAV Header
       const writeString = (offset: number, string: string) => {
         for (let i = 0; i < string.length; i++) {
           view.setUint8(offset + i, string.charCodeAt(i));
@@ -321,33 +326,31 @@ export const VideoEditor = React.memo(({
       };
       
       writeString(0, 'RIFF');
-      view.setUint32(4, 32 + audioBuffer.length * numOfChannels * 2, true);
+      view.setUint32(4, 32 + resampledBuffer.length * 2, true);
       writeString(8, 'WAVE');
       writeString(12, 'fmt ');
       view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true);
-      view.setUint16(22, numOfChannels, true);
-      view.setUint32(24, audioBuffer.sampleRate, true);
-      view.setUint32(28, audioBuffer.sampleRate * numOfChannels * 2, true);
-      view.setUint16(32, numOfChannels * 2, true);
+      view.setUint16(20, 1, true); // PCM
+      view.setUint16(22, 1, true); // Mono
+      view.setUint32(24, targetSampleRate, true);
+      view.setUint32(28, targetSampleRate * 2, true);
+      view.setUint16(32, 2, true);
       view.setUint16(34, 16, true);
       writeString(36, 'data');
-      view.setUint32(40, audioBuffer.length * numOfChannels * 2, true);
+      view.setUint32(40, resampledBuffer.length * 2, true);
       
-      // Write PCM samples
       let offset = 44;
-      for (let i = 0; i < audioBuffer.length; i++) {
-        for (let channel = 0; channel < numOfChannels; channel++) {
-          const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(channel)[i]));
-          view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-          offset += 2;
-        }
+      const channelData = resampledBuffer.getChannelData(0);
+      for (let i = 0; i < channelData.length; i++) {
+        const sample = Math.max(-1, Math.min(1, channelData[i]));
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        offset += 2;
       }
       
       return new Blob([buffer], { type: 'audio/wav' });
     } catch (e: any) {
       console.error('[WebAudio] Extraction failed:', e);
-      setTranscriptionError(`Ошибка извлечения аудио: ${e.message}. Попробуем отправить оригинал...`);
+      setTranscriptionError(`Ошибка сжатия аудио: ${e.message}. Попробуем отправить оригинал...`);
       return blob; 
     }
   };
