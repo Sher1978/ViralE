@@ -30,7 +30,8 @@ export default function DnaManagementPage() {
   const router = useRouter();
   
   const [dna, setDna] = useState('');
-  const [selectedStyle, setSelectedStyle] = useState('dubai_platinum');
+  const [selectedStyle, setSelectedStyle] = useState('startup_valley');
+
   const [newData, setNewData] = useState('');
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);

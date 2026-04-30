@@ -54,9 +54,10 @@ export async function POST(req: NextRequest) {
       .update({
         synthetic_training_data: trainingData,
         knowledge_base_json: dnaInfo,
-        visual_style: dnaInfo.suggested_visual_style || 'tech_catalyst',
+        visual_style: dnaInfo.suggested_visual_style || 'startup_valley',
         dna_last_updated: new Date().toISOString()
       })
+
 
       .eq('id', userId)
       .select()

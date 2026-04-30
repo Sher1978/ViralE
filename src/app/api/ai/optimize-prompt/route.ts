@@ -12,7 +12,8 @@ export async function POST(req: Request) {
 
     // 1. Get user DNA & Style
     let dna = 'Generic expert content creator';
-    let style = 'dubai_platinum'; // Default
+    let style = 'startup_valley'; // Default
+
     try {
       await getAuthenticatedUser();
       const profile = await profileService.getOrCreateProfile();
