@@ -12,7 +12,7 @@ if (!supabaseUrl || !supabaseAnonKey) {
 export const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
-        lock: { enabled: false }
+        lock: (name, acquireTimeout, fn) => fn()
       }
     })
   : new Proxy({} as any, {
