@@ -5,12 +5,12 @@ export const maxDuration = 60;
 
 export async function POST(req: NextRequest) {
   try {
-    const apiKey = process.env.GEMINI_API_KEY;
+    const apiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
-      console.error('[Transcribe] GEMINI_API_KEY is missing');
-      return NextResponse.json({ error: 'GEMINI_API_KEY is missing on server' }, { status: 500 });
+      console.error('[Transcribe] Gemini API key is missing (checked GEMINI_API_KEY and GOOGLE_GENERATIVE_AI_API_KEY)');
+      return NextResponse.json({ error: 'Gemini API key is missing on server. Please set GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY in Vercel settings.' }, { status: 500 });
     }
 
     const formData = await req.formData();
