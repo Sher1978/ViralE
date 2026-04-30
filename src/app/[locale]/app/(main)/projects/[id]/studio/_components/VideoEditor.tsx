@@ -913,7 +913,10 @@ export const VideoEditor = React.memo(({
                             startTime: p.start,
                             endTime: p.end,
                             label: p.text.substring(0, 20) + '...',
-                            status: 'pending'
+                            status: 'pending',
+                            url: '',
+                            prompt: '',
+                            track: 'B'
                           }));
                           setBrollClips(brollPlaceholders);
                           
