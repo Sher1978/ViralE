@@ -64,6 +64,10 @@ interface VideoEditorProps {
 // ── Helper: Mock Transcription ─────────────────────────────────────────────
 
 function buildTranscript(manifest: ProductionManifest | null, videoDuration: number): TranscriptWord[] {
+  if (!manifest) {
+    // Fallback for custom uploads without a script: create a single placeholder word
+    return [{ text: "[Редактируйте текст здесь]", start: 0, end: videoDuration }];
+  }
   const segments = manifest?.segments?.filter((s: any) => s.scriptText) || [];
   const dur = videoDuration > 0 ? videoDuration : 60;
 
@@ -427,7 +431,7 @@ export const VideoEditor = React.memo(({
     if (!transcriptionOk || words.length === 0) {
       setStageMessage(transcriptionError || 'Ошибка анализа аудио');
       // Force error state if it's somehow missing
-      if (!transcriptionError) setTranscriptionError('Не удалось получить текст. Вы можете использовать базовые субтитры.');
+      if (!transcriptionError) setTranscriptionError('Не удалось получить текст автоматически.');
       return;
     }
 
@@ -880,36 +884,50 @@ export const VideoEditor = React.memo(({
                         {transcriptionError}
                       </p>
                     </div>
-                    <button 
-                      onClick={() => {
-                        console.log('[VideoEditor] Using draft fallback...');
-                        const fallback = buildTranscript(manifest, duration);
-                        const karaokeClips = buildKaraokeClips(fallback);
-                        const picked = pickAIPhrases(fallback);
-                        
-                        setTranscript(fallback);
-                        setSubtitleClips(karaokeClips);
-                        setPhrases(picked);
-                        
-                        // Place B-Roll placeholders
-                        const brollPlaceholders: BRollClip[] = picked.map(p => ({
-                          id: `br-${p.id}`,
-                          phraseId: p.id,
-                          startTime: p.start,
-                          endTime: p.end,
-                          label: p.text.substring(0, 20) + '...',
-                          status: 'pending'
-                        }));
-                        setBrollClips(brollPlaceholders);
-                        
-                        setStage('editing');
-                      }}
-                      className="w-full px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95"
-                    >
-                      Использовать черновик
-                    </button>
+                    <div className="flex flex-col gap-2 w-full">
+                      <button 
+                        onClick={() => {
+                          setTranscriptionError(null);
+                          transcriptionStartedRef.current = false;
+                          runTranscriptionAndPhrases();
+                        }}
+                        className="w-full px-6 py-3 rounded-2xl bg-purple-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-purple-600 transition-all active:scale-95 shadow-lg shadow-purple-500/20"
+                      >
+                        Повторить попытку
+                      </button>
+                      <button 
+                        onClick={() => {
+                          console.log('[VideoEditor] Using draft fallback...');
+                          const fallback = buildTranscript(manifest, duration);
+                          const karaokeClips = buildKaraokeClips(fallback);
+                          const picked = pickAIPhrases(fallback);
+                          
+                          setTranscript(fallback);
+                          setSubtitleClips(karaokeClips);
+                          setPhrases(picked);
+                          
+                          // Place B-Roll placeholders
+                          const brollPlaceholders: BRollClip[] = picked.map(p => ({
+                            id: `br-${p.id}`,
+                            phraseId: p.id,
+                            startTime: p.start,
+                            endTime: p.end,
+                            label: p.text.substring(0, 20) + '...',
+                            status: 'pending'
+                          }));
+                          setBrollClips(brollPlaceholders);
+                          
+                          setStage('editing');
+                        }}
+                        className="w-full px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95"
+                      >
+                        {manifest ? 'Использовать черновик' : 'Продолжить без текста'}
+                      </button>
+                    </div>
                     <p className="text-[9px] text-white/30 uppercase tracking-widest leading-relaxed">
-                      AI-анализ не удался. Вы можете продолжить монтаж с базовыми субтитрами из сценария.
+                      {manifest 
+                        ? 'AI-анализ не удался. Вы можете повторить или продолжить с текстом из сценария.' 
+                        : 'AI-анализ не удался. Вы можете повторить или продолжить монтаж вручную.'}
                     </p>
                   </div>
                 ) : (
