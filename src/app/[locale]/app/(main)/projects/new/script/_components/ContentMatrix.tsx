@@ -215,12 +215,17 @@ export function ContentMatrix({
         {isGenerating && (
            <motion.div 
              initial={{ opacity: 0 }} 
-             animate={{ opacity: 0.15 }} 
+             animate={{ opacity: 1 }} 
              exit={{ opacity: 0 }}
-             className="fixed inset-0 z-40 bg-purple-500 pointer-events-none" 
-           />
+             className="fixed inset-0 z-40 bg-black/20 backdrop-blur-md pointer-events-none flex items-center justify-center" 
+           >
+             <div className="absolute inset-0 bg-gradient-to-b from-purple-500/5 to-transparent" />
+             {/* Subtle scan line effect */}
+             <div className="w-full h-[2px] bg-purple-500/20 absolute top-0 animate-scanner shadow-[0_0_15px_rgba(168,85,247,0.5)]" />
+           </motion.div>
         )}
       </AnimatePresence>
+
 
       {/* Narrative HUD - Reading Time Tracker & Validation */}
       <div className="px-6 mb-10 mt-6 space-y-4">
