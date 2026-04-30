@@ -161,8 +161,10 @@ export const VideoEditor = React.memo(({
   const dragRef = useRef<{
     clipId: string; type: 'broll' | 'sub';
     handle: 'move' | 'start' | 'end';
-    startX: number; origStart: number; origEnd: number;
+    startX: number; startY: number; // Added startY for long-press threshold
+    origStart: number; origEnd: number;
   } | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Guard to prevent double-transcription
   const transcriptionStartedRef = useRef(false);
@@ -246,8 +248,16 @@ export const VideoEditor = React.memo(({
   useEffect(() => {
     const move = (e: MouseEvent | TouchEvent) => {
       if (!dragRef.current || !timelineRef.current) return;
-      const { clipId, type, handle, startX, origStart, origEnd } = dragRef.current;
+      const { clipId, type, handle, startX, startY, origStart, origEnd } = dragRef.current;
       const clientX = 'touches' in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
+      const clientY = 'touches' in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
+
+      // Cancel long press if moved significantly
+      if (longPressTimerRef.current && (Math.abs(clientX - startX) > 10 || Math.abs(clientY - startY) > 10)) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+
       const rect = timelineRef.current.getBoundingClientRect();
       const dSec = ((clientX - startX) / rect.width) * duration;
       const upd = (prev: any[]) => prev.map(c => {
@@ -258,7 +268,13 @@ export const VideoEditor = React.memo(({
       });
       if (type === 'broll') setBrollClips(upd); else setSubtitleClips(upd);
     };
-    const up = () => { dragRef.current = null; };
+    const up = () => { 
+      if (longPressTimerRef.current) {
+        clearTimeout(longPressTimerRef.current);
+        longPressTimerRef.current = null;
+      }
+      dragRef.current = null; 
+    };
     window.addEventListener('mousemove', move);
     window.addEventListener('touchmove', move, { passive: false });
     window.addEventListener('mouseup', up);
@@ -617,10 +633,28 @@ export const VideoEditor = React.memo(({
 
   const startDrag = (e: React.MouseEvent | React.TouchEvent, clipId: string, type: 'broll' | 'sub', handle: 'move' | 'start' | 'end') => {
     e.stopPropagation();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientX = 'touches' in e ? e.touches[0].clientX : (e as React.MouseEvent).clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : (e as React.MouseEvent).clientY;
     const clip = type === 'broll' ? brollClips.find(c => c.id === clipId) : subtitleClips.find(c => c.id === clipId);
     if (!clip) return;
-    dragRef.current = { clipId, type, handle, startX: clientX, origStart: clip.startTime, origEnd: clip.endTime };
+    
+    dragRef.current = { 
+      clipId, type, handle, 
+      startX: clientX, startY: clientY, 
+      origStart: clip.startTime, origEnd: clip.endTime 
+    };
+
+    // Mobile-first Long Press to Delete (800ms)
+    if (handle === 'move') {
+      longPressTimerRef.current = setTimeout(() => {
+        if (window.confirm('Удалить этот фрагмент?')) {
+          if (type === 'broll') setBrollClips(p => p.filter(c => c.id !== clipId));
+          else setSubtitleClips(p => p.filter(c => c.id !== clipId));
+          dragRef.current = null;
+        }
+        longPressTimerRef.current = null;
+      }, 800);
+    }
   };
 
   const handleTimelineTap = useCallback((e: React.MouseEvent<HTMLDivElement>) => {
@@ -1295,25 +1329,27 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
   return (
     <div
       className={`absolute inset-y-1.5 rounded-lg border transition-all ${
-        clip.url ? 'bg-blue-600/40 border-blue-400 text-blue-100 shadow-[0_0_15px_rgba(59,130,246,0.3)]' : 'bg-purple-500/20 border-dashed border-purple-400/50 text-purple-200'
+        clip.url 
+          ? 'bg-blue-600/40 border-blue-400 text-blue-100 shadow-[0_0_15px_rgba(59,130,246,0.3)]' 
+          : 'bg-purple-500/20 border-dashed border-purple-400/50 text-purple-200 animate-pulse'
       } ${isSelected ? 'ring-2 ring-white ring-offset-2 ring-offset-black' : ''} flex items-center cursor-pointer touch-none z-10`}
       style={{ left, width, minWidth: 28 }}
       onClick={onSelect}
       onMouseDown={e => onDragStart(e, 'move')}
       onTouchStart={e => onDragStart(e, 'move')}>
-      <div className="absolute left-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center"
+      <div className="absolute left-0 top-0 bottom-0 w-6 cursor-ew-resize flex items-center justify-center group z-20"
         onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'start'); }}
         onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'start'); }}>
-        <div className="w-0.5 h-4 bg-white/40 rounded-full" />
+        <div className="w-1 h-5 bg-white/40 group-hover:bg-white rounded-full transition-colors" />
       </div>
-      <span className="flex-1 text-[9px] font-black truncate px-3 select-none flex items-center gap-2">
-        {!clip.url && <Sparkles size={10} className="text-purple-400" />}
-        {clip.label}
+      <span className="flex-1 text-[9px] font-black truncate px-6 select-none flex items-center gap-2">
+        {!clip.url && <Sparkles size={10} className="text-purple-400 animate-spin-slow" />}
+        {clip.url ? clip.label : 'Нажми, чтобы добавить видео'}
       </span>
-      <div className="absolute right-0 top-0 bottom-0 w-4 cursor-ew-resize flex items-center justify-center"
+      <div className="absolute right-0 top-0 bottom-0 w-6 cursor-ew-resize flex items-center justify-center group z-20"
         onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'end'); }}
         onTouchStart={e => { e.stopPropagation(); onDragStart(e, 'end'); }}>
-        <div className="w-0.5 h-4 bg-white/40 rounded-full" />
+        <div className="w-1 h-5 bg-white/40 group-hover:bg-white rounded-full transition-colors" />
       </div>
     </div>
   );
