@@ -459,8 +459,9 @@ export const VideoEditor = React.memo(({
       } catch (err: any) {
         console.error('Transcription failed:', err);
         let msg = err.message || 'Ошибка расшифровки';
+        if (err.status) msg = `[Error ${err.status}] ${msg}`;
         if (msg.includes('Unexpected token') || msg.includes('is not valid JSON')) {
-          msg = 'Ошибка формата данных. Попробуйте загрузить видео повторно.';
+          msg = 'Ошибка формата данных (JSON). Возможно, сервер упал.';
         }
         setTranscriptionError(msg);
       }

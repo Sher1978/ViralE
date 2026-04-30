@@ -1,125 +1,111 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getModel } from '@/lib/ai/gemini';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+
+export const maxDuration = 60; // Max allowed for Vercel Hobby
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const file = formData.get('file') as File;
-    const mode = formData.get('mode') as string || 'karaoke';
+    const apiKey = process.env.GEMINI_API_KEY;
+    const openaiKey = process.env.OPENAI_API_KEY;
 
-    if (!file) {
-      return NextResponse.json({ error: 'No file provided' }, { status: 400 });
+    if (!apiKey) {
+      console.error('[Transcribe] GEMINI_API_KEY is missing');
+      return NextResponse.json({ error: 'GEMINI_API_KEY is missing on server' }, { status: 500 });
     }
 
-    const buffer = await file.arrayBuffer();
-    const base64Audio = Buffer.from(buffer).toString('base64');
-    const mimeType = file.type || 'audio/mp3';
+    const formData = await req.formData();
+    const file = formData.get('file') as Blob;
 
-    // ── TRY GEMINI 2.5 FLASH FIRST ──────────────────────────────────────────
+    if (!file) {
+      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+    }
+
+    console.log('[Transcribe] Starting... File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+
+    // ── ATTEMPT 1: GEMINI 2.5 FLASH ──────────────────────────────────────────
     try {
-      console.log('[Transcribe] Attempting Gemini 2.5 Flash transcription...');
-      const geminiModel = getModel('fast');
-      
+      const genAI = new GoogleGenerativeAI(apiKey);
+      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' }); // Using current stable version string
+
+      const buffer = Buffer.from(await file.arrayBuffer());
+      const base64Audio = buffer.toString('base64');
+
       const prompt = `
-        Transcribe the provided audio precisely. 
-        IMPORTANT: Return ONLY a valid JSON object. 
-        The output must be a list of words with their exact start and end timestamps in seconds.
-        
-        Format:
-        {
-          "words": [
-            { "word": "Hello", "start": 0.0, "end": 0.5 },
-            ...
-          ]
-        }
-        
-        Rules:
-        - Include EVERY word spoken.
-        - Timestamps must be float numbers (e.g. 1.25).
-        - Do not add any markdown formatting or extra text.
+        Transcribe the following audio precisely. 
+        Return a JSON object with a "transcript" array.
+        Each element in the array must be an object with:
+        "text": string (the word or short phrase),
+        "start": number (start time in seconds),
+        "end": number (end time in seconds)
+        Format example: {"transcript": [{"text": "Hello", "start": 0.5, "end": 0.8}]}
       `;
 
-      const result = await geminiModel.generateContent([
+      const result = await model.generateContent([
+        prompt,
         {
           inlineData: {
+            mimeType: file.type || 'audio/wav',
             data: base64Audio,
-            mimeType: mimeType
-          }
+          },
         },
-        prompt
       ]);
 
-      const response = await result.response;
-      let text = response.text().trim();
-      
-      // Clean JSON if needed
-      const jsonStart = text.indexOf('{');
-      const jsonEnd = text.lastIndexOf('}');
-      if (jsonStart !== -1 && jsonEnd !== -1) {
-        text = text.substring(jsonStart, jsonEnd + 1);
-      }
+      const responseText = result.response.text();
+      console.log('[Transcribe] Gemini response preview:', responseText.slice(0, 100));
 
-      const data = JSON.parse(text);
-
-      if (data.words && data.words.length > 0) {
-        console.log('[Transcribe] Gemini success. Words count:', data.words.length);
-        const transcript = data.words.map((w: any) => ({
-          text: w.word,
-          start: w.start,
-          end: w.end
-        }));
-
-        if (mode === 'karaoke') {
-          return NextResponse.json({ wordTimings: transcript, transcript: transcript });
-        } else {
-          return NextResponse.json({ transcript });
+      // Extract JSON from response
+      const jsonMatch = responseText.match(/\{[\s\S]*\}/);
+      if (jsonMatch) {
+        const data = JSON.parse(jsonMatch[0]);
+        if (data.transcript && Array.isArray(data.transcript)) {
+          return NextResponse.json(data);
         }
       }
       
-      throw new Error('Gemini returned empty or invalid words list');
-
+      throw new Error('Gemini failed to return valid JSON transcript');
     } catch (geminiError: any) {
-      console.warn('[Transcribe] Gemini failed, falling back to Whisper:', geminiError.message);
+      console.error('[Transcribe] Gemini failed, falling back to Whisper:', geminiError.message);
       
       // ── FALLBACK TO WHISPER ────────────────────────────────────────────────
-      const apiKey = process.env.OPENAI_API_KEY;
-      if (!apiKey) {
-        throw new Error('Transcription failed and OpenAI API key not configured');
+      if (!openaiKey) {
+        return NextResponse.json({ error: 'Gemini failed and OPENAI_API_KEY is missing' }, { status: 500 });
       }
 
       const whisperFormData = new FormData();
-      whisperFormData.append('file', file, file.name || 'audio.mp3');
+      whisperFormData.append('file', file, 'audio.wav');
       whisperFormData.append('model', 'whisper-1');
       whisperFormData.append('response_format', 'verbose_json');
-      whisperFormData.append('timestamp_granularities[]', 'word');
 
-      const response = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+      const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
         method: 'POST',
-        headers: { 'Authorization': `Bearer ${apiKey}` },
-        body: whisperFormData
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+        },
+        body: whisperFormData,
       });
 
-      if (!response.ok) {
-        const errText = await response.text();
-        throw new Error(`Whisper fallback failed: ${response.status} ${errText}`);
+      if (!whisperRes.ok) {
+        const errText = await whisperRes.text();
+        console.error('[Transcribe] Whisper API Error:', errText);
+        throw new Error(`Whisper failed: ${whisperRes.statusText}`);
       }
 
-      const data = await response.json();
-      const mappedWords = (data.words || []).map((w: any) => ({
-        text: w.word.trim(),
-        start: w.start,
-        end: w.end
+      const whisperData = await whisperRes.json();
+      
+      // Convert Whisper segments to our format
+      const transcript = (whisperData.segments || []).map((s: any) => ({
+        text: s.text.trim(),
+        start: s.start,
+        end: s.end,
       }));
 
-      if (mode === 'karaoke') {
-        return NextResponse.json({ wordTimings: mappedWords, transcript: mappedWords });
-      } else {
-        return NextResponse.json({ transcript: mappedWords });
-      }
+      return NextResponse.json({ transcript });
     }
-
   } catch (error: any) {
-    console.error('Transcription ultimate error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error during transcription' }, { status: 500 });
+    console.error('[Transcribe] Global Error:', error);
+    return NextResponse.json(
+      { error: error.message || 'Internal Server Error' },
+      { status: 500 }
+    );
   }
 }
