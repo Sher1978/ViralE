@@ -102,6 +102,18 @@ export default function StudioPage() {
     window.history.replaceState({ path: newUrl }, '', newUrl);
   }, [activeTab, showFaceless, isLoading]);
 
+  // Prevent accidental data loss
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      if (activeTab === 'assembly' || activeTab === 'teleprompter' || showFaceless) {
+        e.preventDefault();
+        e.returnValue = '';
+      }
+    };
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+  }, [activeTab, showFaceless]);
+
   // Initial Load
   useEffect(() => {
     async function loadData() {
@@ -335,6 +347,8 @@ export default function StudioPage() {
       const data = await response.json();
       
       if (data.jobId) {
+        // Clear local draft on successful export
+        localStorage.removeItem(`viral_editor_draft_${projectId}`);
         router.push(`/app/projects/new/delivery?projectId=${projectId}&jobId=${data.jobId}`);
       } else {
         router.push(`/app/projects/new/delivery?projectId=${projectId}`);

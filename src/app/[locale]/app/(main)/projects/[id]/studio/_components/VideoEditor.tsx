@@ -164,6 +164,35 @@ export const VideoEditor = React.memo(({
 
   // Guard to prevent double-transcription
   const transcriptionStartedRef = useRef(false);
+  const persistenceLoadedRef = useRef(false);
+
+  // ── Persistence: Save/Load local draft ──
+  useEffect(() => {
+    if (!projectId || persistenceLoadedRef.current) return;
+    const key = `viral_editor_draft_${projectId}`;
+    const saved = localStorage.getItem(key);
+    if (saved) {
+      try {
+        const data = JSON.parse(saved);
+        if (data.aRollUrl) setARollUrl(data.aRollUrl);
+        if (data.brollClips) setBrollClips(data.brollClips);
+        if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
+        if (data.transcript) setTranscript(data.transcript);
+        if (data.stage) setStage(data.stage);
+        console.log('[Editor] Restored draft state from local storage');
+      } catch (e) {
+        console.error('Failed to restore draft:', e);
+      }
+    }
+    persistenceLoadedRef.current = true;
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId || !aRollUrl || !persistenceLoadedRef.current) return;
+    const key = `viral_editor_draft_${projectId}`;
+    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage };
+    localStorage.setItem(key, JSON.stringify(state));
+  }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage]);
 
   // ── Auto-transcribe: fires when stage=transcribing AND url is ready ──
   useEffect(() => {
@@ -638,8 +667,12 @@ export const VideoEditor = React.memo(({
           ))}
         </div>
 
-        <button onClick={onNext}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all">
+        <button 
+          onClick={() => {
+            console.log('[Editor] Exporting project:', projectId);
+            onNext?.();
+          }}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-400">
           Export <ArrowRight size={12} />
         </button>
       </div>

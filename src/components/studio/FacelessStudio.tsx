@@ -94,6 +94,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const renderingRef = useRef(false);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
 
 
   // ── Extract script from manifest ──
@@ -530,13 +532,36 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       }
     }
     const stream = canvas.captureStream(FPS);
+    
+    // ── FIXED AUDIO CAPTURE (Web Audio API) ──
     if (audioRef.current) {
-      // @ts-ignore
-      const as = audioRef.current?.captureStream?.() || audioRef.current?.mozCaptureStream?.();
-      if (as) as.getAudioTracks().forEach((t: any) => stream.addTrack(t));
+      try {
+        if (!audioContextRef.current) {
+          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+        }
+        
+        const ctx = audioContextRef.current;
+        if (!audioSourceRef.current) {
+          audioSourceRef.current = ctx.createMediaElementSource(audioRef.current);
+        }
+        
+        const destination = ctx.createMediaStreamDestination();
+        audioSourceRef.current.connect(destination);
+        audioSourceRef.current.connect(ctx.destination); // For real-time monitoring if not muted
+
+        const audioTrack = destination.stream.getAudioTracks()[0];
+        if (audioTrack) stream.addTrack(audioTrack);
+        
+        if (ctx.state === 'suspended') await ctx.resume();
+      } catch (e) {
+        console.warn('[Render] Audio capture initialization failed:', e);
+      }
     }
+
     const chunks: Blob[] = [];
-    const mr = new MediaRecorder(stream, { mimeType: 'video/webm;codecs=vp9' });
+    const mr = new MediaRecorder(stream, { 
+      mimeType: 'video/webm;codecs=vp9,opus' 
+    });
     mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
     
     await new Promise<void>(async (resolve) => {
