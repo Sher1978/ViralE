@@ -110,7 +110,7 @@ export const monitoringService = {
       unit: 'status',
       status: apiKey ? 'ok' : 'critical'
     };
-  }
+  },
 
   /**
    * Aggregates all reports
