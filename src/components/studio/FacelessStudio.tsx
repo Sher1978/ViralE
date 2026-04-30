@@ -85,8 +85,10 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   const [rendering, setRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderDone, setRendered] = useState(false);
+  const [renderBackgroundUrl, setRenderBackgroundUrl] = useState<string | null>(null);
   const [finalVideoBlob, setFinalVideoBlob] = useState<Blob | null>(null);
   const [selectedEffects, setSelectedEffects] = useState<PostEffect[]>(['kenburns', 'zoom_punch']);
+
 
   const canvasRef = useRef<HTMLCanvasElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -496,6 +498,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     setRendering(true);
     setActiveStage('rendering');
     setRenderProgress(0);
+    setRenderBackgroundUrl(scenes[0]?.imageUrl || null);
+
     const canvas = canvasRef.current!;
     canvas.width = 720; canvas.height = 1280;
     const ctx = canvas.getContext('2d')!;
@@ -547,7 +551,12 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     await new Promise<void>(res => {
       mr.onstop = () => res();
       mr.start();
-      if (audioRef.current) { audioRef.current.currentTime = 0; audioRef.current.play(); }
+      if (audioRef.current) { 
+        audioRef.current.currentTime = 0; 
+        audioRef.current.muted = true; // Mute while rendering so user doesn't hear it
+        audioRef.current.play(); 
+      }
+
       let fi = 0;
       const t = setInterval(() => {
         if (fi >= frames.length) { clearInterval(t); mr.stop(); return; }
@@ -559,7 +568,9 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     setRendering(false);
     setRenderProgress(100);
     setRendered(true);
+    if (audioRef.current) audioRef.current.muted = false; // Restore audio for preview
   };
+
 
   // ── Bottom Sheet height ──
   const SHEET_PEEK = 320; // Increased to fit the integrated strip
@@ -1262,29 +1273,60 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             exit={{ opacity: 0 }}
             className="fixed inset-0 z-[100] bg-[#050508]/96 backdrop-blur-2xl flex items-center justify-center p-8"
           >
-            <div className="w-full max-w-sm text-center space-y-8">
-              <div className="relative inline-block">
-                <div className="w-28 h-28 rounded-[2rem] bg-purple-600 flex items-center justify-center shadow-[0_0_60px_rgba(168,85,247,0.5)]">
-                  {renderDone ? <Check size={40} className="text-white" /> : <Film size={40} className="text-white animate-pulse" />}
-                </div>
-                {!renderDone && (
-                  <svg className="absolute -inset-4 w-36 h-36 -rotate-90">
-                    <circle cx="72" cy="72" r="68" stroke="rgba(168,85,247,0.3)" strokeWidth="3" fill="transparent" />
-                    <circle cx="72" cy="72" r="68" stroke="#a855f7" strokeWidth="3" fill="transparent"
-                      strokeDasharray={427} strokeDashoffset={427 - (427 * renderProgress / 100)}
-                      className="transition-all duration-300" />
-                  </svg>
-                )}
+            {/* ── BACKGROUND LAYER ── */}
+            {renderBackgroundUrl && (
+              <div className="absolute inset-0 z-0">
+                <img src={renderBackgroundUrl} className="w-full h-full object-cover blur-[80px] opacity-40 scale-125" alt="" />
+                <div className="absolute inset-0 bg-gradient-to-b from-[#050508]/60 via-[#050508]/90 to-[#050508]" />
               </div>
+            )}
 
-              <div>
-                <h2 className="text-2xl font-black italic uppercase tracking-tighter">
-                  {renderDone ? 'Видео Готово!' : 'Рендер...'}
-                </h2>
-                <p className="text-[12px] font-black uppercase tracking-widest text-white/30 mt-2">
-                  {renderDone ? 'Просмотрите результат перед монтажом' : `Склеиваю кадры · ${renderProgress}%`}
-                </p>
-              </div>
+            <div className="w-full max-w-sm text-center space-y-10 relative z-10">
+              {!renderDone && (
+                <div className="space-y-6">
+                  <div className="relative inline-block">
+                    <div className="w-32 h-32 rounded-[2.5rem] bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shadow-[0_0_80px_rgba(168,85,247,0.1)]">
+                      <Cpu size={48} className="text-purple-400 animate-pulse" />
+                    </div>
+                    <svg className="absolute -inset-6 w-44 h-44 -rotate-90">
+                      <circle cx="88" cy="88" r="82" stroke="rgba(168,85,247,0.1)" strokeWidth="4" fill="transparent" />
+                      <circle cx="88" cy="88" r="82" stroke="#a855f7" strokeWidth="4" fill="transparent"
+                        strokeDasharray={515} strokeDashoffset={515 - (515 * renderProgress / 100)}
+                        strokeLinecap="round"
+                        className="transition-all duration-500" />
+                    </svg>
+                  </div>
+                  
+                  <div className="space-y-2">
+                    <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white">
+                      Сборка <span className="text-purple-400">Видео</span>
+                    </h2>
+                    <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/30 animate-pulse">
+                      Финальный монтаж сцен · {renderProgress}%
+                    </p>
+                  </div>
+
+                  <div className="w-full h-1.5 bg-white/5 rounded-full overflow-hidden max-w-[200px] mx-auto">
+                    <motion.div 
+                      className="h-full bg-purple-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]"
+                      animate={{ width: `${renderProgress}%` }}
+                    />
+                  </div>
+                </div>
+              )}
+
+              {renderDone && (
+                <div className="space-y-6 animate-in fade-in zoom-in duration-500">
+                  <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto shadow-[0_0_40px_rgba(16,185,129,0.2)]">
+                    <Check size={32} className="text-emerald-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Готово к экспорту</h2>
+                    <p className="text-[10px] font-black uppercase tracking-widest text-white/30 mt-2">Видео собрано в высоком качестве</p>
+                  </div>
+                </div>
+              )}
+
 
               {renderDone && finalVideoBlob && (
                 <div className="space-y-4">
@@ -1292,9 +1334,9 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                     <video 
                       src={URL.createObjectURL(finalVideoBlob)} 
                       controls 
-                      autoPlay 
                       className="w-full h-full object-cover"
                     />
+
                   </div>
                   
                   <div className="flex gap-3 max-w-[280px] mx-auto">
@@ -1309,7 +1351,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                     </button>
 
                     <button
-                      onClick={() => onComplete(finalVideoBlob!, transcript)}
+                      onClick={() => onComplete(finalVideoBlob!, scenes.map(s => ({ text: s.text, start: s.start, end: s.end })))}
+
                       className="flex-1 py-4 rounded-2xl bg-purple-600 text-white font-black italic uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
                       В Монтажку <ArrowRight size={14} />

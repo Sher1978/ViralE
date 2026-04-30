@@ -484,15 +484,14 @@ export default function StudioPage() {
                 setShowFaceless(false);
                 setActiveTab('concept');
               }}
-              onComplete={async (videoBlob) => {
+              onComplete={async (videoBlob, transcriptData) => {
                 try {
                   const res = await renderService.uploadMedia(projectId, videoBlob, 'video');
                   if (res.publicUrl) {
                     setManifest(prev => prev ? {
                       ...prev,
                       videoUrl: res.publicUrl,
-                      // Removing transcript forces VideoEditor to re-transcribe
-                      transcript: undefined, 
+                      transcript: transcriptData || prev.transcript, 
                       segments: prev.segments?.map((s, i) =>
                         i === 0 ? { ...s, assetUrl: res.publicUrl, type: 'user_recording' } : s
                       ) || prev.segments,
@@ -504,7 +503,7 @@ export default function StudioPage() {
                   setManifest(prev => prev ? {
                     ...prev,
                     videoUrl: url,
-                    transcript: undefined,
+                    transcript: transcriptData || prev.transcript,
                     segments: prev.segments?.map((s, i) =>
                       i === 0 ? { ...s, assetUrl: url, type: 'user_recording' } : s
                     ) || prev.segments,
@@ -512,6 +511,7 @@ export default function StudioPage() {
                 }
                 setShowFaceless(false);
               }}
+
 
             />
           )}
