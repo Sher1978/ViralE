@@ -89,8 +89,8 @@ function buildTranscript(manifest: ProductionManifest | null, videoDuration: num
 
 function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
   if (transcript.length === 0) return [];
-  // Pick 5-8 phrases across the whole video
-  const count = Math.min(transcript.length, 8);
+  // Pick max 3 phrases across the whole video
+  const count = Math.min(transcript.length, 3);
   const step = Math.floor(transcript.length / count);
   return Array.from({ length: count }, (_, i) => {
     const seg = transcript[i * step];
