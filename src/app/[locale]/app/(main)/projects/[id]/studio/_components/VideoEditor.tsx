@@ -881,7 +881,29 @@ export const VideoEditor = React.memo(({
                       </p>
                     </div>
                     <button 
-                      onClick={() => setStage('editing')}
+                      onClick={() => {
+                        console.log('[VideoEditor] Using draft fallback...');
+                        const fallback = buildTranscript(manifest, duration);
+                        const karaokeClips = buildKaraokeClips(fallback);
+                        const picked = pickAIPhrases(fallback);
+                        
+                        setTranscript(fallback);
+                        setSubtitleClips(karaokeClips);
+                        setPhrases(picked);
+                        
+                        // Place B-Roll placeholders
+                        const brollPlaceholders: BRollClip[] = picked.map(p => ({
+                          id: `br-${p.id}`,
+                          phraseId: p.id,
+                          startTime: p.start,
+                          endTime: p.end,
+                          label: p.text.substring(0, 20) + '...',
+                          status: 'pending'
+                        }));
+                        setBrollClips(brollPlaceholders);
+                        
+                        setStage('editing');
+                      }}
                       className="w-full px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95"
                     >
                       Использовать черновик
