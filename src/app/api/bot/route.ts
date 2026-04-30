@@ -116,6 +116,27 @@ export async function POST(req: NextRequest) {
           parse_mode: 'Markdown'
         })
       });
+    } else if (text.startsWith('/help')) {
+      const locale = user.language_code === 'ru' ? 'ru' : 'en';
+      const helpText = locale === 'ru'
+        ? `🤖 *Помощник Viral Studio*\n\n` +
+          `• /start — Войти в личный кабинет\n` +
+          `• /balance — Проверить ресурсы (только для админов)\n` +
+          `• Отправляйте видео и идеи боту, чтобы начать работу.`
+        : `🤖 *Viral Studio Assistant*\n\n` +
+          `• /start — Sign in to your dashboard\n` +
+          `• /balance — Check API limits (Admin only)\n` +
+          `• Send videos or ideas to get started.`;
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: helpText,
+          parse_mode: 'Markdown'
+        })
+      });
     }
 
     return NextResponse.json({ ok: true });
