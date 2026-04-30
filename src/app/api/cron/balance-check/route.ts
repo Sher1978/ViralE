@@ -14,7 +14,7 @@ export async function GET(req: NextRequest) {
 
     if (criticalIssues.length > 0) {
       const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
-      const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID; // Must be set in Vercel
+      const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598'; // Default admin ID
 
       if (TELEGRAM_BOT_TOKEN && ADMIN_CHAT_ID) {
         const alertText = criticalIssues.map(r => 

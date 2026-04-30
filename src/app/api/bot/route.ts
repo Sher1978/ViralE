@@ -93,6 +93,11 @@ export async function POST(req: NextRequest) {
         });
       }
     } else if (text.startsWith('/balance')) {
+      const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+      if (String(user.id) !== String(ADMIN_ID)) {
+        return NextResponse.json({ ok: true });
+      }
+
       const report = await monitoringService.getFullSystemReport();
       const statusEmoji = (s: string) => s === 'critical' ? '🔴' : s === 'warning' ? '🟡' : '🟢';
       
