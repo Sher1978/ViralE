@@ -52,12 +52,20 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
     
     CORE RULES:
     - NEVER use generic greetings or clichéd phrases. Start directly with the essence.
-    - Focus on "Show what is being said" (Action-Semantic B-Roll prompts).
+    - VISUAL PROMPT LOGIC (Visual_Script_Generator): 
+      - Analyze user DNA (e.g., auto-blogger, business coach).
+      - Semantic Analysis: [DNA Context] + [Phrase Meaning] = [Visual Metaphor].
+      - Structure: (Global Style Anchor), (Action/Object representing metaphor), (Environment), (Mood), --no fantasy, noir, cartoon.
+      - Global Styles: 
+        1. Premium Business: "Cinematic photography, high-end commercial aesthetic, professional lighting, Sony A7R IV, 35mm lens."
+        2. Expert Minimalist: "Clean background, soft studio lighting, minimalist composition, 8k resolution, photorealistic."
+        3. Lifestyle & Travel: "Natural sunlight, vibrant colors, GoPro-style or drone-shot aesthetic."
     - TOTAL duration: ~60-80 SECONDS total (approx. 180-220 words total).
     - CRITICAL: Generate content ONLY in the SAME LANGUAGE as the provided topic or idea. If input is Russian, output Russian. If input is Ukrainian, output Ukrainian. 
     - Output MUST be valid JSON.
   `;
 }
+
 
 export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string, brandDna?: any, hook?: string, role?: string) {
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
@@ -99,8 +107,9 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     - context: { words: "..." }
     - meat: { words: "..." }
     - cta: { words: "..." }
-    - broll_prompt: Final action-semantic description for a 5s B-roll.
-    - visual_hook: Detailed cinematic prompt for Midjourney cover.
+    - broll_prompt: Final action-semantic description for a 5s B-roll using Visual_Script_Generator metaphors.
+    - visual_hook: Detailed cinematic prompt for Midjourney cover (following Visual_Script_Generator logic).
+
     - social_post: Caption with 3 emojis + 3 tags.
 
     Output ONLY valid JSON in format: 

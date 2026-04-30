@@ -254,9 +254,39 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       setAudioUrl(url);
       const estimatedDur = Math.max(10, Math.min(60, editableScript.length / 15));
       setDuration(estimatedDur);
-      const newScenes = buildScenesFromScript(editableScript, estimatedDur);
+
+      // ── Get Semantic Visual Script ──
+      let newScenes: Scene[] = [];
+      try {
+        const vRes = await fetch('/api/ai/visual-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scriptText: editableScript, locale })
+        });
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          if (vData.segments) {
+            const perScene = estimatedDur / vData.segments.length;
+            newScenes = vData.segments.map((seg: any, i: number) => ({
+              id: `scene_${i}_${Date.now()}`,
+              text: seg.text,
+              start: i * perScene,
+              end: (i + 1) * perScene,
+              imagePrompt: seg.ai_prompt,
+            }));
+          }
+        }
+      } catch (e) {
+        console.error('Visual script generation failed, falling back:', e);
+      }
+
+      if (newScenes.length === 0) {
+        newScenes = buildScenesFromScript(editableScript, estimatedDur);
+      }
+
       setScenes(newScenes);
       setTranscript(newScenes.map(s => ({ text: s.text, start: s.start, end: s.end })));
+
       setActiveStage('editor');
       setActiveTab('scenes');
       setSheetExpanded(false);
@@ -288,9 +318,39 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       setAudioUrl(url);
       const estimatedDur = Math.max(10, Math.min(60, editableScript.length / 15));
       setDuration(estimatedDur);
-      const newScenes = buildScenesFromScript(editableScript, estimatedDur);
+
+      // ── Get Semantic Visual Script ──
+      let newScenes: Scene[] = [];
+      try {
+        const vRes = await fetch('/api/ai/visual-script', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ scriptText: editableScript, locale })
+        });
+        if (vRes.ok) {
+          const vData = await vRes.json();
+          if (vData.segments) {
+            const perScene = estimatedDur / vData.segments.length;
+            newScenes = vData.segments.map((seg: any, i: number) => ({
+              id: `scene_${i}_${Date.now()}`,
+              text: seg.text,
+              start: i * perScene,
+              end: (i + 1) * perScene,
+              imagePrompt: seg.ai_prompt,
+            }));
+          }
+        }
+      } catch (e) {
+        console.error('Visual script generation failed, falling back:', e);
+      }
+
+      if (newScenes.length === 0) {
+        newScenes = buildScenesFromScript(editableScript, estimatedDur);
+      }
+
       setScenes(newScenes);
       setTranscript(newScenes.map(s => ({ text: s.text, start: s.start, end: s.end })));
+
       setActiveStage('editor');
       setActiveTab('scenes');
       setSheetExpanded(false);
