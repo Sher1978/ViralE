@@ -916,7 +916,7 @@ export const VideoEditor = React.memo(({
                             status: 'pending',
                             url: '',
                             prompt: '',
-                            track: 'B'
+                            track: 1
                           }));
                           setBrollClips(brollPlaceholders);
                           
