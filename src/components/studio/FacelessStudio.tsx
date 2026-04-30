@@ -6,8 +6,9 @@ import {
   Mic, Image as ImageIcon, Film, ChevronRight, Play, Pause,
   RefreshCw, Check, ArrowLeft, ArrowRight, Loader2,
   Sparkles, X, RotateCw, Edit3, Brain,
-  Clock, Layers, Wand2, Zap, Star, Plus, Upload
+  Clock, Layers, Wand2, Zap, Star, Plus, Upload, Cpu
 } from 'lucide-react';
+
 
 
 
