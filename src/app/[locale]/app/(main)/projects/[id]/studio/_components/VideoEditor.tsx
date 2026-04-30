@@ -10,8 +10,6 @@ import {
 } from 'lucide-react';
 import { ProductionManifest } from '@/lib/types/studio';
 import BRollModal from '@/components/studio/BRollPickerModal';
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -301,42 +299,55 @@ export const VideoEditor = React.memo(({
 
   const extractAudioOnly = async (blob: Blob): Promise<Blob> => {
     try {
-      setStageMessage('Инициализация аудио-мотора (FFmpeg)...');
-      const ffmpeg = new FFmpeg();
+      setStageMessage('Подготовка аудио-движка (WebAudio)...');
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const arrayBuffer = await blob.arrayBuffer();
       
-      // Monitor logs for debugging
-      ffmpeg.on('log', ({ message }) => {
-        console.log('[FFmpeg LOG]', message);
-      });
-
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-      try {
-        await ffmpeg.load({
-          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-        });
-      } catch (loadError: any) {
-        throw new Error(`Не удалось загрузить аудио-движок: ${loadError.message}. Убедитесь, что заголовки COOP/COEP активны.`);
+      setStageMessage('Декодирование звука...');
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      setStageMessage('Конвертация в WAV...');
+      // Simple WAV encoding logic
+      const numOfChannels = audioBuffer.numberOfChannels;
+      const length = audioBuffer.length * numOfChannels * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
+      
+      // WAV Header
+      const writeString = (offset: number, string: string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
+        }
+      };
+      
+      writeString(0, 'RIFF');
+      view.setUint32(4, 32 + audioBuffer.length * numOfChannels * 2, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true);
+      view.setUint16(22, numOfChannels, true);
+      view.setUint32(24, audioBuffer.sampleRate, true);
+      view.setUint32(28, audioBuffer.sampleRate * numOfChannels * 2, true);
+      view.setUint16(32, numOfChannels * 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, audioBuffer.length * numOfChannels * 2, true);
+      
+      // Write PCM samples
+      let offset = 44;
+      for (let i = 0; i < audioBuffer.length; i++) {
+        for (let channel = 0; channel < numOfChannels; channel++) {
+          const sample = Math.max(-1, Math.min(1, audioBuffer.getChannelData(channel)[i]));
+          view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+          offset += 2;
+        }
       }
-
-      setStageMessage('Извлечение звука (MP3)...');
-      const inputFileName = 'input_video';
-      const outputFileName = 'output_audio.mp3';
-
-      await ffmpeg.writeFile(inputFileName, await fetchFile(blob));
       
-      // Use faster settings for extraction
-      await ffmpeg.exec(['-i', inputFileName, '-vn', '-acodec', 'libmp3lame', '-ac', '1', '-ar', '44100', '-b:a', '64k', outputFileName]);
-      
-      const data = await ffmpeg.readFile(outputFileName);
-      if (data.length === 0) throw new Error('Получен пустой аудио-файл');
-      
-      // @ts-ignore
-      return new Blob([data], { type: 'audio/mp3' });
+      return new Blob([buffer], { type: 'audio/wav' });
     } catch (e: any) {
-      console.error('[FFmpeg] Detailed error:', e);
-      // We don't throw here to allow fallback attempt, but we log the failure
-      setTranscriptionError(`Ошибка подготовки аудио: ${e.message}. Попробуем отправить оригинал...`);
+      console.error('[WebAudio] Extraction failed:', e);
+      setTranscriptionError(`Ошибка извлечения аудио: ${e.message}. Попробуем отправить оригинал...`);
       return blob; 
     }
   };
