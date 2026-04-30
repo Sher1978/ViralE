@@ -10,12 +10,14 @@ export async function POST(req: Request) {
   try {
     const { context } = await req.json();
 
-    // 1. Get user DNA
+    // 1. Get user DNA & Style
     let dna = 'Generic expert content creator';
+    let style = 'dubai_platinum'; // Default
     try {
       await getAuthenticatedUser();
       const profile = await profileService.getOrCreateProfile();
-      if (profile.dna) dna = profile.dna;
+      if (profile?.digital_shadow_prompt) dna = profile.digital_shadow_prompt;
+      if (profile?.visual_style) style = profile.visual_style;
     } catch (e) {
       console.warn('Unauthorized or profile error in optimize-prompt:', e);
     }
@@ -23,28 +25,25 @@ export async function POST(req: Request) {
     const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
 
     const prompt = `
-      Задание: Разработать визуальный промпт для видео-сегмента на основе модуля Visual_Script_Generator.
+      Задание: Разработать визуальный промпт на основе модуля Visual_Script_Generator v2.0.
 
       Входные данные:
-      1. Контекст сцены/фраза: "${context}"
+      1. Контекст сцены: "${context}"
       2. Цифровая ДНК пользователя: "${dna}"
+      3. Выбранный стиль: "${style}"
 
       Задача:
-      Создать визуальный промпт для генератора изображений/видео (Runware/Runway).
-
-      Алгоритм:
-      Шаг 1: Определение Глобального стиля (Global Style Anchor) на основе ДНК.
-      Выбери один: Premium Business, Expert Minimalist, или Lifestyle & Travel.
+      Создать визуальный промпт для генератора (Runware/Runway), используя концепцию "Сверхпроводник".
+      Картинка должна быть визуальным мостом между сложной мыслью эксперта и простым образом.
       
-      Шаг 2: Семантический анализ фразы.
-      Используй логику: [Контекст ДНК] + [Смысл фразы] = [Визуальная метафора].
+      Алгоритм:
+      Шаг 1: Примени визуальный код стиля "${style}".
+      Шаг 2: Семантическая метафора: [Контекст ДНК] + [Смысл фразы] = [Визуальный образ].
       Запрещено генерировать буквально по словам.
 
-      Шаг 3: Сборка промпта.
-      Структура: (Global Style Anchor), (Action/Object representing metaphor), (Environment), (Mood), --no fantasy, noir, cartoon.
-
-      Верни ТОЛЬКО финальный промпт на английском языке. Без пояснений.
+      Верни ТОЛЬКО финальный промпт на английском языке.
     `;
+
 
     const result = await model.generateContent(prompt);
     const optimized = result.response.text().trim().replace(/^"|"$/g, '');

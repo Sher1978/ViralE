@@ -14,8 +14,14 @@ export async function POST(req: NextRequest) {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
-      You are an expert digital biographer and AI architect.
       Analyze the following raw training data from a user and distill it into a structured "Digital DNA" profile.
+      Also, assign the most suitable "Golden Visual Style" from these 6:
+      - dubai_platinum: Luxury, success, premium business, real estate.
+      - tech_catalyst: Tech, AI, marketing, minimal innovation.
+      - turbo_dynamics: Auto, speed, logistics, grit, energy.
+      - human_os: Psychology, mindfulness, soft skills, nature.
+      - shadow_audit: Strategy, law, analytics, monochrome geometry.
+      - startup_valley: Creative, startup, vibrant SMM, energy.
       
       RAW DATA:
       ${trainingData}
@@ -26,11 +32,13 @@ export async function POST(req: NextRequest) {
         "key_foundations": ["philosophy1", "philosophy2"],
         "writing_style": "description of writing style",
         "target_audience": "description of target audience",
-        "biography_summary": "3-sentence bio"
+        "biography_summary": "3-sentence bio",
+        "suggested_visual_style": "key_from_the_6_above"
       }
       
       Respond ONLY with the JSON.
     `;
+
 
     const result = await model.generateContent(prompt);
     const response = await result.response;
@@ -46,8 +54,10 @@ export async function POST(req: NextRequest) {
       .update({
         synthetic_training_data: trainingData,
         knowledge_base_json: dnaInfo,
+        visual_style: dnaInfo.suggested_visual_style || 'tech_catalyst',
         dna_last_updated: new Date().toISOString()
       })
+
       .eq('id', userId)
       .select()
       .single();

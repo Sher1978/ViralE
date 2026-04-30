@@ -9,13 +9,16 @@ export async function GET() {
 
     const { data, error } = await authorizedSupabase
       .from('profiles')
-      .select('digital_shadow_prompt')
+      .select('digital_shadow_prompt, visual_style')
       .eq('id', userId)
       .single();
 
     if (error) throw error;
 
-    return NextResponse.json({ dna: data?.digital_shadow_prompt });
+    return NextResponse.json({ 
+      dna: data?.digital_shadow_prompt,
+      visualStyle: data?.visual_style 
+    });
   } catch (error: any) {
     console.error('Fetch DNA failed:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
@@ -26,13 +29,23 @@ export async function PATCH(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
     const userId = user.id;
-    const { newData, locale = 'en' } = await req.json();
+    const { newData, visualStyle, locale = 'en' } = await req.json();
+
+    // 1. If only updating visual style
+    if (visualStyle && !newData) {
+      const { error } = await authorizedSupabase
+        .from('profiles')
+        .update({ visual_style: visualStyle })
+        .eq('id', userId);
+      if (error) throw error;
+      return NextResponse.json({ success: true, visualStyle });
+    }
 
     if (!newData) {
       return NextResponse.json({ error: 'Missing new data' }, { status: 400 });
     }
 
-    // 1. Get current DNA
+    // 2. Get current DNA
     const { data: profile } = await authorizedSupabase
       .from('profiles')
       .select('digital_shadow_prompt')
@@ -41,26 +54,30 @@ export async function PATCH(req: Request) {
 
     const oldPersona = profile?.digital_shadow_prompt || "";
 
-    // 2. Synthesize new DNA
+    // 3. Synthesize new DNA
     const updatedPersona = await updateDnaPersona(oldPersona, newData, locale);
 
-    // 3. Save to database
+    // 4. Save to database
+    const updates: any = {
+      digital_shadow_prompt: updatedPersona,
+      updated_at: new Date().toISOString()
+    };
+    if (visualStyle) updates.visual_style = visualStyle;
+
     const { error } = await authorizedSupabase
       .from('profiles')
-      .update({
-        digital_shadow_prompt: updatedPersona,
-        updated_at: new Date().toISOString()
-      })
+      .update(updates)
       .eq('id', userId);
 
     if (error) throw error;
 
-    return NextResponse.json({ success: true, dna: updatedPersona });
+    return NextResponse.json({ success: true, dna: updatedPersona, visualStyle });
   } catch (error: any) {
     console.error('Update DNA failed:', error);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+
 
 export async function DELETE() {
   try {

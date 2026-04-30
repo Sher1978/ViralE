@@ -13,8 +13,14 @@ import {
   AlertTriangle,
   Zap,
   Activity,
-  Cpu
+  Cpu,
+  Crown,
+  Leaf,
+  Scale,
+  Rocket,
+  Palette
 } from 'lucide-react';
+
 import Link from 'next/link';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -24,6 +30,7 @@ export default function DnaManagementPage() {
   const router = useRouter();
   
   const [dna, setDna] = useState('');
+  const [selectedStyle, setSelectedStyle] = useState('dubai_platinum');
   const [newData, setNewData] = useState('');
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
@@ -39,12 +46,27 @@ export default function DnaManagementPage() {
       const res = await fetch('/api/profile/dna');
       const data = await res.json();
       if (data.dna) setDna(data.dna);
+      if (data.visualStyle) setSelectedStyle(data.visualStyle);
     } catch (e) {
       console.error(e);
     } finally {
       setLoading(false);
     }
   }
+
+  async function handleUpdateStyle(style: string) {
+    setSelectedStyle(style);
+    try {
+      await fetch('/api/profile/dna', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ visualStyle: style })
+      });
+    } catch (e) {
+      console.error('Style update failed', e);
+    }
+  }
+
 
   async function handleUpdate() {
     if (!newData.trim()) return;
@@ -165,6 +187,70 @@ export default function DnaManagementPage() {
             </div>
           </div>
         </motion.div>
+
+        {/* Visual Identity / Golden Styles */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ delay: 0.05 }}
+          className="rounded-[2.5rem] p-8 glass-premium border border-white/[0.08]"
+        >
+          <div className="flex items-center justify-between mb-8">
+            <div className="flex items-center gap-3">
+              <div className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20">
+                <Palette size={14} className="text-purple-400" />
+              </div>
+              <div>
+                <h2 className="text-[10px] font-black tracking-[0.3em] text-white/40 uppercase">
+                  {locale === 'ru' ? 'ВИЗУАЛЬНЫЙ КОД' : 'VISUAL IDENTITY'}
+                </h2>
+                <p className="text-[9px] text-[#D4AF37] font-bold uppercase tracking-widest mt-1">
+                  {locale === 'ru' ? '6 Золотых Стилей Контента' : '6 Golden Content Styles'}
+                </p>
+              </div>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
+            {[
+              { id: 'dubai_platinum', label: 'Dubai Platinum', sub: locale === 'ru' ? 'Премиальный успех' : 'Premium Success', icon: <Crown size={18} />, color: 'from-[#D4AF37] to-[#8B7355]' },
+              { id: 'tech_catalyst', label: 'Tech Catalyst', sub: locale === 'ru' ? 'Инновации и ИИ' : 'Innovation & AI', icon: <Cpu size={18} />, color: 'from-blue-500 to-cyan-400' },
+              { id: 'turbo_dynamics', label: 'Turbo Dynamics', sub: locale === 'ru' ? 'Авто и Движение' : 'Auto & Motion', icon: <Zap size={18} />, color: 'from-red-600 to-orange-500' },
+              { id: 'human_os', label: 'Human OS', sub: locale === 'ru' ? 'Психология и Дзен' : 'Psychology & Zen', icon: <Leaf size={18} />, color: 'from-emerald-500 to-teal-400' },
+              { id: 'shadow_audit', label: 'Shadow Audit', sub: locale === 'ru' ? 'Стратегия и Право' : 'Strategy & Law', icon: <Scale size={18} />, color: 'from-gray-400 to-slate-600' },
+              { id: 'startup_valley', label: 'Startup Valley', sub: locale === 'ru' ? 'Креатив и SMM' : 'Creative & SMM', icon: <Rocket size={18} />, color: 'from-purple-500 to-pink-500' },
+            ].map((style) => (
+              <button
+                key={style.id}
+                onClick={() => handleUpdateStyle(style.id)}
+                className={`relative group p-4 rounded-3xl border transition-all duration-500 text-left overflow-hidden ${
+                  selectedStyle === style.id 
+                    ? 'bg-white/10 border-white/20 shadow-2xl scale-[1.02]' 
+                    : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/[0.07]'
+                }`}
+              >
+                {selectedStyle === style.id && (
+                  <motion.div 
+                    layoutId="activeGlow"
+                    className={`absolute inset-0 bg-gradient-to-br ${style.color} opacity-10 blur-xl`}
+                  />
+                )}
+                <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${style.color} flex items-center justify-center mb-3 shadow-lg transform transition-transform group-hover:scale-110 group-hover:rotate-3`}>
+                  {style.icon}
+                </div>
+                <h4 className="text-[11px] font-black text-white uppercase tracking-tighter leading-none mb-1">{style.label}</h4>
+                <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">{style.sub}</p>
+                
+                {selectedStyle === style.id && (
+                  <div className="absolute top-3 right-3">
+                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  </div>
+                )}
+              </button>
+            ))}
+          </div>
+        </motion.div>
+
 
         {/* Calibration Protocols */}
         <motion.div 

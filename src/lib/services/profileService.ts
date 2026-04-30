@@ -25,7 +25,9 @@ export interface Profile {
   tiktok_token?: string | null;
   youtube_linked?: boolean;
   youtube_token?: string | null;
+  visual_style?: string | null;
 }
+
 
 export const profileService = {
   /**

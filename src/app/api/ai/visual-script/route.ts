@@ -13,18 +13,21 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Script text is required' }, { status: 400 });
     }
 
-    // 1. Get user DNA
+    // 1. Get user DNA & Style
     let dna = 'Generic expert content creator';
+    let style = undefined;
     try {
       await getAuthenticatedUser();
       const profile = await profileService.getOrCreateProfile();
-      if (profile.dna) dna = profile.dna;
+      if (profile?.digital_shadow_prompt) dna = profile.digital_shadow_prompt;
+      if (profile?.visual_style) style = profile.visual_style;
     } catch (e) {
       console.warn('Unauthorized or profile error in visual-script:', e);
     }
 
     // 2. Generate visual script
-    const result = await generateVisualScript(scriptText, dna, locale);
+    const result = await generateVisualScript(scriptText, dna, style as any, locale);
+
 
     return NextResponse.json(result);
 
