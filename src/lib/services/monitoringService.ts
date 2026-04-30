@@ -56,9 +56,9 @@ export const monitoringService = {
         .eq('transaction_type', 'SCRIPT_GEN')
         .gte('created_at', firstDay);
 
-      if (error) throw error;
+      if (error || !data) throw error || new Error('No transaction data');
 
-      const totalSpentCredits = data.reduce((acc, curr) => acc + Math.abs(curr.amount), 0);
+      const totalSpentCredits = data.reduce((acc: number, curr: any) => acc + Math.abs(curr.amount || 0), 0);
       
       return {
         provider: 'OpenAI (Monthly)',
