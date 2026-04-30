@@ -502,8 +502,9 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   };
 
   // ── Bottom Sheet height ──
-  const SHEET_PEEK = 240; // collapsed height in px
+  const SHEET_PEEK = 320; // Increased to fit the integrated strip
   const SHEET_FULL = '85vh';
+
 
   // ─────────────────────────────────────────────────────────────────────────
   // RENDER
@@ -718,63 +719,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         )}
       </div>
 
-      {/* ── HORIZONTAL SCENE STRIP (editor only) ── */}
-      {activeStage === 'editor' && !sheetExpanded && (
-        <div className="absolute left-0 right-0 z-30 px-4 pb-2" style={{ bottom: `${SHEET_PEEK + 8}px` }}>
-          <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-            {/* Generate all button */}
-            <button
-              onClick={generateAllImages}
-              disabled={generatingImages}
-              className="shrink-0 w-14 h-20 rounded-2xl bg-purple-600/80 border border-purple-500/40 flex flex-col items-center justify-center gap-1 active:scale-90 transition-all disabled:opacity-40"
-            >
-              {generatingImages
-                ? <Loader2 size={18} className="animate-spin text-white" />
-                : <Wand2 size={18} className="text-white" />
-              }
-              <span className="text-[7px] font-black uppercase tracking-wider text-white/80">Всё</span>
-            </button>
 
-            {scenes.map((s, i) => (
-              <button
-                key={s.id}
-                onClick={() => { setSelectedSceneId(s.id); setCurrentTime(s.start); setActiveTab('inspector'); setSheetExpanded(true); }}
-                className={`shrink-0 w-14 h-20 rounded-2xl overflow-hidden border transition-all relative ${selectedSceneId === s.id ? 'border-purple-400 ring-2 ring-purple-500/50' : 'border-white/10'}`}
-              >
-                {s.imageUrl ? (
-                  <img src={s.imageUrl} className="w-full h-full object-cover" alt={`Scene ${i + 1}`} />
-                ) : (
-                  <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                    {s.generating
-                      ? <Loader2 size={14} className="animate-spin text-purple-400" />
-                      : <ImageIcon size={14} className="text-white/20" />
-                    }
-                  </div>
-                )}
-                <div className="absolute bottom-0 inset-x-0 bg-black/60 py-0.5 text-center">
-                  <span className="text-[7px] font-black text-white/60">{i + 1}</span>
-                </div>
-                {currentTime >= s.start && currentTime < s.end && (
-                  <div className="absolute inset-0 ring-2 ring-inset ring-purple-400 rounded-2xl pointer-events-none" />
-                )}
-              </button>
-            ))}
-          </div>
-
-          {/* Timeline progress bar */}
-          <div ref={timelineRef} className="mt-2 h-1.5 rounded-full bg-white/5 overflow-hidden cursor-pointer"
-            onClick={(e) => {
-              const rect = e.currentTarget.getBoundingClientRect();
-              const x = e.clientX - rect.left;
-              const time = (x / rect.width) * duration;
-              setCurrentTime(Math.max(0, Math.min(time, duration)));
-              if (audioRef.current) audioRef.current.currentTime = time;
-            }}
-          >
-            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all" style={{ width: `${(currentTime / duration) * 100}%` }} />
-          </div>
-        </div>
-      )}
 
       {/* ── BOTTOM SHEET ── */}
       <motion.div
@@ -827,7 +772,63 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
               </button>
             )}
           </div>
+
+          {/* ── INTEGRATED SCENE STRIP (editor only) ── */}
+          {activeStage === 'editor' && (
+            <div className="px-5 py-3 border-b border-white/5 bg-white/[0.02]">
+              <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
+                {/* Generate all button */}
+                <button
+                  onClick={generateAllImages}
+                  disabled={generatingImages}
+                  className="shrink-0 w-12 h-16 rounded-xl bg-purple-600/80 border border-purple-500/40 flex flex-col items-center justify-center gap-1 active:scale-90 transition-all disabled:opacity-40"
+                >
+                  {generatingImages
+                    ? <Loader2 size={16} className="animate-spin text-white" />
+                    : <Wand2 size={16} className="text-white" />
+                  }
+                  <span className="text-[6px] font-black uppercase tracking-wider text-white/80">Всё</span>
+                </button>
+
+                {scenes.map((s, i) => (
+                  <button
+                    key={s.id}
+                    onClick={() => { setSelectedSceneId(s.id); setCurrentTime(s.start); setActiveTab('inspector'); }}
+                    className={`shrink-0 w-12 h-16 rounded-xl overflow-hidden border transition-all relative ${selectedSceneId === s.id ? 'border-purple-400 ring-2 ring-purple-500/50' : 'border-white/10'}`}
+                  >
+                    {s.imageUrl ? (
+                      <img src={s.imageUrl} className="w-full h-full object-cover" alt={`Scene ${i + 1}`} />
+                    ) : (
+                      <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                        {s.generating
+                          ? <Loader2 size={12} className="animate-spin text-purple-400" />
+                          : <ImageIcon size={12} className="text-white/20" />
+                        }
+                      </div>
+                    )}
+                    <div className="absolute bottom-0 inset-x-0 bg-black/60 py-0.5 text-center">
+                      <span className="text-[6px] font-black text-white/60">{i + 1}</span>
+                    </div>
+                  </button>
+                ))}
+              </div>
+              
+              {/* Mini Timeline below strip */}
+              <div ref={timelineRef} className="mt-2 h-1 rounded-full bg-white/5 overflow-hidden cursor-pointer"
+                onClick={(e) => {
+                  const rect = e.currentTarget.getBoundingClientRect();
+                  const x = e.clientX - rect.left;
+                  const time = (x / rect.width) * duration;
+                  setCurrentTime(Math.max(0, Math.min(time, duration)));
+                  if (audioRef.current) audioRef.current.currentTime = time;
+                }}
+              >
+                <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all" style={{ width: `${(currentTime / duration) * 100}%` }} />
+              </div>
+            </div>
+          )}
         </div>
+
 
         {/* Sheet content */}
         <div className="flex-1 overflow-y-auto px-5 pb-6 pt-2">

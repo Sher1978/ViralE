@@ -90,6 +90,18 @@ export default function StudioPage() {
   const [modalConfig, setModalConfig] = useState({ title: '', desc: '', type: 'info' as any });
 
 
+  // State Sync Effect (URL Persistence)
+  useEffect(() => {
+    if (isLoading) return;
+    const params = new URLSearchParams(window.location.search);
+    params.set('tab', activeTab);
+    if (showFaceless) params.set('mode', 'faceless');
+    else params.delete('mode');
+    
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    window.history.replaceState({ path: newUrl }, '', newUrl);
+  }, [activeTab, showFaceless, isLoading]);
+
   // Initial Load
   useEffect(() => {
     async function loadData() {
@@ -103,19 +115,22 @@ export default function StudioPage() {
         setCurrentProfile(profile);
         
         const latestVersion = await projectService.getLatestVersion(projectId);
+        const modeParam = searchParams.get('mode');
+
         if (latestVersion) {
           setCurrentVersionId(latestVersion.id);
           if (latestVersion.script_data) {
             const m = latestVersion.script_data as any;
             setManifest(m);
             
-            // Restore faceless mode if data exists
-            if (m.faceless) {
+            // Restore faceless mode if data exists OR if URL param forced it
+            if (m.faceless || modeParam === 'faceless') {
               setShowFaceless(true);
               setActiveTab('assembly');
             }
           }
-        } else {
+        }
+ else {
           setManifest(createInitialManifest(projectId, uuidv4(), { 
             hook: '' as any, 
             context: '' as any, 
