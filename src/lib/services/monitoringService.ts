@@ -100,6 +100,19 @@ export const monitoringService = {
   },
 
   /**
+   * Pexels - Rate limit monitoring
+   */
+  async getPexelsStatus(): Promise<ApiBalanceReport> {
+    const apiKey = process.env.PEXELS_API_KEY;
+    return {
+      provider: 'Pexels',
+      remaining: apiKey ? 'Active' : 'Missing',
+      unit: 'status',
+      status: apiKey ? 'ok' : 'critical'
+    };
+  }
+
+  /**
    * Aggregates all reports
    */
   async getFullSystemReport(): Promise<ApiBalanceReport[]> {
@@ -107,7 +120,8 @@ export const monitoringService = {
       this.getElevenLabsBalance(),
       this.getHeyGenBalance(),
       this.getHiggsfieldBalance(),
-      this.getGeminiBalance()
+      this.getGeminiBalance(),
+      this.getPexelsStatus()
     ]);
     return results;
   }
