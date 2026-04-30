@@ -332,11 +332,25 @@ export default function StudioPage() {
     }
   };
 
-  const handleFinalExport = async () => {
+  const handleFinalExport = async (broll?: any[], subs?: any[]) => {
     setIsSaving(true);
     try {
       if (!manifest || !currentVersionId) return;
-      await projectService.updateLatestVersionManifest(projectId, manifest);
+
+      // 🔥 Merge editor state into manifest
+      const updatedManifest = {
+        ...manifest,
+        brollClips: broll || [],
+        subtitleClips: subs || [],
+        // Also update segments to include this info if the renderer uses segments
+        segments: manifest.segments.map((s, i) => i === 0 ? { 
+          ...s, 
+          brollClips: broll || [], 
+          subtitleClips: subs || [] 
+        } : s)
+      };
+
+      await projectService.updateLatestVersionManifest(projectId, updatedManifest);
       
       // Start a real render job here via api
       const response = await fetch('/api/render', {

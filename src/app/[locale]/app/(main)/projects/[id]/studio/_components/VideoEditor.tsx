@@ -47,12 +47,13 @@ interface BRollClip {
   startTime: number;
   endTime: number;
   track: number;
+  offsetX?: number; // -50 to 50 or similar for horizontal shift
 }
 
 interface VideoEditorProps {
   manifest: ProductionManifest | null;
   onBack: () => void;
-  onNext: () => void;
+  onNext: (broll?: BRollClip[], subs?: SubtitleClip[]) => void;
   updateSegmentField: (id: string, field: string, value: any) => void;
   projectId?: string;
   onFaceless?: () => void;
@@ -669,8 +670,8 @@ export const VideoEditor = React.memo(({
 
         <button 
           onClick={() => {
-            console.log('[Editor] Exporting project:', projectId);
-            onNext?.();
+            console.log('[Editor] Exporting project:', projectId, { brollCount: brollClips.length });
+            onNext?.(brollClips, subtitleClips);
           }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-400">
           Export <ArrowRight size={12} />
@@ -682,14 +683,40 @@ export const VideoEditor = React.memo(({
         style={{ height: '38%' }}>
 
         {aRollUrl ? (
-          <video 
-            key={aRollUrl}
-            ref={videoRef} 
-            muted={isMuted} 
-            className="w-full h-full object-contain" 
-            playsInline 
-            onClick={togglePlay} 
-          />
+          <div className="relative w-full h-full">
+            <video 
+              key={aRollUrl}
+              ref={videoRef} 
+              muted={isMuted} 
+              className="w-full h-full object-contain" 
+              playsInline 
+              onClick={togglePlay} 
+            />
+            {/* ── B-ROLL OVERLAY PREVIEW ── */}
+            {(() => {
+              const activeBR = brollClips.find(c => c.url && currentTime >= c.startTime && currentTime <= c.endTime);
+              if (!activeBR) return null;
+              return (
+                <div className="absolute inset-0 z-10 bg-black">
+                   <video 
+                     src={activeBR.url}
+                     autoPlay
+                     muted
+                     loop
+                     playsInline
+                     className="w-full h-full object-cover"
+                     style={{ 
+                       objectPosition: `${50 + (activeBR.offsetX || 0)}% 50%` 
+                     }}
+                   />
+                   {/* Label */}
+                   <div className="absolute top-4 left-4 px-2 py-1 bg-blue-600/80 rounded text-[8px] font-black uppercase tracking-widest text-white">
+                      B-Roll Active
+                   </div>
+                </div>
+              );
+            })()}
+          </div>
         ) : (
 
           <div className="flex flex-col items-center justify-center gap-4 w-full h-full p-6">
@@ -993,6 +1020,27 @@ export const VideoEditor = React.memo(({
               )}
               {selBR && (
                 <>
+                  <div className="flex flex-col gap-4 py-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Manual Crop / Position</span>
+                      <span className="text-[10px] font-black text-blue-400 tabular-nums">{(selBR.offsetX || 0) > 0 ? '+' : ''}{selBR.offsetX || 0}%</span>
+                    </div>
+                    <input 
+                      type="range" min="-50" max="50" step="1"
+                      value={selBR.offsetX || 0}
+                      onChange={e => {
+                        const val = parseInt(e.target.value);
+                        setBrollClips(p => p.map(c => c.id === selBR.id ? { ...c, offsetX: val } : c));
+                      }}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                    <div className="flex justify-between text-[8px] font-black text-white/20 uppercase tracking-widest">
+                      <span>Left</span>
+                      <span>Center</span>
+                      <span>Right</span>
+                    </div>
+                  </div>
+
                   <div className="text-[9px] font-black text-white/30 uppercase tracking-widest">{selBR.label}</div>
                   <button onClick={() => { setBrollClips(p => p.filter(c => c.id !== selBR.id)); setSelectedClipId(null); setShowSheet(false); }}
                     className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">

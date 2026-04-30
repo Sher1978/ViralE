@@ -27,7 +27,7 @@ export const pexelsService = {
 
     try {
       const response = await fetch(
-        `https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=${perPage}&orientation=portrait`,
+        `https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&per_page=${perPage}`,
         {
           headers: {
             Authorization: apiKey,
