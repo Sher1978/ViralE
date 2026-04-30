@@ -6,37 +6,46 @@ export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get('query');
   if (!query) return NextResponse.json({ videos: [] });
 
-  const apiKey = process.env.GEMINI_API_KEY;
+  console.log('[B-Roll Search] Original query:', query);
+
+  // Check for both common Pexels key names
+  const pexelsKey = process.env.PEXELS_API_KEY || process.env.PEXELS_KEY || process.env.NEXT_PUBLIC_PEXELS_API_KEY;
+  if (!pexelsKey) {
+    console.error('[B-Roll Search] Pexels API key is missing on server');
+    return NextResponse.json({ error: 'Pexels API key missing' }, { status: 500 });
+  }
+
+  const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   let optimizedQuery = query;
 
-  // 🧠 Smart Translation & Keyword Extraction using Gemini
-  if (apiKey) {
+  // 🧠 Smart Translation & Keyword Extraction
+  if (geminiKey) {
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.0-flash-exp' });
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      // Using 1.5-flash for search as it's more stable for small tasks
+      const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
       const prompt = `
-        You are a visual researcher. Translate the following text to English 
-        and extract 2-3 visual keywords for a stock video search (Pexels). 
+        Translate to English and extract 2-3 visual keywords for stock video search. 
         Only return the keywords separated by spaces.
-        Example Input: "успешный успех и деньги"
-        Example Output: "success money growth"
         Input: "${query}"
       `;
 
       const result = await model.generateContent(prompt);
       const translated = result.response.text().trim().toLowerCase();
       if (translated && translated.length > 2) {
-        console.log(`[B-Roll Search] Translated "${query}" -> "${translated}"`);
+        console.log(`[B-Roll Search] Translated: "${query}" -> "${translated}"`);
         optimizedQuery = translated;
       }
     } catch (err) {
-      console.error('[B-Roll Search] Translation failed, using original query', err);
+      console.error('[B-Roll Search] Translation failed:', err);
     }
   }
 
   try {
+    // Inject the key manually if needed (though service should handle it, we'll be safe)
     const videos = await pexelsService.searchVideos(optimizedQuery, 12);
+    console.log(`[B-Roll Search] Found ${videos.length} videos for "${optimizedQuery}"`);
     
     const results = videos.map(v => ({
       id: v.id.toString(),
@@ -49,7 +58,7 @@ export async function GET(req: NextRequest) {
 
     return NextResponse.json({ videos: results });
   } catch (error: any) {
-    console.error('[B-Roll Search] Pexels failed:', error.message);
+    console.error('[B-Roll Search] Pexels failure:', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
