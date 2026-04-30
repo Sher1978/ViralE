@@ -484,35 +484,33 @@ export default function StudioPage() {
                 setShowFaceless(false);
                 setActiveTab('concept');
               }}
-              onComplete={async (videoBlob, transcriptData) => {
-                try {
-                  const res = await renderService.uploadMedia(projectId, videoBlob, 'video');
-                  if (res.publicUrl) {
-                    setManifest(prev => prev ? {
-                      ...prev,
-                      videoUrl: res.publicUrl,
-                      transcript: undefined, // Force fresh AI transcription for precision
-                      segments: prev.segments?.map((s, i) =>
-                        i === 0 ? { ...s, assetUrl: res.publicUrl, type: 'user_recording' } : s
-                      ) || prev.segments,
-                    } : prev);
-
-                  }
-                } catch (e) {
-                  console.error('Failed to upload completed faceless video:', e);
-                  const url = URL.createObjectURL(videoBlob);
-                  setManifest(prev => prev ? {
-                    ...prev,
-                    videoUrl: url,
-                    transcript: undefined,
-
-                    segments: prev.segments?.map((s, i) =>
-                      i === 0 ? { ...s, assetUrl: url, type: 'user_recording' } : s
-                    ) || prev.segments,
-                  } : prev);
-                }
+              onComplete={(videoBlob, transcriptData) => {
+                const localUrl = URL.createObjectURL(videoBlob);
+                setManifest(prev => prev ? {
+                  ...prev,
+                  videoUrl: localUrl,
+                  transcript: undefined,
+                  segments: prev.segments?.map((s, i) =>
+                    i === 0 ? { ...s, assetUrl: localUrl, type: 'user_recording' } : s
+                  ) || prev.segments,
+                } : prev);
                 setShowFaceless(false);
+                renderService.uploadMedia(projectId, videoBlob, 'video').then(res => {
+                  if (res.publicUrl) {
+                    setManifest(prev => {
+                      if (!prev) return prev;
+                      const next = {
+                        ...prev,
+                        videoUrl: res.publicUrl,
+                        segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
+                      };
+                      projectService.updateLatestVersionManifest(projectId, next);
+                      return next;
+                    });
+                  }
+                });
               }}
+
 
 
             />
