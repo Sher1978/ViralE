@@ -4,10 +4,11 @@ import { GoogleAIFileManager } from '@google/generative-ai/server';
 
 export const maxDuration = 120; // Large iOS videos need more time
 
-const TRANSCRIPTION_PROMPT = `Transcribe the spoken audio in this video/audio file precisely.
-Return ONLY a raw JSON object (no markdown, no code block) in this exact format:
-{"transcript": [{"text": "word or phrase", "start": 0.5, "end": 1.2}]}
-Include ALL spoken words with accurate timestamps in seconds.`;
+const TRANSCRIPTION_PROMPT = `Transcribe the spoken audio in this video precisely.
+Return ONLY a raw JSON object in this exact format:
+{"transcript": [{"text": "WORD", "start": 0.5, "end": 0.8}]}
+CRITICAL: Every single word MUST be its own separate entry with precise start and end times. Do NOT group words into phrases.
+Return nothing but the JSON object.`;
 
 // Detect the correct MIME type for Gemini
 function detectGeminiMime(fileType: string): string {

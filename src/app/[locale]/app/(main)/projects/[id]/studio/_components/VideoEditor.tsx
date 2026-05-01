@@ -338,22 +338,32 @@ export const VideoEditor = React.memo(({
 
   // ── Core Pipeline: Transcription → Karaoke Subs → Auto B-Roll placement ──
   const buildKaraokeClips = (words: TranscriptWord[]): SubtitleClip[] => {
-    const MAX_WORDS = 3; // Strict limit for viral energy
-    const chunks: SubtitleClip[] = [];
-    let i = 0;
-    while (i < words.length) {
-      const slice = words.slice(i, i + MAX_WORDS);
-      const text = slice.map(w => w.text).join(' ');
-      chunks.push({
-        id: `sub-${i}-${Date.now()}`,
-        startTime: slice[0].start,
-        endTime: slice[slice.length - 1].end,
-        text: text.toUpperCase(), // Professional bold look
-        style: 'minimal'
-      });
-      i += MAX_WORDS;
-    }
-    return chunks;
+    const final: SubtitleClip[] = [];
+    words.forEach((w, wIdx) => {
+      const parts = w.text.trim().split(/\s+/);
+      if (parts.length <= 1) {
+        final.push({
+          id: `sub-${wIdx}-${Date.now()}`,
+          startTime: w.start,
+          endTime: w.end,
+          text: w.text.toUpperCase().replace(/[.,!?;:]/g, ''),
+          style: 'bold'
+        });
+      } else {
+        // AI returned a phrase, split it manually
+        const dur = (w.end - w.start) / parts.length;
+        parts.forEach((p, pIdx) => {
+          final.push({
+            id: `sub-${wIdx}-${pIdx}-${Date.now()}`,
+            startTime: w.start + (pIdx * dur),
+            endTime: w.start + ((pIdx + 1) * dur),
+            text: p.toUpperCase().replace(/[.,!?;:]/g, ''),
+            style: 'bold'
+          });
+        });
+      }
+    });
+    return final;
   };
 
   const runTranscriptionAndPhrases = async (forceFresh = false) => {
@@ -872,38 +882,23 @@ export const VideoEditor = React.memo(({
                 const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
                 if (!activeSub) return null;
 
-                const words = activeSub.text.split(' ');
-                const subDuration = activeSub.endTime - activeSub.startTime;
-                const progress = (currentTime - activeSub.startTime) / (subDuration || 1);
-                const accentIndex = Math.min(Math.floor(progress * words.length), words.length - 1);
-
                 return (
                   <motion.div
                     key={activeSub.id}
-                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
-                    animate={{ opacity: 1, scale: 1, x: subtitlePos.x, y: subtitlePos.y }}
-                    exit={{ opacity: 0, scale: 1.2 }}
+                    initial={{ opacity: 0, scale: 0.5 }}
+                    animate={{ opacity: 1, scale: 1.1, x: subtitlePos.x, y: subtitlePos.y }}
+                    exit={{ opacity: 0, scale: 1.5 }}
                     className="absolute pointer-events-auto cursor-move select-none text-center px-4 w-full"
-                    style={{ bottom: '30%' }}
+                    style={{ bottom: '45%', zIndex: 100 }}
                   >
-                    <div className="flex flex-wrap justify-center gap-x-3 gap-y-2">
-                      {words.map((word, wi) => (
-                        <motion.span
-                          key={wi}
-                          animate={wi === accentIndex ? { scale: 1.2 } : { scale: 1 }}
-                          className={`text-[34px] md:text-[44px] font-black leading-tight tracking-tighter transition-colors duration-100 ${
-                            wi === accentIndex
-                              ? 'text-yellow-400 [text-shadow:0_4px_20px_rgba(234,179,8,0.5),0_2px_0_#000]'
-                              : 'text-white [text-shadow:0_2px_0_#000,0_4px_12px_rgba(0,0,0,0.8)]'
-                          }`}
-                        >
-                          {word}
-                        </motion.span>
-                      ))}
+                    <div className="flex justify-center">
+                      <span className="text-[48px] md:text-[64px] font-[900] leading-none tracking-tighter text-yellow-400 whitespace-nowrap [text-shadow:0_4px_0_#000,0_8px_30px_rgba(234,179,8,0.6)] italic uppercase">
+                        {activeSub.text}
+                      </span>
                     </div>
-                </motion.div>
-              );
-            })()}
+                  </motion.div>
+                );
+              })()}
             </AnimatePresence>
           </div>
         </div>
