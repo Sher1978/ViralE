@@ -69,6 +69,146 @@ export class ReplicateVideoGenerator implements IVideoGenerator {
 }
 
 /**
+ * SHOTSTACK GENERATOR
+ * Professional 1080p/4K Cloud Rendering
+ */
+export class ShotstackVideoGenerator implements IVideoGenerator {
+  private apiKey: string;
+  private isStage: boolean;
+
+  constructor(apiKey?: string) {
+    this.apiKey = apiKey || process.env.SHOTSTACK_API_KEY || '';
+    this.isStage = this.apiKey.startsWith('v1-stage-') || !process.env.NODE_ENV || process.env.NODE_ENV === 'development';
+  }
+
+  async generate(job: VideoGenerationJob): Promise<VideoGenerationResult> {
+    if (!this.apiKey) {
+      console.warn('[Shotstack] No API Key found, falling back to Mock.');
+      return new MockVideoGenerator().generate(job);
+    }
+
+    try {
+      const { script, settings } = job.config;
+      const { brollClips = [], subtitleClips = [], aRollUrl } = script || {};
+
+      if (!aRollUrl) throw new Error('A-Roll URL is missing in manifest');
+
+      // 1. Construct Shotstack Edit JSON
+      const timeline = {
+        background: "#000000",
+        tracks: [
+          // Track 1: Subtitles (Text)
+          {
+            clips: subtitleClips.map((s: any) => ({
+              asset: {
+                type: "html",
+                html: `<p data-alignment="center">${s.text}</p>`,
+                css: "p { font-family: 'Montserrat'; font-weight: 900; color: #ffffff; font-size: 42px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,0,0,0.8); }",
+                width: 800,
+                height: 200
+              },
+              start: s.startTime,
+              length: Math.max(0.1, s.endTime - s.startTime),
+              position: "center",
+              offset: { y: -0.2 } // Lower third
+            }))
+          },
+          // Track 2: B-Roll (Overlays)
+          {
+            clips: brollClips.filter((b: any) => b.url).map((b: any) => ({
+              asset: {
+                type: "video",
+                src: b.url,
+                volume: 0 // Mute B-roll
+              },
+              start: b.startTime,
+              length: Math.max(0.1, b.endTime - b.startTime),
+              fit: "cover"
+            }))
+          },
+          // Track 3: A-Roll (Background)
+          {
+            clips: [
+              {
+                asset: {
+                  type: "video",
+                  src: aRollUrl
+                },
+                start: 0,
+                length: 60, // Limit to 60s for MVP stability
+                fit: "cover"
+              }
+            ]
+          }
+        ]
+      };
+
+      const output = {
+        format: "mp4",
+        resolution: settings?.resolution === '1080x1920' ? "hd1080" : "hd720",
+        fps: settings?.fps || 24
+      };
+
+      // 2. Submit to Shotstack
+      const endpoint = this.isStage ? 'https://api.shotstack.io/stage/render' : 'https://api.shotstack.io/v1/render';
+      
+      const response = await fetch(endpoint, {
+        method: 'POST',
+        headers: {
+          'x-api-key': this.apiKey,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({ timeline, output })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.message || 'Shotstack API Error');
+
+      const shotstackJobId = data.response?.id;
+      console.log(`[Shotstack] Job submitted: ${shotstackJobId}`);
+
+      // 3. Polling for completion
+      let status = 'queued';
+      let videoUrl = '';
+      let attempts = 0;
+
+      while ((status === 'queued' || status === 'rendering') && attempts < 30) {
+        attempts++;
+        await new Promise(r => setTimeout(r, 4000));
+        
+        const statusRes = await fetch(`${endpoint}/${shotstackJobId}`, {
+          headers: { 'x-api-key': this.apiKey }
+        });
+        const statusData = await statusRes.json();
+        status = statusData.response?.status;
+        
+        if (status === 'done') {
+          videoUrl = statusData.response?.url;
+          break;
+        } else if (status === 'failed') {
+          throw new Error('Shotstack rendering failed');
+        }
+
+        // Update progress in DB during polling
+        const progress = 10 + (attempts * 3);
+        await supabase
+          .from('render_jobs')
+          .update({ progress: Math.min(95, progress), status_message: `Rendering 1080p (${status})...` })
+          .eq('id', job.id);
+      }
+
+      if (!videoUrl) throw new Error('Rendering timed out or failed');
+
+      return { success: true, videoUrl };
+
+    } catch (error: any) {
+      console.error('[Shotstack] Error:', error);
+      return { success: false, error: error.message };
+    }
+  }
+}
+
+/**
  * HEYGEN GENERATOR
  * Uses HeyGen API for avatar talking head generation
  */
@@ -184,13 +324,13 @@ export async function processVideoJob(jobId: string) {
 
     // Determine generator
     let generator: IVideoGenerator;
-    // For MVP preview renders, we use Mock for stability
-    if (job.render_type === 'preview') {
-       generator = new MockVideoGenerator();
-    } else if (job.config_json?.engine === 'heygen') {
+    
+    if (job.config_json?.engine === 'heygen') {
       generator = new HeyGenVideoGenerator(userHeyGenKey);
     } else {
-      generator = new ReplicateVideoGenerator();
+      // Use Shotstack by default for "real" quality, 
+      // it will fallback to Mock internally if SHOTSTACK_API_KEY is missing
+      generator = new ShotstackVideoGenerator();
     }
 
     // 2. Mark as Processing
