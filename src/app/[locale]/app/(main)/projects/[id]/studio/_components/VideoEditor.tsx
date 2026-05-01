@@ -884,7 +884,6 @@ export const VideoEditor = React.memo(({
                       Пропустить анализ
                     </button>
                   </div>
-                )}
               </div>
 
             </motion.div>
