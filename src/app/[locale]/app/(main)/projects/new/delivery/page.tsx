@@ -25,34 +25,75 @@ export default function DeliveryPage() {
   const [job, setJob] = useState<RenderJob | null>(null);
   const [version, setVersion] = useState<ProjectVersion | null>(null);
   const [error, setError] = useState<string | null>(null);
+  const [isLaunchingRender, setIsLaunchingRender] = useState(false);
 
   useEffect(() => {
     async function loadResults() {
-      if (!jobId) {
-        setError('No job ID found');
-        setIsLoading(false);
+      // ── Case 1: Have a jobId — load job status ──
+      if (jobId) {
+        try {
+          const jobData = await renderService.getJobStatus(jobId);
+          if (!jobData) {
+            setError('Job not found');
+          } else {
+            setJob(jobData);
+            const verData = await projectService.getVersion(jobData.version_id);
+            setVersion(verData);
+          }
+        } catch (err) {
+          console.error('Failed to load delivery results:', err);
+          setError('Failed to connect to production system');
+        } finally {
+          setIsLoading(false);
+        }
         return;
       }
 
-      try {
-        const jobData = await renderService.getJobStatus(jobId);
-        if (!jobData) {
-          setError('Job not found');
-        } else {
-          setJob(jobData);
-          // Load the version associated with this job to get texts
-          const verData = await projectService.getVersion(jobData.version_id);
-          setVersion(verData);
+      // ── Case 2: No jobId — load from projectId directly ──
+      if (projectId) {
+        try {
+          const verData = await projectService.getLatestVersion(projectId);
+          if (verData) {
+            setVersion(verData);
+          }
+        } catch (err) {
+          console.error('Failed to load project version:', err);
+        } finally {
+          setIsLoading(false);
         }
-      } catch (err) {
-        console.error('Failed to load delivery results:', err);
-        setError('Failed to connect to production system');
-      } finally {
-        setIsLoading(false);
+        return;
       }
+
+      // ── Case 3: Nothing — show error ──
+      setError('Проект не найден. Вернитесь в студию.');
+      setIsLoading(false);
     }
     loadResults();
-  }, [jobId]);
+  }, [jobId, projectId]);
+
+  const handleLaunchRender = async () => {
+    if (!projectId) return;
+    setIsLaunchingRender(true);
+    try {
+      const response = await fetch('/api/render', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ projectId, versionId: version?.id })
+      });
+      if (response.ok) {
+        const data = await response.json();
+        if (data.jobId) {
+          // Reload with the new jobId
+          router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}&jobId=${data.jobId}`);
+          return;
+        }
+      }
+    } catch (err) {
+      console.error('Render launch failed:', err);
+    } finally {
+      setIsLaunchingRender(false);
+    }
+  };
 
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
@@ -181,6 +222,48 @@ export default function DeliveryPage() {
           ))}
         </div>
       </div>
+
+      {/* ── No job yet — offer to launch render ── */}
+      {!job && !error && projectId && (
+        <div
+          className="rounded-3xl p-6 space-y-4 text-center"
+          style={{
+            background: 'linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(59,130,246,0.05) 100%)',
+            border: '1px solid rgba(168,85,247,0.2)',
+          }}
+        >
+          <div className="text-4xl">🎬</div>
+          <div>
+            <h2 className="text-lg font-black uppercase tracking-tighter text-white">
+              Проект сохранён
+            </h2>
+            <p className="text-[11px] text-white/40 mt-1">
+              Манифест сохранён. Запустите рендер чтобы получить готовое видео.
+            </p>
+          </div>
+          <button
+            onClick={handleLaunchRender}
+            disabled={isLaunchingRender}
+            className="w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
+            style={{
+              background: 'linear-gradient(135deg, #a855f7, #3b82f6)',
+              color: '#fff',
+            }}
+          >
+            {isLaunchingRender ? (
+              <><Loader2 className="w-4 h-4 animate-spin" /> Запускаем рендер...</>
+            ) : (
+              <><Play className="w-4 h-4 fill-white" /> Запустить рендер (5 кредитов)</>
+            )}
+          </button>
+          <button
+            onClick={() => router.push(`/${locale}/app/projects/new/studio?id=${projectId}`)}
+            className="w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white/60 transition-colors"
+          >
+            ← Вернуться в монтажку
+          </button>
+        </div>
+      )}
 
       {/* Video preview card - Now using real output_url */}
       <div
