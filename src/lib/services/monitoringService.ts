@@ -113,6 +113,71 @@ export const monitoringService = {
   },
 
   /**
+   * Anthropic Claude
+   */
+  async getAnthropicStatus(): Promise<ApiBalanceReport> {
+    const apiKey = process.env.ANTHROPIC_API_KEY;
+    return {
+      provider: 'Anthropic',
+      remaining: apiKey ? 'Active' : 'Missing',
+      unit: 'status',
+      status: apiKey ? 'ok' : 'critical'
+    };
+  },
+
+  /**
+   * Replicate
+   */
+  async getReplicateStatus(): Promise<ApiBalanceReport> {
+    const apiKey = process.env.REPLICATE_API_TOKEN;
+    return {
+      provider: 'Replicate',
+      remaining: apiKey ? 'Active' : 'Missing',
+      unit: 'status',
+      status: apiKey ? 'ok' : 'critical'
+    };
+  },
+
+  /**
+   * Groq
+   */
+  async getGroqStatus(): Promise<ApiBalanceReport> {
+    const apiKey = process.env.GROQ_API_KEY;
+    return {
+      provider: 'Groq',
+      remaining: apiKey ? 'Active' : 'Missing',
+      unit: 'status',
+      status: apiKey ? 'ok' : 'critical'
+    };
+  },
+
+  /**
+   * OpenAI
+   */
+  async getOpenAIStatus(): Promise<ApiBalanceReport> {
+    const apiKey = process.env.OPENAI_API_KEY;
+    return {
+      provider: 'OpenAI',
+      remaining: apiKey ? 'Active' : 'Missing',
+      unit: 'status',
+      status: apiKey ? 'ok' : 'critical'
+    };
+  },
+
+  /**
+   * Runware
+   */
+  async getRunwareStatus(): Promise<ApiBalanceReport> {
+    const apiKey = process.env.RUNWARE_API_KEY;
+    return {
+      provider: 'Runware',
+      remaining: apiKey ? 'Active' : 'Missing',
+      unit: 'status',
+      status: apiKey ? 'ok' : 'critical'
+    };
+  },
+
+  /**
    * Aggregates all reports
    */
   async getFullSystemReport(): Promise<ApiBalanceReport[]> {
@@ -121,6 +186,11 @@ export const monitoringService = {
       this.getHeyGenBalance(),
       this.getHiggsfieldBalance(),
       this.getGeminiBalance(),
+      this.getAnthropicStatus(),
+      this.getReplicateStatus(),
+      this.getGroqStatus(),
+      this.getOpenAIStatus(),
+      this.getRunwareStatus(),
       this.getPexelsStatus()
     ]);
     return results;
