@@ -161,7 +161,7 @@ export const VideoEditor = React.memo(({
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 }); // Global sub position on video canvas
-  const [subtitleSize, setSubtitleSize] = useState(48); // Default font size
+  const [subtitleSize, setSubtitleSize] = useState(16); // Default font size (reduced 3x from 48)
   const [isAnalyzingBroll, setIsAnalyzingBroll] = useState(false);
 
   // Drag
@@ -944,25 +944,20 @@ export const VideoEditor = React.memo(({
               />
               {/* ── B-ROLL OVERLAY PREVIEW ── */}
               {(() => {
-                const activeBR = brollClips.find(c => c.url && currentTime >= c.startTime && currentTime <= c.endTime);
+                const activeBR = brollClips.find(c => c.url && c.url.length > 5 && currentTime >= c.startTime && currentTime <= c.endTime);
                 if (!activeBR) return null;
                 return (
-                  <div className="absolute inset-0 z-10 bg-black">
+                  <div className="absolute inset-0 z-20 bg-black">
                      <video 
+                       key={activeBR.url}
                        src={activeBR.url}
                        autoPlay
                        muted
-                       loop
                        playsInline
-                       className="w-full h-full object-cover"
-                       style={{ 
-                         objectPosition: `${50 + (activeBR.offsetX || 0)}% 50%` 
-                       }}
+                       loop
+                       preload="auto"
+                       className="w-full h-full object-cover" 
                      />
-                     {/* Label */}
-                     <div className="absolute top-4 left-4 px-2 py-1 bg-blue-600/80 rounded text-[8px] font-black uppercase tracking-widest text-white">
-                        B-Roll Active
-                     </div>
                   </div>
                 );
               })()}
