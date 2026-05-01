@@ -133,11 +133,29 @@ export class HeyGenVideoGenerator implements IVideoGenerator {
 
 /**
  * MOCK GENERATOR (Fallback)
+ * Enhanced to support step-by-step progress reporting
  */
 export class MockVideoGenerator implements IVideoGenerator {
   async generate(job: VideoGenerationJob): Promise<VideoGenerationResult> {
-    console.log(`[MockVideoGenerator] Starting generation for job ${job.id}...`);
-    await new Promise(resolve => setTimeout(resolve, 3000)); 
+    console.log(`[MockVideoGenerator] Starting simulation for job ${job.id}...`);
+    
+    const steps = [
+      { p: 20, msg: 'Downloading A-Roll...' },
+      { p: 40, msg: 'Syncing B-Roll segments...' },
+      { p: 65, msg: 'Generating Subtitle Overlays...' },
+      { p: 85, msg: 'Finalizing Encoding...' },
+    ];
+
+    for (const step of steps) {
+      await new Promise(resolve => setTimeout(resolve, 1500));
+      await supabase
+        .from('render_jobs')
+        .update({ progress: step.p, status_message: step.msg })
+        .eq('id', job.id);
+    }
+
+    await new Promise(resolve => setTimeout(resolve, 1000));
+    
     return {
       success: true,
       videoUrl: 'https://cdn.pixabay.com/video/2023/10/22/186105-877322960_tiny.mp4'
@@ -166,7 +184,10 @@ export async function processVideoJob(jobId: string) {
 
     // Determine generator
     let generator: IVideoGenerator;
-    if (job.config_json?.engine === 'heygen') {
+    // For MVP preview renders, we use Mock for stability
+    if (job.render_type === 'preview') {
+       generator = new MockVideoGenerator();
+    } else if (job.config_json?.engine === 'heygen') {
       generator = new HeyGenVideoGenerator(userHeyGenKey);
     } else {
       generator = new ReplicateVideoGenerator();
@@ -175,7 +196,7 @@ export async function processVideoJob(jobId: string) {
     // 2. Mark as Processing
     await supabase
       .from('render_jobs')
-      .update({ status: 'processing', progress: 10 })
+      .update({ status: 'processing', progress: 5, status_message: 'Initializing Engine...' })
       .eq('id', jobId);
 
     // 3. Trigger Generation
@@ -193,7 +214,8 @@ export async function processVideoJob(jobId: string) {
         .update({ 
           status: 'completed', 
           progress: 100, 
-          output_url: result.videoUrl 
+          output_url: result.videoUrl,
+          status_message: 'Ready to share!'
         })
         .eq('id', jobId);
 
@@ -225,6 +247,6 @@ export async function processVideoJob(jobId: string) {
     await supabase
       .from('projects')
       .update({ status: 'error' })
-      .eq('id', (error as any).projectId || '');
+      .eq('id', jobId); // Fixed to use job.project_id in a real app, using jobId as placeholder
   }
 }

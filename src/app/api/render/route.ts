@@ -47,6 +47,21 @@ export async function POST(req: Request) {
 
     const job = await createRenderJob(authorizedSupabase, userId, projectId, versionId, type || 'preview');
 
+    // --- TRIGGER BACKGROUND WORKER ---
+    // We don't 'await' it because we want to return the jobId to the client immediately
+    // and let the process run in the background. 
+    // In Vercel, we use the internal URL or absolute path.
+    const protocol = req.url.startsWith('https') ? 'https' : 'http';
+    const host = req.headers.get('host');
+    const baseUrl = `${protocol}://${host}`;
+    
+    fetch(`${baseUrl}/api/render/process`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ jobId: job.id })
+    }).catch(e => console.error('Failed to trigger background processing:', e));
+    // ---------------------------------
+
     return NextResponse.json({
       success: true,
       jobId: job.id,
