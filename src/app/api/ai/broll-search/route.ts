@@ -8,31 +8,28 @@ export async function GET(req: NextRequest) {
 
   console.log('[B-Roll Search] Original query:', query);
 
-  // Check for both common Pexels key names
   const pexelsKey = process.env.PEXELS_API_KEY || process.env.PEXELS_KEY || process.env.NEXT_PUBLIC_PEXELS_API_KEY;
-  if (!pexelsKey) {
-    console.error('[B-Roll Search] Pexels API key is missing on server');
-    return NextResponse.json({ error: 'Pexels API key missing' }, { status: 500 });
-  }
-
+  const giphyKey = process.env.GIPHY_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
+  
   let optimizedQuery = query;
 
   // 🧠 Smart Translation & Keyword Extraction
   if (geminiKey) {
     try {
       const genAI = new GoogleGenerativeAI(geminiKey);
-      // Using 1.5-flash for search as it's more stable for small tasks
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
       const prompt = `
-        Translate to English and extract 2-3 visual keywords for stock video search. 
-        Only return the keywords separated by spaces.
+        You are a video editor. Translate the following phrase to English 
+        and extract 2-3 visual keywords for stock video search.
+        Focus on physical objects, actions, or cinematic moods.
         Input: "${query}"
+        Return ONLY the keywords separated by spaces.
       `;
 
       const result = await model.generateContent(prompt);
-      const translated = result.response.text().trim().toLowerCase();
+      const translated = result.response.text().trim().toLowerCase().replace(/[^\w\s]/gi, '');
       if (translated && translated.length > 2) {
         console.log(`[B-Roll Search] Translated: "${query}" -> "${translated}"`);
         optimizedQuery = translated;
@@ -43,22 +40,43 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // Inject the key manually if needed (though service should handle it, we'll be safe)
-    const videos = await pexelsService.searchVideos(optimizedQuery, 12);
-    console.log(`[B-Roll Search] Found ${videos.length} videos for "${optimizedQuery}"`);
+    // 1. Fetch from Pexels
+    const pexelsVideos = pexelsKey ? await pexelsService.searchVideos(optimizedQuery, 8) : [];
     
-    const results = videos.map(v => ({
-      id: v.id.toString(),
+    const pexelsResults = pexelsVideos.map(v => ({
+      id: `pexels-${v.id}`,
       source: 'stock',
       title: 'Pexels Clip',
       previewUrl: v.image, 
       videoUrl: v.video_files.find(f => f.quality === 'hd')?.link || v.video_files[0]?.link,
-      tags: []
+      tags: ['stock', 'cinematic']
     }));
 
-    return NextResponse.json({ videos: results });
+    // 2. Fetch from Giphy (Fallback/Addition)
+    let giphyResults: any[] = [];
+    if (giphyKey) {
+      try {
+        const gRes = await fetch(`https://api.giphy.com/v1/gifs/search?api_key=${giphyKey}&q=${encodeURIComponent(optimizedQuery)}&limit=4&rating=g`);
+        const gData = await gRes.json();
+        giphyResults = (gData.data || []).map((g: any) => ({
+          id: `giphy-${g.id}`,
+          source: 'giphy',
+          title: g.title || 'Giphy Clip',
+          previewUrl: g.images.fixed_height_still.url,
+          videoUrl: g.images.looping?.mp4 || g.images.original.mp4, // HD-ish mp4
+          tags: ['giphy', 'dynamic']
+        }));
+      } catch (e) {
+        console.error('[B-Roll Search] Giphy failed:', e);
+      }
+    }
+
+    const allResults = [...pexelsResults, ...giphyResults];
+    console.log(`[B-Roll Search] Found ${allResults.length} total results for "${optimizedQuery}"`);
+
+    return NextResponse.json({ videos: allResults });
   } catch (error: any) {
-    console.error('[B-Roll Search] Pexels failure:', error.message);
+    console.error('[B-Roll Search] Search failure:', error.message);
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

@@ -526,7 +526,7 @@ export const VideoEditor = React.memo(({
         const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(phrase.text)}`);
         const data = await res.json();
         if (data.videos && data.videos.length > 0) {
-          const bestUrl = data.videos[0].url || data.videos[0].video_files?.[0]?.link || '';
+          const bestUrl = data.videos[0].videoUrl;
           setPreFetchedBrolls(prev => ({ ...prev, [phrase.id]: data.videos }));
           // Auto-attach the first result to the timeline placeholder
           if (bestUrl) {
