@@ -13,6 +13,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Submit job
+    console.log('[B-Roll Gen] Submitting prompt to Higgsfield:', prompt);
     const response = await fetch(`${HIGGSFIELD_API_BASE}/generate`, {
       method: 'POST',
       headers: {
@@ -21,7 +22,7 @@ export async function POST(req: NextRequest) {
         'X-Higgs-Key-Secret': keySecret,
       },
       body: JSON.stringify({
-        model: 'kling-3.0',
+        model: 'higgs-video-v1',
         prompt,
         options: {
           motion_bucket: 127,
@@ -33,7 +34,8 @@ export async function POST(req: NextRequest) {
 
     if (!response.ok) {
       const err = await response.text();
-      throw new Error(`Higgsfield Error: ${err}`);
+      console.error('[B-Roll Gen] API Error:', response.status, err);
+      return NextResponse.json({ error: `API Error: ${response.status}` }, { status: response.status });
     }
 
     const data = await response.json();

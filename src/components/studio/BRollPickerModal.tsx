@@ -122,34 +122,60 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   const handleGenerateAI = async () => {
     if (!segmentText) return;
     setIsGenerating(true);
+    const tempId = `ai-temp-${Date.now()}`;
+    
+    // Add a placeholder to the list
+    setVideos(prev => [{
+      id: tempId,
+      source: 'ai',
+      title: 'Synthesizing scene...',
+      previewUrl: '', // Will show loading state
+      videoUrl: ''
+    }, ...prev]);
+
     try {
       const res = await fetch('/api/ai/generate-broll', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ prompt: searchQuery || segmentText })
       });
-      const { jobId } = await res.json();
-      if (!jobId) throw new Error('Failed to start generation');
+      const data = await res.json();
+      if (!data.jobId) throw new Error(data.error || 'Failed to start generation');
 
+      const jobId = data.jobId;
       let attempts = 0;
       const poll = setInterval(async () => {
         attempts++;
-        const statusRes = await fetch(`/api/ai/generate-broll?jobId=${jobId}`);
-        const { status, url } = await statusRes.json();
-        
-        if (status === 'completed' && url) {
-          clearInterval(poll);
-          setIsGenerating(false);
-          onSelect(url);
-        } else if (status === 'failed' || attempts > 20) {
-          clearInterval(poll);
-          setIsGenerating(false);
-          alert('AI Synthesis failed. Please try a different prompt.');
+        try {
+          const statusRes = await fetch(`/api/ai/generate-broll?jobId=${jobId}`);
+          const { status, url } = await statusRes.json();
+          
+          if (status === 'completed' && url) {
+            clearInterval(poll);
+            setIsGenerating(false);
+            // Replace placeholder with real result
+            setVideos(prev => prev.map(v => v.id === tempId ? {
+              ...v,
+              id: jobId,
+              title: 'AI Result',
+              previewUrl: url,
+              videoUrl: url
+            } : v));
+          } else if (status === 'failed' || attempts > 40) { // Increase timeout to 2 mins
+            clearInterval(poll);
+            setIsGenerating(false);
+            setVideos(prev => prev.filter(v => v.id !== tempId));
+            alert('AI Synthesis failed or timed out. Please try a different prompt.');
+          }
+        } catch (pollErr) {
+          console.error('Polling failed', pollErr);
         }
       }, 3000);
-    } catch (error) {
+    } catch (error: any) {
       console.error("Generation failed", error);
       setIsGenerating(false);
+      setVideos(prev => prev.filter(v => v.id !== tempId));
+      alert(`Generation failed: ${error.message}`);
     }
   };
 
@@ -202,12 +228,19 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                   className="group relative overflow-hidden bg-white/5 border border-white/8 hover:border-purple-500/50 cursor-pointer transition-all rounded-2xl"
                   style={{ aspectRatio: '9/16' }}
                 >
-                  <img
-                    src={item.previewUrl}
-                    alt={item.title}
-                    className="absolute inset-0 w-full h-full object-cover"
-                    loading="lazy"
-                  />
+                  {item.previewUrl ? (
+                    <img
+                      src={item.previewUrl}
+                      alt={item.title}
+                      className="absolute inset-0 w-full h-full object-cover"
+                      loading="lazy"
+                    />
+                  ) : (
+                    <div className="absolute inset-0 flex flex-col items-center justify-center gap-3 bg-purple-900/20 backdrop-blur-sm">
+                      <RefreshCcw size={24} className="text-purple-400 animate-spin" />
+                      <span className="text-[8px] font-black text-purple-300 uppercase tracking-widest animate-pulse">Synthesizing...</span>
+                    </div>
+                  )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
 
                   {/* Play icon */}
