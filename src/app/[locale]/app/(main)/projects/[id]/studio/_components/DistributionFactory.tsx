@@ -10,6 +10,7 @@ import {
 import { cn } from '@/lib/utils';
 
 interface DistributionFactoryProps {
+  manifest: any;
   scriptText: string;
   projectId: string;
   locale: string;
@@ -35,7 +36,7 @@ interface ImageResult {
   aspectRatio: string;
 }
 
-export default function DistributionFactory({ scriptText, projectId, locale }: DistributionFactoryProps) {
+export default function DistributionFactory({ manifest, scriptText, projectId, locale }: DistributionFactoryProps) {
   const [activePlatform, setActivePlatform] = useState<'instagram' | 'facebook' | 'youtube'>('instagram');
   const [assets, setAssets] = useState<GeneratedAsset | null>(null);
   const [isGenerating, setIsGenerating] = useState(false);
@@ -45,6 +46,35 @@ export default function DistributionFactory({ scriptText, projectId, locale }: D
     youtube: []
   });
   const [copying, setCopying] = useState<string | null>(null);
+
+  // Sync with manifest if pre-generated
+  useEffect(() => {
+    if (manifest?.distributionAssets) {
+      const da = manifest.distributionAssets;
+      setAssets({
+        instagram: da.instagram || { caption: '', carouselPrompts: [] },
+        facebook: da.facebook || { caption: '' },
+        youtube: da.youtube || { description: '', thumbnailPrompt: '' }
+      });
+      
+      const igUrls = da.instagram?.carouselUrls?.map((url: string, i: number) => ({
+        url,
+        prompt: da.instagram.carouselPrompts[i] || '',
+        aspectRatio: '1:1'
+      })) || [];
+      
+      const ytUrl = da.youtube?.thumbnailUrl ? [{
+        url: da.youtube.thumbnailUrl,
+        prompt: da.youtube.thumbnailPrompt,
+        aspectRatio: '16:9'
+      }] : [];
+
+      setImageResults({
+        instagram: igUrls,
+        youtube: ytUrl
+      });
+    }
+  }, [manifest]);
 
   const generateAssets = async () => {
     setIsGenerating(true);

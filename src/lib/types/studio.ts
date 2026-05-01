@@ -33,14 +33,32 @@ export interface WordToken {
   end: number;   // seconds
 }
 
+export interface DistributionAssets {
+  instagram?: {
+    caption: string;
+    carouselPrompts: string[];
+    carouselUrls?: string[];
+  };
+  facebook?: {
+    caption: string;
+  };
+  youtube?: {
+    description: string;
+    thumbnailPrompt: string;
+    thumbnailUrl?: string;
+  };
+  lastGenerated?: number;
+}
+
 export interface ProductionManifest {
   version: string;
   projectId: string;
   versionId: string;
   segments: SceneSegment[];
   videoUrl?: string;
-  transcript?: any[]; // Persistent subtitles/timing across studio stages
+  transcript?: any[]; 
   totalDuration: number;
+  distributionAssets?: DistributionAssets;
   config: {
     resolution: string;
     fps: number;

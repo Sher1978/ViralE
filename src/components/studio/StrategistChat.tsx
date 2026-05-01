@@ -25,7 +25,7 @@ interface Message {
 interface StrategistChatProps {
   projectId: string;
   manifest?: ProductionManifest;
-  setManifest?: (manifest: ProductionManifest) => void;
+  setManifest?: (manifest: ProductionManifest | ((prev: ProductionManifest | null) => ProductionManifest | null)) => void;
   userId: string;
   activeSegmentId?: string;
   locale?: string;
@@ -618,10 +618,72 @@ export function StrategistChat({
                   ...manifest,
                   segments: newSegments
                 });
+
+                // --- NEW: Pre-generate Distribution Assets in Background ---
+                (async () => {
+                  try {
+                    const res = await fetch('/api/ai/distribution-assets', {
+                      method: 'POST',
+                      headers: { 'Content-Type': 'application/json' },
+                      body: JSON.stringify({ scriptText: finalScriptText, projectId, locale })
+                    });
+                    if (res.ok) {
+                      const assetData = await res.json();
+                      
+                      // Save text assets first
+                      setManifest((prev: ProductionManifest | null) => {
+                        if (!prev) return prev;
+                        return {
+                          ...prev,
+                          distributionAssets: {
+                            ...assetData,
+                            lastGenerated: Date.now()
+                          }
+                        };
+                      });
+
+                      // Start background image generation
+                      const platforms = ['instagram', 'youtube'] as const;
+                      for (const p of platforms) {
+                        const prompts = p === 'instagram' ? assetData.instagram.carouselPrompts : [assetData.youtube.thumbnailPrompt];
+                        const ar = p === 'instagram' ? '1:1' : '16:9';
+                        
+                        for (const prompt of prompts) {
+                          const imgRes = await fetch('/api/ai/image-gen', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({ prompt, aspect_ratio: ar })
+                          });
+                          if (imgRes.ok) {
+                            const imgData = await imgRes.ok ? await imgRes.json() : null;
+                            if (imgData?.url) {
+                              setManifest((prev: ProductionManifest | null) => {
+                                if (!prev) return prev;
+                                const current = prev.distributionAssets || {};
+                                if (p === 'instagram') {
+                                  const ig = current.instagram || { caption: '', carouselPrompts: [] };
+                                  const urls = [...(ig.carouselUrls || []), imgData.url];
+                                  return { ...prev, distributionAssets: { ...current, instagram: { ...ig, carouselUrls: urls } } };
+                                } else {
+                                  const yt = current.youtube || { description: '', thumbnailPrompt: '' };
+                                  return { ...prev, distributionAssets: { ...current, youtube: { ...yt, thumbnailUrl: imgData.url } } };
+                                }
+                              });
+                            }
+                          }
+                        }
+                      }
+                    }
+                  } catch (e) {
+                    console.error('[Background Asset Gen Error]:', e);
+                  }
+                })();
                 
                 setMessages(prev => [...prev, { 
                   role: 'assistant', 
-                  content: "Success! The hybrid matrix is forged and pushed to the studio." 
+                  content: locale === 'ru' 
+                    ? "Успех! Гибридная матрица создана. Я также начал генерацию постов и обложек для соцсетей в фоновом режиме." 
+                    : "Success! The hybrid matrix is forged. I've also started generating social media posts and covers in the background." 
                 }]);
               }
               setScriptMatrix(null);

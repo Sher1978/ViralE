@@ -584,6 +584,7 @@ export default function StudioPage() {
           {activeTab === 'assets' && (
             <div className="max-w-6xl mx-auto h-full p-10">
               <DistributionFactory 
+                manifest={manifest}
                 scriptText={manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
                 projectId={projectId}
                 locale={locale}
