@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useCallback } from 'react';
 import { useTranslations } from 'next-intl';
-import { Camera, Mic, Square, Play, Upload, Settings, RefreshCw, X, Check, Volume2, Mic2, Sparkles, ShieldCheck } from 'lucide-react';
+import { Camera, Mic, Square, Play, Upload, Settings, RefreshCw, X, Check, Volume2, Mic2, Sparkles, ShieldCheck, Headphones, Bluetooth } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import Teleprompter from './Teleprompter';
 import { useVoiceFollowing } from '@/hooks/useVoiceFollowing';
@@ -37,19 +37,43 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
   const [permissionError, setPermissionError] = useState<string | null>(null);
   const [scriptSource, setScriptSource] = useState<'ai' | 'custom'>('ai');
   const [customScript, setCustomScript] = useState<string>('');
+  // Audio device selection
+  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string>('');
 
   const videoRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const streamRef = useRef<MediaStream | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
+  // Enumerate audio input devices (works on Android, best-effort on iOS)
+  const refreshAudioDevices = useCallback(async () => {
+    try {
+      // Must request permission first for labels to appear
+      await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop()));
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      const inputs = devices.filter(d => d.kind === 'audioinput');
+      setAudioDevices(inputs);
+      // Auto-select first device if none selected
+      if (!selectedAudioDeviceId && inputs.length > 0) {
+        setSelectedAudioDeviceId(inputs[0].deviceId);
+      }
+    } catch (err) {
+      console.warn('[Audio Devices] Could not enumerate:', err);
+    }
+  }, [selectedAudioDeviceId]);
+
   // Initialize Media Stream
   useEffect(() => {
     async function startStream() {
       try {
+        const audioConstraints: MediaTrackConstraints = selectedAudioDeviceId
+          ? { deviceId: { exact: selectedAudioDeviceId } }
+          : true as any;
+
         const stream = await navigator.mediaDevices.getUserMedia({
           video: mode === 'video',
-          audio: true
+          audio: audioConstraints
         });
         streamRef.current = stream;
         if (videoRef.current) {
@@ -66,7 +90,7 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
     return () => {
       streamRef.current?.getTracks().forEach(track => track.stop());
     };
-  }, [mode, t]);
+  }, [mode, t, selectedAudioDeviceId]);
 
   const startRecording = () => {
     if (!streamRef.current) return;
@@ -409,7 +433,57 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
                 <Settings className="w-4 h-4 text-white/20" />
               </div>
 
-              {/* Font Size */}
+              {/* 🎙 Audio Source Selector */}
+              <div className="space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-black uppercase tracking-widest text-white/60 flex items-center gap-2">
+                    <Mic2 className="w-3 h-3 text-cyan-400" /> Источник звука
+                  </span>
+                  <button
+                    onClick={refreshAudioDevices}
+                    className="text-[9px] font-black uppercase tracking-widest text-white/20 hover:text-cyan-400 transition-colors flex items-center gap-1"
+                  >
+                    <RefreshCw className="w-3 h-3" /> Обновить
+                  </button>
+                </div>
+                {audioDevices.length === 0 ? (
+                  <button
+                    onClick={refreshAudioDevices}
+                    className="w-full py-3 rounded-2xl bg-white/5 border border-dashed border-white/10 text-[9px] font-black uppercase tracking-widest text-white/30 hover:border-cyan-500/40 hover:text-cyan-400 transition-all"
+                  >
+                    Нажмите для сканирования устройств
+                  </button>
+                ) : (
+                  <div className="space-y-2">
+                    {audioDevices.map((device) => {
+                      const isSelected = selectedAudioDeviceId === device.deviceId;
+                      const label = device.label || `Микрофон ${audioDevices.indexOf(device) + 1}`;
+                      const isBluetooth = label.toLowerCase().includes('bluetooth') || label.toLowerCase().includes('airpod') || label.toLowerCase().includes('earpod');
+                      const isHeadset = label.toLowerCase().includes('headset') || label.toLowerCase().includes('wired') || label.toLowerCase().includes('наушник');
+                      const Icon = isBluetooth ? Bluetooth : isHeadset ? Headphones : Mic2;
+                      return (
+                        <button
+                          key={device.deviceId}
+                          onClick={() => setSelectedAudioDeviceId(device.deviceId)}
+                          className={`w-full flex items-center gap-3 px-4 py-3 rounded-2xl border transition-all ${
+                            isSelected
+                              ? 'bg-cyan-500/20 border-cyan-500/40 text-cyan-400'
+                              : 'bg-white/5 border-white/10 text-white/40 hover:text-white hover:border-white/20'
+                          }`}
+                        >
+                          <Icon className="w-4 h-4 flex-shrink-0" />
+                          <span className="text-[10px] font-black uppercase tracking-widest text-left truncate flex-1">{label}</span>
+                          {isSelected && <div className="w-2 h-2 rounded-full bg-cyan-400 flex-shrink-0" />}
+                        </button>
+                      );
+                    })}
+                  </div>
+                )}
+                <p className="text-[8px] text-white/20 px-1 leading-relaxed">
+                  На iOS выбор устройства определяется системой. Подключённые наушники или BT-гарнитура имеют приоритет.
+                </p>
+              </div>
+
               <div className="space-y-4">
                 <div className="flex justify-between items-center px-1">
                   <span className="text-[10px] font-black uppercase tracking-widest text-white/60">{t('fontSize')}</span>
