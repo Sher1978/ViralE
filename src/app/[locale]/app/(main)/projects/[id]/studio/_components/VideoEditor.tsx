@@ -363,11 +363,9 @@ export const VideoEditor = React.memo(({
       
       return new Blob([buffer], { type: 'audio/wav' });
     } catch (e: any) {
-      console.error('[WebAudio] Extraction failed:', e);
-      if (e.name === 'EncodingError' || e.message?.includes('decode')) {
-        throw e;
-      }
-      return blob; 
+      console.error('[WebAudio] Extraction failed (likely iOS HEVC/MOV):', e.name, e.message);
+      // Always return null – never throw. The caller will send the raw file to the API.
+      return null as unknown as Blob;
     }
   };
 
@@ -391,41 +389,34 @@ export const VideoEditor = React.memo(({
     } else if (aRollUrl || rawFile) {
       try {
         setStageMessage('Извлечение аудио...');
-        const sourceBlob = rawFile || (aRollUrl?.startsWith('blob:') ? await fetch(aRollUrl).then(r => r.blob()) : null);
+        // Fetch blob from URL if no rawFile
+        const sourceBlob: Blob | null = rawFile || (aRollUrl?.startsWith('blob:') ? await fetch(aRollUrl).then(r => r.blob()) : null);
+
         let audioToTranscribe: Blob | null = null;
-        let fileUrl: string | null = null;
 
         if (sourceBlob) {
-          try {
-            audioToTranscribe = await extractAudioOnly(sourceBlob);
-          } catch (decodeError: any) {
-            console.warn('[Editor] Audio decoding failed, using cloud fallback:', decodeError.message);
-            setStageMessage('Оптимизация для iPhone: загрузка в облако...');
-          }
-        }
-
-        // Cloud fallback if needed (only if audio extraction failed)
-        if (sourceBlob && !audioToTranscribe) {
-          setStageMessage('Загрузка видео в облако (резервный путь)...');
-          fileUrl = await storageService.uploadFile(sourceBlob, `video_${projectId || Date.now()}.mp4`);
-          if (!fileUrl) {
-            console.warn('[Editor] Cloud upload failed, will try sending raw file');
-          }
+          // Try WebAudio resampling (works on Android/Desktop, may fail on iOS HEVC)
+          audioToTranscribe = await extractAudioOnly(sourceBlob);
+          // extractAudioOnly returns null on iOS HEVC failures
         }
 
         setStageMessage('AI расшифровка голоса...');
         const formData = new FormData();
-        
-        if (audioToTranscribe) {
+
+        if (audioToTranscribe && audioToTranscribe.size > 0) {
+          // Best case: resampled WAV (small, fast)
+          console.log('[Editor] Sending resampled WAV, size:', (audioToTranscribe.size / 1024 / 1024).toFixed(2), 'MB');
           formData.append('file', new File([audioToTranscribe], 'audio.wav', { type: 'audio/wav' }));
-        } else if (fileUrl) {
-          formData.append('fileUrl', fileUrl);
-        } else if (rawFile) {
-          formData.append('file', rawFile);
-        } else if (aRollUrl) {
-          const res = await fetch(aRollUrl);
-          const blob = await res.blob();
-          formData.append('file', new File([blob], 'video.mp4', { type: 'video/mp4' }));
+        } else if (sourceBlob) {
+          // iOS fallback: send original file directly (MOV/MP4/HEVC)
+          // Detect MIME: iPhone files are video/quicktime (MOV) or video/mp4
+          const mime = sourceBlob.type || (rawFile?.name?.endsWith('.mov') ? 'video/quicktime' : 'video/mp4');
+          const ext = mime.includes('quicktime') ? 'video.mov' : 'video.mp4';
+          console.log('[Editor] Sending original iOS video, mime:', mime, 'size:', (sourceBlob.size / 1024 / 1024).toFixed(2), 'MB');
+          setStageMessage('Прямая загрузка на AI (iOS режим)...');
+          formData.append('file', new File([sourceBlob], ext, { type: mime }));
+        } else {
+          throw new Error('Не удалось подготовить файл для расшифровки');
         }
 
         const controller = new AbortController();

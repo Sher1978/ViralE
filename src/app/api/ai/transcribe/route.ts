@@ -29,10 +29,28 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'No file or URL provided' }, { status: 400 });
     }
 
-    console.log('[Transcribe] Starting... File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
+    console.log('[Transcribe] Starting... File size:', (file.size / 1024 / 1024).toFixed(2), 'MB, type:', file.type);
+
+    // Size guard: Gemini inline limit is ~20MB
+    const MAX_INLINE_MB = 20;
+    if (file.size > MAX_INLINE_MB * 1024 * 1024) {
+      return NextResponse.json({ 
+        error: `Файл слишком большой (${(file.size/1024/1024).toFixed(0)}MB). Максимум ${MAX_INLINE_MB}MB. Обрежьте видео до 1 минуты.` 
+      }, { status: 413 });
+    }
 
     const buffer = Buffer.from(await file.arrayBuffer());
     const base64Audio = buffer.toString('base64');
+
+    // Detect correct MIME for Gemini – iOS sends video/quicktime (MOV)
+    const rawMime = file.type || 'video/mp4';
+    const geminiMime = (() => {
+      if (rawMime.startsWith('audio/')) return rawMime;
+      if (rawMime.includes('quicktime') || rawMime.includes('mov')) return 'video/quicktime';
+      if (rawMime.includes('mp4')) return 'video/mp4';
+      return 'video/mp4'; // safe default
+    })();
+    console.log('[Transcribe] Detected geminiMime:', geminiMime);
 
     // ── ATTEMPT 1: GEMINI 2.0 FLASH ──────────────────────────────────────────
     try {
@@ -56,7 +74,7 @@ export async function POST(req: NextRequest) {
         { text: prompt },
         {
           inlineData: {
-            mimeType: file.type.startsWith('audio') ? 'audio/wav' : (file.type || 'video/mp4'),
+            mimeType: geminiMime,
             data: base64Audio,
           },
         },
@@ -84,7 +102,7 @@ export async function POST(req: NextRequest) {
         
         const result = await model.generateContent([
           prompt,
-          { inlineData: { mimeType: file.type.startsWith('audio') ? 'audio/wav' : (file.type || 'video/mp4'), data: base64Audio } }
+          { inlineData: { mimeType: geminiMime, data: base64Audio } }
         ]);
 
         const responseText = result.response.text();
