@@ -161,7 +161,7 @@ export const VideoEditor = React.memo(({
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 }); // Global sub position on video canvas
-  const [subtitleSize, setSubtitleSize] = useState(56); // Default font size
+  const [subtitleSize, setSubtitleSize] = useState(48); // Default font size
 
   // Drag
   const dragRef = useRef<{
