@@ -768,7 +768,11 @@ export const VideoEditor = React.memo(({
   }
 
   return (
-    <div className="flex flex-col bg-[#050508] text-white select-none" style={{ height: '100%', maxHeight: '100dvh', position: 'relative' }}>
+    <div 
+      className="flex flex-col bg-[#050508] text-white select-none" 
+      style={{ height: '100%', maxHeight: '100dvh', position: 'relative' }}
+      data-duration={duration}
+    >
 
       {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept="video/*" className="hidden"
@@ -1122,9 +1126,20 @@ export const VideoEditor = React.memo(({
             <TrackRow 
               label="B" 
               color="text-blue-400"
-              onAdd={() => {
-                setPhrasePickerOpen(true);
-                setEditingPhraseId(null);
+              onTimelineClick={(time) => {
+                const id = `br_manual_${Date.now()}`;
+                const newClip: BRollClip = {
+                  id,
+                  phraseId: id,
+                  startTime: time,
+                  endTime: Math.min(time + 3, duration),
+                  label: 'Manual Scene',
+                  url: '',
+                  prompt: 'cinematic lifestyle shot',
+                  track: 1
+                };
+                setBrollClips(prev => [...prev, newClip]);
+                openBRollHunterForClip(id, '');
               }}
             >
               {brollClips.map(clip => (
@@ -1313,28 +1328,50 @@ export const VideoEditor = React.memo(({
 
 // ── Track Row ─────────────────────────────────────────────────────────────
 
-const TrackRow = React.memo(({ label, color, children, onClick, onAdd }: { 
+const TrackRow = React.memo(({ label, color, children, onClick, onAdd, onTimelineClick }: { 
   label: string; 
   color: string; 
   children?: React.ReactNode; 
   onClick?: () => void;
   onAdd?: () => void;
-}) => (
-  <div className="flex border-b border-white/[0.04] group/track" style={{ height: 48 }} onClick={onClick}>
-    <div className="w-14 flex-shrink-0 flex flex-col items-center justify-center border-r border-white/5 bg-black/40 relative">
-      <span className={`text-[11px] font-black uppercase ${color}`}>{label}</span>
-      {onAdd && (
-        <button 
-          onClick={(e) => { e.stopPropagation(); onAdd(); }}
-          className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors opacity-0 group-hover/track:opacity-100"
-        >
-          <Plus size={10} className="text-white" />
-        </button>
-      )}
+  onTimelineClick?: (time: number) => void;
+}) => {
+  const rowRef = useRef<HTMLDivElement>(null);
+  
+  const handleInternalClick = (e: React.MouseEvent) => {
+    if (!onTimelineClick || !rowRef.current) return;
+    const rect = rowRef.current.getBoundingClientRect();
+    const x = e.clientX - rect.left;
+    const duration = parseFloat(document.querySelector('[data-duration]')?.getAttribute('data-duration') || '0');
+    if (duration > 0) {
+      const time = (x / rect.width) * duration;
+      onTimelineClick(time);
+    }
+  };
+
+  return (
+    <div className="flex border-b border-white/[0.04] group/track" style={{ height: 48 }} onClick={onClick}>
+      <div className="w-14 flex-shrink-0 flex flex-col items-center justify-center border-r border-white/5 bg-black/40 relative">
+        <span className={`text-[11px] font-black uppercase ${color}`}>{label}</span>
+        {onAdd && (
+          <button 
+            onClick={(e) => { e.stopPropagation(); onAdd(); }}
+            className="absolute right-1 top-1/2 -translate-y-1/2 p-0.5 rounded-full bg-white/10 hover:bg-white/20 transition-colors opacity-0 group-hover/track:opacity-100"
+          >
+            <Plus size={10} className="text-white" />
+          </button>
+        )}
+      </div>
+      <div 
+        ref={rowRef}
+        onClick={handleInternalClick}
+        className="flex-1 relative cursor-crosshair"
+      >
+        {children}
+      </div>
     </div>
-    <div className="flex-1 relative">{children}</div>
-  </div>
-));
+  );
+});
 
 // ── B-Roll Timeline Clip ──────────────────────────────────────────────────
 
