@@ -162,6 +162,7 @@ export const VideoEditor = React.memo(({
   const [showSheet, setShowSheet] = useState(false);
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 }); // Global sub position on video canvas
   const [subtitleSize, setSubtitleSize] = useState(48); // Default font size
+  const [isAnalyzingBroll, setIsAnalyzingBroll] = useState(false);
 
   // Drag
   const dragRef = useRef<{
@@ -533,6 +534,7 @@ export const VideoEditor = React.memo(({
       // RELEASE UI: Let the user see the timeline immediately
       setStage('editing');
       setStageMessage('');
+      setIsAnalyzingBroll(true);
 
       try {
         console.log('[Editor] Starting semantic scene analysis...');
@@ -605,6 +607,7 @@ export const VideoEditor = React.memo(({
       } catch (vsErr) {
         console.error('[Editor] Visual Script generation failed:', vsErr);
       } finally {
+        setIsAnalyzingBroll(false);
         setStageMessage('');
       }
     }
@@ -1192,6 +1195,18 @@ export const VideoEditor = React.memo(({
                 openBRollHunterForClip(id, '');
               }}
             >
+              {isAnalyzingBroll && brollClips.length === 0 && (
+                <div className="absolute inset-y-1 left-0 right-0 rounded-lg bg-blue-500/5 border border-dashed border-blue-500/20 flex items-center justify-center overflow-hidden">
+                  <motion.div 
+                    animate={{ opacity: [0.3, 0.6, 0.3] }}
+                    transition={{ duration: 2, repeat: Infinity }}
+                    className="flex items-center gap-2"
+                  >
+                    <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
+                    <span className="text-[8px] font-black text-blue-400 uppercase tracking-[0.2em]">AI Анализ сюжета и подбор сцен...</span>
+                  </motion.div>
+                </div>
+              )}
               {brollClips.map(clip => (
                 <BRollTimelineClip key={clip.id} clip={clip} duration={duration}
                   isSelected={selectedClipId === clip.id}
