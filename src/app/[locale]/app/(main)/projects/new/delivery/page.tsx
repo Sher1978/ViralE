@@ -8,6 +8,7 @@ import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, Loader2, A
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { renderService, RenderJob } from '@/lib/services/renderService';
 import { socialService } from '@/lib/services/socialService';
+import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 
 export default function DeliveryPage() {
