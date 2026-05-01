@@ -112,41 +112,49 @@ export default function StudioPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [activeTab, showFaceless]);
 
-  // Initial Load
+  //  // ── AUTOSAVE & RECOVERY ──────────────────────────────────────────────
+  useEffect(() => {
+    if (manifest && projectId) {
+      localStorage.setItem(`viral_draft_${projectId}`, JSON.stringify({
+        manifest,
+        updatedAt: new Date().toISOString()
+      }));
+    }
+  }, [manifest, projectId]);
+
+  // Combined Initial Data Load
   useEffect(() => {
     async function loadData() {
+      if (!projectId) return;
+      setIsLoading(true);
       try {
-        const [proj, profile] = await Promise.all([
+        const [profileData, projectData, latestVersion] = await Promise.all([
+          profileService.getOrCreateProfile(),
           projectService.getProject(projectId),
-          profileService.getOrCreateProfile()
+          projectService.getLatestVersion(projectId)
         ]);
-        
-        setProject(proj);
-        setCurrentProfile(profile);
-        
-        const latestVersion = await projectService.getLatestVersion(projectId);
-        const modeParam = searchParams.get('mode');
 
-        if (latestVersion) {
+        setCurrentProfile(profileData);
+        setProject(projectData);
+
+        // Check for Local Draft first (Safety Buffer)
+        const cached = localStorage.getItem(`viral_draft_${projectId}`);
+        if (cached) {
+          const { manifest: cachedManifest, updatedAt } = JSON.parse(cached);
+          setManifest(cachedManifest);
+          if (latestVersion) {
+            setCurrentVersionId(latestVersion.id);
+          }
+          console.log('[Studio] Recovered manifest from local storage', updatedAt);
+        } else if (latestVersion) {
           setCurrentVersionId(latestVersion.id);
           if (latestVersion.script_data) {
-            const m = latestVersion.script_data as any;
-            setManifest(m);
-            
-            // Restore faceless mode if data exists OR if URL param forced it
-            if (m.faceless || modeParam === 'faceless') {
-              setShowFaceless(true);
-              setActiveTab('assembly');
-            }
+            setManifest(latestVersion.script_data as ProductionManifest);
+          } else {
+            setManifest(createInitialManifest());
           }
-        }
- else {
-          setManifest(createInitialManifest(projectId, uuidv4(), { 
-            hook: '' as any, 
-            context: '' as any, 
-            meat: '' as any, 
-            cta: '' as any 
-          }));
+        } else {
+          setManifest(createInitialManifest());
         }
 
       } catch (err) {
