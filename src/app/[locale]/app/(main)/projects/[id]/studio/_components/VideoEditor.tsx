@@ -867,6 +867,14 @@ export const VideoEditor = React.memo(({
             {aRollUrl && stage !== 'transcribing' && (() => {
               const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
               if (!activeSub) return null;
+
+              // ── Karaoke Logic ──
+              const words = activeSub.text.split(' ');
+              const subDuration = activeSub.endTime - activeSub.startTime;
+              const progress = (currentTime - activeSub.startTime) / (subDuration || 1);
+              const accentIndex = Math.min(Math.floor(progress * words.length), words.length - 1);
+              const accentWord = words[accentIndex];
+
               return (
                 <motion.div
                   drag
