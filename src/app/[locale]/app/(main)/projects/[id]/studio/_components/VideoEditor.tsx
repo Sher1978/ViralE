@@ -970,16 +970,16 @@ export const VideoEditor = React.memo(({
                         y: prev.y + info.offset.y
                       }));
                     }}
-                    initial={{ opacity: 0, scale: 0.5 }}
-                    animate={{ opacity: 1, scale: 1.1, x: subtitlePos.x, y: subtitlePos.y }}
-                    exit={{ opacity: 0, scale: 1.5 }}
+                    initial={{ opacity: 0, scale: 0.8 }}
+                    animate={{ opacity: 1, scale: 1.0, x: subtitlePos.x, y: subtitlePos.y }}
+                    exit={{ opacity: 0, scale: 1.2 }}
                     className="absolute pointer-events-auto cursor-grab active:cursor-grabbing select-none text-center px-4 w-full z-[100]"
                     style={{ bottom: '45%' }}
                   >
-                    <div className="flex justify-center">
+                    <div className="flex justify-center px-6">
                       <span 
                         style={{ fontSize: `${subtitleSize}px` }}
-                        className="font-[900] leading-none tracking-tighter text-yellow-400 whitespace-nowrap [text-shadow:0_4px_0_#000,0_8px_30px_rgba(234,179,8,0.6)] italic uppercase pointer-events-none"
+                        className="font-[900] leading-[1.1] tracking-tighter text-yellow-400 text-center whitespace-normal break-words max-w-[90%] [text-shadow:0_4px_0_#000,0_8px_30px_rgba(234,179,8,0.6)] italic uppercase pointer-events-none"
                       >
                         {activeSub.text}
                       </span>
