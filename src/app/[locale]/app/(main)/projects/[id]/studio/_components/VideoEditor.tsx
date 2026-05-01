@@ -912,8 +912,9 @@ export const VideoEditor = React.memo(({
             );
           })()}
         </AnimatePresence>
+        </div>
 
-        {/* Processing Overlay */}
+      {/* Processing Overlay */}
         <AnimatePresence>
           {stage === 'transcribing' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
