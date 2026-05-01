@@ -62,18 +62,21 @@ export default function DeliveryPage() {
     if (isLaunchingRender) return;
     setIsLaunchingRender(true);
     setRenderStatus('Инициализация движка...');
+    setRenderProgress(2);
 
     try {
       // 1. Load FFmpeg
       const { FFmpeg } = await import('@ffmpeg/ffmpeg');
-      const { toBlobURL } = await import('@ffmpeg/util');
+      const { toBlobURL, fetchFile } = await import('@ffmpeg/util');
       const ffmpeg = new FFmpeg();
       ffmpegRef.current = ffmpeg;
 
       ffmpeg.on('log', ({ message }) => console.log('[FFmpeg]', message));
-      ffmpeg.on('progress', ({ progress }) => setRenderProgress(Math.round(progress * 100)));
+      ffmpeg.on('progress', ({ progress }) => setRenderProgress(Math.min(95, Math.round(progress * 100))));
 
-      const baseURL = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      setRenderStatus('Загрузка движка сборки...');
+      // Use locally hosted FFmpeg files for reliability
+      const baseURL = '/ffmpeg';
       await ffmpeg.load({
         coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
         wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
@@ -81,62 +84,94 @@ export default function DeliveryPage() {
 
       // 2. Prepare Manifest Data
       const manifest = ver.script_data as any;
-      if (!manifest?.aRollUrl) throw new Error('A-Roll не найден в манифесте');
+      const aRollUrl = manifest?.aRollUrl ||
+        manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
+        manifest?.videoUrl ||
+        null;
 
-      setRenderStatus('Загрузка исходных файлов...');
+      if (!aRollUrl) throw new Error('A-Roll не найден в манифесте. Вернитесь в студию и убедитесь что видео загружено.');
+
+      setRenderStatus('Загрузка основного видео...');
+      setRenderProgress(10);
       
       // Download A-Roll
-      const aRollData = await fetch(manifest.aRollUrl).then(r => r.arrayBuffer());
-      await ffmpeg.writeFile('input_aroll.mp4', new Uint8Array(aRollData));
+      await ffmpeg.writeFile('input_aroll.mp4', await fetchFile(aRollUrl));
 
-      // Download B-Rolls
-      const brollFiles: string[] = [];
-      const brollClips = manifest.brollClips || [];
-      for (let i = 0; i < brollClips.length; i++) {
-        const clip = brollClips[i];
-        if (clip.url) {
-          setRenderStatus(`Загрузка B-Roll ${i+1}/${brollClips.length}...`);
-          const bData = await fetch(clip.url).then(r => r.arrayBuffer());
+      // Download B-Rolls (only if they have valid http/https URLs)
+      const brollClipsRaw = manifest?.brollClips || [];
+      const brollClipsWithUrls = brollClipsRaw.filter((c: any) => c.url && c.url.startsWith('http'));
+      const brollFiles: Array<{ name: string; clip: any }> = [];
+
+      for (let i = 0; i < brollClipsWithUrls.length; i++) {
+        const clip = brollClipsWithUrls[i];
+        try {
+          setRenderStatus(`Загрузка B-Roll ${i + 1}/${brollClipsWithUrls.length}...`);
+          setRenderProgress(10 + Math.round((i / brollClipsWithUrls.length) * 30));
           const name = `broll_${i}.mp4`;
-          await ffmpeg.writeFile(name, new Uint8Array(bData));
-          brollFiles.push(name);
+          await ffmpeg.writeFile(name, await fetchFile(clip.url));
+          brollFiles.push({ name, clip });
+        } catch (e) {
+          console.warn(`[FFmpeg] Failed to load B-Roll ${i}, skipping:`, e);
         }
       }
 
       setRenderStatus('Финальная сборка 1080p...');
-      
-      // 3. Construct FFmpeg Command
-      // Simple logic for now: A-Roll with B-Roll overlays
-      // [0:v][1:v] overlay=enable='between(t,5,10)' [v]
-      let filterComplex = '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[base];';
-      let lastLabel = 'base';
-      
-      for (let i = 0; i < brollFiles.length; i++) {
-        const clip = brollClips.filter((c:any)=>c.url)[i];
-        const nextLabel = `ovl${i}`;
-        filterComplex += `[${i+1}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[v${i}];`;
-        filterComplex += `[${lastLabel}][v${i}]overlay=enable='between(t,${clip.startTime},${clip.endTime})'[${nextLabel}];`;
-        lastLabel = nextLabel;
+      setRenderProgress(50);
+
+      // 3. Build FFmpeg command
+      let ffmpegArgs: string[];
+
+      if (brollFiles.length === 0) {
+        // Simple case: just re-encode A-roll to 1080p
+        ffmpegArgs = [
+          '-i', 'input_aroll.mp4',
+          '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-crf', '23',
+          '-c:a', 'aac',
+          '-movflags', '+faststart',
+          'output.mp4'
+        ];
+      } else {
+        // Complex case: A-roll + B-roll overlays
+        const inputs = ['-i', 'input_aroll.mp4', ...brollFiles.flatMap(b => ['-i', b.name])];
+        
+        let filterParts = '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[base]';
+        let prevLabel = 'base';
+        
+        for (let i = 0; i < brollFiles.length; i++) {
+          const { clip } = brollFiles[i];
+          const vLabel = `bv${i}`;
+          const outLabel = `out${i}`;
+          filterParts += `;[${i + 1}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[${vLabel}]`;
+          filterParts += `;[${prevLabel}][${vLabel}]overlay=enable='between(t,${clip.startTime},${clip.endTime})'[${outLabel}]`;
+          prevLabel = outLabel;
+        }
+
+        ffmpegArgs = [
+          ...inputs,
+          '-filter_complex', filterParts,
+          '-map', `[${prevLabel}]`,
+          '-map', '0:a',
+          '-c:v', 'libx264',
+          '-preset', 'ultrafast',
+          '-crf', '23',
+          '-c:a', 'aac',
+          '-movflags', '+faststart',
+          'output.mp4'
+        ];
       }
-      
-      // 4. Run Render
-      const inputs = ['-i', 'input_aroll.mp4', ...brollFiles.flatMap(f => ['-i', f])];
-      await ffmpeg.exec([
-        ...inputs,
-        '-filter_complex', filterComplex.slice(0, -1).replace(`[${lastLabel}]`, ''), // Remove trailing label for last output
-        '-map', `[${lastLabel}]`,
-        '-map', '0:a', // Keep original audio
-        '-c:v', 'libx264',
-        '-preset', 'ultrafast',
-        '-crf', '23',
-        '-c:a', 'copy',
-        'output.mp4'
-      ]);
+
+      await ffmpeg.exec(ffmpegArgs);
+      setRenderProgress(98);
 
       const data = await ffmpeg.readFile('output.mp4');
       const videoBlob = new Blob([data as any], { type: 'video/mp4' });
       const videoUrl = URL.createObjectURL(videoBlob);
       
+      setRenderProgress(100);
+      setRenderStatus('Готово!');
       setJob({
         id: 'local-render',
         status: 'completed',
@@ -146,7 +181,7 @@ export default function DeliveryPage() {
 
     } catch (err: any) {
       console.error('Client render failed:', err);
-      setError(err.message || 'Ошибка локального рендера');
+      setError(err.message || 'Ошибка рендера');
     } finally {
       setIsLaunchingRender(false);
     }
@@ -185,7 +220,15 @@ export default function DeliveryPage() {
     );
   }
 
-  const scriptData = version?.script_data as { hook: string; context: string; meat: string; cta: string } || null;
+  // Resolve script content from multiple possible manifest key locations
+  const manifest = version?.script_data as any;
+  const scriptData = {
+    hook: manifest?.hook || manifest?.script?.hook || manifest?.segments?.[0]?.scriptText?.split('\n')?.[0] || '',
+    context: manifest?.context || manifest?.script?.context || '',
+    meat: manifest?.meat || manifest?.script?.meat || manifest?.segments?.map((s: any) => s.scriptText).join('\n\n') || '',
+    cta: manifest?.cta || manifest?.script?.cta || '',
+  };
+
   const TEXT_OUTPUTS = [
     {
       platform: 'Telegram',
