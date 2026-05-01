@@ -134,7 +134,7 @@ export default function DeliveryPage() {
       ]);
 
       const data = await ffmpeg.readFile('output.mp4');
-      const videoBlob = new Blob([(data as Uint8Array).buffer], { type: 'video/mp4' });
+      const videoBlob = new Blob([data], { type: 'video/mp4' });
       const videoUrl = URL.createObjectURL(videoBlob);
       
       setJob({
