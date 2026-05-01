@@ -348,10 +348,11 @@ export default function StudioPage() {
 
       // 🔥 Merge editor state into manifest
       // Resolve A-Roll URL: from passed arg, from manifest segments, or from manifest root
+      const manifestAny = manifest as any;
       const resolvedARollUrl = 
-        manifest.aRollUrl ||
-        manifest.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
-        manifest.segments?.[0]?.assetUrl ||
+        manifestAny.aRollUrl ||
+        manifestAny.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
+        manifestAny.segments?.[0]?.assetUrl ||
         null;
 
       const updatedManifest = {
