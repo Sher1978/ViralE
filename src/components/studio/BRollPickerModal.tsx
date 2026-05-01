@@ -293,34 +293,36 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
           </div>
 
           {/* Video */}
-          <div className="relative w-full h-full">
-            {isVideoLoading && (
-              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-4 z-10">
-                <RefreshCcw size={36} className="text-purple-500 animate-spin" />
-                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Loading Scene...</p>
-              </div>
-            )}
-            <video
-              ref={videoRef}
-              key={previewVideo.videoUrl}
-              src={previewVideo.videoUrl}
-              autoPlay
-              muted
-              loop
-              playsInline
-              onLoadStart={() => setIsVideoLoading(true)}
-              onCanPlay={() => {
-                if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
-                setIsVideoLoading(false);
-              }}
-              onLoadedData={() => {
-                if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
-                setIsVideoLoading(false);
-              }}
-              onError={() => setIsVideoLoading(false)}
-              className={`w-full h-full object-cover transition-opacity duration-500 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
-            />
-          </div>
+            <div className="relative w-full h-full">
+              {isVideoLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-4 z-10">
+                  <RefreshCcw size={36} className="text-purple-500 animate-spin" />
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Loading Scene...</p>
+                </div>
+              )}
+              <video
+                ref={videoRef}
+                key={previewVideo.videoUrl}
+                src={previewVideo.videoUrl}
+                autoPlay
+                muted
+                loop
+                playsInline
+                crossOrigin="anonymous"
+                onLoadStart={() => setIsVideoLoading(true)}
+                onCanPlay={() => {
+                  if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
+                  setIsVideoLoading(false);
+                  videoRef.current?.play().catch(e => console.warn('Autoplay prevented', e));
+                }}
+                onLoadedData={() => {
+                  if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
+                  setIsVideoLoading(false);
+                }}
+                onError={() => setIsVideoLoading(false)}
+                className={`w-full h-full object-cover transition-opacity duration-500 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
+              />
+            </div>
 
           {/* Bottom bar */}
           <div className="absolute bottom-0 left-0 right-0 p-5 z-20 space-y-3">

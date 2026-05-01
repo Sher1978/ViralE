@@ -443,7 +443,22 @@ export const VideoEditor = React.memo(({
     const fetchAll = async () => {
       const results = await Promise.allSettled(
         pendingBrollPhrases.map(async (phrase) => {
-          const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(phrase.text)}`);
+          // 1. Optimize prompt first
+          let finalQuery = phrase.text;
+          try {
+            const optRes = await fetch('/api/ai/optimize-prompt', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ context: phrase.text })
+            });
+            const optData = await optRes.json();
+            if (optData.optimized) finalQuery = optData.optimized;
+          } catch (e) {
+            console.warn('[BG BRoll] Optimization failed, using raw text');
+          }
+
+          // 2. Search with optimized query
+          const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(finalQuery)}`);
           if (!res.ok) throw new Error('Search failed');
           const data = await res.json();
           return { phraseId: phrase.id, videos: data.videos || [] };
@@ -456,6 +471,8 @@ export const VideoEditor = React.memo(({
       results.forEach(r => {
         if (r.status === 'fulfilled' && r.value.videos.length > 0) {
           newCache[r.value.phraseId] = r.value.videos;
+          // Set track 0 for pre-fetched to avoid auto-showing them if not desired, 
+          // but we want them to appear in the timeline as filled
           urlMap[r.value.phraseId] = r.value.videos[0].videoUrl;
         }
       });
