@@ -6,8 +6,10 @@ export const maxDuration = 120; // Large iOS videos need more time
 
 const TRANSCRIPTION_PROMPT = `Transcribe the spoken audio in this video precisely.
 Return ONLY a raw JSON object in this exact format:
-{"transcript": [{"text": "WORD", "start": 0.5, "end": 0.8}]}
-CRITICAL: Every single word MUST be its own separate entry with precise start and end times. Do NOT group words into phrases.
+{"transcript": [{"text": "WORD", "start": 0.5, "end": 0.8, "accent": true}]}
+CRITICAL: 
+1. Every single word MUST be its own separate entry.
+2. Set "accent": true for words that carry semantic weight, emphasis, or emotional impact.
 Return nothing but the JSON object.`;
 
 // Detect the correct MIME type for Gemini

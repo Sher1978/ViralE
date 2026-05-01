@@ -21,6 +21,7 @@ interface TranscriptWord {
   text: string;
   start: number;
   end: number;
+  accent?: boolean;
 }
 
 interface BRollPhrase {
@@ -159,7 +160,8 @@ export const VideoEditor = React.memo(({
   // Inspector
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
-  const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 }); // Reset to 0 to avoid off-screen issues
+  const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 }); // Global sub position on video canvas
+  const [subtitleSize, setSubtitleSize] = useState(56); // Default font size
 
   // Drag
   const dragRef = useRef<{
@@ -189,6 +191,8 @@ export const VideoEditor = React.memo(({
           if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
           if (data.transcript) setTranscript(data.transcript);
           if (data.stage) setStage(data.stage);
+          if (data.subtitlePos) setSubtitlePos(data.subtitlePos);
+          if (data.subtitleSize) setSubtitleSize(data.subtitleSize);
           
           // RECOVER VIDEO FILE FROM IDB
           const cachedFile = await idb.get(`video_file_${projectId}`);
@@ -216,13 +220,7 @@ export const VideoEditor = React.memo(({
   useEffect(() => {
     if (!projectId || !persistenceLoadedRef.current) return;
     const key = `viral_editor_draft_${projectId}`;
-    const state = { 
-      aRollUrl: aRollUrl?.startsWith('blob:') ? null : aRollUrl, 
-      brollClips, 
-      subtitleClips, 
-      transcript, 
-      stage 
-    };
+    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize };
     localStorage.setItem(key, JSON.stringify(state));
   }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage]);
 
@@ -339,30 +337,51 @@ export const VideoEditor = React.memo(({
   // ── Core Pipeline: Transcription → Karaoke Subs → Auto B-Roll placement ──
   const buildKaraokeClips = (words: TranscriptWord[]): SubtitleClip[] => {
     const final: SubtitleClip[] = [];
-    words.forEach((w, wIdx) => {
+    let currentBatch: TranscriptWord[] = [];
+
+    const flushBatch = () => {
+      if (currentBatch.length === 0) return;
+      const text = currentBatch.map(w => w.text.trim().toUpperCase().replace(/[.,!?;:]/g, '')).join(' ');
+      final.push({
+        id: `sub-${final.length}-${Date.now()}`,
+        startTime: currentBatch[0].start,
+        endTime: currentBatch[currentBatch.length - 1].end,
+        text,
+        style: 'bold'
+      });
+      currentBatch = [];
+    };
+
+    words.forEach((w) => {
+      // Split phrase into words if needed (safety fallback)
       const parts = w.text.trim().split(/\s+/);
-      if (parts.length <= 1) {
-        final.push({
-          id: `sub-${wIdx}-${Date.now()}`,
-          startTime: w.start,
-          endTime: w.end,
-          text: w.text.toUpperCase().replace(/[.,!?;:]/g, ''),
-          style: 'bold'
-        });
-      } else {
-        // AI returned a phrase, split it manually
-        const dur = (w.end - w.start) / parts.length;
-        parts.forEach((p, pIdx) => {
-          final.push({
-            id: `sub-${wIdx}-${pIdx}-${Date.now()}`,
-            startTime: w.start + (pIdx * dur),
-            endTime: w.start + ((pIdx + 1) * dur),
-            text: p.toUpperCase().replace(/[.,!?;:]/g, ''),
-            style: 'bold'
-          });
-        });
-      }
+      
+      parts.forEach((p, pIdx) => {
+        const wordObj: TranscriptWord = {
+          text: p,
+          start: w.start + (pIdx * (w.end - w.start) / parts.length),
+          end: w.start + ((pIdx + 1) * (w.end - w.start) / parts.length),
+          accent: w.accent
+        };
+
+        // Rule 1: If word is accented, it must be ALONE. Flush current batch and then this word.
+        if (wordObj.accent) {
+          flushBatch();
+          currentBatch.push(wordObj);
+          flushBatch();
+          return;
+        }
+
+        // Rule 2: Max 3 words per batch.
+        if (currentBatch.length >= 3) {
+          flushBatch();
+        }
+
+        currentBatch.push(wordObj);
+      });
     });
+
+    flushBatch();
     return final;
   };
 
@@ -383,7 +402,8 @@ export const VideoEditor = React.memo(({
       words = manifest.transcript.map((t: any) => ({
         text: t.text,
         start: t.start,
-        end: t.end
+        end: t.end,
+        accent: t.accent || false
       }));
       transcriptionOk = true;
     } else if (aRollUrl || rawFile) {
@@ -885,16 +905,31 @@ export const VideoEditor = React.memo(({
                 return (
                   <motion.div
                     key={activeSub.id}
+                    drag
+                    dragMomentum={false}
+                    onDragEnd={(e, info) => {
+                      setSubtitlePos(prev => ({
+                        x: prev.x + info.offset.x,
+                        y: prev.y + info.offset.y
+                      }));
+                    }}
                     initial={{ opacity: 0, scale: 0.5 }}
                     animate={{ opacity: 1, scale: 1.1, x: subtitlePos.x, y: subtitlePos.y }}
                     exit={{ opacity: 0, scale: 1.5 }}
-                    className="absolute pointer-events-auto cursor-move select-none text-center px-4 w-full"
-                    style={{ bottom: '45%', zIndex: 100 }}
+                    className="absolute pointer-events-auto cursor-grab active:cursor-grabbing select-none text-center px-4 w-full z-[100]"
+                    style={{ bottom: '45%' }}
                   >
                     <div className="flex justify-center">
-                      <span className="text-[48px] md:text-[64px] font-[900] leading-none tracking-tighter text-yellow-400 whitespace-nowrap [text-shadow:0_4px_0_#000,0_8px_30px_rgba(234,179,8,0.6)] italic uppercase">
+                      <span 
+                        style={{ fontSize: `${subtitleSize}px` }}
+                        className="font-[900] leading-none tracking-tighter text-yellow-400 whitespace-nowrap [text-shadow:0_4px_0_#000,0_8px_30px_rgba(234,179,8,0.6)] italic uppercase pointer-events-none"
+                      >
                         {activeSub.text}
                       </span>
+                    </div>
+                    {/* Drag Handle Hint */}
+                    <div className="absolute -bottom-6 left-1/2 -translate-x-1/2 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <div className="px-2 py-1 bg-black/50 backdrop-blur-sm rounded text-[8px] text-white/40 font-black uppercase tracking-widest">Drag to Move</div>
                     </div>
                   </motion.div>
                 );
@@ -1116,6 +1151,19 @@ export const VideoEditor = React.memo(({
                         {s}
                       </button>
                     ))}
+                  </div>
+
+                  <div className="flex flex-col gap-3 pt-2">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Text Size</span>
+                      <span className="text-[10px] font-black text-amber-400 tabular-nums">{subtitleSize}px</span>
+                    </div>
+                    <input 
+                      type="range" min="24" max="120" step="2"
+                      value={subtitleSize}
+                      onChange={e => setSubtitleSize(parseInt(e.target.value))}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-amber-500"
+                    />
                   </div>
                   <button onClick={() => { setSubtitleClips(p => p.filter(c => c.id !== selSub.id)); setSelectedClipId(null); setShowSheet(false); }}
                     className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
