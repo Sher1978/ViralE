@@ -631,9 +631,7 @@ export const VideoEditor = React.memo(({
     setBrollModalOpen(true);
   };
 
-  // ── Manual B-Roll generation (kept for toolbar button) ──
   const generateBRoll = async () => {
-    // Just opens hunter for first un-filled phrase, or nothing if all set
     const firstEmpty = brollClips.find(c => !c.url);
     if (firstEmpty) {
       openBRollHunterForClip(firstEmpty.phraseId || firstEmpty.id, firstEmpty.prompt);
@@ -642,52 +640,36 @@ export const VideoEditor = React.memo(({
 
   const handleBRollSelect = (url: string) => {
     if (activeBrollPhraseId) {
-      const phrase = phrases.find(p => p.id === activeBrollPhraseId);
-      if (phrase) {
-        setBrollClips(prev => {
-          const existingIdx = prev.findIndex(c => c.id === `br-${activeBrollPhraseId}`);
-          if (existingIdx !== -1) {
-            // Update placeholder
-            const next = [...prev];
-            next[existingIdx] = { ...next[existingIdx], url, track: 0 };
-            return next;
-          } else {
-            // Fallback: Create new if not found
-            const newClip: BRollClip = {
-              id: `br_${Date.now()}`,
-              url,
-              label: phrase.text.slice(0, 20) + '...',
-              prompt: phrase.text,
-              startTime: phrase.start,
-              endTime: Math.min(phrase.end, phrase.start + 6),
-              track: 0,
-            };
-            return [...prev, newClip];
-          }
-        });
-        setGeneratingPhraseIds(prev => { const n = new Set(prev); n.delete(activeBrollPhraseId!); return n; });
-
-        // Check if more approved phrases need BRoll
-        const remaining = phrases.filter(p =>
-          p.approved &&
-          p.id !== activeBrollPhraseId &&
-          !brollClips.some(c => c.prompt === p.text)
-        );
-        if (remaining.length > 0) {
-          const next = remaining[0];
-          setActiveBrollPrompt(next.text);
-          setActiveBrollPhraseId(next.id);
-          setBrollModalOpen(true);
-          return;
+      setBrollClips(prev => {
+        // Find by phraseId OR by the temporary placeholder ID
+        const existingIdx = prev.findIndex(c => c.phraseId === activeBrollPhraseId || c.id === `br-${activeBrollPhraseId}`);
+        if (existingIdx !== -1) {
+          const next = [...prev];
+          next[existingIdx] = { ...next[existingIdx], url, track: 0 };
+          return next;
+        } else {
+          // Fallback if not found on timeline yet
+          const phrase = phrases.find(p => p.id === activeBrollPhraseId);
+          const newClip: BRollClip = {
+            id: `br_${Date.now()}`,
+            phraseId: activeBrollPhraseId,
+            url,
+            label: phrase?.text.slice(0, 20) || 'AI Scene',
+            prompt: phrase?.text || '',
+            startTime: phrase?.start || currentTime,
+            endTime: (phrase?.end || currentTime + 3),
+            track: 0,
+          };
+          return [...prev, newClip];
         }
-      }
+      });
     }
+    
+    // Always close and cleanup
     setBrollModalOpen(false);
     setActiveBrollPhraseId(null);
     setStage('editing');
-    setPhrases([]);
   };
-
   // ── Video Upload ────────────────────────────────────────────────────────
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
