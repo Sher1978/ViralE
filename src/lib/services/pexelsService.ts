@@ -18,7 +18,7 @@ export interface PexelsVideo {
 
 export const pexelsService = {
   async searchVideos(query: string, perPage: number = 8): Promise<PexelsVideo[]> {
-    const apiKey = process.env.NEXT_PUBLIC_PEXELS_API_KEY || process.env.PEXELS_API_KEY;
+    const apiKey = process.env.PEXELS_API_KEY || process.env.PEXELS_KEY;
     
     if (!apiKey) {
       console.warn('[Pexels] API Key missing');

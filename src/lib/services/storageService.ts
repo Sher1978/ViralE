@@ -16,7 +16,11 @@ export const storageService = {
         });
 
       if (error) {
-        console.error('[Storage] Upload error:', error);
+        console.error('[Storage] Upload error details:', {
+          message: error.message,
+          statusCode: (error as any).statusCode,
+          error: (error as any).error
+        });
         return null;
       }
 

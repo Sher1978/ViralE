@@ -1,5 +1,4 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { pexelsService } from '@/lib/services/pexelsService';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 
 export async function GET(req: NextRequest) {
@@ -8,13 +7,19 @@ export async function GET(req: NextRequest) {
 
   console.log('[B-Roll Search] Original query:', query);
 
-  const pexelsKey = process.env.PEXELS_API_KEY || process.env.PEXELS_KEY || process.env.NEXT_PUBLIC_PEXELS_API_KEY;
+  // Используем только серверные ключи
+  const pexelsKey = process.env.PEXELS_API_KEY || process.env.PEXELS_KEY;
   const giphyKey = process.env.GIPHY_API_KEY;
   const geminiKey = process.env.GEMINI_API_KEY || process.env.GOOGLE_GENERATIVE_AI_API_KEY;
   
+  if (!pexelsKey) {
+    console.error('[B-Roll Search] PEXELS_API_KEY is missing on server');
+    return NextResponse.json({ error: 'Pexels API key missing on server', videos: [] }, { status: 500 });
+  }
+
   let optimizedQuery = query;
 
-  // 🧠 Smart Translation & Keyword Extraction
+  // 🧠 Smart Translation & Keyword Extraction via Gemini
   if (geminiKey) {
     try {
       const genAI = new GoogleGenerativeAI(geminiKey);
@@ -40,19 +45,32 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. Fetch from Pexels
-    const pexelsVideos = pexelsKey ? await pexelsService.searchVideos(optimizedQuery, 8) : [];
-    
-    const pexelsResults = pexelsVideos.map(v => ({
-      id: `pexels-${v.id}`,
-      source: 'stock',
-      title: 'Pexels Clip',
-      previewUrl: v.image, 
-      videoUrl: v.video_files.find(f => f.quality === 'hd')?.link || v.video_files[0]?.link,
-      tags: ['stock', 'cinematic']
-    }));
+    // 1. Fetch from Pexels directly
+    const pexelsRes = await fetch(
+      `https://api.pexels.com/videos/search?query=${encodeURIComponent(optimizedQuery)}&per_page=8`,
+      { 
+        headers: { 
+          'Authorization': pexelsKey 
+        } 
+      }
+    );
 
-    // 2. Fetch from Giphy (Fallback/Addition)
+    let pexelsResults: any[] = [];
+    if (pexelsRes.ok) {
+      const pexelsData = await pexelsRes.json();
+      pexelsResults = (pexelsData.videos || []).map((v: any) => ({
+        id: `pexels-${v.id}`,
+        source: 'stock',
+        title: 'Pexels Clip',
+        previewUrl: v.image, 
+        videoUrl: v.video_files.find((f: any) => f.quality === 'hd')?.link || v.video_files[0]?.link,
+        tags: ['stock', 'cinematic']
+      })).filter((v: any) => v.videoUrl);
+    } else {
+      console.error('[B-Roll Search] Pexels API returned error:', pexelsRes.status);
+    }
+
+    // 2. Fetch from Giphy
     let giphyResults: any[] = [];
     if (giphyKey) {
       try {
@@ -63,9 +81,9 @@ export async function GET(req: NextRequest) {
           source: 'giphy',
           title: g.title || 'Giphy Clip',
           previewUrl: g.images.fixed_height_still.url,
-          videoUrl: g.images.looping?.mp4 || g.images.original.mp4, // HD-ish mp4
+          videoUrl: g.images.looping?.mp4 || g.images.original.mp4,
           tags: ['giphy', 'dynamic']
-        }));
+        })).filter((v: any) => v.videoUrl);
       } catch (e) {
         console.error('[B-Roll Search] Giphy failed:', e);
       }
@@ -77,6 +95,6 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ videos: allResults });
   } catch (error: any) {
     console.error('[B-Roll Search] Search failure:', error.message);
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: error.message, videos: [] }, { status: 500 });
   }
 }

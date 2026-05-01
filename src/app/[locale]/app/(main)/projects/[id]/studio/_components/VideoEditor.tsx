@@ -152,6 +152,7 @@ export const VideoEditor = React.memo(({
   const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({}); // Cache for pre-fetched B-rolls
   const [generatingPhraseIds, setGeneratingPhraseIds] = useState<Set<string>>(new Set());
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
+  const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
 
   // Inspector
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
@@ -403,19 +404,22 @@ export const VideoEditor = React.memo(({
           }
         }
 
-        // Cloud fallback if needed
-        if (sourceBlob && (!audioToTranscribe || sourceBlob.size > 4 * 1024 * 1024)) {
-          setStageMessage('Загрузка тяжелого видео (Mobile Optimization)...');
+        // Cloud fallback if needed (only if audio extraction failed)
+        if (sourceBlob && !audioToTranscribe) {
+          setStageMessage('Загрузка видео в облако (резервный путь)...');
           fileUrl = await storageService.uploadFile(sourceBlob, `video_${projectId || Date.now()}.mp4`);
-          if (!fileUrl) throw new Error('Не удалось подготовить видео для анализа.');
+          if (!fileUrl) {
+            console.warn('[Editor] Cloud upload failed, will try sending raw file');
+          }
         }
 
         setStageMessage('AI расшифровка голоса...');
         const formData = new FormData();
-        if (fileUrl) {
-          formData.append('fileUrl', fileUrl);
-        } else if (audioToTranscribe) {
+        
+        if (audioToTranscribe) {
           formData.append('file', new File([audioToTranscribe], 'audio.wav', { type: 'audio/wav' }));
+        } else if (fileUrl) {
+          formData.append('fileUrl', fileUrl);
         } else if (rawFile) {
           formData.append('file', rawFile);
         } else if (aRollUrl) {
@@ -485,31 +489,48 @@ export const VideoEditor = React.memo(({
     }));
     setBrollClips(brollPlaceholders);
 
-    // 4. Background B-Roll pre-fetch
-    picked.forEach(async (phrase) => {
-      try {
-        const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(phrase.text)}`);
-        const data = await res.json();
-        if (data.videos && data.videos.length > 0) {
-          const bestUrl = data.videos[0].videoUrl;
-          setPreFetchedBrolls(prev => ({ ...prev, [phrase.id]: data.videos }));
-          // Auto-attach the first result to the timeline placeholder
-          if (bestUrl) {
-            setBrollClips(prev => prev.map(c =>
-              c.phraseId === phrase.id ? { ...c, url: bestUrl } : c
-            ));
-          }
-        }
-      } catch (err) {
-        console.error('BG BRoll fetch failed:', err);
-      }
-    });
+    // 4. Trigger Background B-Roll pre-fetch via state
+    setPendingBrollPhrases(picked);
 
     setStageMessage('');
-    setStage('editing'); // Go straight to editing — no intermediate "review phrases" screen
+    setStage('editing'); 
   };
 
-  const runTranscription = runTranscriptionAndPhrases;
+  // Background B-Roll pre-fetch effect
+  useEffect(() => {
+    if (pendingBrollPhrases.length === 0) return;
+
+    const fetchAll = async () => {
+      const results = await Promise.allSettled(
+        pendingBrollPhrases.map(async (phrase) => {
+          const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(phrase.text)}`);
+          if (!res.ok) throw new Error('Search failed');
+          const data = await res.json();
+          return { phraseId: phrase.id, videos: data.videos || [] };
+        })
+      );
+
+      const newCache: Record<string, any[]> = {};
+      const urlMap: Record<string, string> = {};
+
+      results.forEach(r => {
+        if (r.status === 'fulfilled' && r.value.videos.length > 0) {
+          newCache[r.value.phraseId] = r.value.videos;
+          urlMap[r.value.phraseId] = r.value.videos[0].videoUrl;
+        }
+      });
+
+      setPreFetchedBrolls(prev => ({ ...prev, ...newCache }));
+      setBrollClips(prev => prev.map(c =>
+        c.phraseId && urlMap[c.phraseId] && !c.url
+          ? { ...c, url: urlMap[c.phraseId] }
+          : c
+      ));
+    };
+
+    fetchAll().catch(err => console.error('[BG BRoll] Failed:', err));
+    setPendingBrollPhrases([]); 
+  }, [pendingBrollPhrases]);
 
   // ── Manual B-Roll Hunter (opens modal for a specific phrase) ──
   const openBRollHunterForClip = (phraseId: string, prompt: string) => {
@@ -590,8 +611,8 @@ export const VideoEditor = React.memo(({
     setStage('transcribing');
     setStageMessage('Detecting audio...');
     await delay(600);
-    // Always run transcription (if manifest exists it uses it, else uses fallback AI mock)
-    await runTranscription();
+    transcriptionStartedRef.current = false;
+    await runTranscriptionAndPhrases();
   };
 
   const handleSwapPhrase = (word: TranscriptWord) => {
@@ -1038,7 +1059,7 @@ export const VideoEditor = React.memo(({
           onClick={() => {
             setStage('transcribing');
             transcriptionStartedRef.current = false;
-            runTranscription();
+            runTranscriptionAndPhrases();
           }}
           className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 text-[9px] font-black uppercase tracking-widest hover:text-purple-400 hover:border-purple-500/30 transition-all"
         >
@@ -1048,7 +1069,7 @@ export const VideoEditor = React.memo(({
 
         {/* Stage Actions */}
         {(stage === 'editing' || stage === 'empty') && subtitleClips.length === 0 && aRollUrl && (
-          <button onClick={runTranscription}
+          <button onClick={runTranscriptionAndPhrases}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[11px] font-black uppercase active:scale-95 transition-all">
             <Mic size={14} /> Transcribe
           </button>

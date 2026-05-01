@@ -27,7 +27,6 @@ import { ProductionBranch } from './_components/ProductionBranch';
 
 // Global Shared Components
 import StudioTimeline from '@/components/studio/StudioTimeline';
-import BRollModal from '@/components/studio/BRollPickerModal';
 import KnowledgeLab from '@/components/studio/KnowledgeLab';
 import { StrategistChat } from '@/components/studio/StrategistChat';
 import FacelessStudio from '@/components/studio/FacelessStudio';
@@ -63,7 +62,6 @@ export default function StudioPage() {
   const [showRecordingReview, setShowRecordingReview] = useState(false);
   const [scriptOpacity, setScriptOpacity] = useState(0.85);
   const [scriptColor, setScriptColor] = useState('#ffffff');
-  const [isBRollModalOpen, setIsBRollModalOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showFaceless, setShowFaceless] = useState(false);
@@ -335,7 +333,14 @@ export default function StudioPage() {
   const handleFinalExport = async (broll?: any[], subs?: any[]) => {
     setIsSaving(true);
     try {
-      if (!manifest || !currentVersionId) return;
+      if (!manifest) {
+        alert('Ошибка: манифест проекта не загружен. Попробуйте обновить страницу.');
+        return;
+      }
+      if (!currentVersionId) {
+        alert('Ошибка: версия проекта не найдена. Попробуйте сохранить изменения и повторить.');
+        return;
+      }
 
       // 🔥 Merge editor state into manifest
       const updatedManifest = {
@@ -358,6 +363,12 @@ export default function StudioPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ projectId, versionId: currentVersionId })
       });
+      
+      if (!response.ok) {
+        const errData = await response.json().catch(() => ({}));
+        throw new Error(errData.error || `Render failed: ${response.status}`);
+      }
+
       const data = await response.json();
       
       if (data.jobId) {
@@ -367,8 +378,9 @@ export default function StudioPage() {
       } else {
         router.push(`/app/projects/new/delivery?projectId=${projectId}`);
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Export failed:', err);
+      alert(`Экспорт не удался: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -550,11 +562,7 @@ export default function StudioPage() {
         </div>
       </main>
 
-      <BRollModal 
-        isOpen={isBRollModalOpen} 
-        onClose={() => setIsBRollModalOpen(false)} 
-        onSelect={(url) => { if (selectedSegmentId) updateSegmentField(selectedSegmentId, 'overlayBroll', url); setIsBRollModalOpen(false); }} 
-      />
+
 
       <PremiumLimitModal
         isOpen={showLimitModal}
