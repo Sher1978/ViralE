@@ -26,12 +26,19 @@ export async function GET(req: NextRequest) {
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
       const prompt = `
-        You are a cinematic video editor. Translate the following phrase to English 
-        and extract 2-3 visual, concrete keywords for stock video search.
-        Focus on objects, movements, and lighting.
+        You are a cinematic director. Analyze the emotional core and visual metaphor of this phrase.
+        First, identify the primary emotion. 
+        Then, translate it into 2-3 high-impact visual keywords for stock video search (Pexels/Pixabay).
+        Focus on mood, lighting, and cinematic metaphors rather than literal translation.
+        
         Input: "${query}"
+        
         Return ONLY the keywords separated by spaces.
-        Example: "грустный человек в офисе" -> "man sad office window"
+        Examples:
+        "я в тупике" (Stuck/Despair) -> "labyrinth dark fog silhouette trapped"
+        "взрывной рост" (Success/Energy) -> "rocket launch light speed fast motion burst"
+        "спокойствие" (Peace) -> "calm water soft sunrise minimal nature"
+        "одиночество" (Loneliness) -> "empty chair rainy window solitary walk"
       `;
 
       const result = await model.generateContent(prompt);
