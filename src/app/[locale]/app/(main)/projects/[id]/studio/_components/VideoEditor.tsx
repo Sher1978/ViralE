@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { ProductionManifest } from '@/lib/types/studio';
 import BRollModal from '@/components/studio/BRollPickerModal';
+import { storageService } from '@/lib/services/storageService';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -363,7 +364,10 @@ export const VideoEditor = React.memo(({
       return new Blob([buffer], { type: 'audio/wav' });
     } catch (e: any) {
       console.error('[WebAudio] Extraction failed:', e);
-      setTranscriptionError(`Ошибка сжатия аудио: ${e.message}. Попробуем отправить оригинал...`);
+      // Re-throw if it's a decoding failure (likely iPhone format issue)
+      if (e.name === 'EncodingError' || e.message?.includes('decode')) {
+        throw e;
+      }
       return blob; 
     }
   };
@@ -389,21 +393,29 @@ export const VideoEditor = React.memo(({
     } else if (aRollUrl || rawFile) {
       setStageMessage('Извлечение аудио...');
       try {
-        const formData = new FormData();
+        const sourceBlob = rawFile || (aRollUrl?.startsWith('blob:') ? await fetch(aRollUrl).then(r => r.blob()) : null);
         let audioToTranscribe: Blob | null = null;
-        
-        // ── Step: Extract Audio to avoid 4.5MB payload limit ──
-        try {
-          const sourceBlob = rawFile || (aRollUrl?.startsWith('blob:') ? await fetch(aRollUrl).then(r => r.blob()) : null);
-          if (sourceBlob) {
+        let fileUrl: string | null = null;
+
+        if (sourceBlob) {
+          try {
             audioToTranscribe = await extractAudioOnly(sourceBlob);
+          } catch (decodeError: any) {
+            console.warn('[Editor] Audio extraction failed (Safari/iPhone?), using Cloud Fallback:', decodeError.message);
+            setStageMessage('Оптимизация для iPhone: загрузка в облако...');
           }
-        } catch (e) {
-          console.warn('Advanced audio extraction failed, falling back to raw file:', e);
         }
 
-        setStageMessage('AI расшифровка голоса...');
-        if (audioToTranscribe) {
+        // If extraction failed or file is too large for direct payload (>4MB to be safe)
+        if (sourceBlob && (!audioToTranscribe || sourceBlob.size > 4 * 1024 * 1024)) {
+          setStageMessage('Загрузка тяжелого видео (Mobile Optimization)...');
+          fileUrl = await storageService.uploadFile(sourceBlob, `video_${projectId || Date.now()}.mp4`);
+          if (!fileUrl) throw new Error('Не удалось подготовить видео для анализа.');
+        }
+
+        if (fileUrl) {
+          formData.append('fileUrl', fileUrl);
+        } else if (audioToTranscribe) {
           formData.append('file', new File([audioToTranscribe], 'audio.wav', { type: 'audio/wav' }));
         } else if (rawFile) {
           formData.append('file', rawFile);
@@ -412,6 +424,12 @@ export const VideoEditor = React.memo(({
           const blob = await res.blob();
           formData.append('file', new File([blob], 'video.mp4', { type: 'video/mp4' }));
         }
+      } catch (e: any) {
+        console.error('Audio preparation failed:', e);
+        throw e;
+      }
+
+      setStageMessage('AI расшифровка голоса...');
 
         // ── Fetch with Timeout ──
         const controller = new AbortController();

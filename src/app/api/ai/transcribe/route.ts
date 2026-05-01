@@ -9,15 +9,24 @@ export async function POST(req: NextRequest) {
     const openaiKey = process.env.OPENAI_API_KEY;
 
     if (!apiKey) {
-      console.error('[Transcribe] Gemini API key is missing (checked GEMINI_API_KEY and GOOGLE_GENERATIVE_AI_API_KEY)');
-      return NextResponse.json({ error: 'Gemini API key is missing on server. Please set GEMINI_API_KEY or GOOGLE_GENERATIVE_AI_API_KEY in Vercel settings.' }, { status: 500 });
+      console.error('[Transcribe] Gemini API key is missing');
+      return NextResponse.json({ error: 'Gemini API key is missing on server' }, { status: 500 });
     }
 
     const formData = await req.formData();
-    const file = formData.get('file') as Blob;
+    const fileUrl = formData.get('fileUrl') as string;
+    let file = formData.get('file') as Blob;
+
+    // ── FALLBACK: Download from URL if provided ──
+    if (fileUrl && !file) {
+      console.log('[Transcribe] Downloading file from URL:', fileUrl);
+      const downloadRes = await fetch(fileUrl);
+      if (!downloadRes.ok) throw new Error('Failed to download file from cloud storage');
+      file = await downloadRes.blob();
+    }
 
     if (!file) {
-      return NextResponse.json({ error: 'No file uploaded' }, { status: 400 });
+      return NextResponse.json({ error: 'No file or URL provided' }, { status: 400 });
     }
 
     console.log('[Transcribe] Starting... File size:', (file.size / 1024 / 1024).toFixed(2), 'MB');
@@ -28,7 +37,6 @@ export async function POST(req: NextRequest) {
     // ── ATTEMPT 1: GEMINI 2.0 FLASH ──────────────────────────────────────────
     try {
       const genAI = new GoogleGenerativeAI(apiKey);
-      // Try 2.0 Flash first (Experimental but fast)
       const model = genAI.getGenerativeModel({ 
         model: 'gemini-2.0-flash-exp',
         generationConfig: { responseMimeType: "application/json" }
@@ -48,7 +56,7 @@ export async function POST(req: NextRequest) {
         { text: prompt },
         {
           inlineData: {
-            mimeType: 'audio/wav',
+            mimeType: file.type.startsWith('audio') ? 'audio/wav' : (file.type || 'video/mp4'),
             data: base64Audio,
           },
         },
@@ -76,7 +84,7 @@ export async function POST(req: NextRequest) {
         
         const result = await model.generateContent([
           prompt,
-          { inlineData: { mimeType: 'audio/wav', data: base64Audio } }
+          { inlineData: { mimeType: file.type.startsWith('audio') ? 'audio/wav' : (file.type || 'video/mp4'), data: base64Audio } }
         ]);
 
         const responseText = result.response.text();
@@ -96,7 +104,7 @@ export async function POST(req: NextRequest) {
 
         console.log('[Transcribe] Falling back to OpenAI Whisper...');
         const whisperFormData = new FormData();
-        whisperFormData.append('file', file, 'audio.wav');
+        whisperFormData.append('file', file, file.type.startsWith('audio') ? 'audio.wav' : 'video.mp4');
         whisperFormData.append('model', 'whisper-1');
         whisperFormData.append('response_format', 'verbose_json');
 
