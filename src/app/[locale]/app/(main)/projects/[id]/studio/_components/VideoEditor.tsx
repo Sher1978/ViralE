@@ -409,30 +409,30 @@ export const VideoEditor = React.memo(({
     }
 
     // 3. Process results
-    setStageMessage('Генерация субтитров...');
-    await delay(300);
-    setTranscript(words);
-    setSubtitleClips(buildKaraokeClips(words));
+    if (words.length > 0) {
+      setStageMessage('Генерация субтитров...');
+      await delay(300);
+      setTranscript(words);
+      setSubtitleClips(buildKaraokeClips(words));
 
-    setStageMessage('Расстановка Б-ролла...');
-    await delay(400);
-    const picked = pickAIPhrases(words);
-    setPhrases(picked);
+      setStageMessage('Расстановка Б-ролла...');
+      await delay(400);
+      const picked = pickAIPhrases(words);
+      setPhrases(picked);
 
-    const brollPlaceholders: BRollClip[] = picked.map(p => ({
-      id: `br-${p.id}`,
-      phraseId: p.id,
-      startTime: p.start,
-      endTime: Math.min(p.end, p.start + 5),
-      label: p.text.slice(0, 24) + (p.text.length > 24 ? '…' : ''),
-      url: '', 
-      prompt: p.text,
-      track: 1,
-    }));
-    setBrollClips(brollPlaceholders);
-
-    // 4. Trigger Background B-Roll pre-fetch via state
-    setPendingBrollPhrases(picked);
+      const brollPlaceholders: BRollClip[] = picked.map(p => ({
+        id: `br-${p.id}`,
+        phraseId: p.id,
+        startTime: p.start,
+        endTime: Math.min(p.end, p.start + 5),
+        label: p.text.slice(0, 24) + (p.text.length > 24 ? '…' : ''),
+        url: '', 
+        prompt: p.text,
+        track: 1,
+      }));
+      setBrollClips(brollPlaceholders);
+      setPendingBrollPhrases(picked);
+    }
 
     setStageMessage('');
     setStage('editing'); 
