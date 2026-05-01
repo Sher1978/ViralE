@@ -338,7 +338,7 @@ export default function StudioPage() {
     }
   };
 
-  const handleFinalExport = async (broll?: any[], subs?: any[]) => {
+  const handleFinalExport = async (broll?: any[], subs?: any[], explicitARollUrl?: string | null) => {
     setIsSaving(true);
     try {
       if (!manifest) {
@@ -347,9 +347,10 @@ export default function StudioPage() {
       }
 
       // 🔥 Merge editor state into manifest
-      // Resolve A-Roll URL: from passed arg, from manifest segments, or from manifest root
+      // Resolve A-Roll URL: use explicit one if provided, otherwise check manifest
       const manifestAny = manifest as any;
       const resolvedARollUrl = 
+        explicitARollUrl ||
         manifestAny.aRollUrl ||
         manifestAny.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
         manifestAny.segments?.[0]?.assetUrl ||
@@ -367,30 +368,33 @@ export default function StudioPage() {
         } : s)
       };
 
-      // ✅ Save manifest — ensure at least one version exists
-      let savedVersion = null;
-      if (currentVersionId) {
-        savedVersion = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
-      } else {
-        savedVersion = await projectService.updateLatestVersionManifest(projectId, updatedManifest);
-      }
-
-      // If no version existed yet, create the first one
-      if (!savedVersion) {
-        console.log('[Studio] No existing version found, creating initial version');
-        savedVersion = await projectService.createVersion({
-          projectId,
-          scriptData: updatedManifest,
-          versionLabel: 'Initial Export'
-        });
-        if (savedVersion) setCurrentVersionId(savedVersion.id);
-      }
-
-      // Clear local draft
-      localStorage.removeItem(`viral_editor_draft_${projectId}`);
-
-      // ✅ Go to delivery page — render job is started there separately
+      // ✅ INSTANT TRANSITION
+      // We push to the delivery page immediately. The save happens in the background
+      // and the delivery page will also try to fetch the latest version.
       router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}`);
+
+      // ✅ Background Save manifest — ensure at least one version exists
+      const saveTask = async () => {
+        let savedVersion = null;
+        if (currentVersionId) {
+          savedVersion = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
+        } else {
+          savedVersion = await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+        }
+
+        if (!savedVersion) {
+          console.log('[Studio] No existing version found, creating initial version');
+          savedVersion = await projectService.createVersion({
+            projectId,
+            scriptData: updatedManifest,
+            versionLabel: 'Initial Export'
+          });
+        }
+        // Clear local draft after successful background save
+        localStorage.removeItem(`viral_editor_draft_${projectId}`);
+      };
+
+      saveTask().catch(e => console.error('[Studio] Background save failed:', e));
 
     } catch (err: any) {
       console.error('Export failed:', err);

@@ -57,7 +57,7 @@ import { idb } from '@/lib/idb';
 interface VideoEditorProps {
   manifest: ProductionManifest | null;
   onBack: () => void;
-  onNext: (broll?: BRollClip[], subs?: SubtitleClip[]) => void;
+  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null) => void;
   updateSegmentField: (id: string, field: string, value: any) => void;
   projectId?: string;
   onFaceless?: () => void;
@@ -917,8 +917,9 @@ export const VideoEditor = React.memo(({
 
         <button 
           onClick={() => {
-            console.log('[Editor] Exporting project:', projectId, { brollCount: brollClips.length });
-            onNext?.(brollClips, subtitleClips);
+            if (!window.confirm('Приступаем к финальной сборке?')) return;
+            console.log('[Editor] Exporting project:', projectId, { brollCount: brollClips.length, hasARoll: !!aRollUrl });
+            onNext?.(brollClips, subtitleClips, aRollUrl);
           }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-400">
           Export <ArrowRight size={12} />

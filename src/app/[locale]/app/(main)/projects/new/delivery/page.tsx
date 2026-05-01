@@ -65,6 +65,11 @@ export default function DeliveryPage() {
     setRenderProgress(5);
 
     try {
+      // Set project status to rendering
+      if (projectId) {
+        await projectService.updateProjectStatus(projectId, 'rendering');
+      }
+
       console.log('[Delivery] Initializing FFmpeg core...');
       const { FFmpeg } = await import('@ffmpeg/ffmpeg');
       const { toBlobURL, fetchFile } = await import('@ffmpeg/util');
@@ -111,7 +116,7 @@ export default function DeliveryPage() {
         await ffmpeg.writeFile('input_aroll.mp4', await fetchFile(aRollUrl));
       } catch (fileErr) {
         console.error('[Delivery] A-Roll fetch failed:', fileErr);
-        throw new Error('Не удалось получить исходное видео. Если вы перезагружали страницу, попробуйте экспортировать проект заново из студии.');
+        throw new Error('Не удалось получить исходное видео. Попробуйте вернуться в студию и запустить экспорт заново.');
       }
 
       const brollClipsRaw = manifest?.brollClips || [];
@@ -183,6 +188,15 @@ export default function DeliveryPage() {
       
       setRenderProgress(100);
       setRenderStatus('Готово!');
+
+      // Save success status and URL
+      if (projectId) {
+        await projectService.updateProject(projectId, { 
+          status: 'completed',
+          final_video_url: videoUrl // Note: this is a local blob, in real prod we'd upload it here
+        });
+      }
+
       setJob({
         id: 'local-render',
         status: 'completed',
@@ -193,6 +207,9 @@ export default function DeliveryPage() {
     } catch (err: any) {
       console.error('[Delivery] Client render failed:', err);
       setError(err.message || 'Ошибка рендера');
+      if (projectId) {
+        await projectService.updateProjectStatus(projectId, 'error');
+      }
     } finally {
       setIsLaunchingRender(false);
     }
@@ -222,10 +239,10 @@ export default function DeliveryPage() {
           </p>
         </div>
         <button 
-          onClick={() => router.push(`/${locale}/app/dashboard`)}
-          className="px-8 py-3 rounded-full bg-white/5 border border-white/10 text-white text-xs font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+          onClick={() => router.push(`/${locale}/app/projects/${projectId}/studio`)}
+          className="px-8 py-3 rounded-full bg-purple-500 border border-purple-400 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-400 transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)]"
         >
-          Return to Dashboard
+          Back to Studio
         </button>
       </div>
     );
