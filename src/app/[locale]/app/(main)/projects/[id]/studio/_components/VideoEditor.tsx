@@ -158,7 +158,7 @@ export const VideoEditor = React.memo(({
   // Inspector
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);
-  const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 120 }); // Global sub position on video canvas
+  const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 }); // Reset to 0 to avoid off-screen issues
 
   // Drag
   const dragRef = useRef<{
@@ -310,16 +310,19 @@ export const VideoEditor = React.memo(({
     return chunks;
   };
 
-  const runTranscriptionAndPhrases = async () => {
+  const runTranscriptionAndPhrases = async (forceFresh = false) => {
+    console.log('[Editor] Starting transcription flow, forceFresh:', forceFresh);
     setStageMessage('Анализ аудио...');
     setTranscriptionError(null);
+    setSubtitleClips([]); // CLEAR OLD SUBS
+    setTranscript([]);     // CLEAR OLD WORDS
     await delay(400);
 
     let words: TranscriptWord[] = [];
     let transcriptionOk = false;
 
-    // 1. Check manifest or prepare audio
-    if (manifest?.transcript && Array.isArray(manifest.transcript)) {
+    // 1. Check manifest (ONLY if not forceFresh)
+    if (!forceFresh && manifest?.transcript && Array.isArray(manifest.transcript) && manifest.transcript.length > 0) {
       console.log('[Editor] Using manifest transcript');
       words = manifest.transcript.map((t: any) => ({
         text: t.text,
@@ -928,7 +931,7 @@ export const VideoEditor = React.memo(({
           onClick={() => {
             setStage('transcribing');
             transcriptionStartedRef.current = false;
-            runTranscriptionAndPhrases();
+            runTranscriptionAndPhrases(true); // FORCE FRESH
           }}
           className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 text-[9px] font-black uppercase tracking-widest hover:text-purple-400 hover:border-purple-500/30 transition-all"
         >
@@ -938,7 +941,7 @@ export const VideoEditor = React.memo(({
 
         {/* Stage Actions */}
         {(stage === 'editing' || stage === 'empty') && subtitleClips.length === 0 && aRollUrl && (
-          <button onClick={runTranscriptionAndPhrases}
+          <button onClick={() => runTranscriptionAndPhrases(true)}
             className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[11px] font-black uppercase active:scale-95 transition-all">
             <Mic size={14} /> Transcribe
           </button>
