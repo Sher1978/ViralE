@@ -489,11 +489,15 @@ export const VideoEditor = React.memo(({
       setStageMessage('Генерация субтитров...');
       await delay(300);
       setTranscript(words);
-      setSubtitleClips(buildKaraokeClips(words));
+      const subClips = buildKaraokeClips(words);
+      setSubtitleClips(subClips);
 
-      // ── STEP 2: Semantic B-Roll Analysis (Visual_Script_Generator v2.0)
+      // RELEASE UI: Let the user see the timeline immediately
+      setStage('editing');
+      setStageMessage('');
+
       try {
-        setStageMessage('Семантический анализ сцен...');
+        console.log('[Editor] Starting semantic scene analysis...');
         const fullText = words.map(w => w.text).join(' ');
         const vsRes = await fetch('/api/ai/visual-script', {
           method: 'POST',
@@ -508,34 +512,36 @@ export const VideoEditor = React.memo(({
           const newPhrases: BRollPhrase[] = [];
           const newBrollClips: BRollClip[] = [];
 
-          // Map semantic segments back to timestamps
           let wordIdx = 0;
           segments.forEach((seg: any, sIdx: number) => {
             const segText = (seg.text || '').toLowerCase();
             const segWords = segText.split(/\s+/).filter(Boolean);
             if (segWords.length === 0) return;
 
-            // Find matching words in transcript
-            let firstWord = words[wordIdx];
+            // Find best word match for the segment start/end
+            const firstWord = words[wordIdx];
             let lastWord = words[wordIdx];
             
-            // Fuzzy search for the segment end
-            let found = false;
-            for (let i = wordIdx; i < Math.min(wordIdx + 30, words.length); i++) {
-              if (words[i].text.toLowerCase().includes(segWords[segWords.length - 1])) {
+            // Look ahead for the end word of this segment
+            const targetEndWord = segWords[segWords.length - 1];
+            for (let i = wordIdx; i < Math.min(wordIdx + 20, words.length); i++) {
+              if (words[i].text.toLowerCase().includes(targetEndWord)) {
                 lastWord = words[i];
                 wordIdx = i + 1;
-                found = true;
                 break;
               }
             }
-            if (!found) wordIdx = Math.min(wordIdx + segWords.length, words.length - 1);
+            // If we didn't find the end word, just use a reasonable chunk
+            if (lastWord === firstWord && words.length > wordIdx + 5) {
+               lastWord = words[wordIdx + 4];
+               wordIdx += 5;
+            }
 
             const phrase: BRollPhrase = {
               id: `phrase-${sIdx}-${Date.now()}`,
               text: seg.text,
               start: firstWord?.start || 0,
-              end: lastWord?.end || (firstWord?.start || 0) + 3,
+              end: lastWord?.end || (firstWord?.start || 0) + 2.5,
               approved: true,
               brollUrl: ''
             };
@@ -546,9 +552,10 @@ export const VideoEditor = React.memo(({
               phraseId: phrase.id,
               startTime: phrase.start,
               endTime: phrase.end,
-              label: seg.visual_metaphor || 'AI Scene',
+              label: seg.visual_metaphor?.slice(0, 30) + '...' || 'AI Scene',
               url: '',
-              prompt: seg.ai_prompt || seg.text,
+              // CRITICAL: Use ai_prompt for the hunter, not the full metaphor
+              prompt: seg.ai_prompt || seg.visual_metaphor || seg.text,
               track: 1
             });
           });
@@ -559,16 +566,13 @@ export const VideoEditor = React.memo(({
         }
       } catch (vsErr) {
         console.error('[Editor] Visual Script generation failed:', vsErr);
-        // Fallback to simple logic if AI fails
-        setStageMessage('Ошибка AI-анализа, использую базовую расстановку...');
-        const picked = pickAIPhrases(words);
-        setPhrases(picked);
-        // ... (rest of old fallback)
+      } finally {
+        setStageMessage('');
       }
     }
-
+    
+    setStage('editing');
     setStageMessage('');
-    setStage('editing'); 
   };
 
   // Background B-Roll pre-fetch effect
@@ -578,21 +582,20 @@ export const VideoEditor = React.memo(({
     const fetchAll = async () => {
       const results = await Promise.allSettled(
         pendingBrollPhrases.map(async (phrase) => {
-          // 1. Optimize prompt first
-          let finalQuery = phrase.text;
+          // Find the clip to get its specific prompt
+          const clip = brollClips.find(c => c.phraseId === phrase.id);
+          let finalQuery = clip?.prompt || phrase.text;
+          
           try {
             const optRes = await fetch('/api/ai/optimize-prompt', {
               method: 'POST',
               headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({ context: phrase.text })
+              body: JSON.stringify({ context: finalQuery })
             });
             const optData = await optRes.json();
             if (optData.optimized) finalQuery = optData.optimized;
-          } catch (e) {
-            console.warn('[BG BRoll] Optimization failed, using raw text');
-          }
+          } catch (e) {}
 
-          // 2. Search with optimized query
           const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(finalQuery)}`);
           if (!res.ok) throw new Error('Search failed');
           const data = await res.json();
