@@ -5,6 +5,7 @@ export const runtime = 'nodejs';
 export const maxDuration = 60;
 
 const RUNWARE_API_KEY = process.env.RUNWARE_API_KEY;
+const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 
 export async function POST(req: Request) {
   try {
@@ -14,73 +15,74 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
-    if (!RUNWARE_API_KEY) {
-      return NextResponse.json({ error: 'Runware API key not configured' }, { status: 500 });
-    }
+    const fullPrompt = style_prefix ? `${style_prefix}, ${prompt}` : prompt;
 
-    const fullPrompt = style_prefix
-      ? `${style_prefix}, ${prompt}`
-      : prompt;
+    // --- OPTION 1: RUNWARE (if key exists) ---
+    if (RUNWARE_API_KEY) {
+      try {
+        console.log('[Image Gen] Trying Runware...');
+        const payload = [
+          { taskType: 'authentication', apiKey: RUNWARE_API_KEY },
+          {
+            taskType: 'imageInference',
+            taskUUID: uuidv4(),
+            positivePrompt: fullPrompt,
+            width: 768,
+            height: 1344,
+            model: 'runware:100@1', 
+            numberResults: 1,
+            outputFormat: 'webp'
+          }
+        ];
 
-    console.log('[Runware Image Gen] Generating with prompt:', fullPrompt);
+        const response = await fetch('https://api.runware.ai/v1', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(payload)
+        });
 
-    // Calculate aspect ratio dimensions for 9:16
-    // 768 x 1344 is an excellent native portrait resolution for Flux.1 Schnell
-    const width = 768;
-    const height = 1344;
-
-    const payload = [
-      {
-        taskType: 'authentication',
-        apiKey: RUNWARE_API_KEY
-      },
-      {
-        taskType: 'imageInference',
-        taskUUID: uuidv4(),
-        positivePrompt: fullPrompt,
-        width: width,
-        height: height,
-        model: 'runware:100@1', // Flux.1 Schnell
-        numberResults: 1,
-        outputFormat: 'webp'
+        if (response.ok) {
+          const data = await response.json();
+          const inferenceResult = data.data?.find((d: any) => d.taskType === 'imageInference');
+          if (inferenceResult && inferenceResult.imageURL) {
+            return NextResponse.json({ url: inferenceResult.imageURL, id: inferenceResult.taskUUID });
+          }
+        }
+      } catch (e) {
+        console.warn('[Image Gen] Runware failed:', e);
       }
-    ];
-
-    const response = await fetch('https://api.runware.ai/v1', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify(payload)
-    });
-
-    if (!response.ok) {
-      const errorText = await response.text();
-      console.error('[Runware Image Gen] HTTP Error:', errorText);
-      return NextResponse.json({ error: 'Image generation failed', detail: errorText }, { status: 500 });
     }
 
-    const data = await response.json();
-    
-    if (data.errors) {
-      console.error('[Runware Image Gen] API Errors:', data.errors);
-      return NextResponse.json({ error: 'Generation failed in API', detail: data.errors }, { status: 500 });
+    // --- OPTION 2: OPENAI DALL-E 3 (Fallback) ---
+    if (OPENAI_API_KEY) {
+      try {
+        console.log('[Image Gen] Falling back to DALL-E 3...');
+        const response = await fetch('https://api.openai.com/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${OPENAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "dall-e-3",
+            prompt: `Cinematic 9:16 portrait: ${fullPrompt}`,
+            n: 1,
+            size: "1024x1792",
+            quality: "hd"
+          })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.data?.[0]?.url) {
+          return NextResponse.json({ url: data.data[0].url });
+        }
+      } catch (e) {
+        console.error('[Image Gen] OpenAI failed:', e);
+      }
     }
 
-    const inferenceResult = data.data?.find((d: any) => d.taskType === 'imageInference');
-    
-    if (!inferenceResult || !inferenceResult.imageURL) {
-      console.error('[Runware Image Gen] No image URL in result:', data);
-      return NextResponse.json({ error: 'No image returned from Runware' }, { status: 500 });
-    }
-
-    return NextResponse.json({ 
-      url: inferenceResult.imageURL, 
-      id: inferenceResult.taskUUID 
-    });
-
+    return NextResponse.json({ error: 'No providers available' }, { status: 500 });
   } catch (err: any) {
-    console.error('[Runware Image Gen] Catch Error:', err);
     return NextResponse.json({ error: err.message || 'Internal error' }, { status: 500 });
   }
 }

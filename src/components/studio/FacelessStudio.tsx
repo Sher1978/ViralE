@@ -401,7 +401,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       }
       setGeneratingImages(false);
     } catch (err: any) {
-      setVoiceError(err.message || 'Ошибка автогенерации.');
+      setImageGenError(err.message || 'Ошибка автогенерации изображений.');
     } finally {
       setGeneratingVoice(false);
     }
