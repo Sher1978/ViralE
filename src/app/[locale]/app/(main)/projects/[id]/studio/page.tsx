@@ -446,8 +446,10 @@ export default function StudioPage() {
           {activeTab === 'branch' && (
             <ProductionBranch
               onSelect={(type) => {
-                if (type === 'record') setActiveTab('teleprompter');
-                else if (type === 'faceless') {
+                if (type === 'record') {
+                  setShowFaceless(false);
+                  setActiveTab('teleprompter');
+                } else if (type === 'faceless') {
                   setShowFaceless(true);
                   setActiveTab('assembly');
                 }
@@ -458,68 +460,72 @@ export default function StudioPage() {
 
           {activeTab === 'teleprompter' && (
             <div className="w-full h-full relative">
-                                <TeleprompterView 
-                   cameraStream={cameraStream}
-                   videoPreviewRef={videoPreviewRef}
-                   isVideoMirrored={isVideoMirrored}
-                   prompterWidth={prompterWidth}
-                   isReading={isReading}
-                   countdown={countdown}
-                   prompterRef={prompterRef}
-                   isMirrored={isMirrored}
-                   useCustomScript={useCustomScript}
-                   manifest={manifest}
-                   customScript={customScript}
-                   textSize={textSize}
-                   onTextSizeChange={setTextSize}
-                   scriptColor={scriptColor}
-                   onColorChange={setScriptColor}
-                   scriptOpacity={scriptOpacity}
-                   onOpacityChange={setScriptOpacity}
-                   scrollSpeed={scrollSpeed}
-                   onSpeedChange={setScrollSpeed}
-                   isRecordingVideo={isRecordingVideo}
-                    recordingTime={recordingTime}
-                    onBack={() => setActiveTab('branch')}
-                    onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
-                   onFlipCamera={() => setIsMirrored(!isMirrored)}
-                   onScriptUpdate={async (newText) => {
-                     if (!manifest) return;
-                     const segments = newText.split('\n\n').map((text, i) => ({
-                       ...(manifest.segments[i] || { id: uuidv4(), type: 'broll' }),
-                       scriptText: text
-                     }));
-                     const updatedManifest = { ...manifest, segments };
-                     setManifest(updatedManifest);
-                     await projectService.updateLatestVersionManifest(projectId, updatedManifest);
-                   }}
-                   onFinish={() => {
+              <TeleprompterView 
+                 cameraStream={cameraStream}
+                 videoPreviewRef={videoPreviewRef}
+                 isVideoMirrored={isVideoMirrored}
+                 prompterWidth={prompterWidth}
+                 isReading={isReading}
+                 countdown={countdown}
+                 prompterRef={prompterRef}
+                 isMirrored={isMirrored}
+                 useCustomScript={useCustomScript}
+                 manifest={manifest}
+                 customScript={customScript}
+                 textSize={textSize}
+                 onTextSizeChange={setTextSize}
+                 scriptColor={scriptColor}
+                 onColorChange={setScriptColor}
+                 scriptOpacity={scriptOpacity}
+                 onOpacityChange={setScriptOpacity}
+                 scrollSpeed={scrollSpeed}
+                 onSpeedChange={setScrollSpeed}
+                 isRecordingVideo={isRecordingVideo}
+                  recordingTime={recordingTime}
+                  onBack={() => setActiveTab('branch')}
+                  onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
+                 onFlipCamera={() => setIsMirrored(!isMirrored)}
+                 onScriptUpdate={async (newText) => {
+                   if (!manifest) return;
+                   const segments = newText.split('\n\n').map((text, i) => ({
+                     ...(manifest.segments[i] || { id: uuidv4(), type: 'broll' }),
+                     scriptText: text
+                   }));
+                   const updatedManifest = { ...manifest, segments };
+                   setManifest(updatedManifest);
+                   await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+                 }}
+                 onFinish={() => {
+                    if (lastRecordingUrl) {
                       setShowRecordingReview(true);
+                    } else {
                       setActiveTab('assembly');
-                   }}
-                   t={t}
-                />
-                
-                {showRecordingReview && (
-                  <div className="absolute inset-x-0 bottom-0 z-[60]">
-                    <RecordingReview 
-                       showRecordingReview={showRecordingReview}
-                       lastRecordingUrl={lastRecordingUrl}
-                       currentProfile={currentProfile}
-                       downloadRawVideo={downloadRawVideo}
-                       sendRawToTelegram={sendRawToTelegram}
-                       setShowRecordingReview={setShowRecordingReview}
-                       setLastRecordingUrl={setLastRecordingUrl}
-                       updateSegmentField={updateSegmentField}
-                       setManifest={setManifest}
-                       setActiveTab={setActiveTab}
-                       manifest={manifest}
-                       selectedSegmentId={selectedSegmentId}
-                    />
-                  </div>
-                )}
+                    }
+                 }}
+                 t={t}
+              />
             </div>
           )}
+
+          {/* Global Recording Review Overlay */}
+          <AnimatePresence>
+            {showRecordingReview && (
+              <RecordingReview 
+                  showRecordingReview={showRecordingReview}
+                  lastRecordingUrl={lastRecordingUrl}
+                  currentProfile={currentProfile}
+                  downloadRawVideo={downloadRawVideo}
+                  sendRawToTelegram={sendRawToTelegram}
+                  setShowRecordingReview={setShowRecordingReview}
+                  setLastRecordingUrl={setLastRecordingUrl}
+                  updateSegmentField={updateSegmentField}
+                  setManifest={setManifest}
+                  setActiveTab={setActiveTab}
+                  manifest={manifest}
+                  selectedSegmentId={selectedSegmentId}
+              />
+            )}
+          </AnimatePresence>
 
           {activeTab === 'assembly' && !showFaceless && (
             <VideoEditor

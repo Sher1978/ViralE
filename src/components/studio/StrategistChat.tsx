@@ -202,22 +202,23 @@ export function StrategistChat({
       }
 
       // --- JSON DETECTOR ---
-      // Try to parse the entire assistant message for the 5x4 matrix
+      // Try to parse the assistant message for the 5x4 matrix or structured plan
       try {
-        const jsonMatch = assistantMessage.match(/\{[\s\S]*\}/);
-        if (jsonMatch) {
-          const parsed = JSON.parse(jsonMatch[0]);
-          if (parsed.styles && Array.isArray(parsed.styles) && parsed.styles.length >= 3) {
-            setScriptMatrix(parsed);
-            if (onMatrixUpdate) onMatrixUpdate(parsed);
-          } else if (parsed.evergreen && parsed.trend) {
-            // Support for the 5-scenario format too
+        // Look for the last JSON block in case there's multiple or partial ones
+        const matches = assistantMessage.match(/\{[\s\S]*\}/g);
+        if (matches) {
+          const lastMatch = matches[matches.length - 1];
+          // Clean up potential markdown code block markers
+          const cleanJson = lastMatch.replace(/```json|```/g, '').trim();
+          const parsed = JSON.parse(cleanJson);
+          
+          if ((parsed.styles && Array.isArray(parsed.styles)) || (parsed.evergreen && parsed.trend)) {
             setScriptMatrix(parsed);
             if (onMatrixUpdate) onMatrixUpdate(parsed);
           }
         }
       } catch (e) {
-        // Not a valid JSON or not a matrix, continue as text
+        // Silently ignore parsing errors for non-matrix messages
       }
 
       // If in voice mode, speak the final response
