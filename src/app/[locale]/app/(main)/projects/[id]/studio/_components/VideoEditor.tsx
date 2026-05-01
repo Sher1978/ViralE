@@ -51,6 +51,7 @@ interface BRollClip {
   track: number;
   offsetX?: number; // -50 to 50 or similar for horizontal shift
 }
+import { idb } from '@/lib/idb';
 
 interface VideoEditorProps {
   manifest: ProductionManifest | null;
@@ -176,30 +177,75 @@ export const VideoEditor = React.memo(({
   // ── Persistence: Save/Load local draft ──
   useEffect(() => {
     if (!projectId || persistenceLoadedRef.current) return;
-    const key = `viral_editor_draft_${projectId}`;
-    const saved = localStorage.getItem(key);
-    if (saved) {
-      try {
-        const data = JSON.parse(saved);
-        if (data.aRollUrl) setARollUrl(data.aRollUrl);
-        if (data.brollClips) setBrollClips(data.brollClips);
-        if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
-        if (data.transcript) setTranscript(data.transcript);
-        if (data.stage) setStage(data.stage);
-        console.log('[Editor] Restored draft state from local storage');
-      } catch (e) {
-        console.error('Failed to restore draft:', e);
+    
+    async function recoverDraft() {
+      const key = `viral_editor_draft_${projectId}`;
+      const saved = localStorage.getItem(key);
+      
+      if (saved) {
+        try {
+          const data = JSON.parse(saved);
+          if (data.brollClips) setBrollClips(data.brollClips);
+          if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
+          if (data.transcript) setTranscript(data.transcript);
+          if (data.stage) setStage(data.stage);
+          
+          // RECOVER VIDEO FILE FROM IDB
+          const cachedFile = await idb.get(`video_file_${projectId}`);
+          if (cachedFile instanceof Blob) {
+            console.log('[Editor] Recovered video file from IndexedDB');
+            const url = URL.createObjectURL(cachedFile);
+            setARollUrl(url);
+            setRawFile(cachedFile as File);
+          } else if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
+            // It's a remote URL, safe to restore as-is
+            setARollUrl(data.aRollUrl);
+          }
+          
+          console.log('[Editor] Restored draft state');
+        } catch (e) {
+          console.error('Failed to restore draft:', e);
+        }
       }
+      persistenceLoadedRef.current = true;
     }
-    persistenceLoadedRef.current = true;
+    
+    recoverDraft();
   }, [projectId]);
 
   useEffect(() => {
-    if (!projectId || !aRollUrl || !persistenceLoadedRef.current) return;
+    if (!projectId || !persistenceLoadedRef.current) return;
     const key = `viral_editor_draft_${projectId}`;
-    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage };
+    const state = { 
+      aRollUrl: aRollUrl?.startsWith('blob:') ? null : aRollUrl, 
+      brollClips, 
+      subtitleClips, 
+      transcript, 
+      stage 
+    };
     localStorage.setItem(key, JSON.stringify(state));
   }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage]);
+
+  // Separate effect for heavy file persistence
+  useEffect(() => {
+    if (!projectId || !rawFile || !persistenceLoadedRef.current) return;
+    
+    // Only save if it's a new file (we can use name/size as a weak proxy for "same file")
+    const saveFile = async () => {
+      try {
+        const lastSaved = await idb.get(`video_file_info_${projectId}`);
+        if (lastSaved?.name === rawFile.name && lastSaved?.size === rawFile.size) return;
+        
+        console.log('[Editor] Saving new video file to IndexedDB...');
+        await idb.set(`video_file_${projectId}`, rawFile);
+        await idb.set(`video_file_info_${projectId}`, { name: rawFile.name, size: rawFile.size });
+      } catch (e) {
+        console.error('Failed to cache video file:', e);
+      }
+    };
+    
+    saveFile();
+  }, [projectId, rawFile]);
 
   // ── Auto-transcribe: fires when stage=transcribing AND url is ready ──
   useEffect(() => {
@@ -560,8 +606,11 @@ export const VideoEditor = React.memo(({
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
+      const url = URL.createObjectURL(file);
+      setARollUrl(url);
       setRawFile(file);
-      setARollUrl(URL.createObjectURL(file));
+      idb.set(`video_file_${projectId}`, file); // Save immediately
+      setVideoSource('upload');
       setStage('transcribing');
       setTranscriptionError(null);
       transcriptionStartedRef.current = false; // Reset trigger for new file
