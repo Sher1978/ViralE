@@ -11,6 +11,7 @@ import {
 import { ProductionManifest } from '@/lib/types/studio';
 import BRollModal from '@/components/studio/BRollPickerModal';
 import { storageService } from '@/lib/services/storageService';
+import { extractAudioFFmpeg } from '@/lib/ffmpeg-audio';
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -312,63 +313,6 @@ export const VideoEditor = React.memo(({
     return chunks;
   };
 
-  const extractAudioOnly = async (blob: Blob): Promise<Blob> => {
-    try {
-      setStageMessage('Подготовка аудио (Resampling)...');
-      const arrayBuffer = await blob.arrayBuffer();
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-      
-      // Resample to 16kHz Mono to keep file size very small (~2MB for 60s)
-      const targetSampleRate = 16000;
-      const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * targetSampleRate, targetSampleRate);
-      const source = offlineCtx.createBufferSource();
-      source.buffer = audioBuffer;
-      source.connect(offlineCtx.destination);
-      source.start();
-      
-      const resampledBuffer = await offlineCtx.startRendering();
-      
-      setStageMessage('Конвертация (16kHz Mono)...');
-      const length = resampledBuffer.length * 2 + 44;
-      const buffer = new ArrayBuffer(length);
-      const view = new DataView(buffer);
-      
-      const writeString = (offset: number, string: string) => {
-        for (let i = 0; i < string.length; i++) {
-          view.setUint8(offset + i, string.charCodeAt(i));
-        }
-      };
-      
-      writeString(0, 'RIFF');
-      view.setUint32(4, 32 + resampledBuffer.length * 2, true);
-      writeString(8, 'WAVE');
-      writeString(12, 'fmt ');
-      view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true); // PCM
-      view.setUint16(22, 1, true); // Mono
-      view.setUint32(24, targetSampleRate, true);
-      view.setUint32(28, targetSampleRate * 2, true);
-      view.setUint16(32, 2, true);
-      view.setUint16(34, 16, true);
-      writeString(36, 'data');
-      view.setUint32(40, resampledBuffer.length * 2, true);
-      let offset = 44;
-      const channelData = resampledBuffer.getChannelData(0);
-      for (let i = 0; i < channelData.length; i++) {
-        const sample = Math.max(-1, Math.min(1, channelData[i]));
-        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-        offset += 2;
-      }
-      
-      return new Blob([buffer], { type: 'audio/wav' });
-    } catch (e: any) {
-      console.error('[WebAudio] Extraction failed (likely iOS HEVC/MOV):', e.name, e.message);
-      // Always return null – never throw. The caller will send the raw file to the API.
-      return null as unknown as Blob;
-    }
-  };
-
   const runTranscriptionAndPhrases = async () => {
     setStageMessage('Анализ аудио...');
     setTranscriptionError(null);
@@ -389,59 +333,54 @@ export const VideoEditor = React.memo(({
     } else if (aRollUrl || rawFile) {
       try {
         setStageMessage('Извлечение аудио...');
-        // Fetch blob from URL if no rawFile
-        const sourceBlob: Blob | null = rawFile || (aRollUrl?.startsWith('blob:') ? await fetch(aRollUrl).then(r => r.blob()) : null);
+        const sourceBlob: Blob | null =
+          rawFile ||
+          (aRollUrl?.startsWith('blob:')
+            ? await fetch(aRollUrl).then(r => r.blob())
+            : null);
 
-        let audioToTranscribe: Blob | null = null;
+        if (!sourceBlob) throw new Error('Не удалось получить файл');
 
-        if (sourceBlob) {
-          // Try WebAudio resampling (works on Android/Desktop, may fail on iOS HEVC)
-          audioToTranscribe = await extractAudioOnly(sourceBlob);
-          // extractAudioOnly returns null on iOS HEVC failures
-        }
+        // ── STEP 1: FFmpeg audio extraction (works on iOS HEVC, Android, Desktop)
+        const audioBlob = await extractAudioFFmpeg(sourceBlob, {
+          onProgress: setStageMessage,
+        });
 
         setStageMessage('AI расшифровка голоса...');
         const formData = new FormData();
 
-        if (audioToTranscribe && audioToTranscribe.size > 0) {
-          // Best case: resampled WAV (small, fast)
-          console.log('[Editor] Sending resampled WAV, size:', (audioToTranscribe.size / 1024 / 1024).toFixed(2), 'MB');
-          formData.append('file', new File([audioToTranscribe], 'audio.wav', { type: 'audio/wav' }));
-        } else if (sourceBlob) {
-          // iOS fallback: send original file directly (MOV/MP4/HEVC)
-          // Detect MIME: iPhone files are video/quicktime (MOV) or video/mp4
+        if (audioBlob && audioBlob.size > 0) {
+          // Best path: tiny MP3 (~240KB), no size issues
+          console.log('[Editor] Sending FFmpeg MP3:', (audioBlob.size / 1024).toFixed(0), 'KB');
+          formData.append('file', new File([audioBlob], 'audio.mp3', { type: 'audio/mpeg' }));
+        } else {
+          // FFmpeg failed — send raw file with size guard
           const mime = sourceBlob.type || (rawFile?.name?.endsWith('.mov') ? 'video/quicktime' : 'video/mp4');
-          const ext = mime.includes('quicktime') ? 'video.mov' : 'video.mp4';
+          const ext  = mime.includes('quicktime') ? 'video.mov' : 'video.mp4';
           const sizeMB = sourceBlob.size / 1024 / 1024;
 
-          // Client-side size guard: Vercel limits request body to ~40MB safely
-          const MAX_UPLOAD_MB = 40;
-          if (sizeMB > MAX_UPLOAD_MB) {
+          if (sizeMB > 40) {
             throw new Error(
               `Видео слишком большое (${sizeMB.toFixed(0)}MB). ` +
-              `На iPhone: Настройки → Камера → Форматы → "Наиболее совместимый" (H.264), ` +
-              `или обрежьте до 45 секунд.`
+              `Настройки → Камера → Форматы → "Наиболее совместимый" или обрежьте до 45 сек.`
             );
           }
-          
-          console.log('[Editor] Sending original iOS video, mime:', mime, 'size:', sizeMB.toFixed(2), 'MB');
-          setStageMessage(`Загрузка на AI (iOS режим, ${sizeMB.toFixed(0)}MB)...`);
+          console.log('[Editor] FFmpeg failed, sending raw file:', sizeMB.toFixed(1), 'MB');
+          setStageMessage(`Загрузка на AI (${sizeMB.toFixed(0)}MB)...`);
           formData.append('file', new File([sourceBlob], ext, { type: mime }));
-        } else {
-          throw new Error('Не удалось подготовить файл для расшифровки');
         }
 
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000);
+        const timeoutId  = setTimeout(() => controller.abort(), 90000);
 
         try {
-          const res = await fetch('/api/ai/transcribe', { 
-            method: 'POST', 
+          const res = await fetch('/api/ai/transcribe', {
+            method: 'POST',
             body: formData,
-            signal: controller.signal 
+            signal: controller.signal,
           });
           clearTimeout(timeoutId);
-          
+
           if (!res.ok) {
             const err = await res.json().catch(() => ({ error: `Server Error ${res.status}` }));
             throw new Error(err.error || 'Ошибка сервера');

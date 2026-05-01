@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI, GoogleAIFileManager } from '@google/generative-ai/server';
+import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleAIFileManager } from '@google/generative-ai/server';
 
 export const maxDuration = 120; // Large iOS videos need more time
 
@@ -11,6 +12,7 @@ Include ALL spoken words with accurate timestamps in seconds.`;
 // Detect the correct MIME type for Gemini
 function detectGeminiMime(fileType: string): string {
   const t = fileType || '';
+  if (t === 'audio/mpeg' || t === 'audio/mp3') return 'audio/mp3';
   if (t.startsWith('audio/')) return t;
   if (t.includes('quicktime') || t.includes('mov')) return 'video/quicktime';
   if (t.includes('mp4')) return 'video/mp4';

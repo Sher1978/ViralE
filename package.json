@@ -8,12 +8,14 @@
     "start": "next start",
     "lint": "eslint",
     "test": "vitest",
-    "diagnose": "tsx scripts/diagnose.ts"
+    "diagnose": "tsx scripts/diagnose.ts",
+    "postinstall": "node scripts/copy-ffmpeg-wasm.mjs"
   },
   "dependencies": {
     "@anthropic-ai/sdk": "^0.90.0",
-    "@ffmpeg/ffmpeg": "^0.12.15",
-    "@ffmpeg/util": "^0.12.2",
+    "@ffmpeg/core": "^0.12.6",
+    "@ffmpeg/ffmpeg": "^0.12.10",
+    "@ffmpeg/util": "^0.12.1",
     "@google/generative-ai": "^0.24.1",
     "@supabase/supabase-js": "^2.103.3",
     "@types/uuid": "^10.0.0",
