@@ -1,18 +1,18 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { veoService } from '@/lib/services/veoService';
 import { 
   X, Search, Sparkles, Film, 
-  TrendingUp, Clock, Check, 
-  RefreshCcw, ArrowRight, Video
+  RefreshCcw, ArrowRight, Video, Play
 } from 'lucide-react';
 
-interface BRollOption {
+interface VideoItem {
   id: string;
-  source: 'movie' | 'ai';
+  source: 'stock' | 'movie' | 'ai' | 'giphy';
   title?: string;
   previewUrl: string;
+  videoUrl: string;
   tags?: string[];
 }
 
@@ -35,37 +35,49 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   projectId,
   preFetchedResults
 }) => {
-  const [activeSource, setActiveSource] = useState<'vault' | 'ai'>('vault');
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
   const [searchQuery, setSearchQuery] = useState(segmentText || '');
-  const [videos, setVideos] = useState<any[]>([]);
+  const [videos, setVideos] = useState<VideoItem[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
-  const [previewVideo, setPreviewVideo] = useState<any | null>(null);
+  const [previewVideo, setPreviewVideo] = useState<VideoItem | null>(null);
   const [isVideoLoading, setIsVideoLoading] = useState(false);
+  const videoRef = useRef<HTMLVideoElement>(null);
+  const loaderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   // ⚡ AUTO-OPTIMIZE & SEARCH ON OPEN
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen) {
-      const init = async () => {
-        // If we have pre-fetched results, use them first
-        if (preFetchedResults && preFetchedResults.length > 0) {
-          setVideos(preFetchedResults);
-        } else {
-          // Otherwise, optimize and search
-          await handleOptimizePrompt();
-        }
-      };
-      init();
+      if (preFetchedResults && preFetchedResults.length > 0) {
+        setVideos(preFetchedResults);
+      } else {
+        handleOptimizePrompt();
+      }
     }
   }, [isOpen]);
 
   // Trigger search when searchQuery changes from optimization
-  React.useEffect(() => {
+  useEffect(() => {
     if (isOpen && searchQuery && searchQuery !== segmentText) {
       handleSearch();
     }
-  }, [searchQuery, isOpen]);
+  }, [searchQuery]);
+
+  // Reset loader on previewVideo change
+  useEffect(() => {
+    if (previewVideo) {
+      setIsVideoLoading(true);
+      // iOS Safari fallback: force-hide loader after 4 seconds no matter what
+      loaderTimeoutRef.current = setTimeout(() => {
+        setIsVideoLoading(false);
+      }, 4000);
+    } else {
+      if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
+    }
+    return () => {
+      if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
+    };
+  }, [previewVideo]);
 
   const handleSearch = async (queryOverride?: string) => {
     const query = queryOverride || searchQuery;
@@ -94,9 +106,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
       const data = await res.json();
       if (data.optimized) {
         setSearchQuery(data.optimized);
-        // handleSearch will be triggered by useEffect
       } else {
-        // Fallback to direct search if optimization fails
         handleSearch(segmentText);
       }
     } catch (err) {
@@ -138,167 +148,196 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
         }
       }, 3000);
     } catch (error) {
-      console.error("Higgsfield generation failed", error);
+      console.error("Generation failed", error);
       setIsGenerating(false);
     }
   };
 
+  // Source badge helper
+  const getSourceBadge = (source: string) => {
+    if (source === 'giphy') return { label: 'GIF • GIPHY', color: 'text-pink-400' };
+    if (source === 'ai') return { label: 'AI Generated', color: 'text-purple-400' };
+    return { label: 'Stock • Pexels', color: 'text-blue-400' };
+  };
+
   return (
-    <div className="fixed inset-0 z-[100] bg-black/95 backdrop-blur-3xl p-4 md:p-8 overflow-hidden flex flex-col no-scrollbar">
+    <div className="fixed inset-0 z-[100] bg-black/97 backdrop-blur-3xl flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between mb-6 flex-none">
+      <div className="flex items-center justify-between px-5 py-4 flex-none border-b border-white/5">
         <div>
-          <h2 className="text-2xl font-black text-white italic tracking-tighter uppercase flex items-center gap-3">
-             <Film size={28} className="text-purple-500" />
-             B-Roll <span className="text-purple-500">Hunter</span>
+          <h2 className="text-xl font-black text-white italic tracking-tighter uppercase flex items-center gap-2">
+            <Film size={22} className="text-purple-500" />
+            B-Roll <span className="text-purple-500">Hunter</span>
           </h2>
-          <p className="text-white/40 text-[10px] font-black uppercase tracking-widest mt-1">Finding visual energy for your scene</p>
+          <p className="text-white/30 text-[9px] font-black uppercase tracking-widest mt-0.5">Finding visual energy for your scene</p>
         </div>
         <button 
           onClick={onClose}
-          className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all transform active:rotate-90"
+          className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
         >
-          <X size={24} />
+          <X size={22} />
         </button>
       </div>
 
       {/* ── SEARCH RESULTS ── */}
-      <div className="flex-1 min-h-0 flex flex-col">
-         {isSearching || isOptimizing ? (
-            <div className="flex-1 flex flex-col items-center justify-center gap-6">
-               <div className="relative">
-                 <RefreshCcw size={48} className="text-purple-500 animate-spin opacity-20" />
-                 <Sparkles size={24} className="text-purple-400 absolute inset-0 m-auto animate-pulse" />
-               </div>
-               <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 animate-pulse">
-                 {isOptimizing ? 'AI Optimizing Prompt...' : 'Scanning Visual Vault...'}
-               </p>
+      <div className="flex-1 overflow-y-auto overflow-x-hidden py-4 px-4">
+        {isSearching || isOptimizing ? (
+          <div className="flex flex-col items-center justify-center h-full gap-6 py-20">
+            <div className="relative">
+              <RefreshCcw size={48} className="text-purple-500 animate-spin opacity-20" />
+              <Sparkles size={24} className="text-purple-400 absolute inset-0 m-auto animate-pulse" />
             </div>
-         ) : (
-           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-y-auto pb-20 custom-scrollbar pr-2">
-              {videos.map((item) => (
-                 <div 
-                   key={item.id}
-                   onClick={() => setPreviewVideo(item)}
-                   className="group relative aspect-[9/16] rounded-[2.5rem] overflow-hidden bg-white/5 border border-white/5 hover:border-purple-500/50 cursor-pointer transition-all shadow-2xl"
-                 >
-                    <img src={item.previewUrl} className="absolute inset-0 w-full h-full object-cover transform group-hover:scale-105 transition-transform duration-1000" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/95 via-black/10 to-transparent opacity-90 group-hover:opacity-60 transition-opacity z-10" />
-                    
-                    <div className="absolute bottom-5 left-5 right-5 z-20">
-                       <span className="text-[8px] font-black uppercase text-purple-400 mb-1 block tracking-[0.2em]">{item.source === 'movie' ? 'Library Clip' : 'AI Generated'}</span>
-                       <h4 className="text-white font-bold italic uppercase tracking-tighter text-[11px] leading-tight opacity-60 line-clamp-2">{item.title}</h4>
-                    </div>
+            <p className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 animate-pulse">
+              {isOptimizing ? 'AI Optimizing Prompt...' : 'Scanning Visual Vault...'}
+            </p>
+          </div>
+        ) : (
+          <div className="grid grid-cols-2 gap-3">
+            {videos.map((item) => {
+              const badge = getSourceBadge(item.source);
+              return (
+                <div
+                  key={item.id}
+                  onClick={() => setPreviewVideo(item)}
+                  className="group relative overflow-hidden bg-white/5 border border-white/8 hover:border-purple-500/50 cursor-pointer transition-all rounded-2xl"
+                  style={{ aspectRatio: '9/16' }}
+                >
+                  <img
+                    src={item.previewUrl}
+                    alt={item.title}
+                    className="absolute inset-0 w-full h-full object-cover"
+                    loading="lazy"
+                  />
+                  <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
 
-                    <div className="absolute top-4 right-4 z-20">
-                       <div className="w-8 h-8 rounded-full bg-black/40 backdrop-blur-md flex items-center justify-center border border-white/10 opacity-0 group-hover:opacity-100 transition-opacity">
-                          <Search size={14} className="text-white" />
-                       </div>
+                  {/* Play icon */}
+                  <div className="absolute inset-0 flex items-center justify-center opacity-0 group-active:opacity-100 transition-opacity">
+                    <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
+                      <Play size={18} className="text-white fill-white ml-0.5" />
                     </div>
-                 </div>
-              ))}
-              {videos.length === 0 && (
-                 <div className="col-span-full py-20 flex flex-col items-center justify-center gap-4 border-2 border-dashed border-white/5 rounded-[3rem]">
-                    <Video size={40} className="text-white/10" />
-                    <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/20">No matching fragments found</p>
-                    <button onClick={() => handleSearch()} className="px-6 py-3 bg-white/5 rounded-xl text-[10px] font-black uppercase text-white/40">Retry Search</button>
-                 </div>
-              )}
-           </div>
-         )}
+                  </div>
+
+                  <div className="absolute bottom-3 left-3 right-3 z-10">
+                    <span className={`text-[8px] font-black uppercase mb-0.5 block tracking-widest ${badge.color}`}>
+                      {badge.label}
+                    </span>
+                    <h4 className="text-white font-bold uppercase tracking-tight text-[10px] leading-tight opacity-70 line-clamp-1">
+                      {item.title}
+                    </h4>
+                  </div>
+                </div>
+              );
+            })}
+            {videos.length === 0 && (
+              <div className="col-span-2 py-16 flex flex-col items-center justify-center gap-4 border border-dashed border-white/10 rounded-3xl">
+                <Video size={36} className="text-white/10" />
+                <p className="text-[10px] font-black uppercase tracking-widest text-white/20 text-center">No clips found</p>
+                <button
+                  onClick={() => handleSearch()}
+                  className="px-5 py-2 bg-white/5 rounded-xl text-[9px] font-black uppercase text-white/40"
+                >
+                  Retry Search
+                </button>
+              </div>
+            )}
+          </div>
+        )}
       </div>
 
       {/* ── FOOTER ACTIONS ── */}
-      <div className="flex-none pt-6 border-t border-white/5 flex flex-col gap-5">
-          <div className="bg-white/5 rounded-[2.5rem] p-5 border border-white/5 focus-within:border-purple-500/50 transition-all">
-             <div className="flex justify-between items-center mb-3">
-               <span className="text-[9px] font-black uppercase tracking-widest text-white/20 block ml-1">Search & Generation Prompt</span>
-               <button 
-                 onClick={handleOptimizePrompt}
-                 disabled={isOptimizing}
-                 className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[8px] font-black uppercase hover:bg-purple-500/20 transition-all active:scale-95"
-               >
-                 <Sparkles size={10} />
-                 Refine with AI
-               </button>
-             </div>
-             <div className="flex gap-4 items-center">
-               <textarea 
-                 value={searchQuery}
-                 onChange={(e) => setSearchQuery(e.target.value)}
-                 onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSearch())}
-                 rows={1}
-                 className="flex-1 bg-transparent text-sm font-bold text-white italic outline-none resize-none placeholder:text-white/10 leading-relaxed"
-                 placeholder="Describe the mood or action..."
-               />
-               <button
-                 onClick={() => handleSearch()}
-                 disabled={isSearching}
-                 className="h-10 w-10 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center transition-all active:scale-95"
-               >
-                 {isSearching ? <RefreshCcw size={14} className="animate-spin" /> : <Search size={14} />}
-               </button>
-             </div>
-          </div>
-
-          <button 
-              onClick={handleGenerateAI}
-              disabled={isGenerating || !searchQuery}
-              className="w-full h-16 rounded-[2rem] bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all"
+      <div className="flex-none px-4 py-4 border-t border-white/5 space-y-3">
+        <div className="bg-white/5 rounded-2xl px-4 py-3 border border-white/8 flex gap-3 items-center">
+          <textarea
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSearch())}
+            rows={1}
+            className="flex-1 bg-transparent text-sm font-bold text-white italic outline-none resize-none placeholder:text-white/20 leading-relaxed"
+            placeholder="Describe the mood or action..."
+          />
+          <button
+            onClick={() => handleSearch()}
+            disabled={isSearching}
+            className="h-9 w-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center flex-none transition-all active:scale-95"
           >
-              {isGenerating ? <RefreshCcw size={18} className="animate-spin" /> : <><Sparkles size={18} /> Generate Unique Scene ($0.10) <ArrowRight size={16} /></>}
+            {isSearching ? <RefreshCcw size={13} className="animate-spin" /> : <Search size={13} />}
           </button>
+        </div>
+
+        <button
+          onClick={handleGenerateAI}
+          disabled={isGenerating || !searchQuery}
+          className="w-full h-14 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all"
+        >
+          {isGenerating
+            ? <><RefreshCcw size={16} className="animate-spin" /> Generating...</>
+            : <><Sparkles size={16} /> Generate AI Scene ($0.10) <ArrowRight size={14} /></>
+          }
+        </button>
       </div>
 
       {/* ── FULL SCREEN PREVIEW OVERLAY ── */}
       {previewVideo && (
-        <div className="fixed inset-0 z-[110] bg-black flex flex-col animate-in fade-in zoom-in duration-300">
-           <div className="absolute top-6 left-6 right-6 flex justify-between items-center z-20">
-              <button 
-                onClick={() => setPreviewVideo(null)}
-                className="p-4 rounded-2xl bg-black/40 backdrop-blur-md border border-white/10 text-white"
-              >
-                <ArrowRight size={24} className="rotate-180" />
-              </button>
-              <div className="px-4 py-2 rounded-xl bg-black/40 backdrop-blur-md border border-white/10 text-white text-[10px] font-black uppercase tracking-widest">
-                 Previewing Clip
-              </div>
-           </div>
-
-            <div className="relative w-full h-full">
-              {isVideoLoading && (
-                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-4 z-10">
-                   <RefreshCcw size={40} className="text-purple-500 animate-spin" />
-                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Loading Scene...</p>
-                </div>
-              )}
-              <video 
-                 src={previewVideo.videoUrl}
-                 autoPlay
-                 loop
-                 playsInline
-                 onLoadStart={() => setIsVideoLoading(true)}
-                 onCanPlay={() => setIsVideoLoading(false)}
-                 className={`w-full h-full object-cover transition-opacity duration-500 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
-              />
+        <div className="fixed inset-0 z-[120] bg-black flex flex-col">
+          {/* Top bar */}
+          <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-5 z-20">
+            <button
+              onClick={() => setPreviewVideo(null)}
+              className="p-3 rounded-2xl bg-black/50 backdrop-blur-md border border-white/10 text-white active:scale-95"
+            >
+              <ArrowRight size={20} className="rotate-180" />
+            </button>
+            <div className="px-4 py-2 rounded-xl bg-black/50 backdrop-blur-md border border-white/10 text-white text-[10px] font-black uppercase tracking-widest">
+              {getSourceBadge(previewVideo.source).label}
             </div>
+          </div>
 
-           <div className="absolute bottom-10 left-6 right-6 z-20 space-y-4">
-              <div className="p-6 rounded-[2.5rem] bg-black/60 backdrop-blur-xl border border-white/10 space-y-2">
-                 <h3 className="text-xl font-black italic uppercase text-white tracking-tighter">{previewVideo.title}</h3>
-                 <p className="text-xs text-white/40 font-medium leading-relaxed">{previewVideo.tags?.join(' • ')}</p>
+          {/* Video */}
+          <div className="relative w-full h-full">
+            {isVideoLoading && (
+              <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-4 z-10">
+                <RefreshCcw size={36} className="text-purple-500 animate-spin" />
+                <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Loading Scene...</p>
               </div>
-              
-              <button 
-                 onClick={() => {
-                   onSelect(previewVideo.videoUrl);
-                   setPreviewVideo(null);
-                 }}
-                 className="w-full h-20 rounded-[2.5rem] bg-white text-black font-black uppercase tracking-[0.3em] text-sm shadow-[0_0_50px_rgba(255,255,255,0.3)] active:scale-95 transition-all"
-              >
-                 Select This Clip
-              </button>
-           </div>
+            )}
+            <video
+              ref={videoRef}
+              key={previewVideo.videoUrl}
+              src={previewVideo.videoUrl}
+              autoPlay
+              muted
+              loop
+              playsInline
+              onLoadStart={() => setIsVideoLoading(true)}
+              onCanPlay={() => {
+                if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
+                setIsVideoLoading(false);
+              }}
+              onLoadedData={() => {
+                if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
+                setIsVideoLoading(false);
+              }}
+              onError={() => setIsVideoLoading(false)}
+              className={`w-full h-full object-cover transition-opacity duration-500 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
+            />
+          </div>
+
+          {/* Bottom bar */}
+          <div className="absolute bottom-0 left-0 right-0 p-5 z-20 space-y-3">
+            <div className="p-5 rounded-3xl bg-black/70 backdrop-blur-xl border border-white/10 space-y-1">
+              <h3 className="text-lg font-black italic uppercase text-white tracking-tighter">{previewVideo.title}</h3>
+              <p className="text-xs text-white/40 font-medium">{previewVideo.tags?.join(' • ')}</p>
+            </div>
+            <button
+              onClick={() => {
+                onSelect(previewVideo.videoUrl);
+                setPreviewVideo(null);
+              }}
+              className="w-full h-16 rounded-3xl bg-white text-black font-black uppercase tracking-[0.3em] text-sm shadow-[0_0_40px_rgba(255,255,255,0.2)] active:scale-95 transition-all"
+            >
+              Select This Clip
+            </button>
+          </div>
         </div>
       )}
     </div>
