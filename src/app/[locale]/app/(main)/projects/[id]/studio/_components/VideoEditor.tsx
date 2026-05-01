@@ -491,23 +491,80 @@ export const VideoEditor = React.memo(({
       setTranscript(words);
       setSubtitleClips(buildKaraokeClips(words));
 
-      setStageMessage('Расстановка Б-ролла...');
-      await delay(400);
-      const picked = pickAIPhrases(words);
-      setPhrases(picked);
+      // ── STEP 2: Semantic B-Roll Analysis (Visual_Script_Generator v2.0)
+      try {
+        setStageMessage('Семантический анализ сцен...');
+        const fullText = words.map(w => w.text).join(' ');
+        const vsRes = await fetch('/api/ai/visual-script', {
+          method: 'POST',
+          body: JSON.stringify({ scriptText: fullText })
+        });
+        
+        if (vsRes.ok) {
+          const vsData = await vsRes.json();
+          const segments = vsData.segments || [];
+          console.log('[Editor] AI Visual Script generated:', segments.length, 'scenes');
 
-      const brollPlaceholders: BRollClip[] = picked.map(p => ({
-        id: `br-${p.id}`,
-        phraseId: p.id,
-        startTime: p.start,
-        endTime: Math.min(p.end, p.start + 5),
-        label: p.text.slice(0, 24) + (p.text.length > 24 ? '…' : ''),
-        url: '', 
-        prompt: p.text,
-        track: 1,
-      }));
-      setBrollClips(brollPlaceholders);
-      setPendingBrollPhrases(picked);
+          const newPhrases: BRollPhrase[] = [];
+          const newBrollClips: BRollClip[] = [];
+
+          // Map semantic segments back to timestamps
+          let wordIdx = 0;
+          segments.forEach((seg: any, sIdx: number) => {
+            const segText = (seg.text || '').toLowerCase();
+            const segWords = segText.split(/\s+/).filter(Boolean);
+            if (segWords.length === 0) return;
+
+            // Find matching words in transcript
+            let firstWord = words[wordIdx];
+            let lastWord = words[wordIdx];
+            
+            // Fuzzy search for the segment end
+            let found = false;
+            for (let i = wordIdx; i < Math.min(wordIdx + 30, words.length); i++) {
+              if (words[i].text.toLowerCase().includes(segWords[segWords.length - 1])) {
+                lastWord = words[i];
+                wordIdx = i + 1;
+                found = true;
+                break;
+              }
+            }
+            if (!found) wordIdx = Math.min(wordIdx + segWords.length, words.length - 1);
+
+            const phrase: BRollPhrase = {
+              id: `phrase-${sIdx}-${Date.now()}`,
+              text: seg.text,
+              start: firstWord?.start || 0,
+              end: lastWord?.end || (firstWord?.start || 0) + 3,
+              approved: true,
+              brollUrl: ''
+            };
+            newPhrases.push(phrase);
+
+            newBrollClips.push({
+              id: `br-${phrase.id}`,
+              phraseId: phrase.id,
+              startTime: phrase.start,
+              endTime: phrase.end,
+              label: seg.visual_metaphor || 'AI Scene',
+              url: '',
+              prompt: seg.ai_prompt || seg.text,
+              track: 1
+            });
+          });
+
+          setPhrases(newPhrases);
+          setBrollClips(newBrollClips);
+          setPendingBrollPhrases(newPhrases);
+        }
+      } catch (vsErr) {
+        console.error('[Editor] Visual Script generation failed:', vsErr);
+        // Fallback to simple logic if AI fails
+        setStageMessage('Ошибка AI-анализа, использую базовую расстановку...');
+        const picked = pickAIPhrases(words);
+        setPhrases(picked);
+        // ... (rest of old fallback)
+      }
     }
 
     setStageMessage('');
