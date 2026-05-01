@@ -151,10 +151,10 @@ export default function StudioPage() {
           if (latestVersion.script_data) {
             setManifest(latestVersion.script_data as ProductionManifest);
           } else {
-            setManifest(createInitialManifest());
+            setManifest(createInitialManifest(projectId, latestVersion.id, { hook: '', context: '', meat: '', cta: '' }));
           }
         } else {
-          setManifest(createInitialManifest());
+          setManifest(createInitialManifest(projectId, uuidv4(), { hook: '', context: '', meat: '', cta: '' }));
         }
 
       } catch (err) {
