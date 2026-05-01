@@ -1231,6 +1231,17 @@ export const VideoEditor = React.memo(({
                   </div>
 
                   <div className="text-[9px] font-black text-white/30 uppercase tracking-widest">{selBR.label}</div>
+
+                  {/* Swap video button */}
+                  <button 
+                    onClick={() => {
+                      setShowSheet(false);
+                      openBRollHunterForClip(selBR.phraseId || selBR.id, selBR.prompt);
+                    }}
+                    className="w-full py-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
+                    <Film size={13} /> Заменить видео
+                  </button>
+
                   <button onClick={() => { setBrollClips(p => p.filter(c => c.id !== selBR.id)); setSelectedClipId(null); setShowSheet(false); }}
                     className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
                     <Trash2 size={13} /> Delete Clip

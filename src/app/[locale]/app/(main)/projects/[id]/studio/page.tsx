@@ -338,7 +338,7 @@ export default function StudioPage() {
         return;
       }
       if (!currentVersionId) {
-        alert('Ошибка: версия проекта не найдена. Попробуйте сохранить изменения и повторить.');
+        alert('Ошибка: версия проекта не найдена. Попробуйте обновить страницу.');
         return;
       }
 
@@ -347,17 +347,20 @@ export default function StudioPage() {
         ...manifest,
         brollClips: broll || [],
         subtitleClips: subs || [],
-        // Also update segments to include this info if the renderer uses segments
-        segments: manifest.segments.map((s, i) => i === 0 ? { 
+        segments: manifest.segments.map((s: any, i: number) => i === 0 ? { 
           ...s, 
           brollClips: broll || [], 
           subtitleClips: subs || [] 
         } : s)
       };
 
-      await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+      // ✅ Use versionId directly — avoid double-fetch which can fail on RLS
+      const saved = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
+      if (!saved) {
+        throw new Error('Не удалось сохранить изменения. Проверьте подключение и попробуйте снова.');
+      }
       
-      // Start a real render job here via api
+      // Start render job
       const response = await fetch('/api/render', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -372,7 +375,6 @@ export default function StudioPage() {
       const data = await response.json();
       
       if (data.jobId) {
-        // Clear local draft on successful export
         localStorage.removeItem(`viral_editor_draft_${projectId}`);
         router.push(`/app/projects/new/delivery?projectId=${projectId}&jobId=${data.jobId}`);
       } else {
