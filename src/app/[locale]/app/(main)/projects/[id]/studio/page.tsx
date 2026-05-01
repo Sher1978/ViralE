@@ -337,10 +337,6 @@ export default function StudioPage() {
         alert('Ошибка: манифест проекта не загружен. Попробуйте обновить страницу.');
         return;
       }
-      if (!currentVersionId) {
-        alert('Ошибка: версия проекта не найдена. Попробуйте обновить страницу.');
-        return;
-      }
 
       // 🔥 Merge editor state into manifest
       const updatedManifest = {
@@ -354,35 +350,22 @@ export default function StudioPage() {
         } : s)
       };
 
-      // ✅ Use versionId directly — avoid double-fetch which can fail on RLS
-      const saved = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
-      if (!saved) {
-        throw new Error('Не удалось сохранить изменения. Проверьте подключение и попробуйте снова.');
-      }
-      
-      // Start render job
-      const response = await fetch('/api/render', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, versionId: currentVersionId })
-      });
-      
-      if (!response.ok) {
-        const errData = await response.json().catch(() => ({}));
-        throw new Error(errData.error || `Render failed: ${response.status}`);
+      // ✅ Save manifest — use direct versionId if available, otherwise via latest lookup
+      if (currentVersionId) {
+        await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
+      } else {
+        await projectService.updateLatestVersionManifest(projectId, updatedManifest);
       }
 
-      const data = await response.json();
-      
-      if (data.jobId) {
-        localStorage.removeItem(`viral_editor_draft_${projectId}`);
-        router.push(`/app/projects/new/delivery?projectId=${projectId}&jobId=${data.jobId}`);
-      } else {
-        router.push(`/app/projects/new/delivery?projectId=${projectId}`);
-      }
+      // Clear local draft
+      localStorage.removeItem(`viral_editor_draft_${projectId}`);
+
+      // ✅ Go to delivery page — render job is started there separately
+      router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}`);
+
     } catch (err: any) {
       console.error('Export failed:', err);
-      alert(`Экспорт не удался: ${err.message}`);
+      alert(`Не удалось сохранить проект: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
