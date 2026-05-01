@@ -352,7 +352,6 @@ export const VideoEditor = React.memo(({
       view.setUint16(34, 16, true);
       writeString(36, 'data');
       view.setUint32(40, resampledBuffer.length * 2, true);
-      
       let offset = 44;
       const channelData = resampledBuffer.getChannelData(0);
       for (let i = 0; i < channelData.length; i++) {
@@ -364,7 +363,6 @@ export const VideoEditor = React.memo(({
       return new Blob([buffer], { type: 'audio/wav' });
     } catch (e: any) {
       console.error('[WebAudio] Extraction failed:', e);
-      // Re-throw if it's a decoding failure (likely iPhone format issue)
       if (e.name === 'EncodingError' || e.message?.includes('decode')) {
         throw e;
       }
@@ -377,13 +375,12 @@ export const VideoEditor = React.memo(({
     setTranscriptionError(null);
     await delay(400);
 
-    const dur = videoRef.current?.duration || duration;
     let words: TranscriptWord[] = [];
     let transcriptionOk = false;
 
-    // 🔥 Optimization: If we already have a transcript (from Faceless Studio), use it!
+    // 1. Check manifest or prepare audio
     if (manifest?.transcript && Array.isArray(manifest.transcript)) {
-      console.log('[Editor] Using pre-existing transcript from manifest');
+      console.log('[Editor] Using manifest transcript');
       words = manifest.transcript.map((t: any) => ({
         text: t.text,
         start: t.start,
@@ -391,8 +388,8 @@ export const VideoEditor = React.memo(({
       }));
       transcriptionOk = true;
     } else if (aRollUrl || rawFile) {
-      setStageMessage('Извлечение аудио...');
       try {
+        setStageMessage('Извлечение аудио...');
         const sourceBlob = rawFile || (aRollUrl?.startsWith('blob:') ? await fetch(aRollUrl).then(r => r.blob()) : null);
         let audioToTranscribe: Blob | null = null;
         let fileUrl: string | null = null;
@@ -401,18 +398,20 @@ export const VideoEditor = React.memo(({
           try {
             audioToTranscribe = await extractAudioOnly(sourceBlob);
           } catch (decodeError: any) {
-            console.warn('[Editor] Audio extraction failed (Safari/iPhone?), using Cloud Fallback:', decodeError.message);
+            console.warn('[Editor] Audio decoding failed, using cloud fallback:', decodeError.message);
             setStageMessage('Оптимизация для iPhone: загрузка в облако...');
           }
         }
 
-        // If extraction failed or file is too large for direct payload (>4MB to be safe)
+        // Cloud fallback if needed
         if (sourceBlob && (!audioToTranscribe || sourceBlob.size > 4 * 1024 * 1024)) {
           setStageMessage('Загрузка тяжелого видео (Mobile Optimization)...');
           fileUrl = await storageService.uploadFile(sourceBlob, `video_${projectId || Date.now()}.mp4`);
           if (!fileUrl) throw new Error('Не удалось подготовить видео для анализа.');
         }
 
+        setStageMessage('AI расшифровка голоса...');
+        const formData = new FormData();
         if (fileUrl) {
           formData.append('fileUrl', fileUrl);
         } else if (audioToTranscribe) {
@@ -424,16 +423,9 @@ export const VideoEditor = React.memo(({
           const blob = await res.blob();
           formData.append('file', new File([blob], 'video.mp4', { type: 'video/mp4' }));
         }
-      } catch (e: any) {
-        console.error('Audio preparation failed:', e);
-        throw e;
-      }
 
-      setStageMessage('AI расшифровка голоса...');
-
-        // ── Fetch with Timeout ──
         const controller = new AbortController();
-        const timeoutId = setTimeout(() => controller.abort(), 60000); // 60s timeout
+        const timeoutId = setTimeout(() => controller.abort(), 60000);
 
         try {
           const res = await fetch('/api/ai/transcribe', { 
@@ -443,84 +435,57 @@ export const VideoEditor = React.memo(({
           });
           clearTimeout(timeoutId);
           
-          // Robust check for JSON response
-          const contentType = res.headers.get('content-type');
-          const isJson = contentType && contentType.includes('application/json');
-
           if (!res.ok) {
-            if (isJson) {
-              const err = await res.json();
-              throw new Error(err.error || `Server error (${res.status})`);
-            } else {
-              if (res.status === 413) throw new Error('Файл слишком велик для анализа. Попробуйте видео покороче.');
-              throw new Error(`Ошибка сервера (${res.status}). Пожалуйста, попробуйте позже.`);
-            }
-          }
-
-          if (!isJson) {
-            throw new Error('Сервер вернул некорректный ответ. Попробуйте еще раз.');
+            const err = await res.json().catch(() => ({ error: `Server Error ${res.status}` }));
+            throw new Error(err.error || 'Ошибка сервера');
           }
 
           const data = await res.json();
-
-          if (data.transcript && data.transcript.length > 0) {
+          if (data.transcript) {
             words = data.transcript;
             transcriptionOk = true;
           }
         } catch (fetchErr: any) {
           clearTimeout(timeoutId);
-          if (fetchErr.name === 'AbortError') {
-            throw new Error('Превышено время ожидания. Попробуйте файл поменьше или повторите позже.');
-          }
           throw fetchErr;
         }
       } catch (err: any) {
-        console.error('Transcription failed:', err);
-        let msg = err.message || 'Ошибка расшифровки';
-        if (err.status) msg = `[Error ${err.status}] ${msg}`;
-        if (msg.includes('Unexpected token') || msg.includes('is not valid JSON')) {
-          msg = 'Ошибка формата данных (JSON). Возможно, сервер упал.';
-        }
-        setTranscriptionError(msg);
+        console.error('Transcription flow failed:', err);
+        setTranscriptionError(err.message || 'Ошибка расшифровки');
       }
     }
 
-    // If transcription failed — show error and stay in transcribing stage
+    // 2. Handle failure
     if (!transcriptionOk || words.length === 0) {
       setStageMessage(transcriptionError || 'Ошибка анализа аудио');
-      // Force error state if it's somehow missing
       if (!transcriptionError) setTranscriptionError('Не удалось получить текст автоматически.');
       return;
     }
 
-
-    // Build karaoke-style subtitle clips
+    // 3. Process results
     setStageMessage('Генерация субтитров...');
     await delay(300);
-    const karaokeClips = buildKaraokeClips(words);
     setTranscript(words);
-    setSubtitleClips(karaokeClips);
+    setSubtitleClips(buildKaraokeClips(words));
 
-    // Pick B-Roll anchor phrases
     setStageMessage('Расстановка Б-ролла...');
     await delay(400);
     const picked = pickAIPhrases(words);
     setPhrases(picked);
 
-    // Place B-Roll timeline placeholders immediately (no modal)
     const brollPlaceholders: BRollClip[] = picked.map(p => ({
       id: `br-${p.id}`,
       phraseId: p.id,
       startTime: p.start,
       endTime: Math.min(p.end, p.start + 5),
       label: p.text.slice(0, 24) + (p.text.length > 24 ? '…' : ''),
-      url: '', // Will be filled when user taps to pick
+      url: '', 
       prompt: p.text,
       track: 1,
     }));
     setBrollClips(brollPlaceholders);
 
-    // 🔥 Background auto-fetch best B-Roll and attach to placeholders
+    // 4. Background B-Roll pre-fetch
     picked.forEach(async (phrase) => {
       try {
         const res = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(phrase.text)}`);
