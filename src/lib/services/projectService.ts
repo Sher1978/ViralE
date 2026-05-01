@@ -103,8 +103,8 @@ export const projectService = {
     return data;
   },
 
-  async createVersion(params: { projectId: string; scriptData: any; storyboardData?: any; previewUrl?: string }): Promise<ProjectVersion | null> {
-    const { projectId, scriptData, storyboardData, previewUrl } = params;
+  async createVersion(params: { projectId: string; scriptData: any; storyboardData?: any; previewUrl?: string; versionLabel?: string }): Promise<ProjectVersion | null> {
+    const { projectId, scriptData, storyboardData, previewUrl, versionLabel } = params;
     const { data, error } = await supabase
       .from('project_versions')
       .insert([
@@ -113,6 +113,7 @@ export const projectService = {
           script_data: scriptData,
           storyboard_data: storyboardData,
           preview_url: previewUrl,
+          version_label: versionLabel,
         },
       ])
       .select()

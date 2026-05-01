@@ -61,51 +61,67 @@ export default function DeliveryPage() {
   const handleClientRender = async (ver: ProjectVersion) => {
     if (isLaunchingRender) return;
     setIsLaunchingRender(true);
-    setRenderStatus('Инициализация движка...');
-    setRenderProgress(2);
+    setRenderStatus('Подготовка движка...');
+    setRenderProgress(5);
 
     try {
-      // 1. Load FFmpeg
+      console.log('[Delivery] Initializing FFmpeg core...');
       const { FFmpeg } = await import('@ffmpeg/ffmpeg');
       const { toBlobURL, fetchFile } = await import('@ffmpeg/util');
       const ffmpeg = new FFmpeg();
       ffmpegRef.current = ffmpeg;
 
-      ffmpeg.on('log', ({ message }) => console.log('[FFmpeg]', message));
-      ffmpeg.on('progress', ({ progress }) => setRenderProgress(Math.min(95, Math.round(progress * 100))));
-
-      setRenderStatus('Загрузка движка сборки...');
-      // Use locally hosted FFmpeg files for reliability
-      const baseURL = '/ffmpeg';
-      await ffmpeg.load({
-        coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+      ffmpeg.on('log', ({ message }) => {
+        console.log('[FFmpeg]', message);
+        if (message.includes('error') || message.includes('failed')) {
+           setRenderStatus(`Движок: ${message.slice(0, 40)}...`);
+        }
+      });
+      
+      ffmpeg.on('progress', ({ progress }) => {
+        const p = Math.min(98, 50 + Math.round(progress * 48));
+        setRenderProgress(p);
       });
 
-      // 2. Prepare Manifest Data
+      setRenderStatus('Загрузка модулей сборки (WASM)...');
+      const baseURL = '/ffmpeg';
+      
+      try {
+        await ffmpeg.load({
+          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
+          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
+        });
+      } catch (loadErr) {
+        console.error('[Delivery] FFmpeg load failed:', loadErr);
+        throw new Error('Не удалось загрузить ядро рендера. Проверьте соединение.');
+      }
+
       const manifest = ver.script_data as any;
       const aRollUrl = manifest?.aRollUrl ||
         manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
         manifest?.videoUrl ||
         null;
 
-      if (!aRollUrl) throw new Error('A-Roll не найден в манифесте. Вернитесь в студию и убедитесь что видео загружено.');
+      if (!aRollUrl) throw new Error('Исходное видео (A-Roll) не найдено. Вернитесь в студию.');
 
-      setRenderStatus('Загрузка основного видео...');
+      setRenderStatus('Скачивание основного видео...');
       setRenderProgress(10);
       
-      // Download A-Roll
-      await ffmpeg.writeFile('input_aroll.mp4', await fetchFile(aRollUrl));
+      try {
+        await ffmpeg.writeFile('input_aroll.mp4', await fetchFile(aRollUrl));
+      } catch (fileErr) {
+        console.error('[Delivery] A-Roll fetch failed:', fileErr);
+        throw new Error('Не удалось получить исходное видео. Если вы перезагружали страницу, попробуйте экспортировать проект заново из студии.');
+      }
 
-      // Download B-Rolls (only if they have valid http/https URLs)
       const brollClipsRaw = manifest?.brollClips || [];
-      const brollClipsWithUrls = brollClipsRaw.filter((c: any) => c.url && c.url.startsWith('http'));
+      const brollClipsWithUrls = brollClipsRaw.filter((c: any) => c.url && (c.url.startsWith('http') || c.url.startsWith('blob')));
       const brollFiles: Array<{ name: string; clip: any }> = [];
 
       for (let i = 0; i < brollClipsWithUrls.length; i++) {
         const clip = brollClipsWithUrls[i];
         try {
-          setRenderStatus(`Загрузка B-Roll ${i + 1}/${brollClipsWithUrls.length}...`);
+          setRenderStatus(`Синхронизация B-Roll ${i + 1}/${brollClipsWithUrls.length}...`);
           setRenderProgress(10 + Math.round((i / brollClipsWithUrls.length) * 30));
           const name = `broll_${i}.mp4`;
           await ffmpeg.writeFile(name, await fetchFile(clip.url));
@@ -115,14 +131,11 @@ export default function DeliveryPage() {
         }
       }
 
-      setRenderStatus('Финальная сборка 1080p...');
+      setRenderStatus('Финальный монтаж 1080p...');
       setRenderProgress(50);
 
-      // 3. Build FFmpeg command
       let ffmpegArgs: string[];
-
       if (brollFiles.length === 0) {
-        // Simple case: just re-encode A-roll to 1080p
         ffmpegArgs = [
           '-i', 'input_aroll.mp4',
           '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',
@@ -134,9 +147,7 @@ export default function DeliveryPage() {
           'output.mp4'
         ];
       } else {
-        // Complex case: A-roll + B-roll overlays
         const inputs = ['-i', 'input_aroll.mp4', ...brollFiles.flatMap(b => ['-i', b.name])];
-        
         let filterParts = '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[base]';
         let prevLabel = 'base';
         
@@ -180,7 +191,7 @@ export default function DeliveryPage() {
       } as any);
 
     } catch (err: any) {
-      console.error('Client render failed:', err);
+      console.error('[Delivery] Client render failed:', err);
       setError(err.message || 'Ошибка рендера');
     } finally {
       setIsLaunchingRender(false);

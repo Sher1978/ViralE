@@ -367,11 +367,23 @@ export default function StudioPage() {
         } : s)
       };
 
-      // ✅ Save manifest — use direct versionId if available, otherwise via latest lookup
+      // ✅ Save manifest — ensure at least one version exists
+      let savedVersion = null;
       if (currentVersionId) {
-        await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
+        savedVersion = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
       } else {
-        await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+        savedVersion = await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+      }
+
+      // If no version existed yet, create the first one
+      if (!savedVersion) {
+        console.log('[Studio] No existing version found, creating initial version');
+        savedVersion = await projectService.createVersion({
+          projectId,
+          scriptData: updatedManifest,
+          versionLabel: 'Initial Export'
+        });
+        if (savedVersion) setCurrentVersionId(savedVersion.id);
       }
 
       // Clear local draft
