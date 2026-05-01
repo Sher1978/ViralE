@@ -412,8 +412,20 @@ export const VideoEditor = React.memo(({
           // Detect MIME: iPhone files are video/quicktime (MOV) or video/mp4
           const mime = sourceBlob.type || (rawFile?.name?.endsWith('.mov') ? 'video/quicktime' : 'video/mp4');
           const ext = mime.includes('quicktime') ? 'video.mov' : 'video.mp4';
-          console.log('[Editor] Sending original iOS video, mime:', mime, 'size:', (sourceBlob.size / 1024 / 1024).toFixed(2), 'MB');
-          setStageMessage('Прямая загрузка на AI (iOS режим)...');
+          const sizeMB = sourceBlob.size / 1024 / 1024;
+
+          // Client-side size guard: Vercel limits request body to ~40MB safely
+          const MAX_UPLOAD_MB = 40;
+          if (sizeMB > MAX_UPLOAD_MB) {
+            throw new Error(
+              `Видео слишком большое (${sizeMB.toFixed(0)}MB). ` +
+              `На iPhone: Настройки → Камера → Форматы → "Наиболее совместимый" (H.264), ` +
+              `или обрежьте до 45 секунд.`
+            );
+          }
+          
+          console.log('[Editor] Sending original iOS video, mime:', mime, 'size:', sizeMB.toFixed(2), 'MB');
+          setStageMessage(`Загрузка на AI (iOS режим, ${sizeMB.toFixed(0)}MB)...`);
           formData.append('file', new File([sourceBlob], ext, { type: mime }));
         } else {
           throw new Error('Не удалось подготовить файл для расшифровки');
