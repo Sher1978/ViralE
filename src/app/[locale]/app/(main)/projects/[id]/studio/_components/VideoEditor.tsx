@@ -307,13 +307,51 @@ export const VideoEditor = React.memo(({
 
       const rect = timelineRef.current.getBoundingClientRect();
       const dSec = ((clientX - startX) / rect.width) * duration;
-      const upd = (prev: any[]) => prev.map(c => {
-        if (c.id !== clipId) return c;
-        if (handle === 'move') { const len = origEnd - origStart; const ns = Math.max(0, origStart + dSec); return { ...c, startTime: ns, endTime: Math.min(ns + len, duration) }; }
-        if (handle === 'start') return { ...c, startTime: Math.max(0, Math.min(origStart + dSec, c.endTime - 0.5)) };
-        return { ...c, endTime: Math.min(duration, Math.max(origEnd + dSec, c.startTime + 0.5)) };
-      });
-      if (type === 'broll') setBrollClips(upd); else setSubtitleClips(upd);
+      if (type === 'broll') {
+        setBrollClips(prev => {
+          const idx = prev.findIndex(c => c.id === clipId);
+          if (idx === -1) return prev;
+          const next = [...prev];
+          const clip = { ...next[idx] };
+          const len = origEnd - origStart;
+
+          if (handle === 'move') {
+            let ns = Math.max(0, origStart + dSec);
+            ns = Math.min(ns, duration - len);
+            // Collision detection
+            const other = prev.filter(c => c.id !== clipId);
+            other.forEach(o => {
+              if (ns + len > o.startTime && origStart + len <= o.startTime) ns = o.startTime - len;
+              if (ns < o.endTime && origStart >= o.endTime) ns = o.endTime;
+            });
+            clip.startTime = ns;
+            clip.endTime = ns + len;
+          } else if (handle === 'start') {
+            let ns = Math.max(0, Math.min(origStart + dSec, clip.endTime - 0.2));
+            const other = prev.filter(c => c.id !== clipId);
+            other.forEach(o => { if (ns < o.endTime && origStart >= o.endTime) ns = o.endTime; });
+            clip.startTime = ns;
+          } else {
+            let ne = Math.min(duration, Math.max(origEnd + dSec, clip.startTime + 0.2));
+            const other = prev.filter(c => c.id !== clipId);
+            other.forEach(o => { if (ne > o.startTime && origEnd <= o.startTime) ne = o.startTime; });
+            clip.endTime = ne;
+          }
+          next[idx] = clip;
+          return next;
+        });
+      } else {
+        setSubtitleClips(prev => prev.map(c => {
+          if (c.id !== clipId) return c;
+          if (handle === 'move') { 
+            const len = origEnd - origStart; 
+            const ns = Math.max(0, Math.min(origStart + dSec, duration - len)); 
+            return { ...c, startTime: ns, endTime: ns + len }; 
+          }
+          if (handle === 'start') return { ...c, startTime: Math.max(0, Math.min(origStart + dSec, c.endTime - 0.2)) };
+          return { ...c, endTime: Math.min(duration, Math.max(origEnd + dSec, c.startTime + 0.2)) };
+        }));
+      }
     };
     const up = () => { 
       if (longPressTimerRef.current) {
@@ -609,8 +647,6 @@ export const VideoEditor = React.memo(({
       results.forEach(r => {
         if (r.status === 'fulfilled' && r.value.videos.length > 0) {
           newCache[r.value.phraseId] = r.value.videos;
-          // Set track 0 for pre-fetched to avoid auto-showing them if not desired, 
-          // but we want them to appear in the timeline as filled
           urlMap[r.value.phraseId] = r.value.videos[0].videoUrl;
         }
       });
@@ -1131,17 +1167,28 @@ export const VideoEditor = React.memo(({
               color="text-blue-400"
               onTimelineClick={(time) => {
                 const id = `br_manual_${Date.now()}`;
+                // Check if we can fit 5s here without overlap
+                const defaultLen = 5;
+                const endTime = Math.min(time + defaultLen, duration);
+                
+                // Prevent creating on top of existing
+                const hasOverlap = brollClips.some(c => 
+                  (time >= c.startTime && time < c.endTime) ||
+                  (endTime > c.startTime && endTime <= c.endTime)
+                );
+                if (hasOverlap) return;
+
                 const newClip: BRollClip = {
                   id,
                   phraseId: id,
                   startTime: time,
-                  endTime: Math.min(time + 3, duration),
+                  endTime,
                   label: 'Manual Scene',
                   url: '',
                   prompt: 'cinematic lifestyle shot',
                   track: 1
                 };
-                setBrollClips(prev => [...prev, newClip]);
+                setBrollClips(prev => [...prev, newClip].sort((a,b) => a.startTime - b.startTime));
                 openBRollHunterForClip(id, '');
               }}
             >
