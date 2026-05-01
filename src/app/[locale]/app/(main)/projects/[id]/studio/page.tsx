@@ -24,6 +24,7 @@ import { RecordingReview } from './_components/RecordingReview';
 import { SourcePicker } from './_components/SourcePicker';
 import { VideoEditor } from './_components/VideoEditor';
 import { ProductionBranch } from './_components/ProductionBranch';
+import DistributionFactory from './_components/DistributionFactory';
 
 // Global Shared Components
 import StudioTimeline from '@/components/studio/StudioTimeline';
@@ -578,6 +579,16 @@ export default function StudioPage() {
 
 
             />
+          )}
+
+          {activeTab === 'assets' && (
+            <div className="max-w-6xl mx-auto h-full p-10">
+              <DistributionFactory 
+                scriptText={manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
+                projectId={projectId}
+                locale={locale}
+              />
+            </div>
           )}
 
           {activeTab === 'knowledge' && (
