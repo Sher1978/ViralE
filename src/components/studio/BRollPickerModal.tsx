@@ -180,10 +180,12 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   };
 
   // Source badge helper
-  const getSourceBadge = (source: string) => {
+  const getSourceBadge = (item: VideoItem) => {
+    const { source } = item;
     if (source === 'giphy') return { label: 'GIF • GIPHY', color: 'text-pink-400' };
     if (source === 'ai') return { label: 'AI Generated', color: 'text-purple-400' };
     if (source === 'movie') return { label: 'Movie • AI Semantic', color: 'text-emerald-400' };
+    if (source === 'stock' && item.tags?.includes('pixabay')) return { label: 'Stock • Pixabay', color: 'text-cyan-400' };
     return { label: 'Stock • Pexels', color: 'text-blue-400' };
   };
 
@@ -221,7 +223,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
         ) : (
           <div className="grid grid-cols-2 gap-3">
             {videos.map((item) => {
-              const badge = getSourceBadge(item.source);
+              const badge = getSourceBadge(item);
               return (
                 <div
                   key={item.id}
@@ -322,7 +324,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
               <ArrowRight size={20} className="rotate-180" />
             </button>
             <div className="px-4 py-2 rounded-xl bg-black/50 backdrop-blur-md border border-white/10 text-white text-[10px] font-black uppercase tracking-widest">
-              {getSourceBadge(previewVideo.source).label}
+              {getSourceBadge(previewVideo).label}
             </div>
           </div>
 

@@ -26,17 +26,18 @@ export async function GET(req: NextRequest) {
       const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
       
       const prompt = `
-        You are a video editor. Translate the following phrase to English 
-        and extract 2-3 visual keywords for stock video search.
-        Focus on physical objects, actions, or cinematic moods.
+        You are a cinematic video editor. Translate the following phrase to English 
+        and extract 2-3 visual, concrete keywords for stock video search.
+        Focus on objects, movements, and lighting.
         Input: "${query}"
         Return ONLY the keywords separated by spaces.
+        Example: "грустный человек в офисе" -> "man sad office window"
       `;
 
       const result = await model.generateContent(prompt);
       const translated = result.response.text().trim().toLowerCase().replace(/[^\w\s]/gi, '');
       if (translated && translated.length > 2) {
-        console.log(`[B-Roll Search] Translated: "${query}" -> "${translated}"`);
+        console.log(`[B-Roll Search] Gemini Optimized: "${query}" -> "${translated}"`);
         optimizedQuery = translated;
       }
     } catch (err) {
@@ -45,14 +46,10 @@ export async function GET(req: NextRequest) {
   }
 
   try {
-    // 1. Fetch from Pexels directly
+    // 1. Fetch from Pexels
     const pexelsRes = await fetch(
-      `https://api.pexels.com/videos/search?query=${encodeURIComponent(optimizedQuery)}&per_page=8`,
-      { 
-        headers: { 
-          'Authorization': pexelsKey 
-        } 
-      }
+      `https://api.pexels.com/videos/search?query=${encodeURIComponent(optimizedQuery)}&per_page=10`,
+      { headers: { 'Authorization': pexelsKey } }
     );
 
     let pexelsResults: any[] = [];
@@ -64,13 +61,33 @@ export async function GET(req: NextRequest) {
         title: 'Pexels Clip',
         previewUrl: v.image, 
         videoUrl: v.video_files.find((f: any) => f.quality === 'hd')?.link || v.video_files[0]?.link,
-        tags: ['stock', 'cinematic']
+        tags: ['stock', 'pexels']
       })).filter((v: any) => v.videoUrl);
-    } else {
-      console.error('[B-Roll Search] Pexels API returned error:', pexelsRes.status);
     }
 
-    // 2. Fetch from Giphy
+    // 2. Fetch from Pixabay
+    let pixabayResults: any[] = [];
+    const pixabayKey = process.env.PIXABAY_API_KEY;
+    if (pixabayKey) {
+      try {
+        const pixRes = await fetch(`https://pixabay.com/api/videos/?key=${pixabayKey}&q=${encodeURIComponent(optimizedQuery)}&per_page=10`);
+        if (pixRes.ok) {
+          const pixData = await pixRes.json();
+          pixabayResults = (pixData.hits || []).map((v: any) => ({
+            id: `pix-${v.id}`,
+            source: 'stock',
+            title: 'Pixabay Clip',
+            previewUrl: v.userImageURL || v.picture_id ? `https://i.vimeocdn.com/video/${v.picture_id}_640x360.jpg` : '',
+            videoUrl: v.videos.medium?.url || v.videos.small?.url || v.videos.large?.url,
+            tags: ['stock', 'pixabay']
+          })).filter((v: any) => v.videoUrl);
+        }
+      } catch (e) {
+        console.error('[B-Roll Search] Pixabay failed:', e);
+      }
+    }
+
+    // 3. Fetch from Giphy
     let giphyResults: any[] = [];
     if (giphyKey) {
       try {
@@ -126,8 +143,8 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const allResults = [...twelveLabsResults, ...pexelsResults, ...giphyResults];
-    console.log(`[B-Roll Search] Found ${allResults.length} total results (TL: ${twelveLabsResults.length}, PX: ${pexelsResults.length}, GP: ${giphyResults.length})`);
+    const allResults = [...twelveLabsResults, ...pixabayResults, ...pexelsResults, ...giphyResults];
+    console.log(`[B-Roll Search] Found ${allResults.length} total results (TL: ${twelveLabsResults.length}, PIX: ${pixabayResults.length}, PX: ${pexelsResults.length}, GP: ${giphyResults.length})`);
 
     return NextResponse.json({ videos: allResults });
   } catch (error: any) {
