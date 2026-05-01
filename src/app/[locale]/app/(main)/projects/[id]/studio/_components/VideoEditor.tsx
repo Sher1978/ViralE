@@ -292,21 +292,20 @@ export const VideoEditor = React.memo(({
 
   // ── Core Pipeline: Transcription → Karaoke Subs → Auto B-Roll placement ──
   const buildKaraokeClips = (words: TranscriptWord[]): SubtitleClip[] => {
-    const CHUNK_SIZE = 4;
+    const MAX_WORDS = 3; // Strict limit for viral energy
     const chunks: SubtitleClip[] = [];
     let i = 0;
-    const ts = Date.now();
     while (i < words.length) {
-      const slice = words.slice(i, i + CHUNK_SIZE);
+      const slice = words.slice(i, i + MAX_WORDS);
       const text = slice.map(w => w.text).join(' ');
       chunks.push({
-        id: `sub_${i}_${ts}`,
-        text,
+        id: `sub-${i}-${Date.now()}`,
         startTime: slice[0].start,
         endTime: slice[slice.length - 1].end,
-        style: 'minimal' as const,
+        text: text.toUpperCase(), // Professional bold look
+        style: 'minimal'
       });
-      i += CHUNK_SIZE;
+      i += MAX_WORDS;
     }
     return chunks;
   };
@@ -825,49 +824,31 @@ export const VideoEditor = React.memo(({
                 const subDuration = activeSub.endTime - activeSub.startTime;
                 const progress = (currentTime - activeSub.startTime) / (subDuration || 1);
                 const accentIndex = Math.min(Math.floor(progress * words.length), words.length - 1);
-                const accentWord = words[accentIndex];
 
                 return (
                   <motion.div
-                    drag
-                    dragMomentum={false}
-                    dragConstraints={{ left: -100, right: 100, top: -200, bottom: 200 }}
-                    onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
-                    key={`${activeSub.id}-${activeSub.style}`}
-                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    key={activeSub.id}
+                    initial={{ opacity: 0, scale: 0.8, y: 10 }}
                     animate={{ opacity: 1, scale: 1, x: subtitlePos.x, y: subtitlePos.y }}
-                    exit={{ opacity: 0, scale: 1.1 }}
+                    exit={{ opacity: 0, scale: 1.2 }}
                     className="absolute pointer-events-auto cursor-move select-none text-center px-4 w-full"
-                    style={{ bottom: '25%' }}
+                    style={{ bottom: '30%' }}
                   >
-                    {activeSub.style === 'minimal' && (
-                      <div className="flex flex-wrap justify-center gap-x-2 gap-y-1">
+                    <div className="flex flex-wrap justify-center gap-x-3 gap-y-2">
                       {words.map((word, wi) => (
-                        <span
+                        <motion.span
                           key={wi}
-                          className={`text-[24px] font-black leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,1)] tracking-tight transition-all duration-150 ${
-                            word === accentWord
-                              ? 'text-amber-400 scale-110 inline-block [text-shadow:0_0_20px_rgba(245,158,11,0.8)]'
-                              : 'text-white'
+                          animate={wi === accentIndex ? { scale: 1.2 } : { scale: 1 }}
+                          className={`text-[34px] md:text-[44px] font-black leading-tight tracking-tighter transition-colors duration-100 ${
+                            wi === accentIndex
+                              ? 'text-yellow-400 [text-shadow:0_4px_20px_rgba(234,179,8,0.5),0_2px_0_#000]'
+                              : 'text-white [text-shadow:0_2px_0_#000,0_4px_12px_rgba(0,0,0,0.8)]'
                           }`}
-                        >{word}</span>
-                      ))}
-                    </div>
-                  )}
-                  {activeSub.style === 'pop' && (
-                    <span className="bg-purple-600 text-white px-5 py-2.5 rounded-2xl text-2xl font-black italic uppercase tracking-tighter shadow-[0_0_30px_rgba(168,85,247,0.8)] border border-purple-400/50">
-                      {activeSub.text}
-                    </span>
-                  )}
-                  {activeSub.style === 'bold' && (
-                    <div className="flex flex-wrap justify-center gap-x-2">
-                      {words.map((word, wi) => (
-                        <span key={wi} className={`text-4xl font-black uppercase tracking-tighter italic drop-shadow-[0_4px_0_rgba(0,0,0,1)] ${word === accentWord ? 'text-amber-400' : 'text-white'}`}>
+                        >
                           {word}
-                        </span>
+                        </motion.span>
                       ))}
                     </div>
-                  )}
                 </motion.div>
               );
             })()}
