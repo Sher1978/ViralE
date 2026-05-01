@@ -39,6 +39,11 @@ export default function DeliveryPage() {
             setJob(jobData);
             const verData = await projectService.getVersion(jobData.version_id);
             setVersion(verData);
+            
+            // Auto-refresh if status is processing/queued
+            if (jobData.status === 'queued' || jobData.status === 'processing') {
+              setTimeout(() => loadResults(), 3000);
+            }
           }
         } catch (err) {
           console.error('Failed to load delivery results:', err);
@@ -55,6 +60,8 @@ export default function DeliveryPage() {
           const verData = await projectService.getLatestVersion(projectId);
           if (verData) {
             setVersion(verData);
+            // AUTO-LAUNCH RENDER if no jobId provided
+            handleLaunchRender(projectId, verData.id);
           }
         } catch (err) {
           console.error('Failed to load project version:', err);
@@ -64,32 +71,35 @@ export default function DeliveryPage() {
         return;
       }
 
-      // ── Case 3: Nothing — show error ──
       setError('Проект не найден. Вернитесь в студию.');
       setIsLoading(false);
     }
     loadResults();
   }, [jobId, projectId]);
 
-  const handleLaunchRender = async () => {
-    if (!projectId) return;
+  const handleLaunchRender = async (pId?: string, vId?: string) => {
+    const targetProjectId = pId || projectId;
+    const targetVersionId = vId || version?.id;
+    
+    if (!targetProjectId || isLaunchingRender) return;
+    
     setIsLaunchingRender(true);
     try {
       const response = await fetch('/api/render', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ projectId, versionId: version?.id })
+        body: JSON.stringify({ projectId: targetProjectId, versionId: targetVersionId })
       });
-      if (response.ok) {
-        const data = await response.json();
-        if (data.jobId) {
-          // Reload with the new jobId
-          router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}&jobId=${data.jobId}`);
-          return;
-        }
+      
+      const data = await response.json();
+      if (response.ok && data.jobId) {
+        router.push(`/${locale}/app/projects/new/delivery?projectId=${targetProjectId}&jobId=${data.jobId}`);
+      } else {
+        throw new Error(data.error || 'Failed to start render');
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('Render launch failed:', err);
+      setError(err.message || 'Ошибка запуска рендера');
     } finally {
       setIsLaunchingRender(false);
     }
@@ -128,25 +138,25 @@ export default function DeliveryPage() {
     );
   }
 
-  const scriptData = version?.script_data as { hook: string; story: string; cta: string } || null;
+  const scriptData = version?.script_data as { hook: string; context: string; meat: string; cta: string } || null;
   const TEXT_OUTPUTS = [
     {
       platform: 'Telegram',
       icon: '✈️',
       accent: '#4D9EFF',
-      text: scriptData ? `${scriptData.hook}\n\n${scriptData.story}\n\n${scriptData.cta}` : '',
+      text: scriptData ? `${scriptData.hook}\n\n${scriptData.context}\n\n${scriptData.meat}\n\n${scriptData.cta}` : '',
     },
     {
       platform: 'Twitter / X',
       icon: '🐦',
       accent: '#1DA1F2',
-      text: scriptData ? `${scriptData.hook.substring(0, 100)}... #ViralEngine` : '',
+      text: scriptData ? `${scriptData.hook.substring(0, 200)}... #ViralEngine` : '',
     },
     {
       platform: 'Instagram',
       icon: '📸',
       accent: '#E4405F',
-      text: scriptData ? `${scriptData.hook}\n\n${scriptData.story}\n\n#ViralEngine #Reels` : '',
+      text: scriptData ? `${scriptData.hook}\n\n${scriptData.meat}\n\n#ViralEngine #Reels` : '',
     },
     {
       platform: 'TikTok',
@@ -158,7 +168,7 @@ export default function DeliveryPage() {
       platform: 'LinkedIn',
       icon: '💼',
       accent: '#0077B5',
-      text: scriptData ? `New insights on production:\n\n${scriptData.story}` : '',
+      text: scriptData ? `New insights:\n\n${scriptData.meat}` : '',
     },
   ];
 
@@ -173,49 +183,54 @@ export default function DeliveryPage() {
   return (
     <div className="space-y-5 animate-fade-in pb-10">
       {/* Status */}
-      <StatusStepper currentStep="done" />
+      <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'processing'} />
 
-      {/* Success header */}
+      {/* Rendering / Success header */}
       <div
         className="rounded-3xl p-6 text-center space-y-4"
         style={{
-          background: 'linear-gradient(135deg, rgba(0,255,204,0.08) 0%, rgba(155,95,255,0.05) 100%)',
-          border: '1px solid rgba(0,255,204,0.15)',
+          background: job?.status === 'completed' 
+            ? 'linear-gradient(135deg, rgba(0,255,204,0.08) 0%, rgba(155,95,255,0.05) 100%)'
+            : 'linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(59,130,246,0.05) 100%)',
+          border: job?.status === 'completed'
+            ? '1px solid rgba(0,255,204,0.15)'
+            : '1px solid rgba(168,85,247,0.2)',
         }}
       >
-        <div
-          className="text-5xl animate-float"
-          style={{ display: 'inline-block' }}
-        >
-          🎉
+        <div className={`text-5xl ${job?.status === 'completed' ? 'animate-float' : ''}`}>
+          {job?.status === 'completed' ? '🎉' : '⚙️'}
         </div>
         <div>
-          <h1
-            className="text-2xl font-black tracking-tighter uppercase gradient-text-mint-purple"
-            style={{ fontFamily: 'Space Grotesk, sans-serif' }}
-          >
-            {t('badge')}
+          <h1 className="text-2xl font-black tracking-tighter uppercase text-white">
+            {job?.status === 'completed' ? t('badge') : 'Видео в процессе...'}
           </h1>
           <p className="text-[11px] text-white/40 mt-1">
-            {t('statusSub')}
+            {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${job?.progress || 0}%`}
           </p>
         </div>
+
+        {/* Loading Bar for processing */}
+        {job && job.status !== 'completed' && (
+          <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
+            <motion.div 
+              className="h-full bg-purple-500"
+              initial={{ width: 0 }}
+              animate={{ width: `${job.progress || 10}%` }}
+              transition={{ duration: 0.5 }}
+            />
+          </div>
+        )}
 
         {/* Delivery chips */}
         <div className="flex justify-center gap-2 flex-wrap">
           {[
             t('videoMp4'),
-            t('textsCount', { n: 3 }),
+            t('textsCount', { n: 5 }),
             t('carouselSlides', { n: 8 })
           ].map((item) => (
             <span
               key={item}
-              className="text-[10px] font-bold px-3 py-1.5 rounded-full"
-              style={{
-                background: 'rgba(0,255,204,0.08)',
-                border: '1px solid rgba(0,255,204,0.15)',
-                color: 'rgba(0,255,204,0.8)',
-              }}
+              className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/40"
             >
               {item}
             </span>
@@ -223,45 +238,10 @@ export default function DeliveryPage() {
         </div>
       </div>
 
-      {/* ── No job yet — offer to launch render ── */}
-      {!job && !error && projectId && (
-        <div
-          className="rounded-3xl p-6 space-y-4 text-center"
-          style={{
-            background: 'linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(59,130,246,0.05) 100%)',
-            border: '1px solid rgba(168,85,247,0.2)',
-          }}
-        >
-          <div className="text-4xl">🎬</div>
-          <div>
-            <h2 className="text-lg font-black uppercase tracking-tighter text-white">
-              Проект сохранён
-            </h2>
-            <p className="text-[11px] text-white/40 mt-1">
-              Манифест сохранён. Запустите рендер чтобы получить готовое видео.
-            </p>
-          </div>
-          <button
-            onClick={handleLaunchRender}
-            disabled={isLaunchingRender}
-            className="w-full py-4 rounded-2xl font-black text-[11px] uppercase tracking-widest flex items-center justify-center gap-3 transition-all active:scale-95 disabled:opacity-50"
-            style={{
-              background: 'linear-gradient(135deg, #a855f7, #3b82f6)',
-              color: '#fff',
-            }}
-          >
-            {isLaunchingRender ? (
-              <><Loader2 className="w-4 h-4 animate-spin" /> Запускаем рендер...</>
-            ) : (
-              <><Play className="w-4 h-4 fill-white" /> Запустить рендер (5 кредитов)</>
-            )}
-          </button>
-          <button
-            onClick={() => router.push(`/${locale}/app/projects/new/studio?id=${projectId}`)}
-            className="w-full py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest text-white/30 hover:text-white/60 transition-colors"
-          >
-            ← Вернуться в монтажку
-          </button>
+      {/* ── Auto-launching state ── */}
+      {!job && isLaunchingRender && (
+        <div className="rounded-3xl p-8 bg-purple-500/5 border border-purple-500/20 text-center animate-pulse">
+           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">Initializing Engine...</p>
         </div>
       )}
 
@@ -285,16 +265,11 @@ export default function DeliveryPage() {
             poster={version?.preview_url}
           />
         ) : (
-          <div className="absolute inset-0 flex items-center justify-center">
-            <button
-              className="w-16 h-16 rounded-full flex items-center justify-center transition-all hover:scale-110 active:scale-95"
-              style={{
-                background: 'rgba(0,255,204,0.9)',
-                boxShadow: '0 0 40px rgba(0,255,204,0.5)',
-              }}
-            >
-              <Play className="w-6 h-6 text-black fill-black ml-1" />
-            </button>
+          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-xl">
+            <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 animate-pulse">
+              Generating Final Cut...
+            </p>
           </div>
         )}
         
