@@ -183,6 +183,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   const getSourceBadge = (source: string) => {
     if (source === 'giphy') return { label: 'GIF • GIPHY', color: 'text-pink-400' };
     if (source === 'ai') return { label: 'AI Generated', color: 'text-purple-400' };
+    if (source === 'movie') return { label: 'Movie • AI Semantic', color: 'text-emerald-400' };
     return { label: 'Stock • Pexels', color: 'text-blue-400' };
   };
 

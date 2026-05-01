@@ -89,8 +89,45 @@ export async function GET(req: NextRequest) {
       }
     }
 
-    const allResults = [...pexelsResults, ...giphyResults];
-    console.log(`[B-Roll Search] Found ${allResults.length} total results for "${optimizedQuery}"`);
+    // 3. Fetch from Twelve Labs (Semantic AI)
+    let twelveLabsResults: any[] = [];
+    const tlKey = process.env.NEXT_PUBLIC_TWELVE_LABS_API_KEY;
+    const tlIndex = process.env.NEXT_PUBLIC_TWELVE_LABS_INDEX_ID;
+    
+    if (tlKey && tlIndex) {
+      try {
+        console.log('[B-Roll Search] Querying Twelve Labs...');
+        const tlRes = await fetch('https://api.twelvelabs.io/v1.3/search', {
+          method: 'POST',
+          headers: {
+            'x-api-key': tlKey,
+            'Content-Type': 'application/json'
+          },
+          body: JSON.stringify({
+            index_id: tlIndex,
+            query: optimizedQuery,
+            search_options: ['visual']
+          })
+        });
+
+        if (tlRes.ok) {
+          const tlData = await tlRes.json();
+          twelveLabsResults = (tlData.data || []).map((v: any) => ({
+            id: `tl-${v.video_id}-${v.start}`,
+            source: 'movie',
+            title: v.metadata?.filename || 'Semantic Clip',
+            previewUrl: v.metadata?.video_url || '', // Twelve Labs usually provides a proxy or we use a placeholder
+            videoUrl: v.metadata?.video_url || '',
+            tags: ['ai', 'semantic', 'movie']
+          })).filter((v: any) => v.videoUrl);
+        }
+      } catch (e) {
+        console.error('[B-Roll Search] Twelve Labs failed:', e);
+      }
+    }
+
+    const allResults = [...twelveLabsResults, ...pexelsResults, ...giphyResults];
+    console.log(`[B-Roll Search] Found ${allResults.length} total results (TL: ${twelveLabsResults.length}, PX: ${pexelsResults.length}, GP: ${giphyResults.length})`);
 
     return NextResponse.json({ videos: allResults });
   } catch (error: any) {
