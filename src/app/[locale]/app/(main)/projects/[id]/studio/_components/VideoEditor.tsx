@@ -868,63 +868,6 @@ export const VideoEditor = React.memo(({
               </div>
               <div className="text-center px-8">
                 <p className="text-xs font-black text-white uppercase tracking-widest leading-relaxed">{stageMessage}</p>
-                {transcriptionError ? (
-                  <div className="mt-5 space-y-4">
-                    <div className="bg-red-500/10 border border-red-500/20 rounded-xl p-3">
-                      <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest leading-tight">
-                        {transcriptionError}
-                      </p>
-                    </div>
-                    <div className="flex flex-col gap-2 w-full">
-                      <button 
-                        onClick={() => {
-                          setTranscriptionError(null);
-                          transcriptionStartedRef.current = false;
-                          runTranscriptionAndPhrases();
-                        }}
-                        className="w-full px-6 py-3 rounded-2xl bg-purple-500 text-white text-[11px] font-black uppercase tracking-widest hover:bg-purple-600 transition-all active:scale-95 shadow-lg shadow-purple-500/20"
-                      >
-                        Повторить попытку
-                      </button>
-                      <button 
-                        onClick={() => {
-                          console.log('[VideoEditor] Using draft fallback...');
-                          const fallback = buildTranscript(manifest, duration);
-                          const karaokeClips = buildKaraokeClips(fallback);
-                          const picked = pickAIPhrases(fallback);
-                          
-                          setTranscript(fallback);
-                          setSubtitleClips(karaokeClips);
-                          setPhrases(picked);
-                          
-                          // Place B-Roll placeholders
-                          const brollPlaceholders: BRollClip[] = picked.map(p => ({
-                            id: `br-${p.id}`,
-                            phraseId: p.id,
-                            startTime: p.start,
-                            endTime: p.end,
-                            label: p.text.substring(0, 20) + '...',
-                            status: 'pending',
-                            url: '',
-                            prompt: '',
-                            track: 1
-                          }));
-                          setBrollClips(brollPlaceholders);
-                          
-                          setStage('editing');
-                        }}
-                        className="w-full px-6 py-3 rounded-2xl bg-white/10 border border-white/20 text-white text-[11px] font-black uppercase tracking-widest hover:bg-white/20 transition-all active:scale-95"
-                      >
-                        {manifest ? 'Использовать черновик' : 'Продолжить без текста'}
-                      </button>
-                    </div>
-                    <p className="text-[9px] text-white/30 uppercase tracking-widest leading-relaxed">
-                      {manifest 
-                        ? 'AI-анализ не удался. Вы можете повторить или продолжить с текстом из сценария.' 
-                        : 'AI-анализ не удался. Вы можете повторить или продолжить монтаж вручную.'}
-                    </p>
-                  </div>
-                ) : (
                   <div className="flex flex-col items-center gap-4">
                     <div className="flex gap-1 justify-center mt-3">
                       {[0, 1, 2].map(i => (
