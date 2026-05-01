@@ -807,97 +807,81 @@ export const VideoEditor = React.memo(({
         </button>
       </div>
 
-      {/* ── VIDEO PREVIEW ── */}
-      <div className="relative bg-black flex items-center justify-center flex-shrink-0 overflow-hidden"
+      {/* ── VIDEO PREVIEW (Phone Frame) ── */}
+      <div className="relative bg-[#050508] flex items-center justify-center flex-shrink-0"
         style={{ height: '38%' }}>
-
-        {aRollUrl ? (
-          <div className="relative w-full h-full">
-            <video 
-              key={aRollUrl}
-              ref={videoRef} 
-              muted={isMuted} 
-              className="w-full h-full object-contain" 
-              playsInline 
-              onClick={togglePlay} 
-            />
-            {/* ── B-ROLL OVERLAY PREVIEW ── */}
-            {(() => {
-              const activeBR = brollClips.find(c => c.url && currentTime >= c.startTime && currentTime <= c.endTime);
-              if (!activeBR) return null;
-              return (
-                <div className="absolute inset-0 z-10 bg-black">
-                   <video 
-                     src={activeBR.url}
-                     autoPlay
-                     muted
-                     loop
-                     playsInline
-                     className="w-full h-full object-cover"
-                     style={{ 
-                       objectPosition: `${50 + (activeBR.offsetX || 0)}% 50%` 
-                     }}
-                   />
-                   {/* Label */}
-                   <div className="absolute top-4 left-4 px-2 py-1 bg-blue-600/80 rounded text-[8px] font-black uppercase tracking-widest text-white">
-                      B-Roll Active
-                   </div>
+        
+        {/* Phone Frame Container */}
+        <div className="relative h-full aspect-[9/16] bg-black overflow-hidden shadow-[0_0_50px_rgba(0,0,0,0.5)] z-10">
+          {aRollUrl ? (
+            <div className="relative w-full h-full">
+              <video 
+                key={aRollUrl}
+                ref={videoRef} 
+                muted={isMuted} 
+                className="w-full h-full object-cover" 
+                playsInline 
+                onClick={togglePlay} 
+              />
+              {/* ── B-ROLL OVERLAY PREVIEW ── */}
+              {(() => {
+                const activeBR = brollClips.find(c => c.url && currentTime >= c.startTime && currentTime <= c.endTime);
+                if (!activeBR) return null;
+                return (
+                  <div className="absolute inset-0 z-10 bg-black">
+                     <video 
+                       src={activeBR.url}
+                       autoPlay
+                       muted
+                       loop
+                       playsInline
+                       className="w-full h-full object-cover"
+                       style={{ 
+                         objectPosition: `${50 + (activeBR.offsetX || 0)}% 50%` 
+                       }}
+                     />
+                     {/* Label */}
+                     <div className="absolute top-4 left-4 px-2 py-1 bg-blue-600/80 rounded text-[8px] font-black uppercase tracking-widest text-white">
+                        B-Roll Active
+                     </div>
+                  </div>
+                );
+              })()}
+            </div>
+          ) : (
+            <div className="flex flex-col items-center justify-center gap-4 w-full h-full p-6 bg-[#0a0a0f]">
+              <button onClick={() => fileInputRef.current?.click()}
+                className="flex flex-col items-center gap-3 w-full p-6 rounded-3xl bg-white/[0.02] border border-dashed border-white/10 hover:border-purple-500/40 transition-all active:scale-[0.98]">
+                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                  <Upload size={20} className="text-purple-400" />
                 </div>
-              );
-            })()}
-          </div>
-        ) : (
-
-          <div className="flex flex-col items-center justify-center gap-4 w-full h-full p-6">
-            {/* Upload Own Video */}
-            <button onClick={() => fileInputRef.current?.click()}
-              className="flex items-center gap-4 w-full px-6 py-5 rounded-2xl bg-white/[0.03] border-2 border-dashed border-white/10 hover:border-purple-500/40 transition-all active:scale-[0.98]">
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20 flex-shrink-0">
-                <Upload size={20} className="text-purple-400" />
-              </div>
-              <div className="text-left">
-                <p className="text-[11px] font-black text-white/60 uppercase tracking-widest">Загрузить видео</p>
-                <p className="text-[9px] text-white/20 mt-0.5 font-bold uppercase tracking-widest">A-Roll · Своя съёмка</p>
-              </div>
-            </button>
-            {/* AI Faceless */}
-            {onFaceless && (
-              <button onClick={onFaceless}
-                className="flex items-center gap-4 w-full px-6 py-5 rounded-2xl bg-gradient-to-r from-purple-500/10 to-pink-500/10 border-2 border-purple-500/30 hover:border-purple-500/60 transition-all active:scale-[0.98]">
-                <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500 to-pink-500 flex items-center justify-center flex-shrink-0 shadow-[0_0_20px_rgba(168,85,247,0.4)]">
-                  <Sparkles size={20} className="text-white" />
-                </div>
-                <div className="text-left">
-                  <p className="text-[11px] font-black text-purple-300 uppercase tracking-widest">AI Faceless</p>
-                  <p className="text-[9px] text-white/30 mt-0.5 font-bold uppercase tracking-widest">Генерация картинок + анимация</p>
+                <div className="text-center">
+                  <p className="text-[10px] font-black text-white/60 uppercase tracking-widest">Upload A-Roll</p>
                 </div>
               </button>
-            )}
-          </div>
-        )}
+            </div>
+          )}
 
-        {/* Subtitle Overlay – Karaoke Style */}
-        <AnimatePresence mode="wait">
-          {aRollUrl && stage !== 'transcribing' && (() => {
-            const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
-            if (!activeSub) return null;
-            const accentWord = (activeSub as any).accentWord || '';
-            const words = activeSub.text.split(' ');
-            return (
-              <motion.div
-                drag
-                dragMomentum={false}
-                dragConstraints={{ left: -150, right: 150, top: -200, bottom: 200 }}
-                onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
-                key={`${activeSub.id}-${activeSub.style}`}
-                initial={{ opacity: 0, y: 8 }}
-                animate={{ opacity: 1, y: 0, x: subtitlePos.x }}
-                exit={{ opacity: 0, y: -8 }}
-                className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-4 max-w-[90%] left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-x-2 gap-y-1 bottom-14"
-                style={{ top: `calc(50% + ${subtitlePos.y}px)` }}
-              >
-                {activeSub.style === 'minimal' && (
-                  <div className="flex flex-wrap justify-center gap-x-2 gap-y-1">
+          {/* Subtitle Overlay – Karaoke Style (Inside Frame) */}
+          <AnimatePresence mode="wait">
+            {aRollUrl && stage !== 'transcribing' && (() => {
+              const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
+              if (!activeSub) return null;
+              return (
+                <motion.div
+                  drag
+                  dragMomentum={false}
+                  dragConstraints={{ left: -100, right: 100, top: -150, bottom: 150 }}
+                  onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
+                  key={`${activeSub.id}-${activeSub.style}`}
+                  initial={{ opacity: 0, scale: 0.9 }}
+                  animate={{ opacity: 1, scale: 1, x: subtitlePos.x }}
+                  exit={{ opacity: 0, scale: 1.1 }}
+                  className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-4 w-full left-1/2 -translate-x-1/2"
+                  style={{ top: `calc(70% + ${subtitlePos.y}px)` }}
+                >
+                  {activeSub.style === 'minimal' && (
+                    <div className="flex flex-wrap justify-center gap-x-2 gap-y-1">
                     {words.map((word, wi) => (
                       <span
                         key={wi}
