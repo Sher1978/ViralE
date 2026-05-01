@@ -594,8 +594,8 @@ export const VideoEditor = React.memo(({
               endTime: phrase.end,
               label: seg.visual_metaphor?.slice(0, 30) + '...' || 'AI Scene',
               url: '',
-              // CRITICAL: Use ai_prompt for the hunter, not the full metaphor
-              prompt: seg.ai_prompt || seg.visual_metaphor || seg.text,
+              // CRITICAL: Use pexels_query for the hunter, not the full Flux prompt
+              prompt: seg.pexels_query || seg.ai_prompt || seg.visual_metaphor || seg.text,
               track: 1
             });
           });

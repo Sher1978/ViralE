@@ -93,8 +93,9 @@ export async function generateVisualScript(
       "segments": [
         {
           "text": "Фраза из сценария",
-          "visual_metaphor": "Обоснование метафоры (почему этот образ передает смысл)",
-          "ai_prompt": "Финальный промпт на английском для генератора (Runware/Flux)"
+          "visual_metaphor": "Обоснование метафоры",
+          "ai_prompt": "Финальный промпт для Flux (детальный, на английском)",
+          "pexels_query": "3-5 ключевых слов для поиска видео на Pexels (на английском)"
         }
       ]
     }
