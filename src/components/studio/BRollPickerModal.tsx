@@ -42,6 +42,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   const [videos, setVideos] = useState<any[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [previewVideo, setPreviewVideo] = useState<any | null>(null);
+  const [isVideoLoading, setIsVideoLoading] = useState(false);
 
   // ⚡ AUTO-OPTIMIZE & SEARCH ON OPEN
   React.useEffect(() => {
@@ -174,7 +175,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                </p>
             </div>
          ) : (
-           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-y-auto pb-10 custom-scrollbar pr-2">
+           <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-6 overflow-y-auto pb-20 custom-scrollbar pr-2">
               {videos.map((item) => (
                  <div 
                    key={item.id}
@@ -264,13 +265,23 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
               </div>
            </div>
 
-           <video 
-              src={previewVideo.videoUrl}
-              autoPlay
-              loop
-              playsInline
-              className="w-full h-full object-cover"
-           />
+            <div className="relative w-full h-full">
+              {isVideoLoading && (
+                <div className="absolute inset-0 flex flex-col items-center justify-center bg-black gap-4 z-10">
+                   <RefreshCcw size={40} className="text-purple-500 animate-spin" />
+                   <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Loading Scene...</p>
+                </div>
+              )}
+              <video 
+                 src={previewVideo.videoUrl}
+                 autoPlay
+                 loop
+                 playsInline
+                 onLoadStart={() => setIsVideoLoading(true)}
+                 onCanPlay={() => setIsVideoLoading(false)}
+                 className={`w-full h-full object-cover transition-opacity duration-500 ${isVideoLoading ? 'opacity-0' : 'opacity-100'}`}
+              />
+            </div>
 
            <div className="absolute bottom-10 left-6 right-6 z-20 space-y-4">
               <div className="p-6 rounded-[2.5rem] bg-black/60 backdrop-blur-xl border border-white/10 space-y-2">

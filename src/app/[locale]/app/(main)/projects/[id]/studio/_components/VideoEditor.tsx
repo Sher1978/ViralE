@@ -305,9 +305,7 @@ export const VideoEditor = React.memo(({
         startTime: slice[0].start,
         endTime: slice[slice.length - 1].end,
         style: 'minimal' as const,
-        // Store accent word (last) for overlay highlight
-        accentWord: slice[slice.length - 1].text,
-      } as any);
+      });
       i += CHUNK_SIZE;
     }
     return chunks;
@@ -540,21 +538,16 @@ export const VideoEditor = React.memo(({
 
   // ── Video Upload ────────────────────────────────────────────────────────
 
-  const handleVideoUpload = async (file: File) => {
-    const localUrl = URL.createObjectURL(file);
-    setARollUrl(localUrl);
-    setRawFile(file);
-    setVideoSource('upload');
-    setIsPlaying(false);
-    setCurrentTime(0);
-    setSubtitleClips([]);
-    setBrollClips([]);
-    setTranscript([]);
-    setStage('transcribing');
-    setStageMessage('Detecting audio...');
-    await delay(600);
-    transcriptionStartedRef.current = false;
-    await runTranscriptionAndPhrases();
+  const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setRawFile(file);
+      setARollUrl(URL.createObjectURL(file));
+      setStage('transcribing');
+      setTranscriptionError(null);
+      transcriptionStartedRef.current = false; // Reset trigger for new file
+      runTranscriptionAndPhrases();
+    }
   };
 
   const handleSwapPhrase = (word: TranscriptWord) => {
@@ -642,7 +635,7 @@ export const VideoEditor = React.memo(({
 
       {/* Hidden file input */}
       <input ref={fileInputRef} type="file" accept="video/*" className="hidden"
-        onChange={e => { const f = e.target.files?.[0]; if (f) handleVideoUpload(f); e.target.value = ''; }} />
+        onChange={handleFileChange} />
 
       {/* ── FOUNDATION SELECTION (Empty State) ── */}
       <AnimatePresence>
@@ -805,63 +798,64 @@ export const VideoEditor = React.memo(({
           )}
 
           {/* Subtitle Overlay – Karaoke Style (Inside Frame) */}
-          <AnimatePresence mode="wait">
-            {aRollUrl && stage !== 'transcribing' && (() => {
-              const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
-              if (!activeSub) return null;
+          <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
+            <AnimatePresence mode="wait">
+              {aRollUrl && (() => {
+                const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
+                if (!activeSub) return null;
 
-              // ── Karaoke Logic ──
-              const words = activeSub.text.split(' ');
-              const subDuration = activeSub.endTime - activeSub.startTime;
-              const progress = (currentTime - activeSub.startTime) / (subDuration || 1);
-              const accentIndex = Math.min(Math.floor(progress * words.length), words.length - 1);
-              const accentWord = words[accentIndex];
+                const words = activeSub.text.split(' ');
+                const subDuration = activeSub.endTime - activeSub.startTime;
+                const progress = (currentTime - activeSub.startTime) / (subDuration || 1);
+                const accentIndex = Math.min(Math.floor(progress * words.length), words.length - 1);
+                const accentWord = words[accentIndex];
 
-              return (
-                <motion.div
-                  drag
-                  dragMomentum={false}
-                  dragConstraints={{ left: -100, right: 100, top: -150, bottom: 150 }}
-                  onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
-                  key={`${activeSub.id}-${activeSub.style}`}
-                  initial={{ opacity: 0, scale: 0.9 }}
-                  animate={{ opacity: 1, scale: 1, x: subtitlePos.x }}
-                  exit={{ opacity: 0, scale: 1.1 }}
-                  className="absolute z-30 pointer-events-auto cursor-move select-none text-center px-4 w-full left-1/2 -translate-x-1/2"
-                  style={{ top: `calc(70% + ${subtitlePos.y}px)` }}
-                >
-                  {activeSub.style === 'minimal' && (
-                    <div className="flex flex-wrap justify-center gap-x-2 gap-y-1">
-                    {words.map((word, wi) => (
-                      <span
-                        key={wi}
-                        className={`text-[22px] font-black leading-tight drop-shadow-[0_2px_8px_rgba(0,0,0,1)] tracking-tight transition-all duration-150 ${
-                          word === accentWord
-                            ? 'text-amber-400 scale-110 inline-block [text-shadow:0_0_20px_rgba(245,158,11,0.8)]'
-                            : 'text-white'
-                        }`}
-                      >{word}</span>
-                    ))}
-                  </div>
-                )}
-                {activeSub.style === 'pop' && (
-                  <span className="bg-purple-600 text-white px-4 py-2 rounded-xl text-xl font-black italic uppercase tracking-tighter shadow-[0_0_30px_rgba(168,85,247,0.8)] border border-purple-400/50">
-                    {activeSub.text}
-                  </span>
-                )}
-                {activeSub.style === 'bold' && (
-                  <div className="flex flex-wrap justify-center gap-x-2">
-                    {words.map((word, wi) => (
-                      <span key={wi} className={`text-3xl font-black uppercase tracking-tighter italic drop-shadow-[0_4px_0_rgba(0,0,0,1)] ${word === accentWord ? 'text-amber-400' : 'text-white'}`}>
-                        {word}
-                      </span>
-                    ))}
-                  </div>
-                )}
-              </motion.div>
-            );
-          })()}
-        </AnimatePresence>
+                return (
+                  <motion.div
+                    drag
+                    dragMomentum={false}
+                    dragConstraints={{ left: -100, right: 100, top: -200, bottom: 200 }}
+                    onDragEnd={(e, info) => setSubtitlePos(p => ({ x: p.x + info.offset.x, y: p.y + info.offset.y }))}
+                    key={`${activeSub.id}-${activeSub.style}`}
+                    initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                    animate={{ opacity: 1, scale: 1, x: subtitlePos.x, y: subtitlePos.y }}
+                    exit={{ opacity: 0, scale: 1.1 }}
+                    className="absolute pointer-events-auto cursor-move select-none text-center px-4 w-full"
+                    style={{ bottom: '25%' }}
+                  >
+                    {activeSub.style === 'minimal' && (
+                      <div className="flex flex-wrap justify-center gap-x-2 gap-y-1">
+                      {words.map((word, wi) => (
+                        <span
+                          key={wi}
+                          className={`text-[24px] font-black leading-tight drop-shadow-[0_2px_12px_rgba(0,0,0,1)] tracking-tight transition-all duration-150 ${
+                            word === accentWord
+                              ? 'text-amber-400 scale-110 inline-block [text-shadow:0_0_20px_rgba(245,158,11,0.8)]'
+                              : 'text-white'
+                          }`}
+                        >{word}</span>
+                      ))}
+                    </div>
+                  )}
+                  {activeSub.style === 'pop' && (
+                    <span className="bg-purple-600 text-white px-5 py-2.5 rounded-2xl text-2xl font-black italic uppercase tracking-tighter shadow-[0_0_30px_rgba(168,85,247,0.8)] border border-purple-400/50">
+                      {activeSub.text}
+                    </span>
+                  )}
+                  {activeSub.style === 'bold' && (
+                    <div className="flex flex-wrap justify-center gap-x-2">
+                      {words.map((word, wi) => (
+                        <span key={wi} className={`text-4xl font-black uppercase tracking-tighter italic drop-shadow-[0_4px_0_rgba(0,0,0,1)] ${word === accentWord ? 'text-amber-400' : 'text-white'}`}>
+                          {word}
+                        </span>
+                      ))}
+                    </div>
+                  )}
+                </motion.div>
+              );
+            })()}
+            </AnimatePresence>
+          </div>
         </div>
 
       {/* Processing Overlay */}
