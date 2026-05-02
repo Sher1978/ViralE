@@ -220,48 +220,56 @@ export default function DeliveryPage() {
       setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
       setRenderProgress(60);
 
-      let ffmpegArgs: string[];
-      if (processedBrolls.length === 0) {
-        ffmpegArgs = [
-          '-i', 'input_aroll.mp4',
-          '-vf', `${scale},subtitles=subs.srt:force_style='FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=40',format=yuv420p`, 
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast', '-threads', '1', '-crf', '30', '-pix_fmt', 'yuv420p',
-          '-crf', '23',
-          '-c:a', 'aac',
-          '-movflags', '+faststart',
-          'output.mp4'
-        ];
-      } else {
-        const inputs = ['-i', 'input_aroll.mp4', ...processedBrolls.flatMap(b => ['-i', b.name])];
-        let filterParts = `[0:v]${scale},subtitles=subs.srt:force_style='FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=40'[base]`;
-        let prevLabel = 'base';
-        
-        for (let i = 0; i < brollFiles.length; i++) {
-          const { clip } = brollFiles[i];
-          const vLabel = `bv${i}`;
-          const outLabel = `out${i}`;
-          filterParts += `;[${i + 1}:v]copy[${vLabel}]`;
-          filterParts += `;[${prevLabel}][${vLabel}]overlay=enable='between(t,${clip.startTime},${clip.endTime})'[${outLabel}]`;
-          prevLabel = outLabel;
-        }
+      // --- INCREMENTAL ASSEMBLY (Safari Memory Guard) ---
+      let currentInput = 'input_aroll.mp4';
+      let stepCount = 0;
 
-        ffmpegArgs = [
-          ...inputs,
-          '-filter_complex', filterParts,
-          '-map', `[${prevLabel}]`,
+      // STEP 1: Burn Subtitles
+      setRenderStatus(`Наложение субтитров...`);
+      const subOutput = `step_sub.mp4`;
+      await ffmpeg.exec([
+        '-i', currentInput,
+        '-vf', `${scale},subtitles=subs.srt:force_style='FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=40',format=yuv420p`,
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-threads', '1', '-c:a', 'copy', subOutput
+      ]);
+      
+      currentInput = subOutput;
+
+      // STEP 2..N: Overlay B-Rolls one by one
+      for (let i = 0; i < processedBrolls.length; i++) {
+        const broll = processedBrolls[i];
+        const stepOutput = `step_broll_${i}.mp4`;
+        
+        setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
+        setRenderProgress(60 + (i / processedBrolls.length) * 35);
+        
+        const overlayFilter = `[1:v]scale=${res.replace(':', ':')}:force_original_aspect_ratio=increase,crop=${res.replace(':', ':')}[ovr];[0:v][ovr]overlay=enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
+        
+        const exitCodeStep = await ffmpeg.exec([
+          '-i', currentInput,
+          '-i', broll.name,
+          '-filter_complex', overlayFilter,
+          '-map', '[out]',
           '-map', '0:a',
-          '-c:v', 'libx264',
-          '-preset', 'ultrafast', '-threads', '1', '-crf', '30', '-pix_fmt', 'yuv420p',
-          '-crf', '23',
-          '-c:a', 'aac',
-          '-movflags', '+faststart',
-          'output.mp4'
-        ];
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-threads', '1', '-c:a', 'copy', stepOutput
+        ]);
+
+        if (exitCodeStep !== 0) throw new Error(`FFmpeg step ${i} failed with code ${exitCodeStep}`);
+
+        // Cleanup previous step (don't delete original input_aroll)
+        if (currentInput !== 'input_aroll.mp4') {
+          try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
+        }
+        currentInput = stepOutput;
       }
 
-      addLog(`[Render] Запуск: ${brollFiles.length} B-Rolls`);
-      const exitCode = await ffmpeg.exec(ffmpegArgs);
+      // FINAL STEP: Copy to output.mp4
+      const finalData = await ffmpeg.readFile(currentInput);
+      await ffmpeg.writeFile('output.mp4', finalData);
+      
+      // Cleanup last step
+      try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
+      const exitCode = 0; // Success marker for the next logic line
       if (exitCode !== 0) throw new Error(`FFmpeg exited with code ${exitCode}`);
       setRenderProgress(98);
 
