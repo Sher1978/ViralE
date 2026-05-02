@@ -37,6 +37,45 @@ export default function DeliveryPage() {
     setRenderLogs(prev => [...prev.slice(-15), msg]);
   };
   const ffmpegRef = useRef<any>(null);
+  const scriptData = {
+    hook: manifest?.hook || manifest?.script?.hook || manifest?.scriptText?.split('\n')?.[0] || manifest?.segments?.[0]?.scriptText?.split('\n')?.[0] || '',
+    context: manifest?.context || manifest?.script?.context || '',
+    meat: manifest?.scriptText || manifest?.meat || manifest?.script?.meat || manifest?.segments?.map((s: any) => s.scriptText).join('\n\n') || '',
+    cta: manifest?.cta || manifest?.script?.cta || '',
+  };
+
+  const TEXT_OUTPUTS = [
+    {
+      platform: 'Telegram',
+      icon: '✈️',
+      accent: '#4D9EFF',
+      text: scriptData ? `${scriptData.hook}\n\n${scriptData.context}\n\n${scriptData.meat}\n\n${scriptData.cta}` : '',
+    },
+    {
+      platform: 'Twitter / X',
+      icon: '🐦',
+      accent: '#1DA1F2',
+      text: scriptData ? `${scriptData.hook.substring(0, 200)}... #ViralEngine` : '',
+    },
+    {
+      platform: 'Instagram',
+      icon: '📸',
+      accent: '#E4405F',
+      text: scriptData ? `${scriptData.hook}\n\n${scriptData.meat}\n\n#ViralEngine #Reels` : '',
+    },
+    {
+      platform: 'TikTok',
+      icon: '🎵',
+      accent: '#00F2EA',
+      text: scriptData ? `${scriptData.hook}\n\n#ViralEngine #Trends` : '',
+    },
+    {
+      platform: 'LinkedIn',
+      icon: '💼',
+      accent: '#0077B5',
+      text: scriptData ? `New insights:\n\n${scriptData.meat}` : '',
+    },
+  ];
   const generateSRT = (clips: any[]) => {
     return clips.map((c, i) => {
       const formatTime = (seconds: number) => {
@@ -264,7 +303,7 @@ export default function DeliveryPage() {
   };
 
   const downloadTXT = () => {
-    const texts = outputs.map(o => `[${o.platform}]\n${o.text}\n`).join('\n---\n\n');
+    const texts = TEXT_OUTPUTS.map(o => `[${o.platform}]\n${o.text}\n`).join('\n---\n\n');
     const blob = new Blob([texts], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
     const a = document.createElement('a');
@@ -358,45 +397,6 @@ export default function DeliveryPage() {
 
   // Resolve script content from multiple possible manifest key locations
   const manifest = version?.script_data as any;
-  const scriptData = {
-    hook: manifest?.hook || manifest?.script?.hook || manifest?.scriptText?.split('\n')?.[0] || manifest?.segments?.[0]?.scriptText?.split('\n')?.[0] || '',
-    context: manifest?.context || manifest?.script?.context || '',
-    meat: manifest?.scriptText || manifest?.meat || manifest?.script?.meat || manifest?.segments?.map((s: any) => s.scriptText).join('\n\n') || '',
-    cta: manifest?.cta || manifest?.script?.cta || '',
-  };
-
-  const TEXT_OUTPUTS = [
-    {
-      platform: 'Telegram',
-      icon: '✈️',
-      accent: '#4D9EFF',
-      text: scriptData ? `${scriptData.hook}\n\n${scriptData.context}\n\n${scriptData.meat}\n\n${scriptData.cta}` : '',
-    },
-    {
-      platform: 'Twitter / X',
-      icon: '🐦',
-      accent: '#1DA1F2',
-      text: scriptData ? `${scriptData.hook.substring(0, 200)}... #ViralEngine` : '',
-    },
-    {
-      platform: 'Instagram',
-      icon: '📸',
-      accent: '#E4405F',
-      text: scriptData ? `${scriptData.hook}\n\n${scriptData.meat}\n\n#ViralEngine #Reels` : '',
-    },
-    {
-      platform: 'TikTok',
-      icon: '🎵',
-      accent: '#00F2EA',
-      text: scriptData ? `${scriptData.hook}\n\n#ViralEngine #Trends` : '',
-    },
-    {
-      platform: 'LinkedIn',
-      icon: '💼',
-      accent: '#0077B5',
-      text: scriptData ? `New insights:\n\n${scriptData.meat}` : '',
-    },
-  ];
 
   const getProviderKey = (platform: string): 'instagram' | 'tiktok' | 'youtube' | null => {
     const p = platform.toLowerCase();
