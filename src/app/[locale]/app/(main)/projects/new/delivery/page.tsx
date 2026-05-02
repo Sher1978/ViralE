@@ -37,33 +37,17 @@ export default function DeliveryPage() {
     setRenderLogs(prev => [...prev.slice(-15), msg]);
   };
   const ffmpegRef = useRef<any>(null);
-
-  useEffect(() => {
-    async function loadResults() {
-      if (jobId) {
-        // ... existing job loading logic (kept for cloud compatibility if needed)
-      }
-
-      if (projectId) {
-        try {
-          const verData = await projectService.getLatestVersion(projectId);
-          if (verData) {
-            setVersion(verData);
-            // AUTO-LAUNCH CLIENT-SIDE RENDER
-            handleClientRender(verData);
-          }
-        } catch (err) {
-          console.error('Failed to load project version:', err);
-        } finally {
-          setIsLoading(false);
-        }
-        return;
-      }
-      setError('Проект не найден');
-      setIsLoading(false);
-    }
-    loadResults();
-  }, [jobId, projectId]);
+  const generateSRT = (clips: any[]) => {
+    return clips.map((c, i) => {
+      const formatTime = (seconds: number) => {
+        const date = new Date(0);
+        date.setSeconds(seconds);
+        const ms = Math.floor((seconds % 1) * 1000);
+        return date.toISOString().substr(11, 8) + ',' + ms.toString().padStart(3, '0');
+      };
+      return `${i + 1}\n${formatTime(c.startTime)} --> ${formatTime(c.endTime)}\n${c.text}\n`;
+    }).join('\n');
+  };
 
   const handleClientRender = async (ver: ProjectVersion) => {
     if (isLaunchingRender) return;
@@ -304,6 +288,34 @@ export default function DeliveryPage() {
   const handleCopy = (text: string) => {
     navigator.clipboard.writeText(text);
   };
+
+  useEffect(() => {
+    async function loadResults() {
+      if (jobId) {
+        // ... existing job loading logic (kept for cloud compatibility if needed)
+      }
+
+      if (projectId) {
+        try {
+          const verData = await projectService.getLatestVersion(projectId);
+          if (verData) {
+            setVersion(verData);
+            // AUTO-LAUNCH CLIENT-SIDE RENDER
+            handleClientRender(verData);
+          }
+        } catch (err) {
+          console.error('Failed to load project version:', err);
+        } finally {
+          setIsLoading(false);
+        }
+        return;
+      }
+      setError('Проект не найден');
+      setIsLoading(false);
+    }
+    loadResults();
+  }, [jobId, projectId]);
+
 
   if (isLoading) {
     return (
