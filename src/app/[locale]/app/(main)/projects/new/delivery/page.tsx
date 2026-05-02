@@ -221,7 +221,7 @@ export default function DeliveryPage() {
       setRenderProgress(60);
 
       let ffmpegArgs: string[];
-      if (brollFiles.length === 0) {
+      if (processedBrolls.length === 0) {
         ffmpegArgs = [
           '-i', 'input_aroll.mp4',
           '-vf', `${scale},format=yuv420p`, 
@@ -233,7 +233,7 @@ export default function DeliveryPage() {
           'output.mp4'
         ];
       } else {
-        const inputs = ['-i', 'input_aroll.mp4', ...brollFiles.flatMap(b => ['-i', b.name])];
+        const inputs = ['-i', 'input_aroll.mp4', ...processedBrolls.flatMap(b => ['-i', b.name])];
         let filterParts = `[0:v]${scale},subtitles=subs.srt:force_style='FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=40'[base]`;
         let prevLabel = 'base';
         
