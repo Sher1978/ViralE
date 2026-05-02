@@ -55,7 +55,7 @@ export default function StudioPage() {
   const initialTab = searchParams.get('tab') as any || 'concept';
 
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
+  const [studioCrashError, setStudioCrashError] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
@@ -695,10 +695,10 @@ export default function StudioPage() {
       
       {/* 🛠 DEBUG MONITOR (Visible only for you) */}
       <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none p-4 flex flex-col items-center">
-        {error && (
+        {studioCrashError && (
           <div className="p-4 bg-red-600/90 backdrop-blur-xl border border-red-500 rounded-2xl shadow-2xl text-white max-w-sm w-full pointer-events-auto animate-bounce">
             <h4 className="font-black uppercase text-[10px] tracking-widest mb-1">SYSTEM ERROR CRASH</h4>
-            <p className="text-[11px] font-bold">{error}</p>
+            <p className="text-[11px] font-bold">{studioCrashError}</p>
           </div>
         )}
         <div id="viral-debug-console" className="mt-2 text-[8px] font-mono text-cyan-400/30 uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
