@@ -188,7 +188,21 @@ export const VideoEditor = React.memo(({
       if (saved) {
         try {
           const data = JSON.parse(saved);
-          if (data.brollClips) setBrollClips(data.brollClips);
+          
+          // RECOVER B-ROLLS FROM IDB
+          if (data.brollClips) {
+            const restoredClips = await Promise.all(data.brollClips.map(async (clip: BRollClip) => {
+              try {
+                const blob = await idb.get(`broll_file_${clip.id}`);
+                if (blob instanceof Blob) {
+                  return { ...clip, url: URL.createObjectURL(blob) };
+                }
+              } catch (e) { console.warn('Failed to restore B-roll blob:', clip.id); }
+              return clip;
+            }));
+            setBrollClips(restoredClips);
+          }
+
           if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
           if (data.transcript) setTranscript(data.transcript);
           if (data.stage) setStage(data.stage);
@@ -682,18 +696,42 @@ export const VideoEditor = React.memo(({
 
   const handleBRollSelect = (url: string) => {
     if (activeBrollPhraseId) {
+      // 1. Download and Cache B-roll in background
+      const brollId = `br_${Date.now()}`;
+      
+      const downloadAndCache = async (targetUrl: string, clipId: string) => {
+        try {
+          console.log(`[Editor] Caching B-roll: ${targetUrl}`);
+          const res = await fetch(targetUrl);
+          const blob = await res.blob();
+          await idb.set(`broll_file_${clipId}`, blob);
+          const localUrl = URL.createObjectURL(blob);
+          
+          setBrollClips(prev => prev.map(c => c.id === clipId ? { ...c, url: localUrl } : c));
+          console.log(`[Editor] B-roll cached locally: ${clipId}`);
+        } catch (e) {
+          console.error('[Editor] Failed to cache B-roll:', e);
+        }
+      };
+
       setBrollClips(prev => {
         // Find by phraseId OR by the temporary placeholder ID
         const existingIdx = prev.findIndex(c => c.phraseId === activeBrollPhraseId || c.id === `br-${activeBrollPhraseId}`);
         if (existingIdx !== -1) {
+          const clipId = prev[existingIdx].id;
+          downloadAndCache(url, clipId);
+          
           const next = [...prev];
           next[existingIdx] = { ...next[existingIdx], url, track: 0 };
           return next;
         } else {
           // Fallback if not found on timeline yet
           const phrase = phrases.find(p => p.id === activeBrollPhraseId);
+          const clipId = brollId;
+          downloadAndCache(url, clipId);
+          
           const newClip: BRollClip = {
-            id: `br_${Date.now()}`,
+            id: clipId,
             phraseId: activeBrollPhraseId,
             url,
             label: phrase?.text.slice(0, 20) || 'AI Scene',
@@ -880,7 +918,7 @@ export const VideoEditor = React.memo(({
             {/* Back button */}
             <button 
               onClick={onBack}
-              className="mt-8 py-4 rounded-2xl bg-white/5 text-white/30 text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
+              className="mt-8 py-4 rounded-lg bg-white/5 text-white/30 text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
             >
               Cancel Production
             </button>
@@ -892,7 +930,7 @@ export const VideoEditor = React.memo(({
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 z-20 flex-shrink-0 bg-[#050508]">
 
         <button onClick={onBack}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
           <ArrowLeft size={12} /> Back
         </button>
 
@@ -921,7 +959,7 @@ export const VideoEditor = React.memo(({
             console.log('[Editor] Exporting project:', projectId, { brollCount: brollClips.length, hasARoll: !!aRollUrl });
             onNext?.(brollClips, subtitleClips, aRollUrl);
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-400">
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-400">
           Export <ArrowRight size={12} />
         </button>
       </div>
@@ -974,8 +1012,8 @@ export const VideoEditor = React.memo(({
           ) : (
             <div className="flex flex-col items-center justify-center gap-4 w-full h-full p-6 bg-[#0a0a0f]">
               <button onClick={() => fileInputRef.current?.click()}
-                className="flex flex-col items-center gap-3 w-full p-6 rounded-3xl bg-white/[0.02] border border-dashed border-white/10 hover:border-purple-500/40 transition-all active:scale-[0.98]">
-                <div className="w-12 h-12 rounded-2xl bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
+                className="flex flex-col items-center gap-3 w-full p-6 rounded-xl bg-white/[0.02] border border-dashed border-white/10 hover:border-purple-500/40 transition-all active:scale-[0.98]">
+                <div className="w-12 h-12 rounded-lg bg-purple-500/10 flex items-center justify-center border border-purple-500/20">
                   <Upload size={20} className="text-purple-400" />
                 </div>
                 <div className="text-center">
@@ -1033,7 +1071,7 @@ export const VideoEditor = React.memo(({
           {stage === 'transcribing' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 z-10">
-              <div className="w-14 h-14 rounded-3xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+              <div className="w-14 h-14 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
                 <Wand2 size={24} className="text-purple-400 animate-pulse" />
               </div>
               <div className="text-center px-8">
@@ -1063,7 +1101,7 @@ export const VideoEditor = React.memo(({
         {/* Play/pause + timecode */}
         {aRollUrl && stage !== 'transcribing' && (
           <button onClick={togglePlay}
-            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-5 py-2.5 rounded-2xl bg-black/80 backdrop-blur-md border border-white/10 shadow-2xl">
+            className="absolute bottom-4 left-1/2 -translate-x-1/2 flex items-center gap-2.5 px-5 py-2.5 rounded-lg bg-black/80 backdrop-blur-md border border-white/10 shadow-2xl">
             {isPlaying ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" className="ml-0.5" />}
             <span className="text-[11px] font-black text-white tabular-nums">{fmt(currentTime)} / {fmt(duration)}</span>
           </button>
@@ -1086,7 +1124,7 @@ export const VideoEditor = React.memo(({
           <SkipBack size={15} className="text-white/50" />
         </button>
         <button onClick={togglePlay}
-          className="w-10 h-10 rounded-2xl bg-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20 active:scale-95">
+          className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20 active:scale-95">
           {isPlaying ? <Pause size={17} fill="white" /> : <Play size={17} fill="white" className="ml-0.5" />}
         </button>
         <button onClick={() => setIsMuted(m => !m)} className="p-2.5 rounded-xl bg-white/5 active:scale-95">
@@ -1290,7 +1328,7 @@ export const VideoEditor = React.memo(({
                     />
                   </div>
                   <button onClick={() => { setSubtitleClips(p => p.filter(c => c.id !== selSub.id)); setSelectedClipId(null); setShowSheet(false); }}
-                    className="w-full py-3 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
+                    className="w-full py-3 rounded-lg bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
                     <Trash2 size={13} /> Delete
                   </button>
                 </>

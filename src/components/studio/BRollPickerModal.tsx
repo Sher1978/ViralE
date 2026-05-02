@@ -202,7 +202,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
         </div>
         <button 
           onClick={onClose}
-          className="p-3 rounded-2xl bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
+          className="p-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
         >
           <X size={22} />
         </button>
@@ -228,7 +228,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                 <div
                   key={item.id}
                   onClick={() => setPreviewVideo(item)}
-                  className="group relative overflow-hidden bg-white/5 border border-white/8 hover:border-purple-500/50 cursor-pointer transition-all rounded-2xl"
+                  className="group relative overflow-hidden bg-white/5 border border-white/8 hover:border-purple-500/50 cursor-pointer transition-all rounded-lg"
                   style={{ aspectRatio: '9/16' }}
                 >
                   {item.previewUrl ? (
@@ -265,7 +265,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
               );
             })}
             {videos.length === 0 && (
-              <div className="col-span-2 py-16 flex flex-col items-center justify-center gap-4 border border-dashed border-white/10 rounded-3xl">
+              <div className="col-span-2 py-16 flex flex-col items-center justify-center gap-4 border border-dashed border-white/10 rounded-xl">
                 <Video size={36} className="text-white/10" />
                 <p className="text-[10px] font-black uppercase tracking-widest text-white/20 text-center">No clips found</p>
                 <button
@@ -282,7 +282,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
 
       {/* ── FOOTER ACTIONS ── */}
       <div className="flex-none px-4 py-4 border-t border-white/5 space-y-3">
-        <div className="bg-white/5 rounded-2xl px-4 py-3 border border-white/8 flex gap-3 items-center">
+        <div className="bg-white/5 rounded-lg px-4 py-3 border border-white/8 flex gap-3 items-center">
           <textarea
             value={searchQuery}
             onChange={(e) => setSearchQuery(e.target.value)}
@@ -303,7 +303,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
         <button
           onClick={handleGenerateAI}
           disabled={isGenerating || !searchQuery}
-          className="w-full h-14 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all"
+          className="w-full h-14 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all"
         >
           {isGenerating
             ? <><RefreshCcw size={16} className="animate-spin" /> Generating...</>
@@ -319,7 +319,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
           <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-5 z-20">
             <button
               onClick={() => setPreviewVideo(null)}
-              className="p-3 rounded-2xl bg-black/50 backdrop-blur-md border border-white/10 text-white active:scale-95"
+              className="p-3 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 text-white active:scale-95"
             >
               <ArrowRight size={20} className="rotate-180" />
             </button>
@@ -362,7 +362,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
 
           {/* Bottom bar */}
           <div className="absolute bottom-0 left-0 right-0 p-5 z-20 space-y-3">
-            <div className="p-5 rounded-3xl bg-black/70 backdrop-blur-xl border border-white/10 space-y-1">
+            <div className="p-5 rounded-xl bg-black/70 backdrop-blur-xl border border-white/10 space-y-1">
               <h3 className="text-lg font-black italic uppercase text-white tracking-tighter">{previewVideo.title}</h3>
               <p className="text-xs text-white/40 font-medium">{previewVideo.tags?.join(' • ')}</p>
             </div>
@@ -371,7 +371,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                 onSelect(previewVideo.videoUrl);
                 setPreviewVideo(null);
               }}
-              className="w-full h-16 rounded-3xl bg-white text-black font-black uppercase tracking-[0.3em] text-sm shadow-[0_0_40px_rgba(255,255,255,0.2)] active:scale-95 transition-all"
+              className="w-full h-16 rounded-xl bg-white text-black font-black uppercase tracking-[0.3em] text-sm shadow-[0_0_40px_rgba(255,255,255,0.2)] active:scale-95 transition-all"
             >
               Select This Clip
             </button>
