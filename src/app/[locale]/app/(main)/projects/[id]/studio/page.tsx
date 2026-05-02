@@ -484,6 +484,7 @@ export default function StudioPage() {
                   manifest={manifest || undefined} 
                   setManifest={(m) => setManifest(m)} 
                   containerClassName="relative h-full"
+                  locale={locale}
                 />
 
                 {manifest && (
@@ -667,7 +668,7 @@ export default function StudioPage() {
             )}
 
             {activeTab === 'knowledge' && (
-              <KnowledgeLab profile={currentProfile!} onProfileUpdate={setCurrentProfile} />
+              <KnowledgeLab profile={currentProfile!} onProfileUpdate={setCurrentProfile} locale={locale} />
             )}
           </div>
         </main>

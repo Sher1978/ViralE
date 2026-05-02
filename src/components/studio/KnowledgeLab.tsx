@@ -7,9 +7,10 @@ import { profileService, Profile } from '@/lib/services/profileService';
 interface KnowledgeLabProps {
   profile: Profile;
   onProfileUpdate: (updated: Profile) => void;
+  locale?: string;
 }
 
-export default function KnowledgeLab({ profile, onProfileUpdate }: KnowledgeLabProps) {
+export default function KnowledgeLab({ profile, onProfileUpdate, locale = 'en' }: KnowledgeLabProps) {
   const [trainingData, setTrainingData] = useState(profile.synthetic_training_data || '');
   const [isDistilling, setIsDistilling] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
@@ -43,7 +44,7 @@ export default function KnowledgeLab({ profile, onProfileUpdate }: KnowledgeLabP
       const res = await fetch('/api/ai/distill-dna', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId: profile.id, trainingData })
+        body: JSON.stringify({ userId: profile.id, trainingData, locale })
       });
       
       if (!res.ok) throw new Error('Distillation failed');

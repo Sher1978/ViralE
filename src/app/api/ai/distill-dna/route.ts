@@ -6,15 +6,17 @@ const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: NextRequest) {
   try {
-    const { userId, trainingData } = await req.json();
+    const { userId, trainingData, locale } = await req.json();
     if (!userId || !trainingData) {
       return NextResponse.json({ error: 'Missing userId or trainingData' }, { status: 400 });
     }
 
+    const language = (locale === 'ru') ? 'Russian' : 'English';
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
       Analyze the following raw training data from a user and distill it into a structured "Digital DNA" profile.
+      CRITICAL: You must respond exclusively in ${language.toUpperCase()}.
       Also, assign the most suitable "Golden Visual Style" from these 6:
       - dubai_platinum: Luxury, success, premium business, real estate.
       - tech_catalyst: Tech, AI, marketing, minimal innovation.
