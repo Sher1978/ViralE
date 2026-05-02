@@ -197,6 +197,18 @@ export const VideoEditor = React.memo(({
 
   // B-Roll Clips
   const [brollClips, setBrollClips] = useState<BRollClip[]>([]);
+  // ── SAFETY GUARD ──────────────────────────────────────────────────────────
+  if (!manifest || !projectId) {
+    console.warn('[VideoEditor] Waiting for manifest or projectId...', { manifest, projectId });
+    return (
+      <div className="h-full flex flex-col items-center justify-center bg-[#050508] space-y-4">
+        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
+        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Syncing Production Hub...</p>
+      </div>
+    );
+  }
+  console.log('[VideoEditor] Rendering with manifest:', manifest.id);
+
   const [brollModalOpen, setBrollModalOpen] = useState(false);
   const [activeBrollPrompt, setActiveBrollPrompt] = useState('');
   const [activeBrollPhraseId, setActiveBrollPhraseId] = useState<string | null>(null);
