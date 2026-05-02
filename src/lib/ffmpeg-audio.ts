@@ -4,7 +4,7 @@
  * Converts any video (HEVC/MOV/MP4/WebM) to a tiny 16kHz mono MP3.
  * Works on iOS Safari, Android Chrome, Desktop.
  */
-// import { FFmpeg } from '@ffmpeg/ffmpeg';
+import type { FFmpeg } from '@ffmpeg/ffmpeg';
 // import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 let ffmpegInstance: FFmpeg | null = null;
