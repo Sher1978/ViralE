@@ -411,7 +411,7 @@ export default function StudioPage() {
         });
       }
       
-      localStorage.removeItem(`viral_editor_draft_${projectId}`);
+      // Note: Draft is preserved for safety in case of render failure
 
       // ✅ Final Redirect
       router.push(`/projects/new/delivery?projectId=${projectId}`);

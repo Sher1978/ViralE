@@ -231,48 +231,47 @@ export const VideoEditor = React.memo(({
     async function recoverDraft() {
       const key = `viral_editor_draft_${projectId}`;
       const saved = localStorage.getItem(key);
+      let data: any = null;
       
       if (saved) {
         try {
-          const data = JSON.parse(saved);
-          
-          // RECOVER B-ROLLS FROM IDB
-          if (data.brollClips) {
-            const restoredClips = await Promise.all(data.brollClips.map(async (clip: BRollClip) => {
-              try {
-                const blob = await idb.get(`broll_file_${clip.id}`);
-                if (blob instanceof Blob) {
-                  return { ...clip, url: URL.createObjectURL(blob) };
-                }
-              } catch (e) { console.warn('Failed to restore B-roll blob:', clip.id); }
-              return clip;
-            }));
-            setBrollClips(restoredClips);
-          }
-
+          data = JSON.parse(saved);
           if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
           if (data.transcript) setTranscript(data.transcript);
           if (data.stage) setStage(data.stage);
           if (data.subtitlePos) setSubtitlePos(data.subtitlePos);
           if (data.subtitleSize) setSubtitleSize(data.subtitleSize);
-          
-          // RECOVER VIDEO FILE FROM IDB
-          const cachedFile = await idb.get(`video_file_${projectId}`);
-          if (cachedFile instanceof Blob) {
-            console.log('[Editor] Recovered video file from IndexedDB');
-            const url = URL.createObjectURL(cachedFile);
-            setARollUrl(url);
-            setRawFile(cachedFile as File);
-          } else if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
-            // It's a remote URL, safe to restore as-is
+          if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
             setARollUrl(data.aRollUrl);
           }
-          
-          console.log('[Editor] Restored draft state');
-        } catch (e) {
-          console.error('Failed to restore draft:', e);
-        }
+        } catch (e) { console.error('Failed to parse draft:', e); }
       }
+      
+      // RECOVER VIDEO FILE FROM IDB (Independent of localStorage draft)
+      try {
+        const cachedFile = await idb.get(`video_file_${projectId}`);
+        if (cachedFile instanceof Blob) {
+          console.log('[Editor] Recovered video file from IndexedDB');
+          const url = URL.createObjectURL(cachedFile);
+          setARollUrl(url);
+          setRawFile(cachedFile as File);
+        }
+      } catch (e) { console.error('Failed to recover from IDB:', e); }
+
+      // RECOVER B-ROLLS FROM IDB
+      if (data?.brollClips) {
+        const restoredClips = await Promise.all(data.brollClips.map(async (clip: BRollClip) => {
+          try {
+            const blob = await idb.get(`broll_file_${clip.id}`);
+            if (blob instanceof Blob) {
+              return { ...clip, url: URL.createObjectURL(blob) };
+            }
+          } catch (e) { console.warn('Failed to restore B-roll blob:', clip.id); }
+          return clip;
+        }));
+        setBrollClips(restoredClips);
+      }
+      
       persistenceLoadedRef.current = true;
     }
     
