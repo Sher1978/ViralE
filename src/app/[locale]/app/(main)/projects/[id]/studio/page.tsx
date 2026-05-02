@@ -48,7 +48,8 @@ export default function StudioPage() {
   }, []);
 
   const t = useTranslations('studio');
-  const router = useRouter, usePathname();
+  const router = useRouter();
+  const pathname = usePathname();
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
 
   const searchParams = useSearchParams();
