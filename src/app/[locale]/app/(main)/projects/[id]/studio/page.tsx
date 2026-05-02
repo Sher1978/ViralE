@@ -414,7 +414,7 @@ export default function StudioPage() {
       // Note: Draft is preserved for safety in case of render failure
 
       // ✅ Final Redirect
-      router.push(`/projects/new/delivery?projectId=${projectId}`);
+      router.push(`/app/projects/new/delivery?projectId=${projectId}`);
 
     } catch (err: any) {
       console.error('Export failed:', err);

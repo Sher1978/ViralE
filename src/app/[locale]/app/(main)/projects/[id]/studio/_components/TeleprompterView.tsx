@@ -88,16 +88,24 @@ export const TeleprompterView = React.memo(({
     return (useCustomScript ? customScript : manifest?.segments?.map((s: any) => s.scriptText).filter(Boolean).join('\n\n')) || "Put your text here!";
   }, [useCustomScript, customScript, manifest]);
 
+  const scrollAccRef = React.useRef(0);
+
   // Auto-scroll logic with precision frequency for smoothness
   React.useEffect(() => {
     let interval: NodeJS.Timeout;
     if (isReading && prompterRef.current && !isEditing) {
         interval = setInterval(() => {
             if (prompterRef.current) {
-                // Smoother formula: base 0.4px + (speed * 0.15px) per 8ms
-                // This targets 120fps-like smoothness
-                prompterRef.current.scrollTop += (scrollSpeed * 0.08); 
+                // Smoother formula: base 0.08px per 8ms (approx 10px/sec at speed 1)
+                // Use an accumulator to handle sub-pixel rounding in browser scrollTop
+                scrollAccRef.current += (scrollSpeed * 0.08); 
                 
+                if (scrollAccRef.current >= 1) {
+                  const pixels = Math.floor(scrollAccRef.current);
+                  prompterRef.current.scrollTop += pixels;
+                  scrollAccRef.current -= pixels;
+                }
+
                 // Keep scrollPosRef synced to avoid jumps
                 if (prompterRef.current.scrollTop >= prompterRef.current.scrollHeight - prompterRef.current.clientHeight) {
                   // End of script reached - auto stop or loop

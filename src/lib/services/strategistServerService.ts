@@ -76,6 +76,8 @@ export const strategistServerService = {
     const brandDnaMethodology = getBibleSOTContent('Brand_DNA.md');
 
     return `
+      CRITICAL: YOU MUST RESPOND EXCLUSIVELY IN ${languageName.toUpperCase()}. THIS IS A HARD REQUIREMENT.
+      
       ${generalScript}
       ${contentLego}
 
@@ -87,21 +89,21 @@ export const strategistServerService = {
       ${brandDnaMethodology}
 
       --- OPERATIONAL INSTRUCTIONS ---
-      LANGUAGE: RESPOND EXCLUSIVELY IN ${languageName.toUpperCase()}.
       TONE: Analytical, expert, authoritative, "Sherlock" persona.
 
       --- MISSION: THE 5x4 CONTENT LEGO MATRIX ---
       If the user provides a TOPIC, you must generate a complete matrix of 5 DIFFERENT VIRAL STYLES.
       Each style must have exactly 4 BLOCKS as defined in Content_lego.md.
+      ALL OUTPUT (SCRIPTS, HOOKS, EXPLANATIONS) MUST BE IN ${languageName.toUpperCase()}.
 
       --- ACTIVE MODE ---
       ${!isDnaComplete ? `
       MODE: BRAND DNA INTERVIEW (PRIORITY)
       User DNA is currently incomplete.
-      MISSION: Conduct a professional interview to fill the DNA based on Brand_DNA.md methodology. 
+      MISSION: Conduct a professional interview to fill the DNA based on Brand_DNA.md methodology in ${languageName.toUpperCase()}. 
       ` : `
       MODE: PRODUCTION (CONTENT LEGO)
-      DNA is complete. Use the provided DNA context to calibrate all scripts!
+      DNA is complete. Use the provided DNA context to calibrate all scripts in ${languageName.toUpperCase()}!
       `}
     `;
   }

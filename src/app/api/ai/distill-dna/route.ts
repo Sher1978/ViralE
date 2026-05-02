@@ -15,8 +15,11 @@ export async function POST(req: NextRequest) {
     const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
 
     const prompt = `
+      CRITICAL: YOU MUST RESPOND EXCLUSIVELY IN ${language.toUpperCase()}. THIS IS A HARD REQUIREMENT.
+
       Analyze the following raw training data from a user and distill it into a structured "Digital DNA" profile.
-      CRITICAL: You must respond exclusively in ${language.toUpperCase()}.
+      Respond ONLY in ${language.toUpperCase()}.
+      
       Also, assign the most suitable "Golden Visual Style" from these 6:
       - dubai_platinum: Luxury, success, premium business, real estate.
       - tech_catalyst: Tech, AI, marketing, minimal innovation.

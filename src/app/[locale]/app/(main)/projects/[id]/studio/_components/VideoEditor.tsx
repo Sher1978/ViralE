@@ -409,6 +409,8 @@ export const VideoEditor = React.memo(({
             clip.startTime = ns;
           } else {
             let ne = Math.max(clip.startTime + 0.2, Math.min(600, origEnd + dSec));
+            // ENFORCE 3s CAP
+            ne = Math.min(ne, clip.startTime + 3);
             const other = prev.filter(c => c.id !== clipId);
             other.forEach(o => { if (ne > o.startTime && origEnd <= o.startTime) ne = o.startTime; });
             clip.endTime = ne;
@@ -798,7 +800,7 @@ export const VideoEditor = React.memo(({
             label: phrase?.text.slice(0, 20) || 'AI Scene',
             prompt: phrase?.text || '',
             startTime: phrase?.start || currentTime,
-            endTime: (phrase?.end || currentTime + 3),
+            endTime: Math.min((phrase?.end || currentTime + 3), (phrase?.start || currentTime) + 3),
             track: 0,
           };
           return [...prev, newClip];
@@ -1279,7 +1281,7 @@ export const VideoEditor = React.memo(({
                   id,
                   phraseId: id,
                   startTime: time,
-                  endTime,
+                  endTime: time + 3,
                   label: 'Manual Scene',
                   url: '',
                   prompt: 'cinematic lifestyle shot',
