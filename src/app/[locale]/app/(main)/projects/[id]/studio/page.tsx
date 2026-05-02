@@ -55,6 +55,7 @@ export default function StudioPage() {
   const initialTab = searchParams.get('tab') as any || 'concept';
 
   const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
