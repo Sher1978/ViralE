@@ -25,6 +25,7 @@ export default function DeliveryPage() {
 
   const [isLoading, setIsLoading] = useState(true);
   const [job, setJob] = useState<RenderJob | null>(null);
+  const [isExporting, setIsExporting] = useState(false);
   const [version, setVersion] = useState<ProjectVersion | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [isLaunchingRender, setIsLaunchingRender] = useState(false);
