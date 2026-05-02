@@ -428,208 +428,246 @@ export default function StudioPage() {
   return (
     <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
       {/* 🚀 Pro Studio Mainframe - Full Screen Immersion */}
-      <main className="w-full h-full relative flex flex-col">
-        
-        {/* Stage Area */}
-        <div className="flex-1 relative overflow-hidden">
-          {activeTab === 'concept' && (
-            <div className="max-w-4xl mx-auto h-full relative">
-              <StrategistChat 
-                projectId={projectId}
-                userId={currentProfile?.id || ''}
-                manifest={manifest || undefined} 
-                setManifest={(m) => setManifest(m)} 
-                containerClassName="relative h-full"
-              />
+      <div className="flex h-full w-full overflow-hidden">
+        <StudioSidebar 
+          activeTab={activeTab as any}
+          setActiveTab={setActiveTab}
+          cameraStream={cameraStream}
+          isRecordingVideo={isRecordingVideo}
+          recordingTime={recordingTime}
+          facingMode={facingMode}
+          videoResolution={videoResolution}
+          videoDevices={videoDevices}
+          audioDevices={audioDevices}
+          selectedVideoDeviceId={selectedVideoDeviceId}
+          selectedAudioDeviceId={selectedAudioDeviceId}
+          initCamera={initCamera}
+          stopCamera={stopCamera}
+          setFacingMode={setFacingMode}
+          setIsVideoMirrored={setIsVideoMirrored}
+          isVideoMirrored={isVideoMirrored}
+          setVideoResolution={setVideoResolution}
+          setSelectedVideoDeviceId={setSelectedVideoDeviceId}
+          setSelectedAudioDeviceId={setSelectedAudioDeviceId}
+          useCustomScript={useCustomScript}
+          setUseCustomScript={setUseCustomScript}
+          customScript={customScript}
+          setCustomScript={setCustomScript}
+          manifest={manifest}
+          isMirrored={isMirrored}
+          setIsMirrored={setIsMirrored}
+          scrollSpeed={scrollSpeed}
+          setScrollSpeed={setScrollSpeed}
+          prompterWidth={prompterWidth}
+          setPrompterWidth={setPrompterWidth}
+          textSize={textSize}
+          setTextSize={setTextSize}
+          scriptOpacity={scriptOpacity}
+          setScriptOpacity={setScriptOpacity}
+          t={t}
+          currentProfile={currentProfile}
+        />
 
-              {manifest && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 20 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[110]"
-                >
-                  <button
-                    onClick={() => setActiveTab('branch')}
-                    className="flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.4)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.6)] active:scale-95 transition-all group"
-                  >
-                    ПЕРЕЙТИ К ПРОДАКШНУ <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                  </button>
-                </motion.div>
-              )}
-            </div>
-          )}
+        <main className="flex-1 relative flex flex-col min-w-0 overflow-hidden bg-[#050508]">
           
-          {activeTab === 'branch' && (
-            <ProductionBranch
-              onSelect={(type) => {
-                if (type === 'record') {
-                  setShowFaceless(false);
-                  setActiveTab('teleprompter');
-                } else if (type === 'faceless') {
-                  setShowFaceless(true);
-                  setActiveTab('assembly');
-                }
-              }}
-              onBack={() => setActiveTab('concept')}
-            />
-          )}
+          {/* Stage Area */}
+          <div className="flex-1 relative overflow-hidden">
+            {activeTab === 'concept' && (
+              <div className="max-w-4xl mx-auto h-full relative">
+                <StrategistChat 
+                  projectId={projectId}
+                  userId={currentProfile?.id || ''}
+                  manifest={manifest || undefined} 
+                  setManifest={(m) => setManifest(m)} 
+                  containerClassName="relative h-full"
+                />
 
-          {activeTab === 'teleprompter' && (
-            <div className="w-full h-full relative">
-              <TeleprompterView 
-                 cameraStream={cameraStream}
-                 videoPreviewRef={videoPreviewRef}
-                 isVideoMirrored={isVideoMirrored}
-                 prompterWidth={prompterWidth}
-                 isReading={isReading}
-                 countdown={countdown}
-                 prompterRef={prompterRef}
-                 isMirrored={isMirrored}
-                 useCustomScript={useCustomScript}
-                 manifest={manifest}
-                 customScript={customScript}
-                 textSize={textSize}
-                 onTextSizeChange={setTextSize}
-                 scriptColor={scriptColor}
-                 onColorChange={setScriptColor}
-                 scriptOpacity={scriptOpacity}
-                 onOpacityChange={setScriptOpacity}
-                 scrollSpeed={scrollSpeed}
-                 onSpeedChange={setScrollSpeed}
-                 isRecordingVideo={isRecordingVideo}
-                  recordingTime={recordingTime}
-                  onBack={() => setActiveTab('branch')}
-                  onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
-                 onFlipCamera={() => setIsMirrored(!isMirrored)}
-                 onScriptUpdate={async (newText) => {
-                   if (!manifest) return;
-                   const segments = newText.split('\n\n').map((text, i) => ({
-                     ...(manifest.segments[i] || { id: uuidv4(), type: 'broll' }),
-                     scriptText: text
-                   }));
-                   const updatedManifest = { ...manifest, segments };
-                   setManifest(updatedManifest);
-                   await projectService.updateLatestVersionManifest(projectId, updatedManifest);
-                 }}
-                 onFinish={() => {
-                    if (lastRecordingUrl) {
-                      setShowRecordingReview(true);
-                    } else {
-                      setActiveTab('assembly');
-                    }
-                 }}
-                 t={t}
-              />
-            </div>
-          )}
-
-          {/* Global Recording Review Overlay */}
-          <AnimatePresence>
-            {showRecordingReview && (
-              <RecordingReview 
-                  showRecordingReview={showRecordingReview}
-                  lastRecordingUrl={lastRecordingUrl}
-                  currentProfile={currentProfile}
-                  downloadRawVideo={downloadRawVideo}
-                  sendRawToTelegram={sendRawToTelegram}
-                  setShowRecordingReview={setShowRecordingReview}
-                  setLastRecordingUrl={setLastRecordingUrl}
-                  updateSegmentField={updateSegmentField}
-                  handleAcceptRecording={async (url) => {
-                    if (manifest) {
-                       const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
-                       const newManifest = {
-                          ...manifest,
-                          videoUrl: url,
-                          segments: manifest.segments.map((s: any) => 
-                             s.id === segmentId ? { ...s, assetUrl: url, type: 'user_recording' } : s
-                          )
-                       };
-                       setManifest(newManifest);
-                       // Persist to DB so refresh doesn't lose it
-                       await projectService.updateLatestVersionManifest(projectId, newManifest);
-                    }
-                    // 1. Give Android a moment to stop camera and clear memory
-                    setTimeout(() => {
-                      setShowRecordingReview(false);
-                      setActiveTab('assembly');
-                    }, 100);
-                  }}
-                  manifest={manifest}
-                  selectedSegmentId={selectedSegmentId}
+                {manifest && (
+                  <motion.div 
+                    initial={{ opacity: 0, y: 20 }}
+                    animate={{ opacity: 1, y: 0 }}
+                    className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[110]"
+                  >
+                    <button
+                      onClick={() => setActiveTab('branch')}
+                      className="flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.4)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.6)] active:scale-95 transition-all group"
+                    >
+                      ПЕРЕЙТИ К ПРОДАКШНУ <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                    </button>
+                  </motion.div>
+                )}
+              </div>
+            )}
+            
+            {activeTab === 'branch' && (
+              <ProductionBranch
+                onSelect={(type) => {
+                  if (type === 'record') {
+                    setShowFaceless(false);
+                    setActiveTab('teleprompter');
+                  } else if (type === 'faceless') {
+                    setShowFaceless(true);
+                    setActiveTab('assembly');
+                  }
+                }}
+                onBack={() => setActiveTab('concept')}
               />
             )}
-          </AnimatePresence>
 
-          {activeTab === 'assembly' && !showFaceless && (
-            <VideoEditor
-              manifest={manifest}
-              updateSegmentField={updateSegmentField}
-              onBack={() => setActiveTab('branch')}
-              onNext={handleFinalExport}
-              projectId={projectId}
-              onFaceless={() => setShowFaceless(true)}
-            />
-          )}
+            {activeTab === 'teleprompter' && (
+              <div className="w-full h-full relative">
+                <TeleprompterView 
+                   cameraStream={cameraStream}
+                   videoPreviewRef={videoPreviewRef}
+                   isVideoMirrored={isVideoMirrored}
+                   prompterWidth={prompterWidth}
+                   isReading={isReading}
+                   countdown={countdown}
+                   prompterRef={prompterRef}
+                   isMirrored={isMirrored}
+                   useCustomScript={useCustomScript}
+                   manifest={manifest}
+                   customScript={customScript}
+                   textSize={textSize}
+                   onTextSizeChange={setTextSize}
+                   scriptColor={scriptColor}
+                   onColorChange={setScriptColor}
+                   scriptOpacity={scriptOpacity}
+                   onOpacityChange={setScriptOpacity}
+                   scrollSpeed={scrollSpeed}
+                   onSpeedChange={setScrollSpeed}
+                   isRecordingVideo={isRecordingVideo}
+                    recordingTime={recordingTime}
+                    onBack={() => setActiveTab('branch')}
+                    onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
+                   onFlipCamera={() => setIsMirrored(!isMirrored)}
+                   onScriptUpdate={async (newText) => {
+                     if (!manifest) return;
+                     const segments = newText.split('\n\n').map((text, i) => ({
+                       ...(manifest.segments[i] || { id: uuidv4(), type: 'broll' }),
+                       scriptText: text
+                     }));
+                     const updatedManifest = { ...manifest, segments };
+                     setManifest(updatedManifest);
+                     await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+                   }}
+                   onFinish={() => {
+                      if (lastRecordingUrl) {
+                        setShowRecordingReview(true);
+                      } else {
+                        setActiveTab('assembly');
+                      }
+                   }}
+                   t={t}
+                />
+              </div>
+            )}
 
-          {activeTab === 'assembly' && showFaceless && (
-            <FacelessStudio
-              projectId={projectId}
-              manifest={manifest}
-              onBack={() => setShowFaceless(false)}
+            {/* Global Recording Review Overlay */}
+            <AnimatePresence>
+              {showRecordingReview && (
+                <RecordingReview 
+                    showRecordingReview={showRecordingReview}
+                    lastRecordingUrl={lastRecordingUrl}
+                    currentProfile={currentProfile}
+                    downloadRawVideo={downloadRawVideo}
+                    sendRawToTelegram={sendRawToTelegram}
+                    setShowRecordingReview={setShowRecordingReview}
+                    setLastRecordingUrl={setLastRecordingUrl}
+                    updateSegmentField={updateSegmentField}
+                    handleAcceptRecording={async (url) => {
+                      if (manifest) {
+                         const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
+                         const newManifest = {
+                            ...manifest,
+                            videoUrl: url,
+                            segments: manifest.segments.map((s: any) => 
+                               s.id === segmentId ? { ...s, assetUrl: url, type: 'user_recording' } : s
+                            )
+                         };
+                         setManifest(newManifest);
+                         // Persist to DB so refresh doesn't lose it
+                         await projectService.updateLatestVersionManifest(projectId, newManifest);
+                      }
+                      // 1. Give Android a moment to stop camera and clear memory
+                      setTimeout(() => {
+                        setShowRecordingReview(false);
+                        setActiveTab('assembly');
+                      }, 100);
+                    }}
+                    manifest={manifest}
+                    selectedSegmentId={selectedSegmentId}
+                />
+              )}
+            </AnimatePresence>
 
-              onJumpToConcept={() => {
-                setShowFaceless(false);
-                setActiveTab('concept');
-              }}
-              onComplete={(videoBlob, transcriptData) => {
-                const localUrl = URL.createObjectURL(videoBlob);
-                setManifest(prev => prev ? {
-                  ...prev,
-                  videoUrl: localUrl,
-                  transcript: transcriptData, // Use scene-based timings as initial transcript
-                  segments: prev.segments?.map((s, i) =>
-                    i === 0 ? { ...s, assetUrl: localUrl, type: 'user_recording' } : s
-                  ) || prev.segments,
-                } : prev);
-                setShowFaceless(false);
-                renderService.uploadMedia(projectId, videoBlob, 'video').then(res => {
-                  if (res.publicUrl) {
-                    setManifest(prev => {
-                      if (!prev) return prev;
-                      const next = {
-                        ...prev,
-                        videoUrl: res.publicUrl,
-                        segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
-                      };
-                      projectService.updateLatestVersionManifest(projectId, next);
-                      return next;
-                    });
-                  }
-                });
-              }}
-
-
-
-            />
-          )}
-
-          {activeTab === 'assets' && (
-            <div className="max-w-6xl mx-auto h-full p-10">
-              <DistributionFactory 
+            {activeTab === 'assembly' && !showFaceless && (
+              <VideoEditor
                 manifest={manifest}
-                scriptText={manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
+                updateSegmentField={updateSegmentField}
+                onBack={() => setActiveTab('branch')}
+                onNext={handleFinalExport}
                 projectId={projectId}
-                locale={locale}
+                onFaceless={() => setShowFaceless(true)}
               />
-            </div>
-          )}
+            )}
 
-          {activeTab === 'knowledge' && (
-            <KnowledgeLab profile={currentProfile!} onProfileUpdate={setCurrentProfile} />
-          )}
-        </div>
-      </main>
+            {activeTab === 'assembly' && showFaceless && (
+              <FacelessStudio
+                projectId={projectId}
+                manifest={manifest}
+                onBack={() => setShowFaceless(false)}
+
+                onJumpToConcept={() => {
+                  setShowFaceless(false);
+                  setActiveTab('concept');
+                }}
+                onComplete={(videoBlob, transcriptData) => {
+                  const localUrl = URL.createObjectURL(videoBlob);
+                  setManifest(prev => prev ? {
+                    ...prev,
+                    videoUrl: localUrl,
+                    transcript: transcriptData, // Use scene-based timings as initial transcript
+                    segments: prev.segments?.map((s, i) =>
+                      i === 0 ? { ...s, assetUrl: localUrl, type: 'user_recording' } : s
+                    ) || prev.segments,
+                  } : prev);
+                  setShowFaceless(false);
+                  renderService.uploadMedia(projectId, videoBlob, 'video').then(res => {
+                    if (res.publicUrl) {
+                      setManifest(prev => {
+                        if (!prev) return prev;
+                        const next = {
+                          ...prev,
+                          videoUrl: res.publicUrl,
+                          segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
+                        };
+                        projectService.updateLatestVersionManifest(projectId, next);
+                        return next;
+                      });
+                    }
+                  });
+                }}
+              />
+            )}
+
+            {activeTab === 'assets' && (
+              <div className="max-w-6xl mx-auto h-full p-10">
+                <DistributionFactory 
+                  manifest={manifest}
+                  scriptText={manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
+                  projectId={projectId}
+                  locale={locale}
+                />
+              </div>
+            )}
+
+            {activeTab === 'knowledge' && (
+              <KnowledgeLab profile={currentProfile!} onProfileUpdate={setCurrentProfile} />
+            )}
+          </div>
+        </main>
+      </div>
 
 
 

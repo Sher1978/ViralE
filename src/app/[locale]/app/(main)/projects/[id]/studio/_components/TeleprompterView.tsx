@@ -96,7 +96,7 @@ export const TeleprompterView = React.memo(({
             if (prompterRef.current) {
                 // Smoother formula: base 0.4px + (speed * 0.15px) per 8ms
                 // This targets 120fps-like smoothness
-                prompterRef.current.scrollTop += 0.4 + (scrollSpeed * 0.15); 
+                prompterRef.current.scrollTop += (scrollSpeed * 0.08); 
                 
                 // Keep scrollPosRef synced to avoid jumps
                 if (prompterRef.current.scrollTop >= prompterRef.current.scrollHeight - prompterRef.current.clientHeight) {

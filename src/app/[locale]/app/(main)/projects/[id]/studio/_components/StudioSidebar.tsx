@@ -7,7 +7,7 @@ import {
 } from 'lucide-react';
 
 interface StudioSidebarProps {
-  activeTab: 'concept' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets';
+  activeTab: 'concept' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'branch';
   setActiveTab: (tab: any) => void;
   cameraStream: MediaStream | null;
   isRecordingVideo: boolean;
@@ -102,15 +102,26 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
           <div className="grid grid-cols-1 gap-2">
             {[
               { id: 'concept', icon: Brain, label: '1. Лаборатория идей', desc: 'Смыслы и текст' },
-              { id: 'teleprompter', icon: Video, label: '2. Студия Записи', desc: 'Создание A-Roll' },
+              { id: 'branch', icon: Video, label: '2. Студия Записи', desc: 'Создание A-Roll' },
               { id: 'assembly', icon: Scissors, label: '3. Продакшн', desc: 'Монтаж и B-Roll' },
               { id: 'assets', icon: Download, label: '4. Дистрибуция', desc: 'Посты и Обложки' },
               { id: 'knowledge', icon: Dna, label: 'Shadow Analytics', desc: 'Настройка ДНК' }
             ].map((tab) => (
               <button 
                 key={tab.id}
-                onClick={() => setActiveTab(tab.id)}
-                className={`flex items-center gap-4 p-4 rounded-3xl border transition-all duration-500 text-left ${activeTab === tab.id ? 'bg-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)] text-white' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10 hover:border-white/20'}`}
+                onClick={() => {
+                  if (tab.id === 'branch') {
+                    setActiveTab('branch');
+                  } else {
+                    setActiveTab(tab.id);
+                  }
+                }}
+                className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-500 text-left ${
+                  activeTab === tab.id || 
+                  (tab.id === 'branch' && activeTab === 'teleprompter')
+                    ? 'bg-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)] text-white' 
+                    : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10 hover:border-white/20'
+                }`}
               >
                 <div className={`p-2 rounded-xl ${activeTab === tab.id ? 'bg-white/20' : 'bg-white/5'}`}>
                   <tab.icon size={20} className={activeTab === tab.id ? 'animate-pulse' : ''} />
@@ -157,13 +168,13 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                           setFacingMode(facingMode === 'user' ? 'environment' : 'user');
                           setTimeout(initCamera, 100);
                         }}
-                        className="py-3 rounded-2xl border border-white/5 bg-white/5 text-[8px] font-black uppercase text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 shadow-inner"
+                        className="py-3 rounded-lg border border-white/5 bg-white/5 text-[8px] font-black uppercase text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 shadow-inner"
                       >
                         <RefreshCw size={10} /> Flip Lens
                       </button>
                       <button 
                         onClick={() => setIsVideoMirrored(!isVideoMirrored)}
-                        className={`py-3 rounded-2xl border transition-all text-[8px] font-black uppercase flex items-center justify-center gap-2 ${isVideoMirrored ? 'bg-purple-500/10 border-purple-500/20 text-purple-400 shadow-lg shadow-purple-500/10' : 'bg-white/5 border-white/5 text-white/40 shadow-inner'}`}
+                        className={`py-3 rounded-lg border transition-all text-[8px] font-black uppercase flex items-center justify-center gap-2 ${isVideoMirrored ? 'bg-purple-500/10 border-purple-500/20 text-purple-400 shadow-lg shadow-purple-500/10' : 'bg-white/5 border-white/5 text-white/40 shadow-inner'}`}
                       >
                         {isVideoMirrored ? 'Mirror ON' : 'Mirror OFF'}
                       </button>
@@ -197,7 +208,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                 <div className="space-y-4">
                   <span className="text-[9px] font-black uppercase text-white/30 tracking-widest">{t('teleprompter.scrollPace')}</span>
                   <input 
-                    type="range" min="0" max="10" step="0.5"
+                    type="range" min="0" max="20" step="0.5"
                     value={scrollSpeed}
                     onChange={(e) => setScrollSpeed(Number(e.target.value))}
                     className="w-full accent-purple-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer" 
