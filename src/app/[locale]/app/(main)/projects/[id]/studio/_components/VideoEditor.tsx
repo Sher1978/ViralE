@@ -108,6 +108,52 @@ function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
   });
 }
 
+// ── B-Roll Preview Sync ───────────────────────────────────────────────────
+
+const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: { 
+  url: string; startTime: number; currentTime: number; isPlaying: boolean;
+}) => {
+  const vRef = useRef<HTMLVideoElement>(null);
+
+  useEffect(() => {
+    const v = vRef.current;
+    if (!v) return;
+
+    // 1. Sync Play/Pause
+    if (isPlaying) {
+      if (v.paused) v.play().catch(() => {});
+    } else {
+      if (!v.paused) v.pause();
+    }
+
+    // 2. Sync Time (with 150ms tolerance to prevent stuttering)
+    const relativeTime = Math.max(0, currentTime - startTime);
+    if (Math.abs(v.currentTime - relativeTime) > 0.15) {
+      v.currentTime = relativeTime;
+    }
+  }, [isPlaying, currentTime, startTime]);
+
+  return (
+    <video 
+      ref={vRef}
+      src={url}
+      muted
+      playsInline
+      preload="auto"
+      crossOrigin="anonymous"
+      className="w-full h-full object-cover relative z-10" 
+      onLoadedData={(e) => {
+        const target = e.target as HTMLVideoElement;
+        target.style.opacity = "1";
+        // Initial time sync
+        target.currentTime = Math.max(0, currentTime - startTime);
+        if (isPlaying) target.play().catch(() => {});
+      }}
+      style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
+    />
+  );
+});
+
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export const VideoEditor = React.memo(({
@@ -1005,21 +1051,11 @@ export const VideoEditor = React.memo(({
                     <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0f] z-0">
                       <Loader2 className="w-8 h-8 text-purple-500/40 animate-spin" />
                     </div>
-                    <video 
-                      key={activeBR.url}
-                      src={activeBR.url}
-                      autoPlay
-                      muted
-                      playsInline
-                      loop
-                      preload="auto"
-                      crossOrigin="anonymous"
-                      className="w-full h-full object-cover relative z-10" 
-                      onLoadedData={(e) => {
-                        const target = e.target as HTMLVideoElement;
-                        target.style.opacity = "1";
-                      }}
-                      style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
+                    <BRollPreview 
+                      url={activeBR.url}
+                      startTime={activeBR.startTime}
+                      currentTime={currentTime}
+                      isPlaying={isPlaying}
                     />
                   </div>
                 );
