@@ -207,7 +207,7 @@ export const VideoEditor = React.memo(({
       </div>
     );
   }
-  console.log('[VideoEditor] Rendering with manifest:', manifest.id);
+  console.log('[VideoEditor] Rendering with project:', projectId);
 
   const [brollModalOpen, setBrollModalOpen] = useState(false);
   const [activeBrollPrompt, setActiveBrollPrompt] = useState('');
