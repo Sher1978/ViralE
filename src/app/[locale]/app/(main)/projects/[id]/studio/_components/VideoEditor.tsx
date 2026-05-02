@@ -11,7 +11,7 @@ import {
 import { ProductionManifest } from '@/lib/types/studio';
 import BRollModal from '@/components/studio/BRollPickerModal';
 import { storageService } from '@/lib/services/storageService';
-import { extractAudioFFmpeg } from '@/lib/ffmpeg-audio';
+// FFmpeg isolated
 
 // ── Types ──────────────────────────────────────────────────────────────────
 
@@ -547,6 +547,8 @@ export const VideoEditor = React.memo(({
         if (!sourceBlob) throw new Error('Не удалось получить файл');
 
         // ── STEP 1: FFmpeg audio extraction (works on iOS HEVC, Android, Desktop)
+        // 🔥 Fully dynamic import to prevent bundle bloat and Chrome crashes
+        const { extractAudioFFmpeg } = await import('@/lib/ffmpeg-audio');
         const audioBlob = await extractAudioFFmpeg(sourceBlob, {
           onProgress: setStageMessage,
         });
