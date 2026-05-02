@@ -1,5 +1,46 @@
 'use client';
 
+import dynamic from "next/dynamic";
+import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
+import { useTranslations } from 'next-intl';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useRouter, usePathname } from '@/navigation';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
+import { 
+  Plus, CheckCircle2, Lock, Scissors, RefreshCw, Wand2, Brain, Monitor, FileVideo, Download, X, Layout, ChevronRight
+} from 'lucide-react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { projectService, Project } from '@/lib/services/projectService';
+import { renderService } from '@/lib/services/renderService';
+import { profileService, Profile } from '@/lib/services/profileService';
+import { ProductionManifest, AnimationStyle, AvatarProvider } from '@/lib/types/studio';
+import { createInitialManifest } from '@/lib/studio-utils';
+import { v4 as uuidv4 } from 'uuid';
+
+// Atomic Components
+import { StudioSidebar } from './_components/StudioSidebar';
+import { TeleprompterView } from './_components/TeleprompterView';
+import { RecordingReview } from './_components/RecordingReview';
+import { SourcePicker } from './_components/SourcePicker';
+import { ProductionBranch } from './_components/ProductionBranch';
+
+const StoryboardGrid = dynamic(() => import('./_components/StoryboardGrid').then(mod => mod.StoryboardGrid), { ssr: false });
+const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(mod => mod.VideoEditor), { 
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-black/20 backdrop-blur-3xl rounded-[3rem] border border-white/5">
+       <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mb-4" />
+       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 animate-pulse">Initializing Production Engine...</p>
+    </div>
+  )
+});
+const DistributionFactory = dynamic(() => import('./_components/DistributionFactory').then(mod => mod.default), { ssr: false });
+
+class TabErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
   static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
   }
@@ -29,54 +70,6 @@
     return this.props.children;
   }
 }
-
-
-import dynamic from "next/dynamic";
-import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-import { useTranslations } from 'next-intl';
-import { useParams, useSearchParams } from 'next/navigation';
-import { useRouter, usePathname } from '@/navigation';
-import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
-import { 
-  Plus, CheckCircle2, Lock, Scissors, RefreshCw, Wand2, Brain, Monitor, FileVideo, Download, X, Layout, ChevronRight
-} from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
-import { projectService, Project } from '@/lib/services/projectService';
-import { renderService } from '@/lib/services/renderService';
-import { profileService, Profile } from '@/lib/services/profileService';
-import { ProductionManifest, AnimationStyle, AvatarProvider } from '@/lib/types/studio';
-import { createInitialManifest } from '@/lib/studio-utils';
-import { v4 as uuidv4 } from 'uuid';
-
-// Atomic Components
-import { StudioSidebar } from './_components/StudioSidebar';
-import { TeleprompterView } from './_components/TeleprompterView';
-const StoryboardGrid = dynamic(() => import('./_components/StoryboardGrid').then(mod => mod.StoryboardGrid), { ssr: false });
-import { RecordingReview } from './_components/RecordingReview';
-import { SourcePicker } from './_components/SourcePicker';
-const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(mod => mod.VideoEditor), { 
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-black/20 backdrop-blur-3xl rounded-[3rem] border border-white/5">
-       <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mb-4" />
-       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 animate-pulse">Initializing Production Engine...</p>
-    </div>
-  )
-});
-import { ProductionBranch } from './_components/ProductionBranch';
-const DistributionFactory = dynamic(() => import('./_components/DistributionFactory').then(mod => mod.default), { ssr: false });
-
-// Global Shared Components
-import StudioTimeline from '@/components/studio/StudioTimeline';
-import KnowledgeLab from '@/components/studio/KnowledgeLab';
-import { StrategistChat } from '@/components/studio/StrategistChat';
-import FacelessStudio from '@/components/studio/FacelessStudio';
-
-class TabErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
 
 
 export default function StudioPage() {
