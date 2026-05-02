@@ -947,17 +947,26 @@ export const VideoEditor = React.memo(({
                 const activeBR = brollClips.find(c => c.url && c.url.length > 5 && currentTime >= c.startTime && currentTime <= c.endTime);
                 if (!activeBR) return null;
                 return (
-                  <div className="absolute inset-0 z-20 bg-black">
-                     <video 
-                       key={activeBR.url}
-                       src={activeBR.url}
-                       autoPlay
-                       muted
-                       playsInline
-                       loop
-                       preload="auto"
-                       className="w-full h-full object-cover" 
-                     />
+                  <div className="absolute inset-0 z-20 bg-black flex items-center justify-center">
+                    <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0f] z-0">
+                      <Loader2 className="w-8 h-8 text-purple-500/40 animate-spin" />
+                    </div>
+                    <video 
+                      key={activeBR.url}
+                      src={activeBR.url}
+                      autoPlay
+                      muted
+                      playsInline
+                      loop
+                      preload="auto"
+                      crossOrigin="anonymous"
+                      className="w-full h-full object-cover relative z-10" 
+                      onLoadedData={(e) => {
+                        const target = e.target as HTMLVideoElement;
+                        target.style.opacity = "1";
+                      }}
+                      style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
+                    />
                   </div>
                 );
               })()}
@@ -998,7 +1007,7 @@ export const VideoEditor = React.memo(({
                     animate={{ opacity: 1, scale: 1.0, x: subtitlePos.x, y: subtitlePos.y }}
                     exit={{ opacity: 0, scale: 1.2 }}
                     className="absolute pointer-events-auto cursor-grab active:cursor-grabbing select-none text-center px-4 w-full z-[100]"
-                    style={{ bottom: '45%' }}
+                    style={{ bottom: '22%' }}
                   >
                     <div className="flex justify-center px-4">
                       <span 
