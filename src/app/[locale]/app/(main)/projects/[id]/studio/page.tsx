@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useRouter } from '@/navigation';
+import { useRouter, usePathname } from '@/navigation';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { 
   Plus, CheckCircle2, Lock, Scissors, RefreshCw, Wand2, Brain, Monitor, FileVideo, Download, X, Layout, ChevronRight
@@ -48,7 +48,7 @@ export default function StudioPage() {
   }, []);
 
   const t = useTranslations('studio');
-  const router = useRouter();
+  const router = useRouter, usePathname();
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
 
   const searchParams = useSearchParams();
@@ -115,7 +115,7 @@ export default function StudioPage() {
       if (showFaceless) params.set('mode', 'faceless');
       else params.delete('mode');
       
-      const currentPath = window.location.pathname;
+      const currentPath = pathname;
       const newUrl = `${currentPath}?${params.toString()}`;
       
       try {
