@@ -180,9 +180,9 @@ export default function DeliveryPage() {
       if (brollFiles.length === 0) {
         ffmpegArgs = [
           '-i', 'input_aroll.mp4',
-          '-vf', 'scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920',
+          '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280', '-pix_fmt', 'yuv420p',
           '-c:v', 'libx264',
-          '-preset', 'ultrafast',
+          '-preset', 'superfast', '-pix_fmt', 'yuv420p',
           '-crf', '23',
           '-c:a', 'aac',
           '-movflags', '+faststart',
@@ -197,7 +197,7 @@ export default function DeliveryPage() {
           const { clip } = brollFiles[i];
           const vLabel = `bv${i}`;
           const outLabel = `out${i}`;
-          filterParts += `;[${i + 1}:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[${vLabel}]`;
+          filterParts += `;[${i + 1}:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[${vLabel}]`;
           filterParts += `;[${prevLabel}][${vLabel}]overlay=enable='between(t,${clip.startTime},${clip.endTime})'[${outLabel}]`;
           prevLabel = outLabel;
         }
@@ -208,7 +208,7 @@ export default function DeliveryPage() {
           '-map', `[${prevLabel}]`,
           '-map', '0:a',
           '-c:v', 'libx264',
-          '-preset', 'ultrafast',
+          '-preset', 'superfast', '-pix_fmt', 'yuv420p',
           '-crf', '23',
           '-c:a', 'aac',
           '-movflags', '+faststart',
@@ -216,7 +216,9 @@ export default function DeliveryPage() {
         ];
       }
 
-      await ffmpeg.exec(ffmpegArgs);
+      addLog(`[Render] Запуск: ${brollFiles.length} B-Rolls`);
+      const exitCode = await ffmpeg.exec(ffmpegArgs);
+      if (exitCode !== 0) throw new Error(`FFmpeg exited with code ${exitCode}`);
       setRenderProgress(98);
 
       const data = await ffmpeg.readFile('output.mp4');
@@ -292,7 +294,7 @@ export default function DeliveryPage() {
           )}
         </div>
         <button 
-          onClick={() => router.push(`/app/projects/${projectId}/studio`)}
+          onClick={() => { if (projectId) router.push(`/app/projects/${projectId}/studio`); else router.back(); }}
           className="px-8 py-3 rounded-full bg-purple-500 border border-purple-400 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-400 transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)]"
         >
           Back to Studio
@@ -356,7 +358,7 @@ export default function DeliveryPage() {
       {/* Header with Back Button */}
       <div className="flex items-center justify-between py-2">
         <button 
-          onClick={() => router.push(`/app/projects/${projectId}/studio`)}
+          onClick={() => { if (projectId) router.push(`/app/projects/${projectId}/studio`); else router.back(); }}
           className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all group"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
