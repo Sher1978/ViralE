@@ -37,6 +37,7 @@ export default function DeliveryPage() {
     setRenderLogs(prev => [...prev.slice(-15), msg]);
   };
   const ffmpegRef = useRef<any>(null);
+  const manifest = version?.script_data as any;
   const scriptData = {
     hook: manifest?.hook || manifest?.script?.hook || manifest?.scriptText?.split('\n')?.[0] || manifest?.segments?.[0]?.scriptText?.split('\n')?.[0] || '',
     context: manifest?.context || manifest?.script?.context || '',
@@ -396,7 +397,6 @@ export default function DeliveryPage() {
   }
 
   // Resolve script content from multiple possible manifest key locations
-  const manifest = version?.script_data as any;
 
   const getProviderKey = (platform: string): 'instagram' | 'tiktok' | 'youtube' | null => {
     const p = platform.toLowerCase();
