@@ -220,30 +220,32 @@ export default function DeliveryPage() {
       setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
       setRenderProgress(60);
 
-      // --- INCREMENTAL ASSEMBLY (Safari Memory Guard) ---
+            // --- EXTREME MEMORY GUARD (Ping-Pong Strategy) ---
       let currentInput = 'input_aroll.mp4';
-      let stepCount = 0;
-
-      // STEP 1: Burn Subtitles
+      
+      // STEP 1: Subtitles (Foundation)
       setRenderStatus(`Наложение субтитров...`);
-      const subOutput = `step_sub.mp4`;
+      const subOutput = `temp_A.mp4`;
       await ffmpeg.exec([
         '-i', currentInput,
         '-vf', `${scale},subtitles=subs.srt:force_style='FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=40',format=yuv420p`,
-        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-threads', '1', '-c:a', 'copy', subOutput
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'aac', '-b:a', '128k', subOutput
       ]);
       
+      // Immediately free original A-Roll memory
+      try { await ffmpeg.deleteFile('input_aroll.mp4'); } catch(e) {}
       currentInput = subOutput;
 
-      // STEP 2..N: Overlay B-Rolls one by one
+      // STEP 2..N: Layered B-Rolls
       for (let i = 0; i < processedBrolls.length; i++) {
         const broll = processedBrolls[i];
-        const stepOutput = `step_broll_${i}.mp4`;
+        const nextOutput = i % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
         
         setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
         setRenderProgress(60 + (i / processedBrolls.length) * 35);
         
-        const overlayFilter = `[1:v]scale=${res.replace(':', ':')}:force_original_aspect_ratio=increase,crop=${res.replace(':', ':')}[ovr];[0:v][ovr]overlay=enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
+        // Since B-roll is ALREADY scaled in preparation step, we just overlay it
+        const overlayFilter = `[0:v][1:v]overlay=enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
         
         const exitCodeStep = await ffmpeg.exec([
           '-i', currentInput,
@@ -251,25 +253,24 @@ export default function DeliveryPage() {
           '-filter_complex', overlayFilter,
           '-map', '[out]',
           '-map', '0:a',
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '23', '-threads', '1', '-c:a', 'copy', stepOutput
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
         ]);
 
         if (exitCodeStep !== 0) throw new Error(`FFmpeg step ${i} failed with code ${exitCodeStep}`);
 
-        // Cleanup previous step (don't delete original input_aroll)
-        if (currentInput !== 'input_aroll.mp4') {
-          try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-        }
-        currentInput = stepOutput;
+        // AGGRESSIVE CLEANUP: Delete the input we just used
+        try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
+        // Also delete the processed broll file to free memory
+        try { await ffmpeg.deleteFile(broll.name); } catch(e) {}
+        
+        currentInput = nextOutput;
       }
 
-      // FINAL STEP: Copy to output.mp4
+      // FINALIZATION
       const finalData = await ffmpeg.readFile(currentInput);
       await ffmpeg.writeFile('output.mp4', finalData);
-      
-      // Cleanup last step
       try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-      const exitCode = 0; // Success marker for the next logic line
+      const exitCode = 0;
       if (exitCode !== 0) throw new Error(`FFmpeg exited with code ${exitCode}`);
       setRenderProgress(98);
 
