@@ -508,7 +508,7 @@ export default function StudioPage() {
                     className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[110]"
                   >
                     <button
-                      onClick={() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
+                      onClick={() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
                       className="flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.4)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.6)] active:scale-95 transition-all group"
                     >
                       ПЕРЕЙТИ К ПРОДАКШНУ <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -523,13 +523,13 @@ export default function StudioPage() {
                 onSelect={(type) => {
                   if (type === 'record') {
                     setShowFaceless(false);
-                    ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('teleprompter');
+                    ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('teleprompter');
                   } else if (type === 'faceless') {
                     setShowFaceless(true);
-                    setTimeout(() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
+                    setTimeout(() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
                   }
                 }}
-                onBack={() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('concept')}
+                onBack={() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('concept')}
               />
             )}
 
@@ -557,7 +557,7 @@ export default function StudioPage() {
                    onSpeedChange={setScrollSpeed}
                    isRecordingVideo={isRecordingVideo}
                     recordingTime={recordingTime}
-                    onBack={() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
+                    onBack={() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
                     onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
                    onFlipCamera={() => setIsMirrored(!isMirrored)}
                    onScriptUpdate={async (newText) => {
@@ -574,7 +574,7 @@ export default function StudioPage() {
                       if (lastRecordingUrl) {
                         setShowRecordingReview(true);
                       } else {
-                        setTimeout(() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
+                        setTimeout(() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
                       }
                    }}
                    t={t}
@@ -611,7 +611,7 @@ export default function StudioPage() {
                       // 1. Give Android a moment to stop camera and clear memory
                       setTimeout(() => {
                         setShowRecordingReview(false);
-                        setTimeout(() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
+                        setTimeout(() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
                       }, 100);
                     }}
                     manifest={manifest}
@@ -624,7 +624,7 @@ export default function StudioPage() {
               <VideoEditor
                 manifest={manifest}
                 updateSegmentField={updateSegmentField}
-                onBack={() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
+                onBack={() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
                 onNext={handleFinalExport}
                 projectId={projectId}
                 onFaceless={() => setShowFaceless(true)}
@@ -640,7 +640,7 @@ export default function StudioPage() {
 
                 onJumpToConcept={() => {
                   setShowFaceless(false);
-                  ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('concept');
+                  ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('concept');
                 }}
                 onComplete={(videoBlob, transcriptData) => {
                   const localUrl = URL.createObjectURL(videoBlob);
