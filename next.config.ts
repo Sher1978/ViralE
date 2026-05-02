@@ -24,17 +24,7 @@ const nextConfig: NextConfig = {
       { source: '/:locale(en|ru)/billing', destination: '/:locale/app/billing', permanent: true },
     ];
   },
-  async headers() {
-    return [
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
-          { key: 'Cross-Origin-Opener-Policy',   value: 'same-origin' },
-        ],
-      },
-    ];
-  },
+
 };
 
 export default withNextIntl(nextConfig);
