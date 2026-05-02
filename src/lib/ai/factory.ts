@@ -33,7 +33,9 @@ export async function generateScript(
       return groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna);
     case 'gemini':
     default:
-      return gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role);
+      // [TEMPORARY OVERRIDE] Redirecting Gemini to Groq per user request
+      return groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna);
+      // return gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role);
   }
 }
 
@@ -53,6 +55,8 @@ export async function refineScript(
       return groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna);
     case 'gemini':
     default:
-      return gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna);
+      // [TEMPORARY OVERRIDE] Redirecting Gemini to Groq per user request
+      return groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna);
+      // return gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna);
   }
 }

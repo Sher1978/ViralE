@@ -45,9 +45,35 @@ export async function POST(req: Request) {
       Верни ТОЛЬКО финальный промпт на английском языке.
     `;
 
+    // [TEMPORARY OVERRIDE] Using Groq instead of Gemini
+    const groqKey = process.env.GROQ_API_KEY || '';
+    const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+      method: "POST",
+      headers: {
+        "Authorization": `Bearer ${groqKey}`,
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify({
+        model: "llama-3.3-70b-versatile",
+        messages: [
+          { role: "user", content: prompt }
+        ],
+        temperature: 0.7
+      })
+    });
 
+    if (!response.ok) {
+      throw new Error('Groq optimization failed');
+    }
+
+    const data = await response.json();
+    const optimized = data.choices[0].message.content.trim().replace(/^"|"$/g, '');
+
+    /* Original Gemini Implementation (Commented for Revert)
+    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
     const result = await model.generateContent(prompt);
     const optimized = result.response.text().trim().replace(/^"|"$/g, '');
+    */
 
 
     return NextResponse.json({ optimized });

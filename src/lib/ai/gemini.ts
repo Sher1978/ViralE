@@ -1,12 +1,44 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
+import * as groq from "./groq";
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
+
+// [REVERSIBLE OVERRIDE] Set to true to route all Gemini calls to Groq
+const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true' || true;
 
 const FAST_MODEL = "gemini-3-flash-preview";
 const PRO_MODEL = "gemini-3.1-pro-preview";
 
 export function getModel(tier: 'fast' | 'pro' = 'fast') {
+  if (IS_GROQ_OVERRIDE) {
+    // Return a proxy that mimics the Gemini model interface but calls Groq
+    return {
+      generateContent: async (prompt: string | any[]) => {
+        const textPrompt = Array.isArray(prompt) ? prompt.join('\n') : (typeof prompt === 'string' ? prompt : JSON.stringify(prompt));
+        const groqKey = process.env.GROQ_API_KEY || '';
+        const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            "Authorization": `Bearer ${groqKey}`,
+            "Content-Type": "application/json"
+          },
+          body: JSON.stringify({
+            model: "llama-3.3-70b-versatile",
+            messages: [{ role: "user", content: textPrompt }],
+            response_format: { type: "json_object" }
+          })
+        });
+        const data = await response.json();
+        return {
+          response: {
+            text: () => data.choices[0].message.content
+          }
+        };
+      }
+    } as any;
+  }
+
   const modelName = tier === 'fast' ? FAST_MODEL : PRO_MODEL;
   return genAI.getGenerativeModel({ 
     model: modelName,
@@ -16,7 +48,7 @@ export function getModel(tier: 'fast' | 'pro' = 'fast') {
   });
 }
 
-// Default export instance for compatibility - now using FAST by default for MVP
+// Default export instance for compatibility
 export const model = getModel('fast');
 
 /**
@@ -68,6 +100,9 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
 
 
 export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string, brandDna?: any, hook?: string, role?: string) {
+  if (IS_GROQ_OVERRIDE) {
+    return groq.generateScript(coreIdea, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna);
+  }
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
     ? client.getGenerativeModel({ 
@@ -231,6 +266,9 @@ export async function refineScript(
   apiKey?: string,
   brandDna?: any
 ) {
+  if (IS_GROQ_OVERRIDE) {
+    return groq.refineScript(currentScript, instruction, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna);
+  }
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
     ? client.getGenerativeModel({ 
