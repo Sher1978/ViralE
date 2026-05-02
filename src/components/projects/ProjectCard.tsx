@@ -97,7 +97,7 @@ export default function ProjectCard({ project, onRefresh }: ProjectCardProps) {
     let path = `/app/projects/${project.id}`;
     
     if (project.status === 'completed') {
-      path = `/app/projects/${project.id}/delivery`;
+      path = `/app/projects/new/delivery?projectId=${project.id}`;
     } else if (project.status === 'scripting' || project.status === 'ideation') {
       // Use standard localized path, the router handles the [locale] prefix
       path = `/app/projects/${project.id}/studio`; 
