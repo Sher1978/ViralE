@@ -1,5 +1,5 @@
 
-import { getSystemPrompt } from "./anthropic"; // Reuse the prompt logic
+import { getSystemPrompt } from "./gemini"; // Use the same rules as Gemini
 
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
 
@@ -21,28 +21,34 @@ export async function generateScript(
     
     CRITICAL: ALL text content in these scripts MUST be in the SAME LANGUAGE as the input idea: "${coreIdea}".
     
-    LENGTH: Each script segment should be detailed (at least 3-4 sentences for context and meat).
+    CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". ONLY the final words the actor will dictate.
+    
+    1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
+    2. context: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...".
+    3. meat: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE: "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
+    4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: "That's why..." or "So if you want...".
 
-    SCENARIOS TO GENERATE:
+    STYLES to generate:
     1. evergreen: Universal expert content, attacking myths.
-    2. trend: High-energy, optimized for current trends.
+    2. trend: High-energy, optimized for current viral trends.
     3. educational: Direct problem-solution teaching.
     4. controversial: Challenging myths, provocative listicle.
     5. storytelling: Personal narrative, trust building.
 
     Structure for EACH scenario:
+    - style_name: evergreen | trend | educational | controversial | storytelling
     - hook: { "visual": "...", "screen_text": "...", "words": "..." }
     - context: { "words": "..." }
     - meat: { "words": "..." }
     - cta: { "words": "..." }
-    - broll_prompt: 5-word cinematic description for B-roll.
-    - visual_hook: Detailed prompt for Midjourney cover.
-    - social_post: Short engaging caption with emojis.
+    - broll_prompt: Final action-semantic description for a 5s B-roll using Visual_Script_Generator metaphors.
+    - visual_hook: Detailed cinematic prompt for Midjourney cover.
+    - social_post: Engaging caption with emojis + tags.
     
-    REMEMBER: All text output must be in ${languageName}. 
+    REMEMBER: Output in ${languageName}. 
     Output ONLY valid JSON in format: 
     {
-      "evergreen": { "hook": { "visual": "...", "screen_text": "...", "words": "..." }, "context": { "words": "..." }, "meat": { "words": "..." }, "cta": { "words": "..." }, "broll_prompt": "...", "visual_hook": "...", "social_post": "..." },
+      "evergreen": { ... },
       "trend": { ... },
       "educational": { ... },
       "controversial": { ... },
