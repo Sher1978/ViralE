@@ -92,14 +92,28 @@ export default function StudioPage() {
   // State Sync Effect (URL Persistence)
   useEffect(() => {
     if (isLoading) return;
-    const params = new URLSearchParams(window.location.search);
-    params.set('tab', activeTab);
-    if (showFaceless) params.set('mode', 'faceless');
-    else params.delete('mode');
     
-    // Use window.location.pathname to preserve the full URL with locale prefix (/ru/...)
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
-    window.history.replaceState({ path: newUrl }, '', newUrl);
+    // Defer URL update to avoid conflict with heavy UI transitions (especially on Android)
+    const timeout = setTimeout(() => {
+      const params = new URLSearchParams(window.location.search);
+      params.set('tab', activeTab);
+      if (showFaceless) params.set('mode', 'faceless');
+      else params.delete('mode');
+      
+      const currentPath = window.location.pathname;
+      const newUrl = `${currentPath}?${params.toString()}`;
+      
+      try {
+        if (window.location.search !== `?${params.toString()}`) {
+          window.history.replaceState({ path: newUrl }, '', newUrl);
+          console.log('[Studio] Syncing URL:', newUrl);
+        }
+      } catch (e) {
+        console.warn('[Studio] replaceState failed:', e);
+      }
+    }, 150);
+
+    return () => clearTimeout(timeout);
   }, [activeTab, showFaceless, isLoading]);
 
   // Prevent accidental data loss
@@ -535,8 +549,11 @@ export default function StudioPage() {
                        // Persist to DB so refresh doesn't lose it
                        await projectService.updateLatestVersionManifest(projectId, newManifest);
                     }
-                    setShowRecordingReview(false);
-                    setActiveTab('assembly');
+                    // 1. Give Android a moment to stop camera and clear memory
+                    setTimeout(() => {
+                      setShowRecordingReview(false);
+                      setActiveTab('assembly');
+                    }, 100);
                   }}
                   manifest={manifest}
                   selectedSegmentId={selectedSegmentId}
