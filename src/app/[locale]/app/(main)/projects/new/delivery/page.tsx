@@ -224,7 +224,7 @@ export default function DeliveryPage() {
       if (processedBrolls.length === 0) {
         ffmpegArgs = [
           '-i', 'input_aroll.mp4',
-          '-vf', `${scale},subtitles=subs.srt:force_style='FontSize=24,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=40',format=yuv420p`, 
+          '-vf', `${scale},subtitles=subs.srt:force_style='FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=40',format=yuv420p`, 
           '-c:v', 'libx264',
           '-preset', 'ultrafast', '-threads', '1', '-crf', '30', '-pix_fmt', 'yuv420p',
           '-crf', '23',
