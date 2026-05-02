@@ -161,6 +161,33 @@ export const VideoEditor = React.memo(({
   manifest, onBack, onNext, updateSegmentField, projectId, preFetchedBrolls: parentPreFetched, onFaceless, isSaving
 }: VideoEditorProps & { preFetchedBrolls?: Record<string, any[]> }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
+
+  // --- EXIT GUARD (Prevent losing work) ---
+  useEffect(() => {
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    const handlePopState = (e: PopStateEvent) => {
+      if (!window.confirm('Вы уверены, что хотите выйти? Несохраненный прогресс монтажа будет потерян.')) {
+        // Push state back to keep user on page
+        window.history.pushState(null, '', window.location.href);
+      } else {
+        onBack?.();
+      }
+    };
+
+    window.addEventListener('beforeunload', handleBeforeUnload);
+    window.history.pushState(null, '', window.location.href);
+    window.addEventListener('popstate', handlePopState);
+
+    return () => {
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+      window.removeEventListener('popstate', handlePopState);
+    };
+  }, [onBack]);
+
   const timelineRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -998,7 +1025,7 @@ export const VideoEditor = React.memo(({
 
             {/* Back button */}
             <button 
-              onClick={onBack}
+              onClick={() => { if(window.confirm('Вы уверены? Несохраненный прогресс будет потерян.')) onBack(); }}
               className="mt-8 py-4 rounded-lg bg-white/5 text-white/30 text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
             >
               Cancel Production
@@ -1010,7 +1037,7 @@ export const VideoEditor = React.memo(({
       {/* ── NAV BAR (Only if video loaded) ── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 z-20 flex-shrink-0 bg-[#050508]">
 
-        <button onClick={onBack}
+        <button onClick={() => { if(window.confirm('Вы уверены? Несохраненный прогресс будет потерян.')) onBack(); }}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
           <ArrowLeft size={12} /> Back
         </button>
