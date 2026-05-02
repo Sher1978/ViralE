@@ -1,5 +1,6 @@
 'use client';
 
+import dynamic from "next/dynamic";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
@@ -18,13 +19,21 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Atomic Components
 import { StudioSidebar } from './_components/StudioSidebar';
-import { TeleprompterView } from './_components/TeleprompterView';
-import { StoryboardGrid } from './_components/StoryboardGrid';
-import { RecordingReview } from './_components/RecordingReview';
-import { SourcePicker } from './_components/SourcePicker';
-import { VideoEditor } from './_components/VideoEditor';
-import { ProductionBranch } from './_components/ProductionBranch';
-import DistributionFactory from './_components/DistributionFactory';
+const TeleprompterView = dynamic(() => import('./_components/TeleprompterView').then(mod => mod.TeleprompterView || mod.default), { ssr: false });
+const StoryboardGrid = dynamic(() => import('./_components/StoryboardGrid').then(mod => mod.StoryboardGrid || mod.default), { ssr: false });
+const RecordingReview = dynamic(() => import('./_components/RecordingReview').then(mod => mod.RecordingReview || mod.default), { ssr: false });
+const SourcePicker = dynamic(() => import('./_components/SourcePicker').then(mod => mod.SourcePicker || mod.default), { ssr: false });
+const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(mod => mod.VideoEditor), { 
+  ssr: false,
+  loading: () => (
+    <div className="w-full h-full flex flex-col items-center justify-center bg-black/20 backdrop-blur-3xl rounded-[3rem] border border-white/5">
+       <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mb-4" />
+       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 animate-pulse">Initializing Production Engine...</p>
+    </div>
+  )
+});
+const ProductionBranch = dynamic(() => import('./_components/ProductionBranch').then(mod => mod.ProductionBranch || mod.default), { ssr: false });
+const DistributionFactory = dynamic(() => import('./_components/DistributionFactory').then(mod => mod.DistributionFactory || mod.default), { ssr: false });
 
 // Global Shared Components
 import StudioTimeline from '@/components/studio/StudioTimeline';
