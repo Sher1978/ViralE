@@ -73,8 +73,11 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         instagram: igUrls,
         youtube: ytUrl
       });
+    } else if (scriptText && scriptText.length > 20 && !assets && !isGenerating) {
+      // Auto-trigger background generation if we have a transcript but no assets
+      generateAssets();
     }
-  }, [manifest]);
+  }, [manifest, scriptText]);
 
   const generateAssets = async () => {
     setIsGenerating(true);

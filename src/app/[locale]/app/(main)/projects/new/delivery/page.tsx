@@ -251,9 +251,9 @@ export default function DeliveryPage() {
   // Resolve script content from multiple possible manifest key locations
   const manifest = version?.script_data as any;
   const scriptData = {
-    hook: manifest?.hook || manifest?.script?.hook || manifest?.segments?.[0]?.scriptText?.split('\n')?.[0] || '',
+    hook: manifest?.hook || manifest?.script?.hook || manifest?.scriptText?.split('\n')?.[0] || manifest?.segments?.[0]?.scriptText?.split('\n')?.[0] || '',
     context: manifest?.context || manifest?.script?.context || '',
-    meat: manifest?.meat || manifest?.script?.meat || manifest?.segments?.map((s: any) => s.scriptText).join('\n\n') || '',
+    meat: manifest?.scriptText || manifest?.meat || manifest?.script?.meat || manifest?.segments?.map((s: any) => s.scriptText).join('\n\n') || '',
     cta: manifest?.cta || manifest?.script?.cta || '',
   };
 

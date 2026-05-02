@@ -363,7 +363,6 @@ export default function StudioPage() {
       }
 
       // 🔥 Merge editor state into manifest
-      // Resolve A-Roll URL: use explicit one if provided, otherwise check manifest
       const manifestAny = manifest as any;
       const resolvedARollUrl = 
         explicitARollUrl ||
@@ -372,9 +371,14 @@ export default function StudioPage() {
         manifestAny.segments?.[0]?.assetUrl ||
         null;
 
+      // Derivce final script text from montage subtitles (requested by user)
+      const finalScriptText = subs?.map(s => s.text).join('\n\n') || 
+                             manifest.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || '';
+
       const updatedManifest = {
         ...manifest,
-        aRollUrl: resolvedARollUrl,  // explicitly store for Delivery page
+        aRollUrl: resolvedARollUrl,
+        scriptText: finalScriptText, // Save for distribution
         brollClips: broll || [],
         subtitleClips: subs || [],
         segments: manifest.segments.map((s: any, i: number) => i === 0 ? { 
@@ -384,33 +388,33 @@ export default function StudioPage() {
         } : s)
       };
 
-      // ✅ INSTANT TRANSITION
-      // We push to the delivery page immediately. The save happens in the background
-      // and the delivery page will also try to fetch the latest version.
-      router.push(`/app/projects/new/delivery?projectId=${projectId}`);
+      // ✅ Trigger background distribution asset generation
+      fetch('/api/ai/distribution-assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ scriptText: finalScriptText, projectId, locale, background: true })
+      }).catch(e => console.error('[Studio] Prefetch failed:', e));
 
-      // ✅ Background Save manifest — ensure at least one version exists
-      const saveTask = async () => {
-        let savedVersion = null;
-        if (currentVersionId) {
-          savedVersion = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
-        } else {
-          savedVersion = await projectService.updateLatestVersionManifest(projectId, updatedManifest);
-        }
+      // ✅ Background Save manifest — wait for it to prevent race condition on Delivery page
+      let savedVersion = null;
+      if (currentVersionId) {
+        savedVersion = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
+      } else {
+        savedVersion = await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+      }
 
-        if (!savedVersion) {
-          console.log('[Studio] No existing version found, creating initial version');
-          savedVersion = await projectService.createVersion({
-            projectId,
-            scriptData: updatedManifest,
-            versionLabel: 'Initial Export'
-          });
-        }
-        // Clear local draft after successful background save
-        localStorage.removeItem(`viral_editor_draft_${projectId}`);
-      };
+      if (!savedVersion) {
+        savedVersion = await projectService.createVersion({
+          projectId,
+          scriptData: updatedManifest,
+          versionLabel: 'Initial Export'
+        });
+      }
+      
+      localStorage.removeItem(`viral_editor_draft_${projectId}`);
 
-      saveTask().catch(e => console.error('[Studio] Background save failed:', e));
+      // ✅ Final Redirect
+      router.push(`/projects/new/delivery?projectId=${projectId}`);
 
     } catch (err: any) {
       console.error('Export failed:', err);
@@ -655,7 +659,7 @@ export default function StudioPage() {
               <div className="max-w-6xl mx-auto h-full p-10">
                 <DistributionFactory 
                   manifest={manifest}
-                  scriptText={manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
+                  scriptText={(manifest as any)?.scriptText || manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
                   projectId={projectId}
                   locale={locale}
                 />
