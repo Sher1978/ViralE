@@ -105,7 +105,7 @@ export default function StudioPage() {
       
       try {
         if (window.location.search !== `?${params.toString()}`) {
-          window.history.replaceState({ path: newUrl }, '', newUrl);
+          router.replace(newUrl, { scroll: false });
           console.log('[Studio] Syncing URL:', newUrl);
         }
       } catch (e) {
@@ -512,7 +512,7 @@ export default function StudioPage() {
                     setActiveTab('teleprompter');
                   } else if (type === 'faceless') {
                     setShowFaceless(true);
-                    setActiveTab('assembly');
+                    setTimeout(() => setActiveTab('assembly'), 250);
                   }
                 }}
                 onBack={() => setActiveTab('concept')}
@@ -560,7 +560,7 @@ export default function StudioPage() {
                       if (lastRecordingUrl) {
                         setShowRecordingReview(true);
                       } else {
-                        setActiveTab('assembly');
+                        setTimeout(() => setActiveTab('assembly'), 250);
                       }
                    }}
                    t={t}
@@ -597,7 +597,7 @@ export default function StudioPage() {
                       // 1. Give Android a moment to stop camera and clear memory
                       setTimeout(() => {
                         setShowRecordingReview(false);
-                        setActiveTab('assembly');
+                        setTimeout(() => setActiveTab('assembly'), 250);
                       }, 100);
                     }}
                     manifest={manifest}

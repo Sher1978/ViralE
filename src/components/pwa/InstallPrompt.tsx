@@ -29,6 +29,11 @@ export function InstallPrompt() {
     };
 
     window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    const handleTrigger = () => {
+      console.log('[PWA] Trigger received');
+      setShow(true);
+    };
+    window.addEventListener('trigger-pwa-install', handleTrigger);
 
     // 4. Show iOS prompt automatically after a delay if not standalone
     if (isIOSDevice && !window.matchMedia('(display-mode: standalone)').matches) {
@@ -43,6 +48,7 @@ export function InstallPrompt() {
 
     return () => {
       window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      window.removeEventListener('trigger-pwa-install', handleTrigger);
     };
   }, []);
 

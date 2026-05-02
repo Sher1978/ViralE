@@ -130,6 +130,10 @@ const StoreBadge = ({ type, text, subtext, toastMessage, href = "#" }: { type: '
   const handleClick = (e: React.MouseEvent) => {
     if (href === "#") {
       e.preventDefault();
+      // Trigger PWA install prompt event
+      if (typeof window !== 'undefined') {
+        window.dispatchEvent(new CustomEvent('trigger-pwa-install'));
+      }
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
     }
