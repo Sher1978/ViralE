@@ -1,4 +1,4 @@
-import { model } from '@/lib/ai/gemini';
+import { getModel } from '@/lib/ai/gemini';
 import { SchemaType, FunctionCallingMode } from '@google/generative-ai';
 import { strategistService } from '@/lib/services/strategistService';
 import { strategistServerService } from '@/lib/services/strategistServerService';
@@ -90,8 +90,9 @@ export async function POST(req: Request) {
       });
     }
 
-    // 4. Stream with Gemini (including Tool Use for DNA Updates)
-    const chat = model.startChat({
+    // 4. Stream with AI Engine (Gemini or Groq Override)
+    const engine = getModel('fast', locale);
+    const chat = engine.startChat({
       history: chatHistory,
       systemInstruction: systemPrompt + "\n" + projectContext,
       tools: [{

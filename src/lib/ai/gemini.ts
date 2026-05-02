@@ -5,15 +5,74 @@ const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_AP
 const genAI = new GoogleGenerativeAI(apiKey);
 
 // [REVERSIBLE OVERRIDE] Set to true to route all Gemini calls to Groq
-const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true' || true;
+const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
 const FAST_MODEL = "gemini-3-flash-preview";
 const PRO_MODEL = "gemini-3.1-pro-preview";
 
-export function getModel(tier: 'fast' | 'pro' = 'fast') {
+export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en') {
   if (IS_GROQ_OVERRIDE) {
+    const language = locale === 'ru' ? 'Russian' : 'English';
     // Return a proxy that mimics the Gemini model interface but calls Groq
     return {
+      startChat: (config: any) => ({
+        sendMessageStream: async (parts: any[]) => {
+            const textPrompt = parts.map(p => typeof p === 'string' ? p : p.text || JSON.stringify(p)).join('\n');
+            const groqKey = process.env.GROQ_API_KEY || '';
+            const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+              method: "POST",
+              headers: {
+                "Authorization": `Bearer ${groqKey}`,
+                "Content-Type": "application/json"
+              },
+              body: JSON.stringify({
+                model: "llama-3.3-70b-versatile",
+                messages: [
+                  { 
+                    role: "system", 
+                    content: `You are an ELITE AI STRATEGIST. 
+                    CRITICAL: YOU MUST RESPOND EXCLUSIVELY IN ${language.toUpperCase()}.
+                    ${config.systemInstruction || ''}`
+                  },
+                  { role: "user", content: textPrompt }
+                ],
+                temperature: 0.7,
+                stream: true
+              })
+            });
+
+            if (!response.ok) throw new Error("Groq streaming failed");
+
+            // Mock the Gemini stream interface
+            return {
+              stream: (async function* () {
+                const reader = response.body?.getReader();
+                const decoder = new TextDecoder();
+                let buffer = '';
+                while (true) {
+                  const { done, value } = await reader!.read();
+                  if (done) break;
+                  buffer += decoder.decode(value, { stream: true });
+                  const lines = buffer.split('\n');
+                  buffer = lines.pop() || '';
+                  for (const line of lines) {
+                    if (line.startsWith('data: ')) {
+                      const data = line.slice(6);
+                      if (data === '[DONE]') continue;
+                      try {
+                        const json = JSON.parse(data);
+                        const chunk = json.choices[0].delta.content || '';
+                        if (chunk) {
+                          yield { text: () => chunk, functionCalls: () => [] };
+                        }
+                      } catch (e) {}
+                    }
+                  }
+                }
+              })()
+            };
+        }
+      }),
       generateContent: async (prompt: string | any[]) => {
         const textPrompt = Array.isArray(prompt) 
           ? prompt.map(p => typeof p === 'string' ? p : p.text || JSON.stringify(p)).join('\n') 
@@ -31,11 +90,10 @@ export function getModel(tier: 'fast' | 'pro' = 'fast') {
             messages: [
               { 
                 role: "system", 
-                content: `You are a professional AI assistant for a video production platform. 
-                CRITICAL:
-                1. Always return valid JSON.
-                2. If the request involves technical prompts (ai_prompt, visual_hook, pexels_query), these specific fields MUST be in ENGLISH regardless of the target language for other fields.
-                3. Do not include any text outside the JSON block.` 
+                content: `You are a professional AI assistant. 
+                CRITICAL: YOU MUST RESPOND EXCLUSIVELY IN ${language.toUpperCase()}.
+                1. Always return valid JSON if requested.
+                2. Technical fields (ai_prompt) can be in English, but all user-facing content MUST BE IN ${language.toUpperCase()}.` 
               },
               { role: "user", content: textPrompt }
             ],

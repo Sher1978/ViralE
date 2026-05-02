@@ -1,8 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getModel } from '@/lib/ai/gemini';
 import { supabase } from '@/lib/supabase';
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY || '');
 
 export async function POST(req: NextRequest) {
   try {
@@ -12,7 +10,7 @@ export async function POST(req: NextRequest) {
     }
 
     const language = (locale === 'ru') ? 'Russian' : 'English';
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = getModel('fast', locale);
 
     const prompt = `
       CRITICAL: YOU MUST RESPOND EXCLUSIVELY IN ${language.toUpperCase()}. THIS IS A HARD REQUIREMENT.
