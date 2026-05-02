@@ -45,7 +45,7 @@ export default function DashboardPage() {
 
   const handleGenerate = () => {
     if (!prompt.trim()) return;
-    router.push(`/${locale}/app/projects/new/script?topic=${encodeURIComponent(prompt)}&engine=${selectedEngine}`);
+    router.push(`/app/projects/new/script?topic=${encodeURIComponent(prompt)}&engine=${selectedEngine}`);
   };
 
   const IDEAS = [

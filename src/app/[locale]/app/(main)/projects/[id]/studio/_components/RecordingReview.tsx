@@ -14,8 +14,7 @@ interface RecordingReviewProps {
   setShowRecordingReview: (show: boolean) => void;
   setLastRecordingUrl: (url: string | null) => void;
   updateSegmentField: (id: string, field: string, value: any) => void;
-  setManifest: (manifest: any) => void;
-  setActiveTab: (tab: any) => void;
+  handleAcceptRecording: (url: string) => void;
   manifest: any;
   selectedSegmentId: string | null;
 }
@@ -29,8 +28,7 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
   setShowRecordingReview,
   setLastRecordingUrl,
   updateSegmentField,
-  setManifest,
-  setActiveTab,
+  handleAcceptRecording,
   manifest,
   selectedSegmentId,
 }) => {
@@ -101,21 +99,7 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
                  <div className="h-[1px] w-1/2 mx-auto lg:mx-0 bg-white/10" />
 
                  <button 
-                    onClick={() => {
-                       const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
-                       
-                       // Properly update manifest via parent state to trigger re-renders
-                       setManifest({
-                          ...manifest,
-                          videoUrl: lastRecordingUrl,
-                          segments: manifest.segments.map((s: any) => 
-                             s.id === segmentId ? { ...s, assetUrl: lastRecordingUrl, type: 'user_recording' } : s
-                          )
-                       });
-                       
-                       setShowRecordingReview(false);
-                       setActiveTab('assembly');
-                    }}
+                    onClick={() => handleAcceptRecording(lastRecordingUrl)}
                     className="w-full py-6 rounded-[2.5rem] bg-purple-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-purple-500 shadow-[0_20px_40px_-10px_rgba(168,85,247,0.4)] border border-purple-500/30 transition-all flex items-center justify-center gap-3 active:scale-95"
                  >
                     {locale === 'ru' ? 'В МОНТАЖ' : 'GO TO MONTAGE'} <ChevronRight size={20} strokeWidth={3} />

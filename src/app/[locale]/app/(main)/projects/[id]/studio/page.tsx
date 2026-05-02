@@ -2,8 +2,7 @@
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
-import { useParams, useSearchParams } from 'next/navigation';
-import { useRouter } from '@/navigation';
+import { useRouter, usePathname } from '@/navigation';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { 
   Plus, CheckCircle2, Lock, Scissors, RefreshCw, Wand2, Brain, Monitor, FileVideo, Download, X, Layout, ChevronRight
@@ -36,6 +35,7 @@ export default function StudioPage() {
   const t = useTranslations('studio');
   const router = useRouter();
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
+  const pathname = usePathname();
 
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') as any || 'concept';
@@ -97,7 +97,7 @@ export default function StudioPage() {
     if (showFaceless) params.set('mode', 'faceless');
     else params.delete('mode');
     
-    const newUrl = `${window.location.pathname}?${params.toString()}`;
+    const newUrl = `${pathname}?${params.toString()}`;
     window.history.replaceState({ path: newUrl }, '', newUrl);
   }, [activeTab, showFaceless, isLoading]);
 
@@ -372,7 +372,7 @@ export default function StudioPage() {
       // ✅ INSTANT TRANSITION
       // We push to the delivery page immediately. The save happens in the background
       // and the delivery page will also try to fetch the latest version.
-      router.push(`/${locale}/app/projects/new/delivery?projectId=${projectId}`);
+      router.push(`/app/projects/new/delivery?projectId=${projectId}`);
 
       // ✅ Background Save manifest — ensure at least one version exists
       const saveTask = async () => {
@@ -520,8 +520,23 @@ export default function StudioPage() {
                   setShowRecordingReview={setShowRecordingReview}
                   setLastRecordingUrl={setLastRecordingUrl}
                   updateSegmentField={updateSegmentField}
-                  setManifest={setManifest}
-                  setActiveTab={setActiveTab}
+                  handleAcceptRecording={async (url) => {
+                    if (manifest) {
+                       const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
+                       const newManifest = {
+                          ...manifest,
+                          videoUrl: url,
+                          segments: manifest.segments.map((s: any) => 
+                             s.id === segmentId ? { ...s, assetUrl: url, type: 'user_recording' } : s
+                          )
+                       };
+                       setManifest(newManifest);
+                       // Persist to DB so refresh doesn't lose it
+                       await projectService.updateLatestVersionManifest(projectId, newManifest);
+                    }
+                    setShowRecordingReview(false);
+                    setActiveTab('assembly');
+                  }}
                   manifest={manifest}
                   selectedSegmentId={selectedSegmentId}
               />

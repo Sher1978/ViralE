@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/navigation';
 import { 
   ChevronLeft, 
   RefreshCw, 
@@ -21,7 +21,7 @@ import {
   Palette
 } from 'lucide-react';
 
-import Link from 'next/link';
+import { Link } from '@/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function DnaManagementPage() {
@@ -101,7 +101,7 @@ export default function DnaManagementPage() {
     try {
       const res = await fetch('/api/profile/dna', { method: 'DELETE' });
       if (!res.ok) throw new Error('Reset failed');
-      router.push(`/${locale}/app/onboarding`);
+      router.push(`/app/onboarding`);
     } catch (e: any) {
       console.error('[DnaLab] Reset error:', e);
       setError(e.message || 'Reset failed');
@@ -115,7 +115,7 @@ export default function DnaManagementPage() {
       {/* Premium Header */}
       <div className="relative">
         <Link 
-          href={`/${locale}/app/profile`}
+          href={`/app/profile`}
           className="inline-flex items-center gap-2 text-white/30 hover:text-white transition-all group mb-6"
         >
           <div className="w-8 h-8 rounded-full bg-white/5 border border-white/10 flex items-center justify-center group-hover:bg-white/10 transition-colors">

@@ -2,8 +2,8 @@
 
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import Link from 'next/link';
+import { useParams, useSearchParams } from 'next/navigation';
+import { useRouter, Link } from '@/navigation';
 import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, Loader2, AlertCircle } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { renderService, RenderJob } from '@/lib/services/renderService';
@@ -239,7 +239,7 @@ export default function DeliveryPage() {
           </p>
         </div>
         <button 
-          onClick={() => router.push(`/${locale}/app/projects/${projectId}/studio`)}
+          onClick={() => router.push(`/app/projects/${projectId}/studio`)}
           className="px-8 py-3 rounded-full bg-purple-500 border border-purple-400 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-400 transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)]"
         >
           Back to Studio
@@ -522,7 +522,7 @@ export default function DeliveryPage() {
 
       {/* New content button */}
       <div className="pt-6">
-        <Link href={`/${locale}/app/dashboard`}>
+        <Link href={`/app/dashboard`}>
           <button className="btn-primary w-full rounded-[2rem] py-5 flex items-center justify-center gap-3 group">
             <span className="text-xl">⚡</span>
             <span className="font-black text-sm uppercase tracking-widest">{t('createMore')}</span>

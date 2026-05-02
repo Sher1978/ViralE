@@ -45,7 +45,38 @@ export async function POST(req: Request) {
           const data = await response.json();
           const inferenceResult = data.data?.find((d: any) => d.taskType === 'imageInference');
           if (inferenceResult && inferenceResult.imageURL) {
-            return NextResponse.json({ url: inferenceResult.imageURL, id: inferenceResult.taskUUID });
+            const imageUrl = inferenceResult.imageURL;
+            console.log('[Image Gen] Runware success, persisting to storage...');
+            
+            // Persist to Supabase to avoid CORS/expiration issues in preview
+            try {
+              const imgRes = await fetch(imageUrl);
+              if (imgRes.ok) {
+                const blob = await imgRes.blob();
+                const { createClient } = await import('@supabase/supabase-js');
+                const supabaseAdmin = createClient(
+                  process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                  process.env.SUPABASE_SERVICE_ROLE_KEY!
+                );
+                
+                const fileName = `generated/${uuidv4()}.webp`;
+                const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+                  .from('temp-assets')
+                  .upload(fileName, blob, { contentType: 'image/webp' });
+
+                if (!uploadError) {
+                  const { data: { publicUrl } } = supabaseAdmin.storage
+                    .from('temp-assets')
+                    .getPublicUrl(uploadData.path);
+                  
+                  return NextResponse.json({ url: publicUrl, id: inferenceResult.taskUUID });
+                }
+              }
+            } catch (persistErr) {
+              console.warn('[Image Gen] Persistence failed, returning original URL:', persistErr);
+            }
+
+            return NextResponse.json({ url: imageUrl, id: inferenceResult.taskUUID });
           }
         }
       } catch (e) {
@@ -74,7 +105,37 @@ export async function POST(req: Request) {
 
         const data = await response.json();
         if (response.ok && data.data?.[0]?.url) {
-          return NextResponse.json({ url: data.data[0].url });
+          const imageUrl = data.data[0].url;
+          console.log('[Image Gen] OpenAI success, persisting to storage...');
+          
+          try {
+            const imgRes = await fetch(imageUrl);
+            if (imgRes.ok) {
+              const blob = await imgRes.blob();
+              const { createClient } = await import('@supabase/supabase-js');
+              const supabaseAdmin = createClient(
+                process.env.NEXT_PUBLIC_SUPABASE_URL!,
+                process.env.SUPABASE_SERVICE_ROLE_KEY!
+              );
+              
+              const fileName = `generated/${uuidv4()}.png`;
+              const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+                .from('temp-assets')
+                .upload(fileName, blob, { contentType: 'image/png' });
+
+              if (!uploadError) {
+                const { data: { publicUrl } } = supabaseAdmin.storage
+                  .from('temp-assets')
+                  .getPublicUrl(uploadData.path);
+                
+                return NextResponse.json({ url: publicUrl });
+              }
+            }
+          } catch (persistErr) {
+            console.warn('[Image Gen] OpenAI Persistence failed:', persistErr);
+          }
+
+          return NextResponse.json({ url: imageUrl });
         }
       } catch (e) {
         console.error('[Image Gen] OpenAI failed:', e);

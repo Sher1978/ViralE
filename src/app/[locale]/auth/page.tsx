@@ -7,7 +7,7 @@ import LoginButtons from '@/components/auth/LoginButtons';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { Sparkles, Bot, Terminal } from 'lucide-react';
 import { useEffect } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter } from '@/navigation';
 import { supabase } from '@/lib/supabase';
 
 export default function AuthPage() {
@@ -20,7 +20,7 @@ export default function AuthPage() {
       const { data: { session } } = await supabase.auth.getSession();
       if (session) {
         // Redirect to Studio (Projects hub)
-        router.push(`/${locale}/app/projects`);
+        router.push(`/app/projects`);
       }
     };
     checkUser();

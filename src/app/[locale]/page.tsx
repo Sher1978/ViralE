@@ -1,7 +1,7 @@
 'use client';
 
 import { useTranslations, useLocale } from 'next-intl';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter, useSearchParams } from '@/navigation';
 import { supabase } from '@/lib/supabase';
 import { Link } from '@/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -187,7 +187,7 @@ export default function LandingPage() {
       
       if (isStandalone || (session && !session.user.is_anonymous)) {
         setIsRedirecting(true);
-        router.push(`/${locale}/app/projects`);
+        router.push(`/app/projects`);
       }
     });
   }, [locale, router, searchParams]);
