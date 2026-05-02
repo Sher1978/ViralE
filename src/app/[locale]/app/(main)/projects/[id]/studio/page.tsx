@@ -614,6 +614,7 @@ export default function StudioPage() {
                 onNext={handleFinalExport}
                 projectId={projectId}
                 onFaceless={() => setShowFaceless(true)}
+                isSaving={isSaving}
               />
             )}
 

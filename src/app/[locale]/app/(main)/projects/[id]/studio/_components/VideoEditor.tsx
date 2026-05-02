@@ -61,6 +61,7 @@ interface VideoEditorProps {
   updateSegmentField: (id: string, field: string, value: any) => void;
   projectId?: string;
   onFaceless?: () => void;
+  isSaving?: boolean;
 }
 
 // ── Helper: Mock Transcription ─────────────────────────────────────────────
@@ -157,7 +158,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
 // ── Main Component ──────────────────────────────────────────────────────────
 
 export const VideoEditor = React.memo(({
-  manifest, onBack, onNext, updateSegmentField, projectId, preFetchedBrolls: parentPreFetched, onFaceless
+  manifest, onBack, onNext, updateSegmentField, projectId, preFetchedBrolls: parentPreFetched, onFaceless, isSaving
 }: VideoEditorProps & { preFetchedBrolls?: Record<string, any[]> }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -1017,13 +1018,13 @@ export const VideoEditor = React.memo(({
         </div>
 
         <button 
+          disabled={isSaving}
           onClick={() => {
             if (!window.confirm('Приступаем к финальной сборке?')) return;
-            console.log('[Editor] Exporting project:', projectId, { brollCount: brollClips.length, hasARoll: !!aRollUrl });
             onNext?.(brollClips, subtitleClips, aRollUrl);
           }}
-          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-400">
-          Export <ArrowRight size={12} />
+          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-400 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
+          {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <>Export <ArrowRight size={12} /></>}
         </button>
       </div>
 

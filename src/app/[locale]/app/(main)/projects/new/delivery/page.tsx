@@ -30,6 +30,12 @@ export default function DeliveryPage() {
   const [isLaunchingRender, setIsLaunchingRender] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderStatus, setRenderStatus] = useState('');
+  const [renderLogs, setRenderLogs] = useState<string[]>([]);
+  
+  const addLog = (msg: string) => {
+    console.log(msg);
+    setRenderLogs(prev => [...prev.slice(-15), msg]);
+  };
   const ffmpegRef = useRef<any>(null);
 
   useEffect(() => {
@@ -71,7 +77,7 @@ export default function DeliveryPage() {
         await projectService.updateProjectStatus(projectId, 'rendering');
       }
 
-      console.log('[Delivery] Initializing FFmpeg core...');
+      addLog('[System] Инициализация ядра...');
       const { FFmpeg } = await import('@ffmpeg/ffmpeg');
       const { toBlobURL, fetchFile } = await import('@ffmpeg/util');
       const ffmpeg = new FFmpeg();
@@ -124,7 +130,10 @@ export default function DeliveryPage() {
       setRenderProgress(10);
       
       try {
-        await ffmpeg.writeFile('input_aroll.mp4', await fetchFile(aRollUrl));
+        const aRollData = await fetchFile(aRollUrl);
+      addLog(`[File] Основное видео: ${Math.round(aRollData.byteLength / 1024)} KB`);
+      if (aRollData.byteLength < 100) throw new Error('Исходный файл (A-Roll) поврежден или пуст.');
+      await ffmpeg.writeFile('input_aroll.mp4', aRollData);
       } catch (fileErr) {
         console.error('[Delivery] A-Roll fetch failed:', fileErr);
         throw new Error('Не удалось получить исходное видео. Попробуйте вернуться в студию и запустить экспорт заново.');
@@ -151,7 +160,12 @@ export default function DeliveryPage() {
           }
 
           if (clipUrl) {
-            await ffmpeg.writeFile(name, await fetchFile(clipUrl));
+            const bRollData = await fetchFile(clipUrl);
+            addLog(`[File] B-Roll ${i}: ${Math.round(bRollData.byteLength / 1024)} KB`);
+            if (bRollData.byteLength > 100) {
+              await ffmpeg.writeFile(name, bRollData);
+              brollFiles.push({ name, clip });
+            }
             brollFiles.push({ name, clip });
           }
         } catch (e) {
@@ -207,6 +221,12 @@ export default function DeliveryPage() {
 
       const data = await ffmpeg.readFile('output.mp4');
       const videoBlob = new Blob([data as any], { type: 'video/mp4' });
+      
+      if (videoBlob.size < 1000) {
+        addLog(`[Error] Результат пуст: ${videoBlob.size} байт`);
+        throw new Error('Сборка завершилась ошибкой: получен пустой файл. Попробуйте изменить настройки или вернуться в студию.');
+      }
+
       const videoUrl = URL.createObjectURL(videoBlob);
       
       setRenderProgress(100);
@@ -260,6 +280,16 @@ export default function DeliveryPage() {
           <p className="text-sm text-white/40">
             {error || job?.error_log || 'An unknown error occurred during the render process.'}
           </p>
+          {renderLogs.length > 0 && (
+            <div className="mt-4 p-3 bg-black/40 rounded-2xl border border-white/5 text-left space-y-1 overflow-hidden">
+              <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Debug Terminal</div>
+              {renderLogs.map((log, i) => (
+                <div key={i} className="text-[9px] font-mono text-white/40 leading-tight">
+                  <span className="text-purple-500/50 mr-1">$</span> {log}
+                </div>
+              ))}
+            </div>
+          )}
         </div>
         <button 
           onClick={() => router.push(`/app/projects/${projectId}/studio`)}
@@ -323,6 +353,18 @@ export default function DeliveryPage() {
 
   return (
     <div className="space-y-5 animate-fade-in pb-10">
+      {/* Header with Back Button */}
+      <div className="flex items-center justify-between py-2">
+        <button 
+          onClick={() => router.push(`/app/projects/${projectId}/studio`)}
+          className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all group"
+        >
+          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
+          {locale === 'ru' ? 'В СТУДИЮ' : 'STUDIO'}
+        </button>
+        <div className="text-[10px] font-black text-white/20 tracking-[0.3em] uppercase">Delivery Lab</div>
+      </div>
+
       {/* Status */}
       <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'processing'} />
 
