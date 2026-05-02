@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useRouter, usePathname } from '@/navigation';
+import { useRouter } from '@/navigation';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { 
   Plus, CheckCircle2, Lock, Scissors, RefreshCw, Wand2, Brain, Monitor, FileVideo, Download, X, Layout, ChevronRight
@@ -36,7 +36,6 @@ export default function StudioPage() {
   const t = useTranslations('studio');
   const router = useRouter();
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
-  const pathname = usePathname();
 
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') as any || 'concept';
@@ -98,7 +97,8 @@ export default function StudioPage() {
     if (showFaceless) params.set('mode', 'faceless');
     else params.delete('mode');
     
-    const newUrl = `${pathname}?${params.toString()}`;
+    // Use window.location.pathname to preserve the full URL with locale prefix (/ru/...)
+    const newUrl = `${window.location.pathname}?${params.toString()}`;
     window.history.replaceState({ path: newUrl }, '', newUrl);
   }, [activeTab, showFaceless, isLoading]);
 
