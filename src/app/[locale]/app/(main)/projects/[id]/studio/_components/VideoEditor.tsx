@@ -1516,8 +1516,69 @@ const TrackRow = React.memo(({ label, color, children, onClick, onAdd, onTimelin
   onTimelineClick?: (time: number) => void;
 }) => {
   const rowRef = useRef<HTMLDivElement>(null);
-  
+  const [holdProgress, setHoldProgress] = useState(0);
+  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const startPosRef = useRef({ x: 0, y: 0 });
+  const isHoldingRef = useRef(false);
+
+  const startHold = (e: React.PointerEvent) => {
+    // Only apply 3s hold for B-roll track
+    if (label !== 'B' || !onTimelineClick) {
+      return;
+    }
+
+    isHoldingRef.current = true;
+    startPosRef.current = { x: e.clientX, y: e.clientY };
+    setHoldProgress(0.01);
+
+    const startTime = Date.now();
+    const duration = 3000; // 3 seconds as requested
+
+    if (holdTimerRef.current) clearInterval(holdTimerRef.current);
+    
+    holdTimerRef.current = setInterval(() => {
+      const elapsed = Date.now() - startTime;
+      const progress = Math.min(elapsed / duration, 1);
+      setHoldProgress(progress);
+
+      if (progress >= 1) {
+        if (holdTimerRef.current) clearInterval(holdTimerRef.current);
+        holdTimerRef.current = null;
+        isHoldingRef.current = false;
+        
+        // Trigger the action
+        if (rowRef.current) {
+          const rect = rowRef.current.getBoundingClientRect();
+          const x = startPosRef.current.x - rect.left;
+          const totalDuration = parseFloat(document.querySelector('[data-duration]')?.getAttribute('data-duration') || '0');
+          if (totalDuration > 0) {
+            onTimelineClick((x / rect.width) * totalDuration);
+          }
+        }
+        setHoldProgress(0);
+      }
+    }, 50);
+  };
+
+  const cancelHold = () => {
+    if (holdTimerRef.current) {
+      clearInterval(holdTimerRef.current);
+      holdTimerRef.current = null;
+    }
+    isHoldingRef.current = false;
+    setHoldProgress(0);
+  };
+
+  const handlePointerMove = (e: React.PointerEvent) => {
+    if (!isHoldingRef.current) return;
+    const dist = Math.sqrt(Math.pow(e.clientX - startPosRef.current.x, 2) + Math.pow(e.clientY - startPosRef.current.y, 2));
+    if (dist > 10) cancelHold(); // Cancel if finger moves too much
+  };
+
   const handleInternalClick = (e: React.MouseEvent) => {
+    // For non-B tracks, keep regular click
+    if (label === 'B') return; 
+
     if (!onTimelineClick || !rowRef.current) return;
     const rect = rowRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -1544,8 +1605,27 @@ const TrackRow = React.memo(({ label, color, children, onClick, onAdd, onTimelin
       <div 
         ref={rowRef}
         onClick={handleInternalClick}
-        className="flex-1 relative cursor-crosshair"
+        onPointerDown={startHold}
+        onPointerUp={cancelHold}
+        onPointerLeave={cancelHold}
+        onPointerMove={handlePointerMove}
+        className="flex-1 relative cursor-crosshair touch-none"
       >
+        {/* Hold Progress Indicator */}
+        {holdProgress > 0 && (
+          <div 
+            className="absolute top-0 bottom-0 bg-blue-500/20 border-r-2 border-blue-400 z-[60] pointer-events-none"
+            style={{ 
+              left: `${((startPosRef.current.x - (rowRef.current?.getBoundingClientRect().left || 0)) / (rowRef.current?.getBoundingClientRect().width || 1)) * 100}%`,
+              width: `${holdProgress * 40}px`,
+              transition: 'none'
+            }}
+          >
+             <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 whitespace-nowrap bg-blue-600 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-xl">
+               HOLD {Math.ceil(3 - holdProgress * 3)}s
+             </div>
+          </div>
+        )}
         {children}
       </div>
     </div>
