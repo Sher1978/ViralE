@@ -98,7 +98,7 @@ export const TeleprompterView = React.memo(({
             if (prompterRef.current) {
                 // Smoother formula: base 0.08px per 8ms (approx 10px/sec at speed 1)
                 // Use an accumulator to handle sub-pixel rounding in browser scrollTop
-                scrollAccRef.current += (scrollSpeed * 0.16); 
+                scrollAccRef.current += (scrollSpeed * 0.25); 
                 
                 if (scrollAccRef.current >= 1) {
                   const pixels = Math.floor(scrollAccRef.current);

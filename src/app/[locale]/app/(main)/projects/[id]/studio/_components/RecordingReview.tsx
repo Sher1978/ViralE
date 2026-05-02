@@ -109,7 +109,7 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
                     onClick={() => { setShowRecordingReview(false); setLastRecordingUrl(null); }}
                     className="w-full py-4 rounded-[2rem] border border-white/5 text-white/20 text-[9px] font-black uppercase tracking-[0.4em] hover:text-red-500 hover:border-red-500/20 transition-all"
                  >
-                    RETENTION FAIL / RETAKE
+                    {locale === 'ru' ? 'ПЕРЕСНЯТЬ ДУБЛЬ' : 'RETAKE MASTERPIECE'}
                  </button>
               </div>
            </div>

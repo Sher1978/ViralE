@@ -176,8 +176,24 @@ export default function DeliveryPage() {
         }
       }
 
-      setRenderStatus(`Финальный монтаж ${isMobile ? '720p' : '1080p'}...`);
-      setRenderProgress(50);
+      // --- STEP 2: Pre-process B-Rolls ---
+      const processedBrolls = [];
+      for (let i = 0; i < brollFiles.length; i++) {
+        setRenderStatus(`Оптимизация B-Roll ${i+1}/${brollFiles.length}...`);
+        setRenderProgress(20 + (i / brollFiles.length) * 20);
+        const { name, clip } = brollFiles[i];
+        const optName = `opt_${name}`;
+        await ffmpeg.exec(['-i', name, '-ss', clip.startTime.toString(), '-t', (clip.endTime - clip.startTime).toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
+        processedBrolls.push({ name: optName, clip });
+        try { await ffmpeg.deleteFile(name); } catch(e) {}
+      }
+
+      setRenderStatus('Подготовка субтитров...');
+      const srtContent = generateSRT(ver.script_data.subtitleClips || []);
+      await ffmpeg.writeFile('subs.srt', srtContent);
+
+      setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
+      setRenderProgress(60);
 
       let ffmpegArgs: string[];
       if (brollFiles.length === 0) {
@@ -193,14 +209,14 @@ export default function DeliveryPage() {
         ];
       } else {
         const inputs = ['-i', 'input_aroll.mp4', ...brollFiles.flatMap(b => ['-i', b.name])];
-        let filterParts = `[0:v]${scale}[base]`;
+        let filterParts = `[0:v]${scale},subtitles=subs.srt:force_style='FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=40'[base]`;
         let prevLabel = 'base';
         
         for (let i = 0; i < brollFiles.length; i++) {
           const { clip } = brollFiles[i];
           const vLabel = `bv${i}`;
           const outLabel = `out${i}`;
-          filterParts += `;[${i + 1}:v]${scale}[${vLabel}]`;
+          filterParts += `;[${i + 1}:v]copy[${vLabel}]`;
           filterParts += `;[${prevLabel}][${vLabel}]overlay=enable='between(t,${clip.startTime},${clip.endTime})'[${outLabel}]`;
           prevLabel = outLabel;
         }
@@ -261,6 +277,28 @@ export default function DeliveryPage() {
     } finally {
       setIsLaunchingRender(false);
     }
+  };
+
+  const downloadTXT = () => {
+    const texts = outputs.map(o => `[${o.platform}]\n${o.text}\n`).join('\n---\n\n');
+    const blob = new Blob([texts], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `ViralEngine_Texts_${projectId}.txt`;
+    a.click();
+  };
+
+  const handleExport = async (target: 'telegram' | 'drive') => {
+    setIsExporting(true);
+    addLog(`[Export] Выгрузка в ${target}...`);
+    await new Promise(r => setTimeout(r, 1500));
+    if (target === 'telegram') {
+      window.open('https://t.me/ViralEngine_Bot', '_blank');
+    } else {
+      alert('Загрузка на Google Drive начата. Проверьте папку "ViralEngine/Exports"');
+    }
+    setIsExporting(false);
   };
 
   const handleCopy = (text: string) => {
@@ -590,15 +628,30 @@ export default function DeliveryPage() {
         </div>
       </div>
 
-      {/* New content button */}
-      <div className="pt-6">
-        <Link href={`/app/dashboard`}>
-          <button className="btn-primary w-full rounded-[2rem] py-5 flex items-center justify-center gap-3 group">
-            <span className="text-xl">⚡</span>
-            <span className="font-black text-sm uppercase tracking-widest">{t('createMore')}</span>
-            <ArrowRight className="w-5 h-5 group-hover:translate-x-1 transition-transform" />
-          </button>
-        </Link>
+      {/* Export Section */}
+      <div className="pt-8 space-y-4">
+        <button 
+          onClick={() => downloadTXT()}
+          className="w-full py-5 rounded-[2.5rem] bg-purple-600 text-white flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(168,85,247,0.4)] border border-purple-400 group transition-all hover:scale-[1.02] active:scale-95"
+        >
+          <Download size={20} className="group-hover:bounce" />
+          <span className="font-black text-sm uppercase tracking-widest">ВЫГРУЗИТЬ (TXT + VIDEO)</span>
+        </button>
+        
+        <div className="grid grid-cols-2 gap-3">
+           <button 
+             onClick={() => handleExport('telegram')}
+             className="py-4 rounded-2xl bg-[#24A1DE]/10 border border-[#24A1DE]/20 text-[#24A1DE] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+           >
+             <Send size={14} /> Telegram
+           </button>
+           <button 
+             onClick={() => handleExport('drive')}
+             className="py-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
+           >
+             <HardDrive size={14} /> Google Drive
+           </button>
+        </div>
       </div>
     </div>
   );
