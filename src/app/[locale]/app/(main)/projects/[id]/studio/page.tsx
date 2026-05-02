@@ -72,6 +72,12 @@ class TabErrorBoundary extends React.Component<{ children: React.ReactNode }, { 
 }
 
 
+
+import StudioTimeline from '@/components/studio/StudioTimeline';
+import KnowledgeLab from '@/components/studio/KnowledgeLab';
+import { StrategistChat } from '@/components/studio/StrategistChat';
+import FacelessStudio from '@/components/studio/FacelessStudio';
+
 export default function StudioPage() {
   useEffect(() => {
     const handleError = (e: any) => {
