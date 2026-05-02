@@ -1,10 +1,5 @@
 'use client';
 
-class TabErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
   static getDerivedStateFromError(error: any) {
     return { hasError: true, error };
   }
@@ -55,10 +50,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Atomic Components
 import { StudioSidebar } from './_components/StudioSidebar';
-const TeleprompterView = dynamic(() => import('./_components/TeleprompterView').then(mod => mod.TeleprompterView), { ssr: false });
+import { TeleprompterView } from './_components/TeleprompterView';
 const StoryboardGrid = dynamic(() => import('./_components/StoryboardGrid').then(mod => mod.StoryboardGrid), { ssr: false });
-const RecordingReview = dynamic(() => import('./_components/RecordingReview').then(mod => mod.RecordingReview), { ssr: false });
-const SourcePicker = dynamic(() => import('./_components/SourcePicker').then(mod => mod.SourcePicker), { ssr: false });
+import { RecordingReview } from './_components/RecordingReview';
+import { SourcePicker } from './_components/SourcePicker';
 const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(mod => mod.VideoEditor), { 
   ssr: false,
   loading: () => (
@@ -68,7 +63,7 @@ const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(mod =
     </div>
   )
 });
-const ProductionBranch = dynamic(() => import('./_components/ProductionBranch').then(mod => mod.ProductionBranch), { ssr: false });
+import { ProductionBranch } from './_components/ProductionBranch';
 const DistributionFactory = dynamic(() => import('./_components/DistributionFactory').then(mod => mod.default), { ssr: false });
 
 // Global Shared Components
@@ -76,6 +71,13 @@ import StudioTimeline from '@/components/studio/StudioTimeline';
 import KnowledgeLab from '@/components/studio/KnowledgeLab';
 import { StrategistChat } from '@/components/studio/StrategistChat';
 import FacelessStudio from '@/components/studio/FacelessStudio';
+
+class TabErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
 
 export default function StudioPage() {
   useEffect(() => {
