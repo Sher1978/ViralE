@@ -19,10 +19,10 @@ import { v4 as uuidv4 } from 'uuid';
 
 // Atomic Components
 import { StudioSidebar } from './_components/StudioSidebar';
-const TeleprompterView = dynamic(() => import('./_components/TeleprompterView').then(mod => mod.TeleprompterView || mod.default), { ssr: false });
-const StoryboardGrid = dynamic(() => import('./_components/StoryboardGrid').then(mod => mod.StoryboardGrid || mod.default), { ssr: false });
-const RecordingReview = dynamic(() => import('./_components/RecordingReview').then(mod => mod.RecordingReview || mod.default), { ssr: false });
-const SourcePicker = dynamic(() => import('./_components/SourcePicker').then(mod => mod.SourcePicker || mod.default), { ssr: false });
+const TeleprompterView = dynamic(() => import('./_components/TeleprompterView').then(mod => mod.TeleprompterView), { ssr: false });
+const StoryboardGrid = dynamic(() => import('./_components/StoryboardGrid').then(mod => mod.StoryboardGrid), { ssr: false });
+const RecordingReview = dynamic(() => import('./_components/RecordingReview').then(mod => mod.RecordingReview), { ssr: false });
+const SourcePicker = dynamic(() => import('./_components/SourcePicker').then(mod => mod.SourcePicker), { ssr: false });
 const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(mod => mod.VideoEditor), { 
   ssr: false,
   loading: () => (
@@ -32,8 +32,8 @@ const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(mod =
     </div>
   )
 });
-const ProductionBranch = dynamic(() => import('./_components/ProductionBranch').then(mod => mod.ProductionBranch || mod.default), { ssr: false });
-const DistributionFactory = dynamic(() => import('./_components/DistributionFactory').then(mod => mod.DistributionFactory || mod.default), { ssr: false });
+const ProductionBranch = dynamic(() => import('./_components/ProductionBranch').then(mod => mod.ProductionBranch), { ssr: false });
+const DistributionFactory = dynamic(() => import('./_components/DistributionFactory').then(mod => mod.default), { ssr: false });
 
 // Global Shared Components
 import StudioTimeline from '@/components/studio/StudioTimeline';
