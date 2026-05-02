@@ -690,7 +690,7 @@ export default function ScriptLabPage() {
                       : 'text-white/20 hover:text-white/40'
                   }`}
                 >
-                  Gemini 2.5
+                  Gemini 3
                 </button>
                 <button
                   onClick={() => setSelectedEngine('claude')}
@@ -700,7 +700,7 @@ export default function ScriptLabPage() {
                       : 'text-white/20 hover:text-white/40'
                   }`}
                 >
-                  Claude 3.5
+                  Claude 4
                 </button>
                 {user?.anthropic_api_key && (
                   <button
