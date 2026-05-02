@@ -87,15 +87,20 @@ export async function generateVisualScript(
     Структура: (Global Style Anchor Technical Prompt), (Action/Object representing the metaphor), (Environment context), (Mood/Emotion), --no (Style Negative Prompt).
 
     Технические требования к выводу:
-    Выдавай результат в формате JSON:
+    - Выдавай результат СТРОГО в формате JSON.
+    - ai_prompt: ДОЛЖЕН БЫТЬ ТОЛЬКО НА АНГЛИЙСКОМ (это техническое задание для генератора картинок).
+    - pexels_query: ДОЛЖЕН БЫТЬ ТОЛЬКО НА АНГЛИЙСКОМ.
+    - text и visual_metaphor: На языке сценария (${locale === 'ru' ? 'русский' : 'английский'}).
+    
+    JSON Format:
     {
       "selected_style": "key_from_styles",
       "segments": [
         {
           "text": "Фраза из сценария",
           "visual_metaphor": "Обоснование метафоры",
-          "ai_prompt": "Финальный промпт для Flux (детальный, на английском)",
-          "pexels_query": "3-5 ключевых слов для поиска видео на Pexels (на английском)"
+          "ai_prompt": "Final prompt for Flux/Midjourney (STRICTLY ENGLISH, highly detailed)",
+          "pexels_query": "3-5 keywords for Pexels search (STRICTLY ENGLISH)"
         }
       ]
     }

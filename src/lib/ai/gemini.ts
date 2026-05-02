@@ -29,7 +29,14 @@ export function getModel(tier: 'fast' | 'pro' = 'fast') {
           body: JSON.stringify({
             model: "llama-3.3-70b-versatile",
             messages: [
-              { role: "system", content: "You are a professional AI assistant. Return your response strictly in valid JSON format as requested by the user." },
+              { 
+                role: "system", 
+                content: `You are a professional AI assistant for a video production platform. 
+                CRITICAL:
+                1. Always return valid JSON.
+                2. If the request involves technical prompts (ai_prompt, visual_hook, pexels_query), these specific fields MUST be in ENGLISH regardless of the target language for other fields.
+                3. Do not include any text outside the JSON block.` 
+              },
               { role: "user", content: textPrompt }
             ],
             response_format: { type: "json_object" },
