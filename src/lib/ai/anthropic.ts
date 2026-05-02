@@ -40,7 +40,7 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
       - Semantic Analysis: [DNA Context] + [Phrase Meaning] = [Visual Metaphor].
       - Structure: (Global Style Anchor), (Action/Object representing metaphor), (Environment), (Mood), --no fantasy, noir, cartoon.
     - TOTAL duration: ~60-80 SECONDS total (approx. 180-220 words total).
-    - CRITICAL: Generate content ONLY in ${languageName.toUpperCase()}.
+    - CRITICAL: Generate content ONLY in the SAME LANGUAGE as the provided topic or idea. If input is Russian, output Russian. If input is Ukrainian, output Ukrainian, etc.
     - Output MUST be valid JSON.
   `;
 }

@@ -19,8 +19,7 @@ export async function generateScript(
   const userPrompt = `
     Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
     
-    CRITICAL: ALL text content in these scripts MUST be in ${languageName.toUpperCase()}. 
-    Do not use English if the language requested is ${languageName}.
+    CRITICAL: ALL text content in these scripts MUST be in the SAME LANGUAGE as the input idea: "${coreIdea}".
     
     LENGTH: Each script segment should be detailed (at least 3-4 sentences for context and meat).
 
