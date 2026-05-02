@@ -134,6 +134,7 @@ export const VideoEditor = React.memo(({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [aRollDuration, setARollDuration] = useState(60);
   const [duration, setDuration] = useState(60);
   const [videoSource, setVideoSource] = useState<'teleprompter' | 'upload' | null>(null);
   const [rawFile, setRawFile] = useState<File | null>(null);
@@ -293,7 +294,7 @@ export const VideoEditor = React.memo(({
     const onTime = () => setCurrentTime(v.currentTime);
     const onLoad = () => {
       const dur = v.duration > 0 ? v.duration : 60;
-      setDuration(dur);
+      setARollDuration(dur);
     };
     const onEnd = () => setIsPlaying(false);
     v.addEventListener('timeupdate', onTime);
@@ -305,6 +306,20 @@ export const VideoEditor = React.memo(({
       v.removeEventListener('ended', onEnd);
     };
   }, [aRollUrl]);
+
+  // ── Dynamic Duration Calculation ──
+  useEffect(() => {
+    const maxBrollEnd = brollClips.length > 0 
+      ? Math.max(...brollClips.map(c => c.endTime)) 
+      : 0;
+    
+    // Total duration is defined by A-Roll length or the last B-Roll, whichever is later.
+    // We keep a 60s minimum for UI comfort unless assets are longer.
+    const newDuration = Math.max(aRollDuration, maxBrollEnd, 60);
+    if (Math.abs(newDuration - duration) > 0.1) {
+      setDuration(newDuration);
+    }
+  }, [aRollDuration, brollClips, duration]);
 
   // ── Drag listeners ──
   useEffect(() => {
@@ -332,7 +347,8 @@ export const VideoEditor = React.memo(({
 
           if (handle === 'move') {
             let ns = Math.max(0, origStart + dSec);
-            ns = Math.min(ns, duration - len);
+            // Allow extending duration by dragging: limit to a reasonable 10min max
+            ns = Math.min(ns, 600 - len); 
             // Collision detection
             const other = prev.filter(c => c.id !== clipId);
             other.forEach(o => {
@@ -347,7 +363,7 @@ export const VideoEditor = React.memo(({
             other.forEach(o => { if (ns < o.endTime && origStart >= o.endTime) ns = o.endTime; });
             clip.startTime = ns;
           } else {
-            let ne = Math.min(duration, Math.max(origEnd + dSec, clip.startTime + 0.2));
+            let ne = Math.max(clip.startTime + 0.2, Math.min(600, origEnd + dSec));
             const other = prev.filter(c => c.id !== clipId);
             other.forEach(o => { if (ne > o.startTime && origEnd <= o.startTime) ne = o.startTime; });
             clip.endTime = ne;
@@ -364,7 +380,7 @@ export const VideoEditor = React.memo(({
             return { ...c, startTime: ns, endTime: ns + len }; 
           }
           if (handle === 'start') return { ...c, startTime: Math.max(0, Math.min(origStart + dSec, c.endTime - 0.2)) };
-          return { ...c, endTime: Math.min(duration, Math.max(origEnd + dSec, c.startTime + 0.2)) };
+          return { ...c, endTime: Math.max(c.startTime + 0.2, Math.min(600, origEnd + dSec)) };
         }));
       }
     };
@@ -1215,7 +1231,7 @@ export const VideoEditor = React.memo(({
                 const id = `br_manual_${Date.now()}`;
                 // Check if we can fit 5s here without overlap
                 const defaultLen = 5;
-                const endTime = Math.min(time + defaultLen, duration);
+                const endTime = Math.min(time + defaultLen, 600);
                 
                 // Prevent creating on top of existing
                 const hasOverlap = brollClips.some(c => 
