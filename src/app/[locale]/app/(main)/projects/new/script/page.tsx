@@ -40,7 +40,7 @@ export default function ScriptLabPage() {
   const [topicInput, setTopicInput] = useState('');
   const [customCommand, setCustomCommand] = useState('');
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
-  const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('gemini');
+  const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('groq');
   const [isAiLocked, setIsAiLocked] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitModalData, setLimitModalData] = useState({ title: '', desc: '', type: 'trial' as any });
@@ -715,18 +715,16 @@ export default function ScriptLabPage() {
                     Claude (BYOK)
                   </button>
                 )}
-                {user?.groq_api_key && (
-                  <button
-                    onClick={() => setSelectedEngine('groq' as any)}
-                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-orange-500/30 ${
-                      selectedEngine === ('groq' as any)
-                        ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(255,100,0,0.3)]' 
-                        : 'text-orange-400/40 hover:text-orange-400'
-                    }`}
-                  >
-                    Groq
-                  </button>
-                )}
+                <button
+                  onClick={() => setSelectedEngine('groq' as any)}
+                  className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-orange-500/30 ${
+                    selectedEngine === ('groq' as any)
+                      ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(255,100,0,0.3)]' 
+                      : 'text-orange-400/40 hover:text-orange-400'
+                  }`}
+                >
+                  Groq
+                </button>
               </div>
             </div>
           )}
