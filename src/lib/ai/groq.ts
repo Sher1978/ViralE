@@ -19,6 +19,11 @@ export async function generateScript(
   const userPrompt = `
     Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
     
+    CRITICAL: ALL text content in these scripts MUST be in ${languageName.toUpperCase()}. 
+    Do not use English if the language requested is ${languageName}.
+    
+    LENGTH: Each script segment should be detailed (at least 3-4 sentences for context and meat).
+
     SCENARIOS TO GENERATE:
     1. evergreen: Universal expert content, attacking myths.
     2. trend: High-energy, optimized for current trends.
