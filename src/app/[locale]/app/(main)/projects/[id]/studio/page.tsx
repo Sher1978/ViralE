@@ -1,5 +1,41 @@
 'use client';
 
+class TabErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+  static getDerivedStateFromError(error: any) {
+    return { hasError: true, error };
+  }
+  componentDidCatch(error: any, errorInfo: any) {
+    console.error("[Tab Crash]:", error, errorInfo);
+  }
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center bg-red-950/20 backdrop-blur-3xl p-10 text-center rounded-[3rem] border border-red-500/20 z-[200]">
+          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
+            <Monitor className="text-red-500 w-10 h-10" />
+          </div>
+          <h2 className="text-2xl font-black text-red-500 uppercase italic mb-4">Production Core Fault</h2>
+          <div className="bg-black/40 p-4 rounded-2xl border border-white/5 w-full max-w-lg mb-8">
+            <code className="text-red-400 text-[10px] break-all">{this.state.error?.message || "Unknown error"}</code>
+          </div>
+          <button 
+            onClick={() => window.location.reload()}
+            className="px-8 py-3 bg-red-600 text-white font-black uppercase text-[10px] rounded-2xl shadow-2xl hover:bg-red-500 transition-all"
+          >
+            Hot Reload Engine
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
+
 import dynamic from "next/dynamic";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';

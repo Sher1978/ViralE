@@ -72,7 +72,7 @@ function buildTranscript(manifest: ProductionManifest | null, videoDuration: num
     return [{ text: "[Редактируйте текст здесь]", start: 0, end: videoDuration }];
   }
   const segments = manifest?.segments?.filter((s: any) => s.scriptText) || [];
-  const dur = videoDuration > 0 ? videoDuration : 60;
+  const dur = (isFinite(videoDuration) && videoDuration > 0) ? videoDuration : 60;
 
   if (segments.length === 0) {
     // FALLBACK: Simulate AI recognition if no manifest provided (uploaded video)
@@ -373,7 +373,10 @@ export const VideoEditor = React.memo(({
     
     // Total duration is defined by A-Roll length or the last B-Roll, whichever is later.
     // We keep a 60s minimum for UI comfort unless assets are longer.
-    const newDuration = Math.max(aRollDuration, maxBrollEnd, 60);
+    // 🛡️ Safety Guard against NaN/Infinity crashes on Chrome
+    const safeARollDuration = isFinite(aRollDuration) ? aRollDuration : 0;
+    const safeMaxBrollEnd = isFinite(maxBrollEnd) ? maxBrollEnd : 0;
+    const newDuration = Math.max(safeARollDuration, safeMaxBrollEnd, 60);
     if (Math.abs(newDuration - duration) > 0.1) {
       setDuration(newDuration);
     }
