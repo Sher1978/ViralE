@@ -17,27 +17,32 @@ export async function generateScript(
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
-    Based on this idea: "${coreIdea}", generate 3 distinct viral video scripts (scenarios).
+    Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
     
     SCENARIOS TO GENERATE:
-    1. evergreen: Universal expert content that stays relevant. Focus on timeless value.
-    2. trend: High-energy, fast-paced, optimized for 2026 trends. Focus on peak attention.
-    3. educational: Direct problem-solution format. Focus on teaching one specific thing.
+    1. evergreen: Universal expert content, attacking myths.
+    2. trend: High-energy, optimized for current trends.
+    3. educational: Direct problem-solution teaching.
+    4. controversial: Challenging myths, provocative listicle.
+    5. storytelling: Personal narrative, trust building.
 
     Structure for EACH scenario:
-    - hook: 1-3 words, high impact (The Text Hook)
-    - intro: first 3 seconds
-    - story: the "meat" of the content
-    - cta: single sentence call to action
-    - visual_hook: A highly detailed, cinematic prompt for an AI image generator (like Midjourney) to create a viral COVER for this video. Use professional photography terms.
-    - social_post: A short, engaging social media description/caption with 3 relevant emojis and 3 tags.
+    - hook: { "visual": "...", "screen_text": "...", "words": "..." }
+    - context: { "words": "..." }
+    - meat: { "words": "..." }
+    - cta: { "words": "..." }
+    - broll_prompt: 5-word cinematic description for B-roll.
+    - visual_hook: Detailed prompt for Midjourney cover.
+    - social_post: Short engaging caption with emojis.
     
     REMEMBER: All text output must be in ${languageName}. 
     Output ONLY valid JSON in format: 
     {
-      "evergreen": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "trend": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "educational": { "hook": "...", "intro": "...", "story": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
+      "evergreen": { "hook": { "visual": "...", "screen_text": "...", "words": "..." }, "context": { "words": "..." }, "meat": { "words": "..." }, "cta": { "words": "..." }, "broll_prompt": "...", "visual_hook": "...", "social_post": "..." },
+      "trend": { ... },
+      "educational": { ... },
+      "controversial": { ... },
+      "storytelling": { ... }
     }
   `;
 

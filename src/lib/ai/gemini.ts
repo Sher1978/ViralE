@@ -15,7 +15,10 @@ export function getModel(tier: 'fast' | 'pro' = 'fast') {
     // Return a proxy that mimics the Gemini model interface but calls Groq
     return {
       generateContent: async (prompt: string | any[]) => {
-        const textPrompt = Array.isArray(prompt) ? prompt.join('\n') : (typeof prompt === 'string' ? prompt : JSON.stringify(prompt));
+        const textPrompt = Array.isArray(prompt) 
+          ? prompt.map(p => typeof p === 'string' ? p : p.text || JSON.stringify(p)).join('\n') 
+          : (typeof prompt === 'string' ? prompt : JSON.stringify(prompt));
+          
         const groqKey = process.env.GROQ_API_KEY || '';
         const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
           method: "POST",
@@ -25,10 +28,20 @@ export function getModel(tier: 'fast' | 'pro' = 'fast') {
           },
           body: JSON.stringify({
             model: "llama-3.3-70b-versatile",
-            messages: [{ role: "user", content: textPrompt }],
-            response_format: { type: "json_object" }
+            messages: [
+              { role: "system", content: "You are a professional AI assistant. Return your response strictly in valid JSON format as requested by the user." },
+              { role: "user", content: textPrompt }
+            ],
+            response_format: { type: "json_object" },
+            temperature: 0.1
           })
         });
+        
+        if (!response.ok) {
+          const err = await response.json();
+          throw new Error(err.error?.message || "Groq override failed");
+        }
+        
         const data = await response.json();
         return {
           response: {
