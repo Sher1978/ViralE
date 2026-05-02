@@ -10,6 +10,7 @@ import { renderService, RenderJob } from '@/lib/services/renderService';
 import { socialService } from '@/lib/services/socialService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
+import { idb } from '@/lib/idb';
 
 export default function DeliveryPage() {
   const t = useTranslations('delivery');
@@ -102,12 +103,22 @@ export default function DeliveryPage() {
       }
 
       const manifest = ver.script_data as any;
-      const aRollUrl = manifest?.aRollUrl ||
+      let aRollUrl = manifest?.aRollUrl ||
         manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
         manifest?.videoUrl ||
         null;
 
-      if (!aRollUrl) throw new Error('Исходное видео (A-Roll) не найдено. Вернитесь в студию.');
+      // ── RECOVERY: If aRollUrl is missing or is a dead blob, try IndexedDB ──
+      if (!aRollUrl || aRollUrl.startsWith('blob:')) {
+        console.log('[Delivery] A-Roll URL missing or session-bound, checking IndexedDB...');
+        const cachedVideo = await idb.get(`video_file_${projectId}`);
+        if (cachedVideo instanceof Blob) {
+           aRollUrl = URL.createObjectURL(cachedVideo);
+           console.log('[Delivery] Recovered A-Roll from IndexedDB');
+        }
+      }
+
+      if (!aRollUrl) throw new Error('Исходное видео (A-Roll) не найдено. Вернитесь в студию и убедитесь, что видео загружено.');
 
       setRenderStatus('Скачивание основного видео...');
       setRenderProgress(10);
@@ -123,14 +134,26 @@ export default function DeliveryPage() {
       const brollClipsWithUrls = brollClipsRaw.filter((c: any) => c.url && (c.url.startsWith('http') || c.url.startsWith('blob')));
       const brollFiles: Array<{ name: string; clip: any }> = [];
 
-      for (let i = 0; i < brollClipsWithUrls.length; i++) {
-        const clip = brollClipsWithUrls[i];
+      for (let i = 0; i < brollClipsRaw.length; i++) {
+        const clip = brollClipsRaw[i];
         try {
-          setRenderStatus(`Синхронизация B-Roll ${i + 1}/${brollClipsWithUrls.length}...`);
-          setRenderProgress(10 + Math.round((i / brollClipsWithUrls.length) * 30));
+          setRenderStatus(`Синхронизация B-Roll ${i + 1}/${brollClipsRaw.length}...`);
+          setRenderProgress(10 + Math.round((i / brollClipsRaw.length) * 30));
           const name = `broll_${i}.mp4`;
-          await ffmpeg.writeFile(name, await fetchFile(clip.url));
-          brollFiles.push({ name, clip });
+          
+          let clipUrl = clip.url;
+          // RECOVERY for B-Roll blobs
+          if (!clipUrl || clipUrl.startsWith('blob:')) {
+            const cachedBroll = await idb.get(`broll_file_${clip.id}`);
+            if (cachedBroll instanceof Blob) {
+              clipUrl = URL.createObjectURL(cachedBroll);
+            }
+          }
+
+          if (clipUrl) {
+            await ffmpeg.writeFile(name, await fetchFile(clipUrl));
+            brollFiles.push({ name, clip });
+          }
         } catch (e) {
           console.warn(`[FFmpeg] Failed to load B-Roll ${i}, skipping:`, e);
         }
