@@ -325,7 +325,7 @@
     "statusScript": "Сценарий",
     "statusStoryboard": "Раскадровка",
     "engineSelector": "ИИ Движок",
-    "engineGemini": "Gemini 2.5 Flash",
+    "engineGemini": "Gemini 3 Flash",
     "engineClaude": "Claude 3.5 Sonnet",
     "engineHint": "Выберите интеллект для вашего сценария",
     "stageLab": "Лаборатория идей",

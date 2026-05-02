@@ -23,7 +23,7 @@ export async function POST(req: Request) {
       console.warn('Unauthorized or profile error in optimize-prompt:', e);
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
     const prompt = `
       Задание: Разработать визуальный промпт на основе модуля Visual_Script_Generator v2.0.

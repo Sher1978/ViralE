@@ -322,7 +322,7 @@
     "statusScript": "Script",
     "statusStoryboard": "Storyboard",
     "engineSelector": "AI Engine",
-    "engineGemini": "Gemini 2.5 Flash",
+    "engineGemini": "Gemini 3 Flash",
     "engineClaude": "Claude 3.5 Sonnet",
     "engineHint": "Choose the brain for your script",
     "upgradeRequired": "Upgrade Required",

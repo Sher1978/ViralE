@@ -6,7 +6,7 @@ import path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
-const modelName = process.env.GEMINI_MODEL || "gemini-2.5-pro";
+const modelName = process.env.GEMINI_MODEL || "gemini-3.1-pro-preview";
 
 async function checkAI() {
   console.log("🚀 Starting Gemini API Health Check...");

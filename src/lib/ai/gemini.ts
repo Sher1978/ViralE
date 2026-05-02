@@ -3,8 +3,8 @@ import { GoogleGenerativeAI } from "@google/generative-ai";
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
 
-const FAST_MODEL = "gemini-2.5-flash";
-const PRO_MODEL = "gemini-2.5-pro";
+const FAST_MODEL = "gemini-3-flash-preview";
+const PRO_MODEL = "gemini-3.1-pro-preview";
 
 export function getModel(tier: 'fast' | 'pro' = 'fast') {
   const modelName = tier === 'fast' ? FAST_MODEL : PRO_MODEL;
