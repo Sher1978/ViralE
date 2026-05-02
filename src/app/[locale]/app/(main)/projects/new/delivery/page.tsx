@@ -109,6 +109,10 @@ export default function DeliveryPage() {
       }
 
       const manifest = ver.script_data as any;
+      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const res = isMobile ? '720:1280' : '1080:1920';
+      const scale = `scale=${res.replace(':', ':')}:force_original_aspect_ratio=increase,crop=${res.replace(':', ':')}`;
+      addLog(`[System] Режим: ${isMobile ? 'Mobile (720p)' : 'Desktop (1080p)'}`);
       let aRollUrl = manifest?.aRollUrl ||
         manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
         manifest?.videoUrl ||
@@ -166,23 +170,22 @@ export default function DeliveryPage() {
               await ffmpeg.writeFile(name, bRollData);
               brollFiles.push({ name, clip });
             }
-            brollFiles.push({ name, clip });
           }
         } catch (e) {
           console.warn(`[FFmpeg] Failed to load B-Roll ${i}, skipping:`, e);
         }
       }
 
-      setRenderStatus('Финальный монтаж 1080p...');
+      setRenderStatus(`Финальный монтаж ${isMobile ? '720p' : '1080p'}...`);
       setRenderProgress(50);
 
       let ffmpegArgs: string[];
       if (brollFiles.length === 0) {
         ffmpegArgs = [
           '-i', 'input_aroll.mp4',
-          '-vf', 'scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280', '-pix_fmt', 'yuv420p',
+          '-vf', `${scale},format=yuv420p`, 
           '-c:v', 'libx264',
-          '-preset', 'superfast', '-pix_fmt', 'yuv420p',
+          '-preset', 'ultrafast', '-threads', '1', '-crf', '30', '-pix_fmt', 'yuv420p',
           '-crf', '23',
           '-c:a', 'aac',
           '-movflags', '+faststart',
@@ -190,14 +193,14 @@ export default function DeliveryPage() {
         ];
       } else {
         const inputs = ['-i', 'input_aroll.mp4', ...brollFiles.flatMap(b => ['-i', b.name])];
-        let filterParts = '[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[base]';
+        let filterParts = `[0:v]${scale}[base]`;
         let prevLabel = 'base';
         
         for (let i = 0; i < brollFiles.length; i++) {
           const { clip } = brollFiles[i];
           const vLabel = `bv${i}`;
           const outLabel = `out${i}`;
-          filterParts += `;[${i + 1}:v]scale=720:1280:force_original_aspect_ratio=increase,crop=720:1280[${vLabel}]`;
+          filterParts += `;[${i + 1}:v]${scale}[${vLabel}]`;
           filterParts += `;[${prevLabel}][${vLabel}]overlay=enable='between(t,${clip.startTime},${clip.endTime})'[${outLabel}]`;
           prevLabel = outLabel;
         }
@@ -208,7 +211,7 @@ export default function DeliveryPage() {
           '-map', `[${prevLabel}]`,
           '-map', '0:a',
           '-c:v', 'libx264',
-          '-preset', 'superfast', '-pix_fmt', 'yuv420p',
+          '-preset', 'ultrafast', '-threads', '1', '-crf', '30', '-pix_fmt', 'yuv420p',
           '-crf', '23',
           '-c:a', 'aac',
           '-movflags', '+faststart',
@@ -294,7 +297,7 @@ export default function DeliveryPage() {
           )}
         </div>
         <button 
-          onClick={() => { if (projectId) router.push(`/app/projects/${projectId}/studio`); else router.back(); }}
+          onClick={() => { if (projectId) router.push(`/app/projects/${projectId}/studio?tab=assembly`); else router.back(); }}
           className="px-8 py-3 rounded-full bg-purple-500 border border-purple-400 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-400 transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)]"
         >
           Back to Studio
@@ -358,7 +361,7 @@ export default function DeliveryPage() {
       {/* Header with Back Button */}
       <div className="flex items-center justify-between py-2">
         <button 
-          onClick={() => { if (projectId) router.push(`/app/projects/${projectId}/studio`); else router.back(); }}
+          onClick={() => { if (projectId) router.push(`/app/projects/${projectId}/studio?tab=assembly`); else router.back(); }}
           className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all group"
         >
           <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
