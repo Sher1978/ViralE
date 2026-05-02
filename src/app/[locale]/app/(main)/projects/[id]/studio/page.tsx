@@ -33,6 +33,20 @@ import { StrategistChat } from '@/components/studio/StrategistChat';
 import FacelessStudio from '@/components/studio/FacelessStudio';
 
 export default function StudioPage() {
+  useEffect(() => {
+    const handleError = (e: any) => {
+      console.error('[Global Error]', e);
+      const msg = e.message || 'Unknown Error';
+      localStorage.setItem('viral_last_crash', JSON.stringify({
+        msg,
+        stack: e.error?.stack,
+        time: new Date().toISOString()
+      }));
+    };
+    window.addEventListener('error', handleError);
+    return () => window.removeEventListener('error', handleError);
+  }, []);
+
   const t = useTranslations('studio');
   const router = useRouter();
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
@@ -494,7 +508,7 @@ export default function StudioPage() {
                     className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[110]"
                   >
                     <button
-                      onClick={() => setActiveTab('branch')}
+                      onClick={() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
                       className="flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.4)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.6)] active:scale-95 transition-all group"
                     >
                       ПЕРЕЙТИ К ПРОДАКШНУ <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
@@ -509,13 +523,13 @@ export default function StudioPage() {
                 onSelect={(type) => {
                   if (type === 'record') {
                     setShowFaceless(false);
-                    setActiveTab('teleprompter');
+                    ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('teleprompter');
                   } else if (type === 'faceless') {
                     setShowFaceless(true);
-                    setTimeout(() => setActiveTab('assembly'), 250);
+                    setTimeout(() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
                   }
                 }}
-                onBack={() => setActiveTab('concept')}
+                onBack={() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('concept')}
               />
             )}
 
@@ -543,7 +557,7 @@ export default function StudioPage() {
                    onSpeedChange={setScrollSpeed}
                    isRecordingVideo={isRecordingVideo}
                     recordingTime={recordingTime}
-                    onBack={() => setActiveTab('branch')}
+                    onBack={() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
                     onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
                    onFlipCamera={() => setIsMirrored(!isMirrored)}
                    onScriptUpdate={async (newText) => {
@@ -560,7 +574,7 @@ export default function StudioPage() {
                       if (lastRecordingUrl) {
                         setShowRecordingReview(true);
                       } else {
-                        setTimeout(() => setActiveTab('assembly'), 250);
+                        setTimeout(() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
                       }
                    }}
                    t={t}
@@ -597,7 +611,7 @@ export default function StudioPage() {
                       // 1. Give Android a moment to stop camera and clear memory
                       setTimeout(() => {
                         setShowRecordingReview(false);
-                        setTimeout(() => setActiveTab('assembly'), 250);
+                        setTimeout(() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
                       }, 100);
                     }}
                     manifest={manifest}
@@ -610,7 +624,7 @@ export default function StudioPage() {
               <VideoEditor
                 manifest={manifest}
                 updateSegmentField={updateSegmentField}
-                onBack={() => setActiveTab('branch')}
+                onBack={() => ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
                 onNext={handleFinalExport}
                 projectId={projectId}
                 onFaceless={() => setShowFaceless(true)}
@@ -626,7 +640,7 @@ export default function StudioPage() {
 
                 onJumpToConcept={() => {
                   setShowFaceless(false);
-                  setActiveTab('concept');
+                  ((t) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('concept');
                 }}
                 onComplete={(videoBlob, transcriptData) => {
                   const localUrl = URL.createObjectURL(videoBlob);
@@ -676,6 +690,20 @@ export default function StudioPage() {
       </div>
 
 
+
+      
+      {/* 🛠 DEBUG MONITOR (Visible only for you) */}
+      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none p-4 flex flex-col items-center">
+        {error && (
+          <div className="p-4 bg-red-600/90 backdrop-blur-xl border border-red-500 rounded-2xl shadow-2xl text-white max-w-sm w-full pointer-events-auto animate-bounce">
+            <h4 className="font-black uppercase text-[10px] tracking-widest mb-1">SYSTEM ERROR CRASH</h4>
+            <p className="text-[11px] font-bold">{error}</p>
+          </div>
+        )}
+        <div id="viral-debug-console" className="mt-2 text-[8px] font-mono text-cyan-400/30 uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
+           System Kernel Live...
+        </div>
+      </div>
 
       <PremiumLimitModal
         isOpen={showLimitModal}

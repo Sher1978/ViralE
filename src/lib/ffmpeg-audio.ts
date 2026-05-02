@@ -4,8 +4,8 @@
  * Converts any video (HEVC/MOV/MP4/WebM) to a tiny 16kHz mono MP3.
  * Works on iOS Safari, Android Chrome, Desktop.
  */
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { fetchFile, toBlobURL } from '@ffmpeg/util';
+// import { FFmpeg } from '@ffmpeg/ffmpeg';
+// import { fetchFile, toBlobURL } from '@ffmpeg/util';
 
 let ffmpegInstance: FFmpeg | null = null;
 let loadPromise: Promise<boolean> | null = null;
@@ -13,10 +13,16 @@ let loadPromise: Promise<boolean> | null = null;
 const CORE_BASE = '/ffmpeg';
 
 /** Singleton — loads FFmpeg WASM once, reuses instance */
-async function getFFmpeg(): Promise<FFmpeg> {
+async function getFFmpeg(): Promise<any> {
   if (ffmpegInstance?.loaded) return ffmpegInstance;
 
   if (!loadPromise) {
+    // 🔥 Dynamic imports inside singleton
+    const [{ FFmpeg }, { fetchFile, toBlobURL }] = await Promise.all([
+      import('@ffmpeg/ffmpeg'),
+      import('@ffmpeg/util')
+    ]);
+
     const ff = new FFmpeg();
     loadPromise = ff.load({
       coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`,   'text/javascript'),
@@ -24,6 +30,7 @@ async function getFFmpeg(): Promise<FFmpeg> {
     });
     await loadPromise;
     ffmpegInstance = ff;
+    (window as any)._fetchFile = fetchFile; // Store for reuse
   } else {
     await loadPromise;
   }
@@ -59,7 +66,7 @@ export async function extractAudioFFmpeg(
     const outputName = 'output.mp3';
 
     onProgress?.('Анализ видео (на устройстве)...');
-    await ff.writeFile(inputName, await fetchFile(videoBlob));
+    await ff.writeFile(inputName, await (window as any)._fetchFile(videoBlob));
 
     onProgress?.('Извлечение аудио...');
     await ff.exec([
