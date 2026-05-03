@@ -357,7 +357,22 @@ export default function StudioPage() {
                   setShowRecordingReview={setShowRecordingReview}
                   setLastRecordingUrl={setLastRecordingUrl}
                   updateSegmentField={updateSegmentField}
-                  setActiveTab={setActiveTab}
+                  handleAcceptRecording={async (url) => {
+                    if (manifest) {
+                       const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
+                       const newManifest = {
+                          ...manifest,
+                          videoUrl: url,
+                          segments: manifest.segments.map((s: any) => 
+                             s.id === segmentId ? { ...s, assetUrl: url, type: 'user_recording' } : s
+                          )
+                       };
+                       setManifest(newManifest);
+                       await projectService.updateVersionManifestByProject(projectId, newManifest);
+                    }
+                    setShowRecordingReview(false);
+                    setTimeout(() => setActiveTab('assembly'), 100);
+                  }}
                   manifest={manifest}
                   selectedSegmentId={selectedSegmentId}
                />
