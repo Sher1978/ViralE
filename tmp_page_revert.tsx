@@ -154,25 +154,13 @@ export default function StudioPage() {
   const startVideoRecording = () => {
     if (!cameraStream) return;
     const localChunks: Blob[] = [];
-          // 🚀 Smart MimeType selection for Cross-Platform compatibility (iPhone vs Android/PC)
-      const supportedMimeTypes = [
-        'video/mp4;codecs=avc1',
-        'video/mp4',
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm'
-      ];
-      const mimeType = supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(type));
-      
-      console.log('[Studio] Initializing MediaRecorder with mimeType:', mimeType || 'browser default');
-      
-      const recorder = mimeType 
-        ? new MediaRecorder(cameraStream, { mimeType })
-        : new MediaRecorder(cameraStream);
+    const recorder = new MediaRecorder(cameraStream, { 
+      mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm' 
+    });
     
     recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
     recorder.onstop = () => {
-      const blob = new Blob(localChunks, { type: recorder.mimeType || 'video/mp4' });
+      const blob = new Blob(localChunks, { type: 'video/webm' });
       const url = URL.createObjectURL(blob);
       setLastRecordingUrl(url);
       setShowRecordingReview(true);
