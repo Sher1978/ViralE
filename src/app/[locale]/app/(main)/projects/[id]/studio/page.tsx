@@ -336,9 +336,7 @@ export default function StudioPage() {
                     scriptColor={scriptColor}
                     onScriptUpdate={async (newText) => {
                       if (!manifest) return;
-                      const segments = newText.split('
-
-').map((text, i) => ({
+                      const segments = newText.split('\n\n').map((text, i) => ({
                         ...(manifest.segments[i] || { id: uuidv4(), type: 'broll' }),
                         scriptText: text
                       }));
