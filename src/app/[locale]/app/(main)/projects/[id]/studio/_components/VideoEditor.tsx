@@ -50,7 +50,8 @@ interface BRollClip {
   startTime: number;
   endTime: number;
   track: number;
-  offsetX?: number; // -50 to 50 or similar for horizontal shift
+  offsetX?: number;
+  sourceStartTime?: number; // -50 to 50 or similar for horizontal shift
 }
 import { idb } from '@/lib/idb';
 
@@ -112,7 +113,7 @@ function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
 // ── B-Roll Preview Sync ───────────────────────────────────────────────────
 
 const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: { 
-  url: string; startTime: number; currentTime: number; isPlaying: boolean;
+  url: string; startTime: number; sourceStartTime?: number; currentTime: number; isPlaying: boolean;
 }) => {
   const vRef = useRef<HTMLVideoElement>(null);
 
@@ -128,7 +129,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
     }
 
     // 2. Sync Time (with 150ms tolerance to prevent stuttering)
-    const relativeTime = Math.max(0, currentTime - startTime);
+    const relativeTime = Math.max(0, (currentTime - startTime) + (sourceStartTime || 0));
     if (Math.abs(v.currentTime - relativeTime) > 0.15) {
       v.currentTime = relativeTime;
     }
@@ -1452,6 +1453,23 @@ export const VideoEditor = React.memo(({
                       <span>Center</span>
                       <span>Right</span>
                     </div>
+                  </div>
+
+                                    <div className="flex flex-col gap-4 py-2 border-t border-white/5 pt-4">
+                    <div className="flex items-center justify-between">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Начало в исходнике</span>
+                      <span className="text-[10px] font-black text-blue-400 tabular-nums">{selBR.sourceStartTime || 0}s</span>
+                    </div>
+                    <input 
+                      type="range" min="0" max="30" step="0.5"
+                      value={selBR.sourceStartTime || 0}
+                      onChange={e => {
+                        const val = parseFloat(e.target.value);
+                        setBrollClips(p => p.map(c => c.id === selBR.id ? { ...c, sourceStartTime: val } : c));
+                      }}
+                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
+                    />
+                    <div className="text-[8px] text-white/20 uppercase font-black tracking-widest">Сдвиг внутри видео файла</div>
                   </div>
 
                   <div className="text-[9px] font-black text-white/30 uppercase tracking-widest">{selBR.label}</div>

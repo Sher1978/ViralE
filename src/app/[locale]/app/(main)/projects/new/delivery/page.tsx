@@ -208,7 +208,7 @@ export default function DeliveryPage() {
         setRenderProgress(20 + (i / brollFiles.length) * 20);
         const { name, clip } = brollFiles[i];
         const optName = `opt_${name}`;
-        await ffmpeg.exec(['-i', name, '-ss', clip.startTime.toString(), '-t', (clip.endTime - clip.startTime).toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
+        await ffmpeg.exec(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', (clip.endTime - clip.startTime).toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
         processedBrolls.push({ name: optName, clip });
         try { await ffmpeg.deleteFile(name); } catch(e) {}
       }
