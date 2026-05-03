@@ -209,6 +209,8 @@ export const VideoEditor = React.memo(({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
+  const [timelineZoom, setTimelineZoom] = useState(25); // px per second
+  const lastPinchDistRef = useRef<number | null>(null);
   const [aRollDuration, setARollDuration] = useState(60);
   const [duration, setDuration] = useState(60);
   const [videoSource, setVideoSource] = useState<'teleprompter' | 'upload' | null>(null);
@@ -1263,8 +1265,8 @@ export const VideoEditor = React.memo(({
 
       {/* ── TIMELINE ── */}
       <div className="flex-1 bg-[#080810] overflow-hidden flex flex-col min-h-0">
-        <div className="flex-1 overflow-x-auto overflow-y-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="flex flex-col" style={{ minWidth: `${Math.max(duration * 18, 320)}px`, height: '100%' }}>
+        <div className="flex-1 overflow-x-auto overflow-y-hidden" onTouchMove={handleTimelineTouch} onTouchEnd={handleTouchEnd} style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex flex-col" style={{ minWidth: `${Math.max(duration * timelineZoom, 320)}px`, height: '100%' }}>
 
             {/* Ruler */}
             <div ref={timelineRef}
