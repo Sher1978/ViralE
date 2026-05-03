@@ -112,7 +112,7 @@ function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
 
 // ── B-Roll Preview Sync ───────────────────────────────────────────────────
 
-const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: { 
+const BRollPreview = React.memo(({ url, startTime, sourceStartTime, currentTime, isPlaying }: { 
   url: string; startTime: number; sourceStartTime?: number; currentTime: number; isPlaying: boolean;
 }) => {
   const vRef = useRef<HTMLVideoElement>(null);
@@ -133,7 +133,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
     if (Math.abs(v.currentTime - relativeTime) > 0.15) {
       v.currentTime = relativeTime;
     }
-  }, [isPlaying, currentTime, startTime]);
+  }, [isPlaying, currentTime, startTime, sourceStartTime]);
 
   return (
     <video 
