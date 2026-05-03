@@ -41,7 +41,7 @@ export default function StudioPage() {
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'concept'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'concept' | 'branch'>(initialTab);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
   
   // Teleprompter States
@@ -55,6 +55,8 @@ export default function StudioPage() {
   const [useCustomScript, setUseCustomScript] = useState<boolean>(false);
   const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
   const [showRecordingReview, setShowRecordingReview] = useState(false);
+    const [scriptColor, setScriptColor] = useState('#ffffff');
+  const prompterDivRef = useRef<HTMLDivElement>(null);
   const [scriptOpacity, setScriptOpacity] = useState(0.85);
   const [isBRollModalOpen, setIsBRollModalOpen] = useState(false);
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
@@ -317,37 +319,54 @@ export default function StudioPage() {
           
           {activeTab === 'teleprompter' && (
             <div className="flex-1 flex items-center justify-center p-12 z-10 relative">
-                <TeleprompterView 
-                   cameraStream={cameraStream}
-                   videoPreviewRef={videoPreviewRef}
-                   isVideoMirrored={isVideoMirrored}
-                   prompterWidth={prompterWidth}
-                   isReading={isReading}
-                   countdown={countdown}
-                   prompterRef={prompterRef}
-                   isMirrored={isMirrored}
-                   useCustomScript={useCustomScript}
-                   manifest={manifest}
-                   customScript={customScript}
-                   textSize={textSize}
-                   scriptOpacity={scriptOpacity}
-                   onBack={() => {
-                     router.push(`/app/projects/new/script?projectId=${projectId}`);
-                   }}
-                   onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
-                   isRecordingVideo={isRecordingVideo}
-                   onScriptUpdate={async (newText) => {
-                     if (!manifest) return;
-                     const segments = newText.split('\n\n').map((text, i) => ({
-                       ...(manifest.segments[i] || { id: uuidv4(), type: 'broll' }),
-                       scriptText: text
-                     }));
-                     const updatedManifest = { ...manifest, segments };
-                     setManifest(updatedManifest);
-                     await projectService.updateVersionManifestByProject(projectId, updatedManifest);
-                   }}
-                   t={t}
-                />
+                <TeleprompterView
+                    cameraStream={cameraStream}
+                    videoPreviewRef={videoPreviewRef}
+                    isVideoMirrored={isVideoMirrored}
+                    prompterWidth={prompterWidth}
+                    isReading={isReading}
+                    countdown={countdown}
+                    prompterRef={prompterDivRef}
+                    isMirrored={isMirrored}
+                    useCustomScript={useCustomScript}
+                    manifest={manifest}
+                    customScript={customScript}
+                    textSize={textSize}
+                    scriptOpacity={scriptOpacity}
+                    scriptColor={scriptColor}
+                    onScriptUpdate={async (newText) => {
+                      if (!manifest) return;
+                      const segments = newText.split('
+
+').map((text, i) => ({
+                        ...(manifest.segments[i] || { id: uuidv4(), type: 'broll' }),
+                        scriptText: text
+                      }));
+                      const updatedManifest = { ...manifest, segments };
+                      setManifest(updatedManifest);
+                      await projectService.updateVersionManifestByProject(projectId, updatedManifest);
+                    }}
+                    onColorChange={setScriptColor}
+                    onBack={() => {
+                      router.push(`/app/projects/new/script?projectId=${projectId}`);
+                    }}
+                    onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
+                    onFlipCamera={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
+                    onTextSizeChange={setTextSize}
+                    onOpacityChange={setScriptOpacity}
+                    scrollSpeed={scrollSpeed}
+                    onSpeedChange={setScrollSpeed}
+                    isRecordingVideo={isRecordingVideo}
+                    onFinish={() => {
+                       if (lastRecordingUrl) {
+                         setShowRecordingReview(true);
+                       } else {
+                         setActiveTab('assembly');
+                       }
+                    }}
+                    recordingTime={recordingTime}
+                    t={t}
+                 />
                <RecordingReview 
                   showRecordingReview={showRecordingReview}
                   lastRecordingUrl={lastRecordingUrl}
