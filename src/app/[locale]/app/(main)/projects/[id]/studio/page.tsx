@@ -171,7 +171,9 @@ export default function StudioPage() {
       
       try {
         if (window.location.search !== `?${params.toString()}`) {
-          router.replace(newUrl, { scroll: false });
+          // Use low-level history API to avoid Next.js router overhead on mobile
+          const finalUrl = locale ? `/${locale}${newUrl}` : newUrl;
+          window.history.replaceState(null, '', finalUrl);
           console.log('[Studio] Syncing URL:', newUrl);
         }
       } catch (e) {
@@ -647,6 +649,11 @@ export default function StudioPage() {
                     setLastRecordingUrl={setLastRecordingUrl}
                     updateSegmentField={updateSegmentField}
                     handleAcceptRecording={async (url) => {
+                      // 🚀 iOS CRITICAL: Aggressively release hardware before heavy montage render
+                      if (cameraStream) {
+                        cameraStream.getTracks().forEach(t => t.stop());
+                        setCameraStream(null);
+                      }
                       console.log('[Studio] Accepting recording:', url, 'Project:', projectId);
                       if (!projectId) {
                         console.error('[Studio] Missing projectId in handleAcceptRecording!');
