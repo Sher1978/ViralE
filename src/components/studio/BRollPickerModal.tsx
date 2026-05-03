@@ -267,7 +267,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
 
-                  {/* Play, Upload icon */}
+                  {/* Play icon */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-active:opacity-100 transition-opacity">
                     <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
                       <Play size={18} className="text-white fill-white ml-0.5" />
@@ -380,13 +380,13 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                 ref={videoRef}
                 key={previewVideo.videoUrl}
                 src={previewVideo.videoUrl}
-                autoPlay, Upload
+                autoPlay
                 muted
                 loop
                 playsInline
                 crossOrigin="anonymous"
                 onLoadStart={() => setIsVideoLoading(true)}
-                onCanPlay, Upload={() => {
+                onCanPlay={() => {
                   if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
                   setIsVideoLoading(false);
                   videoRef.current?.play().catch(e => console.warn('Autoplay prevented', e));
