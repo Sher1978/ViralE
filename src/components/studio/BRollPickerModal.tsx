@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { veoService } from '@/lib/services/veoService';
 import { 
   X, Search, Sparkles, Film, 
-  RefreshCcw, ArrowRight, Video, Play
+  RefreshCcw, ArrowRight, Video, Play, Upload
 } from 'lucide-react';
 
 interface VideoItem {
@@ -114,6 +114,27 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
       handleSearch(segmentText);
     } finally {
       setIsOptimizing(false);
+    }
+  };
+
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    // Show local loading state
+    setIsSearching(true);
+    try {
+      const localUrl = URL.createObjectURL(file);
+      // We can also upload to server if needed, but local is faster for editing
+      // onSelect will handle the URL
+      onSelect(localUrl);
+      onClose();
+    } catch (err) {
+      console.error('Upload failed', err);
+    } finally {
+      setIsSearching(false);
     }
   };
 
@@ -246,10 +267,10 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                   )}
                   <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-transparent to-transparent" />
 
-                  {/* Play icon */}
+                  {/* Play, Upload icon */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-active:opacity-100 transition-opacity">
                     <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                      <Play size={18} className="text-white fill-white ml-0.5" />
+                      <Play, Upload size={18} className="text-white fill-white ml-0.5" />
                     </div>
                   </div>
 
@@ -300,16 +321,35 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
           </button>
         </div>
 
-        <button
-          onClick={handleGenerateAI}
-          disabled={isGenerating || !searchQuery}
-          className="w-full h-14 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all"
-        >
-          {isGenerating
-            ? <><RefreshCcw size={16} className="animate-spin" /> Generating...</>
-            : <><Sparkles size={16} /> Generate AI Scene ($0.10) <ArrowRight size={14} /></>
-          }
-        </button>
+
+        <div className="flex gap-3">
+          <button
+            onClick={() => fileInputRef.current?.click()}
+            className="flex-1 h-14 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 transition-all active:scale-95"
+          >
+            <Upload size={16} /> My Media
+          </button>
+          
+          <button
+            onClick={handleGenerateAI}
+            disabled={isGenerating || !searchQuery}
+            className="flex-[2] h-14 rounded-lg bg-purple-600 hover:bg-purple-500 text-white font-black uppercase tracking-[0.15em] text-[11px] flex items-center justify-center gap-3 shadow-xl active:scale-95 disabled:opacity-50 transition-all"
+          >
+            {isGenerating
+              ? <><RefreshCcw size={16} className="animate-spin" /> Generating...</>
+              : <><Sparkles size={16} /> Generate AI Scene <ArrowRight size={14} /></>
+            }
+          </button>
+        </div>
+        
+        <input 
+          ref={fileInputRef} 
+          type="file" 
+          accept="video/*,image/*" 
+          className="hidden" 
+          onChange={handleFileUpload}
+        />
+
       </div>
 
       {/* ── FULL SCREEN PREVIEW OVERLAY ── */}
@@ -340,13 +380,13 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                 ref={videoRef}
                 key={previewVideo.videoUrl}
                 src={previewVideo.videoUrl}
-                autoPlay
+                autoPlay, Upload
                 muted
                 loop
                 playsInline
                 crossOrigin="anonymous"
                 onLoadStart={() => setIsVideoLoading(true)}
-                onCanPlay={() => {
+                onCanPlay, Upload={() => {
                   if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
                   setIsVideoLoading(false);
                   videoRef.current?.play().catch(e => console.warn('Autoplay prevented', e));
