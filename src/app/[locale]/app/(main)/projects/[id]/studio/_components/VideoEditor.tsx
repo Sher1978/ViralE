@@ -261,7 +261,7 @@ export const VideoEditor = React.memo(({
     startX: number; startY: number; // Added startY for long-press threshold
     origStart: number; origEnd: number;
   } | null>(null);
-  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const longPressTimerRef = useRef<any | null>(null);
 
   // Guard to prevent double-transcription
   const transcriptionStartedRef = useRef(false);
@@ -1102,7 +1102,7 @@ export const VideoEditor = React.memo(({
                     </div>
                     <BRollPreview 
                       url={activeBR.url}
-                      startTime={activeBR.startTime}
+                      startTime={activeBR.startTime} sourceStartTime={activeBR.sourceStartTime}
                       currentTime={currentTime}
                       isPlaying={isPlaying}
                     />
@@ -1564,7 +1564,7 @@ const TrackRow = React.memo(({ label, color, children, onClick, onAdd, onTimelin
 }) => {
   const rowRef = useRef<HTMLDivElement>(null);
   const [holdProgress, setHoldProgress] = useState(0);
-  const holdTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const holdTimerRef = useRef<any | null>(null);
   const startPosRef = useRef({ x: 0, y: 0 });
   const isHoldingRef = useRef(false);
 
