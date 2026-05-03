@@ -270,7 +270,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                   {/* Play, Upload icon */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-0 group-active:opacity-100 transition-opacity">
                     <div className="w-12 h-12 rounded-full bg-white/20 backdrop-blur-sm flex items-center justify-center">
-                      <Play, Upload size={18} className="text-white fill-white ml-0.5" />
+                      <Play size={18} className="text-white fill-white ml-0.5" />
                     </div>
                   </div>
 
