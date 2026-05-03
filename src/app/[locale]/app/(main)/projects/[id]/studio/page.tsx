@@ -342,7 +342,7 @@ export default function StudioPage() {
                       }));
                       const updatedManifest = { ...manifest, segments };
                       setManifest(updatedManifest);
-                      await projectService.updateVersionManifestByProject(projectId, updatedManifest);
+                      await projectService.updateLatestVersionManifest(projectId, updatedManifest);
                     }}
                     onColorChange={setScriptColor}
                     onBack={() => {
@@ -385,7 +385,7 @@ export default function StudioPage() {
                           )
                        };
                        setManifest(newManifest);
-                       await projectService.updateVersionManifestByProject(projectId, newManifest);
+                       await projectService.updateLatestVersionManifest(projectId, newManifest);
                     }
                     setShowRecordingReview(false);
                     setTimeout(() => setActiveTab('assembly'), 100);
