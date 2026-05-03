@@ -247,6 +247,16 @@ export const VideoEditor = React.memo(({
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
 
+  // ── Sync with Parent Manifest (Critical for transition from Teleprompter) ──
+  useEffect(() => {
+    const freshUrl = getInitialARoll();
+    if (freshUrl && freshUrl !== aRollUrl) {
+      console.log('[VideoEditor] Syncing aRollUrl from manifest props:', freshUrl);
+      setARollUrl(freshUrl);
+      if (stage === 'empty') setStage('transcribing');
+    }
+  }, [manifest]);
+
   // Inspector
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [showSheet, setShowSheet] = useState(false);

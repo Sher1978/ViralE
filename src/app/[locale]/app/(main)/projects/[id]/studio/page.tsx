@@ -344,7 +344,7 @@ export default function StudioPage() {
       
       recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
       recorder.onstop = () => {
-        const blob = new Blob(localChunks, { type: 'video/webm' });
+        const blob = new Blob(localChunks, { type: recorder.mimeType || 'video/mp4' });
         const url = URL.createObjectURL(blob);
         setLastRecordingUrl(url);
         setShowRecordingReview(true);
