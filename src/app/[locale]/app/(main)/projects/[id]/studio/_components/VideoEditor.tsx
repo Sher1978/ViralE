@@ -892,6 +892,29 @@ export const VideoEditor = React.memo(({
 
   // ── Helpers ─────────────────────────────────────────────────────────────
 
+  
+  const handleTimelineTouch = (e: React.TouchEvent) => {
+    if (e.touches.length === 2) {
+      const dist = Math.hypot(
+        e.touches[0].clientX - e.touches[1].clientX,
+        e.touches[0].clientY - e.touches[1].clientY
+      );
+      
+      if (lastPinchDistRef.current !== null) {
+        const delta = dist - lastPinchDistRef.current;
+        setTimelineZoom(prev => {
+          const newZoom = Math.min(Math.max(prev + delta * 0.2, 5), 150);
+          return newZoom;
+        });
+      }
+      lastPinchDistRef.current = dist;
+    }
+  };
+
+  const handleTouchEnd = () => {
+    lastPinchDistRef.current = null;
+  };
+
   const togglePlay = () => {
     const v = videoRef.current;
     if (!v || !aRollUrl) return;
