@@ -144,7 +144,7 @@ export default function StudioPage() {
   const prompterRef = useRef<HTMLDivElement>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
+  const recordingTimerRef = useRef<any | null>(null);
   const scrollPosRef = useRef(0);
 
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -163,6 +163,10 @@ export default function StudioPage() {
       else params.delete('mode');
       
       const currentPath = pathname;
+      if (!currentPath || currentPath.includes('//') || !projectId) {
+        console.warn('[Studio] Skipping URL sync - invalid state:', { currentPath, projectId });
+        return;
+      }
       const newUrl = `${currentPath}?${params.toString()}`;
       
       try {
@@ -643,6 +647,12 @@ export default function StudioPage() {
                     setLastRecordingUrl={setLastRecordingUrl}
                     updateSegmentField={updateSegmentField}
                     handleAcceptRecording={async (url) => {
+                      console.log('[Studio] Accepting recording:', url, 'Project:', projectId);
+                      if (!projectId) {
+                        console.error('[Studio] Missing projectId in handleAcceptRecording!');
+                        alert('Error: Project ID lost. Please refresh.');
+                        return;
+                      }
                       if (manifest) {
                          const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
                          const newManifest = {
