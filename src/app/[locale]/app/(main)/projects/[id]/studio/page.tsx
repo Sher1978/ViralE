@@ -662,6 +662,10 @@ export default function StudioPage() {
                   scriptText={(manifest as any)?.scriptText || manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
                   projectId={projectId}
                   locale={locale}
+                  onUpdateManifest={(newManifest) => {
+                    setManifest(newManifest);
+                    projectService.updateLatestVersionManifest(projectId, newManifest);
+                  }}
                 />
               </div>
             )}

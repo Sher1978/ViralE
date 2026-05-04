@@ -17,18 +17,37 @@ export async function POST(req: Request) {
 
     const fullPrompt = style_prefix ? `${style_prefix}, ${prompt}` : prompt;
 
+    // Map aspect ratios to pixels
+    let width = 768;
+    let height = 1344;
+    let dallESize: "1024x1024" | "1024x1792" | "1792x1024" = "1024x1792";
+
+    if (aspect_ratio === '4:5') {
+      width = 864;
+      height = 1080;
+      dallESize = "1024x1792"; // Best fallback for 4:5
+    } else if (aspect_ratio === '1:1') {
+      width = 1024;
+      height = 1024;
+      dallESize = "1024x1024";
+    } else if (aspect_ratio === '16:9') {
+      width = 1344;
+      height = 768;
+      dallESize = "1792x1024";
+    }
+
     // --- OPTION 1: RUNWARE (if key exists) ---
     if (RUNWARE_API_KEY) {
       try {
-        console.log('[Image Gen] Trying Runware...');
+        console.log(`[Image Gen] Trying Runware with AR ${aspect_ratio}...`);
         const payload = [
           { taskType: 'authentication', apiKey: RUNWARE_API_KEY },
           {
             taskType: 'imageInference',
             taskUUID: uuidv4(),
             positivePrompt: fullPrompt,
-            width: 768,
-            height: 1344,
+            width,
+            height,
             model: 'runware:100@1', 
             numberResults: 1,
             outputFormat: 'webp'
@@ -46,9 +65,7 @@ export async function POST(req: Request) {
           const inferenceResult = data.data?.find((d: any) => d.taskType === 'imageInference');
           if (inferenceResult && inferenceResult.imageURL) {
             const imageUrl = inferenceResult.imageURL;
-            console.log('[Image Gen] Runware success, persisting to storage...');
             
-            // Persist to Supabase to avoid CORS/expiration issues in preview
             try {
               const imgRes = await fetch(imageUrl);
               if (imgRes.ok) {
@@ -73,7 +90,7 @@ export async function POST(req: Request) {
                 }
               }
             } catch (persistErr) {
-              console.warn('[Image Gen] Persistence failed, returning original URL:', persistErr);
+              console.warn('[Image Gen] Persistence failed:', persistErr);
             }
 
             return NextResponse.json({ url: imageUrl, id: inferenceResult.taskUUID });
@@ -87,7 +104,7 @@ export async function POST(req: Request) {
     // --- OPTION 2: OPENAI DALL-E 3 (Fallback) ---
     if (OPENAI_API_KEY) {
       try {
-        console.log('[Image Gen] Falling back to DALL-E 3...');
+        console.log(`[Image Gen] Falling back to DALL-E 3 with size ${dallESize}...`);
         const response = await fetch('https://api.openai.com/v1/images/generations', {
           method: 'POST',
           headers: {
@@ -96,9 +113,9 @@ export async function POST(req: Request) {
           },
           body: JSON.stringify({
             model: "dall-e-3",
-            prompt: `Cinematic 9:16 portrait: ${fullPrompt}`,
+            prompt: fullPrompt,
             n: 1,
-            size: "1024x1792",
+            size: dallESize,
             quality: "hd"
           })
         });
@@ -106,7 +123,6 @@ export async function POST(req: Request) {
         const data = await response.json();
         if (response.ok && data.data?.[0]?.url) {
           const imageUrl = data.data[0].url;
-          console.log('[Image Gen] OpenAI success, persisting to storage...');
           
           try {
             const imgRes = await fetch(imageUrl);
