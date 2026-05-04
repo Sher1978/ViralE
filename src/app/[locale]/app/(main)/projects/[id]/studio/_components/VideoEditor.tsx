@@ -230,12 +230,10 @@ export const VideoEditor = React.memo(({
     
     async function recoverDraft() {
       const key = `viral_editor_draft_${projectId}`;
-      const saved = localStorage.getItem(key);
-      let data: any = null;
+      const data = await idb.get(key, 'ProjectDrafts');
       
-      if (saved) {
+      if (data) {
         try {
-          data = JSON.parse(saved);
           if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
           if (data.transcript) setTranscript(data.transcript);
           if (data.stage) setStage(data.stage);
@@ -247,11 +245,11 @@ export const VideoEditor = React.memo(({
         } catch (e) { console.error('Failed to parse draft:', e); }
       }
       
-      // RECOVER VIDEO FILE FROM IDB (Independent of localStorage draft)
+      // RECOVER VIDEO FILE FROM IDB (Independent of JSON draft)
       try {
-        const cachedFile = await idb.get(`video_file_${projectId}`);
+        const cachedFile = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
         if (cachedFile instanceof Blob) {
-          console.log('[Editor] Recovered video file from IndexedDB');
+          console.log('[Editor] Recovered video file from MediaBuffer');
           const url = URL.createObjectURL(cachedFile);
           setARollUrl(url);
           setRawFile(cachedFile as File);
@@ -262,7 +260,7 @@ export const VideoEditor = React.memo(({
       if (data?.brollClips) {
         const restoredClips = await Promise.all(data.brollClips.map(async (clip: BRollClip) => {
           try {
-            const blob = await idb.get(`broll_file_${clip.id}`);
+            const blob = await idb.get(`broll_file_${clip.id}`, 'MediaBuffer');
             if (blob instanceof Blob) {
               return { ...clip, url: URL.createObjectURL(blob) };
             }
@@ -282,7 +280,7 @@ export const VideoEditor = React.memo(({
     if (!projectId || !persistenceLoadedRef.current) return;
     const key = `viral_editor_draft_${projectId}`;
     const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize };
-    localStorage.setItem(key, JSON.stringify(state));
+    idb.set(key, state, 'ProjectDrafts');
   }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage]);
 
   // Separate effect for heavy file persistence
@@ -292,12 +290,12 @@ export const VideoEditor = React.memo(({
     // Only save if it's a new file (we can use name/size as a weak proxy for "same file")
     const saveFile = async () => {
       try {
-        const lastSaved = await idb.get(`video_file_info_${projectId}`);
+        const lastSaved = await idb.get(`video_file_info_${projectId}`, 'ProjectDrafts');
         if (lastSaved?.name === rawFile.name && lastSaved?.size === rawFile.size) return;
         
-        console.log('[Editor] Saving new video file to IndexedDB...');
-        await idb.set(`video_file_${projectId}`, rawFile);
-        await idb.set(`video_file_info_${projectId}`, { name: rawFile.name, size: rawFile.size });
+        console.log('[Editor] Saving new video file to MediaBuffer...');
+        await idb.set(`video_file_${projectId}`, rawFile, 'MediaBuffer');
+        await idb.set(`video_file_info_${projectId}`, { name: rawFile.name, size: rawFile.size }, 'ProjectDrafts');
       } catch (e) {
         console.error('Failed to cache video file:', e);
       }

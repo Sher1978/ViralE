@@ -15,6 +15,7 @@ import { profileService, Profile } from '@/lib/services/profileService';
 import { ProductionManifest, AnimationStyle, AvatarProvider } from '@/lib/types/studio';
 import { createInitialManifest } from '@/lib/studio-utils';
 import { v4 as uuidv4 } from 'uuid';
+import { idb } from '@/lib/idb';
 
 // Atomic Components
 import { StudioSidebar } from './_components/StudioSidebar';
@@ -128,15 +129,31 @@ export default function StudioPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [activeTab, showFaceless]);
 
-  // ── AUTOSAVE & RECOVERY ─────────────────────────────────────────────────
+  // тЬТ AUTOSAVE & RECOVERY (IndexedDB + Cloud Sync) тЬТ
   useEffect(() => {
-    if (manifest && projectId) {
-      localStorage.setItem(`viral_draft_${projectId}`, JSON.stringify({
+    if (manifest && projectId && !isLoading) {
+      // 1. Instant local backup
+      idb.set(`viral_draft_${projectId}`, {
         manifest,
         updatedAt: new Date().toISOString()
-      }));
+      }, 'ProjectDrafts');
+
+      // 2. Debounced Cloud Sync
+      const timer = setTimeout(async () => {
+        try {
+          setIsSaving(true);
+          await projectService.updateLatestVersionManifest(projectId, manifest);
+          setIsSaving(false);
+          console.log('[Studio] Cloud Sync Complete');
+        } catch (e) {
+          console.error('[Studio] Cloud Sync Failed:', e);
+          setIsSaving(false);
+        }
+      }, 3000); // 3 second debounce
+
+      return () => clearTimeout(timer);
     }
-  }, [manifest, projectId]);
+  }, [manifest, projectId, isLoading]);
 
   // Combined Initial Data Load
   useEffect(() => {
@@ -144,24 +161,24 @@ export default function StudioPage() {
       if (!projectId) return;
       setIsLoading(true);
       try {
-        const [profileData, projectData, latestVersion] = await Promise.all([
+        const [profileData, projectData, latestVersion, cachedLocal] = await Promise.all([
           profileService.getOrCreateProfile(),
           projectService.getProject(projectId),
-          projectService.getLatestVersion(projectId)
+          projectService.getLatestVersion(projectId),
+          idb.get(`viral_draft_${projectId}`, 'ProjectDrafts')
         ]);
 
         setCurrentProfile(profileData);
         setProject(projectData);
 
         // Check for Local Draft first (Safety Buffer)
-        const cached = localStorage.getItem(`viral_draft_${projectId}`);
-        if (cached) {
-          const { manifest: cachedManifest, updatedAt } = JSON.parse(cached);
+        if (cachedLocal) {
+          const { manifest: cachedManifest, updatedAt } = cachedLocal;
           setManifest(cachedManifest);
           if (latestVersion) {
             setCurrentVersionId(latestVersion.id);
           }
-          console.log('[Studio] Recovered manifest from local storage', updatedAt);
+          console.log('[Studio] Recovered manifest from IndexedDB', updatedAt);
         } else if (latestVersion) {
           setCurrentVersionId(latestVersion.id);
           if (latestVersion.script_data) {
@@ -171,6 +188,16 @@ export default function StudioPage() {
           }
         } else {
           setManifest(createInitialManifest(projectId, uuidv4(), { hook: '', context: '', meat: '', cta: '' }));
+        // 4. RECOVER PENDING VIDEO RECORDING
+        const pendingRecId = await idb.get(`pending_upload_${projectId}`, 'ProjectDrafts');
+        if (pendingRecId) {
+          const blob = await idb.get(pendingRecId, 'MediaBuffer');
+          if (blob instanceof Blob) {
+            console.log('[Studio] Recovered pending recording from crash:', pendingRecId);
+            const url = URL.createObjectURL(blob);
+            setLastRecordingUrl(url);
+            setShowRecordingReview(true);
+          }
         }
 
       } catch (err) {
@@ -275,8 +302,20 @@ export default function StudioPage() {
       });
       
       recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
-      recorder.onstop = () => {
+      recorder.onstop = async () => {
         const blob = new Blob(localChunks, { type: 'video/webm' });
+        
+        // тЬТ IMMEDIATE PERSISTENCE тЬТ
+        const recordingId = `raw_rec_${projectId}_${Date.now()}`;
+        try {
+          await idb.set(recordingId, blob, 'MediaBuffer');
+          // Also track as current pending upload
+          await idb.set(`pending_upload_${projectId}`, recordingId, 'ProjectDrafts');
+          console.log('[Studio] Recording persisted to IndexedDB:', recordingId);
+        } catch (e) {
+          console.error('[Studio] Failed to persist recording:', e);
+        }
+
         const url = URL.createObjectURL(blob);
         setLastRecordingUrl(url);
         setShowRecordingReview(true);
@@ -474,6 +513,20 @@ export default function StudioPage() {
         />
 
         <main className="flex-1 relative flex flex-col min-w-0 overflow-hidden bg-[#050508]">
+          {/* Persistence Status Indicator */}
+          <AnimatePresence>
+            {isSaving && (
+              <motion.div 
+                initial={{ opacity: 0, y: -20 }}
+                animate={{ opacity: 1, y: 0 }}
+                exit={{ opacity: 0, y: -20 }}
+                className="absolute top-4 right-4 z-[200] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md"
+              >
+                <RefreshCw size={12} className="animate-spin text-purple-400" />
+                <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Syncing...</span>
+              </motion.div>
+            )}
+          </AnimatePresence>
           
           {/* Stage Area */}
           <div className="flex-1 relative overflow-hidden">
@@ -594,11 +647,20 @@ export default function StudioPage() {
                          // Persist to DB so refresh doesn't lose it
                          await projectService.updateLatestVersionManifest(projectId, newManifest);
                       }
+                      
+                      // тЬТ CLEANUP PENDING STATUS тЬТ
+                      await idb.delete(`pending_upload_${projectId}`, 'ProjectDrafts');
+                      
                       // 1. Give Android a moment to stop camera and clear memory
                       setTimeout(() => {
                         setShowRecordingReview(false);
                         setActiveTab('assembly');
                       }, 100);
+                    }}
+                    onDiscard={async () => {
+                      await idb.delete(`pending_upload_${projectId}`, 'ProjectDrafts');
+                      setShowRecordingReview(false);
+                      setLastRecordingUrl(null);
                     }}
                     manifest={manifest}
                     selectedSegmentId={selectedSegmentId}

@@ -15,6 +15,7 @@ interface RecordingReviewProps {
   setLastRecordingUrl: (url: string | null) => void;
   updateSegmentField: (id: string, field: string, value: any) => void;
   handleAcceptRecording: (url: string) => void;
+  onDiscard: () => void;
   manifest: any;
   selectedSegmentId: string | null;
 }
@@ -29,6 +30,7 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
   setLastRecordingUrl,
   updateSegmentField,
   handleAcceptRecording,
+  onDiscard,
   manifest,
   selectedSegmentId,
 }) => {
@@ -45,7 +47,7 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
            {/* Top Header - Dismiss & Branding */}
            <div className="flex items-center justify-between py-6 shrink-0">
               <button 
-                onClick={() => { setShowRecordingReview(false); setLastRecordingUrl(null); }}
+                onClick={onDiscard}
                 className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-red-500 transition-all active:scale-95"
               >
                  <X size={24} />
@@ -106,7 +108,7 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
                  </button>
 
                  <button 
-                    onClick={() => { setShowRecordingReview(false); setLastRecordingUrl(null); }}
+                    onClick={onDiscard}
                     className="w-full py-4 rounded-[2rem] border border-white/5 text-white/20 text-[9px] font-black uppercase tracking-[0.4em] hover:text-red-500 hover:border-red-500/20 transition-all"
                  >
                     {locale === 'ru' ? 'ПЕРЕСНЯТЬ ДУБЛЬ' : 'RETAKE MASTERPIECE'}
