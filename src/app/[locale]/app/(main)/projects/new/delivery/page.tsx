@@ -411,7 +411,7 @@ export default function DeliveryPage() {
               });
               const assets = await res.json();
               if (assets && !assets.error) {
-                await projectService.updateLatestVersionManifest(projectId, { ...manifest, distributionAssets: assets });
+                await projectService.updateLatestVersionManifest(projectId as string, { ...manifest, distributionAssets: assets });
                 setVersion(prev => (prev ? { ...prev, script_data: { ...prev.script_data, distributionAssets: assets } } : prev) as any);
               }
             }}
