@@ -287,7 +287,7 @@ export default function DeliveryPage() {
   };
 
   useEffect(() => {
-    let pollInterval;
+    let pollInterval: any;
     if (projectId && !distributionAssets) {
       pollInterval = setInterval(async () => {
         const ver = await projectService.getLatestVersion(projectId);
