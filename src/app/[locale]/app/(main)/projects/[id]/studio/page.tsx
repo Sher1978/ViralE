@@ -188,6 +188,7 @@ export default function StudioPage() {
           }
         } else {
           setManifest(createInitialManifest(projectId, uuidv4(), { hook: '', context: '', meat: '', cta: '' }));
+        }
         // 4. RECOVER PENDING VIDEO RECORDING
         const pendingRecId = await idb.get(`pending_upload_${projectId}`, 'ProjectDrafts');
         if (pendingRecId) {
