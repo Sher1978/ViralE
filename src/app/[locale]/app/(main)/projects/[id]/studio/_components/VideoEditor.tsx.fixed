@@ -13,7 +13,7 @@ import BRollModal from '@/components/studio/BRollPickerModal';
 import { storageService } from '@/lib/services/storageService';
 import { extractAudioFFmpeg } from '@/lib/ffmpeg-audio';
 
-// тФАтФА Types тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Types ──────────────────────────────────────────────────────────────────
 
 type EditorStage = 'empty' | 'transcribing' | 'reviewing_phrases' | 'generating' | 'editing';
 
@@ -63,7 +63,7 @@ interface VideoEditorProps {
   onFaceless?: () => void;
 }
 
-// тФАтФА Helper: Mock Transcription тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Helper: Mock Transcription ─────────────────────────────────────────────
 
 function buildTranscript(manifest: ProductionManifest | null, videoDuration: number): TranscriptWord[] {
   if (!manifest) {
@@ -108,7 +108,7 @@ function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
   });
 }
 
-// тФАтФА B-Roll Preview Sync тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── B-Roll Preview Sync ───────────────────────────────────────────────────
 
 const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: { 
   url: string; startTime: number; currentTime: number; isPlaying: boolean;
@@ -154,7 +154,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
   );
 });
 
-// тФАтФА Main Component тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Main Component ──────────────────────────────────────────────────────────
 
 export const VideoEditor = React.memo(({
   manifest, onBack, onNext, updateSegmentField, projectId, preFetchedBrolls: parentPreFetched, onFaceless
@@ -224,7 +224,7 @@ export const VideoEditor = React.memo(({
   const transcriptionStartedRef = useRef(false);
   const persistenceLoadedRef = useRef(false);
 
-  // тФАтФА Persistence: Save/Load local draft тФАтФА
+  // ── Persistence: Save/Load local draft ──
   useEffect(() => {
     if (!projectId || persistenceLoadedRef.current) return;
     
@@ -306,7 +306,7 @@ export const VideoEditor = React.memo(({
     saveFile();
   }, [projectId, rawFile]);
 
-  // тФАтФА Auto-transcribe: fires when stage=transcribing AND url is ready тФАтФА
+  // ── Auto-transcribe: fires when stage=transcribing AND url is ready ──
   useEffect(() => {
     if (stage === 'transcribing' && aRollUrl && !transcriptionStartedRef.current) {
       console.log('[VideoEditor] Starting auto-transcription for:', aRollUrl);
@@ -315,7 +315,7 @@ export const VideoEditor = React.memo(({
     }
   }, [stage, aRollUrl]); // Explicit dependencies
 
-  // тФАтФА Sync manifest A-Roll тФАтФА
+  // ── Sync manifest A-Roll ──
   useEffect(() => {
     const rec = manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl);
     const url = rec?.assetUrl || manifest?.videoUrl || manifest?.segments?.[0]?.assetUrl || null;
@@ -329,9 +329,9 @@ export const VideoEditor = React.memo(({
   }, [manifest]); 
 
 
-  // тФАтФА Auto-confirm countdown тФА REMOVED (B-Roll Hunter should only open manually) тФАтФА
+  // ── Auto-confirm countdown ─ REMOVED (B-Roll Hunter should only open manually) ──
 
-  // тФАтФА Video sync тФАтФА
+  // ── Video sync ──
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !aRollUrl) return;
@@ -352,7 +352,7 @@ export const VideoEditor = React.memo(({
     };
   }, [aRollUrl]);
 
-  // тФАтФА Dynamic Duration Calculation тФАтФА
+  // ── Dynamic Duration Calculation ──
   useEffect(() => {
     const maxBrollEnd = brollClips.length > 0 
       ? Math.max(...brollClips.map(c => c.endTime)) 
@@ -366,7 +366,7 @@ export const VideoEditor = React.memo(({
     }
   }, [aRollDuration, brollClips, duration]);
 
-  // тФАтФА Drag listeners тФАтФА
+  // ── Drag listeners ──
   useEffect(() => {
     const move = (e: MouseEvent | TouchEvent) => {
       if (!dragRef.current || !timelineRef.current) return;
@@ -448,7 +448,7 @@ export const VideoEditor = React.memo(({
     };
   }, [duration]);
 
-  // тФАтФА Core Pipeline: Transcription тЖТ Karaoke Subs тЖТ Auto B-Roll placement тФАтФА
+  // ── Core Pipeline: Transcription → Karaoke Subs → Auto B-Roll placement ──
   const buildKaraokeClips = (words: TranscriptWord[]): SubtitleClip[] => {
     const final: SubtitleClip[] = [];
     let currentBatch: TranscriptWord[] = [];
@@ -531,7 +531,7 @@ export const VideoEditor = React.memo(({
 
         if (!sourceBlob) throw new Error('Не удалось получить файл');
 
-        // тФАтФА STEP 1: FFmpeg audio extraction (works on iOS HEVC, Android, Desktop)
+        // ── STEP 1: FFmpeg audio extraction (works on iOS HEVC, Android, Desktop)
         const audioBlob = await extractAudioFFmpeg(sourceBlob, {
           onProgress: setStageMessage,
         });
@@ -544,7 +544,7 @@ export const VideoEditor = React.memo(({
           console.log('[Editor] Sending FFmpeg MP3:', (audioBlob.size / 1024).toFixed(0), 'KB');
           formData.append('file', new File([audioBlob], 'audio.mp3', { type: 'audio/mpeg' }));
         } else {
-          // FFmpeg failed тАФ send raw file with size guard
+          // FFmpeg failed — send raw file with size guard
           const mime = sourceBlob.type || (rawFile?.name?.endsWith('.mov') ? 'video/quicktime' : 'video/mp4');
           const ext  = mime.includes('quicktime') ? 'video.mov' : 'video.mp4';
           const sizeMB = sourceBlob.size / 1024 / 1024;
@@ -741,7 +741,7 @@ export const VideoEditor = React.memo(({
     setPendingBrollPhrases([]); 
   }, [pendingBrollPhrases]);
 
-  // тФАтФА Manual B-Roll Hunter (opens modal for a specific phrase) тФАтФА
+  // ── Manual B-Roll Hunter (opens modal for a specific phrase) ──
   const openBRollHunterForClip = (phraseId: string, prompt: string) => {
     setActiveBrollPhraseId(phraseId);
     setActiveBrollPrompt(prompt);
@@ -811,7 +811,7 @@ export const VideoEditor = React.memo(({
     setActiveBrollPhraseId(null);
     setStage('editing');
   };
-  // тФАтФА Video Upload тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+  // ── Video Upload ────────────────────────────────────────────────────────
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -840,7 +840,7 @@ export const VideoEditor = React.memo(({
     setEditingPhraseId(null);
   };
 
-  // тФАтФА Helpers тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+  // ── Helpers ─────────────────────────────────────────────────────────────
 
   const togglePlay = () => {
     const v = videoRef.current;
@@ -898,7 +898,7 @@ export const VideoEditor = React.memo(({
   const phaseLabels = ['Upload', 'Subtitles', 'B-Roll'];
   const phaseIndex = stage === 'empty' ? 0 : stage === 'transcribing' ? 1 : stage === 'editing' ? 1 : 2;
 
-  // тФАтФА RENDER тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+  // ── RENDER ───────────────────────────────────────────────────────────────
   if (!manifest) {
     return (
       <div className="flex-1 bg-black flex flex-col items-center justify-center gap-6">
@@ -919,7 +919,7 @@ export const VideoEditor = React.memo(({
       <input ref={fileInputRef} type="file" accept="video/*" className="hidden"
         onChange={handleFileChange} />
 
-      {/* тФАтФА FOUNDATION SELECTION (Empty State) тФАтФА */}
+      {/* ── FOUNDATION SELECTION (Empty State) ── */}
       <AnimatePresence>
         {!aRollUrl && (
           <motion.div 
@@ -987,7 +987,7 @@ export const VideoEditor = React.memo(({
         )}
       </AnimatePresence>
 
-      {/* тФАтФА NAV BAR (Only if video loaded) тФАтФА */}
+      {/* ── NAV BAR (Only if video loaded) ── */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 z-20 flex-shrink-0 bg-[#050508]">
 
         <button onClick={onBack}
@@ -1025,7 +1025,7 @@ export const VideoEditor = React.memo(({
         </button>
       </div>
 
-      {/* тФАтФА VIDEO PREVIEW (Phone Frame) тФАтФА */}
+      {/* ── VIDEO PREVIEW (Phone Frame) ── */}
       <div className="relative bg-[#050508] flex items-center justify-center flex-shrink-0"
         style={{ height: '38%' }}>
         
@@ -1041,7 +1041,7 @@ export const VideoEditor = React.memo(({
                 playsInline 
                 onClick={togglePlay} 
               />
-              {/* тФАтФА B-ROLL OVERLAY PREVIEW тФАтФА */}
+              {/* ── B-ROLL OVERLAY PREVIEW ── */}
               {(() => {
                 const activeBR = brollClips.find(c => c.url && c.url.length > 5 && currentTime >= c.startTime && currentTime <= c.endTime);
                 if (!activeBR) return null;
@@ -1074,7 +1074,7 @@ export const VideoEditor = React.memo(({
             </div>
           )}
 
-          {/* Subtitle Overlay тАУ Karaoke Style (Inside Frame) */}
+          {/* Subtitle Overlay – Karaoke Style (Inside Frame) */}
           <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
             <AnimatePresence mode="wait">
               {aRollUrl && (() => {
@@ -1167,7 +1167,7 @@ export const VideoEditor = React.memo(({
         )}
       </div>
 
-      {/* тФАтФА ACTION BAR тФАтФА */}
+      {/* ── ACTION BAR ── */}
       <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0a0a12] border-y border-white/5 flex-shrink-0">
         {/* Transport */}
         <button onClick={() => { setCurrentTime(0); if (videoRef.current) videoRef.current.currentTime = 0; }}
@@ -1213,7 +1213,7 @@ export const VideoEditor = React.memo(({
         )}
       </div>
 
-      {/* тФАтФА TIMELINE тФАтФА */}
+      {/* ── TIMELINE ── */}
       <div className="flex-1 bg-[#080810] overflow-hidden flex flex-col min-h-0">
         <div className="flex-1 overflow-x-auto overflow-y-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
           <div className="flex flex-col" style={{ minWidth: `${Math.max(duration * 18, 320)}px`, height: '100%' }}>
@@ -1249,7 +1249,7 @@ export const VideoEditor = React.memo(({
                       <div key={i} className="w-0.5 bg-emerald-400 rounded-full" style={{ height: `${30 + Math.sin(i * 0.7) * 50}%` }} />
                     ))}
                   </div>
-                  <span className="text-[11px] font-black text-emerald-400 truncate">ЁЯОе A-Roll</span>
+                  <span className="text-[11px] font-black text-emerald-400 truncate">🎥 A-Roll</span>
                 </div>
               ) : (
                 <div className="absolute inset-y-1 left-0 right-0 rounded-lg border border-dashed border-white/8 flex items-center justify-center cursor-pointer hover:border-purple-500/30 transition-all">
@@ -1306,7 +1306,7 @@ export const VideoEditor = React.memo(({
                   isSelected={selectedClipId === clip.id}
                   onSelect={() => {
                     if (!clip.url) {
-                      // Empty placeholder тАФ open hunter immediately
+                      // Empty placeholder — open hunter immediately
                       openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt);
                     } else {
                       setSelectedClipId(clip.id);
@@ -1333,7 +1333,7 @@ export const VideoEditor = React.memo(({
         </div>
       </div>
 
-      {/* тФАтФА INSPECTOR SHEET тФАтФА */}
+      {/* ── INSPECTOR SHEET ── */}
       <AnimatePresence>
         {showSheet && (selBR || selSub) && (
           <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
@@ -1434,7 +1434,7 @@ export const VideoEditor = React.memo(({
 
 
 
-      {/* тФАтФА PHRASE PICKER MODAL тФАтФА */}
+      {/* ── PHRASE PICKER MODAL ── */}
       <AnimatePresence>
         {phrasePickerOpen && (
           <motion.div
@@ -1467,7 +1467,7 @@ export const VideoEditor = React.memo(({
         )}
       </AnimatePresence>
 
-      {/* тФАтФА B-ROLL AI MODAL тФАтФА */}
+      {/* ── B-ROLL AI MODAL ── */}
       <BRollModal
         isOpen={brollModalOpen}
         onClose={() => {
@@ -1485,7 +1485,7 @@ export const VideoEditor = React.memo(({
   );
 });
 
-// тФАтФА Track Row тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Track Row ─────────────────────────────────────────────────────────────
 
 const TrackRow = React.memo(({ label, color, children, onClick, onAdd, onTimelineClick }: { 
   label: string; 
@@ -1532,7 +1532,7 @@ const TrackRow = React.memo(({ label, color, children, onClick, onAdd, onTimelin
   );
 });
 
-// тФАтФА B-Roll Timeline Clip тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── B-Roll Timeline Clip ──────────────────────────────────────────────────
 
 const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart }: {
   clip: BRollClip; duration: number; isSelected: boolean;
@@ -1570,7 +1570,7 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
   );
 });
 
-// тФАтФА Subtitle Clip тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Subtitle Clip ─────────────────────────────────────────────────────────
 
 const SubtitleTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart }: {
   clip: SubtitleClip; duration: number; isSelected: boolean;
@@ -1601,6 +1601,6 @@ const SubtitleTimelineClip = React.memo(({ clip, duration, isSelected, onSelect,
   );
 });
 
-// тФАтФА Helpers тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+// ── Helpers ───────────────────────────────────────────────────────────────
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
