@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -11,9 +11,9 @@ import {
 import { ProductionManifest } from '@/lib/types/studio';
 import BRollModal from '@/components/studio/BRollPickerModal';
 import { storageService } from '@/lib/services/storageService';
-// FFmpeg isolated
+import { extractAudioFFmpeg } from '@/lib/ffmpeg-audio';
 
-// ── Types ──────────────────────────────────────────────────────────────────
+// тФАтФА Types тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
 type EditorStage = 'empty' | 'transcribing' | 'reviewing_phrases' | 'generating' | 'editing';
 
@@ -50,8 +50,7 @@ interface BRollClip {
   startTime: number;
   endTime: number;
   track: number;
-  offsetX?: number;
-  sourceStartTime?: number; // -50 to 50 or similar for horizontal shift
+  offsetX?: number; // -50 to 50 or similar for horizontal shift
 }
 import { idb } from '@/lib/idb';
 
@@ -62,18 +61,17 @@ interface VideoEditorProps {
   updateSegmentField: (id: string, field: string, value: any) => void;
   projectId?: string;
   onFaceless?: () => void;
-  isSaving?: boolean;
 }
 
-// ── Helper: Mock Transcription ─────────────────────────────────────────────
+// тФАтФА Helper: Mock Transcription тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
 function buildTranscript(manifest: ProductionManifest | null, videoDuration: number): TranscriptWord[] {
   if (!manifest) {
     // Fallback for custom uploads without a script: create a single placeholder word
-    return [{ text: "[Редактируйте текст здесь]", start: 0, end: videoDuration }];
+    return [{ text: "[╨а╨╡╨┤╨░╨║╤В╨╕╤А╤Г╨╣╤В╨╡ ╤В╨╡╨║╤Б╤В ╨╖╨┤╨╡╤Б╤М]", start: 0, end: videoDuration }];
   }
   const segments = manifest?.segments?.filter((s: any) => s.scriptText) || [];
-  const dur = (isFinite(videoDuration) && videoDuration > 0) ? videoDuration : 60;
+  const dur = videoDuration > 0 ? videoDuration : 60;
 
   if (segments.length === 0) {
     // FALLBACK: Simulate AI recognition if no manifest provided (uploaded video)
@@ -110,10 +108,10 @@ function pickAIPhrases(transcript: TranscriptWord[]): BRollPhrase[] {
   });
 }
 
-// ── B-Roll Preview Sync ───────────────────────────────────────────────────
+// тФАтФА B-Roll Preview Sync тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
-const BRollPreview = React.memo(({ url, startTime, sourceStartTime, currentTime, isPlaying }: { 
-  url: string; startTime: number; sourceStartTime?: number; currentTime: number; isPlaying: boolean;
+const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: { 
+  url: string; startTime: number; currentTime: number; isPlaying: boolean;
 }) => {
   const vRef = useRef<HTMLVideoElement>(null);
 
@@ -129,11 +127,11 @@ const BRollPreview = React.memo(({ url, startTime, sourceStartTime, currentTime,
     }
 
     // 2. Sync Time (with 150ms tolerance to prevent stuttering)
-    const relativeTime = Math.max(0, (currentTime - startTime) + (sourceStartTime || 0));
+    const relativeTime = Math.max(0, currentTime - startTime);
     if (Math.abs(v.currentTime - relativeTime) > 0.15) {
       v.currentTime = relativeTime;
     }
-  }, [isPlaying, currentTime, startTime, sourceStartTime]);
+  }, [isPlaying, currentTime, startTime]);
 
   return (
     <video 
@@ -156,39 +154,12 @@ const BRollPreview = React.memo(({ url, startTime, sourceStartTime, currentTime,
   );
 });
 
-// ── Main Component ──────────────────────────────────────────────────────────
+// тФАтФА Main Component тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
 export const VideoEditor = React.memo(({
-  manifest, onBack, onNext, updateSegmentField, projectId, preFetchedBrolls: parentPreFetched, onFaceless, isSaving
+  manifest, onBack, onNext, updateSegmentField, projectId, preFetchedBrolls: parentPreFetched, onFaceless
 }: VideoEditorProps & { preFetchedBrolls?: Record<string, any[]> }) => {
   const videoRef = useRef<HTMLVideoElement>(null);
-
-  // --- EXIT GUARD (Prevent losing work) ---
-  useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
-      e.preventDefault();
-      e.returnValue = '';
-    };
-
-    const handlePopState = (e: PopStateEvent) => {
-      if (!window.confirm('Вы уверены, что хотите выйти? Несохраненный прогресс монтажа будет потерян.')) {
-        // Push state back to keep user on page
-        window.history.pushState(null, '', window.location.href);
-      } else {
-        onBack?.();
-      }
-    };
-
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    window.history.pushState(null, '', window.location.href);
-    window.addEventListener('popstate', handlePopState);
-
-    return () => {
-      window.removeEventListener('beforeunload', handleBeforeUnload);
-      window.removeEventListener('popstate', handlePopState);
-    };
-  }, [onBack]);
-
   const timelineRef = useRef<HTMLDivElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
@@ -209,8 +180,6 @@ export const VideoEditor = React.memo(({
   const [isPlaying, setIsPlaying] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
-  const [timelineZoom, setTimelineZoom] = useState(25); // px per second
-  const lastPinchDistRef = useRef<number | null>(null);
   const [aRollDuration, setARollDuration] = useState(60);
   const [duration, setDuration] = useState(60);
   const [videoSource, setVideoSource] = useState<'teleprompter' | 'upload' | null>(null);
@@ -227,18 +196,6 @@ export const VideoEditor = React.memo(({
 
   // B-Roll Clips
   const [brollClips, setBrollClips] = useState<BRollClip[]>([]);
-  // ── SAFETY GUARD ──────────────────────────────────────────────────────────
-  if (!manifest || !projectId) {
-    console.warn('[VideoEditor] Waiting for manifest or projectId...', { manifest, projectId });
-    return (
-      <div className="h-full flex flex-col items-center justify-center bg-[#050508] space-y-4">
-        <Loader2 className="w-8 h-8 animate-spin text-purple-500" />
-        <p className="text-[10px] font-black uppercase tracking-[0.4em] text-white/20">Syncing Production Hub...</p>
-      </div>
-    );
-  }
-  console.log('[VideoEditor] Rendering with project:', projectId);
-
   const [brollModalOpen, setBrollModalOpen] = useState(false);
   const [activeBrollPrompt, setActiveBrollPrompt] = useState('');
   const [activeBrollPhraseId, setActiveBrollPhraseId] = useState<string | null>(null);
@@ -246,16 +203,6 @@ export const VideoEditor = React.memo(({
   const [generatingPhraseIds, setGeneratingPhraseIds] = useState<Set<string>>(new Set());
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
-
-  // ── Sync with Parent Manifest (Critical for transition from Teleprompter) ──
-  useEffect(() => {
-    const freshUrl = getInitialARoll();
-    if (freshUrl && freshUrl !== aRollUrl) {
-      console.log('[VideoEditor] Syncing aRollUrl from manifest props:', freshUrl);
-      setARollUrl(freshUrl);
-      if (stage === 'empty') setStage('transcribing');
-    }
-  }, [manifest]);
 
   // Inspector
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
@@ -271,13 +218,13 @@ export const VideoEditor = React.memo(({
     startX: number; startY: number; // Added startY for long-press threshold
     origStart: number; origEnd: number;
   } | null>(null);
-  const longPressTimerRef = useRef<any | null>(null);
+  const longPressTimerRef = useRef<NodeJS.Timeout | null>(null);
 
   // Guard to prevent double-transcription
   const transcriptionStartedRef = useRef(false);
   const persistenceLoadedRef = useRef(false);
 
-  // ── Persistence: Save/Load local draft ──
+  // тФАтФА Persistence: Save/Load local draft тФАтФА
   useEffect(() => {
     if (!projectId || persistenceLoadedRef.current) return;
     
@@ -359,7 +306,7 @@ export const VideoEditor = React.memo(({
     saveFile();
   }, [projectId, rawFile]);
 
-  // ── Auto-transcribe: fires when stage=transcribing AND url is ready ──
+  // тФАтФА Auto-transcribe: fires when stage=transcribing AND url is ready тФАтФА
   useEffect(() => {
     if (stage === 'transcribing' && aRollUrl && !transcriptionStartedRef.current) {
       console.log('[VideoEditor] Starting auto-transcription for:', aRollUrl);
@@ -368,7 +315,7 @@ export const VideoEditor = React.memo(({
     }
   }, [stage, aRollUrl]); // Explicit dependencies
 
-  // ── Sync manifest A-Roll ──
+  // тФАтФА Sync manifest A-Roll тФАтФА
   useEffect(() => {
     const rec = manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl);
     const url = rec?.assetUrl || manifest?.videoUrl || manifest?.segments?.[0]?.assetUrl || null;
@@ -382,9 +329,9 @@ export const VideoEditor = React.memo(({
   }, [manifest]); 
 
 
-  // ── Auto-confirm countdown ─ REMOVED (B-Roll Hunter should only open manually) ──
+  // тФАтФА Auto-confirm countdown тФА REMOVED (B-Roll Hunter should only open manually) тФАтФА
 
-  // ── Video sync ──
+  // тФАтФА Video sync тФАтФА
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !aRollUrl) return;
@@ -405,7 +352,7 @@ export const VideoEditor = React.memo(({
     };
   }, [aRollUrl]);
 
-  // ── Dynamic Duration Calculation ──
+  // тФАтФА Dynamic Duration Calculation тФАтФА
   useEffect(() => {
     const maxBrollEnd = brollClips.length > 0 
       ? Math.max(...brollClips.map(c => c.endTime)) 
@@ -413,16 +360,13 @@ export const VideoEditor = React.memo(({
     
     // Total duration is defined by A-Roll length or the last B-Roll, whichever is later.
     // We keep a 60s minimum for UI comfort unless assets are longer.
-    // 🛡️ Safety Guard against NaN/Infinity crashes on Chrome
-    const safeARollDuration = isFinite(aRollDuration) ? aRollDuration : 0;
-    const safeMaxBrollEnd = isFinite(maxBrollEnd) ? maxBrollEnd : 0;
-    const newDuration = Math.max(safeARollDuration, safeMaxBrollEnd, 60);
+    const newDuration = Math.max(aRollDuration, maxBrollEnd, 60);
     if (Math.abs(newDuration - duration) > 0.1) {
       setDuration(newDuration);
     }
   }, [aRollDuration, brollClips, duration]);
 
-  // ── Drag listeners ──
+  // тФАтФА Drag listeners тФАтФА
   useEffect(() => {
     const move = (e: MouseEvent | TouchEvent) => {
       if (!dragRef.current || !timelineRef.current) return;
@@ -465,8 +409,6 @@ export const VideoEditor = React.memo(({
             clip.startTime = ns;
           } else {
             let ne = Math.max(clip.startTime + 0.2, Math.min(600, origEnd + dSec));
-            // ENFORCE 3s CAP
-            ne = Math.min(ne, clip.startTime + 3);
             const other = prev.filter(c => c.id !== clipId);
             other.forEach(o => { if (ne > o.startTime && origEnd <= o.startTime) ne = o.startTime; });
             clip.endTime = ne;
@@ -506,7 +448,7 @@ export const VideoEditor = React.memo(({
     };
   }, [duration]);
 
-  // ── Core Pipeline: Transcription → Karaoke Subs → Auto B-Roll placement ──
+  // тФАтФА Core Pipeline: Transcription тЖТ Karaoke Subs тЖТ Auto B-Roll placement тФАтФА
   const buildKaraokeClips = (words: TranscriptWord[]): SubtitleClip[] => {
     const final: SubtitleClip[] = [];
     let currentBatch: TranscriptWord[] = [];
@@ -559,7 +501,7 @@ export const VideoEditor = React.memo(({
 
   const runTranscriptionAndPhrases = async (forceFresh = false) => {
     console.log('[Editor] Starting transcription flow, forceFresh:', forceFresh);
-    setStageMessage('Анализ аудио...');
+    setStageMessage('╨Р╨╜╨░╨╗╨╕╨╖ ╨░╤Г╨┤╨╕╨╛...');
     setTranscriptionError(null);
     setSubtitleClips([]); // CLEAR OLD SUBS
     setTranscript([]);     // CLEAR OLD WORDS
@@ -580,23 +522,21 @@ export const VideoEditor = React.memo(({
       transcriptionOk = true;
     } else if (aRollUrl || rawFile) {
       try {
-        setStageMessage('Извлечение аудио...');
+        setStageMessage('╨Ш╨╖╨▓╨╗╨╡╤З╨╡╨╜╨╕╨╡ ╨░╤Г╨┤╨╕╨╛...');
         const sourceBlob: Blob | null =
           rawFile ||
           (aRollUrl?.startsWith('blob:')
             ? await fetch(aRollUrl).then(r => r.blob())
             : null);
 
-        if (!sourceBlob) throw new Error('Не удалось получить файл');
+        if (!sourceBlob) throw new Error('╨Э╨╡ ╤Г╨┤╨░╨╗╨╛╤Б╤М ╨┐╨╛╨╗╤Г╤З╨╕╤В╤М ╤Д╨░╨╣╨╗');
 
-        // ── STEP 1: FFmpeg audio extraction (works on iOS HEVC, Android, Desktop)
-        // 🔥 Fully dynamic import to prevent bundle bloat and Chrome crashes
-        const { extractAudioFFmpeg } = await import('@/lib/ffmpeg-audio');
+        // тФАтФА STEP 1: FFmpeg audio extraction (works on iOS HEVC, Android, Desktop)
         const audioBlob = await extractAudioFFmpeg(sourceBlob, {
           onProgress: setStageMessage,
         });
 
-        setStageMessage('AI расшифровка голоса...');
+        setStageMessage('AI ╤А╨░╤Б╤И╨╕╤Д╤А╨╛╨▓╨║╨░ ╨│╨╛╨╗╨╛╤Б╨░...');
         const formData = new FormData();
 
         if (audioBlob && audioBlob.size > 0) {
@@ -604,19 +544,19 @@ export const VideoEditor = React.memo(({
           console.log('[Editor] Sending FFmpeg MP3:', (audioBlob.size / 1024).toFixed(0), 'KB');
           formData.append('file', new File([audioBlob], 'audio.mp3', { type: 'audio/mpeg' }));
         } else {
-          // FFmpeg failed — send raw file with size guard
+          // FFmpeg failed тАФ send raw file with size guard
           const mime = sourceBlob.type || (rawFile?.name?.endsWith('.mov') ? 'video/quicktime' : 'video/mp4');
           const ext  = mime.includes('quicktime') ? 'video.mov' : 'video.mp4';
           const sizeMB = sourceBlob.size / 1024 / 1024;
 
           if (sizeMB > 40) {
             throw new Error(
-              `Видео слишком большое (${sizeMB.toFixed(0)}MB). ` +
-              `Настройки → Камера → Форматы → "Наиболее совместимый" или обрежьте до 45 сек.`
+              `╨Т╨╕╨┤╨╡╨╛ ╤Б╨╗╨╕╤И╨║╨╛╨╝ ╨▒╨╛╨╗╤М╤И╨╛╨╡ (${sizeMB.toFixed(0)}MB). ` +
+              `╨Э╨░╤Б╤В╤А╨╛╨╣╨║╨╕ тЖТ ╨Ъ╨░╨╝╨╡╤А╨░ тЖТ ╨д╨╛╤А╨╝╨░╤В╤Л тЖТ "╨Э╨░╨╕╨▒╨╛╨╗╨╡╨╡ ╤Б╨╛╨▓╨╝╨╡╤Б╤В╨╕╨╝╤Л╨╣" ╨╕╨╗╨╕ ╨╛╨▒╤А╨╡╨╢╤М╤В╨╡ ╨┤╨╛ 45 ╤Б╨╡╨║.`
             );
           }
           console.log('[Editor] FFmpeg failed, sending raw file:', sizeMB.toFixed(1), 'MB');
-          setStageMessage(`Загрузка на AI (${sizeMB.toFixed(0)}MB)...`);
+          setStageMessage(`╨Ч╨░╨│╤А╤Г╨╖╨║╨░ ╨╜╨░ AI (${sizeMB.toFixed(0)}MB)...`);
           formData.append('file', new File([sourceBlob], ext, { type: mime }));
         }
 
@@ -633,7 +573,7 @@ export const VideoEditor = React.memo(({
 
           if (!res.ok) {
             const err = await res.json().catch(() => ({ error: `Server Error ${res.status}` }));
-            throw new Error(err.error || 'Ошибка сервера');
+            throw new Error(err.error || '╨Ю╤И╨╕╨▒╨║╨░ ╤Б╨╡╤А╨▓╨╡╤А╨░');
           }
 
           const data = await res.json();
@@ -647,20 +587,20 @@ export const VideoEditor = React.memo(({
         }
       } catch (err: any) {
         console.error('Transcription flow failed:', err);
-        setTranscriptionError(err.message || 'Ошибка расшифровки');
+        setTranscriptionError(err.message || '╨Ю╤И╨╕╨▒╨║╨░ ╤А╨░╤Б╤И╨╕╤Д╤А╨╛╨▓╨║╨╕');
       }
     }
 
     // 2. Handle failure
     if (!transcriptionOk || words.length === 0) {
-      setStageMessage(transcriptionError || 'Ошибка анализа аудио');
-      if (!transcriptionError) setTranscriptionError('Не удалось получить текст автоматически.');
+      setStageMessage(transcriptionError || '╨Ю╤И╨╕╨▒╨║╨░ ╨░╨╜╨░╨╗╨╕╨╖╨░ ╨░╤Г╨┤╨╕╨╛');
+      if (!transcriptionError) setTranscriptionError('╨Э╨╡ ╤Г╨┤╨░╨╗╨╛╤Б╤М ╨┐╨╛╨╗╤Г╤З╨╕╤В╤М ╤В╨╡╨║╤Б╤В ╨░╨▓╤В╨╛╨╝╨░╤В╨╕╤З╨╡╤Б╨║╨╕.');
       return;
     }
 
     // 3. Process results
     if (words.length > 0) {
-      setStageMessage('Генерация субтитров...');
+      setStageMessage('╨У╨╡╨╜╨╡╤А╨░╤Ж╨╕╤П ╤Б╤Г╨▒╤В╨╕╤В╤А╨╛╨▓...');
       await delay(300);
       setTranscript(words);
       const subClips = buildKaraokeClips(words);
@@ -801,7 +741,7 @@ export const VideoEditor = React.memo(({
     setPendingBrollPhrases([]); 
   }, [pendingBrollPhrases]);
 
-  // ── Manual B-Roll Hunter (opens modal for a specific phrase) ──
+  // тФАтФА Manual B-Roll Hunter (opens modal for a specific phrase) тФАтФА
   const openBRollHunterForClip = (phraseId: string, prompt: string) => {
     setActiveBrollPhraseId(phraseId);
     setActiveBrollPrompt(prompt);
@@ -858,7 +798,7 @@ export const VideoEditor = React.memo(({
             label: phrase?.text.slice(0, 20) || 'AI Scene',
             prompt: phrase?.text || '',
             startTime: phrase?.start || currentTime,
-            endTime: Math.min((phrase?.end || currentTime + 3), (phrase?.start || currentTime) + 3),
+            endTime: (phrase?.end || currentTime + 3),
             track: 0,
           };
           return [...prev, newClip];
@@ -871,7 +811,7 @@ export const VideoEditor = React.memo(({
     setActiveBrollPhraseId(null);
     setStage('editing');
   };
-  // ── Video Upload ────────────────────────────────────────────────────────
+  // тФАтФА Video Upload тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -900,30 +840,7 @@ export const VideoEditor = React.memo(({
     setEditingPhraseId(null);
   };
 
-  // ── Helpers ─────────────────────────────────────────────────────────────
-
-  
-  const handleTimelineTouch = (e: React.TouchEvent) => {
-    if (e.touches.length === 2) {
-      const dist = Math.hypot(
-        e.touches[0].clientX - e.touches[1].clientX,
-        e.touches[0].clientY - e.touches[1].clientY
-      );
-      
-      if (lastPinchDistRef.current !== null) {
-        const delta = dist - lastPinchDistRef.current;
-        setTimelineZoom(prev => {
-          const newZoom = Math.min(Math.max(prev + delta * 0.2, 5), 150);
-          return newZoom;
-        });
-      }
-      lastPinchDistRef.current = dist;
-    }
-  };
-
-  const handleTouchEnd = () => {
-    lastPinchDistRef.current = null;
-  };
+  // тФАтФА Helpers тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
   const togglePlay = () => {
     const v = videoRef.current;
@@ -948,7 +865,7 @@ export const VideoEditor = React.memo(({
     // Mobile-first Long Press to Delete (800ms)
     if (handle === 'move') {
       longPressTimerRef.current = setTimeout(() => {
-        if (window.confirm('Удалить этот фрагмент?')) {
+        if (window.confirm('╨г╨┤╨░╨╗╨╕╤В╤М ╤Н╤В╨╛╤В ╤Д╤А╨░╨│╨╝╨╡╨╜╤В?')) {
           if (type === 'broll') setBrollClips(p => p.filter(c => c.id !== clipId));
           else setSubtitleClips(p => p.filter(c => c.id !== clipId));
           dragRef.current = null;
@@ -981,7 +898,7 @@ export const VideoEditor = React.memo(({
   const phaseLabels = ['Upload', 'Subtitles', 'B-Roll'];
   const phaseIndex = stage === 'empty' ? 0 : stage === 'transcribing' ? 1 : stage === 'editing' ? 1 : 2;
 
-  // ── RENDER ───────────────────────────────────────────────────────────────
+  // тФАтФА RENDER тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
   if (!manifest) {
     return (
       <div className="flex-1 bg-black flex flex-col items-center justify-center gap-6">
@@ -1002,7 +919,7 @@ export const VideoEditor = React.memo(({
       <input ref={fileInputRef} type="file" accept="video/*" className="hidden"
         onChange={handleFileChange} />
 
-      {/* ── FOUNDATION SELECTION (Empty State) ── */}
+      {/* тФАтФА FOUNDATION SELECTION (Empty State) тФАтФА */}
       <AnimatePresence>
         {!aRollUrl && (
           <motion.div 
@@ -1061,7 +978,7 @@ export const VideoEditor = React.memo(({
 
             {/* Back button */}
             <button 
-              onClick={() => { if(window.confirm('Вы уверены? Несохраненный прогресс будет потерян.')) onBack(); }}
+              onClick={onBack}
               className="mt-8 py-4 rounded-lg bg-white/5 text-white/30 text-[10px] font-black uppercase tracking-[0.3em] active:scale-95 transition-all"
             >
               Cancel Production
@@ -1070,10 +987,10 @@ export const VideoEditor = React.memo(({
         )}
       </AnimatePresence>
 
-      {/* ── NAV BAR (Only if video loaded) ── */}
+      {/* тФАтФА NAV BAR (Only if video loaded) тФАтФА */}
       <div className="flex items-center justify-between px-4 py-3 border-b border-white/5 z-20 flex-shrink-0 bg-[#050508]">
 
-        <button onClick={() => { if(window.confirm('Вы уверены? Несохраненный прогресс будет потерян.')) onBack(); }}
+        <button onClick={onBack}
           className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all">
           <ArrowLeft size={12} /> Back
         </button>
@@ -1098,17 +1015,17 @@ export const VideoEditor = React.memo(({
         </div>
 
         <button 
-          disabled={isSaving}
           onClick={() => {
-            if (!window.confirm('Приступаем к финальной сборке?')) return;
+            if (!window.confirm('╨Я╤А╨╕╤Б╤В╤Г╨┐╨░╨╡╨╝ ╨║ ╤Д╨╕╨╜╨░╨╗╤М╨╜╨╛╨╣ ╤Б╨▒╨╛╤А╨║╨╡?')) return;
+            console.log('[Editor] Exporting project:', projectId, { brollCount: brollClips.length, hasARoll: !!aRollUrl });
             onNext?.(brollClips, subtitleClips, aRollUrl);
           }}
-          className={`flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-400 ${isSaving ? 'opacity-50 cursor-not-allowed' : ''}`}>
-          {isSaving ? <Loader2 className="w-3 h-3 animate-spin" /> : <>Export <ArrowRight size={12} /></>}
+          className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 shadow-lg shadow-purple-500/30 transition-all hover:bg-purple-400">
+          Export <ArrowRight size={12} />
         </button>
       </div>
 
-      {/* ── VIDEO PREVIEW (Phone Frame) ── */}
+      {/* тФАтФА VIDEO PREVIEW (Phone Frame) тФАтФА */}
       <div className="relative bg-[#050508] flex items-center justify-center flex-shrink-0"
         style={{ height: '38%' }}>
         
@@ -1124,7 +1041,7 @@ export const VideoEditor = React.memo(({
                 playsInline 
                 onClick={togglePlay} 
               />
-              {/* ── B-ROLL OVERLAY PREVIEW ── */}
+              {/* тФАтФА B-ROLL OVERLAY PREVIEW тФАтФА */}
               {(() => {
                 const activeBR = brollClips.find(c => c.url && c.url.length > 5 && currentTime >= c.startTime && currentTime <= c.endTime);
                 if (!activeBR) return null;
@@ -1135,7 +1052,7 @@ export const VideoEditor = React.memo(({
                     </div>
                     <BRollPreview 
                       url={activeBR.url}
-                      startTime={activeBR.startTime} sourceStartTime={activeBR.sourceStartTime}
+                      startTime={activeBR.startTime}
                       currentTime={currentTime}
                       isPlaying={isPlaying}
                     />
@@ -1157,7 +1074,7 @@ export const VideoEditor = React.memo(({
             </div>
           )}
 
-          {/* Subtitle Overlay – Karaoke Style (Inside Frame) */}
+          {/* Subtitle Overlay тАУ Karaoke Style (Inside Frame) */}
           <div className="absolute inset-0 pointer-events-none z-30 flex items-center justify-center">
             <AnimatePresence mode="wait">
               {aRollUrl && (() => {
@@ -1223,7 +1140,7 @@ export const VideoEditor = React.memo(({
                       onClick={() => setStage('editing')}
                       className="mt-4 px-4 py-2 rounded-xl text-white/20 text-[9px] font-bold uppercase tracking-widest hover:text-white/40 transition-colors"
                     >
-                      Пропустить анализ
+                      ╨Я╤А╨╛╨┐╤Г╤Б╤В╨╕╤В╤М ╨░╨╜╨░╨╗╨╕╨╖
                     </button>
                   </div>
               </div>
@@ -1250,7 +1167,7 @@ export const VideoEditor = React.memo(({
         )}
       </div>
 
-      {/* ── ACTION BAR ── */}
+      {/* тФАтФА ACTION BAR тФАтФА */}
       <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0a0a12] border-y border-white/5 flex-shrink-0">
         {/* Transport */}
         <button onClick={() => { setCurrentTime(0); if (videoRef.current) videoRef.current.currentTime = 0; }}
@@ -1296,10 +1213,10 @@ export const VideoEditor = React.memo(({
         )}
       </div>
 
-      {/* ── TIMELINE ── */}
+      {/* тФАтФА TIMELINE тФАтФА */}
       <div className="flex-1 bg-[#080810] overflow-hidden flex flex-col min-h-0">
-        <div className="flex-1 overflow-x-auto overflow-y-hidden" onTouchMove={handleTimelineTouch} onTouchEnd={handleTouchEnd} style={{ WebkitOverflowScrolling: 'touch' }}>
-          <div className="flex flex-col" style={{ minWidth: `${Math.max(duration * timelineZoom, 320)}px`, height: '100%' }}>
+        <div className="flex-1 overflow-x-auto overflow-y-hidden" style={{ WebkitOverflowScrolling: 'touch' }}>
+          <div className="flex flex-col" style={{ minWidth: `${Math.max(duration * 18, 320)}px`, height: '100%' }}>
 
             {/* Ruler */}
             <div ref={timelineRef}
@@ -1332,7 +1249,7 @@ export const VideoEditor = React.memo(({
                       <div key={i} className="w-0.5 bg-emerald-400 rounded-full" style={{ height: `${30 + Math.sin(i * 0.7) * 50}%` }} />
                     ))}
                   </div>
-                  <span className="text-[11px] font-black text-emerald-400 truncate">🎥 A-Roll</span>
+                  <span className="text-[11px] font-black text-emerald-400 truncate">ЁЯОе A-Roll</span>
                 </div>
               ) : (
                 <div className="absolute inset-y-1 left-0 right-0 rounded-lg border border-dashed border-white/8 flex items-center justify-center cursor-pointer hover:border-purple-500/30 transition-all">
@@ -1362,7 +1279,7 @@ export const VideoEditor = React.memo(({
                   id,
                   phraseId: id,
                   startTime: time,
-                  endTime: time + 3,
+                  endTime,
                   label: 'Manual Scene',
                   url: '',
                   prompt: 'cinematic lifestyle shot',
@@ -1380,7 +1297,7 @@ export const VideoEditor = React.memo(({
                     className="flex items-center gap-2"
                   >
                     <div className="w-1.5 h-1.5 rounded-full bg-blue-400 animate-pulse" />
-                    <span className="text-[8px] font-black text-blue-400 uppercase tracking-[0.2em]">AI Анализ сюжета и подбор сцен...</span>
+                    <span className="text-[8px] font-black text-blue-400 uppercase tracking-[0.2em]">AI ╨Р╨╜╨░╨╗╨╕╨╖ ╤Б╤О╨╢╨╡╤В╨░ ╨╕ ╨┐╨╛╨┤╨▒╨╛╤А ╤Б╤Ж╨╡╨╜...</span>
                   </motion.div>
                 </div>
               )}
@@ -1389,7 +1306,7 @@ export const VideoEditor = React.memo(({
                   isSelected={selectedClipId === clip.id}
                   onSelect={() => {
                     if (!clip.url) {
-                      // Empty placeholder — open hunter immediately
+                      // Empty placeholder тАФ open hunter immediately
                       openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt);
                     } else {
                       setSelectedClipId(clip.id);
@@ -1416,7 +1333,7 @@ export const VideoEditor = React.memo(({
         </div>
       </div>
 
-      {/* ── INSPECTOR SHEET ── */}
+      {/* тФАтФА INSPECTOR SHEET тФАтФА */}
       <AnimatePresence>
         {showSheet && (selBR || selSub) && (
           <motion.div initial={{ y: '100%' }} animate={{ y: 0 }} exit={{ y: '100%' }}
@@ -1490,23 +1407,6 @@ export const VideoEditor = React.memo(({
                     </div>
                   </div>
 
-                                    <div className="flex flex-col gap-4 py-2 border-t border-white/5 pt-4">
-                    <div className="flex items-center justify-between">
-                      <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Начало в исходнике</span>
-                      <span className="text-[10px] font-black text-blue-400 tabular-nums">{selBR.sourceStartTime || 0}s</span>
-                    </div>
-                    <input 
-                      type="range" min="0" max="30" step="0.5"
-                      value={selBR.sourceStartTime || 0}
-                      onChange={e => {
-                        const val = parseFloat(e.target.value);
-                        setBrollClips(p => p.map(c => c.id === selBR.id ? { ...c, sourceStartTime: val } : c));
-                      }}
-                      className="w-full h-1.5 bg-white/10 rounded-lg appearance-none cursor-pointer accent-blue-500"
-                    />
-                    <div className="text-[8px] text-white/20 uppercase font-black tracking-widest">Сдвиг внутри видео файла</div>
-                  </div>
-
                   <div className="text-[9px] font-black text-white/30 uppercase tracking-widest">{selBR.label}</div>
 
                   {/* Swap video button */}
@@ -1516,7 +1416,7 @@ export const VideoEditor = React.memo(({
                       openBRollHunterForClip(selBR.phraseId || selBR.id, selBR.prompt);
                     }}
                     className="w-full py-3 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-400 text-[10px] font-black uppercase flex items-center justify-center gap-2 active:scale-95">
-                    <Film size={13} /> Заменить видео
+                    <Film size={13} /> ╨Ч╨░╨╝╨╡╨╜╨╕╤В╤М ╨▓╨╕╨┤╨╡╨╛
                   </button>
 
                   <button onClick={() => { setBrollClips(p => p.filter(c => c.id !== selBR.id)); setSelectedClipId(null); setShowSheet(false); }}
@@ -1534,7 +1434,7 @@ export const VideoEditor = React.memo(({
 
 
 
-      {/* ── PHRASE PICKER MODAL ── */}
+      {/* тФАтФА PHRASE PICKER MODAL тФАтФА */}
       <AnimatePresence>
         {phrasePickerOpen && (
           <motion.div
@@ -1567,7 +1467,7 @@ export const VideoEditor = React.memo(({
         )}
       </AnimatePresence>
 
-      {/* ── B-ROLL AI MODAL ── */}
+      {/* тФАтФА B-ROLL AI MODAL тФАтФА */}
       <BRollModal
         isOpen={brollModalOpen}
         onClose={() => {
@@ -1585,7 +1485,7 @@ export const VideoEditor = React.memo(({
   );
 });
 
-// ── Track Row ─────────────────────────────────────────────────────────────
+// тФАтФА Track Row тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
 const TrackRow = React.memo(({ label, color, children, onClick, onAdd, onTimelineClick }: { 
   label: string; 
@@ -1596,69 +1496,8 @@ const TrackRow = React.memo(({ label, color, children, onClick, onAdd, onTimelin
   onTimelineClick?: (time: number) => void;
 }) => {
   const rowRef = useRef<HTMLDivElement>(null);
-  const [holdProgress, setHoldProgress] = useState(0);
-  const holdTimerRef = useRef<any | null>(null);
-  const startPosRef = useRef({ x: 0, y: 0 });
-  const isHoldingRef = useRef(false);
-
-  const startHold = (e: React.PointerEvent) => {
-    // Only apply 3s hold for B-roll track
-    if (label !== 'B' || !onTimelineClick) {
-      return;
-    }
-
-    isHoldingRef.current = true;
-    startPosRef.current = { x: e.clientX, y: e.clientY };
-    setHoldProgress(0.01);
-
-    const startTime = Date.now();
-    const duration = 3000; // 3 seconds as requested
-
-    if (holdTimerRef.current) clearInterval(holdTimerRef.current);
-    
-    holdTimerRef.current = setInterval(() => {
-      const elapsed = Date.now() - startTime;
-      const progress = Math.min(elapsed / duration, 1);
-      setHoldProgress(progress);
-
-      if (progress >= 1) {
-        if (holdTimerRef.current) clearInterval(holdTimerRef.current);
-        holdTimerRef.current = null;
-        isHoldingRef.current = false;
-        
-        // Trigger the action
-        if (rowRef.current) {
-          const rect = rowRef.current.getBoundingClientRect();
-          const x = startPosRef.current.x - rect.left;
-          const totalDuration = parseFloat(document.querySelector('[data-duration]')?.getAttribute('data-duration') || '0');
-          if (totalDuration > 0) {
-            onTimelineClick((x / rect.width) * totalDuration);
-          }
-        }
-        setHoldProgress(0);
-      }
-    }, 50);
-  };
-
-  const cancelHold = () => {
-    if (holdTimerRef.current) {
-      clearInterval(holdTimerRef.current);
-      holdTimerRef.current = null;
-    }
-    isHoldingRef.current = false;
-    setHoldProgress(0);
-  };
-
-  const handlePointerMove = (e: React.PointerEvent) => {
-    if (!isHoldingRef.current) return;
-    const dist = Math.sqrt(Math.pow(e.clientX - startPosRef.current.x, 2) + Math.pow(e.clientY - startPosRef.current.y, 2));
-    if (dist > 10) cancelHold(); // Cancel if finger moves too much
-  };
-
+  
   const handleInternalClick = (e: React.MouseEvent) => {
-    // For non-B tracks, keep regular click
-    if (label === 'B') return; 
-
     if (!onTimelineClick || !rowRef.current) return;
     const rect = rowRef.current.getBoundingClientRect();
     const x = e.clientX - rect.left;
@@ -1685,34 +1524,15 @@ const TrackRow = React.memo(({ label, color, children, onClick, onAdd, onTimelin
       <div 
         ref={rowRef}
         onClick={handleInternalClick}
-        onPointerDown={startHold}
-        onPointerUp={cancelHold}
-        onPointerLeave={cancelHold}
-        onPointerMove={handlePointerMove}
-        className="flex-1 relative cursor-crosshair touch-none"
+        className="flex-1 relative cursor-crosshair"
       >
-        {/* Hold Progress Indicator */}
-        {holdProgress > 0 && (
-          <div 
-            className="absolute top-0 bottom-0 bg-blue-500/20 border-r-2 border-blue-400 z-[60] pointer-events-none"
-            style={{ 
-              left: `${((startPosRef.current.x - (rowRef.current?.getBoundingClientRect().left || 0)) / (rowRef.current?.getBoundingClientRect().width || 1)) * 100}%`,
-              width: `${holdProgress * 40}px`,
-              transition: 'none'
-            }}
-          >
-             <div className="absolute top-1/2 -translate-y-1/2 left-full ml-2 whitespace-nowrap bg-blue-600 text-white text-[8px] font-black px-2 py-1 rounded-full shadow-xl">
-               HOLD {Math.ceil(3 - holdProgress * 3)}s
-             </div>
-          </div>
-        )}
         {children}
       </div>
     </div>
   );
 });
 
-// ── B-Roll Timeline Clip ──────────────────────────────────────────────────
+// тФАтФА B-Roll Timeline Clip тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
 const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart }: {
   clip: BRollClip; duration: number; isSelected: boolean;
@@ -1739,7 +1559,7 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
       </div>
       <span className="flex-1 text-[9px] font-black truncate px-6 select-none flex items-center gap-2">
         {!clip.url && <Sparkles size={10} className="text-purple-400 animate-spin-slow" />}
-        {clip.url ? clip.label : 'Нажми, чтобы добавить видео'}
+        {clip.url ? clip.label : '╨Э╨░╨╢╨╝╨╕, ╤З╤В╨╛╨▒╤Л ╨┤╨╛╨▒╨░╨▓╨╕╤В╤М ╨▓╨╕╨┤╨╡╨╛'}
       </span>
       <div className="absolute right-0 top-0 bottom-0 w-6 cursor-ew-resize flex items-center justify-center group z-20"
         onMouseDown={e => { e.stopPropagation(); onDragStart(e, 'end'); }}
@@ -1750,7 +1570,7 @@ const BRollTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, on
   );
 });
 
-// ── Subtitle Clip ─────────────────────────────────────────────────────────
+// тФАтФА Subtitle Clip тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
 const SubtitleTimelineClip = React.memo(({ clip, duration, isSelected, onSelect, onDragStart }: {
   clip: SubtitleClip; duration: number; isSelected: boolean;
@@ -1781,6 +1601,6 @@ const SubtitleTimelineClip = React.memo(({ clip, duration, isSelected, onSelect,
   );
 });
 
-// ── Helpers ───────────────────────────────────────────────────────────────
+// тФАтФА Helpers тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));

@@ -1,10 +1,9 @@
-'use client';
+﻿'use client';
 
-import dynamic from "next/dynamic";
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
-import { useRouter, usePathname } from '@/navigation';
+import { useRouter } from '@/navigation';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { 
   Plus, CheckCircle2, Lock, Scissors, RefreshCw, Wand2, Brain, Monitor, FileVideo, Download, X, Layout, ChevronRight
@@ -20,89 +19,28 @@ import { v4 as uuidv4 } from 'uuid';
 // Atomic Components
 import { StudioSidebar } from './_components/StudioSidebar';
 import { TeleprompterView } from './_components/TeleprompterView';
+import { StoryboardGrid } from './_components/StoryboardGrid';
 import { RecordingReview } from './_components/RecordingReview';
 import { SourcePicker } from './_components/SourcePicker';
+import { VideoEditor } from './_components/VideoEditor';
 import { ProductionBranch } from './_components/ProductionBranch';
+import DistributionFactory from './_components/DistributionFactory';
 
-const StoryboardGrid = dynamic(() => import('./_components/StoryboardGrid').then(mod => mod.StoryboardGrid), { ssr: false });
-const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(mod => mod.VideoEditor), { 
-  ssr: false,
-  loading: () => (
-    <div className="w-full h-full flex flex-col items-center justify-center bg-black/20 backdrop-blur-3xl rounded-[3rem] border border-white/5">
-       <div className="w-12 h-12 border-4 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mb-4" />
-       <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 animate-pulse">Initializing Production Engine...</p>
-    </div>
-  )
-});
-const DistributionFactory = dynamic(() => import('./_components/DistributionFactory').then(mod => mod.default), { ssr: false });
-
-class TabErrorBoundary extends React.Component<{ children: React.ReactNode }, { hasError: boolean, error: any }> {
-  constructor(props: any) {
-    super(props);
-    this.state = { hasError: false, error: null };
-  }
-  static getDerivedStateFromError(error: any) {
-    return { hasError: true, error };
-  }
-  componentDidCatch(error: any, errorInfo: any) {
-    console.error("[Tab Crash]:", error, errorInfo);
-  }
-  render() {
-    if (this.state.hasError) {
-      return (
-        <div className="w-full h-full flex flex-col items-center justify-center bg-red-950/20 backdrop-blur-3xl p-10 text-center rounded-[3rem] border border-red-500/20 z-[200]">
-          <div className="w-20 h-20 bg-red-500/20 rounded-full flex items-center justify-center mb-6">
-            <Monitor className="text-red-500 w-10 h-10" />
-          </div>
-          <h2 className="text-2xl font-black text-red-500 uppercase italic mb-4">Production Core Fault</h2>
-          <div className="bg-black/40 p-4 rounded-2xl border border-white/5 w-full max-w-lg mb-8">
-            <code className="text-red-400 text-[10px] break-all">{this.state.error?.message || "Unknown error"}</code>
-          </div>
-          <button 
-            onClick={() => window.location.reload()}
-            className="px-8 py-3 bg-red-600 text-white font-black uppercase text-[10px] rounded-2xl shadow-2xl hover:bg-red-500 transition-all"
-          >
-            Hot Reload Engine
-          </button>
-        </div>
-      );
-    }
-    return this.props.children;
-  }
-}
-
-
-
+// Global Shared Components
 import StudioTimeline from '@/components/studio/StudioTimeline';
 import KnowledgeLab from '@/components/studio/KnowledgeLab';
 import { StrategistChat } from '@/components/studio/StrategistChat';
 import FacelessStudio from '@/components/studio/FacelessStudio';
 
 export default function StudioPage() {
-  useEffect(() => {
-    const handleError = (e: any) => {
-      console.error('[Global Error]', e);
-      const msg = e.message || 'Unknown Error';
-      localStorage.setItem('viral_last_crash', JSON.stringify({
-        msg,
-        stack: e.error?.stack,
-        time: new Date().toISOString()
-      }));
-    };
-    window.addEventListener('error', handleError);
-    return () => window.removeEventListener('error', handleError);
-  }, []);
-
   const t = useTranslations('studio');
   const router = useRouter();
-  const pathname = usePathname();
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
 
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') as any || 'concept';
 
   const [isLoading, setIsLoading] = useState(true);
-  const [studioCrashError, setStudioCrashError] = useState<string | null>(null);
   const [project, setProject] = useState<Project | null>(null);
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
@@ -144,7 +82,7 @@ export default function StudioPage() {
   const prompterRef = useRef<HTMLDivElement>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const recordingTimerRef = useRef<any | null>(null);
+  const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const scrollPosRef = useRef(0);
 
   const [showLimitModal, setShowLimitModal] = useState(false);
@@ -162,18 +100,12 @@ export default function StudioPage() {
       if (showFaceless) params.set('mode', 'faceless');
       else params.delete('mode');
       
-      const currentPath = pathname;
-      if (!currentPath || currentPath.includes('//') || !projectId) {
-        console.warn('[Studio] Skipping URL sync - invalid state:', { currentPath, projectId });
-        return;
-      }
+      const currentPath = window.location.pathname;
       const newUrl = `${currentPath}?${params.toString()}`;
       
       try {
         if (window.location.search !== `?${params.toString()}`) {
-          // Use low-level history API to avoid Next.js router overhead on mobile
-          const finalUrl = locale ? `/${locale}${newUrl}` : newUrl;
-          window.history.replaceState(null, '', finalUrl);
+          window.history.replaceState({ path: newUrl }, '', newUrl);
           console.log('[Studio] Syncing URL:', newUrl);
         }
       } catch (e) {
@@ -196,7 +128,7 @@ export default function StudioPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [activeTab, showFaceless]);
 
-  //  // ── AUTOSAVE & RECOVERY ──────────────────────────────────────────────
+  //  // тФАтФА AUTOSAVE & RECOVERY тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
   useEffect(() => {
     if (manifest && projectId) {
       localStorage.setItem(`viral_draft_${projectId}`, JSON.stringify({
@@ -338,25 +270,13 @@ export default function StudioPage() {
       
       setIsReading(true);
       const localChunks: Blob[] = [];
-            // 🚀 Smart MimeType selection for Cross-Platform compatibility (iPhone vs Android/PC)
-      const supportedMimeTypes = [
-        'video/mp4;codecs=avc1',
-        'video/mp4',
-        'video/webm;codecs=vp9,opus',
-        'video/webm;codecs=vp8,opus',
-        'video/webm'
-      ];
-      const mimeType = supportedMimeTypes.find(type => MediaRecorder.isTypeSupported(type));
-      
-      console.log('[Studio] Initializing MediaRecorder with mimeType:', mimeType || 'browser default');
-      
-      const recorder = mimeType 
-        ? new MediaRecorder(cameraStream, { mimeType })
-        : new MediaRecorder(cameraStream);
+      const recorder = new MediaRecorder(cameraStream, { 
+        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm' 
+      });
       
       recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
       recorder.onstop = () => {
-        const blob = new Blob(localChunks, { type: recorder.mimeType || 'video/mp4' });
+        const blob = new Blob(localChunks, { type: 'video/webm' });
         const url = URL.createObjectURL(blob);
         setLastRecordingUrl(url);
         setShowRecordingReview(true);
@@ -438,11 +358,11 @@ export default function StudioPage() {
     setIsSaving(true);
     try {
       if (!manifest) {
-        alert('Ошибка: манифест проекта не загружен. Попробуйте обновить страницу.');
+        alert('╨Ю╤И╨╕╨▒╨║╨░: ╨╝╨░╨╜╨╕╤Д╨╡╤Б╤В ╨┐╤А╨╛╨╡╨║╤В╨░ ╨╜╨╡ ╨╖╨░╨│╤А╤Г╨╢╨╡╨╜. ╨Я╨╛╨┐╤А╨╛╨▒╤Г╨╣╤В╨╡ ╨╛╨▒╨╜╨╛╨▓╨╕╤В╤М ╤Б╤В╤А╨░╨╜╨╕╤Ж╤Г.');
         return;
       }
 
-      // 🔥 Merge editor state into manifest
+      // ЁЯФе Merge editor state into manifest
       const manifestAny = manifest as any;
       const resolvedARollUrl = 
         explicitARollUrl ||
@@ -468,14 +388,14 @@ export default function StudioPage() {
         } : s)
       };
 
-      // ✅ Trigger background distribution asset generation
+      // тЬЕ Trigger background distribution asset generation
       fetch('/api/ai/distribution-assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scriptText: finalScriptText, projectId, locale, background: true })
       }).catch(e => console.error('[Studio] Prefetch failed:', e));
 
-      // ✅ Background Save manifest — wait for it to prevent race condition on Delivery page
+      // тЬЕ Background Save manifest тАФ wait for it to prevent race condition on Delivery page
       let savedVersion = null;
       if (currentVersionId) {
         savedVersion = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
@@ -493,12 +413,12 @@ export default function StudioPage() {
       
       // Note: Draft is preserved for safety in case of render failure
 
-      // ✅ Final Redirect
-      router.push(`/app/projects/new/delivery?projectId=${projectId}`);
+      // тЬЕ Final Redirect
+      router.push(`/projects/new/delivery?projectId=${projectId}`);
 
     } catch (err: any) {
       console.error('Export failed:', err);
-      alert(`Не удалось сохранить проект: ${err.message}`);
+      alert(`╨Э╨╡ ╤Г╨┤╨░╨╗╨╛╤Б╤М ╤Б╨╛╤Е╤А╨░╨╜╨╕╤В╤М ╨┐╤А╨╛╨╡╨║╤В: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -511,7 +431,7 @@ export default function StudioPage() {
 
   return (
     <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
-      {/* 🚀 Pro Studio Mainframe - Full Screen Immersion */}
+      {/* ЁЯЪА Pro Studio Mainframe - Full Screen Immersion */}
       <div className="flex h-full w-full overflow-hidden">
         <StudioSidebar 
           activeTab={activeTab as any}
@@ -564,7 +484,6 @@ export default function StudioPage() {
                   manifest={manifest || undefined} 
                   setManifest={(m) => setManifest(m)} 
                   containerClassName="relative h-full"
-                  locale={locale}
                 />
 
                 {manifest && (
@@ -574,10 +493,10 @@ export default function StudioPage() {
                     className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[110]"
                   >
                     <button
-                      onClick={() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
+                      onClick={() => setActiveTab('branch')}
                       className="flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.4)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.6)] active:scale-95 transition-all group"
                     >
-                      ПЕРЕЙТИ К ПРОДАКШНУ <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                      ╨Я╨Х╨а╨Х╨Щ╨в╨Ш ╨Ъ ╨Я╨а╨Ю╨Ф╨Р╨Ъ╨и╨Э╨г <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                     </button>
                   </motion.div>
                 )}
@@ -589,13 +508,13 @@ export default function StudioPage() {
                 onSelect={(type) => {
                   if (type === 'record') {
                     setShowFaceless(false);
-                    ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('teleprompter');
+                    setActiveTab('teleprompter');
                   } else if (type === 'faceless') {
                     setShowFaceless(true);
-                    setTimeout(() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
+                    setActiveTab('assembly');
                   }
                 }}
-                onBack={() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('concept')}
+                onBack={() => setActiveTab('concept')}
               />
             )}
 
@@ -623,7 +542,7 @@ export default function StudioPage() {
                    onSpeedChange={setScrollSpeed}
                    isRecordingVideo={isRecordingVideo}
                     recordingTime={recordingTime}
-                    onBack={() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
+                    onBack={() => setActiveTab('branch')}
                     onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
                    onFlipCamera={() => setIsMirrored(!isMirrored)}
                    onScriptUpdate={async (newText) => {
@@ -640,7 +559,7 @@ export default function StudioPage() {
                       if (lastRecordingUrl) {
                         setShowRecordingReview(true);
                       } else {
-                        setTimeout(() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
+                        setActiveTab('assembly');
                       }
                    }}
                    t={t}
@@ -661,17 +580,6 @@ export default function StudioPage() {
                     setLastRecordingUrl={setLastRecordingUrl}
                     updateSegmentField={updateSegmentField}
                     handleAcceptRecording={async (url) => {
-                      // 🚀 iOS CRITICAL: Aggressively release hardware before heavy montage render
-                      if (cameraStream) {
-                        cameraStream.getTracks().forEach(t => t.stop());
-                        setCameraStream(null);
-                      }
-                      console.log('[Studio] Accepting recording:', url, 'Project:', projectId);
-                      if (!projectId) {
-                        console.error('[Studio] Missing projectId in handleAcceptRecording!');
-                        alert('Error: Project ID lost. Please refresh.');
-                        return;
-                      }
                       if (manifest) {
                          const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
                          const newManifest = {
@@ -688,7 +596,7 @@ export default function StudioPage() {
                       // 1. Give Android a moment to stop camera and clear memory
                       setTimeout(() => {
                         setShowRecordingReview(false);
-                        setTimeout(() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('assembly'), 250);
+                        setActiveTab('assembly');
                       }, 100);
                     }}
                     manifest={manifest}
@@ -701,11 +609,10 @@ export default function StudioPage() {
               <VideoEditor
                 manifest={manifest}
                 updateSegmentField={updateSegmentField}
-                onBack={() => ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('branch')}
+                onBack={() => setActiveTab('branch')}
                 onNext={handleFinalExport}
                 projectId={projectId}
                 onFaceless={() => setShowFaceless(true)}
-                isSaving={isSaving}
               />
             )}
 
@@ -717,7 +624,7 @@ export default function StudioPage() {
 
                 onJumpToConcept={() => {
                   setShowFaceless(false);
-                  ((t: any) => { console.log('[Studio] Switching to tab:', t); setActiveTab(t); })('concept');
+                  setActiveTab('concept');
                 }}
                 onComplete={(videoBlob, transcriptData) => {
                   const localUrl = URL.createObjectURL(videoBlob);
@@ -760,27 +667,13 @@ export default function StudioPage() {
             )}
 
             {activeTab === 'knowledge' && (
-              <KnowledgeLab profile={currentProfile!} onProfileUpdate={setCurrentProfile} locale={locale} />
+              <KnowledgeLab profile={currentProfile!} onProfileUpdate={setCurrentProfile} />
             )}
           </div>
         </main>
       </div>
 
 
-
-      
-      {/* 🛠 DEBUG MONITOR (Visible only for you) */}
-      <div className="fixed bottom-0 left-0 right-0 z-[9999] pointer-events-none p-4 flex flex-col items-center">
-        {studioCrashError && (
-          <div className="p-4 bg-red-600/90 backdrop-blur-xl border border-red-500 rounded-2xl shadow-2xl text-white max-w-sm w-full pointer-events-auto animate-bounce">
-            <h4 className="font-black uppercase text-[10px] tracking-widest mb-1">SYSTEM ERROR CRASH</h4>
-            <p className="text-[11px] font-bold">{studioCrashError}</p>
-          </div>
-        )}
-        <div id="viral-debug-console" className="mt-2 text-[8px] font-mono text-cyan-400/30 uppercase tracking-widest bg-black/40 px-3 py-1 rounded-full backdrop-blur-sm">
-           System Kernel Live...
-        </div>
-      </div>
 
       <PremiumLimitModal
         isOpen={showLimitModal}
