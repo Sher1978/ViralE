@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
@@ -128,7 +128,7 @@ export default function StudioPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [activeTab, showFaceless]);
 
-  //  // тФАтФА AUTOSAVE & RECOVERY тФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФАтФА
+  // ── AUTOSAVE & RECOVERY ─────────────────────────────────────────────────
   useEffect(() => {
     if (manifest && projectId) {
       localStorage.setItem(`viral_draft_${projectId}`, JSON.stringify({
@@ -358,7 +358,7 @@ export default function StudioPage() {
     setIsSaving(true);
     try {
       if (!manifest) {
-        alert('╨Ю╤И╨╕╨▒╨║╨░: ╨╝╨░╨╜╨╕╤Д╨╡╤Б╤В ╨┐╤А╨╛╨╡╨║╤В╨░ ╨╜╨╡ ╨╖╨░╨│╤А╤Г╨╢╨╡╨╜. ╨Я╨╛╨┐╤А╨╛╨▒╤Г╨╣╤В╨╡ ╨╛╨▒╨╜╨╛╨▓╨╕╤В╤М ╤Б╤В╤А╨░╨╜╨╕╤Ж╤Г.');
+        alert('Ошибка: манифест проекта не загружен. Попробуйте обновить страницу.');
         return;
       }
 
@@ -414,11 +414,11 @@ export default function StudioPage() {
       // Note: Draft is preserved for safety in case of render failure
 
       // тЬЕ Final Redirect
-      router.push(`/projects/new/delivery?projectId=${projectId}`);
+      router.push(`/app/projects/new/delivery?projectId=${projectId}`);
 
     } catch (err: any) {
       console.error('Export failed:', err);
-      alert(`╨Э╨╡ ╤Г╨┤╨░╨╗╨╛╤Б╤М ╤Б╨╛╤Е╤А╨░╨╜╨╕╤В╤М ╨┐╤А╨╛╨╡╨║╤В: ${err.message}`);
+      alert(`Не удалось сохранить проект: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -496,7 +496,7 @@ export default function StudioPage() {
                       onClick={() => setActiveTab('branch')}
                       className="flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.4)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.6)] active:scale-95 transition-all group"
                     >
-                      ╨Я╨Х╨а╨Х╨Щ╨в╨Ш ╨Ъ ╨Я╨а╨Ю╨Ф╨Р╨Ъ╨и╨Э╨г <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
+                      ПЕРЕЙТИ К ПРОДАКШНУ <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
                     </button>
                   </motion.div>
                 )}

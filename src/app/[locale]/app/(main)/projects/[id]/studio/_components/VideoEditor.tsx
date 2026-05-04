@@ -1,4 +1,4 @@
-﻿'use client';
+'use client';
 
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
@@ -68,7 +68,7 @@ interface VideoEditorProps {
 function buildTranscript(manifest: ProductionManifest | null, videoDuration: number): TranscriptWord[] {
   if (!manifest) {
     // Fallback for custom uploads without a script: create a single placeholder word
-    return [{ text: "[╨а╨╡╨┤╨░╨║╤В╨╕╤А╤Г╨╣╤В╨╡ ╤В╨╡╨║╤Б╤В ╨╖╨┤╨╡╤Б╤М]", start: 0, end: videoDuration }];
+    return [{ text: "[Редактируйте текст здесь]", start: 0, end: videoDuration }];
   }
   const segments = manifest?.segments?.filter((s: any) => s.scriptText) || [];
   const dur = videoDuration > 0 ? videoDuration : 60;
