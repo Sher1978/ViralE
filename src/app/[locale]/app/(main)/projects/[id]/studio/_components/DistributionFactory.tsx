@@ -6,8 +6,7 @@ import {
   Camera, Share2, Play, Download, 
   Copy, Check, Sparkles, Loader2, Image as ImageIcon,
   ChevronRight, RefreshCw, Layers, Monitor, Brain,
-  Instagram, Facebook, Linkedin, Twitter, Zap,
-  ExternalLink, Wand2
+  Zap, ExternalLink, Wand2
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -146,7 +145,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const platforms: { id: Platform; label: string; icon: any }[] = [
     { id: 'sfv', label: 'Shorts/Reels', icon: Zap },
     { id: 'threads', label: 'Threads/FB', icon: Share2 },
-    { id: 'linkedin', label: 'LinkedIn', icon: Linkedin },
+    { id: 'linkedin', label: 'LinkedIn', icon: Monitor },
     { id: 'carousel', label: 'IG Carousel', icon: Camera },
     { id: 'banner', label: 'Banner', icon: ImageIcon },
   ];
