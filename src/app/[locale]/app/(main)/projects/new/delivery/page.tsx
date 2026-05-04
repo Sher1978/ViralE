@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter, Link } from '@/navigation';
-import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, ArrowLeft, Loader2, AlertCircle , HardDrive } from 'lucide-react';
+import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, ArrowLeft, Loader2, AlertCircle , HardDrive, Image as ImageIcon } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { renderService, RenderJob } from '@/lib/services/renderService';
 import { socialService } from '@/lib/services/socialService';
@@ -38,7 +38,11 @@ export default function DeliveryPage() {
     setRenderLogs(prev => [...prev.slice(-15), msg]);
   };
   const ffmpegRef = useRef<any>(null);
+  
   const manifest = version?.script_data as any;
+  const distributionAssets = manifest?.distributionAssets as any;
+  const distributionImages = manifest?.distributionImages as Record<string, string> || {};
+
   const scriptData = {
     hook: manifest?.hook || manifest?.script?.hook || manifest?.scriptText?.split('\n')?.[0] || manifest?.segments?.[0]?.scriptText?.split('\n')?.[0] || '',
     context: manifest?.context || manifest?.script?.context || '',
@@ -51,33 +55,34 @@ export default function DeliveryPage() {
       platform: 'Telegram',
       icon: '✈️',
       accent: '#4D9EFF',
-      text: scriptData ? `${scriptData.hook}\n\n${scriptData.context}\n\n${scriptData.meat}\n\n${scriptData.cta}` : '',
+      text: distributionAssets?.sfv_description?.text || (scriptData ? `${scriptData.hook}\n\n${scriptData.meat}\n\n${scriptData.cta}` : ''),
     },
     {
       platform: 'Twitter / X',
       icon: '🐦',
       accent: '#1DA1F2',
-      text: scriptData ? `${scriptData.hook.substring(0, 200)}... #ViralEngine` : '',
+      text: distributionAssets?.deep_content?.threads_fb_text || (scriptData ? `${scriptData.hook.substring(0, 200)}... #ViralEngine` : ''),
     },
     {
       platform: 'Instagram',
       icon: '📸',
       accent: '#E4405F',
-      text: scriptData ? `${scriptData.hook}\n\n${scriptData.meat}\n\n#ViralEngine #Reels` : '',
+      text: distributionAssets?.sfv_description?.text || (scriptData ? `${scriptData.hook}\n\n${scriptData.meat}\n\n#ViralEngine #Reels` : ''),
     },
     {
       platform: 'TikTok',
       icon: '🎵',
       accent: '#00F2EA',
-      text: scriptData ? `${scriptData.hook}\n\n#ViralEngine #Trends` : '',
+      text: distributionAssets?.sfv_description?.text || (scriptData ? `${scriptData.hook}\n\n#ViralEngine #Trends` : ''),
     },
     {
       platform: 'LinkedIn',
       icon: '💼',
       accent: '#0077B5',
-      text: scriptData ? `New insights:\n\n${scriptData.meat}` : '',
+      text: distributionAssets?.linkedin_executive?.text || (scriptData ? `New insights:\n\n${scriptData.meat}` : ''),
     },
   ];
+
   const generateSRT = (clips: any[]) => {
     return clips.map((c, i) => {
       const formatTime = (seconds: number) => {
@@ -97,7 +102,6 @@ export default function DeliveryPage() {
     setRenderProgress(5);
 
     try {
-      // Set project status to rendering
       if (projectId) {
         await projectService.updateProjectStatus(projectId, 'rendering');
       }
@@ -137,75 +141,51 @@ export default function DeliveryPage() {
       const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const res = isMobile ? '720:1280' : '1080:1920';
       const scale = `scale=${res.replace(':', ':')}:force_original_aspect_ratio=increase,crop=${res.replace(':', ':')}`;
-      addLog(`[System] Режим: ${isMobile ? 'Mobile (720p)' : 'Desktop (1080p)'}`);
+      
       let aRollUrl = manifest?.aRollUrl ||
         manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
         manifest?.videoUrl ||
         null;
 
-      // ── RECOVERY: If aRollUrl is missing or is a dead blob, try IndexedDB ──
       if (!aRollUrl || aRollUrl.startsWith('blob:')) {
-        console.log('[Delivery] A-Roll URL missing or session-bound, checking IndexedDB...');
         const cachedVideo = await idb.get(`video_file_${projectId}`);
         if (cachedVideo instanceof Blob) {
            aRollUrl = URL.createObjectURL(cachedVideo);
-           console.log('[Delivery] Recovered A-Roll from IndexedDB');
         }
       }
 
-      if (!aRollUrl) throw new Error('Исходное видео (A-Roll) не найдено. Вернитесь в студию и убедитесь, что видео загружено.');
+      if (!aRollUrl) throw new Error('Исходное видео (A-Roll) не найдено.');
 
       setRenderStatus('Скачивание основного видео...');
-      setRenderProgress(10);
-      
-      try {
-        const aRollData = await fetchFile(aRollUrl);
-      addLog(`[File] Основное видео: ${Math.round(aRollData.byteLength / 1024)} KB`);
-      if (aRollData.byteLength < 100) throw new Error('Исходный файл (A-Roll) поврежден или пуст.');
+      const aRollData = await fetchFile(aRollUrl);
       await ffmpeg.writeFile('input_aroll.mp4', aRollData);
-      } catch (fileErr) {
-        console.error('[Delivery] A-Roll fetch failed:', fileErr);
-        throw new Error('Не удалось получить исходное видео. Попробуйте вернуться в студию и запустить экспорт заново.');
-      }
 
       const brollClipsRaw = manifest?.brollClips || [];
-      const brollClipsWithUrls = brollClipsRaw.filter((c: any) => c.url && (c.url.startsWith('http') || c.url.startsWith('blob')));
       const brollFiles: Array<{ name: string; clip: any }> = [];
 
       for (let i = 0; i < brollClipsRaw.length; i++) {
         const clip = brollClipsRaw[i];
         try {
           setRenderStatus(`Синхронизация B-Roll ${i + 1}/${brollClipsRaw.length}...`);
-          setRenderProgress(10 + Math.round((i / brollClipsRaw.length) * 30));
-          const name = `broll_${i}.mp4`;
-          
           let clipUrl = clip.url;
-          // RECOVERY for B-Roll blobs
           if (!clipUrl || clipUrl.startsWith('blob:')) {
             const cachedBroll = await idb.get(`broll_file_${clip.id}`);
             if (cachedBroll instanceof Blob) {
               clipUrl = URL.createObjectURL(cachedBroll);
             }
           }
-
           if (clipUrl) {
             const bRollData = await fetchFile(clipUrl);
-            addLog(`[File] B-Roll ${i}: ${Math.round(bRollData.byteLength / 1024)} KB`);
-            if (bRollData.byteLength > 100) {
-              await ffmpeg.writeFile(name, bRollData);
-              brollFiles.push({ name, clip });
-            }
+            const name = `broll_${i}.mp4`;
+            await ffmpeg.writeFile(name, bRollData);
+            brollFiles.push({ name, clip });
           }
-        } catch (e) {
-          console.warn(`[FFmpeg] Failed to load B-Roll ${i}, skipping:`, e);
-        }
+        } catch (e) {}
       }
 
-      // --- STEP 2: Pre-process B-Rolls ---
       const processedBrolls = [];
       for (let i = 0; i < brollFiles.length; i++) {
         setRenderStatus(`Оптимизация B-Roll ${i+1}/${brollFiles.length}...`);
-        setRenderProgress(20 + (i / brollFiles.length) * 20);
         const { name, clip } = brollFiles[i];
         const optName = `opt_${name}`;
         await ffmpeg.exec(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', (clip.endTime - clip.startTime).toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
@@ -214,40 +194,39 @@ export default function DeliveryPage() {
       }
 
       setRenderStatus('Подготовка субтитров...');
-      const srtContent = generateSRT(ver.script_data.subtitleClips || []);
+      const subs = manifest.subtitleClips || manifest.segments?.[0]?.subtitleClips || [];
+      console.log('[Delivery] Finalizing subtitles count:', subs.length);
+      const srtContent = generateSRT(subs);
       await ffmpeg.writeFile('subs.srt', srtContent);
 
       setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
       setRenderProgress(60);
 
-            // --- EXTREME MEMORY GUARD (Ping-Pong Strategy) ---
       let currentInput = 'input_aroll.mp4';
       
-      // STEP 1: Subtitles (Foundation)
-      setRenderStatus(`Наложение субтитров...`);
-      const subOutput = `temp_A.mp4`;
-      await ffmpeg.exec([
-        '-i', currentInput,
-        '-vf', `${scale},subtitles=subs.srt:force_style='FontSize=20,PrimaryColour=&H00FFFFFF,OutlineColour=&H00000000,BorderStyle=3,Outline=1,Shadow=0,MarginV=40',format=yuv420p`,
-        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'aac', '-b:a', '128k', subOutput
-      ]);
-      
-      // Immediately free original A-Roll memory
-      try { await ffmpeg.deleteFile('input_aroll.mp4'); } catch(e) {}
-      currentInput = subOutput;
+      if (subs.length > 0) {
+        setRenderStatus(`Наложение субтитров...`);
+        const subOutput = `temp_A.mp4`;
+        const exitCodeSub = await ffmpeg.exec([
+          '-i', currentInput,
+          '-vf', `${scale},subtitles=./subs.srt`,
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'aac', '-b:a', '128k', subOutput
+        ]);
+        
+        if (exitCodeSub !== 0) {
+          console.warn('[Delivery] Subtitle burn failed, continuing without them...');
+        } else {
+          try { await ffmpeg.deleteFile('input_aroll.mp4'); } catch(e) {}
+          currentInput = subOutput;
+        }
+      }
 
-      // STEP 2..N: Layered B-Rolls
       for (let i = 0; i < processedBrolls.length; i++) {
         const broll = processedBrolls[i];
         const nextOutput = i % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
-        
         setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
-        setRenderProgress(60 + (i / processedBrolls.length) * 35);
-        
-        // Since B-roll is ALREADY scaled in preparation step, we just overlay it
         const overlayFilter = `[0:v][1:v]overlay=enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
-        
-        const exitCodeStep = await ffmpeg.exec([
+        await ffmpeg.exec([
           '-i', currentInput,
           '-i', broll.name,
           '-filter_complex', overlayFilter,
@@ -255,59 +234,28 @@ export default function DeliveryPage() {
           '-map', '0:a',
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
         ]);
-
-        if (exitCodeStep !== 0) throw new Error(`FFmpeg step ${i} failed with code ${exitCodeStep}`);
-
-        // AGGRESSIVE CLEANUP: Delete the input we just used
         try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-        // Also delete the processed broll file to free memory
         try { await ffmpeg.deleteFile(broll.name); } catch(e) {}
-        
         currentInput = nextOutput;
       }
 
-      // FINALIZATION
       const finalData = await ffmpeg.readFile(currentInput);
       await ffmpeg.writeFile('output.mp4', finalData);
-      try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-      const exitCode = 0;
-      if (exitCode !== 0) throw new Error(`FFmpeg exited with code ${exitCode}`);
-      setRenderProgress(98);
-
-      const data = await ffmpeg.readFile('output.mp4');
-      const videoBlob = new Blob([data as any], { type: 'video/mp4' });
-      
-      if (videoBlob.size < 1000) {
-        addLog(`[Error] Результат пуст: ${videoBlob.size} байт`);
-        throw new Error('Сборка завершилась ошибкой: получен пустой файл. Попробуйте изменить настройки или вернуться в студию.');
-      }
-
+      const videoBlob = new Blob([finalData as any], { type: 'video/mp4' });
       const videoUrl = URL.createObjectURL(videoBlob);
       
       setRenderProgress(100);
       setRenderStatus('Готово!');
 
-      // Save success status and URL
       if (projectId) {
-        await projectService.updateProject(projectId, { 
-          status: 'completed',
-          final_video_url: videoUrl // Note: this is a local blob, in real prod we'd upload it here
-        });
+        await projectService.updateProject(projectId, { status: 'completed', final_video_url: videoUrl });
       }
 
-      setJob({
-        id: 'local-render',
-        status: 'completed',
-        output_url: videoUrl,
-        progress: 100
-      } as any);
+      setJob({ id: 'local-render', status: 'completed', output_url: videoUrl, progress: 100 } as any);
 
     } catch (err: any) {
       console.error('[Delivery] Client render failed:', err);
       setError(err.message || 'Ошибка рендера');
-      if (projectId) {
-        await projectService.updateProjectStatus(projectId, 'error');
-      }
     } finally {
       setIsLaunchingRender(false);
     }
@@ -325,12 +273,11 @@ export default function DeliveryPage() {
 
   const handleExport = async (target: 'telegram' | 'drive') => {
     setIsExporting(true);
-    addLog(`[Export] Выгрузка в ${target}...`);
     await new Promise(r => setTimeout(r, 1500));
     if (target === 'telegram') {
       window.open('https://t.me/ViralEngine_Bot', '_blank');
     } else {
-      alert('Загрузка на Google Drive начата. Проверьте папку "ViralEngine/Exports"');
+      alert('Загрузка на Google Drive начата.');
     }
     setIsExporting(false);
   };
@@ -340,17 +287,26 @@ export default function DeliveryPage() {
   };
 
   useEffect(() => {
-    async function loadResults() {
-      if (jobId) {
-        // ... existing job loading logic (kept for cloud compatibility if needed)
-      }
+    let pollInterval;
+    if (projectId && !distributionAssets) {
+      pollInterval = setInterval(async () => {
+        const ver = await projectService.getLatestVersion(projectId);
+        if (ver?.script_data?.distributionAssets) {
+          setVersion(ver);
+          clearInterval(pollInterval);
+        }
+      }, 5000);
+    }
+    return () => clearInterval(pollInterval);
+  }, [projectId, !!distributionAssets]);
 
+  useEffect(() => {
+    async function loadResults() {
       if (projectId) {
         try {
           const verData = await projectService.getLatestVersion(projectId);
           if (verData) {
             setVersion(verData);
-            // AUTO-LAUNCH CLIENT-SIDE RENDER
             handleClientRender(verData);
           }
         } catch (err) {
@@ -364,8 +320,7 @@ export default function DeliveryPage() {
       setIsLoading(false);
     }
     loadResults();
-  }, [jobId, projectId]);
-
+  }, [projectId]);
 
   if (isLoading) {
     return (
@@ -376,78 +331,32 @@ export default function DeliveryPage() {
     );
   }
 
-  if (error || (job && job.status === 'failed')) {
+  if (error) {
     return (
       <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
         <div className="p-6 rounded-[2.5rem] bg-red-500/10 border border-red-500/20 text-center space-y-4 max-w-sm">
           <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
           <h2 className="text-xl font-black text-white uppercase tracking-tighter">Delivery Failed</h2>
-          <p className="text-sm text-white/40">
-            {error || job?.error_log || 'An unknown error occurred during the render process.'}
-          </p>
-          {renderLogs.length > 0 && (
-            <div className="mt-4 p-3 bg-black/40 rounded-2xl border border-white/5 text-left space-y-1 overflow-hidden">
-              <div className="text-[8px] font-black text-white/20 uppercase tracking-widest mb-1">Debug Terminal</div>
-              {renderLogs.map((log, i) => (
-                <div key={i} className="text-[9px] font-mono text-white/40 leading-tight">
-                  <span className="text-purple-500/50 mr-1">$</span> {log}
-                </div>
-              ))}
-            </div>
-          )}
+          <p className="text-sm text-white/40">{error}</p>
         </div>
-        <button 
-          onClick={() => { if (projectId) router.push(`/app/projects/${projectId}/studio?tab=assembly`); else router.back(); }}
-          className="px-8 py-3 rounded-full bg-purple-500 border border-purple-400 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-400 transition-all shadow-[0_0_20px_rgba(168,85,247,0.3)]"
-        >
-          Back to Studio
-        </button>
+        <button onClick={() => router.back()} className="px-8 py-3 rounded-full bg-purple-500 text-white text-xs font-black uppercase tracking-widest">Back to Studio</button>
       </div>
     );
   }
 
-  // Resolve script content from multiple possible manifest key locations
-
-  const getProviderKey = (platform: string): 'instagram' | 'tiktok' | 'youtube' | null => {
-    const p = platform.toLowerCase();
-    if (p.includes('instagram')) return 'instagram';
-    if (p.includes('tiktok')) return 'tiktok';
-    if (p.includes('youtube')) return 'youtube';
-    return null;
-  };
-
   return (
     <div className="space-y-5 animate-fade-in pb-10">
-      {/* Header with Back Button */}
       <div className="flex items-center justify-between py-2">
-        <button 
-          onClick={() => { if (projectId) router.push(`/app/projects/${projectId}/studio?tab=assembly`); else router.back(); }}
-          className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 hover:text-white transition-all group"
-        >
-          <ArrowLeft size={14} className="group-hover:-translate-x-1 transition-transform" />
-          {locale === 'ru' ? 'В СТУДИЮ' : 'STUDIO'}
+        <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">
+          <ArrowLeft size={14} /> {locale === 'ru' ? 'В СТУДИЮ' : 'STUDIO'}
         </button>
         <div className="text-[10px] font-black text-white/20 tracking-[0.3em] uppercase">Delivery Lab</div>
       </div>
 
-      {/* Status */}
       <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'processing'} />
 
-      {/* Rendering / Success header */}
-      <div
-        className="rounded-3xl p-6 text-center space-y-4"
-        style={{
-          background: job?.status === 'completed' 
-            ? 'linear-gradient(135deg, rgba(0,255,204,0.08) 0%, rgba(155,95,255,0.05) 100%)'
-            : 'linear-gradient(135deg, rgba(168,85,247,0.1) 0%, rgba(59,130,246,0.05) 100%)',
-          border: job?.status === 'completed'
-            ? '1px solid rgba(0,255,204,0.15)'
-            : '1px solid rgba(168,85,247,0.2)',
-        }}
-      >
-        <div className={`text-5xl ${job?.status === 'completed' ? 'animate-float' : ''}`}>
-          {job?.status === 'completed' ? '🎉' : '⚙️'}
-        </div>
+      <div className="rounded-3xl p-6 text-center space-y-4 bg-white/[0.02] border border-white/5">
+        <div className="text-5xl">{job?.status === 'completed' ? '🎉' : '⚙️'}</div>
         <div>
           <h1 className="text-2xl font-black tracking-tighter uppercase text-white">
             {job?.status === 'completed' ? t('badge') : (renderStatus || 'Видео в процессе...')}
@@ -456,224 +365,122 @@ export default function DeliveryPage() {
             {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${renderProgress}%`}
           </p>
         </div>
-
-        {/* Loading Bar for processing */}
         {job?.status !== 'completed' && (
           <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-            <motion.div 
-              className="h-full bg-purple-500"
-              initial={{ width: 0 }}
-              animate={{ width: `${renderProgress}%` }}
-              transition={{ duration: 0.5 }}
-            />
+            <motion.div className="h-full bg-purple-500" initial={{ width: 0 }} animate={{ width: `${renderProgress}%` }} />
           </div>
         )}
-
-        {/* Delivery chips */}
-        <div className="flex justify-center gap-2 flex-wrap">
-          {[
-            t('videoMp4'),
-            t('textsCount', { n: 5 }),
-            t('carouselSlides', { n: 8 })
-          ].map((item) => (
-            <span
-              key={item}
-              className="text-[10px] font-bold px-3 py-1.5 rounded-full bg-white/5 border border-white/10 text-white/40"
-            >
-              {item}
-            </span>
-          ))}
-        </div>
       </div>
 
-      {/* ── Auto-launching state ── */}
-      {!job && isLaunchingRender && (
-        <div className="rounded-3xl p-8 bg-purple-500/5 border border-purple-500/20 text-center animate-pulse">
-           <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">Initializing Engine...</p>
-        </div>
-      )}
-
-      {/* Video preview card - Now using real output_url */}
-      <div
-        className="rounded-[2rem] overflow-hidden group shadow-2xl"
-        style={{
-          background: 'linear-gradient(135deg, #1a0a2e 0%, #0d0d1a 100%)',
-          border: '1px solid rgba(255,255,255,0.07)',
-          aspectRatio: '9/16', // Vertical video format
-          maxHeight: '500px',
-          margin: '0 auto',
-          position: 'relative',
-        }}
-      >
+      <div className="rounded-[2rem] overflow-hidden bg-[#0a0a1a] border border-white/5 aspect-[9/16] max-h-[500px] mx-auto relative shadow-2xl">
         {job?.output_url ? (
-          <video 
-            src={job.output_url} 
-            controls 
-            className="w-full h-full object-cover"
-            poster={version?.preview_url}
-          />
+          <video src={job.output_url} controls className="w-full h-full object-cover" />
         ) : (
           <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-xl">
             <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400 animate-pulse">
-              Generating Final Cut...
-            </p>
+            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">Generating Final Cut...</p>
           </div>
         )}
-        
-        <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center justify-between pointer-events-none"
-          style={{ background: 'linear-gradient(transparent, rgba(0,0,0,0.8))' }}
-        >
-          <span className="text-[10px] font-black uppercase tracking-widest text-white/50">
-            {t('videoMeta', { n: 65, category: locale === 'ru' ? 'Авто Эксперт' : 'Car Expert' })}
-          </span>
-          <div className="flex gap-2 pointer-events-auto">
+        <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent">
+          <span className="text-[10px] font-black uppercase tracking-widest text-white/50">65 SEC · AI PRODUCTION</span>
+          <div className="flex gap-2">
             <a href={job?.output_url} download className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors">
               <Download className="w-4 h-4 text-white" />
             </a>
-            <button className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors">
-              <Share2 className="w-4 h-4 text-white" />
-            </button>
           </div>
         </div>
       </div>
 
-      {/* Text Outputs */}
+      {/* Distribution Section */}
       <div className="space-y-4 pt-4">
-        <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 mb-3 ml-1">
-          {t('statusSub')}
-        </p>
-        <div className="space-y-3">
-          {TEXT_OUTPUTS.map((output) => (
-            <div
-              key={output.platform}
-              className="rounded-3xl p-5 space-y-4"
-              style={{
-                background: 'rgba(11,18,41,0.6)',
-                border: '1px solid rgba(255,255,255,0.07)',
-              }}
-            >
-              <div className="flex items-center justify-between">
-                <div className="flex items-center gap-3">
-                  <span className="text-xl">{output.icon}</span>
-                  <span
-                    className="text-[11px] font-black uppercase tracking-widest"
-                    style={{ color: output.accent }}
-                  >
-                    {output.platform}
-                  </span>
-                </div>
-                <div className="flex gap-2">
-                  <button
-                    className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all hover:scale-105 active:scale-95"
-                    style={{
-                      background: `${output.accent}15`,
-                      border: `1px solid ${output.accent}25`,
-                      color: output.accent,
-                    }}
-                    onClick={() => handleCopy(output.text)}
-                  >
-                    <Copy className="w-3 h-3" />
-                    {t('copyBtn')}
-                  </button>
-                  
-                  {/* Automated Posting Button */}
-                  <button
-                    className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest transition-all hover:opacity-80 active:scale-95"
-                    style={{
-                      background: output.accent,
-                      color: '#000',
-                    }}
-                    onClick={() => {
-                        const provider = getProviderKey(output.platform);
-                        if (provider) {
-                            window.location.href = socialService.getAuthUrl(provider);
-                        } else {
-                            handleCopy(output.text);
-                        }
-                    }}
-                  >
-                    <Share2 className="w-3 h-3" />
-                    Connect & Post
-                  </button>
-                </div>
+      {(!distributionAssets && !isLaunchingRender) && (
+        <div className="p-8 rounded-3xl bg-purple-500/5 border border-dashed border-purple-500/20 text-center space-y-4 mb-8">
+          <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto">
+            <ImageIcon className="text-purple-400" size={32} />
+          </div>
+          <div className="space-y-1">
+            <h3 className="text-sm font-black uppercase text-white">Ассеты дистрибуции не готовы</h3>
+            <p className="text-[10px] text-white/40 uppercase tracking-widest">Нажмите кнопку ниже для генерации всего пакета</p>
+          </div>
+          <button 
+            onClick={async () => { 
+              setRenderStatus("Генерация ассетов...");
+              const res = await fetch("/api/ai/distribution-assets", { 
+                method: "POST", 
+                body: JSON.stringify({ scriptText: scriptData.meat, projectId, locale }) 
+              });
+              const assets = await res.json();
+              if (assets && !assets.error) {
+                await projectService.updateLatestVersionManifest(projectId, { ...manifest, distributionAssets: assets });
+                setVersion(prev => (prev ? { ...prev, script_data: { ...prev.script_data, distributionAssets: assets } } : prev) as any);
+              }
+            }}
+            className="px-6 py-3 rounded-xl bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+          >
+            Сгенерировать пакет (AI)
+          </button>
+        </div>
+      )}
+      {TEXT_OUTPUTS.map((output) => (
+          <div key={output.platform} className="rounded-3xl p-5 space-y-4 bg-white/[0.02] border border-white/5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-3">
+                <span className="text-xl">{output.icon}</span>
+                <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: output.accent }}>{output.platform}</span>
               </div>
-              <p className="text-[12px] text-white/60 leading-relaxed font-medium">
-                {output.text}
-              </p>
+              <button onClick={() => handleCopy(output.text)} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest bg-white/5 text-white/60 hover:bg-white/10">
+                <Copy className="w-3 h-3" /> {t('copyBtn')}
+              </button>
             </div>
-          ))}
-        </div>
+            <p className="text-[12px] text-white/60 leading-relaxed font-medium">{output.text}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Carousel link */}
-      <div
-        className="rounded-3xl p-5 flex items-center justify-between"
-        style={{
-          background: 'rgba(155,95,255,0.08)',
-          border: '1px solid rgba(155,95,255,0.2)',
-        }}
-      >
-        <div className="flex items-center gap-4">
-          <span className="text-3xl">🖼️</span>
-          <div>
-            <p className="text-sm font-black uppercase tracking-tight text-white/90">{t('instaCarousel')}</p>
-            <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest">{t('carouselMeta', { n: 8 })}</p>
+      {/* Visual Assets */}
+      {distributionAssets?.ig_carousel && (
+        <div className="space-y-4 pt-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">Instagram Carousel</p>
+          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
+            {distributionAssets.ig_carousel.prompts.map((prompt: string, i: number) => {
+              const url = distributionImages[`carousel-${i}`];
+              return (
+                <div key={i} className="flex-shrink-0 w-48 relative aspect-[4/5] rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
+                  {url ? <img src={url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="text-white/10" size={24} /></div>}
+                  <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/40 text-[8px] font-black text-white">SLIDE {i + 1}</div>
+                </div>
+              );
+            })}
           </div>
         </div>
-        <button className="w-10 h-10 rounded-2xl flex items-center justify-center transition-all bg-purple-500/20 hover:bg-purple-500/30">
-          <Download className="w-5 h-5" style={{ color: '#9B5FFF' }} />
-        </button>
-      </div>
+      )}
 
-      {/* Open in Telegram */}
-      <div
-        className="flex items-center justify-between p-5 rounded-3xl"
-        style={{
-          background: 'rgba(77,158,255,0.08)',
-          border: '1px solid rgba(77,158,255,0.2)',
-        }}
-      >
-        <div className="flex items-center gap-4">
-          <Send className="w-6 h-6" style={{ color: '#4D9EFF' }} />
-          <div>
-            <p className="text-sm font-black uppercase tracking-tight text-white/90">{t('openTg')}</p>
-            <p className="text-[10px] font-bold text-white/30 tracking-widest uppercase">{t('botName')}</p>
+      {distributionAssets?.video_banner && (
+        <div className="space-y-4 pt-4">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">Video Cover</p>
+          <div className="rounded-3xl p-5 flex items-center justify-between bg-purple-500/5 border border-purple-500/20">
+            <div className="flex items-center gap-4">
+              <div className="w-16 h-20 rounded-xl bg-purple-500/10 border border-purple-500/20 overflow-hidden">
+                {distributionImages['banner'] ? <img src={distributionImages['banner']} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="text-purple-500/20" size={20} /></div>}
+              </div>
+              <div>
+                <p className="text-sm font-black uppercase text-white/90">Video Cover Master</p>
+                <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest italic truncate max-w-[150px]">"{distributionAssets.video_banner.text_on_banner}"</p>
+              </div>
+            </div>
+            {distributionImages['banner'] && (
+              <button onClick={() => { const a = document.createElement('a'); a.href = distributionImages['banner']; a.download = 'banner.webp'; a.click(); }} className="w-10 h-10 rounded-2xl flex items-center justify-center bg-purple-500/20 hover:bg-purple-500/30 text-purple-400">
+                <Download size={20} />
+              </button>
+            )}
           </div>
         </div>
-        <div
-          className="flex items-center gap-1.5 px-4 py-2 rounded-2xl text-[10px] font-black uppercase tracking-widest"
-          style={{ background: 'rgba(0,255,204,0.15)', color: '#00FFCC', border: '1px solid rgba(0,255,204,0.2)' }}
-        >
-          <CheckCircle className="w-3.5 h-3.5" />
-          {t('delivered')}
-        </div>
-      </div>
+      )}
 
-      {/* Export Section */}
       <div className="pt-8 space-y-4">
-        <button 
-          onClick={() => downloadTXT()}
-          className="w-full py-5 rounded-[2.5rem] bg-purple-600 text-white flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(168,85,247,0.4)] border border-purple-400 group transition-all hover:scale-[1.02] active:scale-95"
-        >
-          <Download size={20} className="group-hover:bounce" />
-          <span className="font-black text-sm uppercase tracking-widest">ВЫГРУЗИТЬ (TXT + VIDEO)</span>
+        <button onClick={() => downloadTXT()} className="w-full py-5 rounded-[2.5rem] bg-purple-600 text-white flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(168,85,247,0.4)] border border-purple-400 font-black text-sm uppercase tracking-widest transition-all active:scale-95">
+          <Download size={20} /> ВЫГРУЗИТЬ (TXT + VIDEO)
         </button>
-        
-        <div className="grid grid-cols-2 gap-3">
-           <button 
-             onClick={() => handleExport('telegram')}
-             className="py-4 rounded-2xl bg-[#24A1DE]/10 border border-[#24A1DE]/20 text-[#24A1DE] text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
-           >
-             <Send size={14} /> Telegram
-           </button>
-           <button 
-             onClick={() => handleExport('drive')}
-             className="py-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-amber-500 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2"
-           >
-             <HardDrive size={14} /> Google Drive
-           </button>
-        </div>
       </div>
     </div>
   );

@@ -40,12 +40,6 @@ interface GeneratedAsset {
   };
 }
 
-interface ImageResult {
-  url: string;
-  prompt: string;
-  aspectRatio: string;
-}
-
 type Platform = 'sfv' | 'threads' | 'linkedin' | 'carousel' | 'banner';
 
 export default function DistributionFactory({ manifest, scriptText, projectId, locale, onUpdateManifest }: DistributionFactoryProps) {
@@ -60,7 +54,6 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   useEffect(() => {
     if (manifest?.distributionAssets) {
       setAssets(manifest.distributionAssets);
-      // If we have cached images in manifest, load them too
       if (manifest.distributionImages) {
         setImageResults(manifest.distributionImages);
       }
@@ -81,7 +74,6 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       const data = await res.json();
       setAssets(data);
       
-      // Save to manifest
       if (onUpdateManifest) {
         onUpdateManifest({
           ...manifest,
@@ -108,7 +100,6 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         const newResults = { ...imageResults, [key]: data.url };
         setImageResults(newResults);
 
-        // Save to manifest
         if (onUpdateManifest) {
           onUpdateManifest({
             ...manifest,
@@ -159,7 +150,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       {/* Header */}
       <div className="p-8 border-b border-white/5 flex items-center justify-between relative z-10 bg-black/20 backdrop-blur-md">
         <div>
-          <h2 className="text-3xl font-black italic uppercase tracking-tighter text-white">
+          <h2 className="text-3xl font-bold italic uppercase tracking-tighter text-white">
             Distribution <span className="text-purple-500">Suite</span>
           </h2>
           {assets?.user_context_applied && (
@@ -172,7 +163,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         <button 
           onClick={generateAssets}
           disabled={isGenerating}
-          className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white text-black text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
+          className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
         >
           {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
           {assets ? 'REGENERATE ALL' : 'GENERATE CONTENT PACK'}
@@ -189,31 +180,25 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
               className="absolute inset-0 rounded-[2.5rem] bg-purple-500/10 blur-xl" 
             />
           </div>
-          <h3 className="text-white font-black uppercase tracking-[0.2em] mb-3">Awaiting Production Finalization</h3>
+          <h3 className="text-white font-bold uppercase tracking-[0.2em] mb-3">Awaiting Production</h3>
           <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest max-w-xs leading-relaxed">
             Once your A-Roll is ready, our Strategist will architect your entire social media presence.
           </p>
         </div>
       ) : isGenerating ? (
         <div className="flex-1 flex flex-col items-center justify-center p-12">
-          <div className="relative w-32 h-32 mb-10">
+          <div className="relative w-32 h-32 mb-10 text-white">
              <motion.div 
                animate={{ rotate: 360 }}
                transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
                className="absolute inset-0 border-4 border-t-purple-500 border-r-transparent border-b-blue-500 border-l-transparent rounded-full shadow-[0_0_50px_rgba(168,85,247,0.2)]"
-             />
-             <motion.div 
-               animate={{ rotate: -360 }}
-               transition={{ repeat: Infinity, duration: 6, ease: 'linear' }}
-               className="absolute inset-4 border-2 border-t-blue-400 border-r-transparent border-b-purple-400 border-l-transparent rounded-full opacity-50"
              />
              <div className="absolute inset-8 rounded-full bg-white/[0.03] flex items-center justify-center border border-white/5">
                 <Brain size={32} className="text-white animate-pulse" />
              </div>
           </div>
           <div className="flex flex-col items-center gap-2">
-            <span className="text-[11px] font-black uppercase tracking-[0.5em] text-white">Synthesizing Digital DNA</span>
-            <span className="text-[9px] font-bold uppercase tracking-[0.3em] text-white/20">Applying Virality Patterns 2026</span>
+            <span className="text-[11px] font-bold uppercase tracking-[0.5em] text-white">Synthesizing Digital DNA</span>
           </div>
         </div>
       ) : (
@@ -225,7 +210,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                  key={p.id}
                  onClick={() => setActivePlatform(p.id)}
                  className={cn(
-                   "px-6 py-3 rounded-2xl flex items-center justify-center gap-3 text-[9px] font-black uppercase tracking-widest transition-all whitespace-nowrap",
+                   "px-6 py-3 rounded-2xl flex items-center justify-center gap-3 text-[9px] font-bold uppercase tracking-widest transition-all whitespace-nowrap",
                    activePlatform === p.id 
                     ? "bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-[0_10px_20px_rgba(168,85,247,0.2)]" 
                     : "text-white/30 hover:bg-white/5 border border-transparent hover:border-white/5"
@@ -238,7 +223,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           </div>
 
           {/* Content Area */}
-          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar">
+          <div className="flex-1 overflow-y-auto p-8 custom-scrollbar text-white">
             <AnimatePresence mode="wait">
               <motion.div
                 key={activePlatform}
@@ -253,17 +238,17 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     <div className="lg:col-span-2 space-y-6">
                       <div className="flex items-center justify-between">
-                        <h3 className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40 flex items-center gap-2">
+                        <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 flex items-center gap-2">
                           <Copy size={14} /> Optimized Copy
                         </h3>
                         <button 
                           onClick={() => {
-                            const text = activePlatform === 'sfv' ? assets.sfv_description.text : 
-                                        activePlatform === 'threads' ? assets.deep_content.threads_fb_text : 
-                                        assets.linkedin_executive.text;
-                            handleCopy(text, activePlatform);
+                            const text = activePlatform === 'sfv' ? assets?.sfv_description.text : 
+                                        activePlatform === 'threads' ? assets?.deep_content.threads_fb_text : 
+                                        assets?.linkedin_executive.text;
+                            if(text) handleCopy(text, activePlatform);
                           }}
-                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[9px] font-black uppercase tracking-widest transition-all active:scale-90"
+                          className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[9px] font-bold uppercase tracking-widest transition-all active:scale-90"
                         >
                           {copying === activePlatform ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
                           {copying === activePlatform ? 'COPIED' : 'COPY TEXT'}
@@ -272,20 +257,20 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                       
                       <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 relative group min-h-[300px]">
                         <pre className="text-[15px] text-white/80 leading-relaxed font-sans whitespace-pre-wrap">
-                          {activePlatform === 'sfv' ? assets.sfv_description.text : 
-                           activePlatform === 'threads' ? assets.deep_content.threads_fb_text : 
-                           assets.linkedin_executive.text}
+                          {activePlatform === 'sfv' ? assets?.sfv_description.text : 
+                           activePlatform === 'threads' ? assets?.deep_content.threads_fb_text : 
+                           assets?.linkedin_executive.text}
                         </pre>
                       </div>
                     </div>
 
                     <div className="space-y-8">
                        <div>
-                         <h4 className="text-[9px] font-black uppercase tracking-[0.2em] text-purple-400 mb-4 flex items-center gap-2">
+                         <h4 className="text-[9px] font-bold uppercase tracking-[0.2em] text-purple-400 mb-4 flex items-center gap-2">
                            <Zap size={12} /> Strategic Context
                          </h4>
                          <div className="p-5 rounded-3xl bg-purple-500/5 border border-purple-500/10 text-[11px] text-white/50 leading-relaxed italic">
-                           {activePlatform === 'sfv' ? assets.sfv_description.platform_notes : 
+                           {activePlatform === 'sfv' ? assets?.sfv_description.platform_notes : 
                             activePlatform === 'threads' ? 'Narrative structure using the "But/Therefore" formula for maximum retention.' : 
                             'Executive-level analysis focused on ROI, systemic logic, and industry facts.'}
                          </div>
@@ -295,24 +280,24 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                          <div className="flex flex-col gap-3">
                            {activePlatform === 'sfv' && (
                              <>
-                               <div className="flex items-center gap-3 text-[10px] font-black text-white/30 uppercase tracking-widest">
+                               <div className="flex items-center gap-3 text-[10px] font-bold text-white/30 uppercase tracking-widest">
                                  <div className="w-1.5 h-1.5 rounded-full bg-red-500" /> YouTube Shorts OK
                                </div>
-                               <div className="flex items-center gap-3 text-[10px] font-black text-white/30 uppercase tracking-widest">
+                               <div className="flex items-center gap-3 text-[10px] font-bold text-white/30 uppercase tracking-widest">
                                  <div className="w-1.5 h-1.5 rounded-full bg-pink-500" /> Instagram Reels OK
                                </div>
-                               <div className="flex items-center gap-3 text-[10px] font-black text-white/30 uppercase tracking-widest">
+                               <div className="flex items-center gap-3 text-[10px] font-bold text-white/30 uppercase tracking-widest">
                                  <div className="w-1.5 h-1.5 rounded-full bg-cyan-400" /> TikTok Viral Pattern
                                </div>
                              </>
                            )}
                            {activePlatform === 'threads' && (
-                             <div className="flex items-center gap-3 text-[10px] font-black text-white/30 uppercase tracking-widest">
+                             <div className="flex items-center gap-3 text-[10px] font-bold text-white/30 uppercase tracking-widest">
                                <div className="w-1.5 h-1.5 rounded-full bg-white/40" /> Facebook/Threads Deep Dive
                              </div>
                            )}
                            {activePlatform === 'linkedin' && (
-                             <div className="flex items-center gap-3 text-[10px] font-black text-white/30 uppercase tracking-widest">
+                             <div className="flex items-center gap-3 text-[10px] font-bold text-white/30 uppercase tracking-widest">
                                <div className="w-1.5 h-1.5 rounded-full bg-blue-600" /> LinkedIn Professional Grade
                              </div>
                            )}
@@ -322,21 +307,20 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                   </div>
                 )}
 
-                {/* 2. CAROUSEL (IG) */}
                 {activePlatform === 'carousel' && (
                   <div className="space-y-8">
                     <div className="flex items-center justify-between">
                       <div>
-                        <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white">Instagram Carousel Series</h3>
+                        <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-white">Instagram Carousel Series</h3>
                         <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest mt-1">6-Slide Narrative Visualization (AR 4:5)</p>
                       </div>
-                      <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase tracking-widest text-white/40">
-                         {assets.ig_carousel.technical_specs}
+                      <div className="px-4 py-2 rounded-xl bg-white/5 border border-white/5 text-[9px] font-bold uppercase tracking-widest text-white/40">
+                         {assets?.ig_carousel.technical_specs}
                       </div>
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                       {assets.ig_carousel.prompts.map((prompt, i) => {
+                       {assets?.ig_carousel.prompts.map((prompt, i) => {
                          const key = `carousel-${i}`;
                          const url = imageResults[key];
                          const isGen = isGeneratingImages[key];
@@ -344,7 +328,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                          return (
                            <div key={i} className="space-y-4">
                              <div className="flex items-center justify-between px-2">
-                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">Slide {i + 1}</span>
+                                <span className="text-[10px] font-bold text-purple-400 uppercase tracking-widest">Slide {i + 1}</span>
                                 {url && (
                                   <button 
                                     onClick={() => handleDownload(url, `carousel_slide_${i+1}.webp`)}
@@ -355,11 +339,11 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 )}
                              </div>
                              
-                             <div className="relative aspect-[4/5] rounded-[2rem] bg-white/[0.02] border border-white/5 overflow-hidden group">
+                             <div className="relative aspect-[4/5] rounded-[2rem] bg-white/[0.02] border border-white/5 overflow-hidden group flex">
                                 {url ? (
                                   <img src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
                                 ) : (
-                                  <div className="absolute inset-0 flex flex-col items-center justify-center p-8 text-center">
+                                  <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                                     {isGen ? (
                                       <Loader2 size={32} className="text-purple-500 animate-spin mb-4" />
                                     ) : (
@@ -382,7 +366,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                     onClick={() => generateSingleImage(prompt, '4:5', key)}
                                     className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
                                   >
-                                    <div className="px-4 py-2 rounded-xl bg-white text-black text-[9px] font-black uppercase tracking-widest flex items-center gap-2">
+                                    <div className="px-4 py-2 rounded-xl bg-white text-black text-[9px] font-bold uppercase tracking-widest flex items-center gap-2">
                                       <Wand2 size={12} /> Generate
                                     </div>
                                   </button>
@@ -395,12 +379,11 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                   </div>
                 )}
 
-                {/* 3. BANNER (SFV COVER) */}
                 {activePlatform === 'banner' && (
                   <div className="grid grid-cols-1 lg:grid-cols-2 gap-12">
                      <div className="space-y-8">
                         <div>
-                          <h3 className="text-sm font-black uppercase tracking-[0.3em] text-white mb-2">Video Cover Master</h3>
+                          <h3 className="text-sm font-bold uppercase tracking-[0.3em] text-white mb-2">Video Cover Master</h3>
                           <p className="text-[9px] text-white/30 font-bold uppercase tracking-widest leading-relaxed">
                             A high-impact 9:16 banner for Reels, Shorts, and TikTok. 
                             Includes a hard-hitting headline for maximum click-through rate.
@@ -409,24 +392,24 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
                         <div className="space-y-6">
                            <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
-                              <h4 className="text-[9px] font-black uppercase tracking-widest text-purple-400">Main Headline</h4>
-                              <div className="text-xl font-black italic uppercase tracking-tighter text-white leading-tight">
-                                "{assets.video_banner.text_on_banner}"
+                              <h4 className="text-[9px] font-bold uppercase tracking-widest text-purple-400">Main Headline</h4>
+                              <div className="text-xl font-bold italic uppercase tracking-tighter text-white leading-tight">
+                                "{assets?.video_banner.text_on_banner}"
                               </div>
                            </div>
 
                            <div className="p-6 rounded-3xl bg-white/[0.02] border border-white/5 space-y-4">
-                              <h4 className="text-[9px] font-black uppercase tracking-widest text-blue-400">Visual Concept</h4>
+                              <h4 className="text-[9px] font-bold uppercase tracking-widest text-blue-400">Visual Concept</h4>
                               <p className="text-xs text-white/50 leading-relaxed italic">
-                                {assets.video_banner.image_prompt}
+                                {assets?.video_banner.image_prompt}
                               </p>
                            </div>
                         </div>
 
                         <button 
-                          onClick={() => generateSingleImage(assets.video_banner.image_prompt, '9:16', 'banner')}
+                          onClick={() => assets && generateSingleImage(assets.video_banner.image_prompt, '9:16', 'banner')}
                           disabled={isGeneratingImages['banner']}
-                          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                         >
                           {isGeneratingImages['banner'] ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
                           {imageResults['banner'] ? 'REGENERATE BANNER' : 'GENERATE BANNER IMAGE'}
@@ -441,14 +424,14 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                {/* TEXT OVERLAY SIMULATION */}
                                <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center p-8 text-center">
                                   <div className="mt-auto mb-20 bg-white text-black px-4 py-2 font-black italic uppercase tracking-tighter text-lg transform -rotate-2 shadow-2xl">
-                                    {assets.video_banner.text_on_banner}
+                                    {assets?.video_banner.text_on_banner}
                                   </div>
-                               </div>
+                                </div>
                                
                                <button 
                                  onClick={() => handleDownload(imageResults['banner'], 'video_banner.webp')}
                                  className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white text-black flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-2xl"
-                               >
+                                >
                                  <Download size={20} />
                                </button>
                              </>
@@ -457,12 +440,12 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 {isGeneratingImages['banner'] ? (
                                   <div className="flex flex-col items-center gap-6">
                                      <div className="w-16 h-16 border-4 border-t-purple-500 border-white/5 rounded-full animate-spin" />
-                                     <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white">Rendering Banner...</span>
+                                     <span className="text-[10px] font-bold uppercase tracking-[0.3em] text-white">Rendering Banner...</span>
                                   </div>
                                 ) : (
                                   <>
                                     <ImageIcon size={48} className="text-white/5 mb-6" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/20">Banner Preview</span>
+                                    <span className="text-[10px] font-bold uppercase tracking-widest text-white/20">Banner Preview</span>
                                   </>
                                 )}
                              </div>

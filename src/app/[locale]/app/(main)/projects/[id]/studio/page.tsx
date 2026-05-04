@@ -381,6 +381,7 @@ export default function StudioPage() {
         scriptText: finalScriptText, // Save for distribution
         brollClips: broll || [],
         subtitleClips: subs || [],
+        _log_subs_count: subs?.length || 0,
         segments: manifest.segments.map((s: any, i: number) => i === 0 ? { 
           ...s, 
           brollClips: broll || [], 
@@ -393,7 +394,7 @@ export default function StudioPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scriptText: finalScriptText, projectId, locale, background: true })
-      }).catch(e => console.error('[Studio] Prefetch failed:', e));
+      }).then(res => res.json()).then(async assets => { if (assets && !assets.error) { await projectService.updateLatestVersionManifest(projectId, { ...updatedManifest, distributionAssets: assets }); } }).catch(e => console.error('[Studio] Prefetch failed:', e));
 
       // тЬЕ Background Save manifest тАФ wait for it to prevent race condition on Delivery page
       let savedVersion = null;
