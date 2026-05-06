@@ -688,5 +688,186 @@
       "regenerateBtn": "Update Element",
       "scenesCount": "{n} Scenes"
     }
+  },
+  "landingVirale": {
+    "nav": {
+      "tech": "Technology",
+      "how": "How it works",
+      "reviews": "Reviews",
+      "pricing": "Pricing",
+      "cta": "GET ACCESS"
+    },
+    "hero": {
+      "ticker": "● VIRAL ENGINE — AI CONTENT FACTORY — EARLY ACCESS OPEN",
+      "title1": "FROM IDEA",
+      "title2": "TO READY REELS",
+      "title3": "IN 10 MINUTES",
+      "subtitle": "The first engineering AI-engine for virality. While competitors waste weekends on editing — you just press one button.",
+      "ctaPrimary": "GET EARLY ACCESS — 30 DAYS FREE",
+      "ctaSecondary": "Watch demo ↓",
+      "trust": {
+        "noCard": "✓ No credit card required",
+        "anytime": "✓ Cancel anytime",
+        "support": "✓ 24/7 Support"
+      },
+      "stats": {
+        "speed": "10×",
+        "speedLabel": "Faster",
+        "formats": "6+",
+        "formatsLabel": "Formats",
+        "prompt": "1",
+        "promptLabel": "Prompt. Done."
+      }
+    },
+    "marquee": [
+      "VIRAL ENGINE", "DIGITAL DNA", "SEMANTIC BULLETS", "AI VIDEO", "4 VIRALITY FILTERS", "TELEPROMPTER", "$29 PER MONTH"
+    ],
+    "technology": {
+      "label": "// TECHNOLOGY",
+      "title": "THREE REASONS WHY VIRALE IS NOT JUST ANOTHER AI TOOL.",
+      "cards": [
+        {
+          "title": "DIGITAL DNA",
+          "desc": "ViralE doesn't just write text — it analyzes your niche, speech patterns, and values. It creates content that sounds like YOU, not ChatGPT.",
+          "proof": "✓ Tested on 47 niches. 91% similarity to author's voice."
+        },
+        {
+          "title": "SEMANTIC BULLETS",
+          "desc": "Neuro-editing technology. B-roll inserts are selected to simultaneously activate the viewer's logical and emotional perception.",
+          "proof": "✓ Average watch time +34% compared to standard editing."
+        },
+        {
+          "title": "4 VIRALITY FILTERS",
+          "desc": "Built-in mentor algorithm. The app physically won't let you publish a weak clip — it checks Click, Value Speed, Share, and Subscribe triggers.",
+          "proof": "✓ Videos passing all 4 filters get 2.7× more reposts."
+        }
+      ]
+    },
+    "workflow": {
+      "label": "// HOW IT WORKS",
+      "title1": "SPEED IS",
+      "title2": "YOUR GREATEST ASSET.",
+      "subtitle": "Competitors edit for 3 hours. You do it in 10 minutes. Below is the real process with a timer.",
+      "placeholder": "COMING SOON: 10-MINUTE CHALLENGE",
+      "steps": [
+        { "time": "01:00", "title": "IDEA", "desc": "Speak or write your topic. ViralE extracts the core and forms the structure." },
+        { "time": "03:00", "title": "DIGITAL DNA", "desc": "The system generates a script in your style with 2026 virality hooks." },
+        { "time": "07:00", "title": "FILMING", "desc": "Adaptive teleprompter manages the pace. You read — the system shoots." },
+        { "time": "09:00", "title": "EDITING", "desc": "AI picks Semantic Bullets (B-roll), adds subtitles and post-production effects." },
+        { "time": "10:00", "title": "ALL READY", "desc": "Video + cover + carousel (5 images) + text for 5 platforms — simultaneously." }
+      ]
+    },
+    "comparison": {
+      "label": "// COMPARISON",
+      "title": "CALCULATE HOW MUCH YOU ARE LOSING.",
+      "headers": ["WITHOUT VIRALE", "WITH VIRALE"],
+      "rows": [
+        ["3 hours of editing for one video", "10 minutes — from idea to publish"],
+        ["1 platform at a time", "5 platforms simultaneously"],
+        ["Generic AI content", "Your voice, your meanings (Digital DNA)"],
+        ["Weekends spent on production", "Weekends are yours again"],
+        ["Need an editor ($500–2000/mo)", "ViralE for $29/mo replaces an editor"],
+        ["Content released 1–2 times a week", "Content released every day without burnout"]
+      ]
+    },
+    "social": {
+      "label": "// FIRST RESULTS",
+      "title1": "WHAT FIRST",
+      "title2": "TESTERS ARE SAYING.",
+      "reviews": [
+        {
+          "name": "Alex M.",
+          "handle": "@alexcreates · Dubai · 84K followers",
+          "quote": "\"Created 7 Reels in the first week. Used to take 3 days for one. ViralE is an unfair advantage.\"",
+          "avatar": "A", "color": "orange"
+        },
+        {
+          "name": "Sara K.",
+          "handle": "@sarabuilds · Bali · 42K followers",
+          "quote": "\"Digital DNA actually works. For the first time in 2 years, my posts sound like me, not a robot. Tried 6 AI tools before this.\"",
+          "avatar": "S", "color": "gold"
+        },
+        {
+          "name": "James T.",
+          "handle": "@jamesgrowth · Vietnam · 127K followers",
+          "quote": "\"Started posting every day. Growth in 30 days — x2. Faceless video feature pays for the subscription itself.\"",
+          "avatar": "J", "color": "red"
+        }
+      ]
+    },
+    "pricing": {
+      "label": "// INVESTMENT",
+      "title1": "15 HOURS OF YOUR LIFE",
+      "title2": "PER WEEK.",
+      "subtitle": "You invest $1 a day — and get your freedom back. First 100 spots at $29 forever. {count} spots left.",
+      "toggle": ["Monthly", "Yearly (Save 40%)"],
+      "tiers": {
+        "free": {
+          "title": "FREE",
+          "price": "$0",
+          "features": ["5 content packs per month", "Teleprompter (unlimited)", "Video downloads", "ViralE watermark"],
+          "cta": "Start for free"
+        },
+        "creator": {
+          "title": "CREATOR",
+          "badge": "POPULAR",
+          "price": "$29",
+          "priceYearly": "$17",
+          "features": ["30 content packs per month", "No watermark", "AI topic generation", "Auto-subtitles", "Carousels", "Text for 5 platforms"],
+          "cta": "Get Creator"
+        },
+        "pro": {
+          "title": "PRO",
+          "price": "$79",
+          "priceYearly": "$47",
+          "features": ["Unlimited", "AI faceless video", "Everything in Creator", "Priority support", "White-label"],
+          "cta": "Go Pro"
+        }
+      },
+      "urgency": "{count} of 100 spots taken",
+      "trust": ["🔒 Secure payment (Stripe)", "↩ 14-day refund", "✕ Cancel anytime"]
+    },
+    "faq": {
+      "label": "// QUESTIONS",
+      "title": "YOU HAVE QUESTIONS. WE KNOW.",
+      "items": [
+        {
+          "q": "How is ViralE different from ChatGPT?",
+          "a": "ChatGPT gives you text. ViralE gives you a finished video, a 5-image carousel, a cover, and posts for 5 platforms — all from one phrase. ChatGPT is ingredients. ViralE is a finished dish already on the table."
+        },
+        {
+          "q": "I'm not a techie. Can I handle it?",
+          "a": "If you know how to record a voice message in WhatsApp — you can handle ViralE. No editing. No design. No tech skills. Just: idea → button → ready content."
+        },
+        {
+          "q": "Will the content sound like me or a robot?",
+          "a": "That's exactly why Digital DNA was created. In the first 3 minutes, you tell the system about yourself, your niche, and your communication style. Everything further is generated in your voice, with your meanings and values."
+        },
+        {
+          "q": "What if I don't like it?",
+          "a": "14 days — unconditional return. No questions, no forms. One email — and the money is returned within 24 hours."
+        }
+      ]
+    },
+    "finalCta": {
+      "title1": "STOP EDITING.",
+      "title2": "START VIRALING.",
+      "subtitle": "Create your Digital DNA in 3 minutes. First content pack — for free.",
+      "ctaPrimary": "GET EARLY ACCESS — 30 DAYS FREE",
+      "ctaSecondary": "Watch demo →",
+      "urgency": "{count} free spots left out of 100"
+    },
+    "footer": {
+      "slogan": "AI virality engine for experts and content creators.",
+      "links": ["Privacy Policy", "Terms of Use", "Contact"],
+      "copyright": "© 2026 ViralE. All rights reserved."
+    },
+    "form": {
+      "emailPlaceholder": "Your email address",
+      "nichePlaceholder": "Select niche",
+      "niches": ["Fitness", "Finance", "Lifestyle", "Tech", "Business", "Education", "Travel", "Other"],
+      "submit": "GET EARLY ACCESS",
+      "success": "You're on the list! We'll email you within 24 hours with access instructions."
+    }
   }
 }

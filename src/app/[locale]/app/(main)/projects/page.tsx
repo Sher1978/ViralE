@@ -131,22 +131,22 @@ export default function ProjectsPage() {
     {
       id: 'script',
       title: locale === 'ru' ? 'IDEA LAB' : 'IDEA LAB',
-      desc: locale === 'ru' ? 'CRAFT YOUR MESSAGE & GENERATE TEXT CONTENT' : 'CRAFT YOUR MESSAGE & GENERATE TEXT CONTENT',
-      href: '/app/projects/new/script',
+      desc: locale === 'ru' ? 'ЗАПУСТИТЬ ЛАБОРАТОРИЮ КОНТЕНТА ДЛЯ ГЛУБОКОЙ ПРОРАБОТКИ ИДЕЙ' : 'LAUNCH THE PRO CONTENT LAB FOR DEEP AI IDEATION',
+      href: '/app/projects/new/production?tab=concept',
       image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1973&auto=format&fit=crop',
     },
     {
       id: 'recording',
       title: locale === 'ru' ? 'RECORDING HUB' : 'RECORDING HUB',
       desc: locale === 'ru' ? 'RECORD TELEPROMPTER OR GENERATE AI VIDEO' : 'RECORD TELEPROMPTER OR GENERATE AI VIDEO',
-      href: '/app/projects/new/storyboard',
+      href: '/app/projects/new/production?tab=teleprompter',
       image: 'https://images.unsplash.com/photo-1590179068383-b9c69aacebd3?q=80&w=1974&auto=format&fit=crop',
     },
     {
       id: 'production',
       title: locale === 'ru' ? 'PRODUCTION HUB' : 'PRODUCTION HUB',
       desc: locale === 'ru' ? 'MONTAGE, B-ROLL & FINAL POST-PROCESSING' : 'MONTAGE, B-ROLL & FINAL POST-PROCESSING',
-      href: '/app/projects/new/production',
+      href: '/app/projects/new/production?tab=assembly',
       image: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?q=80&w=2059&auto=format&fit=crop',
     }
   ];

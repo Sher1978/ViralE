@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { veoService } from '@/lib/services/veoService';
 import { 
   X, Search, Sparkles, Film, 
-  RefreshCcw, ArrowRight, Video, Play, Upload
+  RefreshCcw, ArrowRight, Video, Play, Upload, Trash2
 } from 'lucide-react';
 
 interface VideoItem {
@@ -24,6 +24,7 @@ interface BRollPickerModalProps {
   emotionTags?: string[];
   projectId?: string;
   preFetchedResults?: any[];
+  onDelete?: () => void;
 }
 
 const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
@@ -33,7 +34,8 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   segmentText,
   emotionTags = ['cinematic', 'dynamic', 'hollywood'],
   projectId,
-  preFetchedResults
+  preFetchedResults,
+  onDelete
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
@@ -221,12 +223,23 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
           </h2>
           <p className="text-white/30 text-[9px] font-black uppercase tracking-widest mt-0.5">Finding visual energy for your scene</p>
         </div>
-        <button 
-          onClick={onClose}
-          className="p-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
-        >
-          <X size={22} />
-        </button>
+        <div className="flex items-center gap-2">
+          {onDelete && (
+            <button 
+              onClick={() => { if(confirm('Delete this clip?')) { onDelete(); onClose(); } }}
+              className="p-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mr-2"
+            >
+              <Trash2 size={18} /> 
+              <span className="hidden sm:inline">Delete</span>
+            </button>
+          )}
+          <button 
+            onClick={onClose}
+            className="p-3 rounded-lg bg-white/5 hover:bg-white/10 text-white/40 hover:text-white transition-all"
+          >
+            <X size={22} />
+          </button>
+        </div>
       </div>
 
       {/* ── SEARCH RESULTS ── */}

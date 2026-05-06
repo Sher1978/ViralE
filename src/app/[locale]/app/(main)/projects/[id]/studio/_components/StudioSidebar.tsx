@@ -18,7 +18,7 @@ interface StudioSidebarProps {
   audioDevices: MediaDeviceInfo[];
   selectedVideoDeviceId: string;
   selectedAudioDeviceId: string;
-  initCamera: () => Promise<void>;
+  initCamera: () => Promise<MediaStream | null>;
   stopCamera: () => void;
   setFacingMode: (mode: any) => void;
   setIsVideoMirrored: (mirrored: boolean) => void;
@@ -116,15 +116,15 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                     setActiveTab(tab.id);
                   }
                 }}
-                className={`flex items-center gap-4 p-4 rounded-xl border transition-all duration-500 text-left ${
+                className={`flex items-center gap-4 p-4 rounded-xl border transition-colors text-left ${
                   activeTab === tab.id || 
                   (tab.id === 'branch' && activeTab === 'teleprompter')
-                    ? 'bg-purple-500 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.3)] text-white' 
-                    : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10 hover:border-white/20'
+                    ? 'bg-purple-600 border-purple-500 text-white' 
+                    : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
                 }`}
               >
-                <div className={`p-2 rounded-xl ${activeTab === tab.id ? 'bg-white/20' : 'bg-white/5'}`}>
-                  <tab.icon size={20} className={activeTab === tab.id ? 'animate-pulse' : ''} />
+                <div className="p-2 rounded-xl bg-white/5">
+                  <tab.icon size={20} />
                 </div>
                 <div className="flex flex-col">
                   <span className="text-[10px] font-black uppercase tracking-widest">{tab.label}</span>

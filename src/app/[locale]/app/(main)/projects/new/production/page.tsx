@@ -3,6 +3,7 @@
 import { useEffect, Suspense } from 'react';
 import { useRouter } from '@/navigation';
 import { useLocale } from 'next-intl';
+import { useSearchParams } from 'next/navigation';
 import { Loader2 } from 'lucide-react';
 import { projectService } from '@/lib/services/projectService';
 import { profileService } from '@/lib/services/profileService';
@@ -10,6 +11,8 @@ import { profileService } from '@/lib/services/profileService';
 function ProductionRedirector() {
   const router = useRouter();
   const locale = useLocale();
+  const searchParams = useSearchParams();
+  const targetTab = searchParams.get('tab') || 'concept';
 
   useEffect(() => {
     async function initializeAndRedirect() {
@@ -27,8 +30,8 @@ function ProductionRedirector() {
         });
 
         if (project) {
-          // Stage 3 entry point: Studio -> Assembly (Montage)
-          router.replace(`/app/projects/${project.id}/studio?tab=assembly`);
+          // Entry point with dynamic tab support
+          router.replace(`/app/projects/${project.id}/studio?tab=${targetTab}`);
         } else {
           router.push('/app/projects');
         }

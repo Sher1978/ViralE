@@ -2,6 +2,15 @@ export type SegmentType = 'intro_avatar' | 'outro_avatar' | 'animated_still' | '
 export type AvatarProvider = 'heygen' | 'higgsfield';
 export type AnimationStyle = 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' | 'glitch' | 'none';
 
+export interface TimelineOverlay {
+  id: string;
+  type: 'broll' | 'subtitle';
+  startTime: number;
+  duration: number;
+  content: string; // URL for broll, Text for subtitle
+  style?: any;
+}
+
 export interface SceneSegment {
   id: string;
   type: SegmentType;
@@ -55,6 +64,8 @@ export interface ProductionManifest {
   projectId: string;
   versionId: string;
   segments: SceneSegment[];
+  brollClips?: TimelineOverlay[];    // NEW: Independent B-rolls
+  subtitleClips?: TimelineOverlay[]; // NEW: Independent Subtitles
   videoUrl?: string;
   transcript?: any[]; 
   totalDuration: number;

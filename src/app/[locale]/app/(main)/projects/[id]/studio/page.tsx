@@ -23,12 +23,13 @@ import { TeleprompterView } from './_components/TeleprompterView';
 import { StoryboardGrid } from './_components/StoryboardGrid';
 import { RecordingReview } from './_components/RecordingReview';
 import { SourcePicker } from './_components/SourcePicker';
-import { VideoEditor } from './_components/VideoEditor';
+const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false });
+import dynamic from 'next/dynamic';
 import { ProductionBranch } from './_components/ProductionBranch';
 import DistributionFactory from './_components/DistributionFactory';
 
 // Global Shared Components
-import StudioTimeline from '@/components/studio/StudioTimeline';
+
 import KnowledgeLab from '@/components/studio/KnowledgeLab';
 import { StrategistChat } from '@/components/studio/StrategistChat';
 import FacelessStudio from '@/components/studio/FacelessStudio';
@@ -88,6 +89,8 @@ export default function StudioPage() {
 
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({ title: '', desc: '', type: 'info' as any });
+  const [showAssemblyLauncher, setShowAssemblyLauncher] = useState(false);
+  const isMobileRef = useRef(typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Honor/i.test(navigator.userAgent));
 
 
   // State Sync Effect (URL Persistence)
@@ -210,38 +213,69 @@ export default function StudioPage() {
     loadData();
   }, [projectId]);
 
-  // Hardware Setup
-  const initCamera = async () => {
+  // 📹 Auto-init camera when entering teleprompter
+  useEffect(() => {
+    if (activeTab === 'teleprompter' && !cameraStream && !isLoading) {
+      console.log('[Studio] Auto-initializing camera for teleprompter...');
+      initCamera();
+    }
+  }, [activeTab, cameraStream, isLoading]);
+
+  const initCamera = async (): Promise<MediaStream | null> => {
     try {
+      // 0. If already active, just return it
+      if (cameraStream && cameraStream.active) {
+        return cameraStream;
+      }
+
       if (cameraStream) {
         cameraStream.getTracks().forEach(track => track.stop());
       }
       
       const resMap = {
-        '360p': { width: 640, height: 360 },
-        '720p': { width: 1280, height: 720 },
-        '1080p': { width: 1920, height: 1080 },
-        '4k': { width: 3840, height: 2160 }
+        '360p': { width: { ideal: 640 }, height: { ideal: 360 } },
+        '720p': { width: { ideal: 1280 }, height: { ideal: 720 } },
+        '1080p': { width: { ideal: 1920 }, height: { ideal: 1080 } },
+        '4k': { width: { ideal: 3840 }, height: { ideal: 2160 } }
       };
+      
+      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       
       const constraints = { 
         video: { 
-          deviceId: selectedVideoDeviceId ? { exact: selectedVideoDeviceId } : undefined,
-          facingMode: selectedVideoDeviceId ? undefined : facingMode,
-          ...resMap[videoResolution]
+          deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
+          // 🚀 PC Fix: Only use facingMode on mobile to avoid OverconstrainedError on Windows
+          facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
+          ...resMap[videoResolution as keyof typeof resMap]
         },
         audio: {
-          deviceId: selectedAudioDeviceId ? { exact: selectedAudioDeviceId } : undefined
+          deviceId: selectedAudioDeviceId ? { ideal: selectedAudioDeviceId } : undefined
         }
       };
 
-      const stream = await navigator.mediaDevices.getUserMedia(constraints);
-      setCameraStream(stream);
-      if (videoPreviewRef.current) {
-        videoPreviewRef.current.srcObject = stream;
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        setCameraStream(stream);
+        if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
+        return stream;
+      } catch (firstErr) {
+        console.warn('[Studio] High-res camera init failed, trying basic fallback...', firstErr);
+        try {
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          setCameraStream(stream);
+          if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
+          return stream;
+        } catch (secondErr) {
+          console.warn('[Studio] Basic V+A failed, trying Video-only...', secondErr);
+          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+          setCameraStream(stream);
+          if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
+          return stream;
+        }
       }
     } catch (err) {
-      console.error('Camera access failed:', err);
+      console.error('All camera init paths failed:', err);
+      return null;
     }
   };
 
@@ -249,91 +283,114 @@ export default function StudioPage() {
     if (cameraStream) {
       cameraStream.getTracks().forEach(track => track.stop());
       setCameraStream(null);
+      if (videoPreviewRef.current) videoPreviewRef.current.srcObject = null;
     }
   };
 
-  // Recording Logic
-  useEffect(() => {
-    if (activeTab === 'teleprompter' && !cameraStream) {
-      initCamera();
-    }
-    
-    // Auto-stop camera when leaving the teleprompter tab
-    return () => {
-      if (activeTab === 'teleprompter') {
-         // This runs when activeTab is about to change AWAY from teleprompter
-         // stopCamera(); // Wait, cleanup runs on next effect or unmount.
-      }
-    };
-  }, [activeTab, facingMode]);
-
-  // Dedicated cleanup for camera tracks when switching tabs
-  useEffect(() => {
-    if (activeTab !== 'teleprompter' && cameraStream) {
-        stopCamera();
-    }
-  }, [activeTab, cameraStream]);
-
   const startVideoRecording = async () => {
-    // 1. Force Camera Init if not active
-    if (!cameraStream) {
-      await initCamera();
-    }
+    try {
+      let activeStream = cameraStream;
+      if (!activeStream || !activeStream.active) {
+        activeStream = await initCamera();
+      }
 
-    // 2. Start Production Countdown
-    setCountdown(3);
-    const timer = setInterval(() => {
-      setCountdown(prev => {
-        if (prev === null || prev <= 1) {
-          clearInterval(timer);
-          return null;
-        }
-        return prev - 1;
-      });
-    }, 1000);
+      if (!activeStream) {
+        const errorMsg = "Камера не запущена. Проверьте разрешения или попробуйте перезагрузить вкладку.";
+        alert(errorMsg);
+        return;
+      }
 
-    // 3. Delayed 'Action!' - Sync Recording & Scrolling
-    setTimeout(async () => {
-      if (!cameraStream) return;
-      
-      setIsReading(true);
-      const localChunks: Blob[] = [];
-      const recorder = new MediaRecorder(cameraStream, { 
-        mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm' 
-      });
-      
-      recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
-      recorder.onstop = async () => {
-        const blob = new Blob(localChunks, { type: 'video/webm' });
+      // 2. Start Countdown
+      setCountdown(3);
+      const timer = setInterval(() => {
+        setCountdown(prev => {
+          if (prev === null || prev <= 1) {
+            clearInterval(timer);
+            return null;
+          }
+          return prev - 1;
+        });
+      }, 1000);
+
+      // 3. Action!
+      setTimeout(async () => {
+        if (!activeStream) return;
+        setIsReading(true);
+        const localChunks: Blob[] = [];
+        const audioChunks: Blob[] = [];
         
-        // тЬТ IMMEDIATE PERSISTENCE тЬТ
-        const recordingId = `raw_rec_${projectId}_${Date.now()}`;
         try {
-          await idb.set(recordingId, blob, 'MediaBuffer');
-          // Also track as current pending upload
-          await idb.set(`pending_upload_${projectId}`, recordingId, 'ProjectDrafts');
-          console.log('[Studio] Recording persisted to IndexedDB:', recordingId);
-        } catch (e) {
-          console.error('[Studio] Failed to persist recording:', e);
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          const recorder = new MediaRecorder(activeStream, { 
+            // 🚀 Maximum compatibility mode (as it was 2 weeks ago)
+            mimeType: MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : '',
+            videoBitsPerSecond: isMobile ? 2500000 : 5000000
+          });
+
+          recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
+          recorder.onstop = async () => {
+            const blob = new Blob(localChunks, { type: recorder.mimeType });
+            const timestamp = Date.now();
+            const recordingId = `raw_rec_${projectId}_${timestamp}`;
+            
+            try {
+              await idb.set(recordingId, blob, 'MediaBuffer');
+              await idb.set(`pending_upload_${projectId}`, recordingId, 'ProjectDrafts');
+              
+              if (audioChunks.length > 0) {
+                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                const audioRecId = `raw_rec_audio_${projectId}_${timestamp}`;
+                await idb.set(audioRecId, audioBlob, 'MediaBuffer');
+                await idb.set(`pending_audio_${projectId}`, audioRecId, 'ProjectDrafts');
+              }
+            } catch (e) { console.error('[Studio] IDB Storage error:', e); }
+
+            const url = URL.createObjectURL(blob);
+            setLastRecordingUrl(url);
+            setShowRecordingReview(true);
+          };
+
+          // Secondary audio-only recorder for OOM bypass on mobile
+          try {
+            const aMime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+            const audioOnlyStream = new MediaStream(activeStream.getAudioTracks());
+            const audioRecorder = new MediaRecorder(audioOnlyStream, { 
+              mimeType: aMime,
+              audioBitsPerSecond: 64000 // Very light
+            });
+            audioRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+            audioRecorder.start(1000);
+            (window as any)._audioRecorder = audioRecorder;
+          } catch (ae) {
+            console.warn('[Studio] Parallel audio recording failed (non-critical):', ae);
+          }
+
+          recorder.start(1000);
+          mediaRecorderRef.current = recorder;
+          setIsRecordingVideo(true);
+          setRecordingTime(0);
+          if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+          recordingTimerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
+          
+        } catch (err: any) {
+          console.error('[Studio] MediaRecorder fail:', err);
+          const detail = err.name === 'NotReadableError' ? 'Камера занята другим приложением' : (err.message || err.name);
+          alert(`Ошибка старта записи: ${detail}. Попробуйте перезагрузить страницу.`);
+          setIsReading(false);
         }
-
-        const url = URL.createObjectURL(blob);
-        setLastRecordingUrl(url);
-        setShowRecordingReview(true);
-      };
-
-      recorder.start(1000);
-      mediaRecorderRef.current = recorder;
-      setIsRecordingVideo(true);
-      setRecordingTime(0);
-      recordingTimerRef.current = setInterval(() => setRecordingTime(prev => prev + 1), 1000);
-    }, 3000);
+      }, 3000);
+    } catch (err: any) {
+      alert("Ошибка инициализации: " + (err.message || err.name));
+    }
   };
 
   const stopVideoRecording = () => {
     setIsReading(false);
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
+      const aRec = (window as any)._audioRecorder as MediaRecorder;
+      if (aRec && aRec.state !== 'inactive') aRec.stop();
+      
       setIsRecordingVideo(false);
       if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
       
@@ -452,7 +509,11 @@ export default function StudioPage() {
         });
       }
       
-      // Note: Draft is preserved for safety in case of render failure
+      // тЬЕ Invalidate render cache so delivery always re-renders with fresh subtitles
+      try {
+        await idb.delete(`final_render_${projectId}`, 'MediaBuffer');
+        console.log('[Studio] Render cache invalidated — delivery will re-render with subtitles');
+      } catch (e) { /* ignore */ }
 
       // тЬЕ Final Redirect
       router.push(`/app/projects/new/delivery?projectId=${projectId}`);
@@ -474,44 +535,46 @@ export default function StudioPage() {
     <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
       {/* ЁЯЪА Pro Studio Mainframe - Full Screen Immersion */}
       <div className="flex h-full w-full overflow-hidden">
-        <StudioSidebar 
-          activeTab={activeTab as any}
-          setActiveTab={setActiveTab}
-          cameraStream={cameraStream}
-          isRecordingVideo={isRecordingVideo}
-          recordingTime={recordingTime}
-          facingMode={facingMode}
-          videoResolution={videoResolution}
-          videoDevices={videoDevices}
-          audioDevices={audioDevices}
-          selectedVideoDeviceId={selectedVideoDeviceId}
-          selectedAudioDeviceId={selectedAudioDeviceId}
-          initCamera={initCamera}
-          stopCamera={stopCamera}
-          setFacingMode={setFacingMode}
-          setIsVideoMirrored={setIsVideoMirrored}
-          isVideoMirrored={isVideoMirrored}
-          setVideoResolution={setVideoResolution}
-          setSelectedVideoDeviceId={setSelectedVideoDeviceId}
-          setSelectedAudioDeviceId={setSelectedAudioDeviceId}
-          useCustomScript={useCustomScript}
-          setUseCustomScript={setUseCustomScript}
-          customScript={customScript}
-          setCustomScript={setCustomScript}
-          manifest={manifest}
-          isMirrored={isMirrored}
-          setIsMirrored={setIsMirrored}
-          scrollSpeed={scrollSpeed}
-          setScrollSpeed={setScrollSpeed}
-          prompterWidth={prompterWidth}
-          setPrompterWidth={setPrompterWidth}
-          textSize={textSize}
-          setTextSize={setTextSize}
-          scriptOpacity={scriptOpacity}
-          setScriptOpacity={setScriptOpacity}
-          t={t}
-          currentProfile={currentProfile}
-        />
+        {(!isMobileRef.current || activeTab !== 'assembly') && (
+          <StudioSidebar 
+            activeTab={activeTab as any}
+            setActiveTab={setActiveTab}
+            cameraStream={cameraStream}
+            isRecordingVideo={isRecordingVideo}
+            recordingTime={recordingTime}
+            facingMode={facingMode}
+            videoResolution={videoResolution}
+            videoDevices={videoDevices}
+            audioDevices={audioDevices}
+            selectedVideoDeviceId={selectedVideoDeviceId}
+            selectedAudioDeviceId={selectedAudioDeviceId}
+            initCamera={initCamera}
+            stopCamera={stopCamera}
+            setFacingMode={setFacingMode}
+            setIsVideoMirrored={setIsVideoMirrored}
+            isVideoMirrored={isVideoMirrored}
+            setVideoResolution={setVideoResolution}
+            setSelectedVideoDeviceId={setSelectedVideoDeviceId}
+            setSelectedAudioDeviceId={setSelectedAudioDeviceId}
+            useCustomScript={useCustomScript}
+            setUseCustomScript={setUseCustomScript}
+            customScript={customScript}
+            setCustomScript={setCustomScript}
+            manifest={manifest}
+            isMirrored={isMirrored}
+            setIsMirrored={setIsMirrored}
+            scrollSpeed={scrollSpeed}
+            setScrollSpeed={setScrollSpeed}
+            prompterWidth={prompterWidth}
+            setPrompterWidth={setPrompterWidth}
+            textSize={textSize}
+            setTextSize={setTextSize}
+            scriptOpacity={scriptOpacity}
+            setScriptOpacity={setScriptOpacity}
+            t={t}
+            currentProfile={currentProfile}
+          />
+        )}
 
         <main className="flex-1 relative flex flex-col min-w-0 overflow-hidden bg-[#050508]">
           {/* Persistence Status Indicator */}
@@ -622,11 +685,10 @@ export default function StudioPage() {
               </div>
             )}
 
-            {/* Global Recording Review Overlay */}
-            <AnimatePresence>
-              {showRecordingReview && (
-                <RecordingReview 
-                    showRecordingReview={showRecordingReview}
+            {/* Global Recording Review Overlay (No AnimatePresence for OOM safety) */}
+            {showRecordingReview && (
+              <RecordingReview 
+                  showRecordingReview={showRecordingReview}
                     lastRecordingUrl={lastRecordingUrl}
                     currentProfile={currentProfile}
                     downloadRawVideo={downloadRawVideo}
@@ -635,29 +697,33 @@ export default function StudioPage() {
                     setLastRecordingUrl={setLastRecordingUrl}
                     updateSegmentField={updateSegmentField}
                     handleAcceptRecording={async (url) => {
-                      if (manifest) {
-                         const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
-                         const newManifest = {
-                            ...manifest,
-                            videoUrl: url,
-                            segments: manifest.segments.map((s: any) => 
-                               s.id === segmentId ? { ...s, assetUrl: url, type: 'user_recording' } : s
-                            )
-                         };
-                         setManifest(newManifest);
-                         // Persist to DB so refresh doesn't lose it
-                         await projectService.updateLatestVersionManifest(projectId, newManifest);
-                      }
-                      
-                      // тЬТ CLEANUP PENDING STATUS тЬТ
-                      await idb.delete(`pending_upload_${projectId}`, 'ProjectDrafts');
-                      
-                      // 1. Give Android a moment to stop camera and clear memory
-                      setTimeout(() => {
-                        setShowRecordingReview(false);
-                        setActiveTab('assembly');
-                      }, 100);
-                    }}
+                       try {
+                         if (manifest) {
+                            const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
+                            const newManifest = {
+                               ...manifest,
+                               videoUrl: url,
+                               segments: manifest.segments.map((s: any) => 
+                                  s.id === segmentId ? { ...s, assetUrl: url, type: 'user_recording' } : s
+                               )
+                            };
+                            setManifest(newManifest);
+                            await projectService.updateLatestVersionManifest(projectId, newManifest);
+                         }
+                       } catch (e) { console.error('Failed to prepare video for editor:', e); }
+
+                       await idb.delete(`pending_upload_${projectId}`, 'ProjectDrafts');
+                       setShowRecordingReview(false);
+                        
+                       // 🚀 Stop camera with delay to ensure GPU memory is released before Editor mounts
+                       setTimeout(() => stopCamera(), 500);
+
+                       if (isMobileRef.current) {
+                         setShowAssemblyLauncher(true);
+                       } else {
+                         setTimeout(() => setActiveTab('assembly'), 200);
+                       }
+                     }}
                     onDiscard={async () => {
                       await idb.delete(`pending_upload_${projectId}`, 'ProjectDrafts');
                       setShowRecordingReview(false);
@@ -667,15 +733,56 @@ export default function StudioPage() {
                     selectedSegmentId={selectedSegmentId}
                 />
               )}
-            </AnimatePresence>
+
+            {/* Mobile Assembly Launcher - lightweight buffer before FFmpeg loads */}
+            {showAssemblyLauncher && (
+              <motion.div
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="absolute inset-0 z-50 bg-[#050508] flex flex-col items-center justify-center gap-8 p-10"
+              >
+                <div className="w-20 h-20 rounded-3xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+                  <Scissors size={32} className="text-purple-400" />
+                </div>
+                <div className="text-center space-y-3">
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tight">Запись сохранена!</h2>
+                  <p className="text-sm text-white/40 leading-relaxed">Запись сохранена в памяти устройства.<br/>Нажми кнопку, чтобы открыть монтажку.</p>
+                </div>
+                <button
+                  onClick={() => {
+                    setShowAssemblyLauncher(false);
+                    // Small delay to let GC run before mounting FFmpeg
+                    setTimeout(() => setActiveTab('assembly'), 300);
+                  }}
+                  className="w-full max-w-xs py-5 bg-purple-500 rounded-[2rem] text-white font-black uppercase tracking-widest text-sm shadow-2xl shadow-purple-500/30 active:scale-95 transition-all"
+                >
+                  Открыть монтажку →
+                </button>
+                <button
+                  onClick={() => {
+                    setShowAssemblyLauncher(false);
+                    setActiveTab('teleprompter');
+                  }}
+                  className="text-white/20 text-xs uppercase tracking-widest font-bold"
+                >
+                  Записать ещё раз
+                </button>
+              </motion.div>
+            )}
 
             {activeTab === 'assembly' && !showFaceless && (
-              <VideoEditor
-                manifest={manifest}
-                updateSegmentField={updateSegmentField}
-                onBack={() => setActiveTab('branch')}
-                onNext={handleFinalExport}
+              <VideoEditor 
                 projectId={projectId}
+                aRollUrl={lastRecordingUrl || ''}
+                onBack={() => {
+                  if (isMobileRef.current) {
+                    setActiveTab('teleprompter');
+                  } else {
+                    setActiveTab('branch');
+                  }
+                }}
+                onNext={handleFinalExport}
+                manifest={manifest}
                 onFaceless={() => setShowFaceless(true)}
               />
             )}

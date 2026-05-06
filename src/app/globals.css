@@ -32,24 +32,42 @@
   --radius-3xl: 40px;
   --radius-pill: 9999px;
 
-  --font-sans: var(--font-geist-sans), system-ui, sans-serif;
-  --font-display: var(--font-space-grotesk), system-ui, sans-serif;
-  --font-mono: var(--font-geist-mono), monospace;
+  --font-sans: var(--font-inter), var(--font-geist-sans), system-ui, sans-serif;
+  --font-display: var(--font-bebas), var(--font-space-grotesk), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), var(--font-geist-mono), monospace;
+  
+  --font-bebas: var(--font-bebas);
+  --font-jetbrains: var(--font-jetbrains);
+  --font-inter: var(--font-inter);
+
+  --color-virale-bg: #050505;
+  --color-virale-card: #0D0D0D;
+  --color-virale-gold: #D4AF37;
+  --color-virale-orange: #FF5C00;
+  --color-virale-text: #F5F0E8;
+  --color-virale-text-muted: #888888;
+  
+  /* Cyberpunk Neon Accents */
+  --color-cyber-cyan: #00F3FF;
+  --color-cyber-magenta: #FF00FF;
+  --color-cyber-yellow: #FDEE00;
+  --color-cyber-blue: #0000FF;
+  
+  --glow-cyan: 0 0 10px rgba(0, 243, 255, 0.5), 0 0 20px rgba(0, 243, 255, 0.2);
+  --glow-magenta: 0 0 10px rgba(255, 0, 255, 0.5), 0 0 20px rgba(255, 0, 255, 0.2);
+  --glow-gold: 0 0 10px rgba(212, 175, 55, 0.5), 0 0 20px rgba(212, 175, 55, 0.2);
 }
 
 :root {
-  --background: #020408;
-  --foreground: #F8FAFC;
+  --background: #050505;
+  --foreground: #F5F0E8;
   
   --glow-gold: 0 0 20px rgba(212, 175, 55, 0.4), 0 0 60px rgba(212, 175, 55, 0.15);
-  --glow-mint: 0 0 20px rgba(0, 255, 204, 0.4), 0 0 60px rgba(0, 255, 204, 0.1);
-  --glow-blue: 0 0 20px rgba(77, 158, 255, 0.4);
-  --glow-purple: 0 0 20px rgba(155, 95, 255, 0.4);
+  --glow-cyan: 0 0 20px rgba(0, 243, 255, 0.4), 0 0 60px rgba(0, 243, 255, 0.1);
+  --glow-magenta: 0 0 20px rgba(255, 0, 255, 0.4), 0 0 60px rgba(255, 0, 255, 0.1);
 
-  --theme-glass-bg: rgba(11, 18, 41, 0.5);
-  --theme-glass-dark-bg: rgba(2, 4, 8, 0.6);
-  --theme-glass-border: rgba(255, 255, 255, 0.08);
-  --theme-glass-inset: rgba(255, 255, 255, 0.05);
+  --theme-glass-bg: rgba(5, 5, 5, 0.8);
+  --theme-glass-border: rgba(0, 243, 255, 0.15);
 }
 
 [data-theme='light'] {

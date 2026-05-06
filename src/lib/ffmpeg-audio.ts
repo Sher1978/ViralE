@@ -56,20 +56,37 @@ export async function extractAudioFFmpeg(
   try {
     onProgress?.('Загрузка аудио-движка...');
     const ff = await getFFmpeg();
+    
+    // Add logging to catch errors in browser console
+    ff.on('log', ({ message }: { message: string }) => {
+      console.log(`[FFmpeg Log] ${message}`);
+    });
 
-    // Detect input extension from MIME
+    if (videoBlob.size === 0) {
+      throw new Error('Input video blob is empty');
+    }
+
     const mime = videoBlob.type || 'video/mp4';
-    const inputExt = mime.includes('quicktime') || mime.includes('mov') ? 'mov'
-                   : mime.includes('webm') ? 'webm'
-                   : 'mp4';
+    let inputExt = 'mp4';
+    if (mime.includes('quicktime') || mime.includes('mov')) inputExt = 'mov';
+    else if (mime.includes('webm')) inputExt = 'webm';
+    else if (mime.includes('mkv')) inputExt = 'mkv';
+    else if (mime.includes('avi')) inputExt = 'avi';
     const inputName  = `input.${inputExt}`;
     const outputName = 'output.mp3';
 
     onProgress?.('Анализ видео (на устройстве)...');
-    await ff.writeFile(inputName, await (window as any)._fetchFile(videoBlob));
+    
+    // 🔥 Memory optimization: Read as ArrayBuffer and immediately convert to Uint8Array
+    let buffer: ArrayBuffer | null = await videoBlob.arrayBuffer();
+    await ff.writeFile(inputName, new Uint8Array(buffer));
+    
+    // 🔥 CRITICAL: Nullify buffer immediately to free memory for WASM heap
+    buffer = null;
 
     onProgress?.('Извлечение аудио...');
-    await ff.exec([
+    const result = await ff.exec([
+      '-y',           // Overwrite if exists
       '-i', inputName,
       '-vn',          // no video
       '-ar', '16000', // 16kHz sample rate (optimal for speech AI)
@@ -79,7 +96,15 @@ export async function extractAudioFFmpeg(
       outputName,
     ]);
 
+    if (result !== 0) {
+      throw new Error(`FFmpeg failed with exit code ${result}`);
+    }
+
     const data = await ff.readFile(outputName);
+    if (!data || data.length === 0) {
+      throw new Error('FFmpeg produced an empty file');
+    }
+
     const mp3Blob = new Blob([data as any], { type: 'audio/mpeg' });
 
     // Cleanup FFmpeg virtual FS
