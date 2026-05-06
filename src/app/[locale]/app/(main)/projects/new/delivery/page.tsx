@@ -11,6 +11,7 @@ import { socialService } from '@/lib/services/socialService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { idb } from '@/lib/idb';
+import DistributionFactory from '@/app/[locale]/app/(main)/projects/[id]/studio/_components/DistributionFactory';
 
 export default function DeliveryPage() {
   const t = useTranslations('delivery');
@@ -32,6 +33,7 @@ export default function DeliveryPage() {
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderStatus, setRenderStatus] = useState('');
   const [renderLogs, setRenderLogs] = useState<string[]>([]);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   
   const addLog = (msg: string) => {
     console.log(msg);
@@ -95,8 +97,53 @@ export default function DeliveryPage() {
     }).join('\n');
   };
 
+  // Build drawtext filter chain — works without libass in single-thread @ffmpeg/core
+  const buildDrawtextFilter = (clips: any[], baseFilter: string): string => {
+    if (clips.length === 0) return baseFilter;
+    
+    // Escape special chars for FFmpeg drawtext
+    const esc = (t: string) => t
+      .replace(/\\/g, '\\\\')
+      .replace(/'/g, "\\\\'")  
+      .replace(/:/g, '\\\\:')
+      .replace(/,/g, '\\\\,')
+      .replace(/\[/g, '\\\\[')
+      .replace(/\]/g, '\\\\]');
+
+    const drawtextChain = clips.map(c => {
+      const txt = esc((c.text || '').toUpperCase());
+      return [
+        `drawtext=fontfile=font.ttf:text='${txt}'`,
+        `fontsize=72`,
+        `fontcolor=#facc15`, // yellow-400 equivalent
+        `shadowcolor=black`,
+        `shadowx=4`,
+        `shadowy=4`,
+        `x=(w-text_w)/2`,
+        `y=h-420`,
+        `enable='between(t,${c.startTime},${c.endTime})'`,
+      ].join(':');
+    }).join(',');
+
+    return baseFilter ? `${baseFilter},${drawtextChain}` : drawtextChain;
+  };
+
   const handleClientRender = async (ver: ProjectVersion) => {
     if (isLaunchingRender) return;
+    
+    // 0. CHECK CACHE FIRST
+    try {
+      const cachedRender = await idb.get(`final_render_${projectId}`, 'MediaBuffer');
+      if (cachedRender instanceof Blob) {
+        console.log('[Delivery] Found cached render in IDB, skipping generation');
+        const url = URL.createObjectURL(cachedRender);
+        setJob({ id: 'local-render', status: 'completed', output_url: url, progress: 100 } as any);
+        setRenderProgress(100);
+        setRenderStatus('Готово (из кеша)');
+        return;
+      }
+    } catch (e) { console.warn('[Delivery] Cache check failed:', e); }
+
     setIsLaunchingRender(true);
     setRenderStatus('Подготовка движка...');
     setRenderProgress(5);
@@ -114,9 +161,6 @@ export default function DeliveryPage() {
 
       ffmpeg.on('log', ({ message }) => {
         console.log('[FFmpeg]', message);
-        if (message.includes('error') || message.includes('failed')) {
-           setRenderStatus(`Движок: ${message.slice(0, 40)}...`);
-        }
       });
       
       ffmpeg.on('progress', ({ progress }) => {
@@ -148,13 +192,14 @@ export default function DeliveryPage() {
         null;
 
       if (!aRollUrl || aRollUrl.startsWith('blob:')) {
-        const cachedVideo = await idb.get(`video_file_${projectId}`);
+        const cachedVideo = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
         if (cachedVideo instanceof Blob) {
            aRollUrl = URL.createObjectURL(cachedVideo);
         }
       }
 
       if (!aRollUrl) throw new Error('Исходное видео (A-Roll) не найдено.');
+      setPreviewUrl(aRollUrl);
 
       setRenderStatus('Скачивание основного видео...');
       const aRollData = await fetchFile(aRollUrl);
@@ -169,7 +214,7 @@ export default function DeliveryPage() {
           setRenderStatus(`Синхронизация B-Roll ${i + 1}/${brollClipsRaw.length}...`);
           let clipUrl = clip.url;
           if (!clipUrl || clipUrl.startsWith('blob:')) {
-            const cachedBroll = await idb.get(`broll_file_${clip.id}`);
+            const cachedBroll = await idb.get(`broll_file_${clip.id}`, 'MediaBuffer');
             if (cachedBroll instanceof Blob) {
               clipUrl = URL.createObjectURL(cachedBroll);
             }
@@ -183,6 +228,14 @@ export default function DeliveryPage() {
         } catch (e) {}
       }
 
+      setRenderStatus('Подготовка субтитров и шрифтов...');
+      try {
+        const fontData = await fetchFile('/fonts/Roboto-Bold.ttf');
+        await ffmpeg.writeFile('font.ttf', fontData);
+      } catch (e) {
+        console.warn('[Delivery] Failed to load font:', e);
+      }
+
       const processedBrolls = [];
       for (let i = 0; i < brollFiles.length; i++) {
         setRenderStatus(`Оптимизация B-Roll ${i+1}/${brollFiles.length}...`);
@@ -193,62 +246,103 @@ export default function DeliveryPage() {
         try { await ffmpeg.deleteFile(name); } catch(e) {}
       }
 
-      setRenderStatus('Подготовка субтитров...');
       const subs = manifest.subtitleClips || manifest.segments?.[0]?.subtitleClips || [];
-      console.log('[Delivery] Finalizing subtitles count:', subs.length);
-      const srtContent = generateSRT(subs);
-      await ffmpeg.writeFile('subs.srt', srtContent);
+      console.log('[Delivery] Subtitle clips found:', subs.length);
 
       setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
       setRenderProgress(60);
 
+      // 1-3. Optimized Execution Path
+      const hasBrolls = processedBrolls.length > 0;
       let currentInput = 'input_aroll.mp4';
-      
-      if (subs.length > 0) {
-        setRenderStatus(`Наложение субтитров...`);
-        const subOutput = `temp_A.mp4`;
-        const exitCodeSub = await ffmpeg.exec([
-          '-i', currentInput,
-          '-vf', `${scale},subtitles=./subs.srt`,
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'aac', '-b:a', '128k', subOutput
-        ]);
+
+      if (!hasBrolls) {
+        // 🚀 FAST PATH: No B-Rolls (Faceless or Simple Teleprompter) -> 1 PASS!
+        setRenderStatus(`Быстрая сборка ${isMobile ? '720p' : '1080p'}...`);
+        const subOutput = 'final_fast.mp4';
         
-        if (exitCodeSub !== 0) {
-          console.warn('[Delivery] Subtitle burn failed, continuing without them...');
-        } else {
-          try { await ffmpeg.deleteFile('input_aroll.mp4'); } catch(e) {}
-          currentInput = subOutput;
+        let vfFilter = scale;
+        if (subs.length > 0) {
+          setRenderStatus(`Быстрая сборка + субтитры (${subs.length})...`);
+          vfFilter = buildDrawtextFilter(subs, scale);
+        }
+
+        await ffmpeg.exec([
+          '-i', currentInput,
+          '-vf', vfFilter,
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
+          '-c:a', 'aac', '-b:a', '128k',
+          subOutput
+        ]);
+        try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
+        currentInput = subOutput;
+
+      } else {
+        // 🐢 MULTI-PASS PATH: Has B-Rolls (Requires complex overlay)
+        setRenderStatus(`Масштабирование исходника...`);
+        const scaledOutput = `temp_A.mp4`;
+        await ffmpeg.exec([
+          '-i', currentInput,
+          '-vf', scale,
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
+          '-c:a', 'aac', '-b:a', '128k',
+          scaledOutput
+        ]);
+        try { await ffmpeg.deleteFile('input_aroll.mp4'); } catch(e) {}
+        currentInput = scaledOutput;
+
+        for (let i = 0; i < processedBrolls.length; i++) {
+          const broll = processedBrolls[i];
+          const nextOutput = i % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
+          setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
+          const overlayFilter = `[0:v][1:v]overlay=enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
+          await ffmpeg.exec([
+            '-i', currentInput,
+            '-i', broll.name,
+            '-filter_complex', overlayFilter,
+            '-map', '[out]',
+            '-map', '0:a',
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
+          ]);
+          try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
+          try { await ffmpeg.deleteFile(broll.name); } catch(e) {}
+          currentInput = nextOutput;
+        }
+
+        if (subs.length > 0) {
+          setRenderStatus(`Наложение субтитров (${subs.length})...`);
+          const subOutput = currentInput === 'temp_A.mp4' ? `temp_B.mp4` : `temp_A.mp4`;
+          const vfFilter = buildDrawtextFilter(subs, '');
+          
+          const exitCodeSub = await ffmpeg.exec([
+            '-i', currentInput,
+            '-vf', vfFilter,
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
+            '-c:a', 'copy',
+            subOutput
+          ]);
+          
+          if (exitCodeSub === 0) {
+            try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
+            currentInput = subOutput;
+          }
         }
       }
 
-      for (let i = 0; i < processedBrolls.length; i++) {
-        const broll = processedBrolls[i];
-        const nextOutput = i % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
-        setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
-        const overlayFilter = `[0:v][1:v]overlay=enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
-        await ffmpeg.exec([
-          '-i', currentInput,
-          '-i', broll.name,
-          '-filter_complex', overlayFilter,
-          '-map', '[out]',
-          '-map', '0:a',
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
-        ]);
-        try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-        try { await ffmpeg.deleteFile(broll.name); } catch(e) {}
-        currentInput = nextOutput;
-      }
-
       const finalData = await ffmpeg.readFile(currentInput);
-      await ffmpeg.writeFile('output.mp4', finalData);
       const videoBlob = new Blob([finalData as any], { type: 'video/mp4' });
+      
+      // PERSIST TO IDB
+      await idb.set(`final_render_${projectId}`, videoBlob, 'MediaBuffer');
+      
       const videoUrl = URL.createObjectURL(videoBlob);
       
       setRenderProgress(100);
       setRenderStatus('Готово!');
 
       if (projectId) {
-        await projectService.updateProject(projectId, { status: 'completed', final_video_url: videoUrl });
+        // DO NOT save blob URL to Supabase
+        await projectService.updateProject(projectId, { status: 'completed' });
       }
 
       setJob({ id: 'local-render', status: 'completed', output_url: videoUrl, progress: 100 } as any);
@@ -293,17 +387,36 @@ export default function DeliveryPage() {
         const ver = await projectService.getLatestVersion(projectId);
         if (ver?.script_data?.distributionAssets) {
           setVersion(ver);
-          clearInterval(pollInterval);
+          // If we are done with rendering and assets are ready, stop polling
+          if (job?.status === 'completed') {
+            clearInterval(pollInterval);
+          }
         }
       }, 5000);
     }
     return () => clearInterval(pollInterval);
-  }, [projectId, !!distributionAssets]);
+  }, [projectId, !!distributionAssets, job?.status]);
 
   useEffect(() => {
     async function loadResults() {
       if (projectId) {
         try {
+          // 1. TRY RECOVERING FROM CACHE
+          const cachedRender = await idb.get(`final_render_${projectId}`, 'MediaBuffer');
+          if (cachedRender instanceof Blob) {
+            console.log('[Delivery] Restored from IDB cache');
+            const url = URL.createObjectURL(cachedRender);
+            setJob({ id: 'local-render', status: 'completed', output_url: url, progress: 100 } as any);
+            setRenderProgress(100);
+            setIsLoading(false);
+            
+            // Still load version data for assets
+            const verData = await projectService.getLatestVersion(projectId);
+            if (verData) setVersion(verData);
+            return;
+          }
+
+          // 2. IF NO CACHE, START RENDER
           const verData = await projectService.getLatestVersion(projectId);
           if (verData) {
             setVersion(verData);
@@ -376,10 +489,15 @@ export default function DeliveryPage() {
         {job?.output_url ? (
           <video src={job.output_url} controls className="w-full h-full object-cover" />
         ) : (
-          <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-xl">
-            <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
-            <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">Generating Final Cut...</p>
-          </div>
+          <>
+            {previewUrl && (
+              <video src={previewUrl} autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-60" />
+            )}
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
+              <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
+              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">Generating Final Cut...</p>
+            </div>
+          </>
         )}
         <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent">
           <span className="text-[10px] font-black uppercase tracking-widest text-white/50">65 SEC · AI PRODUCTION</span>
@@ -391,97 +509,19 @@ export default function DeliveryPage() {
         </div>
       </div>
 
-      {/* Distribution Section */}
-      <div className="space-y-4 pt-4">
-      {(!distributionAssets && !isLaunchingRender) && (
-        <div className="p-8 rounded-3xl bg-purple-500/5 border border-dashed border-purple-500/20 text-center space-y-4 mb-8">
-          <div className="w-16 h-16 rounded-full bg-purple-500/10 flex items-center justify-center mx-auto">
-            <ImageIcon className="text-purple-400" size={32} />
-          </div>
-          <div className="space-y-1">
-            <h3 className="text-sm font-black uppercase text-white">Ассеты дистрибуции не готовы</h3>
-            <p className="text-[10px] text-white/40 uppercase tracking-widest">Нажмите кнопку ниже для генерации всего пакета</p>
-          </div>
-          <button 
-            onClick={async () => { 
-              setRenderStatus("Генерация ассетов...");
-              const res = await fetch("/api/ai/distribution-assets", { 
-                method: "POST", 
-                body: JSON.stringify({ scriptText: scriptData.meat, projectId, locale }) 
-              });
-              const assets = await res.json();
-              if (assets && !assets.error) {
-                await projectService.updateLatestVersionManifest(projectId as string, { ...manifest, distributionAssets: assets });
-                setVersion(prev => (prev ? { ...prev, script_data: { ...prev.script_data, distributionAssets: assets } } : prev) as any);
-              }
-            }}
-            className="px-6 py-3 rounded-xl bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
-          >
-            Сгенерировать пакет (AI)
-          </button>
-        </div>
-      )}
-      {TEXT_OUTPUTS.map((output) => (
-          <div key={output.platform} className="rounded-3xl p-5 space-y-4 bg-white/[0.02] border border-white/5">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <span className="text-xl">{output.icon}</span>
-                <span className="text-[11px] font-black uppercase tracking-widest" style={{ color: output.accent }}>{output.platform}</span>
-              </div>
-              <button onClick={() => handleCopy(output.text)} className="flex items-center gap-2 px-4 py-2 rounded-2xl text-[9px] font-black uppercase tracking-widest bg-white/5 text-white/60 hover:bg-white/10">
-                <Copy className="w-3 h-3" /> {t('copyBtn')}
-              </button>
-            </div>
-            <p className="text-[12px] text-white/60 leading-relaxed font-medium">{output.text}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Visual Assets */}
-      {distributionAssets?.ig_carousel && (
-        <div className="space-y-4 pt-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">Instagram Carousel</p>
-          <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar">
-            {distributionAssets.ig_carousel.prompts.map((prompt: string, i: number) => {
-              const url = distributionImages[`carousel-${i}`];
-              return (
-                <div key={i} className="flex-shrink-0 w-48 relative aspect-[4/5] rounded-3xl bg-white/5 border border-white/10 overflow-hidden">
-                  {url ? <img src={url} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="text-white/10" size={24} /></div>}
-                  <div className="absolute top-2 left-2 px-2 py-1 rounded-lg bg-black/40 text-[8px] font-black text-white">SLIDE {i + 1}</div>
-                </div>
-              );
-            })}
-          </div>
-        </div>
-      )}
-
-      {distributionAssets?.video_banner && (
-        <div className="space-y-4 pt-4">
-          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-white/30 ml-1">Video Cover</p>
-          <div className="rounded-3xl p-5 flex items-center justify-between bg-purple-500/5 border border-purple-500/20">
-            <div className="flex items-center gap-4">
-              <div className="w-16 h-20 rounded-xl bg-purple-500/10 border border-purple-500/20 overflow-hidden">
-                {distributionImages['banner'] ? <img src={distributionImages['banner']} className="w-full h-full object-cover" /> : <div className="w-full h-full flex items-center justify-center"><ImageIcon className="text-purple-500/20" size={20} /></div>}
-              </div>
-              <div>
-                <p className="text-sm font-black uppercase text-white/90">Video Cover Master</p>
-                <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest italic truncate max-w-[150px]">"{distributionAssets.video_banner.text_on_banner}"</p>
-              </div>
-            </div>
-            {distributionImages['banner'] && (
-              <button onClick={() => { const a = document.createElement('a'); a.href = distributionImages['banner']; a.download = 'banner.webp'; a.click(); }} className="w-10 h-10 rounded-2xl flex items-center justify-center bg-purple-500/20 hover:bg-purple-500/30 text-purple-400">
-                <Download size={20} />
-              </button>
-            )}
-          </div>
-        </div>
-      )}
-
-      <div className="pt-8 space-y-4">
-        <button onClick={() => downloadTXT()} className="w-full py-5 rounded-[2.5rem] bg-purple-600 text-white flex items-center justify-center gap-3 shadow-[0_20px_40px_rgba(168,85,247,0.4)] border border-purple-400 font-black text-sm uppercase tracking-widest transition-all active:scale-95">
-          <Download size={20} /> ВЫГРУЗИТЬ (TXT + VIDEO)
-        </button>
+      {/* Distribution Factory (New Design) */}
+      <div className="pt-8 h-[600px] mb-8">
+        <DistributionFactory 
+          manifest={manifest}
+          scriptText={scriptData.meat}
+          projectId={projectId as string}
+          locale={locale}
+          onUpdateManifest={(newManifest: any) => {
+             setVersion(prev => (prev ? { ...prev, script_data: newManifest } : prev) as any);
+          }}
+        />
       </div>
     </div>
   );
 }
+
