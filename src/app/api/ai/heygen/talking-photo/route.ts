@@ -13,28 +13,34 @@ export async function POST(req: NextRequest) {
     console.log(`[HeyGen TP] Starting generation for project ${projectId} with audio ${audioUrl}`);
 
     // 1. Fetch audio from Supabase and upload to HeyGen (Proxy method)
-    // This bypasses Vercel's 4.5MB request body limit while satisfying HeyGen's internal storage preference
     const audioDownloadRes = await fetch(audioUrl);
-    if (!audioDownloadRes.ok) throw new Error('Failed to download audio from storage');
+    if (!audioDownloadRes.ok) throw new Error(`Failed to download audio from storage: ${audioDownloadRes.status}`);
     const audioBlob = await audioDownloadRes.blob();
 
     const audioFormData = new FormData();
     audioFormData.append('file', audioBlob, 'recording.webm');
     
+    console.log('[HeyGen TP] Uploading audio to HeyGen...');
     const audioUploadRes = await fetch(`${HEYGEN_API_URL}/v1/talking_photo.upload_audio`, {
       method: 'POST',
       headers: { 'X-Api-Key': apiKey },
       body: audioFormData
     });
 
+    if (!audioUploadRes.ok) {
+      const errText = await audioUploadRes.text();
+      throw new Error(`HeyGen Audio Upload Error: ${audioUploadRes.status}. ${errText.substring(0, 100)}`);
+    }
+
     const audioData = await audioUploadRes.json();
-    if (!audioUploadRes.ok || !audioData.data?.audio_url) {
+    if (!audioData.data?.audio_url) {
       console.error('[HeyGen TP] Audio proxy upload failed:', audioData);
       throw new Error(`HeyGen audio upload failed: ${JSON.stringify(audioData)}`);
     }
     const internalAudioUrl = audioData.data.audio_url;
 
     // 2. Start Talking Photo Task
+    console.log('[HeyGen TP] Starting task with internal audio URL:', internalAudioUrl);
     const generateRes = await fetch(`${HEYGEN_API_URL}/v2/talking_photo`, {
       method: 'POST',
       headers: {
@@ -53,7 +59,7 @@ export async function POST(req: NextRequest) {
     if (!generateRes.ok) {
        const errorText = await generateRes.text();
        console.error('[HeyGen TP] Generation failed with status:', generateRes.status, errorText);
-       throw new Error(`HeyGen API Error: ${generateRes.status}. ${errorText.substring(0, 100)}`);
+       throw new Error(`HeyGen API Task Error: ${generateRes.status}. ${errorText.substring(0, 100)}`);
     }
 
     const generateData = await generateRes.json();
