@@ -10,6 +10,7 @@ import { useLocale } from 'next-intl';
 
 interface TeleprompterViewProps {
   cameraStream: MediaStream | null;
+  cameraError?: string | null;
   videoPreviewRef: React.RefObject<HTMLVideoElement | null>;
   isVideoMirrored: boolean;
   prompterWidth: number;
@@ -40,6 +41,7 @@ interface TeleprompterViewProps {
 
 export const TeleprompterView = React.memo(({
   cameraStream,
+  cameraError,
   videoPreviewRef,
   isVideoMirrored,
   prompterWidth,
@@ -188,8 +190,30 @@ export const TeleprompterView = React.memo(({
             className={`w-full h-full object-cover opacity-100 transition-transform duration-1000 ${isVideoMirrored ? 'scale-x-[-1]' : ''}`}
           />
         ) : (
-          <div className="w-full h-full flex items-center justify-center">
-             <Camera className="w-20 h-20 text-white/10 animate-pulse" />
+          <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-10 text-center">
+             {cameraError ? (
+               <>
+                 <div className="w-20 h-20 rounded-3xl bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                    <X className="w-10 h-10 text-red-500" />
+                 </div>
+                 <p className="text-red-400 font-black uppercase tracking-widest text-[10px] max-w-[280px] leading-relaxed">
+                   {cameraError}
+                 </p>
+                 <button 
+                   onClick={() => window.location.reload()}
+                   className="mt-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                 >
+                   Reload Page
+                 </button>
+               </>
+             ) : (
+               <>
+                 <Camera className="w-20 h-20 text-white/10 animate-pulse" />
+                 <p className="text-white/20 font-black uppercase tracking-[0.3em] text-[8px]">
+                   Waiting for camera...
+                 </p>
+               </>
+             )}
           </div>
         )}
       </div>

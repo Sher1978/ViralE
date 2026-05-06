@@ -80,6 +80,7 @@ export default function StudioPage() {
   const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string>('');
   const [videoResolution, setVideoResolution] = useState<'360p' | '720p' | '1080p' | '4k'>('720p');
   const [recordingTime, setRecordingTime] = useState(0);
+  const [cameraError, setCameraError] = useState<string | null>(null);
 
   const prompterRef = useRef<HTMLDivElement>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
@@ -222,13 +223,17 @@ export default function StudioPage() {
   }, [activeTab, cameraStream, isLoading]);
 
   const initCamera = async (): Promise<MediaStream | null> => {
+    setCameraError(null);
     try {
+      console.log('[Studio] initCamera: Starting...');
       // 0. If already active, just return it
       if (cameraStream && cameraStream.active) {
+        console.log('[Studio] initCamera: Stream already active.');
         return cameraStream;
       }
 
       if (cameraStream) {
+        console.log('[Studio] initCamera: Stopping previous stream.');
         cameraStream.getTracks().forEach(track => track.stop());
       }
       
@@ -241,10 +246,11 @@ export default function StudioPage() {
       
       const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       
+      // 🚀 PC Fix: For Windows/Desktop, simplify initial constraints
       const constraints = { 
         video: { 
           deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
-          // 🚀 PC Fix: Only use facingMode on mobile to avoid OverconstrainedError on Windows
+          // Only use facingMode on mobile to avoid OverconstrainedError on Windows
           facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
           ...resMap[videoResolution as keyof typeof resMap]
         },
@@ -253,28 +259,40 @@ export default function StudioPage() {
         }
       };
 
+      console.log('[Studio] initCamera: Constraints:', constraints);
+
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        console.log('[Studio] initCamera: Success (High-res).');
         setCameraStream(stream);
         if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
         return stream;
-      } catch (firstErr) {
-        console.warn('[Studio] High-res camera init failed, trying basic fallback...', firstErr);
+      } catch (firstErr: any) {
+        console.warn('[Studio] High-res camera init failed, trying basic fallback...', firstErr.name, firstErr.message);
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
+          console.log('[Studio] initCamera: Success (Basic V+A).');
           setCameraStream(stream);
           if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
           return stream;
-        } catch (secondErr) {
-          console.warn('[Studio] Basic V+A failed, trying Video-only...', secondErr);
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-          setCameraStream(stream);
-          if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
-          return stream;
+        } catch (secondErr: any) {
+          console.warn('[Studio] Basic V+A failed, trying Video-only...', secondErr.name, secondErr.message);
+          try {
+            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+            console.log('[Studio] initCamera: Success (Video-only).');
+            setCameraStream(stream);
+            if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
+            return stream;
+          } catch (thirdErr: any) {
+            console.error('[Studio] All camera paths failed:', thirdErr.name, thirdErr.message);
+            setCameraError(`Camera Error: ${thirdErr.name} - ${thirdErr.message}`);
+            return null;
+          }
         }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('All camera init paths failed:', err);
+      setCameraError(`Critical Error: ${err.message}`);
       return null;
     }
   };
@@ -640,6 +658,7 @@ export default function StudioPage() {
               <div className="w-full h-full relative">
                 <TeleprompterView 
                    cameraStream={cameraStream}
+                   cameraError={cameraError}
                    videoPreviewRef={videoPreviewRef}
                    isVideoMirrored={isVideoMirrored}
                    prompterWidth={prompterWidth}
