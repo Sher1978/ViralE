@@ -322,8 +322,8 @@ export default function StudioPage() {
         try {
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
           const recorder = new MediaRecorder(activeStream, { 
-            // 🚀 Maximum compatibility mode (as it was 2 weeks ago)
-            mimeType: MediaRecorder.isTypeSupported('video/webm') ? 'video/webm' : '',
+            // 🚀 Maximum compatibility mode (as it was 3 days ago)
+            mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm',
             videoBitsPerSecond: isMobile ? 2500000 : 5000000
           });
 

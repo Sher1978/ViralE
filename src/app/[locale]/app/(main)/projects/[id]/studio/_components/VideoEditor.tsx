@@ -508,66 +508,64 @@ export const VideoEditor = React.memo(({
     return final;
   };
 
-  // ── Native Audio Extraction (OOM Safe) ──
+  // ── Native Audio Extraction (OOM Safe, OfflineAudioContext based) ──
   const extractAudioNative = async (videoBlob: Blob): Promise<Blob> => {
-    return new Promise(async (resolve, reject) => {
-      try {
-        setStageMessage('Анализ аудио (Native)...');
-        const arrayBuffer = await videoBlob.arrayBuffer();
-        
-        // Use 16kHz for Whisper to save memory
-        const ctx = new (window.AudioContext || (window as any).webkitAudioContext)({ sampleRate: 16000 });
-        const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
-        
-        setStageMessage('Конвертация в WAV...');
-        const numOfChan = 1; 
-        const length = audioBuffer.length * 2 + 44;
-        const buffer = new ArrayBuffer(length);
-        const view = new DataView(buffer);
-        let offset = 0;
-
-        const setUint16 = (data: number) => { view.setUint16(offset, data, true); offset += 2; };
-        const setUint32 = (data: number) => { view.setUint32(offset, data, true); offset += 4; };
-
-        setUint32(0x46464952); // "RIFF"
-        setUint32(length - 8); // file length - 8
-        setUint32(0x45564157); // "WAVE"
-        setUint32(0x20746d66); // "fmt " chunk
-        setUint32(16); // length = 16
-        setUint16(1); // PCM (uncompressed)
-        setUint16(numOfChan);
-        setUint32(audioBuffer.sampleRate);
-        setUint32(audioBuffer.sampleRate * 2); // avg. bytes/sec
-        setUint16(2); // block-align
-        setUint16(16); // 16-bit
-        setUint32(0x61746164); // "data" - chunk
-        setUint32(length - offset - 4); // chunk length
-
-        const channels = [];
-        for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-          channels.push(audioBuffer.getChannelData(i));
+    try {
+      setStageMessage('Анализ аудио (Native)...');
+      const arrayBuffer = await videoBlob.arrayBuffer();
+      
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      // Resample to 16kHz Mono natively to keep file size very small (~2MB for 60s)
+      setStageMessage('Подготовка аудио (Resampling)...');
+      const targetSampleRate = 16000;
+      const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * targetSampleRate, targetSampleRate);
+      const source = offlineCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(offlineCtx.destination);
+      source.start();
+      
+      const resampledBuffer = await offlineCtx.startRendering();
+      
+      setStageMessage('Конвертация в WAV...');
+      const length = resampledBuffer.length * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
+      
+      const writeString = (offset: number, string: string) => {
+        for (let i = 0; i < string.length; i++) {
+          view.setUint8(offset + i, string.charCodeAt(i));
         }
-
-        let pos = 0;
-        while (pos < audioBuffer.length) {
-          let sample = 0;
-          for (let i = 0; i < audioBuffer.numberOfChannels; i++) {
-            sample += channels[i][pos];
-          }
-          sample /= audioBuffer.numberOfChannels;
-          
-          sample = Math.max(-1, Math.min(1, sample));
-          sample = (0.5 + sample < 0 ? sample * 32768 : sample * 32767) | 0;
-          view.setInt16(offset, sample, true);
-          offset += 2;
-          pos++;
-        }
-
-        resolve(new Blob([buffer], { type: 'audio/wav' }));
-      } catch (err) {
-        reject(err);
+      };
+      
+      writeString(0, 'RIFF');
+      view.setUint32(4, 32 + resampledBuffer.length * 2, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // PCM
+      view.setUint16(22, 1, true); // Mono
+      view.setUint32(24, targetSampleRate, true);
+      view.setUint32(28, targetSampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, resampledBuffer.length * 2, true);
+      
+      let offset = 44;
+      const channelData = resampledBuffer.getChannelData(0);
+      for (let i = 0; i < channelData.length; i++) {
+        const sample = Math.max(-1, Math.min(1, channelData[i]));
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        offset += 2;
       }
-    });
+      
+      return new Blob([buffer], { type: 'audio/wav' });
+    } catch (err: any) {
+      console.error('[WebAudio] Extraction failed:', err.name, err.message);
+      throw err;
+    }
   };
 
   const runTranscriptionAndPhrases = async (forceFresh = false) => {
