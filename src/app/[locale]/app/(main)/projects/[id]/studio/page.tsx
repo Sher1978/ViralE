@@ -193,6 +193,7 @@ export default function StudioPage() {
         } else {
           setManifest(createInitialManifest(projectId, uuidv4(), { hook: '', context: '', meat: '', cta: '' }));
         }
+
         // 4. RECOVER PENDING VIDEO RECORDING
         const pendingRecId = await idb.get(`pending_upload_${projectId}`, 'ProjectDrafts');
         if (pendingRecId) {
@@ -205,6 +206,17 @@ export default function StudioPage() {
           }
         }
 
+        // 5. ENUMERATE DEVICES
+        const devices = await navigator.mediaDevices.enumerateDevices();
+        const v = devices.filter(d => d.kind === 'videoinput');
+        const a = devices.filter(d => d.kind === 'audioinput');
+        setVideoDevices(v);
+        setAudioDevices(a);
+        
+        // Initial auto-selection if not set
+        if (!selectedVideoDeviceId && v.length > 0) setSelectedVideoDeviceId(v[0].deviceId);
+        if (!selectedAudioDeviceId && a.length > 0) setSelectedAudioDeviceId(a[0].deviceId);
+
       } catch (err) {
         console.error('Failed to load studio data:', err);
       } finally {
@@ -212,6 +224,15 @@ export default function StudioPage() {
       }
     }
     loadData();
+
+    // Permissions change listener
+    const handleDeviceChange = async () => {
+      const devices = await navigator.mediaDevices.enumerateDevices();
+      setVideoDevices(devices.filter(d => d.kind === 'videoinput'));
+      setAudioDevices(devices.filter(d => d.kind === 'audioinput'));
+    };
+    navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+    return () => navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
   }, [projectId]);
 
   // 📹 Auto-init camera when entering teleprompter
@@ -269,6 +290,7 @@ export default function StudioPage() {
         return stream;
       } catch (firstErr: any) {
         console.warn('[Studio] High-res camera init failed, trying basic fallback...', firstErr.name, firstErr.message);
+        await new Promise(r => setTimeout(r, 500)); // 🚀 Safety delay
         try {
           const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
           console.log('[Studio] initCamera: Success (Basic V+A).');
@@ -277,6 +299,7 @@ export default function StudioPage() {
           return stream;
         } catch (secondErr: any) {
           console.warn('[Studio] Basic V+A failed, trying Video-only...', secondErr.name, secondErr.message);
+          await new Promise(r => setTimeout(r, 500)); // 🚀 Safety delay
           try {
             const stream = await navigator.mediaDevices.getUserMedia({ video: true });
             console.log('[Studio] initCamera: Success (Video-only).');
@@ -285,7 +308,7 @@ export default function StudioPage() {
             return stream;
           } catch (thirdErr: any) {
             console.error('[Studio] All camera paths failed:', thirdErr.name, thirdErr.message);
-            setCameraError(`Camera Error: ${thirdErr.name} - ${thirdErr.message}`);
+            setCameraError(`Camera Error: ${thirdErr.name} - ${thirdErr.message}. Try another browser or close other apps using camera.`);
             return null;
           }
         }

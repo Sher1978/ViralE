@@ -164,20 +164,48 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                   <div className="space-y-3 animate-in fade-in slide-in-from-top-1">
                     <div className="grid grid-cols-2 gap-2">
                       <button 
-                        onClick={() => {
-                          setFacingMode(facingMode === 'user' ? 'environment' : 'user');
-                          setTimeout(initCamera, 100);
-                        }}
-                        className="py-3 rounded-lg border border-white/5 bg-white/5 text-[8px] font-black uppercase text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 shadow-inner"
+                         onClick={() => {
+                           setFacingMode(facingMode === 'user' ? 'environment' : 'user');
+                           setTimeout(initCamera, 100);
+                         }}
+                         className="py-3 rounded-lg border border-white/5 bg-white/5 text-[8px] font-black uppercase text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 shadow-inner"
                       >
-                        <RefreshCw size={10} /> Flip Lens
+                         <RefreshCw size={10} /> Flip Lens
                       </button>
                       <button 
-                        onClick={() => setIsVideoMirrored(!isVideoMirrored)}
-                        className={`py-3 rounded-lg border transition-all text-[8px] font-black uppercase flex items-center justify-center gap-2 ${isVideoMirrored ? 'bg-purple-500/10 border-purple-500/20 text-purple-400 shadow-lg shadow-purple-500/10' : 'bg-white/5 border-white/5 text-white/40 shadow-inner'}`}
+                         onClick={() => setIsVideoMirrored(!isVideoMirrored)}
+                         className={`py-3 rounded-lg border transition-all text-[8px] font-black uppercase flex items-center justify-center gap-2 ${isVideoMirrored ? 'bg-purple-500/10 border-purple-500/20 text-purple-400 shadow-lg shadow-purple-500/10' : 'bg-white/5 border-white/5 text-white/40 shadow-inner'}`}
                       >
-                        {isVideoMirrored ? 'Mirror ON' : 'Mirror OFF'}
+                         {isVideoMirrored ? 'Mirror ON' : 'Mirror OFF'}
                       </button>
+                    </div>
+
+                    {/* Camera Selector */}
+                    <div className="space-y-1">
+                       <label className="text-[7px] font-black uppercase text-white/20 tracking-widest ml-1">Video Source</label>
+                       <select 
+                         value={selectedVideoDeviceId}
+                         onChange={(e) => { setSelectedVideoDeviceId(e.target.value); setTimeout(initCamera, 100); }}
+                         className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-2 text-[9px] text-white/80 focus:outline-none focus:border-purple-500/50"
+                       >
+                         {videoDevices.map(d => (
+                           <option key={d.deviceId} value={d.deviceId} className="bg-[#0a0a14]">{d.label || `Camera ${d.deviceId.slice(0, 5)}`}</option>
+                         ))}
+                       </select>
+                    </div>
+
+                    {/* Mic Selector */}
+                    <div className="space-y-1">
+                       <label className="text-[7px] font-black uppercase text-white/20 tracking-widest ml-1">Audio Source</label>
+                       <select 
+                         value={selectedAudioDeviceId}
+                         onChange={(e) => { setSelectedAudioDeviceId(e.target.value); setTimeout(initCamera, 100); }}
+                         className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-2 text-[9px] text-white/80 focus:outline-none focus:border-purple-500/50"
+                       >
+                         {audioDevices.map(d => (
+                           <option key={d.deviceId} value={d.deviceId} className="bg-[#0a0a14]">{d.label || `Mic ${d.deviceId.slice(0, 5)}`}</option>
+                         ))}
+                       </select>
                     </div>
 
                     <div className="space-y-1">
