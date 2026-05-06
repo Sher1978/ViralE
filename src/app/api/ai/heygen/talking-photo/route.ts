@@ -12,9 +12,27 @@ export async function POST(req: NextRequest) {
 
     console.log(`[HeyGen TP] Starting generation for project ${projectId} with audio ${audioUrl}`);
 
-    // Skip internal upload if we already have a public URL (HeyGen v2 supports external URLs)
-    // However, some versions of HeyGen TP prefer their own hosted URLs. 
-    // We'll try passing the external URL directly.
+    // 1. Fetch audio from Supabase and upload to HeyGen (Proxy method)
+    // This bypasses Vercel's 4.5MB request body limit while satisfying HeyGen's internal storage preference
+    const audioDownloadRes = await fetch(audioUrl);
+    if (!audioDownloadRes.ok) throw new Error('Failed to download audio from storage');
+    const audioBlob = await audioDownloadRes.blob();
+
+    const audioFormData = new FormData();
+    audioFormData.append('file', audioBlob, 'recording.webm');
+    
+    const audioUploadRes = await fetch(`${HEYGEN_API_URL}/v1/talking_photo.upload_audio`, {
+      method: 'POST',
+      headers: { 'X-Api-Key': apiKey },
+      body: audioFormData
+    });
+
+    const audioData = await audioUploadRes.json();
+    if (!audioUploadRes.ok || !audioData.data?.audio_url) {
+      console.error('[HeyGen TP] Audio proxy upload failed:', audioData);
+      throw new Error(`HeyGen audio upload failed: ${JSON.stringify(audioData)}`);
+    }
+    const internalAudioUrl = audioData.data.audio_url;
 
     // 2. Start Talking Photo Task
     const generateRes = await fetch(`${HEYGEN_API_URL}/v2/talking_photo`, {
@@ -25,17 +43,23 @@ export async function POST(req: NextRequest) {
       },
       body: JSON.stringify({
         talking_photo_url: photoUrl,
-        audio_url: audioUrl,
+        audio_url: internalAudioUrl,
         video_settings: {
           ratio: '9:16'
         }
       })
     });
 
+    if (!generateRes.ok) {
+       const errorText = await generateRes.text();
+       console.error('[HeyGen TP] Generation failed with status:', generateRes.status, errorText);
+       throw new Error(`HeyGen API Error: ${generateRes.status}. ${errorText.substring(0, 100)}`);
+    }
+
     const generateData = await generateRes.json();
     if (!generateData.data?.video_id) {
-       console.error('[HeyGen TP] Generation start failed:', generateData);
-       throw new Error('HeyGen generation failed to start');
+       console.error('[HeyGen TP] video_id missing in response:', generateData);
+       throw new Error('HeyGen response missing video_id');
     }
 
     return NextResponse.json({ taskId: generateData.data.video_id });
