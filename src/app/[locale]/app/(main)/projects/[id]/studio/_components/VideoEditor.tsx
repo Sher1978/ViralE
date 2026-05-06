@@ -508,6 +508,18 @@ export const VideoEditor = React.memo(({
     return final;
   };
 
+  // Heartbeat for debugging UI freezes
+  const [heartbeat, setHeartbeat] = useState(0);
+  useEffect(() => {
+    let frame: number;
+    const tick = () => {
+      setHeartbeat(h => (h + 1) % 100);
+      frame = requestAnimationFrame(tick);
+    };
+    frame = requestAnimationFrame(tick);
+    return () => cancelAnimationFrame(frame);
+  }, []);
+
   // ── Native Audio Extraction (OOM Safe, OfflineAudioContext based) ──
   const extractAudioNative = async (videoBlob: Blob): Promise<Blob> => {
     try {
@@ -1061,7 +1073,13 @@ export const VideoEditor = React.memo(({
   if (!manifest) {
     return (
       <div className="flex-1 bg-black flex flex-col items-center justify-center gap-6">
-        <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+        <div className="relative">
+          <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
+          <div 
+            className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] transition-all duration-300" 
+            style={{ opacity: 0.3 + (heartbeat % 10) / 10, transform: `scale(${1 + (heartbeat % 5) / 10})` }}
+          />
+        </div>
         <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Initialising Production Canvas...</p>
       </div>
     );
@@ -1276,8 +1294,12 @@ export const VideoEditor = React.memo(({
           {stage === 'transcribing' && (
             <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
               className="absolute inset-0 bg-black/80 backdrop-blur-sm flex flex-col items-center justify-center gap-4 z-10">
-              <div className="w-14 h-14 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
+              <div className="relative w-14 h-14 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center">
                 <Wand2 size={24} className="text-purple-400 animate-pulse" />
+                <div 
+                  className="absolute -top-1 -right-1 w-3 h-3 rounded-full bg-emerald-500 shadow-[0_0_10px_#10b981] transition-all duration-300" 
+                  style={{ opacity: 0.3 + (heartbeat % 10) / 10, transform: `scale(${1 + (heartbeat % 5) / 10})` }}
+                />
               </div>
               <div className="text-center px-8">
                 <p className="text-xs font-black text-white uppercase tracking-widest leading-relaxed">{stageMessage}</p>
