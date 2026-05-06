@@ -156,15 +156,19 @@ export default function StudioPage() {
       const audioBlob = await idb.get(audioRecId, 'MediaBuffer');
       if (!audioBlob) throw new Error('Audio blob not found');
 
-      // 2. Call HeyGen proxy API
-      const formData = new FormData();
-      formData.append('audio', audioBlob as Blob);
-      formData.append('photoUrl', photoUrl);
-      formData.append('projectId', projectId);
+      // 2. Upload audio to Supabase first to bypass Vercel 4.5MB limit
+      const { publicUrl: audioUrl } = await renderService.uploadMedia(projectId, audioBlob as Blob, 'audio');
+      if (!audioUrl) throw new Error('Failed to upload audio to storage');
 
+      // 3. Call HeyGen proxy API
       const res = await fetch('/api/ai/heygen/talking-photo', {
         method: 'POST',
-        body: formData
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          audioUrl,
+          photoUrl,
+          projectId
+        })
       });
 
       if (!res.ok) {

@@ -4,32 +4,17 @@ const HEYGEN_API_URL = 'https://api.heygen.com';
 
 export async function POST(req: NextRequest) {
   try {
-    const formData = await req.formData();
-    const audio = formData.get('audio') as Blob;
-    const photoUrl = formData.get('photoUrl') as string;
-    const projectId = formData.get('projectId') as string;
+    const body = await req.json();
+    const { audioUrl, photoUrl, projectId } = body;
 
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) throw new Error('System HeyGen API Key missing');
 
-    console.log(`[HeyGen TP] Starting generation for project ${projectId}`);
+    console.log(`[HeyGen TP] Starting generation for project ${projectId} with audio ${audioUrl}`);
 
-    // 1. Upload audio to HeyGen
-    const audioFormData = new FormData();
-    audioFormData.append('file', audio, 'recording.webm');
-    
-    const audioRes = await fetch(`${HEYGEN_API_URL}/v1/talking_photo.upload_audio`, {
-      method: 'POST',
-      headers: { 'X-Api-Key': apiKey },
-      body: audioFormData
-    });
-
-    const audioData = await audioRes.json();
-    if (!audioData.data?.audio_url) {
-      console.error('[HeyGen TP] Audio upload failed:', audioData);
-      throw new Error('Audio upload to HeyGen failed');
-    }
-    const audioUrl = audioData.data.audio_url;
+    // Skip internal upload if we already have a public URL (HeyGen v2 supports external URLs)
+    // However, some versions of HeyGen TP prefer their own hosted URLs. 
+    // We'll try passing the external URL directly.
 
     // 2. Start Talking Photo Task
     const generateRes = await fetch(`${HEYGEN_API_URL}/v2/talking_photo`, {
