@@ -99,22 +99,24 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
                     </p>
                  </div>
 
-                 <div className="grid grid-cols-2 gap-3">
-                    <button 
-                      onClick={downloadRawVideo}
-                      className="flex flex-col items-center justify-center gap-3 p-5 rounded-[2rem] bg-white/5 border border-white/10 text-white/50 hover:bg-white hover:text-black transition-all group"
-                    >
-                       <Download size={20} className="group-hover:scale-110 transition-transform" /> 
-                       <span className="text-[8px] font-black uppercase tracking-widest">Save</span>
-                    </button>
-                    <button 
-                      onClick={sendRawToTelegram}
-                      className="flex flex-col items-center justify-center gap-3 p-5 rounded-[2rem] bg-white/5 border border-white/10 text-white/50 hover:bg-white hover:text-black transition-all group"
-                    >
-                       <FileVideo size={20} className="group-hover:scale-110 transition-transform" />
-                       <span className="text-[8px] font-black uppercase tracking-widest">Telegram</span>
-                    </button>
-                 </div>
+                 {!isVoiceOnly && (
+                    <div className="grid grid-cols-2 gap-3">
+                       <button 
+                         onClick={downloadRawVideo}
+                         className="flex flex-col items-center justify-center gap-3 p-5 rounded-[2rem] bg-white/5 border border-white/10 text-white/50 hover:bg-white hover:text-black transition-all group"
+                       >
+                          <Download size={20} className="group-hover:scale-110 transition-transform" /> 
+                          <span className="text-[8px] font-black uppercase tracking-widest">Save</span>
+                       </button>
+                       <button 
+                         onClick={sendRawToTelegram}
+                         className="flex flex-col items-center justify-center gap-3 p-5 rounded-[2rem] bg-white/5 border border-white/10 text-white/50 hover:bg-white hover:text-black transition-all group"
+                       >
+                          <FileVideo size={20} className="group-hover:scale-110 transition-transform" />
+                          <span className="text-[8px] font-black uppercase tracking-widest">Telegram</span>
+                       </button>
+                    </div>
+                 )}
                  
                  <div className="h-[1px] w-1/2 mx-auto lg:mx-0 bg-white/10" />
 
