@@ -18,7 +18,7 @@
 
 ### 2. Технологический стек
 
-* **Frontend:** Next.js 14 (App Router), Tailwind CSS, Shadcn UI.
+* **Frontend:** Next.js 16.2.4 (App Router, Turbopack), Tailwind CSS, Framer Motion.
 
 * **Backend:** Next.js API Routes (Serverless) — для работы с пользователями и кредитами.
 
@@ -26,7 +26,8 @@
 
 * **AI Orchestration:** LangChain или простой SDK для связки Gemini 1.5 Flash (Логика/Идеи/Правки).
 
-* **Render Worker:** Node.js + FFmpeg на выделенном VPS (Railway/Render) — для финальной сборки.
+* **Hybrid Assembly:** Client-Side Audio Extraction (Web Audio API + OfflineAudioContext) + Server-Side FFmpeg orchestration.
+* **Local Storage:** IndexedDB (ViralEngineDB) для кэширования тяжелых медиа-блобов и предотвращения OOM.
 
 * **Delivery:** Telegram Bot API (в качестве бесплатного CDN).
 
@@ -116,11 +117,11 @@
 
 Для поддержания высокой скорости разработки (Vibe Coding) и стабильности интерфейса, принят стандарт модульности "Atomic Studio":
 
-1. **Декомпозиция "God Objects":** Любой файл страницы или компонента, превышающий 800-1000 строк, подлежит обязательному дроблению.
+1. **Декомпозиция "God Objects":** Любой файл страницы или компонента, превышающий 1000-1500 строк, подлежит обязательному дроблению. (Текущий лимит повышен для Studio-консоли).
    
-2. **Локальные компоненты (`_components`):** Тяжелые UI-узлы (Teleprompter, Storyboard Grid, Review Overlays) должны быть вынесены в папку `_components` внутри соответствующего роута.
+2. **Локальные компоненты (`_components`):** Тяжелые UI-узлы (TeleprompterView, StudioTimeline, VideoEditor, StoryboardGrid) вынесены в локальные папки.
    
-3. **Локальные хуки (`_hooks`):** Сложная бизнес-логика, управление стейтом манифеста и захват медиа-потоков выносятся в кастомные хуки. Это обеспечивает "чистоту" UI-компонентов.
+3. **Hardware-Resilience Hooks:** Логика управления камерой, микрофоном и асинхронной конвертацией аудио вынесена в специализированные функции с защитой от блокировки основного потока (Async Chunked Loops).
    
 4. **Zero-Lag Rendering:** Изоляция высоконагруженных компонентов предотвращает ререндеринг всей страницы при частых обновлениях (например, скроллинг суфлера или таймеры записи).
    

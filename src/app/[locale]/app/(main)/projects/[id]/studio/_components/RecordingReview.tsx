@@ -18,6 +18,7 @@ interface RecordingReviewProps {
   onDiscard: () => void;
   manifest: any;
   selectedSegmentId: string | null;
+  isVoiceOnly?: boolean;
 }
 
 export const RecordingReview: React.FC<RecordingReviewProps> = ({
@@ -33,6 +34,7 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
   onDiscard,
   manifest,
   selectedSegmentId,
+  isVoiceOnly = false,
 }) => {
   const locale = useLocale();
   return (
@@ -62,12 +64,26 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
 
            {/* Content Grid */}
            <div className="flex-1 flex flex-col lg:flex-row gap-8 items-center justify-center py-4">
-              {/* Video Preview */}
-              <div className="relative w-full max-w-[320px] lg:max-w-md aspect-[9/16] rounded-[2.5rem] border border-white/10 overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] bg-neutral-900 shrink-0">
-                 <video src={lastRecordingUrl} controls className="w-full h-full object-cover" />
+              {/* Media Preview */}
+              <div className="relative w-full max-w-[320px] lg:max-w-md aspect-[9/16] rounded-[2.5rem] border border-white/10 overflow-hidden shadow-[0_30px_60px_-15px_rgba(0,0,0,0.5)] bg-[#0a0a14] shrink-0 flex flex-col items-center justify-center p-8">
+                 {isVoiceOnly ? (
+                    <div className="w-full flex flex-col items-center gap-8">
+                       <div className="w-32 h-32 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shadow-[0_0_50px_rgba(168,85,247,0.1)]">
+                          <motion.div 
+                            animate={{ scale: [1, 1.1, 1] }}
+                            transition={{ duration: 2, repeat: Infinity }}
+                          >
+                             <FileVideo size={48} className="text-purple-400" />
+                          </motion.div>
+                       </div>
+                       <audio src={lastRecordingUrl} controls className="w-full accent-purple-500" />
+                    </div>
+                 ) : (
+                    <video src={lastRecordingUrl} controls className="w-full h-full object-cover" />
+                 )}
                  <div className="absolute top-5 left-5 flex flex-col gap-1.5 z-10 pointer-events-none">
                     <div className="px-3 py-1.5 rounded-lg bg-black/40 backdrop-blur-md border border-white/10 text-[8px] font-black uppercase text-white/80 tracking-widest">
-                       {currentProfile?.tier === 'premium' ? '4K QUALITY' : '1080p HD'}
+                       {isVoiceOnly ? 'VOICE MASTER' : (currentProfile?.tier === 'premium' ? '4K QUALITY' : '1080p HD')}
                     </div>
                  </div>
               </div>
@@ -76,9 +92,11 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
               <div className="w-full max-w-sm flex flex-col gap-6">
                  <div className="text-center lg:text-left">
                     <h3 className="text-4xl font-black text-white italic tracking-tighter uppercase leading-[0.9]">
-                       Take is <br/> <span className="text-purple-500">Mastered</span>
+                       {isVoiceOnly ? 'Voice is' : 'Take is'} <br/> <span className="text-purple-500">{isVoiceOnly ? 'Recorded' : 'Mastered'}</span>
                     </h3>
-                    <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.3em] mt-3 italic">READY FOR FINAL EDITING</p>
+                    <p className="text-white/30 text-[9px] font-black uppercase tracking-[0.3em] mt-3 italic">
+                       {isVoiceOnly ? 'NOW CHOOSE YOUR AVATAR' : 'READY FOR FINAL EDITING'}
+                    </p>
                  </div>
 
                  <div className="grid grid-cols-2 gap-3">
@@ -104,7 +122,9 @@ export const RecordingReview: React.FC<RecordingReviewProps> = ({
                     onClick={() => handleAcceptRecording(lastRecordingUrl)}
                     className="w-full py-6 rounded-[2.5rem] bg-purple-600 text-white text-[11px] font-black uppercase tracking-widest hover:bg-purple-500 shadow-[0_20px_40px_-10px_rgba(168,85,247,0.4)] border border-purple-500/30 transition-all flex items-center justify-center gap-3 active:scale-95"
                  >
-                    {locale === 'ru' ? 'В МОНТАЖ' : 'GO TO MONTAGE'} <ChevronRight size={20} strokeWidth={3} />
+                    {isVoiceOnly 
+                       ? (locale === 'ru' ? 'ВЫБРАТЬ АВАТАРА' : 'CHOOSE AVATAR')
+                       : (locale === 'ru' ? 'В МОНТАЖ' : 'GO TO MONTAGE')} <ChevronRight size={20} strokeWidth={3} />
                  </button>
 
                  <button 

@@ -1,9 +1,9 @@
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Camera, Sparkles, ChevronRight } from 'lucide-react';
+import { Camera, Sparkles, ChevronRight, Mic } from 'lucide-react';
 
 interface ProductionBranchProps {
-  onSelect: (type: 'record' | 'faceless') => void;
+  onSelect: (type: 'record' | 'faceless' | 'voice-master') => void;
   onBack: () => void;
 }
 
@@ -24,7 +24,7 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
           </p>
         </div>
 
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           {/* Option 1: Record */}
           <motion.button
             whileHover={{ scale: 1.02 }}
@@ -36,8 +36,8 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
              <div className="w-24 h-24 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(6,182,212,0.15)] group-hover:shadow-[0_0_60px_rgba(6,182,212,0.3)] transition-all">
                 <Camera size={40} className="text-cyan-400" />
              </div>
-             <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-2">Записать Себя</h3>
-             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[200px]">
+             <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2 leading-none">Записать Себя</h3>
+             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[180px]">
                Используйте телесуфлер для записи живого видео с вашей подачей
              </p>
              <div className="mt-8 flex items-center gap-2 text-cyan-400 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
@@ -45,22 +45,42 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
              </div>
           </motion.button>
 
-          {/* Option 2: AI Faceless */}
+          {/* Option 2: Voice Master (NEW) */}
+          <motion.button
+            whileHover={{ scale: 1.02 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onSelect('voice-master')}
+            className="group relative h-80 rounded-[3rem] bg-white/[0.03] border border-white/5 overflow-hidden flex flex-col items-center justify-center p-8 text-center transition-all hover:bg-white/[0.05] hover:border-white/10 shadow-[0_0_80px_rgba(168,85,247,0.05)]"
+          >
+             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
+             <div className="w-24 h-24 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(168,85,247,0.15)] group-hover:shadow-[0_0_60px_rgba(168,85,247,0.3)] transition-all">
+                <Mic size={40} className="text-purple-400" />
+             </div>
+             <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2 leading-none">Voice Master</h3>
+             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[180px]">
+               Надиктуйте текст голосом — ИИ создаст видео на базе вашего фото
+             </p>
+             <div className="mt-8 flex items-center gap-2 text-purple-400 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
+               Выбрать <ChevronRight size={14} />
+             </div>
+          </motion.button>
+
+          {/* Option 3: AI Faceless */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onSelect('faceless')}
             className="group relative h-80 rounded-[3rem] bg-white/[0.03] border border-white/5 overflow-hidden flex flex-col items-center justify-center p-8 text-center transition-all hover:bg-white/[0.05] hover:border-white/10"
           >
-             <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-             <div className="w-24 h-24 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(168,85,247,0.15)] group-hover:shadow-[0_0_60px_rgba(168,85,247,0.3)] transition-all">
-                <Sparkles size={40} className="text-purple-400" />
+             <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+             <div className="w-24 h-24 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(16,185,129,0.15)] group-hover:shadow-[0_0_60px_rgba(16,185,129,0.3)] transition-all">
+                <Sparkles size={40} className="text-emerald-400" />
              </div>
-             <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white mb-2">AI Faceless</h3>
-             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[200px]">
+             <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2 leading-none">AI Faceless</h3>
+             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[180px]">
                Полностью автоматическая генерация сцен и озвучки ИИ голосом
              </p>
-             <div className="mt-8 flex items-center gap-2 text-purple-400 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
+             <div className="mt-8 flex items-center gap-2 text-emerald-400 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
                Выбрать <ChevronRight size={14} />
              </div>
           </motion.button>

@@ -34,6 +34,7 @@ interface TeleprompterViewProps {
   scrollSpeed: number;
   onSpeedChange: (speed: number) => void;
   isRecordingVideo?: boolean;
+  isVoiceOnly?: boolean;
   onFinish?: () => void;
   recordingTime?: number;
   t: (key: string, data?: any) => string;
@@ -61,6 +62,7 @@ export const TeleprompterView = React.memo(({
   onTextSizeChange,
   onOpacityChange,
   isRecordingVideo,
+  isVoiceOnly = false,
   onFinish,
   scrollSpeed,
   onSpeedChange,
@@ -181,7 +183,81 @@ export const TeleprompterView = React.memo(({
     <div className="w-full h-full relative flex flex-col items-center justify-center overflow-hidden bg-black rounded-[3rem] border border-white/10 shadow-2xl">
       {/* 📹 Video Foundation - Full Opacity per request */}
       <div className="absolute inset-0 z-0 bg-neutral-900">
-        {cameraStream ? (
+        {isVoiceOnly ? (
+          <div className="w-full h-full flex flex-col items-center justify-center bg-[#05050a] overflow-hidden">
+            {/* 🌌 Animated Pulsating Background Layers */}
+            <motion.div 
+              animate={{ 
+                scale: [1, 1.1, 1],
+                rotate: [0, 5, 0],
+                opacity: [0.3, 0.5, 0.3]
+              }}
+              transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 bg-[radial-gradient(circle_at_50%_50%,_rgba(168,85,247,0.15)_0%,_transparent_50%)]"
+            />
+            <motion.div 
+              animate={{ 
+                scale: [1.2, 1, 1.2],
+                rotate: [0, -5, 0],
+                opacity: [0.2, 0.4, 0.2]
+              }}
+              transition={{ duration: 20, repeat: Infinity, ease: "linear" }}
+              className="absolute inset-0 bg-[radial-gradient(circle_at_80%_20%,_rgba(59,130,246,0.1)_0%,_transparent_40%)]"
+            />
+            
+            <div className="relative w-72 h-72 flex items-center justify-center">
+              {/* Outer Pulse */}
+              <motion.div 
+                animate={{ 
+                  scale: isRecordingVideo ? [1, 1.4, 1] : 1,
+                  opacity: isRecordingVideo ? [0.2, 0.5, 0.2] : 0.1
+                }}
+                transition={{ duration: 3, repeat: Infinity }}
+                className="absolute inset-0 rounded-full bg-purple-500/10 blur-3xl"
+              />
+              
+              {/* Central Mic Core */}
+              <div className="relative z-10 w-56 h-56 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center gap-6 shadow-[0_0_100px_rgba(168,85,247,0.1)] backdrop-blur-2xl">
+                 <div className="relative">
+                    <Mic2 className={`w-20 h-20 transition-all duration-500 ${isRecordingVideo ? 'text-purple-400 drop-shadow-[0_0_15px_rgba(168,85,247,0.5)]' : 'text-white/10'}`} />
+                    {isRecordingVideo && (
+                      <motion.div 
+                        animate={{ opacity: [0, 1, 0] }}
+                        transition={{ duration: 1.5, repeat: Infinity }}
+                        className="absolute -top-1 -right-1 w-4 h-4 bg-red-500 rounded-full border-2 border-black"
+                      />
+                    )}
+                 </div>
+
+                 {isRecordingVideo && (
+                   <div className="flex gap-1.5 items-end h-8">
+                      {[1, 2, 3, 4, 5, 6, 7].map(i => (
+                        <motion.div 
+                          key={i}
+                          animate={{ 
+                            height: [10, Math.random() * 30 + 10, 10],
+                            backgroundColor: ['#A855F7', '#3B82F6', '#A855F7']
+                          }}
+                          transition={{ duration: 0.4 + i * 0.05, repeat: Infinity }}
+                          className="w-1.5 bg-purple-500 rounded-full"
+                        />
+                      ))}
+                   </div>
+                 )}
+              </div>
+            </div>
+
+            {!isRecordingVideo && (
+              <motion.p 
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                className="mt-10 text-white/30 text-[10px] font-black uppercase tracking-[0.4em] animate-pulse"
+              >
+                Studio Ready • Record Voice
+              </motion.p>
+            )}
+          </div>
+        ) : cameraStream ? (
           <video 
             ref={videoPreviewRef}
             autoPlay 
@@ -275,8 +351,10 @@ export const TeleprompterView = React.memo(({
           id="scrolling-content"
           className="w-full space-y-12 transition-all duration-700 ease-out px-10 text-center flex flex-col pt-[18vh] pb-[100vh]"
         >
-          {/* Eye Contact Guide (Optional/Subtle) */}
-          <div className="absolute top-[18vh] inset-x-10 h-32 border-y border-white/5 pointer-events-none z-0" />
+          {/* Eye Contact Guide (Only for Video Mode) */}
+          {!isVoiceOnly && (
+            <div className="absolute top-[18vh] inset-x-10 h-32 border-y border-white/5 pointer-events-none z-0" />
+          )}
           
           <p 
             className={`font-medium leading-[1.3] transition-all duration-500 tracking-normal drop-shadow-[0_4px_40px_rgba(0,0,0,1)] ${
@@ -341,13 +419,15 @@ export const TeleprompterView = React.memo(({
           </div>
           <span className="text-[7px] font-black uppercase mt-0.5">{Math.round(scriptOpacity * 100)}%</span>
         </button>
-        <button 
-          onClick={onFlipCamera}
-          className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
-        >
-          <RotateCw size={18} />
-          <span className="text-[7px] font-black uppercase mt-0.5">Flip</span>
-        </button>
+        {!isVoiceOnly && (
+          <button 
+            onClick={onFlipCamera}
+            className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
+          >
+            <RotateCw size={18} />
+            <span className="text-[7px] font-black uppercase mt-0.5">Flip</span>
+          </button>
+        )}
       </div>
 
       {/* Recording Button - Center Bottom Fixed */}

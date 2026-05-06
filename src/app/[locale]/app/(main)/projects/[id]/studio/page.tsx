@@ -23,8 +23,10 @@ import { TeleprompterView } from './_components/TeleprompterView';
 import { StoryboardGrid } from './_components/StoryboardGrid';
 import { RecordingReview } from './_components/RecordingReview';
 import { SourcePicker } from './_components/SourcePicker';
-const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false });
+import { AvatarSelector } from './_components/AvatarSelector';
+import { AssemblyProgress } from './_components/AssemblyProgress';
 import dynamic from 'next/dynamic';
+const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false });
 import { ProductionBranch } from './_components/ProductionBranch';
 import DistributionFactory from './_components/DistributionFactory';
 
@@ -68,6 +70,12 @@ export default function StudioPage() {
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
   const [isSaving, setIsSaving] = useState(false);
   const [showFaceless, setShowFaceless] = useState(false);
+  const [isVoiceOnly, setIsVoiceOnly] = useState(false);
+  const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+  const [isAssemblingAvatar, setIsAssemblingAvatar] = useState(false);
+  const [selectedAvatarPhoto, setSelectedAvatarPhoto] = useState<string | null>(null);
+  const [avatarPhoto, setAvatarPhoto] = useState<string | null>(null);
   
   // Camera & Device States
   const [isRecordingVideo, setIsRecordingVideo] = useState(false);
@@ -132,6 +140,93 @@ export default function StudioPage() {
     window.addEventListener('beforeunload', handleBeforeUnload);
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [activeTab, showFaceless]);
+
+  const handleAvatarSelect = async (photoUrl: string) => {
+    setSelectedAvatarPhoto(photoUrl);
+    setIsGeneratingAvatar(true);
+    setShowAvatarSelector(false);
+    setIsAssemblingAvatar(true);
+
+    try {
+      // 1. Get the recorded audio from IDB
+      const audioRecId = await idb.get(`pending_audio_${projectId}`, 'ProjectDrafts');
+      if (!audioRecId) throw new Error('Audio recording not found');
+      
+      const audioBlob = await idb.get(audioRecId, 'MediaBuffer');
+      if (!audioBlob) throw new Error('Audio blob not found');
+
+      // 2. Call HeyGen proxy API
+      const formData = new FormData();
+      formData.append('audio', audioBlob as Blob);
+      formData.append('photoUrl', photoUrl);
+      formData.append('projectId', projectId);
+
+      const res = await fetch('/api/ai/heygen/talking-photo', {
+        method: 'POST',
+        body: formData
+      });
+
+      const { taskId, error } = await res.json();
+      if (error) throw new Error(error);
+
+      // 3. Polling for result
+      let attempts = 0;
+      const maxAttempts = 30; // 5 minutes (every 10s)
+      
+      const poll = async () => {
+        try {
+          const statusRes = await fetch(`/api/ai/heygen/talking-photo?taskId=${taskId}`);
+          const statusData = await statusRes.json();
+          
+          if (statusData.status === 'completed' && statusData.videoUrl) {
+            setLastRecordingUrl(statusData.videoUrl);
+            
+            if (manifest) {
+              const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
+              const newManifest = {
+                 ...manifest,
+                 videoUrl: statusData.videoUrl,
+                 segments: manifest.segments.map((s: any) => 
+                    s.id === segmentId ? { ...s, assetUrl: statusData.videoUrl, type: 'user_recording' } : s
+                 )
+              };
+              setManifest(newManifest);
+              await projectService.updateLatestVersionManifest(projectId, newManifest);
+            }
+
+            setIsGeneratingAvatar(false);
+            setIsAssemblingAvatar(false);
+            setTimeout(() => setActiveTab('assembly'), 200);
+            return;
+          }
+
+          if (statusData.status === 'failed') {
+            throw new Error('HeyGen generation failed');
+          }
+
+          attempts++;
+          if (attempts < maxAttempts) {
+            setTimeout(poll, 10000);
+          } else {
+            throw new Error('HeyGen timeout');
+          }
+        } catch (e: any) {
+          console.error('Polling error:', e);
+          setIsGeneratingAvatar(false);
+          setIsAssemblingAvatar(false);
+          alert('Ошибка при генерации: ' + e.message);
+        }
+      };
+
+      poll();
+
+    } catch (e: any) {
+      console.error('Avatar generation failed:', e);
+      setIsGeneratingAvatar(false);
+      setIsAssemblingAvatar(false);
+      alert('Ошибка: ' + e.message);
+    }
+  };
 
   // тЬТ AUTOSAVE & RECOVERY (IndexedDB + Cloud Sync) тЬТ
   useEffect(() => {
@@ -252,75 +347,54 @@ export default function StudioPage() {
   const initCamera = async (): Promise<MediaStream | null> => {
     setCameraError(null);
     try {
-      console.log('[Studio] initCamera: Starting...');
-      // 0. If already active, just return it
-      if (cameraStream && cameraStream.active) {
-        console.log('[Studio] initCamera: Stream already active.');
-        return cameraStream;
-      }
-
-      if (cameraStream) {
-        console.log('[Studio] initCamera: Stopping previous stream.');
-        cameraStream.getTracks().forEach(track => track.stop());
-      }
+      console.log('[Studio] initCamera: Starting, isVoiceOnly:', isVoiceOnly);
       
+      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
       const resMap = {
         '360p': { width: { ideal: 640 }, height: { ideal: 360 } },
         '720p': { width: { ideal: 1280 }, height: { ideal: 720 } },
         '1080p': { width: { ideal: 1920 }, height: { ideal: 1080 } },
         '4k': { width: { ideal: 3840 }, height: { ideal: 2160 } }
       };
-      
-      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      
-      // 🚀 PC Fix: For Windows/Desktop, simplify initial constraints
-      const constraints = { 
-        video: { 
+
+      const constraints: MediaStreamConstraints = {
+        video: isVoiceOnly ? false : {
           deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
-          // Only use facingMode on mobile to avoid OverconstrainedError on Windows
           facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
           ...resMap[videoResolution as keyof typeof resMap]
         },
         audio: {
-          deviceId: selectedAudioDeviceId ? { ideal: selectedAudioDeviceId } : undefined
+          deviceId: selectedAudioDeviceId ? { ideal: selectedAudioDeviceId } : undefined,
+          echoCancellation: true,
+          noiseSuppression: true,
+          autoGainControl: true
         }
       };
 
-      console.log('[Studio] initCamera: Constraints:', constraints);
-
       try {
         const stream = await navigator.mediaDevices.getUserMedia(constraints);
-        console.log('[Studio] initCamera: Success (High-res).');
         setCameraStream(stream);
-        if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
+        if (videoPreviewRef.current && !isVoiceOnly) {
+          videoPreviewRef.current.srcObject = stream;
+        }
         return stream;
       } catch (firstErr: any) {
         console.warn('[Studio] High-res camera init failed, trying basic fallback...', firstErr.name, firstErr.message);
-        await new Promise(r => setTimeout(r, 500)); // 🚀 Safety delay
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: true, audio: true });
-          console.log('[Studio] initCamera: Success (Basic V+A).');
+          const stream = await navigator.mediaDevices.getUserMedia({ video: !isVoiceOnly, audio: true });
           setCameraStream(stream);
-          if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
+          if (videoPreviewRef.current && !isVoiceOnly) {
+            videoPreviewRef.current.srcObject = stream;
+          }
           return stream;
         } catch (secondErr: any) {
-          console.warn('[Studio] Basic V+A failed, trying Video-only...', secondErr.name, secondErr.message);
-          await new Promise(r => setTimeout(r, 500)); // 🚀 Safety delay
-          try {
-            const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-            console.log('[Studio] initCamera: Success (Video-only).');
-            setCameraStream(stream);
-            if (videoPreviewRef.current) videoPreviewRef.current.srcObject = stream;
-            return stream;
-          } catch (thirdErr: any) {
-            console.error('[Studio] All camera paths failed:', thirdErr.name, thirdErr.message);
-            setCameraError(`Camera Error: ${thirdErr.name} - ${thirdErr.message}. Try another browser or close other apps using camera.`);
-            return null;
-          }
+          console.error('[Studio] All camera paths failed:', secondErr.name);
+          setCameraError(`Camera Error: ${secondErr.name}. Try another browser or close other apps.`);
+          return null;
         }
       }
     } catch (err: any) {
-      console.error('All camera init paths failed:', err);
+      console.error('Critical camera init error:', err);
       setCameraError(`Critical Error: ${err.message}`);
       return null;
     }
@@ -385,23 +459,33 @@ export default function StudioPage() {
         
         try {
           const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-          const recorder = new MediaRecorder(activeStream, { 
-            // 🚀 Maximum compatibility mode (as it was 3 days ago)
-            mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm',
-            videoBitsPerSecond: isMobile ? 2500000 : 5000000
-          });
+          
+          let recorder: MediaRecorder;
+          if (isVoiceOnly) {
+            const aMime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+            recorder = new MediaRecorder(activeStream, { mimeType: aMime });
+          } else {
+            recorder = new MediaRecorder(activeStream, { 
+              mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm',
+              videoBitsPerSecond: isMobile ? 2500000 : 5000000
+            });
+          }
 
           recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
           recorder.onstop = async () => {
             const blob = new Blob(localChunks, { type: recorder.mimeType });
             const timestamp = Date.now();
-            const recordingId = `raw_rec_${projectId}_${timestamp}`;
+            const recordingId = (isVoiceOnly ? 'raw_audio_' : 'raw_rec_') + projectId + '_' + timestamp;
             
             try {
               await idb.set(recordingId, blob, 'MediaBuffer');
-              await idb.set(`pending_upload_${projectId}`, recordingId, 'ProjectDrafts');
+              if (isVoiceOnly) {
+                await idb.set(`pending_audio_${projectId}`, recordingId, 'ProjectDrafts');
+              } else {
+                await idb.set(`pending_upload_${projectId}`, recordingId, 'ProjectDrafts');
+              }
               
-              if (audioChunks.length > 0) {
+              if (!isVoiceOnly && audioChunks.length > 0) {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                 const audioRecId = `raw_rec_audio_${projectId}_${timestamp}`;
                 await idb.set(audioRecId, audioBlob, 'MediaBuffer');
@@ -414,19 +498,21 @@ export default function StudioPage() {
             setShowRecordingReview(true);
           };
 
-          // Secondary audio-only recorder for OOM bypass on mobile
-          try {
-            const aMime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-            const audioOnlyStream = new MediaStream(activeStream.getAudioTracks());
-            const audioRecorder = new MediaRecorder(audioOnlyStream, { 
-              mimeType: aMime,
-              audioBitsPerSecond: 64000 // Very light
-            });
-            audioRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
-            audioRecorder.start(1000);
-            (window as any)._audioRecorder = audioRecorder;
-          } catch (ae) {
-            console.warn('[Studio] Parallel audio recording failed (non-critical):', ae);
+          // Secondary audio-only recorder for OOM bypass on mobile (only for video mode)
+          if (!isVoiceOnly) {
+            try {
+              const aMime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+              const audioOnlyStream = new MediaStream(activeStream.getAudioTracks());
+              const audioRecorder = new MediaRecorder(audioOnlyStream, { 
+                mimeType: aMime,
+                audioBitsPerSecond: 64000 
+              });
+              audioRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+              audioRecorder.start(1000);
+              (window as any)._audioRecorder = audioRecorder;
+            } catch (ae) {
+              console.warn('[Studio] Parallel audio recording failed:', ae);
+            }
           }
 
           recorder.start(1000);
@@ -690,9 +776,15 @@ export default function StudioPage() {
                 onSelect={(type) => {
                   if (type === 'record') {
                     setShowFaceless(false);
+                    setIsVoiceOnly(false);
+                    setActiveTab('teleprompter');
+                  } else if (type === 'voice-master') {
+                    setShowFaceless(false);
+                    setIsVoiceOnly(true);
                     setActiveTab('teleprompter');
                   } else if (type === 'faceless') {
                     setShowFaceless(true);
+                    setIsVoiceOnly(false);
                     setActiveTab('assembly');
                   }
                 }}
@@ -724,6 +816,7 @@ export default function StudioPage() {
                    scrollSpeed={scrollSpeed}
                    onSpeedChange={setScrollSpeed}
                    isRecordingVideo={isRecordingVideo}
+                   isVoiceOnly={isVoiceOnly}
                     recordingTime={recordingTime}
                     onBack={() => setActiveTab('branch')}
                     onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
@@ -752,7 +845,7 @@ export default function StudioPage() {
 
             {/* Global Recording Review Overlay (No AnimatePresence for OOM safety) */}
             {showRecordingReview && (
-              <RecordingReview 
+               <RecordingReview 
                   showRecordingReview={showRecordingReview}
                     lastRecordingUrl={lastRecordingUrl}
                     currentProfile={currentProfile}
@@ -761,7 +854,13 @@ export default function StudioPage() {
                     setShowRecordingReview={setShowRecordingReview}
                     setLastRecordingUrl={setLastRecordingUrl}
                     updateSegmentField={updateSegmentField}
+                    isVoiceOnly={isVoiceOnly}
                     handleAcceptRecording={async (url) => {
+                       if (isVoiceOnly) {
+                          setShowRecordingReview(false);
+                          setShowAvatarSelector(true);
+                          return;
+                       }
                        try {
                          if (manifest) {
                             const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
@@ -798,6 +897,20 @@ export default function StudioPage() {
                     selectedSegmentId={selectedSegmentId}
                 />
               )}
+
+            {showAvatarSelector && (
+              <AvatarSelector 
+                isOpen={showAvatarSelector}
+                onClose={() => setShowAvatarSelector(false)}
+                onSelect={handleAvatarSelect}
+                isGenerating={isGeneratingAvatar}
+                projectId={projectId}
+              />
+            )}
+
+            {isAssemblingAvatar && (
+               <AssemblyProgress photoUrl={selectedAvatarPhoto || ''} />
+            )}
 
             {/* Mobile Assembly Launcher - lightweight buffer before FFmpeg loads */}
             {showAssemblyLauncher && (
