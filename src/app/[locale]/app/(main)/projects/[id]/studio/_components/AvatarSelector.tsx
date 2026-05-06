@@ -63,7 +63,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
     setIsUploading(true);
     setError(null);
     try {
-      const publicUrl = await storageService.uploadFile(file, `avatar_${uuidv4()}.jpg`, 'media_assets');
+      const publicUrl = await storageService.uploadFile(file, `avatar_${uuidv4()}.jpg`, 'media');
       if (publicUrl) {
         const newAsset = { id: `manual_${Date.now()}`, url: publicUrl, label: 'Uploaded' };
         setAssets(prev => [newAsset, ...prev]);
@@ -283,7 +283,6 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
             onChange={handleFileUpload}
             accept="image/*"
             className="hidden" 
-            capture="user"
           />
         </motion.div>
       )}
