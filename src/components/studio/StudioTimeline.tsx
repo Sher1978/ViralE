@@ -204,9 +204,11 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
   // --- RENDERERS ---
 
   const renderMarkers = () => {
+    if (!totalDuration || !isFinite(totalDuration) || totalDuration <= 0) return null;
     const markers = [];
     const step = pxPerSecond < 10 ? 10 : pxPerSecond < 50 ? 5 : 1;
-    for (let i = 0; i <= totalDuration; i += step) {
+    const safeDuration = Math.min(totalDuration, 3600); // Cap at 1 hour for safety
+    for (let i = 0; i <= safeDuration; i += step) {
       markers.push(
         <div key={i} className="absolute flex flex-col items-center" style={{ left: i * pxPerSecond }}>
           <div className="h-1.5 w-[1px] bg-white/20" />
@@ -258,7 +260,9 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
     );
   };
 
-  return (
+    const safeDuration = (!totalDuration || !isFinite(totalDuration) || totalDuration <= 0) ? 60 : Math.min(totalDuration, 3600);
+
+    return (
     <div 
       className="w-full bg-[#050508] border-t border-white/5 py-4 flex flex-col gap-2 select-none relative"
       onWheel={handleWheel}
@@ -284,14 +288,14 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
            </div>
         </div>
       </div>
-
+ 
       {/* Timeline Workspace */}
       <div 
         ref={containerRef}
         className="relative flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-6"
         onMouseUp={clearLongPress}
       >
-        <div className="relative h-[180px]" style={{ width: totalDuration * pxPerSecond + 400, paddingLeft: 32 }}>
+        <div className="relative h-[180px]" style={{ width: safeDuration * pxPerSecond + 400, paddingLeft: 32 }}>
           
           {/* Playhead (Time Cursor) */}
           <div 
@@ -300,15 +304,15 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
           >
              <div className="absolute top-0 left-1/2 -translate-x-1/2 w-2 h-2 bg-red-500 rotate-45" />
           </div>
-
+ 
           {/* Time Scale Ruler */}
           <div className="absolute top-2 left-8 right-0 h-6 border-b border-white/10 flex items-start">
              {renderMarkers()}
           </div>
-
+ 
           {/* Track 1: Master A-Roll (Segments) */}
           <div className="absolute top-10 left-8 right-0 h-10 flex items-center">
-             <div className="absolute inset-y-0 left-0 bg-white/[0.02] border-y border-white/5" style={{ width: totalDuration * pxPerSecond }} />
+             <div className="absolute inset-y-0 left-0 bg-white/[0.02] border-y border-white/5" style={{ width: safeDuration * pxPerSecond }} />
              <div className="flex gap-0 h-full">
                 {segments.map((s, idx) => (
                   <div 

@@ -241,6 +241,12 @@ export default function StudioPage() {
       console.log('[Studio] Auto-initializing camera for teleprompter...');
       initCamera();
     }
+    
+    // 🚀 Auto-stop camera when leaving recording studio to save RAM/CPU
+    if (activeTab === 'assembly' || activeTab === 'assets' || activeTab === 'concept') {
+      console.log(`[Studio] Leaving recording tab (${activeTab}), releasing hardware...`);
+      stopCamera();
+    }
   }, [activeTab, cameraStream, isLoading]);
 
   const initCamera = async (): Promise<MediaStream | null> => {
@@ -321,10 +327,27 @@ export default function StudioPage() {
   };
 
   const stopCamera = () => {
+    console.log('[Studio] stopCamera: Releasing all hardware resources...');
     if (cameraStream) {
-      cameraStream.getTracks().forEach(track => track.stop());
+      cameraStream.getTracks().forEach(track => {
+        track.stop();
+        console.log(`[Studio] Stopped track: ${track.kind}`);
+      });
       setCameraStream(null);
-      if (videoPreviewRef.current) videoPreviewRef.current.srcObject = null;
+    }
+    
+    // Safety: scan for any other active streams/tracks and stop them
+    if (typeof navigator !== 'undefined' && (window as any)._audioRecorder) {
+       const aRec = (window as any)._audioRecorder as MediaRecorder;
+       if (aRec.stream) {
+          aRec.stream.getTracks().forEach(t => t.stop());
+       }
+       if (aRec.state !== 'inactive') aRec.stop();
+       delete (window as any)._audioRecorder;
+    }
+
+    if (videoPreviewRef.current) {
+      videoPreviewRef.current.srcObject = null;
     }
   };
 
