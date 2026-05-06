@@ -30,39 +30,33 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onSelect('record')}
-            className="group relative h-80 rounded-[3rem] bg-white/[0.03] border border-white/5 overflow-hidden flex flex-col items-center justify-center p-8 text-center transition-all hover:bg-white/[0.05] hover:border-white/10"
+            className="group relative h-64 rounded-[2.5rem] bg-white/[0.03] border border-white/5 overflow-hidden flex flex-col items-center justify-center p-6 text-center transition-all hover:bg-white/[0.05] hover:border-white/10"
           >
              <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/0 to-cyan-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-             <div className="w-24 h-24 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(6,182,212,0.15)] group-hover:shadow-[0_0_60px_rgba(6,182,212,0.3)] transition-all">
-                <Camera size={40} className="text-cyan-400" />
+             <div className="w-16 h-16 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(6,182,212,0.1)] group-hover:shadow-[0_0_50px_rgba(6,182,212,0.2)] transition-all">
+                <Camera size={28} className="text-cyan-400" />
              </div>
-             <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2 leading-none">Записать Себя</h3>
-             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[180px]">
-               Используйте телесуфлер для записи живого видео с вашей подачей
+             <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-2 leading-none">Записать Себя</h3>
+             <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-tight max-w-[160px]">
+               Используйте телесуфлер для записи живого видео
              </p>
-             <div className="mt-8 flex items-center gap-2 text-cyan-400 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
-               Выбрать <ChevronRight size={14} />
-             </div>
           </motion.button>
 
-          {/* Option 2: Voice Master (NEW) */}
+          {/* Option 2: Voice Master */}
           <motion.button
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onSelect('voice-master')}
-            className="group relative h-80 rounded-[3rem] bg-white/[0.03] border border-white/5 overflow-hidden flex flex-col items-center justify-center p-8 text-center transition-all hover:bg-white/[0.05] hover:border-white/10 shadow-[0_0_80px_rgba(168,85,247,0.05)]"
+            className="group relative h-64 rounded-[2.5rem] bg-white/[0.03] border border-white/5 overflow-hidden flex flex-col items-center justify-center p-6 text-center transition-all hover:bg-white/[0.05] hover:border-white/10"
           >
              <div className="absolute inset-0 bg-gradient-to-br from-purple-500/0 to-purple-500/10 opacity-0 group-hover:opacity-100 transition-opacity" />
-             <div className="w-24 h-24 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(168,85,247,0.15)] group-hover:shadow-[0_0_60px_rgba(168,85,247,0.3)] transition-all">
-                <Mic size={40} className="text-purple-400" />
+             <div className="w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(168,85,247,0.1)] group-hover:shadow-[0_0_50px_rgba(168,85,247,0.2)] transition-all">
+                <Mic size={28} className="text-purple-400" />
              </div>
-             <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2 leading-none">Voice Master</h3>
-             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[180px]">
-               Надиктуйте текст голосом — ИИ создаст видео на базе вашего фото
+             <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-2 leading-none">Voice Master</h3>
+             <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-tight max-w-[160px]">
+               Надиктуйте текст голосом — ИИ создаст видео на базе фото
              </p>
-             <div className="mt-8 flex items-center gap-2 text-purple-400 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
-               Выбрать <ChevronRight size={14} />
-             </div>
           </motion.button>
 
           {/* Option 3: AI Faceless */}
@@ -70,19 +64,16 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
             whileHover={{ scale: 1.02 }}
             whileTap={{ scale: 0.98 }}
             onClick={() => onSelect('faceless')}
-            className="group relative h-80 rounded-[3rem] bg-white/[0.03] border border-white/5 overflow-hidden flex flex-col items-center justify-center p-8 text-center transition-all hover:bg-white/[0.05] hover:border-white/10"
+            className="group relative h-64 rounded-[2.5rem] bg-white/[0.03] border border-white/5 overflow-hidden flex flex-col items-center justify-center p-6 text-center transition-all hover:bg-white/[0.05] hover:border-white/10"
           >
              <div className="absolute inset-0 bg-gradient-to-br from-emerald-500/0 to-emerald-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
-             <div className="w-24 h-24 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-8 shadow-[0_0_50px_rgba(16,185,129,0.15)] group-hover:shadow-[0_0_60px_rgba(16,185,129,0.3)] transition-all">
-                <Sparkles size={40} className="text-emerald-400" />
+             <div className="w-16 h-16 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mb-6 shadow-[0_0_40px_rgba(16,185,129,0.1)] group-hover:shadow-[0_0_50px_rgba(16,185,129,0.2)] transition-all">
+                <Sparkles size={28} className="text-emerald-400" />
              </div>
-             <h3 className="text-xl font-black italic uppercase tracking-tighter text-white mb-2 leading-none">AI Faceless</h3>
-             <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed max-w-[180px]">
-               Полностью автоматическая генерация сцен и озвучки ИИ голосом
+             <h3 className="text-lg font-black italic uppercase tracking-tighter text-white mb-2 leading-none">AI Faceless</h3>
+             <p className="text-[9px] font-bold text-white/20 uppercase tracking-widest leading-tight max-w-[160px]">
+               Полностью автоматическая генерация сцен и озвучки
              </p>
-             <div className="mt-8 flex items-center gap-2 text-emerald-400 text-[10px] font-black uppercase tracking-widest opacity-0 group-hover:opacity-100 transition-all">
-               Выбрать <ChevronRight size={14} />
-             </div>
           </motion.button>
         </div>
 

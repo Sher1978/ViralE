@@ -28,6 +28,7 @@ import { AssemblyProgress } from './_components/AssemblyProgress';
 import dynamic from 'next/dynamic';
 const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false });
 import { ProductionBranch } from './_components/ProductionBranch';
+import { BottomNav } from '@/components/layout/BottomNav';
 import DistributionFactory from './_components/DistributionFactory';
 
 // Global Shared Components
@@ -166,7 +167,14 @@ export default function StudioPage() {
         body: formData
       });
 
-      const { taskId, error } = await res.json();
+      if (!res.ok) {
+        const text = await res.text();
+        console.error('[HeyGen] API Error:', text);
+        throw new Error(`API Error: ${res.status}. ${text.slice(0, 50)}`);
+      }
+
+      const data = await res.json();
+      const { taskId, error } = data;
       if (error) throw new Error(error);
 
       // 3. Polling for result
@@ -176,6 +184,8 @@ export default function StudioPage() {
       const poll = async () => {
         try {
           const statusRes = await fetch(`/api/ai/heygen/talking-photo?taskId=${taskId}`);
+          if (!statusRes.ok) throw new Error(`Polling error: ${statusRes.status}`);
+          
           const statusData = await statusRes.json();
           
           if (statusData.status === 'completed' && statusData.videoUrl) {
@@ -1037,6 +1047,20 @@ export default function StudioPage() {
         locale={locale}
         balance={currentProfile?.credits_balance}
       />
+
+      {/* тЬЕ Mobile Bottom Navigation (Visible only on Level 1 & 2) */}
+      <AnimatePresence>
+        {isMobileRef.current && (activeTab === 'concept' || activeTab === 'branch') && (
+          <motion.div 
+            initial={{ y: 100 }}
+            animate={{ y: 0 }}
+            exit={{ y: 100 }}
+            className="fixed bottom-0 left-0 right-0 z-[100] lg:hidden"
+          >
+            <BottomNav />
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 }
