@@ -13,9 +13,9 @@ export async function POST(req: NextRequest) {
     console.log(`[HeyGen TP] Starting generation for project ${projectId} with audio ${audioUrl}`);
 
     // 1. Start Video Generation via universal v2 API
-    // Specialized talking_photo endpoints (v1/v2) are returning 404, 
-    // so we use the robust video/generate pipeline.
-    console.log('[HeyGen TP] Creating video via v2/video/generate');
+    // The "avatar look not found" error usually occurs when the ID is missing.
+    // For Talking Photo, we pass both the direct URL and null ID to trigger the creation.
+    console.log('[HeyGen TP] Creating video via v2/video/generate with Talking Photo input');
     
     const generateRes = await fetch(`${HEYGEN_API_URL}/v2/video/generate`, {
       method: 'POST',
@@ -30,14 +30,18 @@ export async function POST(req: NextRequest) {
             character: {
               type: 'talking_photo',
               talking_photo_url: photoUrl,
-              talking_photo_id: "" // Important for some v2 schemas
+              talking_photo_id: null
             },
             voice: {
               type: 'audio',
               audio_url: audioUrl
             }
           }
-        ]
+        ],
+        dimension: {
+          width: 720,
+          height: 1280
+        }
       })
     });
 
