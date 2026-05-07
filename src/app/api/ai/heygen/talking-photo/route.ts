@@ -12,60 +12,71 @@ export async function POST(req: NextRequest) {
 
     console.log(`[HeyGen TP] Starting generation for project ${projectId} with audio ${audioUrl}`);
 
-    // 1. Start Video Generation via universal v2 API
-    // The "avatar look not found" error usually occurs when the ID is missing.
-    // For Talking Photo, we pass both the direct URL and null ID to trigger the creation.
-    console.log('[HeyGen TP] Creating video via v2/video/generate with Talking Photo input');
-    
-    const generateRes = await fetch(`${HEYGEN_API_URL}/v2/video/generate`, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'Accept': 'application/json',
-        'x-api-key': apiKey
-      },
-      body: JSON.stringify({
-        video_inputs: [
-          {
-            character: {
-              type: 'talking_photo',
-              talking_photo_id: photoUrl
-            },
-            voice: {
-              type: 'audio',
-              audio_url: audioUrl
-            }
-          }
-        ],
-        dimension: {
-          width: 720,
-          height: 1280
+    // Brute-force attempt at different HeyGen v2 structures to find the one that works for this account
+    const structures = [
+      { 
+        name: 'v2_null_id',
+        body: {
+          video_inputs: [{
+            character: { type: 'talking_photo', talking_photo_url: photoUrl, talking_photo_id: null },
+            voice: { type: 'audio', audio_url: audioUrl }
+          }]
         }
-      })
-    });
+      },
+      { 
+        name: 'v2_empty_id',
+        body: {
+          video_inputs: [{
+            character: { type: 'talking_photo', talking_photo_url: photoUrl, talking_photo_id: "" },
+            voice: { type: 'audio', audio_url: audioUrl }
+          }]
+        }
+      },
+      { 
+        name: 'v2_id_bypass',
+        body: {
+          video_inputs: [{
+            character: { type: 'talking_photo', talking_photo_id: photoUrl },
+            voice: { type: 'audio', audio_url: audioUrl }
+          }]
+        }
+      }
+    ];
 
-    if (!generateRes.ok) {
-       const errorText = await generateRes.text();
-       console.error('[HeyGen TP] v2/video/generate failed status:', generateRes.status, errorText);
-       
-       let detailedError = errorText;
-       try {
-         const parsed = JSON.parse(errorText);
-         detailedError = parsed.message || parsed.error?.message || JSON.stringify(parsed);
-       } catch (e) {}
+    let lastError = '';
+    let taskId = null;
 
-       throw new Error(`HeyGen API Error: ${generateRes.status}. ${detailedError.substring(0, 250)}`);
+    for (const struct of structures) {
+      console.log(`[HeyGen TP] Probing structure: ${struct.name}`);
+      try {
+        const res = await fetch(`${HEYGEN_API_URL}/v2/video/generate`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Accept': 'application/json',
+            'x-api-key': apiKey
+          },
+          body: JSON.stringify(struct.body)
+        });
+
+        const data = await res.json();
+        if (res.ok && data.data?.video_id) {
+          console.log(`[HeyGen TP] SUCCESS with structure: ${struct.name}`);
+          taskId = data.data.video_id;
+          break;
+        } else {
+          const err = data.message || data.error?.message || JSON.stringify(data);
+          console.warn(`[HeyGen TP] Structure ${struct.name} failed:`, err);
+          lastError = err;
+        }
+      } catch (e: any) {
+        console.warn(`[HeyGen TP] Exception in ${struct.name}:`, e.message);
+        lastError = e.message;
+      }
     }
 
-    const generateData = await generateRes.json();
-    console.log('[HeyGen TP] v2/video/generate response:', JSON.stringify(generateData));
-
-    // v2 returns video_id
-    const taskId = generateData.data?.video_id;
-    
     if (!taskId) {
-       console.error('[HeyGen TP] video_id missing in v2 response:', generateData);
-       throw new Error(`HeyGen v2 response missing ID: ${JSON.stringify(generateData)}`);
+      throw new Error(`All HeyGen probes failed. Last error: ${lastError.substring(0, 200)}`);
     }
 
     return NextResponse.json({ taskId });
