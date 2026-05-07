@@ -10,71 +10,55 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) throw new Error('System HeyGen API Key missing');
 
-    console.log(`[HeyGen TP] Starting generation for project ${projectId} with audio ${audioUrl}`);
-
-    // Expanded brute-force probe covering v1 and v2 endpoints
-    const probes = [
-      {
-        name: 'v2_talking_photo',
-        url: `${HEYGEN_API_URL}/v2/talking_photo`,
-        body: { talking_photo_url: photoUrl, audio_url: audioUrl }
+    console.log(`[HeyGen V3] Creating one-shot video for project ${projectId}`);
+    
+    // Official V3 One-Shot API: Directly generate video from photo URL and audio URL
+    // This bypasses the need for avatar_id and avoids "avatar look not found" errors.
+    const response = await fetch(`${HEYGEN_API_URL}/v3/videos`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': apiKey
       },
-      {
-        name: 'v1_talking_photo',
-        url: `${HEYGEN_API_URL}/v1/talking_photo`,
-        body: { source_url: photoUrl, audio_url: audioUrl }
-      },
-      { 
-        name: 'v2_gen_null_id',
-        url: `${HEYGEN_API_URL}/v2/video/generate`,
-        body: {
-          video_inputs: [{
-            character: { type: 'talking_photo', talking_photo_url: photoUrl, talking_photo_id: null },
-            voice: { type: 'audio', audio_url: audioUrl }
-          }]
-        }
-      }
-    ];
-
-    let lastError = '';
-    let taskId = null;
-
-    for (const probe of probes) {
-      console.log(`[HeyGen TP] Probing ${probe.name} at ${probe.url}`);
-      try {
-        const res = await fetch(probe.url, {
-          method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'Accept': 'application/json',
-            'x-api-key': apiKey
+      body: JSON.stringify({
+        video_setting: {
+          type: 'image',
+          image: {
+            type: 'url',
+            url: photoUrl
           },
-          body: JSON.stringify(probe.body)
-        });
+          dimension: {
+            width: 720,
+            height: 1280
+          }
+        },
+        script: {
+          type: 'audio',
+          audio_url: audioUrl
+        },
+        title: `Project ${projectId} - ViralEngine`
+      })
+    });
 
-        const data = await res.json();
-        if (res.ok && (data.data?.video_id || data.data?.task_id)) {
-          console.log(`[HeyGen TP] SUCCESS with probe: ${probe.name}`);
-          taskId = data.data.video_id || data.data.task_id;
-          break;
-        } else {
-          const err = data.message || data.error?.message || JSON.stringify(data);
-          console.warn(`[HeyGen TP] Probe ${probe.name} failed:`, err);
-          lastError = err;
-        }
-      } catch (e: any) {
-        console.warn(`[HeyGen TP] Probe ${probe.name} exception:`, e.message);
-        lastError = e.message;
-      }
+    if (!response.ok) {
+       const errorData = await response.json();
+       const errMsg = errorData.message || errorData.error?.message || JSON.stringify(errorData);
+       console.error('[HeyGen V3] Create failed:', response.status, errMsg);
+       throw new Error(`HeyGen V3 API Error: ${response.status}. ${errMsg.substring(0, 250)}`);
     }
 
+    const data = await response.json();
+    const taskId = data.data?.video_id;
+    
     if (!taskId) {
-      throw new Error(`All HeyGen probes failed. Last error: ${lastError.substring(0, 200)}`);
+       throw new Error(`HeyGen V3 missing video_id: ${JSON.stringify(data)}`);
     }
 
+    console.log(`[HeyGen V3] Success. Task ID: ${taskId}`);
     return NextResponse.json({ taskId });
+
   } catch (e: any) {
-    console.error('[HeyGen TP] Route error:', e);
+    console.error('[HeyGen V3] Route error:', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
@@ -87,21 +71,25 @@ export async function GET(req: NextRequest) {
 
     if (!taskId) return NextResponse.json({ error: 'Task ID missing' }, { status: 400 });
 
-    const statusRes = await fetch(`${HEYGEN_API_URL}/v1/talking_photo.get_video_status?task_id=${taskId}`, {
+    // V3 status endpoint: GET /v3/videos/{id}
+    const statusRes = await fetch(`${HEYGEN_API_URL}/v3/videos/${taskId}`, {
       method: 'GET',
-      headers: { 'X-Api-Key': apiKey || '' }
+      headers: { 'x-api-key': apiKey || '' }
     });
 
     const data = await statusRes.json();
-    
-    // HeyGen status mapping
+    if (!statusRes.ok) {
+       return NextResponse.json({ status: 'failed', error: data.message || 'Status check failed' });
+    }
+
+    // HeyGen V3 status mapping: pending, processing, completed, failed
     const status = data.data?.status;
     const videoUrl = data.data?.video_url;
 
     if (status === 'completed') {
       return NextResponse.json({ status: 'completed', videoUrl });
     } else if (status === 'failed') {
-      return NextResponse.json({ status: 'failed', error: data.data?.error?.message });
+      return NextResponse.json({ status: 'failed', error: data.data?.error?.message || 'Generation failed' });
     } else {
       return NextResponse.json({ status: 'processing' });
     }
