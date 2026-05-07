@@ -29,8 +29,7 @@ export async function POST(req: NextRequest) {
           {
             character: {
               type: 'talking_photo',
-              talking_photo_url: photoUrl,
-              talking_photo_id: null
+              talking_photo_id: photoUrl
             },
             voice: {
               type: 'audio',
@@ -57,6 +56,32 @@ export async function POST(req: NextRequest) {
 
        throw new Error(`HeyGen API Error: ${generateRes.status}. ${detailedError.substring(0, 250)}`);
     }
+
+    const generateData = await generateRes.json();
+    console.log('[HeyGen TP] v2/video/generate response:', JSON.stringify(generateData));
+
+    // v2 returns video_id
+    const taskId = generateData.data?.video_id;
+    
+    if (!taskId) {
+       console.error('[HeyGen TP] video_id missing in v2 response:', generateData);
+       throw new Error(`HeyGen v2 response missing ID: ${JSON.stringify(generateData)}`);
+    }
+
+    return NextResponse.json({ taskId });
+
+    const generateData = await generateRes.json();
+    console.log('[HeyGen TP] v2/video/generate response:', JSON.stringify(generateData));
+
+    // v2 returns video_id
+    const taskId = generateData.data?.video_id;
+    
+    if (!taskId) {
+       console.error('[HeyGen TP] video_id missing in v2 response:', generateData);
+       throw new Error(`HeyGen v2 response missing ID: ${JSON.stringify(generateData)}`);
+    }
+
+    return NextResponse.json({ taskId });
 
     const generateData = await generateRes.json();
     console.log('[HeyGen TP] v2/video/generate response:', JSON.stringify(generateData));
