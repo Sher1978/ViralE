@@ -29,15 +29,15 @@ export async function POST(req: NextRequest) {
           {
             character: {
               type: 'talking_photo',
-              talking_photo_url: photoUrl
+              talking_photo_url: photoUrl,
+              talking_photo_id: "" // Important for some v2 schemas
             },
             voice: {
               type: 'audio',
               audio_url: audioUrl
             }
           }
-        ],
-        test: false
+        ]
       })
     });
 
@@ -51,7 +51,7 @@ export async function POST(req: NextRequest) {
          detailedError = parsed.message || parsed.error?.message || JSON.stringify(parsed);
        } catch (e) {}
 
-       throw new Error(`HeyGen API Error: ${generateRes.status}. ${detailedError.substring(0, 200)}`);
+       throw new Error(`HeyGen API Error: ${generateRes.status}. ${detailedError.substring(0, 250)}`);
     }
 
     const generateData = await generateRes.json();
