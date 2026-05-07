@@ -5,15 +5,35 @@ const HEYGEN_API_URL = 'https://api.heygen.com';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { audioUrl, photoUrl, projectId } = body;
+    const { audioUrl, photoUrl, avatarId, projectId } = body;
 
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) throw new Error('System HeyGen API Key missing');
 
-    console.log(`[HeyGen V3] Creating one-shot video for project ${projectId}`);
+    console.log(`[HeyGen V3] Creating video. Type: ${avatarId ? 'Stock Avatar' : 'Custom Image'}`);
     
-    // Official V3 One-Shot API: Directly generate video from photo URL and audio URL
-    // This bypasses the need for avatar_id and avoids "avatar look not found" errors.
+    // Construct V3 payload based on input type
+    let video_setting: any = {
+      aspect_ratio: '9:16',
+      resolution: '1080p'
+    };
+
+    if (avatarId) {
+      // Use HeyGen's native avatar ID
+      video_setting.type = 'avatar';
+      video_setting.avatar = {
+        type: 'talking_photo',
+        talking_photo_id: avatarId
+      };
+    } else {
+      // Use external image URL
+      video_setting.type = 'image';
+      video_setting.image = {
+        type: 'url',
+        url: photoUrl
+      };
+    }
+
     const response = await fetch(`${HEYGEN_API_URL}/v3/videos`, {
       method: 'POST',
       headers: {
@@ -21,15 +41,7 @@ export async function POST(req: NextRequest) {
         'x-api-key': apiKey
       },
       body: JSON.stringify({
-        video_setting: {
-          type: 'image',
-          image: {
-            type: 'url',
-            url: photoUrl
-          },
-          aspect_ratio: '9:16',
-          resolution: '1080p'
-        },
+        video_setting,
         script: {
           type: 'audio',
           audio_url: audioUrl
