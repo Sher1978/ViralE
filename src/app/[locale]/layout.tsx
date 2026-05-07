@@ -87,34 +87,34 @@ export default async function LocaleLayout({
           inset: 0,
           zIndex: 9999,
           background: '#050505',
+          backgroundImage: 'url(/splash_bg.png)',
+          backgroundSize: 'cover',
+          backgroundPosition: 'center',
           display: 'flex',
-          flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
+          transition: 'opacity 0.8s ease',
           pointerEvents: 'none'
         }}>
-          <img 
-            src="/icon-512x512.png" 
-            alt="ViralEngine" 
-            style={{
-              width: '120px',
-              height: '120px',
-              borderRadius: '24px',
-              boxShadow: '0 0 60px rgba(155, 95, 255, 0.15)',
-              transition: 'transform 0.5s ease'
-            }}
-          />
+          {/* Minimal overlay to ensure text/icons remain readable if added later */}
+          <div style={{
+            position: 'absolute',
+            inset: 0,
+            background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.4) 100%)'
+          }}></div>
         </div>
 
         <script dangerouslySetInnerHTML={{ __html: `
-          window.addEventListener('load', function() {
+          function hideSplash() {
             var splash = document.getElementById('instant-splash');
-            if (splash) {
+            if (splash && splash.style.opacity !== '0') {
               splash.style.opacity = '0';
-              setTimeout(function() { splash.style.display = 'none'; }, 500);
+              setTimeout(function() { splash.style.display = 'none'; }, 800);
             }
-          });
+          }
+          // Hide on load OR after 1.5s safety timeout
+          window.addEventListener('load', hideSplash);
+          setTimeout(hideSplash, 1500);
         `}} />
 
         <Providers>
