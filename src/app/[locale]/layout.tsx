@@ -98,23 +98,13 @@ export default async function LocaleLayout({
             src="/icon-512x512.png" 
             alt="ViralEngine" 
             style={{
-              width: '80px',
-              height: '80px',
-              borderRadius: '20px',
-              boxShadow: '0 0 40px rgba(155, 95, 255, 0.2)',
-              marginBottom: '24px'
+              width: '120px',
+              height: '120px',
+              borderRadius: '24px',
+              boxShadow: '0 0 60px rgba(155, 95, 255, 0.15)',
+              transition: 'transform 0.5s ease'
             }}
           />
-          <div style={{
-            fontSize: '24px',
-            fontWeight: 900,
-            fontStyle: 'italic',
-            color: 'white',
-            letterSpacing: '-0.02em',
-            textTransform: 'uppercase'
-          }}>
-            VIRAL<span style={{ color: '#9B5FFF' }}>E</span>
-          </div>
         </div>
 
         <script dangerouslySetInnerHTML={{ __html: `
