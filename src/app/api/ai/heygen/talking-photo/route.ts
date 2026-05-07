@@ -12,31 +12,24 @@ export async function POST(req: NextRequest) {
 
     console.log(`[HeyGen TP] Starting generation for project ${projectId} with audio ${audioUrl}`);
 
-    // Brute-force attempt at different HeyGen v2 structures to find the one that works for this account
-    const structures = [
+    // Expanded brute-force probe covering v1 and v2 endpoints
+    const probes = [
+      {
+        name: 'v2_talking_photo',
+        url: `${HEYGEN_API_URL}/v2/talking_photo`,
+        body: { talking_photo_url: photoUrl, audio_url: audioUrl }
+      },
+      {
+        name: 'v1_talking_photo',
+        url: `${HEYGEN_API_URL}/v1/talking_photo`,
+        body: { source_url: photoUrl, audio_url: audioUrl }
+      },
       { 
-        name: 'v2_null_id',
+        name: 'v2_gen_null_id',
+        url: `${HEYGEN_API_URL}/v2/video/generate`,
         body: {
           video_inputs: [{
             character: { type: 'talking_photo', talking_photo_url: photoUrl, talking_photo_id: null },
-            voice: { type: 'audio', audio_url: audioUrl }
-          }]
-        }
-      },
-      { 
-        name: 'v2_empty_id',
-        body: {
-          video_inputs: [{
-            character: { type: 'talking_photo', talking_photo_url: photoUrl, talking_photo_id: "" },
-            voice: { type: 'audio', audio_url: audioUrl }
-          }]
-        }
-      },
-      { 
-        name: 'v2_id_bypass',
-        body: {
-          video_inputs: [{
-            character: { type: 'talking_photo', talking_photo_id: photoUrl },
             voice: { type: 'audio', audio_url: audioUrl }
           }]
         }
@@ -46,31 +39,31 @@ export async function POST(req: NextRequest) {
     let lastError = '';
     let taskId = null;
 
-    for (const struct of structures) {
-      console.log(`[HeyGen TP] Probing structure: ${struct.name}`);
+    for (const probe of probes) {
+      console.log(`[HeyGen TP] Probing ${probe.name} at ${probe.url}`);
       try {
-        const res = await fetch(`${HEYGEN_API_URL}/v2/video/generate`, {
+        const res = await fetch(probe.url, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'x-api-key': apiKey
           },
-          body: JSON.stringify(struct.body)
+          body: JSON.stringify(probe.body)
         });
 
         const data = await res.json();
-        if (res.ok && data.data?.video_id) {
-          console.log(`[HeyGen TP] SUCCESS with structure: ${struct.name}`);
-          taskId = data.data.video_id;
+        if (res.ok && (data.data?.video_id || data.data?.task_id)) {
+          console.log(`[HeyGen TP] SUCCESS with probe: ${probe.name}`);
+          taskId = data.data.video_id || data.data.task_id;
           break;
         } else {
           const err = data.message || data.error?.message || JSON.stringify(data);
-          console.warn(`[HeyGen TP] Structure ${struct.name} failed:`, err);
+          console.warn(`[HeyGen TP] Probe ${probe.name} failed:`, err);
           lastError = err;
         }
       } catch (e: any) {
-        console.warn(`[HeyGen TP] Exception in ${struct.name}:`, e.message);
+        console.warn(`[HeyGen TP] Probe ${probe.name} exception:`, e.message);
         lastError = e.message;
       }
     }
