@@ -91,26 +91,30 @@ export default async function LocaleLayout({
           flexDirection: 'column',
           alignItems: 'center',
           justifyContent: 'center',
-          transition: 'opacity 0.5s ease',
+          transition: 'opacity 0.6s cubic-bezier(0.4, 0, 0.2, 1)',
           pointerEvents: 'none'
         }}>
+          <img 
+            src="/icon-512x512.png" 
+            alt="ViralEngine" 
+            style={{
+              width: '80px',
+              height: '80px',
+              borderRadius: '20px',
+              boxShadow: '0 0 40px rgba(155, 95, 255, 0.2)',
+              marginBottom: '24px'
+            }}
+          />
           <div style={{
-            fontSize: '48px',
+            fontSize: '24px',
             fontWeight: 900,
             fontStyle: 'italic',
             color: 'white',
-            letterSpacing: '-0.05em',
+            letterSpacing: '-0.02em',
             textTransform: 'uppercase'
           }}>
             VIRAL<span style={{ color: '#9B5FFF' }}>E</span>
           </div>
-          <div style={{
-            marginTop: '20px',
-            width: '40px',
-            height: '2px',
-            background: '#9B5FFF',
-            borderRadius: '2px'
-          }}></div>
         </div>
 
         <script dangerouslySetInnerHTML={{ __html: `
