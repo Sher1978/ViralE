@@ -27,10 +27,8 @@ export async function POST(req: NextRequest) {
             type: 'url',
             url: photoUrl
           },
-          dimension: {
-            width: 720,
-            height: 1280
-          }
+          aspect_ratio: '9:16',
+          resolution: '1080p'
         },
         script: {
           type: 'audio',

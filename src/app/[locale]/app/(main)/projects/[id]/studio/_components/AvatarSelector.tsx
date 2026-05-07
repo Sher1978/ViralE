@@ -35,10 +35,14 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
   // Mock default avatars for now
+  // Optimized stock avatars with face-centering for HeyGen AI compatibility
   const defaultAvatars = [
-    { id: 'def_1', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=400&h=400&fit=crop', label: 'Classic' },
-    { id: 'def_2', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=400&h=400&fit=crop', label: 'Modern' },
-    { id: 'def_3', url: 'https://images.unsplash.com/photo-1539571696357-5a69c17a67c6?w=400&h=400&fit=crop', label: 'Expert' },
+    { id: 'def_1', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'Classic' },
+    { id: 'def_2', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'Modern' },
+    { id: 'def_3', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'Expert' },
+    { id: 'def_4', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'Latin' },
+    { id: 'def_5', url: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'Aisha' },
+    { id: 'def_6', url: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'James' }
   ];
 
   React.useEffect(() => {

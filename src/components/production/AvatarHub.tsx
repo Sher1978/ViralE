@@ -199,20 +199,29 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
           >
             {activeTab === 'stock' && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[1, 2, 3, 4, 1, 2, 3, 4].map((i, idx) => (
+                {[
+                  { id: 'stock_1', name: 'Mark', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+                  { id: 'stock_2', name: 'Sarah', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+                  { id: 'stock_3', name: 'David', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+                  { id: 'stock_4', name: 'Elena', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+                  { id: 'stock_5', name: 'James', url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+                  { id: 'stock_6', name: 'Aisha', url: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+                  { id: 'stock_7', name: 'Lucas', url: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+                  { id: 'stock_8', name: 'Sofia', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' }
+                ].map((item) => (
                   <div 
-                    key={idx}
-                    onClick={() => setSelectedAsset(`stock_${idx}`)}
+                    key={item.id}
+                    onClick={() => setSelectedAsset(item.id)}
                     className={clsx(
                       "aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 relative group",
-                      selectedAsset === `stock_${idx}` ? "ring-2 ring-white/50 scale-[1.02]" : "ring-1 ring-white/10 grayscale-[0.3] hover:grayscale-0"
+                      selectedAsset === item.id ? "ring-2 ring-white/50 scale-[1.02]" : "ring-1 ring-white/10 grayscale-[0.3] hover:grayscale-0"
                     )}
                   >
-                    <img src={`https://picsum.photos/seed/${idx+10}/300/400`} alt="Avatar" className="w-full h-full object-cover" />
+                    <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
                     <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-3">
-                      <p className="text-xs text-white/80 font-medium">Avatar Model {idx + 1}</p>
+                      <p className="text-xs text-white/80 font-medium">{item.name}</p>
                     </div>
-                    {selectedAsset === `stock_${idx}` && (
+                    {selectedAsset === item.id && (
                       <div className="absolute top-2 right-2 text-white bg-black/40 rounded-full p-1 backdrop-blur-md">
                         <CheckCircle2 className="w-4 h-4" />
                       </div>
