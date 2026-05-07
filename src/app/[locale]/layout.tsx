@@ -76,10 +76,53 @@ export default async function LocaleLayout({
   const messages = await getMessages();
 
   return (
-    <html lang={locale} suppressHydrationWarning>
+    <html lang={locale} suppressHydrationWarning style={{ background: '#050505' }}>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} ${inter.variable} antialiased min-h-screen`}
+        style={{ background: '#050505', color: '#F5F0E8' }}
       >
+        {/* Instant Splash Screen (Pre-hydration) */}
+        <div id="instant-splash" style={{
+          position: 'fixed',
+          inset: 0,
+          zIndex: 9999,
+          background: '#050505',
+          display: 'flex',
+          flexDirection: 'column',
+          alignItems: 'center',
+          justifyContent: 'center',
+          transition: 'opacity 0.5s ease',
+          pointerEvents: 'none'
+        }}>
+          <div style={{
+            fontSize: '48px',
+            fontWeight: 900,
+            fontStyle: 'italic',
+            color: 'white',
+            letterSpacing: '-0.05em',
+            textTransform: 'uppercase'
+          }}>
+            VIRAL<span style={{ color: '#9B5FFF' }}>E</span>
+          </div>
+          <div style={{
+            marginTop: '20px',
+            width: '40px',
+            height: '2px',
+            background: '#9B5FFF',
+            borderRadius: '2px'
+          }}></div>
+        </div>
+
+        <script dangerouslySetInnerHTML={{ __html: `
+          window.addEventListener('load', function() {
+            var splash = document.getElementById('instant-splash');
+            if (splash) {
+              splash.style.opacity = '0';
+              setTimeout(function() { splash.style.display = 'none'; }, 500);
+            }
+          });
+        `}} />
+
         <Providers>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <SessionSync />
