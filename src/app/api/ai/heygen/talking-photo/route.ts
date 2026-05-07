@@ -69,33 +69,6 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({ taskId });
-
-    const generateData = await generateRes.json();
-    console.log('[HeyGen TP] v2/video/generate response:', JSON.stringify(generateData));
-
-    // v2 returns video_id
-    const taskId = generateData.data?.video_id;
-    
-    if (!taskId) {
-       console.error('[HeyGen TP] video_id missing in v2 response:', generateData);
-       throw new Error(`HeyGen v2 response missing ID: ${JSON.stringify(generateData)}`);
-    }
-
-    return NextResponse.json({ taskId });
-
-    const generateData = await generateRes.json();
-    console.log('[HeyGen TP] v2/video/generate response:', JSON.stringify(generateData));
-
-    // v2 returns video_id
-    const taskId = generateData.data?.video_id;
-    
-    if (!taskId) {
-       console.error('[HeyGen TP] video_id missing in v2 response:', generateData);
-       throw new Error(`HeyGen v2 response missing ID: ${JSON.stringify(generateData)}`);
-    }
-
-    return NextResponse.json({ taskId });
-
   } catch (e: any) {
     console.error('[HeyGen TP] Route error:', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
