@@ -12,10 +12,12 @@ export async function POST(req: NextRequest) {
 
     console.log(`[HeyGen TP] Starting generation for project ${projectId} with audio ${audioUrl}`);
 
-    // 1. Start Talking Photo Task via v2 API (Official documented endpoint for URLs)
-    console.log('[HeyGen TP] Creating task via v2/talking_photo');
+    // 1. Start Video Generation via universal v2 API
+    // Specialized talking_photo endpoints (v1/v2) are returning 404, 
+    // so we use the robust video/generate pipeline.
+    console.log('[HeyGen TP] Creating video via v2/video/generate');
     
-    const generateRes = await fetch(`${HEYGEN_API_URL}/v2/talking_photo`, {
+    const generateRes = await fetch(`${HEYGEN_API_URL}/v2/video/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -23,38 +25,43 @@ export async function POST(req: NextRequest) {
         'x-api-key': apiKey
       },
       body: JSON.stringify({
-        talking_photo_url: photoUrl,
-        audio_url: audioUrl,
-        video_settings: {
-          ratio: '9:16'
-        }
+        video_inputs: [
+          {
+            character: {
+              type: 'talking_photo',
+              talking_photo_url: photoUrl
+            },
+            voice: {
+              type: 'audio',
+              audio_url: audioUrl
+            }
+          }
+        ],
+        test: false
       })
     });
 
     if (!generateRes.ok) {
        const errorText = await generateRes.text();
-       console.error('[HeyGen TP] v2/talking_photo failed status:', generateRes.status, errorText);
+       console.error('[HeyGen TP] v2/video/generate failed status:', generateRes.status, errorText);
        
-       // Try to parse the error JSON if possible to show a better message
-       let errorMessage = errorText;
+       let detailedError = errorText;
        try {
-         const errorJson = JSON.parse(errorText);
-         errorMessage = JSON.stringify(errorJson);
-       } catch (e) {
-         // Not JSON, use raw text
-       }
-       
-       throw new Error(`HeyGen API Error: ${generateRes.status}. ${errorMessage.substring(0, 200)}`);
+         const parsed = JSON.parse(errorText);
+         detailedError = parsed.message || parsed.error?.message || JSON.stringify(parsed);
+       } catch (e) {}
+
+       throw new Error(`HeyGen API Error: ${generateRes.status}. ${detailedError.substring(0, 200)}`);
     }
 
     const generateData = await generateRes.json();
-    console.log('[HeyGen TP] v2/talking_photo response:', JSON.stringify(generateData));
+    console.log('[HeyGen TP] v2/video/generate response:', JSON.stringify(generateData));
 
-    // v2/talking_photo returns video_id
-    const taskId = generateData.data?.video_id || generateData.data?.task_id;
+    // v2 returns video_id
+    const taskId = generateData.data?.video_id;
     
     if (!taskId) {
-       console.error('[HeyGen TP] taskId missing in v2 response:', generateData);
+       console.error('[HeyGen TP] video_id missing in v2 response:', generateData);
        throw new Error(`HeyGen v2 response missing ID: ${JSON.stringify(generateData)}`);
     }
 
