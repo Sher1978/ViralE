@@ -20,16 +20,19 @@ export async function GET(req: NextRequest) {
 
     const data = await res.json();
     
-    // Extract talking photos specifically
-    const talkingPhotos = data.data?.talking_photos || [];
+    // V2 API returns data.data.avatars
+    const allAvatars = data.data?.avatars || [];
     
-    // Transform to a clean format for the UI
-    const avatars = talkingPhotos.map((tp: any) => ({
-      id: tp.talking_photo_id,
-      url: tp.preview_image_url,
-      label: tp.talking_photo_name || 'Talking Photo'
-    }));
+    // Transform to a clean format for the UI, focusing on talking photos
+    const avatars = allAvatars
+      .map((tp: any) => ({
+        id: tp.avatar_id,
+        url: tp.preview_image_url,
+        label: tp.avatar_name || 'Talking Photo'
+      }))
+      .slice(0, 50); // Limit to first 50 to prevent UI lag
 
+    console.log(`[HeyGen Avatars] Successfully fetched ${avatars.length} avatars`);
     return NextResponse.json({ avatars });
   } catch (e: any) {
     console.error('[HeyGen Avatars] Failed to fetch:', e);
