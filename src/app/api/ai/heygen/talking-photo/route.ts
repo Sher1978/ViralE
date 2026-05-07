@@ -12,44 +12,18 @@ export async function POST(req: NextRequest) {
 
     console.log(`[HeyGen TP] Starting generation for project ${projectId} with audio ${audioUrl}`);
 
-    // 1. Fetch audio from Supabase and upload to HeyGen (Proxy method)
-    const audioDownloadRes = await fetch(audioUrl);
-    if (!audioDownloadRes.ok) throw new Error(`Failed to download audio from storage: ${audioDownloadRes.status}`);
-    const audioBlob = await audioDownloadRes.blob();
-
-    const audioFormData = new FormData();
-    audioFormData.append('file', audioBlob, 'recording.webm');
-    
-    console.log('[HeyGen TP] Uploading audio to HeyGen...');
-    const audioUploadRes = await fetch(`${HEYGEN_API_URL}/v1/talking_photo.upload_audio`, {
-      method: 'POST',
-      headers: { 'X-Api-Key': apiKey },
-      body: audioFormData
-    });
-
-    if (!audioUploadRes.ok) {
-      const errText = await audioUploadRes.text();
-      throw new Error(`HeyGen Audio Upload Error: ${audioUploadRes.status}. ${errText.substring(0, 100)}`);
-    }
-
-    const audioData = await audioUploadRes.json();
-    if (!audioData.data?.audio_url) {
-      console.error('[HeyGen TP] Audio proxy upload failed:', audioData);
-      throw new Error(`HeyGen audio upload failed: ${JSON.stringify(audioData)}`);
-    }
-    const internalAudioUrl = audioData.data.audio_url;
-
-    // 2. Start Talking Photo Task
-    console.log('[HeyGen TP] Starting task with internal audio URL:', internalAudioUrl);
-    const generateRes = await fetch(`${HEYGEN_API_URL}/v2/talking_photo`, {
+    // 1. Start Talking Photo Task via v1 API (Legacy but stable with external URLs)
+    // We pass the Supabase audioUrl directly to bypass Vercel's 4.5MB limit
+    console.log('[HeyGen TP] Creating task with audio URL:', audioUrl);
+    const generateRes = await fetch(`${HEYGEN_API_URL}/v1/talking_photo`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'X-Api-Key': apiKey
       },
       body: JSON.stringify({
-        talking_photo_url: photoUrl,
-        audio_url: internalAudioUrl,
+        source_url: photoUrl,
+        audio_url: audioUrl,
         video_settings: {
           ratio: '9:16'
         }
@@ -63,12 +37,15 @@ export async function POST(req: NextRequest) {
     }
 
     const generateData = await generateRes.json();
-    if (!generateData.data?.video_id) {
-       console.error('[HeyGen TP] video_id missing in response:', generateData);
-       throw new Error('HeyGen response missing video_id');
+    // v1 API returns task_id in data.task_id or data.video_id
+    const taskId = generateData.data?.task_id || generateData.data?.video_id;
+    
+    if (!taskId) {
+       console.error('[HeyGen TP] taskId missing in response:', generateData);
+       throw new Error('HeyGen response missing taskId');
     }
 
-    return NextResponse.json({ taskId: generateData.data.video_id });
+    return NextResponse.json({ taskId });
 
   } catch (e: any) {
     console.error('[HeyGen TP] Route error:', e);
