@@ -7,7 +7,7 @@ export const falService = {
    */
   async uploadFile(fileData: Blob | Buffer | string) {
     try {
-      const url = await fal.storage.upload(fileData);
+      const url = await fal.storage.upload(fileData as any);
       return url;
     } catch (error) {
       console.error("[FalService] Upload failed:", error);
