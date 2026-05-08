@@ -11,21 +11,47 @@ export async function POST(req: NextRequest) {
     if (!apiKey) throw new Error('System HeyGen API Key missing');
 
     console.log(`[HeyGen V2] Generating studio video. Type: ${avatarType || 'talking_photo'}`);
-    console.log(`[HeyGen V2] Input - ID: ${avatarId}, URL: ${photoUrl?.substring(0, 50)}...`);
+    
+    let finalTalkingPhotoId = avatarId;
 
-    // Add a small delay to prevent race conditions (404 avatar look not found)
+    // Phase 1: If it's a custom photo (URL from Supabase), we MUST register it in HeyGen first to get a valid ID
+    if (!finalTalkingPhotoId && photoUrl) {
+      console.log('[HeyGen V2] Registering custom photo in HeyGen system...');
+      try {
+        const uploadRes = await fetch(`${HEYGEN_API_URL}/v2/upload/photo`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'x-api-key': apiKey
+          },
+          body: JSON.stringify({ url: photoUrl })
+        });
+        const uploadData = await uploadRes.json();
+        finalTalkingPhotoId = uploadData.data?.talking_photo_id;
+        
+        if (!finalTalkingPhotoId) {
+          throw new Error(`Failed to get talking_photo_id: ${JSON.stringify(uploadData)}`);
+        }
+        console.log(`[HeyGen V2] Successfully registered photo. ID: ${finalTalkingPhotoId}`);
+      } catch (uploadErr: any) {
+        console.error('[HeyGen V2] Upload phase failed:', uploadErr);
+        throw new Error(`HeyGen Upload Error: ${uploadErr.message}`);
+      }
+    }
+
+    // Phase 2: Wait for resource synchronization (as requested by user to avoid 404)
     console.log('[HeyGen V2] Waiting 2s for resource sync...');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Construct the payload strictly according to Talking Photo vs Instant Avatar
+    // Phase 3: Generate the video using the confirmed ID
     const payload = {
       video_inputs: [
         {
           character: {
             type: avatarType === 'avatar' ? 'avatar' : 'talking_photo',
             ...(avatarType === 'avatar' 
-               ? { avatar_id: avatarId || photoUrl } 
-               : { talking_photo_id: avatarId || photoUrl }
+               ? { avatar_id: finalTalkingPhotoId } 
+               : { talking_photo_id: finalTalkingPhotoId }
             )
           },
           voice: {
