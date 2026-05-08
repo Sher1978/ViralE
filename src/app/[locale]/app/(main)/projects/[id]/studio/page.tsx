@@ -28,6 +28,10 @@ import { AssemblyProgress } from './_components/AssemblyProgress';
 import dynamic from 'next/dynamic';
 const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false });
 import { ProductionBranch } from './_components/ProductionBranch';
+import { PostRecordBranch } from './_components/PostRecordBranch';
+import { PostRecordBranch } from './_components/PostRecordBranch';
+import { TimelineLab } from './_components/TimelineLab';
+import { FusionView } from './_components/FusionView';
 import { BottomNav } from '@/components/layout/BottomNav';
 import DistributionFactory from './_components/DistributionFactory';
 
@@ -50,7 +54,7 @@ export default function StudioPage() {
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch'>(initialTab);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
 
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
@@ -90,6 +94,13 @@ export default function StudioPage() {
   const [videoResolution, setVideoResolution] = useState<'360p' | '720p' | '1080p' | '4k'>('720p');
   const [recordingTime, setRecordingTime] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
+
+  // Fusion Engine States
+  const [fusionStatus, setFusionStatus] = useState<'segmenting' | 'processing' | 'stitching' | 'completed' | 'failed'>('segmenting');
+  const [fusionProgress, setFusionProgress] = useState(0);
+  const [fusionSegmentsCount, setFusionSegmentsCount] = useState(0);
+  const [fusionCompletedSegments, setFusionCompletedSegments] = useState(0);
+  const [fusionError, setFusionError] = useState<string | null>(null);
 
   const prompterRef = useRef<HTMLDivElement>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
@@ -144,9 +155,9 @@ export default function StudioPage() {
 
   const handleAvatarSelect = async (photoUrl: string, avatarId?: string, avatarType?: string) => {
     setSelectedAvatarPhoto(photoUrl);
-    setIsGeneratingAvatar(true);
     setShowAvatarSelector(false);
-    setIsAssemblingAvatar(true);
+    setActiveTab('timeline_lab');
+  };
 
     try {
       // 1. Get the recorded audio from IDB
@@ -241,6 +252,60 @@ export default function StudioPage() {
       setIsGeneratingAvatar(false);
       setIsAssemblingAvatar(false);
       alert('Ошибка: ' + e.message);
+    }
+  };
+
+  const handleGenerateFusion = async (timelineSegments: any[]) => {
+    setActiveTab('fusion');
+    setFusionStatus('segmenting');
+    setFusionProgress(10);
+    setFusionSegmentsCount(timelineSegments.length);
+    setFusionCompletedSegments(0);
+    setFusionError(null);
+
+    try {
+      // 1. Prepare segments (ensure we have URLs)
+      // For now, we assume lastRecordingUrl is already uploaded to Supabase or IDB.
+      // We'll need a real API call here.
+      const res = await fetch('/api/ai/fal/process-timeline', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          videoUrl: lastRecordingUrl,
+          segments: timelineSegments
+        })
+      });
+
+      if (!res.ok) throw new Error(`Fusion API error: ${res.status}`);
+
+      // 2. Simple polling or stream would go here. For now, simulated progress logic:
+      setFusionStatus('processing');
+      setFusionProgress(30);
+
+      // We'll replace this simulation with real SSE or polling in the next step
+      const simulatedSteps = async () => {
+        for (let i = 0; i <= timelineSegments.length; i++) {
+          setFusionCompletedSegments(i);
+          setFusionProgress(30 + (i / timelineSegments.length) * 50);
+          await new Promise(r => setTimeout(r, 2000));
+        }
+        setFusionStatus('stitching');
+        setFusionProgress(90);
+        await new Promise(r => setTimeout(r, 3000));
+        setFusionStatus('completed');
+        setFusionProgress(100);
+        
+        // Auto-transition to montage
+        setTimeout(() => setActiveTab('assembly'), 1500);
+      };
+
+      simulatedSteps();
+
+    } catch (err: any) {
+      console.error('[Fusion] Failed:', err);
+      setFusionStatus('failed');
+      setFusionError(err.message);
     }
   };
 
@@ -511,7 +576,7 @@ export default function StudioPage() {
 
             const url = URL.createObjectURL(blob);
             setLastRecordingUrl(url);
-            setShowRecordingReview(true);
+            setActiveTab('post_record_branch');
           };
 
           // Secondary audio-only recorder for OOM bypass on mobile (only for video mode)
@@ -809,23 +874,6 @@ export default function StudioPage() {
             )}
 
             {activeTab === 'teleprompter' && (
-              <div className="w-full h-full relative">
-                <TeleprompterView 
-                   cameraStream={cameraStream}
-                   cameraError={cameraError}
-                   videoPreviewRef={videoPreviewRef}
-                   isVideoMirrored={isVideoMirrored}
-                   prompterWidth={prompterWidth}
-                   isReading={isReading}
-                   countdown={countdown}
-                   prompterRef={prompterRef}
-                   isMirrored={isMirrored}
-                   useCustomScript={useCustomScript}
-                   manifest={manifest}
-                   customScript={customScript}
-                   textSize={textSize}
-                   onTextSizeChange={setTextSize}
-                   scriptColor={scriptColor}
                    onColorChange={setScriptColor}
                    scriptOpacity={scriptOpacity}
                    onOpacityChange={setScriptOpacity}
@@ -1007,7 +1055,6 @@ export default function StudioPage() {
                       setManifest(prev => {
                         if (!prev) return prev;
                         const next = {
-                          ...prev,
                           videoUrl: res.publicUrl,
                           segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
                         };

@@ -104,11 +104,6 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
       setIsUploading(false);
     }
   };
-      setError('Не удалось загрузить фото. Проверьте соединение.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
 
   const handleConfirm = () => {
     const allOptions = [...defaultAvatars, ...assets];

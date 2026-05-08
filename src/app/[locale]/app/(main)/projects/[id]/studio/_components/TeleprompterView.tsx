@@ -333,7 +333,7 @@ export const TeleprompterView = React.memo(({
             onClick={onFinish}
             className="px-6 h-12 rounded-2xl bg-purple-600 text-white font-black uppercase tracking-widest text-[10px] shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-purple-500/30 flex items-center gap-2 transition-all active:scale-95 leading-none"
           >
-            {locale === 'ru' ? 'В МОНТАЖ' : 'TO MONTAGE'}
+            {locale === 'ru' ? 'СОХРАНИТЬ' : 'SAVE RECORDING'}
             <ArrowLeft className="w-3 h-3 rotate-180" />
           </button>
         </div>

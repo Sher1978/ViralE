@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { PostRecordBranch } from './_components/PostRecordBranch';
+import { TimelineLab } from './_components/TimelineLab';
 
 const HEYGEN_API_URL = 'https://api.heygen.com';
 
