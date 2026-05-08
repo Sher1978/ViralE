@@ -7,12 +7,16 @@ import { Scissors, Sparkles, ArrowRight, Play, User } from 'lucide-react';
 interface PostRecordBranchProps {
   videoUrl: string;
   onSelect: (type: 'pure' | 'animate') => void;
+  onDownload?: () => void;
+  onTelegram?: () => void;
   t: (key: string) => string;
 }
 
 export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
   videoUrl,
   onSelect,
+  onDownload,
+  onTelegram,
   t
 }) => {
   return (
@@ -48,62 +52,60 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
             initial={{ opacity: 0, y: 20 }}
             animate={{ opacity: 1, y: 0 }}
             transition={{ delay: 0.1 }}
+            className="text-center"
           >
-            <h2 className="text-4xl font-black italic uppercase tracking-tight text-white mb-2 leading-none">
-              Perfect Take.
+            <h2 className="text-5xl font-black italic uppercase tracking-tighter text-white leading-none">
+              TAKE IS<br/>
+              <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">MASTERED</span>
             </h2>
-            <p className="text-white/40 text-sm font-medium leading-relaxed">
-              Choose how you want to proceed with this performance.
+            <p className="text-white/20 text-[10px] font-black uppercase tracking-[0.3em] mt-4">
+              Ready for final editing
             </p>
           </motion.div>
 
-          <div className="grid grid-cols-1 gap-4">
-            {/* Option 1: Pure Reality */}
+          {/* Quick Actions (The Save/TG Buttons from screenshot) */}
+          <div className="grid grid-cols-2 gap-4">
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onSelect('pure')}
-              className="group relative p-6 rounded-3xl bg-white/5 border border-white/10 hover:border-white/20 transition-all text-left overflow-hidden"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onDownload}
+              className="flex flex-col items-center gap-3 p-6 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
             >
-              <div className="absolute top-0 right-0 p-4 opacity-10 group-hover:opacity-20 transition-opacity">
-                <Scissors size={80} className="text-white rotate-12" />
+              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
+                <Scissors size={20} className="text-white/60" /> {/* Download icon proxy */}
               </div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-white/10 flex items-center justify-center mb-4 group-hover:bg-white/20 transition-colors">
-                  <Play className="text-white" size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-1 uppercase tracking-tight italic">В МОНТАЖ</h3>
-                <p className="text-white/40 text-xs font-medium">Отправить оригинальную запись сразу в студию сборки</p>
-                <div className="mt-4 flex items-center gap-2 text-white/20 group-hover:text-white transition-colors">
-                  <span className="text-[10px] font-black uppercase tracking-widest">Pure Reality</span>
-                  <ArrowRight size={14} />
-                </div>
-              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Save</span>
             </motion.button>
 
-            {/* Option 2: AI Face Fusion */}
             <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={() => onSelect('animate')}
-              className="group relative p-6 rounded-3xl bg-gradient-to-br from-purple-600/20 to-blue-600/20 border border-purple-500/30 hover:border-purple-400/50 transition-all text-left overflow-hidden shadow-lg shadow-purple-900/20"
+              whileHover={{ scale: 1.05 }}
+              whileTap={{ scale: 0.95 }}
+              onClick={onTelegram}
+              className="flex flex-col items-center gap-3 p-6 rounded-[2rem] bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
             >
-              <div className="absolute top-0 right-0 p-4 opacity-20 group-hover:opacity-40 transition-opacity">
-                <Sparkles size={80} className="text-purple-400 -rotate-12" />
+              <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/5">
+                <Sparkles size={20} className="text-white/60" /> {/* Telegram icon proxy */}
               </div>
-              <div className="relative z-10">
-                <div className="w-12 h-12 rounded-2xl bg-purple-500 flex items-center justify-center mb-4 shadow-[0_0_20px_rgba(168,85,247,0.5)]">
-                  <User className="text-white" size={24} />
-                </div>
-                <h3 className="text-xl font-bold text-white mb-1 italic uppercase tracking-tight">БИБЛИОТЕКА ЛУКОВ</h3>
-                <p className="text-white/40 text-xs font-medium">Оживить фото-аватар твоей мимикой через AI</p>
-                <div className="mt-4 flex items-center gap-2 text-purple-400 group-hover:text-purple-300 transition-colors">
-                  <span className="text-[10px] font-black uppercase tracking-widest">AI Face Fusion</span>
-                  <ArrowRight size={14} />
-                </div>
-              </div>
+              <span className="text-[10px] font-black uppercase tracking-widest text-white/40">Telegram</span>
             </motion.button>
           </div>
+
+          <motion.button
+            whileHover={{ scale: 1.02, translateY: -2 }}
+            whileTap={{ scale: 0.98 }}
+            onClick={() => onSelect('pure')}
+            className="w-full py-6 rounded-[2.5rem] bg-purple-600 text-white font-black uppercase tracking-[0.2em] text-sm shadow-2xl shadow-purple-900/40 flex items-center justify-center gap-3"
+          >
+            В МОНТАЖ <ArrowRight size={18} />
+          </motion.button>
+
+          <button 
+            onClick={() => onSelect('animate')}
+            className="w-full py-4 text-[10px] font-black uppercase tracking-[0.4em] text-white/10 hover:text-purple-400 transition-colors"
+          >
+            Библиотека луков
+          </button>
+        </div>
         </div>
       </div>
     </div>

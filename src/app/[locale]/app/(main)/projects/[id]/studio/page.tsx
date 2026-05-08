@@ -485,6 +485,8 @@ export default function StudioPage() {
 
             const url = URL.createObjectURL(blob);
             setLastRecordingUrl(url);
+            
+            // Explicitly transition to branch screen
             setActiveTab('post_record_branch');
           };
 
@@ -818,8 +820,67 @@ export default function StudioPage() {
 
 
 
-            {/* Global Recording Review Overlay (No AnimatePresence for OOM safety) */}
-            {showRecordingReview && (
+            {/* Global Recording Review Overlay (The Emergency Safety Net) */}
+            {showRecordingReview && lastRecordingUrl && (
+              <div className="fixed inset-0 z-[1000] bg-black flex flex-col items-center justify-center p-6 backdrop-blur-3xl">
+                <div className="w-full max-w-lg space-y-8">
+                  <div className="relative aspect-[9/16] bg-black rounded-3xl overflow-hidden border border-white/10 shadow-2xl">
+                    <video src={lastRecordingUrl} className="w-full h-full object-cover" controls />
+                    <div className="absolute top-4 left-4 px-3 py-1 bg-emerald-500 rounded-full text-[8px] font-black uppercase tracking-widest text-white shadow-lg animate-pulse">
+                      Raw Capture Saved
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="grid grid-cols-2 gap-3">
+                      <button 
+                        onClick={downloadRawVideo}
+                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-blue-500/10 flex items-center justify-center border border-blue-500/20 group-hover:scale-110 transition-transform">
+                          <Download size={20} className="text-blue-400" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Save to Disk</span>
+                      </button>
+
+                      <button 
+                        onClick={sendRawToTelegram}
+                        className="flex flex-col items-center gap-2 p-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 transition-all group"
+                      >
+                        <div className="w-10 h-10 rounded-xl bg-[#229ED9]/10 flex items-center justify-center border border-[#229ED9]/20 group-hover:scale-110 transition-transform">
+                          <Send size={20} className="text-[#229ED9]" />
+                        </div>
+                        <span className="text-[10px] font-black uppercase tracking-widest text-white/60">Send to TG</span>
+                      </button>
+                    </div>
+
+                    <button 
+                      onClick={() => {
+                        setShowRecordingReview(false);
+                        setActiveTab('post_record_branch');
+                      }}
+                      className="w-full py-5 rounded-2xl bg-purple-600 text-white font-black uppercase tracking-[0.2em] text-[11px] shadow-xl shadow-purple-600/30 hover:bg-purple-500 transition-all active:scale-[0.98]"
+                    >
+                      Proceed to Montage
+                    </button>
+
+                    <button 
+                      onClick={() => {
+                        if (window.confirm('Are you sure you want to delete this recording?')) {
+                          setShowRecordingReview(false);
+                          setLastRecordingUrl(null);
+                          // Re-init camera for retry
+                          initCamera();
+                        }
+                      }}
+                      className="w-full py-4 text-[10px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-red-500 transition-colors"
+                    >
+                      Delete & Retake
+                    </button>
+                  </div>
+                </div>
+              </div>
+            )}
                <RecordingReview 
                   showRecordingReview={showRecordingReview}
                     lastRecordingUrl={lastRecordingUrl}
@@ -923,6 +984,19 @@ export default function StudioPage() {
               </motion.div>
             )}
 
+            {activeTab === 'post_record_branch' && lastRecordingUrl && (
+              <PostRecordBranch 
+                videoUrl={lastRecordingUrl}
+                onSelect={(option) => {
+                  if (option === 'pure') setActiveTab('assembly');
+                  else if (option === 'animate') setActiveTab('timeline_lab');
+                }}
+                onDownload={downloadRawVideo}
+                onTelegram={sendRawToTelegram}
+                t={t}
+              />
+            )}
+
             {activeTab === 'assembly' && !showFaceless && (
               <VideoEditor 
                 projectId={projectId}
@@ -963,15 +1037,16 @@ export default function StudioPage() {
                   setShowFaceless(false);
                   renderService.uploadMedia(projectId, videoBlob, 'video').then(res => {
                     if (res.publicUrl) {
-                      setManifest(prev => {
-                        if (!prev) return prev;
-                        const next = {
-                          videoUrl: res.publicUrl,
-                          segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
-                        };
-                        projectService.updateLatestVersionManifest(projectId, next);
-                        return next;
-                      });
+                  setManifest(prev => {
+                    if (!prev) return prev;
+                    const next = {
+                      ...prev,
+                      videoUrl: res.publicUrl,
+                      segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
+                    };
+                    projectService.updateLatestVersionManifest(projectId, next);
+                    return next;
+                  });
                     }
                   });
                 }}
