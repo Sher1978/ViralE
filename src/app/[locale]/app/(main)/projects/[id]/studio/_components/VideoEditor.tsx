@@ -1271,10 +1271,18 @@ export const VideoEditor = React.memo(({
                 if (!activeSub) return null;
 
                 return (
-                  <div
-                    key={activeSub.id}
-                    className="absolute text-center px-4 w-full z-[100]"
-                    style={{ bottom: '22%', transform: `translate(${subtitlePos.x}px, ${subtitlePos.y}px)` }}
+                  <motion.div
+                    key="global-subtitle-container"
+                    drag
+                    dragMomentum={false}
+                    onDrag={(e, info) => {
+                      setSubtitlePos(prev => ({
+                        x: prev.x + info.delta.x,
+                        y: prev.y + info.delta.y
+                      }));
+                    }}
+                    className="absolute text-center px-4 w-full z-[100] cursor-move active:cursor-grabbing pointer-events-auto"
+                    style={{ bottom: '17%', x: subtitlePos.x, y: subtitlePos.y }}
                   >
                     <div className="flex justify-center px-4">
                       <span 
@@ -1284,7 +1292,7 @@ export const VideoEditor = React.memo(({
                         {activeSub.text}
                       </span>
                     </div>
-                  </div>
+                  </motion.div>
                 );
               })()}
           </div>

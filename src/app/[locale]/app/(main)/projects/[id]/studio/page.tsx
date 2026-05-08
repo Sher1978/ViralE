@@ -53,7 +53,7 @@ export default function StudioPage() {
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion'>(initialTab);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
 
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
