@@ -10,40 +10,40 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) throw new Error('System HeyGen API Key missing');
 
-    console.log(`[HeyGen V2] Generating studio video. Type: ${avatarType || 'photo'}`);
+    console.log(`[HeyGen V2] Generating studio video. Type: ${avatarType || 'talking_photo'}`);
     
-    // Structure according to the documentation provided by the user
+    // Construct the payload according to the "video_inputs" requirement
+    const payload = {
+      video_inputs: [
+        {
+          character: {
+            type: avatarType === 'avatar' ? 'avatar' : 'talking_photo',
+            ...(avatarType === 'avatar' 
+               ? { avatar_id: avatarId || photoUrl } 
+               : { talking_photo_id: avatarId || photoUrl }
+            )
+          },
+          voice: {
+            type: 'audio',
+            audio_url: audioUrl
+          }
+        }
+      ],
+      dimension: {
+        width: 720,
+        height: 1280
+      },
+      aspect_ratio: '9:16',
+      test: false
+    };
+
     const response = await fetch(`${HEYGEN_API_URL}/v2/video/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey
       },
-      body: JSON.stringify({
-        video_settings: {
-          ratio: '9:16'
-        },
-        dimension: {
-          width: 720,
-          height: 1280
-        },
-        test: false,
-        caption: false,
-        clips: [
-          {
-            avatar: {
-              type: avatarType === 'avatar' ? 'avatar' : 'photo',
-              avatar_id: avatarId || photoUrl,
-              avatar_style: 'normal'
-            },
-            input_text: '',
-            audio: {
-              type: 'url',
-              audio_url: audioUrl
-            }
-          }
-        ]
-      })
+      body: JSON.stringify(payload)
     });
 
     if (!response.ok) {
