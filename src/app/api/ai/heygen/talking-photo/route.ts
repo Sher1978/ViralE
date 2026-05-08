@@ -10,40 +10,59 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) throw new Error('System HeyGen API Key missing');
 
-    console.log(`[HeyGen V2] Generating studio video. Type: ${avatarType || 'talking_photo'}`);
+    console.log(`[HeyGen V2] Starting production pipeline. Type: ${avatarType || 'talking_photo'}`);
     
     let finalTalkingPhotoId = avatarId;
 
-    // Phase 1: If it's a custom photo (URL from Supabase), we MUST register it in HeyGen first to get a valid ID
+    // Phase 1: Custom Photo Upload (Binary Flow)
     if (!finalTalkingPhotoId && photoUrl) {
-      console.log('[HeyGen V2] Registering custom photo in HeyGen system...');
+      console.log('[HeyGen V2] Step 1: Requesting Upload URL...');
       try {
-        const uploadRes = await fetch(`${HEYGEN_API_URL}/v2/upload/photo`, {
+        // 1. Get pre-signed URL
+        const getUrlRes = await fetch(`${HEYGEN_API_URL}/v2/upload/photo`, {
           method: 'POST',
-          headers: {
-            'Content-Type': 'application/json',
-            'x-api-key': apiKey
+          headers: { 
+            'x-api-key': apiKey,
+            'Content-Type': 'application/json'
           },
-          body: JSON.stringify({ url: photoUrl })
+          body: JSON.stringify({})
         });
-        const uploadData = await uploadRes.json();
-        finalTalkingPhotoId = uploadData.data?.talking_photo_id;
+
+        const getUrlRaw = await getUrlRes.text();
+        console.log(`[HeyGen V2] Step 1 Response (${getUrlRes.status}): ${getUrlRaw.substring(0, 100)}`);
         
-        if (!finalTalkingPhotoId) {
-          throw new Error(`Failed to get talking_photo_id: ${JSON.stringify(uploadData)}`);
-        }
-        console.log(`[HeyGen V2] Successfully registered photo. ID: ${finalTalkingPhotoId}`);
+        if (!getUrlRes.ok) throw new Error(`Step 1 failed: ${getUrlRaw}`);
+        
+        const { data: { upload_url, talking_photo_id } } = JSON.parse(getUrlRaw);
+        finalTalkingPhotoId = talking_photo_id;
+
+        // 2. Download from our Supabase
+        console.log('[HeyGen V2] Step 2: Downloading source image...');
+        const imageRes = await fetch(photoUrl);
+        const imageBuffer = await imageRes.arrayBuffer();
+
+        // 3. Binary PUT to HeyGen S3
+        console.log('[HeyGen V2] Step 3: PUT binary to S3...');
+        const putRes = await fetch(upload_url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'image/jpeg' },
+          body: imageBuffer
+        });
+
+        if (!putRes.ok) throw new Error(`Step 3 (S3 PUT) failed: ${putRes.status}`);
+        console.log(`[HeyGen V2] Upload complete. ID: ${finalTalkingPhotoId}`);
+
       } catch (uploadErr: any) {
-        console.error('[HeyGen V2] Upload phase failed:', uploadErr);
-        throw new Error(`HeyGen Upload Error: ${uploadErr.message}`);
+        console.error('[HeyGen V2] Upload pipeline failed:', uploadErr);
+        return NextResponse.json({ error: `HeyGen Upload Error: ${uploadErr.message}` }, { status: 500 });
       }
     }
 
-    // Phase 2: Wait for resource synchronization (as requested by user to avoid 404)
-    console.log('[HeyGen V2] Waiting 2s for resource sync...');
+    // Phase 2: Synchronization Delay
+    console.log('[HeyGen V2] Step 4: Waiting 2s for sync...');
     await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Phase 3: Generate the video using the confirmed ID
+    // Phase 3: Video Generation
     const payload = {
       video_inputs: [
         {
@@ -60,14 +79,12 @@ export async function POST(req: NextRequest) {
           }
         }
       ],
-      dimension: {
-        width: 720,
-        height: 1280
-      },
+      dimension: { width: 720, height: 1280 },
       aspect_ratio: '9:16',
       test: false
     };
 
+    console.log('[HeyGen V2] Step 5: Sending generation request...');
     const response = await fetch(`${HEYGEN_API_URL}/v2/video/generate`, {
       method: 'POST',
       headers: {
@@ -77,20 +94,19 @@ export async function POST(req: NextRequest) {
       body: JSON.stringify(payload)
     });
 
+    const responseText = await response.text();
+    console.log(`[HeyGen V2] Final Response (${response.status}): ${responseText.substring(0, 150)}`);
+
     if (!response.ok) {
-       const errorData = await response.json();
-       const errMsg = errorData.message || errorData.error?.message || JSON.stringify(errorData);
-       console.error('[HeyGen V2] Create failed:', response.status, errMsg);
-       throw new Error(`HeyGen V2 API Error: ${response.status}. ${errMsg.substring(0, 250)}`);
+       throw new Error(`HeyGen V2 Error: ${response.status}. ${responseText.substring(0, 200)}`);
     }
 
-    const data = await response.json();
-    // V2 return data.video_id
+    const data = JSON.parse(responseText);
     const taskId = data.data?.video_id;
     
-    if (!taskId) {
-       throw new Error(`HeyGen V2 missing video_id: ${JSON.stringify(data)}`);
-    }
+    if (!taskId) throw new Error(`Missing video_id: ${responseText}`);
+
+    return NextResponse.json({ taskId });
 
     console.log(`[HeyGen V2] Success. Task ID: ${taskId}`);
     return NextResponse.json({ taskId });
