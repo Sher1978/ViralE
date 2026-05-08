@@ -34,7 +34,15 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
   const [error, setError] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  const [defaultAvatars, setDefaultAvatars] = React.useState<any[]>([]);
+  // Trusted stock avatars that appear INSTANTLY to prevent modal hanging
+  const initialAvatars = [
+    { id: 'stock_mark', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'Mark', type: 'talking_photo_url' },
+    { id: 'stock_sarah', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'Sarah', type: 'talking_photo_url' },
+    { id: 'stock_david', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'David', type: 'talking_photo_url' },
+    { id: 'stock_aisha', url: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2', label: 'Aisha', type: 'talking_photo_url' }
+  ];
+
+  const [defaultAvatars, setDefaultAvatars] = React.useState<any[]>(initialAvatars);
   const [isLoadingAvatars, setIsLoadingAvatars] = React.useState(true);
 
   React.useEffect(() => {
@@ -42,7 +50,13 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
       try {
         const res = await fetch('/api/ai/heygen/avatars');
         const data = await res.json();
-        if (data.avatars) setDefaultAvatars(data.avatars);
+        if (data.avatars && data.avatars.length > 0) {
+          // Merge initial with fresh ones, avoiding duplicates
+          setDefaultAvatars(prev => {
+            const fresh = data.avatars.filter((a: any) => !initialAvatars.some(i => i.id === a.id));
+            return [...initialAvatars, ...fresh];
+          });
+        }
       } catch (e) {
         console.error('Failed to fetch stock avatars:', e);
       } finally {
@@ -94,9 +108,14 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
     const allOptions = [...defaultAvatars, ...assets];
     const selected = allOptions.find(a => a.id === selectedId);
     if (selected) {
-      // isStock check - assets don't have avatar_type but stock ones do
-      const isStock = defaultAvatars.some(a => a.id === selectedId);
-      onSelect(selected.url, isStock ? selected.id : undefined, selected.type);
+      const isInitialStock = selected.id.startsWith('stock_');
+      const isFreshStock = defaultAvatars.some(a => a.id === selectedId) && !isInitialStock;
+      
+      onSelect(
+        selected.url, 
+        isFreshStock ? selected.id : undefined, 
+        selected.type
+      );
     }
   };
 

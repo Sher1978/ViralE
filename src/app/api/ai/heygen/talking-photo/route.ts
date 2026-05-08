@@ -21,21 +21,21 @@ export async function POST(req: NextRequest) {
     if (avatarId) {
       video_setting.type = 'avatar';
       if (avatarType === 'avatar') {
-        // Instant Avatar (Video-based)
+        // Instant Avatar (Video-based) - V3 Spec
         video_setting.avatar = {
           type: 'instant_avatar',
           avatar_id: avatarId,
-          avatar_style: 'normal'
+          engine: 'avatar_iv' // Optimized engine for Instant Avatars
         };
       } else {
-        // Talking Photo (Image-based ID)
+        // Talking Photo (Image-based ID) - V3 Spec
         video_setting.avatar = {
           type: 'talking_photo',
           talking_photo_id: avatarId
         };
       }
     } else {
-      // Use external image URL
+      // Custom Photo URL - V3 Spec
       video_setting.type = 'image';
       video_setting.image = {
         type: 'url',
