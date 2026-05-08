@@ -63,11 +63,9 @@ export async function POST(req: NextRequest) {
         const upload_url = json.data?.upload_url || json.data?.url;
         const talking_photo_id = json.data?.talking_photo_id || json.data?.id;
         
-        const json = JSON.parse(text);
-        const upload_url = json.data?.upload_url || json.data?.url;
-        const talking_photo_id = json.data?.talking_photo_id || json.data?.id;
-        
-        if (!upload_url || !talking_photo_id) throw new Error(`Invalid response structure: ${text.substring(0, 100)}`);
+        if (!upload_url || !talking_photo_id) {
+           throw new Error(`Invalid response structure from scanner: ${finalText.substring(0, 100)}`);
+        }
         
         finalTalkingPhotoId = talking_photo_id;
 
