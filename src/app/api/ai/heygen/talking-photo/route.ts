@@ -59,12 +59,13 @@ export async function POST(req: NextRequest) {
         
         finalTalkingPhotoId = talking_photo_id;
 
-        // 2. Download from our Supabase
+        // Step 2: Download from our Supabase
         console.log('[HeyGen V2] Step 2: Downloading source image from Supabase...');
         const imageRes = await fetch(photoUrl);
+        if (!imageRes.ok) throw new Error(`Failed to download image from ${photoUrl}`);
         const imageBuffer = await imageRes.arrayBuffer();
 
-        // 3. Binary PUT to HeyGen S3
+        // Step 3: Binary PUT to HeyGen S3
         console.log('[HeyGen V2] Step 3: PUT binary to HeyGen S3 bucket...');
         const putRes = await fetch(upload_url, {
           method: 'PUT',
@@ -77,28 +78,6 @@ export async function POST(req: NextRequest) {
 
       } catch (uploadErr: any) {
         console.error('[HeyGen V2] Fatal Upload Error:', uploadErr);
-        return NextResponse.json({ error: `HeyGen Upload Error: ${uploadErr.message}` }, { status: 500 });
-      }
-    }
-
-        // 2. Download from our Supabase
-        console.log('[HeyGen V2] Step 2: Downloading source image...');
-        const imageRes = await fetch(photoUrl);
-        const imageBuffer = await imageRes.arrayBuffer();
-
-        // 3. Binary PUT to HeyGen S3
-        console.log('[HeyGen V2] Step 3: PUT binary to S3...');
-        const putRes = await fetch(upload_url, {
-          method: 'PUT',
-          headers: { 'Content-Type': 'image/jpeg' },
-          body: imageBuffer
-        });
-
-        if (!putRes.ok) throw new Error(`Step 3 (S3 PUT) failed: ${putRes.status}`);
-        console.log(`[HeyGen V2] Upload complete. ID: ${finalTalkingPhotoId}`);
-
-      } catch (uploadErr: any) {
-        console.error('[HeyGen V2] Upload pipeline failed:', uploadErr);
         return NextResponse.json({ error: `HeyGen Upload Error: ${uploadErr.message}` }, { status: 500 });
       }
     }
@@ -152,8 +131,6 @@ export async function POST(req: NextRequest) {
     
     if (!taskId) throw new Error(`Missing video_id: ${responseText}`);
 
-    return NextResponse.json({ taskId });
-
     console.log(`[HeyGen V2] Success. Task ID: ${taskId}`);
     return NextResponse.json({ taskId });
 
@@ -171,15 +148,13 @@ export async function GET(req: NextRequest) {
 
     if (!taskId) return NextResponse.json({ error: 'Task ID missing' }, { status: 400 });
 
-    // V1 status endpoint for V2 generation requests
     const statusRes = await fetch(`${HEYGEN_API_URL}/v1/video_status.get?video_id=${taskId}`, {
       method: 'GET',
-      headers: { 'x-api-key': apiKey || '' }
+      headers: { 'X-Api-Key': apiKey || '' }
     });
 
     const data = await statusRes.json();
     
-    // V1 status check uses "code" (100 = success)
     if (data.code !== 100) {
        return NextResponse.json({ status: 'failed', error: data.message || 'Status check failed' });
     }
@@ -196,6 +171,7 @@ export async function GET(req: NextRequest) {
     }
 
   } catch (e: any) {
+    console.error('[HeyGen Status] GET error:', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
