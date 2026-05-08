@@ -541,17 +541,42 @@ export default function StudioPage() {
     }
   };
 
-  const downloadRawVideo = () => {
+  const downloadRawVideo = async () => {
     if (!lastRecordingUrl) return;
+    
+    // 🚀 Mobile-first: Use Web Share API for native "Save to Gallery/Files"
+    if (navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+      try {
+        const response = await fetch(lastRecordingUrl);
+        const blob = await response.blob();
+        const extension = blob.type.includes('mp4') ? 'mp4' : 'webm';
+        const file = new File([blob], `ViralEngine_Take_${Date.now()}.${extension}`, { type: blob.type });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Viral Engine Recording',
+          });
+          return;
+        }
+      } catch (e) {
+        console.error('[Studio] Native share failed:', e);
+      }
+    }
+
+    // Desktop Fallback
     const a = document.createElement('a');
     a.href = lastRecordingUrl;
-    a.download = `ViralEngine_Raw_${Date.now()}.webm`;
+    a.download = `ViralEngine_Raw_${Date.now()}.mp4`;
+    document.body.appendChild(a);
     a.click();
+    document.body.removeChild(a);
   };
 
-  const sendRawToTelegram = async () => {
-    // Basic implementation placeholder
-    alert('Sending to Telegram...');
+  const sendRawToTelegram = () => {
+    // On mobile, the "Save" (Share) API already covers Telegram.
+    // But we can specifically trigger the share sheet again or show a message.
+    downloadRawVideo(); 
   };
 
   // Manifest Handlers - Memoized to prevent cascade re-renders
