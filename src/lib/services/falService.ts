@@ -37,7 +37,7 @@ export const falService = {
           }
         } as any,
         logs: true,
-        onQueueUpdate: (update) => {
+        onQueueUpdate: (update: any) => {
           console.log(`[FalService] Queue Update: ${update.status}`, update.logs?.[0]?.message);
         }
       });
