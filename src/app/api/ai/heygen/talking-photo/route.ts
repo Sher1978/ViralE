@@ -19,7 +19,7 @@ export async function POST(req: NextRequest) {
       console.log(`[HeyGen V2] --- STARTING UPLOAD PHASE ---`);
       
       const tryFetch = async (url: string) => {
-        console.log(`[HeyGen V2] Requesting: ${url} | Method: POST`);
+        console.log(`[HeyGen V2] CALLING URL: ${url} | Method: POST`); // As requested by user
         const res = await fetch(url, {
           method: 'POST',
           headers: { 
@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
             'Accept': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
           },
-          body: JSON.stringify({ file_type: 'jpg' }) // Specified file_type as requested
+          body: JSON.stringify({ file_type: 'jpg' })
         });
         const text = await res.text();
         console.log(`[HeyGen V2] Response Status: ${res.status}`);
@@ -38,19 +38,19 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        // Try strictly v2 first
-        let { res, text } = await tryFetch(`${HEYGEN_API_URL}/v2/upload/photo`);
+        // We use talking_photo/upload because it previously returned 405 (meaning it exists)
+        // unlike /v2/upload/photo which returns 404
+        let { res, text } = await tryFetch(`${HEYGEN_API_URL}/v2/talking_photo/upload`);
         
-        // Fallback to v1 only if v2 is strictly 404
-        if (res.status === 404) {
-          console.log('[HeyGen V2] V2 returned 404, trying v1 fallback...');
+        // Final fallback to v1 if everything else fails
+        if (res.status === 404 || res.status === 405) {
+          console.log(`[HeyGen V2] ${res.status} error, trying v1 fallback...`);
           const fallback = await tryFetch(`${HEYGEN_API_URL}/v1/talking_photo/upload_url`);
           res = fallback.res;
           text = fallback.text;
         }
 
         if (!res.ok) {
-           // More descriptive error for the UI
            throw new Error(`Step 1 (${res.status}): ${text.substring(0, 150)}`);
         }
         
