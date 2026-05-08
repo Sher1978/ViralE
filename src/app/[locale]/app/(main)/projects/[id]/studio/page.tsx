@@ -99,8 +99,6 @@ export default function StudioPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Fusion Engine States
-  const [fusionStatus, setFusionStatus] = useState<'segmenting' | 'processing' | 'stitching' | 'completed' | 'failed'>('segmenting');
-  const [fusionProgress, setFusionProgress] = useState(0);
   const [fusionSegmentsCount, setFusionSegmentsCount] = useState(0);
   const [fusionCompletedSegments, setFusionCompletedSegments] = useState(0);
   const [fusionError, setFusionError] = useState<string | null>(null);
@@ -162,7 +160,7 @@ export default function StudioPage() {
     setActiveTab('timeline_lab');
   };
 
-  const handleGenerateFusion = async (timelineSegments: any[]) => {
+  const handleTimelineGeneration = async (timelineSegments: any[]) => {
     setActiveTab('fusion');
     setFusionStatus('segmenting');
     setFusionProgress(10);
