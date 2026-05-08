@@ -16,20 +16,11 @@ export async function POST(req: NextRequest) {
 
     // Phase 1: Custom Photo Upload (Binary Flow)
     if (!finalTalkingPhotoId && photoUrl) {
-      console.log(`[HeyGen V2] Step 1: Requesting Upload URL (Key: ${apiKey.substring(0, 4)}***)`);
+      console.log(`[HeyGen V2] --- STARTING UPLOAD PHASE ---`);
       
-      const endpoints = [
-        `${HEYGEN_API_URL}/v2/upload/photo`,
-        `${HEYGEN_API_URL}/v2/talking_photo/upload`,
-        `${HEYGEN_API_URL}/v1/talking_photo/upload_url`
-      ];
-
-      let getUrlRes: Response | null = null;
-      let usedEndpoint = '';
-
-      for (const endpoint of endpoints) {
-        console.log(`[HeyGen V2] Trying endpoint: ${endpoint}`);
-        const res = await fetch(endpoint, {
+      const tryFetch = async (url: string) => {
+        console.log(`[HeyGen V2] Requesting: ${url} | Method: POST`);
+        const res = await fetch(url, {
           method: 'POST',
           headers: { 
             'X-Api-Key': apiKey,
@@ -40,29 +31,55 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({})
         });
+        const text = await res.text();
+        console.log(`[HeyGen V2] Response Status: ${res.status}`);
+        console.log(`[HeyGen V2] Response Body: ${text.substring(0, 500)}`);
+        return { res, text };
+      };
+
+      try {
+        // Try strictly v2 first as per your instruction
+        let { res, text } = await tryFetch(`${HEYGEN_API_URL}/v2/upload/photo`);
         
-        if (res.status !== 404) {
-          getUrlRes = res;
-          usedEndpoint = endpoint;
-          break;
+        // Fallback to v1 only if v2 is strictly 404
+        if (res.status === 404) {
+          console.log('[HeyGen V2] V2 returned 404, trying v1 fallback...');
+          const fallback = await tryFetch(`${HEYGEN_API_URL}/v1/talking_photo/upload_url`);
+          res = fallback.res;
+          text = fallback.text;
         }
+
+        if (!res.ok) throw new Error(`Upload Step 1 failed (${res.status}): ${text.substring(0, 100)}`);
+        
+        const json = JSON.parse(text);
+        const upload_url = json.data?.upload_url || json.data?.url;
+        const talking_photo_id = json.data?.talking_photo_id || json.data?.id;
+        
+        if (!upload_url || !talking_photo_id) throw new Error(`Invalid response structure: ${text.substring(0, 100)}`);
+        
+        finalTalkingPhotoId = talking_photo_id;
+
+        // 2. Download from our Supabase
+        console.log('[HeyGen V2] Step 2: Downloading source image from Supabase...');
+        const imageRes = await fetch(photoUrl);
+        const imageBuffer = await imageRes.arrayBuffer();
+
+        // 3. Binary PUT to HeyGen S3
+        console.log('[HeyGen V2] Step 3: PUT binary to HeyGen S3 bucket...');
+        const putRes = await fetch(upload_url, {
+          method: 'PUT',
+          headers: { 'Content-Type': 'image/jpeg' },
+          body: imageBuffer
+        });
+
+        if (!putRes.ok) throw new Error(`Step 3 (S3 PUT) failed: ${putRes.status}`);
+        console.log(`[HeyGen V2] Upload complete. ID: ${finalTalkingPhotoId}`);
+
+      } catch (uploadErr: any) {
+        console.error('[HeyGen V2] Fatal Upload Error:', uploadErr);
+        return NextResponse.json({ error: `HeyGen Upload Error: ${uploadErr.message}` }, { status: 500 });
       }
-
-      if (!getUrlRes) throw new Error('All HeyGen upload endpoints returned 404');
-
-      const getUrlRaw = await getUrlRes.text();
-      console.log(`[HeyGen V2] Step 1 Response from ${usedEndpoint} (${getUrlRes.status}): ${getUrlRaw.substring(0, 200)}`);
-      
-      if (!getUrlRes.ok) throw new Error(`Step 1 failed (${getUrlRes.status}): ${getUrlRaw.substring(0, 200)}`);
-      
-      const json = JSON.parse(getUrlRaw);
-      // Some endpoints return "upload_url" in different paths, adjust accordingly
-      const upload_url = json.data?.upload_url || json.data?.url;
-      const talking_photo_id = json.data?.talking_photo_id || json.data?.id;
-      
-      if (!upload_url || !talking_photo_id) throw new Error(`Invalid response structure from ${usedEndpoint}: ${getUrlRaw}`);
-      
-      finalTalkingPhotoId = talking_photo_id;
+    }
 
         // 2. Download from our Supabase
         console.log('[HeyGen V2] Step 2: Downloading source image...');
