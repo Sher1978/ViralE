@@ -92,7 +92,6 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
           </div>
         </div>
       </div>
-    </div>
       </div>
     </div>
   );
