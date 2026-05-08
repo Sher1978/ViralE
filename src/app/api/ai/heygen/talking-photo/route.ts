@@ -10,74 +10,62 @@ export async function POST(req: NextRequest) {
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) throw new Error('System HeyGen API Key missing');
 
-    console.log(`[HeyGen V3] Creating video. Type: ${avatarType || 'custom_image'}`);
+    console.log(`[HeyGen V2] Generating studio video. Type: ${avatarType || 'photo'}`);
     
-    // Construct V3 payload based on input type
-    let video_setting: any = {
-      aspect_ratio: '9:16',
-      resolution: '1080p'
-    };
-
-    if (avatarId) {
-      video_setting.type = 'avatar';
-      if (avatarType === 'avatar') {
-        // Instant Avatar (Video-based) - V3 Spec
-        video_setting.avatar = {
-          type: 'instant_avatar',
-          avatar_id: avatarId,
-          engine: 'avatar_iv' // Optimized engine for Instant Avatars
-        };
-      } else {
-        // Talking Photo (Image-based ID) - V3 Spec
-        video_setting.avatar = {
-          type: 'talking_photo',
-          talking_photo_id: avatarId
-        };
-      }
-    } else {
-      // Custom Photo URL - V3 Spec
-      video_setting.type = 'image';
-      video_setting.image = {
-        type: 'url',
-        url: photoUrl
-      };
-    }
-
-    const response = await fetch(`${HEYGEN_API_URL}/v3/videos`, {
+    // Structure according to the documentation provided by the user
+    const response = await fetch(`${HEYGEN_API_URL}/v2/video/generate`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
         'x-api-key': apiKey
       },
       body: JSON.stringify({
-        video_setting,
-        script: {
-          type: 'audio',
-          audio_url: audioUrl
+        video_settings: {
+          ratio: '9:16'
         },
-        title: `Project ${projectId} - ViralEngine`
+        dimension: {
+          width: 720,
+          height: 1280
+        },
+        test: false,
+        caption: false,
+        clips: [
+          {
+            avatar: {
+              type: avatarType === 'avatar' ? 'avatar' : 'photo',
+              avatar_id: avatarId || photoUrl,
+              avatar_style: 'normal'
+            },
+            input_text: '',
+            audio: {
+              type: 'url',
+              audio_url: audioUrl
+            }
+          }
+        ]
       })
     });
 
     if (!response.ok) {
        const errorData = await response.json();
        const errMsg = errorData.message || errorData.error?.message || JSON.stringify(errorData);
-       console.error('[HeyGen V3] Create failed:', response.status, errMsg);
-       throw new Error(`HeyGen V3 API Error: ${response.status}. ${errMsg.substring(0, 250)}`);
+       console.error('[HeyGen V2] Create failed:', response.status, errMsg);
+       throw new Error(`HeyGen V2 API Error: ${response.status}. ${errMsg.substring(0, 250)}`);
     }
 
     const data = await response.json();
+    // V2 return data.video_id
     const taskId = data.data?.video_id;
     
     if (!taskId) {
-       throw new Error(`HeyGen V3 missing video_id: ${JSON.stringify(data)}`);
+       throw new Error(`HeyGen V2 missing video_id: ${JSON.stringify(data)}`);
     }
 
-    console.log(`[HeyGen V3] Success. Task ID: ${taskId}`);
+    console.log(`[HeyGen V2] Success. Task ID: ${taskId}`);
     return NextResponse.json({ taskId });
 
   } catch (e: any) {
-    console.error('[HeyGen V3] Route error:', e);
+    console.error('[HeyGen V2] Route error:', e);
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
@@ -90,18 +78,19 @@ export async function GET(req: NextRequest) {
 
     if (!taskId) return NextResponse.json({ error: 'Task ID missing' }, { status: 400 });
 
-    // V3 status endpoint: GET /v3/videos/{id}
-    const statusRes = await fetch(`${HEYGEN_API_URL}/v3/videos/${taskId}`, {
+    // V1 status endpoint for V2 generation requests
+    const statusRes = await fetch(`${HEYGEN_API_URL}/v1/video_status.get?video_id=${taskId}`, {
       method: 'GET',
       headers: { 'x-api-key': apiKey || '' }
     });
 
     const data = await statusRes.json();
-    if (!statusRes.ok) {
+    
+    // V1 status check uses "code" (100 = success)
+    if (data.code !== 100) {
        return NextResponse.json({ status: 'failed', error: data.message || 'Status check failed' });
     }
 
-    // HeyGen V3 status mapping: pending, processing, completed, failed
     const status = data.data?.status;
     const videoUrl = data.data?.video_url;
 

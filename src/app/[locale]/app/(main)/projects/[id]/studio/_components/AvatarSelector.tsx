@@ -233,6 +233,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                           </button>
 
                           {/* Default Avatars */}
+                          {isLoadingAvatars && <div className="col-span-full text-center py-4 text-white/20 animate-pulse">Syncing with HeyGen...</div>}
                           {defaultAvatars.map((avatar) => (
                              <button 
                                key={avatar.id}
