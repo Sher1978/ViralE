@@ -277,30 +277,36 @@ export default function StudioPage() {
         })
       });
 
-      if (!res.ok) throw new Error(`Fusion API error: ${res.status}`);
+      if (!res.ok) {
+        const errorData = await res.json();
+        throw new Error(errorData.error || `Fusion API error: ${res.status}`);
+      }
 
-      // 2. Simple polling or stream would go here. For now, simulated progress logic:
-      setFusionStatus('processing');
-      setFusionProgress(30);
-
-      // We'll replace this simulation with real SSE or polling in the next step
-      const simulatedSteps = async () => {
-        for (let i = 0; i <= timelineSegments.length; i++) {
-          setFusionCompletedSegments(i);
-          setFusionProgress(30 + (i / timelineSegments.length) * 50);
-          await new Promise(r => setTimeout(r, 2000));
-        }
-        setFusionStatus('stitching');
-        setFusionProgress(90);
-        await new Promise(r => setTimeout(r, 3000));
+      const data = await res.json();
+      
+      if (data.status === 'completed' && data.videoUrl) {
         setFusionStatus('completed');
         setFusionProgress(100);
-        
-        // Auto-transition to montage
-        setTimeout(() => setActiveTab('assembly'), 1500);
-      };
+        setLastRecordingUrl(data.videoUrl);
 
-      simulatedSteps();
+        // Update Manifest
+        if (manifest) {
+          const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
+          const newManifest = {
+             ...manifest,
+             videoUrl: data.videoUrl,
+             segments: manifest.segments.map((s: any) => 
+                s.id === segmentId ? { ...s, assetUrl: data.videoUrl, type: 'user_recording' } : s
+             )
+          };
+          setManifest(newManifest);
+          await projectService.updateLatestVersionManifest(projectId, newManifest);
+        }
+
+        setTimeout(() => setActiveTab('assembly'), 1500);
+      } else {
+        throw new Error('Fusion failed to return a video URL');
+      }
 
     } catch (err: any) {
       console.error('[Fusion] Failed:', err);

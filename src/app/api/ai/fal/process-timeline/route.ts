@@ -1,66 +1,96 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { falService } from '@/lib/services/falService';
-import { projectService } from '@/lib/services/projectService';
 import { v4 as uuidv4 } from 'uuid';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import fs from 'fs/promises';
+import { createWriteStream } from 'fs';
 import path from 'path';
+import axios from 'axios';
 
 const execPromise = promisify(exec);
 
-/**
- * AI Video Orchestrator (Fal.ai + FFmpeg Edition)
- * Objective: Split, Animate, and Stitch segments into a multi-archetype video.
- */
+export const maxDuration = 300; // Extend to 5 mins for video processing
+
 export async function POST(req: NextRequest) {
+  const tmpDir = path.join('/tmp', `fusion-${uuidv4()}`);
+  
   try {
     const { projectId, videoUrl, segments } = await req.json();
+    if (!videoUrl || !segments) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
 
-    if (!videoUrl || !segments || segments.length === 0) {
-      return NextResponse.json({ error: 'Missing driving video or segments' }, { status: 400 });
-    }
-
-    console.log(`[FusionEngine] Starting orchestration for project ${projectId}`);
-    console.log(`[FusionEngine] Total segments: ${segments.length}`);
-
-    // PHASE 1: Parallel AI Processing
-    const tmpDir = path.join('/tmp', `fusion-${uuidv4()}`);
     await fs.mkdir(tmpDir, { recursive: true });
+    const originalVideoPath = path.join(tmpDir, 'original.mp4');
+    
+    // 1. Download Original Video
+    console.log('[Fusion] Downloading original video...');
+    const response = await axios({ url: videoUrl, method: 'GET', responseType: 'stream' });
+    const writer = createWriteStream(originalVideoPath);
+    response.data.pipe(writer);
+    await new Promise((resolve, reject) => {
+      writer.on('finish', resolve);
+      writer.on('error', reject);
+    });
 
-    const processingResults = await Promise.all(segments.map(async (seg: any, idx: number) => {
-      const segmentInputPath = path.join(tmpDir, `input_${idx}.mp4`);
-      const segmentOutputPath = path.join(tmpDir, `output_${idx}.mp4`);
-
-      // 1. Extract segment from original video using FFmpeg
+    // 2. Process Segments in Parallel
+    console.log('[Fusion] Processing segments...');
+    const processedSegments = await Promise.all(segments.map(async (seg: any, idx: number) => {
+      const segmentInputPath = path.join(tmpDir, `seg_${idx}_raw.mp4`);
+      
+      // Cut segment
       const duration = seg.endTime - seg.startTime;
-      await execPromise(`ffmpeg -ss ${seg.startTime} -i ${videoUrl} -t ${duration} -c copy ${segmentInputPath}`);
+      await execPromise(`ffmpeg -ss ${seg.startTime} -i ${originalVideoPath} -t ${duration} -c:v libx264 -preset ultrafast -crf 23 ${segmentInputPath}`);
 
       if (seg.avatarUrl) {
-        console.log(`[FusionEngine] Segment ${idx}: Synthesizing with LivePortrait...`);
-        // Note: In real flow, we'd upload segmentInputPath to a temp cloud storage first
-        // so Fal.ai can access it. For now, assuming direct access if videoUrl is public.
-        const result = await falService.animateAvatar(seg.avatarUrl, videoUrl); // Simplified
-        return { ...seg, processedUrl: result.videoUrl, tempPath: null };
+        // AI Path
+        console.log(`[Fusion] Segment ${idx}: Animating with LivePortrait...`);
+        const segmentBuffer = await fs.readFile(segmentInputPath);
+        const uploadedUrl = await falService.uploadFile(segmentBuffer);
+        const aiResult = await falService.animateAvatar(seg.avatarUrl, uploadedUrl);
+        
+        // Download AI Result
+        const aiPath = path.join(tmpDir, `seg_${idx}_ai.mp4`);
+        const aiRes = await axios({ url: aiResult.videoUrl, method: 'GET', responseType: 'stream' });
+        const aiWriter = createWriteStream(aiPath);
+        aiRes.data.pipe(aiWriter);
+        await new Promise((res, rej) => { aiWriter.on('finish', res); aiWriter.on('error', rej); });
+        
+        return aiPath;
       }
       
-      return { ...seg, processedUrl: videoUrl, tempPath: segmentInputPath };
+      return segmentInputPath; // Original Path
     }));
 
-    // PHASE 2: Stitching (The Stitcher)
-    // Here we'd download all AI-generated segments and original parts, 
-    // then use FFmpeg concat filter to bind them with the original audio.
-    
-    console.log(`[FusionEngine] Fusion logic ready. Next step: Final binding with audio_track.m4a`);
+    // 3. Final Stitching
+    console.log('[Fusion] Final stitching...');
+    const concatFilePath = path.join(tmpDir, 'concat.txt');
+    const concatContent = processedSegments.map(p => `file '${p}'`).join('\n');
+    await fs.writeFile(concatFilePath, concatContent);
 
-    return NextResponse.json({
-      status: 'processing',
-      taskId: uuidv4(),
-      segments: processingResults
+    const outputPath = path.join(tmpDir, 'output.mp4');
+    // Extract original audio and bind to the new video sequence
+    const audioPath = path.join(tmpDir, 'audio.m4a');
+    await execPromise(`ffmpeg -i ${originalVideoPath} -vn -acodec copy ${audioPath}`);
+    
+    // Concatenate videos and map the original audio back
+    await execPromise(`ffmpeg -f concat -safe 0 -i ${concatFilePath} -i ${audioPath} -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 ${outputPath}`);
+
+    // 4. Upload Result (Using a placeholder for now, you should upload to Vercel Blob/S3)
+    const resultBuffer = await fs.readFile(outputPath);
+    const finalUrl = await falService.uploadFile(resultBuffer);
+
+    // Cleanup
+    await fs.rm(tmpDir, { recursive: true, force: true });
+
+    return NextResponse.json({ 
+      status: 'completed', 
+      videoUrl: finalUrl,
+      segmentsCount: segments.length 
     });
 
   } catch (error: any) {
-    console.error('[FusionEngine] Orchestration failed:', error);
+    console.error('[Fusion] Critical Failure:', error);
+    if (tmpDir) await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }

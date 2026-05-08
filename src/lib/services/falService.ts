@@ -3,6 +3,19 @@ import { fal } from "@fal-ai/client";
 // Note: Ensure FAL_KEY is set in your environment variables
 export const falService = {
   /**
+   * Uploads a file to Fal.ai storage
+   */
+  async uploadFile(fileData: Blob | Buffer | string) {
+    try {
+      const url = await fal.storage.upload(fileData);
+      return url;
+    } catch (error) {
+      console.error("[FalService] Upload failed:", error);
+      throw error;
+    }
+  },
+
+  /**
    * Triggers the LivePortrait motion transfer
    * @param faceImageUrl The static image of the avatar/persona
    * @param drivingVideoUrl The user's recorded performance segment
