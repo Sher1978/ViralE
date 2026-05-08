@@ -11,8 +11,13 @@ export async function POST(req: NextRequest) {
     if (!apiKey) throw new Error('System HeyGen API Key missing');
 
     console.log(`[HeyGen V2] Generating studio video. Type: ${avatarType || 'talking_photo'}`);
+    console.log(`[HeyGen V2] Input - ID: ${avatarId}, URL: ${photoUrl?.substring(0, 50)}...`);
+
+    // Add a small delay to prevent race conditions (404 avatar look not found)
+    console.log('[HeyGen V2] Waiting 2s for resource sync...');
+    await new Promise(resolve => setTimeout(resolve, 2000));
     
-    // Construct the payload according to the "video_inputs" requirement
+    // Construct the payload strictly according to Talking Photo vs Instant Avatar
     const payload = {
       video_inputs: [
         {
