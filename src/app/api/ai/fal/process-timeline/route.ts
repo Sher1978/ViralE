@@ -28,7 +28,7 @@ export async function POST(req: NextRequest) {
     const writer = createWriteStream(originalVideoPath);
     response.data.pipe(writer);
     await new Promise((resolve, reject) => {
-      writer.on('finish', resolve);
+      writer.on('finish', () => resolve(null));
       writer.on('error', reject);
     });
 
@@ -53,7 +53,7 @@ export async function POST(req: NextRequest) {
         const aiRes = await axios({ url: aiResult.videoUrl, method: 'GET', responseType: 'stream' });
         const aiWriter = createWriteStream(aiPath);
         aiRes.data.pipe(aiWriter);
-        await new Promise((res, rej) => { aiWriter.on('finish', res); aiWriter.on('error', rej); });
+        await new Promise((res, rej) => { aiWriter.on('finish', () => res(null)); aiWriter.on('error', rej); });
         
         return aiPath;
       }
