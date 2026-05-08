@@ -784,38 +784,40 @@ export default function StudioPage() {
             )}
 
             {activeTab === 'teleprompter' && (
-                   onColorChange={setScriptColor}
-                   scriptOpacity={scriptOpacity}
-                   onOpacityChange={setScriptOpacity}
-                   scrollSpeed={scrollSpeed}
-                   onSpeedChange={setScrollSpeed}
-                   isRecordingVideo={isRecordingVideo}
-                   isVoiceOnly={isVoiceOnly}
-                    recordingTime={recordingTime}
-                    onBack={() => setActiveTab('branch')}
-                    onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
-                   onFlipCamera={() => setIsMirrored(!isMirrored)}
-                   onScriptUpdate={async (newText) => {
-                     if (!manifest) return;
-                     const segments = newText.split('\n\n').map((text, i) => ({
-                       ...(manifest.segments[i] || { id: uuidv4(), type: 'broll' }),
-                       scriptText: text
-                     }));
-                     const updatedManifest = { ...manifest, segments };
-                     setManifest(updatedManifest);
-                     await projectService.updateLatestVersionManifest(projectId, updatedManifest);
-                   }}
-                   onFinish={() => {
-                      if (lastRecordingUrl) {
-                        setShowRecordingReview(true);
-                      } else {
-                        setActiveTab('assembly');
-                      }
-                   }}
-                   t={t}
+                <TeleprompterView 
+                  cameraStream={cameraStream}
+                  cameraError={cameraError}
+                  videoPreviewRef={videoPreviewRef}
+                  isVideoMirrored={isVideoMirrored}
+                  prompterWidth={prompterWidth}
+                  isReading={isReading}
+                  countdown={countdown}
+                  prompterRef={prompterRef}
+                  isMirrored={isMirrored}
+                  useCustomScript={useCustomScript}
+                  manifest={manifest}
+                  customScript={customScript}
+                  textSize={textSize}
+                  scriptOpacity={scriptOpacity}
+                  scriptColor={scriptColor}
+                  onScriptUpdate={(text) => setCustomScript(text)}
+                  onColorChange={(color) => setScriptColor(color)}
+                  onBack={() => setActiveTab('branch')}
+                  onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
+                  onFlipCamera={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
+                  onTextSizeChange={(size) => setTextSize(size)}
+                  onOpacityChange={(op) => setScriptOpacity(op)}
+                  scrollSpeed={scrollSpeed}
+                  onSpeedChange={(s) => setScrollSpeed(s)}
+                  isRecordingVideo={isRecordingVideo}
+                  isVoiceOnly={isVoiceOnly}
+                  onFinish={stopVideoRecording}
+                  recordingTime={recordingTime}
+                  t={t}
                 />
-              </div>
             )}
+
+
 
             {/* Global Recording Review Overlay (No AnimatePresence for OOM safety) */}
             {showRecordingReview && (
