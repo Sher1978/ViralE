@@ -106,7 +106,6 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
             Библиотека луков
           </button>
         </div>
-        </div>
       </div>
     </div>
   );
