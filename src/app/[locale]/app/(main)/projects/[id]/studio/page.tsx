@@ -142,7 +142,7 @@ export default function StudioPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [activeTab, showFaceless]);
 
-  const handleAvatarSelect = async (photoUrl: string, avatarId?: string) => {
+  const handleAvatarSelect = async (photoUrl: string, avatarId?: string, avatarType?: string) => {
     setSelectedAvatarPhoto(photoUrl);
     setIsGeneratingAvatar(true);
     setShowAvatarSelector(false);
@@ -168,6 +168,7 @@ export default function StudioPage() {
           audioUrl,
           photoUrl,
           avatarId,
+          avatarType,
           projectId
         })
       });

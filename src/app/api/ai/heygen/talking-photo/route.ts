@@ -5,12 +5,12 @@ const HEYGEN_API_URL = 'https://api.heygen.com';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { audioUrl, photoUrl, avatarId, projectId } = body;
+    const { audioUrl, photoUrl, avatarId, avatarType, projectId } = body;
 
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) throw new Error('System HeyGen API Key missing');
 
-    console.log(`[HeyGen V3] Creating video. Type: ${avatarId ? 'Stock Avatar' : 'Custom Image'}`);
+    console.log(`[HeyGen V3] Creating video. Type: ${avatarType || 'custom_image'}`);
     
     // Construct V3 payload based on input type
     let video_setting: any = {
@@ -19,12 +19,21 @@ export async function POST(req: NextRequest) {
     };
 
     if (avatarId) {
-      // Use HeyGen's native avatar ID
       video_setting.type = 'avatar';
-      video_setting.avatar = {
-        type: 'talking_photo',
-        talking_photo_id: avatarId
-      };
+      if (avatarType === 'avatar') {
+        // Instant Avatar (Video-based)
+        video_setting.avatar = {
+          type: 'instant_avatar',
+          avatar_id: avatarId,
+          avatar_style: 'normal'
+        };
+      } else {
+        // Talking Photo (Image-based ID)
+        video_setting.avatar = {
+          type: 'talking_photo',
+          talking_photo_id: avatarId
+        };
+      }
     } else {
       // Use external image URL
       video_setting.type = 'image';

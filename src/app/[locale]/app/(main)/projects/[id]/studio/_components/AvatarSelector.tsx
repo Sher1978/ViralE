@@ -14,7 +14,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface AvatarSelectorProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (photoUrl: string, avatarId?: string) => Promise<void>;
+  onSelect: (photoUrl: string, avatarId?: string, avatarType?: string) => Promise<void>;
   isGenerating: boolean;
   projectId: string;
 }
@@ -94,9 +94,9 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
     const allOptions = [...defaultAvatars, ...assets];
     const selected = allOptions.find(a => a.id === selectedId);
     if (selected) {
-      // If it's a stock avatar from our API, it will have an ID that HeyGen recognizes directly
+      // isStock check - assets don't have avatar_type but stock ones do
       const isStock = defaultAvatars.some(a => a.id === selectedId);
-      onSelect(selected.url, isStock ? selected.id : undefined);
+      onSelect(selected.url, isStock ? selected.id : undefined, selected.type);
     }
   };
 
