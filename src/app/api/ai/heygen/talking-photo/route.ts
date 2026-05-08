@@ -16,10 +16,10 @@ export async function POST(req: NextRequest) {
 
     // Phase 1: Custom Photo Upload (Binary Flow)
     if (!finalTalkingPhotoId && photoUrl) {
-      console.log(`[HeyGen V2] --- STARTING UPLOAD PHASE ---`);
+      console.log(`[HeyGen V2] --- STARTING SMART SCANNER PHASE ---`);
       
       const tryFetch = async (url: string) => {
-        console.log(`[HeyGen V2] CALLING URL: ${url} | Method: POST`); // As requested by user
+        console.log(`[HeyGen V2] SCANNING URL: ${url}`);
         const res = await fetch(url, {
           method: 'POST',
           headers: { 
@@ -32,27 +32,36 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({ file_type: 'jpg' })
         });
         const text = await res.text();
-        console.log(`[HeyGen V2] Response Status: ${res.status}`);
-        console.log(`[HeyGen V2] Response Body: ${text.substring(0, 500)}`);
+        console.log(`[HeyGen V2] ${url} -> Status ${res.status} | Body: ${text.substring(0, 100)}`);
         return { res, text };
       };
 
       try {
-        // We use talking_photo/upload because it previously returned 405 (meaning it exists)
-        // unlike /v2/upload/photo which returns 404
-        let { res, text } = await tryFetch(`${HEYGEN_API_URL}/v2/talking_photo/upload`);
-        
-        // Final fallback to v1 if everything else fails
-        if (res.status === 404 || res.status === 405) {
-          console.log(`[HeyGen V2] ${res.status} error, trying v1 fallback...`);
-          const fallback = await tryFetch(`${HEYGEN_API_URL}/v1/talking_photo/upload_url`);
-          res = fallback.res;
-          text = fallback.text;
+        const endpoints = [
+          `${HEYGEN_API_URL}/v2/talking_photo/upload`,
+          `${HEYGEN_API_URL}/v2/upload/photo`,
+          `${HEYGEN_API_URL}/v2/video/upload/photo`,
+          `${HEYGEN_API_URL}/v2/asset/upload`,
+          `${HEYGEN_API_URL}/v1/talking_photo/upload_url`
+        ];
+
+        let finalRes: Response | null = null;
+        let finalText = '';
+
+        for (const url of endpoints) {
+          const { res, text } = await tryFetch(url);
+          if (res.status !== 404 && res.status !== 405) {
+            finalRes = res;
+            finalText = text;
+            break;
+          }
         }
 
-        if (!res.ok) {
-           throw new Error(`Step 1 (${res.status}): ${text.substring(0, 150)}`);
-        }
+        if (!finalRes) throw new Error('All scanning endpoints failed (404/405).');
+        
+        const json = JSON.parse(finalText);
+        const upload_url = json.data?.upload_url || json.data?.url;
+        const talking_photo_id = json.data?.talking_photo_id || json.data?.id;
         
         const json = JSON.parse(text);
         const upload_url = json.data?.upload_url || json.data?.url;
