@@ -35,7 +35,7 @@ export const falService = {
             smile_retargeting: true,
             hand_retargeting: false // Usually disabled for face-only A-roll
           }
-        },
+        } as any,
         logs: true,
         onQueueUpdate: (update) => {
           console.log(`[FalService] Queue Update: ${update.status}`, update.logs?.[0]?.message);
