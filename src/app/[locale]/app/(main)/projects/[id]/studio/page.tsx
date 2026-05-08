@@ -76,7 +76,11 @@ export default function StudioPage() {
   const [showFaceless, setShowFaceless] = useState(false);
   const [isVoiceOnly, setIsVoiceOnly] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
+  const [availableAvatars, setAvailableAvatars] = useState<any[]>([]);
   const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
+  const [isGeneratingFusion, setIsGeneratingFusion] = useState(false);
+  const [fusionStatus, setFusionStatus] = useState<'segmenting' | 'processing' | 'stitching' | 'completed' | 'failed'>('segmenting');
+  const [fusionProgress, setFusionProgress] = useState(0);
   const [isAssemblingAvatar, setIsAssemblingAvatar] = useState(false);
   const [selectedAvatarPhoto, setSelectedAvatarPhoto] = useState<string | null>(null);
   const [avatarPhoto, setAvatarPhoto] = useState<string | null>(null);
@@ -859,6 +863,15 @@ export default function StudioPage() {
                <AssemblyProgress photoUrl={selectedAvatarPhoto || ''} />
             )}
 
+            {isGeneratingFusion && (
+              <FusionView 
+                status={fusionStatus}
+                progress={fusionProgress}
+                segmentsCount={1}
+                completedSegments={fusionStatus === 'completed' ? 1 : 0}
+              />
+            )}
+
             {/* Mobile Assembly Launcher - lightweight buffer before FFmpeg loads */}
             {showAssemblyLauncher && (
               <motion.div
@@ -905,6 +918,16 @@ export default function StudioPage() {
                 onDownload={downloadRawVideo}
                 onTelegram={sendRawToTelegram}
                 t={t}
+              />
+            )}
+
+            {activeTab === 'timeline_lab' && lastRecordingUrl && (
+              <TimelineLab 
+                videoUrl={lastRecordingUrl}
+                projectId={projectId}
+                availableAvatars={availableAvatars}
+                onBack={() => setActiveTab('post_record_branch')}
+                onGenerate={handleTimelineGeneration}
               />
             )}
 
