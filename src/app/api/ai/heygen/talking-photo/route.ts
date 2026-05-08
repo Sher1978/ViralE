@@ -18,14 +18,14 @@ export async function POST(req: NextRequest) {
     if (!finalTalkingPhotoId && photoUrl) {
       console.log(`[HeyGen V2] Step 1: Requesting Upload URL (Key: ${apiKey.substring(0, 4)}***)`);
       try {
-        // 1. Get pre-signed URL with full headers to avoid WAF blocks
-        const getUrlRes = await fetch(`${HEYGEN_API_URL}/v2/upload/photo`, {
+        // Use the specialized Talking Photo upload endpoint
+        const getUrlRes = await fetch(`${HEYGEN_API_URL}/v2/talking_photo/upload`, {
           method: 'POST',
           headers: { 
-            'x-api-key': apiKey,
+            'X-Api-Key': apiKey,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
-            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
+            'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x4) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
           },
           body: JSON.stringify({})
         });
