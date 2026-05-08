@@ -29,7 +29,6 @@ import dynamic from 'next/dynamic';
 const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false });
 import { ProductionBranch } from './_components/ProductionBranch';
 import { PostRecordBranch } from './_components/PostRecordBranch';
-import { PostRecordBranch } from './_components/PostRecordBranch';
 import { TimelineLab } from './_components/TimelineLab';
 import { FusionView } from './_components/FusionView';
 import { BottomNav } from '@/components/layout/BottomNav';
