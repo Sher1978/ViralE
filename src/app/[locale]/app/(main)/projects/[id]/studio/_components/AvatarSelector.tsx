@@ -34,41 +34,44 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
   const [error, setError] = React.useState<string | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // Removed initial placeholders to prevent confusion with fake IDs
+  // Persist avatars in state to prevent re-fetching glitches
   const [defaultAvatars, setDefaultAvatars] = React.useState<any[]>([]);
   const [isLoadingAvatars, setIsLoadingAvatars] = React.useState(true);
 
-  React.useEffect(() => {
-    const fetchStock = async () => {
-      try {
-        const res = await fetch('/api/ai/heygen/avatars');
-        const data = await res.json();
-        if (data.avatars && data.avatars.length > 0) {
-          setDefaultAvatars(data.avatars);
-        }
-      } catch (e) {
-        console.error('Failed to fetch stock avatars:', e);
-      } finally {
-        setIsLoadingAvatars(false);
+  // Background sync logic
+  const syncAvatars = React.useCallback(async () => {
+    try {
+      const res = await fetch('/api/ai/heygen/avatars');
+      const data = await res.json();
+      if (data.avatars && data.avatars.length > 0) {
+        setDefaultAvatars(data.avatars);
       }
-    };
-    if (isOpen) fetchStock();
-  }, [isOpen]);
+    } catch (e) {
+      console.error('Background sync failed:', e);
+    } finally {
+      setIsLoadingAvatars(false);
+    }
+  }, []);
 
   React.useEffect(() => {
-    const fetchAssets = async () => {
-      try {
-        const res = await fetch(`/api/projects/${projectId}/assets?type=image`);
-        const data = await res.json();
-        setAssets(data.assets || []);
-      } catch (e) {
-        console.error('Failed to fetch assets:', e);
-      } finally {
-        setIsLoadingAssets(false);
-      }
-    };
-    if (isOpen) fetchAssets();
-  }, [isOpen, projectId]);
+    if (isOpen) {
+      // Show cached/initial if available, then sync in background
+      syncAvatars();
+      fetchAssets();
+    }
+  }, [isOpen]);
+
+  const fetchAssets = async () => {
+    try {
+      const res = await fetch(`/api/projects/${projectId}/assets?type=image`);
+      const data = await res.json();
+      setAssets(data.assets || []);
+    } catch (e) {
+      console.error('Failed to fetch assets:', e);
+    } finally {
+      setIsLoadingAssets(false);
+    }
+  };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -79,14 +82,28 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
     try {
       const publicUrl = await storageService.uploadFile(file, `avatar_${uuidv4()}.jpg`, 'media');
       if (publicUrl) {
-        const newAsset = { id: `manual_${Date.now()}`, url: publicUrl, label: 'Uploaded' };
+        const newAsset = { 
+          id: `manual_${Date.now()}`, 
+          url: publicUrl, 
+          label: 'Uploaded',
+          type: 'talking_photo' 
+        };
+        // Add to assets immediately
         setAssets(prev => [newAsset, ...prev]);
         setSelectedId(newAsset.id);
+        
+        // Background: refresh our project assets list
+        fetchAssets();
       } else {
         throw new Error('Upload failed');
       }
     } catch (e) {
       console.error('Upload failed:', e);
+      setError(e instanceof Error ? e.message : 'Failed to upload photo');
+    } finally {
+      setIsUploading(false);
+    }
+  };
       setError('Не удалось загрузить фото. Проверьте соединение.');
     } finally {
       setIsUploading(false);

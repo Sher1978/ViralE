@@ -40,8 +40,10 @@ export async function POST(req: NextRequest) {
         const endpoints = [
           `${HEYGEN_API_URL}/v2/talking_photo/upload`,
           `${HEYGEN_API_URL}/v2/upload/photo`,
+          `https://api.us.heygen.com/v2/upload/photo`, // US Region
+          `https://api.us.heygen.com/v2/talking_photo/upload`, // US Region specialized
           `${HEYGEN_API_URL}/v2/video/upload/photo`,
-          `${HEYGEN_API_URL}/v2/asset/upload`,
+          `${HEYGEN_API_URL}/v2/asset/upload/photo`,
           `${HEYGEN_API_URL}/v1/talking_photo/upload_url`
         ];
 
@@ -50,21 +52,22 @@ export async function POST(req: NextRequest) {
 
         for (const url of endpoints) {
           const { res, text } = await tryFetch(url);
-          if (res.status !== 404 && res.status !== 405) {
+          // If we get 200 or anything that isn't 404/405/401, it's a candidate
+          if (res.status === 200 || res.status === 201) {
             finalRes = res;
             finalText = text;
             break;
           }
         }
 
-        if (!finalRes) throw new Error('All scanning endpoints failed (404/405).');
+        if (!finalRes) throw new Error('All scanning endpoints failed (404/405/401). Please check if your API key has upload permissions.');
         
         const json = JSON.parse(finalText);
         const upload_url = json.data?.upload_url || json.data?.url;
         const talking_photo_id = json.data?.talking_photo_id || json.data?.id;
         
         if (!upload_url || !talking_photo_id) {
-           throw new Error(`Invalid response structure from scanner: ${finalText.substring(0, 100)}`);
+           throw new Error(`Invalid response structure: ${finalText.substring(0, 100)}`);
         }
         
         finalTalkingPhotoId = talking_photo_id;
