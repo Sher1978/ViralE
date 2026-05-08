@@ -23,6 +23,7 @@ export async function POST(req: NextRequest) {
           method: 'POST',
           headers: { 
             'X-Api-Key': apiKey,
+            'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
@@ -94,7 +95,8 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'x-api-key': apiKey
+        'X-Api-Key': apiKey,
+        'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(payload)
     });
