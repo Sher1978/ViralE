@@ -34,6 +34,11 @@ export default function DeliveryPage() {
   const [renderStatus, setRenderStatus] = useState('');
   const [renderLogs, setRenderLogs] = useState<string[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [renderMode, setRenderMode] = useState<'canvas' | 'ffmpeg'>('canvas');
+  
+  const canvasRef = useRef<HTMLCanvasElement | null>(null);
+  const renderVideoRef = useRef<HTMLVideoElement | null>(null);
+  const brollVideoRef = useRef<HTMLVideoElement | null>(null);
   
   const addLog = (msg: string) => {
     console.log(msg);
@@ -126,6 +131,150 @@ export default function DeliveryPage() {
     }).join(',');
 
     return baseFilter ? `${baseFilter},${drawtextChain}` : drawtextChain;
+  };
+
+  const handleCanvasRender = async (ver: ProjectVersion) => {
+    if (isLaunchingRender) return;
+    setIsLaunchingRender(true);
+    setRenderStatus('Инициализация GPU...');
+    setRenderProgress(5);
+
+    try {
+      const manifest = ver.script_data as any;
+      const subs = manifest.subtitleClips || [];
+      const brolls = manifest.brollClips || [];
+      
+      // 1. Prepare Font
+      setRenderStatus('Загрузка шрифтов...');
+      try {
+        const font = new FontFace('Roboto-Bold', 'url(/fonts/Roboto-Bold.ttf)');
+        await font.load();
+        document.fonts.add(font);
+      } catch (e) { console.warn('Font load failed, fallback to sans-serif'); }
+
+      // 2. Setup Canvas
+      const canvas = document.createElement('canvas');
+      canvas.width = 1080;
+      canvas.height = 1920;
+      const ctx = canvas.getContext('2d', { alpha: false });
+      if (!ctx) throw new Error('Canvas context failed');
+
+      // 3. Prepare Sources
+      setRenderStatus('Подготовка потоков...');
+      let aRollUrl = manifest?.aRollUrl || manifest?.videoUrl;
+      if (!aRollUrl || aRollUrl.startsWith('blob:')) {
+        const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+        if (cached instanceof Blob) aRollUrl = URL.createObjectURL(cached);
+      }
+      if (!aRollUrl) throw new Error('A-Roll not found');
+
+      const vARoll = document.createElement('video');
+      vARoll.src = aRollUrl;
+      vARoll.muted = true;
+      vARoll.crossOrigin = 'anonymous';
+      await new Promise((r) => { vARoll.onloadedmetadata = r; vARoll.load(); });
+      
+      const duration = vARoll.duration;
+      const fps = 30;
+      const totalFrames = Math.floor(duration * fps);
+
+      // 4. Setup Recorder
+      const stream = canvas.captureStream(fps);
+      const recorder = new MediaRecorder(stream, {
+        mimeType: MediaRecorder.isTypeSupported('video/mp4') ? 'video/mp4' : 'video/webm;codecs=h264',
+        videoBitsPerSecond: 8000000
+      });
+
+      const chunks: Blob[] = [];
+      recorder.ondataavailable = (e) => chunks.push(e.data);
+      
+      const recordPromise = new Promise<Blob>((resolve) => {
+        recorder.onstop = () => resolve(new Blob(chunks, { type: recorder.mimeType }));
+      });
+
+      recorder.start();
+
+      // 5. Render Loop
+      for (let frame = 0; frame < totalFrames; frame++) {
+        const time = frame / fps;
+        vARoll.currentTime = time;
+        await new Promise(r => { vARoll.onseeked = r; });
+
+        // Draw A-Roll
+        ctx.drawImage(vARoll, 0, 0, canvas.width, canvas.height);
+
+        // Draw B-Roll
+        const activeBR = brolls.find((b: any) => time >= b.startTime && time <= b.endTime && b.url);
+        if (activeBR) {
+          const vBR = document.createElement('video');
+          vBR.src = activeBR.url;
+          vBR.muted = true;
+          vBR.crossOrigin = 'anonymous';
+          vBR.currentTime = Math.max(0, time - activeBR.startTime);
+          await new Promise(r => { vBR.onloadeddata = r; vBR.onerror = r; });
+          ctx.drawImage(vBR, 0, 0, canvas.width, canvas.height);
+        }
+
+        // Draw Subtitles
+        const activeSub = subs.find((s: any) => time >= s.startTime && time <= s.endTime);
+        if (activeSub) {
+          ctx.font = '900 82px Roboto-Bold, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillStyle = '#facc15';
+          ctx.shadowColor = 'black';
+          ctx.shadowBlur = 10;
+          ctx.shadowOffsetX = 4;
+          ctx.shadowOffsetY = 4;
+          
+          const words = activeSub.text.toUpperCase().split(' ');
+          const line1 = words.slice(0, 3).join(' ');
+          const line2 = words.slice(3).join(' ');
+          
+          ctx.fillText(line1, canvas.width / 2, canvas.height - 450);
+          if (line2) ctx.fillText(line2, canvas.width / 2, canvas.height - 350);
+          
+          ctx.shadowBlur = 0; // Reset
+        }
+
+        setRenderProgress(Math.round((frame / totalFrames) * 90));
+        setRenderStatus(`Синтез кадров: ${Math.round((frame / totalFrames) * 100)}%`);
+      }
+
+      recorder.stop();
+      const silentVideoBlob = await recordPromise;
+
+      // 6. Merge Audio with FFmpeg (Lightning Fast)
+      setRenderStatus('Финальная склейка (Audio)...');
+      const { FFmpeg } = await import('@ffmpeg/ffmpeg');
+      const { fetchFile } = await import('@ffmpeg/util');
+      const ffmpeg = new FFmpeg();
+      await ffmpeg.load();
+
+      await ffmpeg.writeFile('silent.mp4', await fetchFile(silentVideoBlob));
+      await ffmpeg.writeFile('source.mp4', await fetchFile(aRollUrl));
+      
+      // Extract audio from source and merge into silent video
+      await ffmpeg.exec(['-i', 'silent.mp4', '-i', 'source.mp4', '-map', '0:v', '-map', '1:a', '-c', 'copy', 'output.mp4']);
+      
+      const finalData = await ffmpeg.readFile('output.mp4');
+      const finalBlob = new Blob([finalData as any], { type: 'video/mp4' });
+      
+      await idb.set(`final_render_${projectId}`, finalBlob, 'MediaBuffer');
+      const finalUrl = URL.createObjectURL(finalBlob);
+      
+      setJob({ id: 'canvas-render', status: 'completed', output_url: finalUrl, progress: 100 } as any);
+      setRenderProgress(100);
+      setRenderStatus('Готово!');
+
+    } catch (err: any) {
+      console.error('[Canvas Render] Failed:', err);
+      setError(`Ошибка Canvas-рендера: ${err.message}. Пробую FFmpeg...`);
+      // Auto-fallback
+      setRenderMode('ffmpeg');
+      setTimeout(() => handleClientRender(ver), 2000);
+    } finally {
+      setIsLaunchingRender(false);
+    }
   };
 
   const handleClientRender = async (ver: ProjectVersion) => {
@@ -420,7 +569,11 @@ export default function DeliveryPage() {
           const verData = await projectService.getLatestVersion(projectId);
           if (verData) {
             setVersion(verData);
-            handleClientRender(verData);
+            if (renderMode === 'canvas') {
+              handleCanvasRender(verData);
+            } else {
+              handleClientRender(verData);
+            }
           }
         } catch (err) {
           console.error('Failed to load project version:', err);
@@ -520,6 +673,26 @@ export default function DeliveryPage() {
              setVersion(prev => (prev ? { ...prev, script_data: newManifest } : prev) as any);
           }}
         />
+      </div>
+
+      {/* Emergency Rollback UI */}
+      <div className="mt-10 pt-10 border-t border-white/5 flex flex-col items-center gap-4">
+          <p className="text-[9px] text-white/20 font-bold uppercase tracking-widest">
+            Render Mode: <span className="text-purple-400">{renderMode.toUpperCase()}</span>
+          </p>
+          <button 
+            onClick={() => {
+              const next = renderMode === 'canvas' ? 'ffmpeg' : 'canvas';
+              setRenderMode(next);
+              if (version) {
+                if (next === 'canvas') handleCanvasRender(version);
+                else handleClientRender(version);
+              }
+            }}
+            className="px-6 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black uppercase text-white/40 hover:text-white transition-all"
+          >
+            Switch to {renderMode === 'canvas' ? 'Legacy (FFmpeg)' : 'High-Speed (Canvas)'}
+          </button>
       </div>
     </div>
   );
