@@ -17,9 +17,19 @@ export async function POST(req: NextRequest) {
     // Phase 1: Custom Photo Upload (Binary Flow)
     if (!finalTalkingPhotoId && photoUrl) {
       console.log(`[HeyGen V2] Step 1: Requesting Upload URL (Key: ${apiKey.substring(0, 4)}***)`);
-      try {
-        // Step 1: POST to get the pre-signed S3 upload URL
-        const getUrlRes = await fetch(`${HEYGEN_API_URL}/v2/upload/photo`, {
+      
+      const endpoints = [
+        `${HEYGEN_API_URL}/v2/upload/photo`,
+        `${HEYGEN_API_URL}/v2/talking_photo/upload`,
+        `${HEYGEN_API_URL}/v1/talking_photo/upload_url`
+      ];
+
+      let getUrlRes: Response | null = null;
+      let usedEndpoint = '';
+
+      for (const endpoint of endpoints) {
+        console.log(`[HeyGen V2] Trying endpoint: ${endpoint}`);
+        const res = await fetch(endpoint, {
           method: 'POST',
           headers: { 
             'X-Api-Key': apiKey,
@@ -30,17 +40,29 @@ export async function POST(req: NextRequest) {
           },
           body: JSON.stringify({})
         });
-
-        const getUrlRaw = await getUrlRes.text();
-        console.log(`[HeyGen V2] Step 1 Response (${getUrlRes.status}): ${getUrlRaw.substring(0, 200)}`);
         
-        if (!getUrlRes.ok) {
-           throw new Error(`Step 1 failed (${getUrlRes.status}): ${getUrlRaw.substring(0, 200)}`);
+        if (res.status !== 404) {
+          getUrlRes = res;
+          usedEndpoint = endpoint;
+          break;
         }
-        
-        const json = JSON.parse(getUrlRaw);
-        const { upload_url, talking_photo_id } = json.data;
-        finalTalkingPhotoId = talking_photo_id;
+      }
+
+      if (!getUrlRes) throw new Error('All HeyGen upload endpoints returned 404');
+
+      const getUrlRaw = await getUrlRes.text();
+      console.log(`[HeyGen V2] Step 1 Response from ${usedEndpoint} (${getUrlRes.status}): ${getUrlRaw.substring(0, 200)}`);
+      
+      if (!getUrlRes.ok) throw new Error(`Step 1 failed (${getUrlRes.status}): ${getUrlRaw.substring(0, 200)}`);
+      
+      const json = JSON.parse(getUrlRaw);
+      // Some endpoints return "upload_url" in different paths, adjust accordingly
+      const upload_url = json.data?.upload_url || json.data?.url;
+      const talking_photo_id = json.data?.talking_photo_id || json.data?.id;
+      
+      if (!upload_url || !talking_photo_id) throw new Error(`Invalid response structure from ${usedEndpoint}: ${getUrlRaw}`);
+      
+      finalTalkingPhotoId = talking_photo_id;
 
         // 2. Download from our Supabase
         console.log('[HeyGen V2] Step 2: Downloading source image...');
