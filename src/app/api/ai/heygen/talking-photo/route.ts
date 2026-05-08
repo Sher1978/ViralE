@@ -29,7 +29,7 @@ export async function POST(req: NextRequest) {
             'Accept': 'application/json',
             'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36'
           },
-          body: JSON.stringify({})
+          body: JSON.stringify({ file_type: 'jpg' }) // Specified file_type as requested
         });
         const text = await res.text();
         console.log(`[HeyGen V2] Response Status: ${res.status}`);
@@ -38,7 +38,7 @@ export async function POST(req: NextRequest) {
       };
 
       try {
-        // Try strictly v2 first as per your instruction
+        // Try strictly v2 first
         let { res, text } = await tryFetch(`${HEYGEN_API_URL}/v2/upload/photo`);
         
         // Fallback to v1 only if v2 is strictly 404
@@ -49,7 +49,10 @@ export async function POST(req: NextRequest) {
           text = fallback.text;
         }
 
-        if (!res.ok) throw new Error(`Upload Step 1 failed (${res.status}): ${text.substring(0, 100)}`);
+        if (!res.ok) {
+           // More descriptive error for the UI
+           throw new Error(`Step 1 (${res.status}): ${text.substring(0, 150)}`);
+        }
         
         const json = JSON.parse(text);
         const upload_url = json.data?.upload_url || json.data?.url;
