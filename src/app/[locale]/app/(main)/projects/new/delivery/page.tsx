@@ -764,6 +764,7 @@ export default function DeliveryPage() {
               
               // FORCE RE-RENDER by resetting state first
               setTimeout(async () => {
+                if (!projectId) return;
                 const v = await projectService.getLatestVersion(projectId);
                 if (v) {
                   setVersion(v);
