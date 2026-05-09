@@ -693,22 +693,20 @@ export const VideoEditor = React.memo(({
           await delay(1000);
         }
 
+        const sizeMB = sourceBlob.size / 1024 / 1024;
+        
         if (!audioBlob) {
-          // 🚀 CRITICAL OOM BYPASS:
-          // Honor/Huawei/Xiaomi often have very strict RAM limits per tab.
-          // Bypassing FFmpeg and sending raw file directly to Whisper (up to 60MB)
-          // is the ONLY way to avoid "Aw, Snap!"
-          if (isMobile) {
-            console.log(`[Editor] Mobile (${ua}) detected. Using WebAudio API to avoid OOM.`);
+          // 🚀 ONLY extract audio on client if file is LARGE (>30MB)
+          // For smaller files, direct upload is more reliable (like "3 days ago")
+          if (sizeMB > 30) {
+            console.log(`[Editor] File is large (${sizeMB.toFixed(1)}MB), extracting audio to save bandwidth...`);
             try {
               audioBlob = await extractAudioNative(sourceBlob);
             } catch (err) {
-              console.warn('[Editor] Native Audio Extraction Failed, falling back to uploading full video...', err);
+              console.warn('[Editor] Native Audio Extraction Failed, falling back to full media...', err);
             }
           } else {
-            audioBlob = await extractAudioFFmpeg(sourceBlob, {
-              onProgress: setStageMessage,
-            });
+            console.log(`[Editor] File is small (${sizeMB.toFixed(1)}MB), bypassing extraction for maximum reliability.`);
           }
         }
 
