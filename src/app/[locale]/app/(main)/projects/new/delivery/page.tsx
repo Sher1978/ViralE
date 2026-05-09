@@ -291,6 +291,11 @@ export default function DeliveryPage() {
       const finalData = await ffmpeg.readFile('output.mp4');
       const finalBlob = new Blob([finalData as any], { type: 'video/mp4' });
       
+      console.log('[Canvas Render] Final blob size:', finalBlob.size);
+      if (finalBlob.size < 1000) {
+        throw new Error('Финальный файл слишком мал. Попробуйте переключиться на FFmpeg-режим внизу страницы.');
+      }
+      
       await idb.set(`final_render_${projectId}`, finalBlob, 'MediaBuffer');
       const finalUrl = URL.createObjectURL(finalBlob);
       
@@ -755,19 +760,19 @@ export default function DeliveryPage() {
               setRenderMode(next);
               setJob(null);
               setError(null);
-              setRenderProgress(0);
               setRenderStatus(locale === 'ru' ? 'Подготовка к перезапуску...' : 'Preparing restart...');
               
-              // Force fresh load of version to be 100% sure we have it
-              projectService.getLatestVersion(projectId).then(v => {
+              // FORCE RE-RENDER by resetting state first
+              setTimeout(async () => {
+                const v = await projectService.getLatestVersion(projectId);
                 if (v) {
                   setVersion(v);
                   if (next === 'canvas') handleCanvasRender(v);
                   else handleClientRender(v);
                 } else {
-                  setError('Не удалось загрузить данные проекта для перезапуска.');
+                  setError('Не удалось загрузить данные проекта.');
                 }
-              });
+              }, 100);
             }}
             className="px-6 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black uppercase text-white/40 hover:text-white transition-all"
           >
