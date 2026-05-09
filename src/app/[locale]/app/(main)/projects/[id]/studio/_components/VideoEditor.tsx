@@ -714,16 +714,18 @@ export const VideoEditor = React.memo(({
 
         let formData: FormData | null = new FormData();
 
-        if (audioBlob && audioBlob.size > 0 && formData) {
+        if (audioBlob && audioBlob.size > 1000) {
           const mime = audioBlob.type;
           const ext = mime.includes('mp4') ? 'm4a' : mime.includes('wav') ? 'wav' : 'webm';
           formData.append('file', audioBlob as Blob, `audio.${ext}`);
-        } else if (sourceBlob && formData) {
+          console.log('[Editor] Sending extracted audio:', (audioBlob.size/1024).toFixed(0), 'KB');
+        } else if (sourceBlob) {
           const sizeMB = sourceBlob.size / 1024 / 1024;
-          setStageMessage(`Загрузка видео (${sizeMB.toFixed(1)} MB)...`);
+          setStageMessage(`Загрузка (${sizeMB.toFixed(1)} MB)...`);
+          console.log('[Editor] Using fallback: full media upload, size:', sizeMB.toFixed(1), 'MB');
           
-          if (sizeMB > 25) {
-            throw new Error(`Файл слишком большой (${sizeMB.toFixed(1)}MB). Лимит 25MB.`);
+          if (sizeMB > 100) {
+             throw new Error(`Файл слишком велик (${sizeMB.toFixed(1)}MB). Лимит 100MB.`);
           }
 
           const mime = sourceBlob.type || 'video/mp4';
@@ -765,15 +767,15 @@ export const VideoEditor = React.memo(({
           clearTimeout(timeoutId);
           throw fetchErr;
         }
-      } catch (err: any) {
-        console.error('Transcription flow failed:', err);
-        setTranscriptionError(err.message || 'Ошибка расшифровки');
+        const errMsg = err.message || 'Ошибка обработки';
+        console.error('Transcription flow failed:', errMsg);
+        setTranscriptionError(`${errMsg} (Попробуйте обновить страницу или загрузить другое видео)`);
       }
     }
 
     // 2. Handle failure
     if (!transcriptionOk || words.length === 0) {
-      const finalError = transcriptionError || 'Не удалось распознать голос. Попробуйте загрузить видео снова или пропустите анализ.';
+      const finalError = transcriptionError || (words.length === 0 ? 'Голос не найден или аудио-дорожка пуста' : 'Не удалось распознать голос');
       setStageMessage('Ошибка анализа аудио');
       setTranscriptionError(finalError);
       return;
