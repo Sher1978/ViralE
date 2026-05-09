@@ -231,6 +231,25 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
                 )}
              </div>
 
+             {/* Script Mode Switcher */}
+             <div className="space-y-4">
+                <label className="text-[9px] font-black uppercase text-white/30 tracking-widest ml-1">Script Source</label>
+                <div className="grid grid-cols-2 gap-2">
+                  <button 
+                    onClick={() => setUseCustomScript(false)}
+                    className={`py-3 rounded-xl border text-[9px] font-black uppercase transition-all ${!useCustomScript ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20' : 'bg-white/5 border-white/5 text-white/40'}`}
+                  >
+                    AI Script
+                  </button>
+                  <button 
+                    onClick={() => setUseCustomScript(true)}
+                    className={`py-3 rounded-xl border text-[9px] font-black uppercase transition-all ${useCustomScript ? 'bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20' : 'bg-white/5 border-white/5 text-white/40'}`}
+                  >
+                    Custom
+                  </button>
+                </div>
+              </div>
+
              {/* Script Settings */}
              <div className="space-y-6">
                 <div className="space-y-4">

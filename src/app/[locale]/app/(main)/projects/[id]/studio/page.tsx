@@ -273,7 +273,10 @@ export default function StudioPage() {
         } else if (latestVersion) {
           setCurrentVersionId(latestVersion.id);
           if (latestVersion.script_data) {
-            setManifest(latestVersion.script_data as ProductionManifest);
+            const loadedManifest = latestVersion.script_data as ProductionManifest;
+            setManifest(loadedManifest);
+            if (loadedManifest.customScript) setCustomScript(loadedManifest.customScript);
+            if (loadedManifest.useCustomScript !== undefined) setUseCustomScript(loadedManifest.useCustomScript);
           } else {
             setManifest(createInitialManifest(projectId, latestVersion.id, { hook: '', context: '', meat: '', cta: '' }));
           }
@@ -753,7 +756,10 @@ export default function StudioPage() {
             setSelectedVideoDeviceId={setSelectedVideoDeviceId}
             setSelectedAudioDeviceId={setSelectedAudioDeviceId}
             useCustomScript={useCustomScript}
-            setUseCustomScript={setUseCustomScript}
+            setUseCustomScript={(use) => {
+              setUseCustomScript(use);
+              setManifest(prev => prev ? { ...prev, useCustomScript: use } : prev);
+            }}
             customScript={customScript}
             setCustomScript={setCustomScript}
             manifest={manifest}
@@ -855,7 +861,10 @@ export default function StudioPage() {
                   textSize={textSize}
                   scriptOpacity={scriptOpacity}
                   scriptColor={scriptColor}
-                  onScriptUpdate={(text) => setCustomScript(text)}
+                  onScriptUpdate={(text) => {
+                    setCustomScript(text);
+                    setManifest(prev => prev ? { ...prev, customScript: text } : prev);
+                  }}
                   onColorChange={(color) => setScriptColor(color)}
                   onBack={() => setActiveTab('branch')}
                   onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
