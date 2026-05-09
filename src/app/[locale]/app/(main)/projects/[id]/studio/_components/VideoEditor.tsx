@@ -668,18 +668,19 @@ export const VideoEditor = React.memo(({
 
         if (!sourceBlob) throw new Error('Не удалось получить файл');
 
-        console.log(`[Editor] sourceBlob size: ${(sourceBlob.size / 1024 / 1024).toFixed(2)} MB, type: ${sourceBlob.type}`);
-
-        }
-
+        // 🚀 ALWAYS extract audio for maximum stability (Old reliable method)
+        setStageMessage('Извлечение аудио...');
+        const audioBlob = await extractAudioNative(sourceBlob);
+        
         setStageMessage('AI расшифровка голоса...');
-        console.log(`[Editor] Sending to API: ${sourceBlob?.type || audioBlob?.type}, size: ${((sourceBlob?.size || audioBlob?.size || 0)/1024/1024).toFixed(2)} MB`);
+        console.log(`[Editor] Sending extracted audio, size: ${(audioBlob.size/1024/1024).toFixed(2)} MB`);
 
         const controller = new AbortController();
         const timeoutId  = setTimeout(() => controller.abort(), 90000);
 
         try {
-          if (!formData) throw new Error('Internal Error: FormData lost');
+          const formData = new FormData();
+          formData.append('file', audioBlob, 'audio.wav');
           
           const res = await fetch('/api/ai/transcribe', {
             method: 'POST',
@@ -688,10 +689,8 @@ export const VideoEditor = React.memo(({
           });
           clearTimeout(timeoutId);
 
-          // 🚀 Memory Optimization: formData is heavy, clear it immediately after fetch
-          formData = null;
+          // 🚀 Memory Optimization: clear blobs after fetch
           sourceBlob = null;
-          audioBlob = null;
 
           if (!res.ok) {
             const err = await res.json().catch(() => ({ error: `Server Error ${res.status}` }));
