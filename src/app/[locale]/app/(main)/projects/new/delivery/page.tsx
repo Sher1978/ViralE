@@ -34,7 +34,7 @@ export default function DeliveryPage() {
   const [renderStatus, setRenderStatus] = useState('');
   const [renderLogs, setRenderLogs] = useState<string[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [renderMode, setRenderMode] = useState<'canvas' | 'ffmpeg'>('canvas');
+  const [renderMode, setRenderMode] = useState<'canvas' | 'ffmpeg'>('ffmpeg');
   
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const renderVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -162,9 +162,23 @@ export default function DeliveryPage() {
       // 3. Prepare Sources
       setRenderStatus('Подготовка потоков...');
       let aRollUrl = manifest?.aRollUrl || manifest?.videoUrl;
-      if (!aRollUrl || aRollUrl.startsWith('blob:')) {
+      
+      // Verification: Blob URLs often 404 on mobile after navigation
+      let isValidBlob = false;
+      if (aRollUrl?.startsWith('blob:')) {
+        try {
+          const check = await fetch(aRollUrl, { method: 'HEAD' });
+          if (check.ok) isValidBlob = true;
+        } catch (e) { isValidBlob = false; }
+      }
+
+      if (!isValidBlob || !aRollUrl) {
+        console.log('[Delivery] Blob URL invalid or missing, recovering from IDB...');
         const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-        if (cached instanceof Blob) aRollUrl = URL.createObjectURL(cached);
+        if (cached instanceof Blob) {
+           aRollUrl = URL.createObjectURL(cached);
+           console.log('[Delivery] Recovered aRoll from IDB successfully.');
+        }
       }
       if (!aRollUrl) throw new Error('A-Roll not found');
 
@@ -621,11 +635,8 @@ export default function DeliveryPage() {
           // 2. IF NO CACHE, START RENDER
           if (verData) {
             setVersion(verData);
-            if (renderMode === 'canvas') {
-              handleCanvasRender(verData);
-            } else {
-              handleClientRender(verData);
-            }
+            // 🚀 ALWAYS use FFmpeg (handleClientRender) as primary to avoid flaky Canvas issues
+            handleClientRender(verData);
           }
         } catch (err) {
           console.error('Failed to load project version:', err);

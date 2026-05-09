@@ -4,12 +4,13 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 export const maxDuration = 120; // Large iOS videos need more time
 
 const TRANSCRIPTION_PROMPT = `Transcribe the spoken audio in this video precisely.
+The audio is likely in RUSSIAN or ENGLISH.
 Return ONLY a raw JSON object in this exact format:
 {"transcript": [{"text": "WORD", "start": 0.5, "end": 0.8, "accent": true}]}
 CRITICAL: 
 1. Every single word MUST be its own separate entry.
-2. Set "accent": true for words that carry semantic weight, emphasis, or emotional impact.
-Return nothing but the JSON object.`;
+2. Set "accent": true for words that carry semantic weight.
+3. If there is background noise, focus ONLY on the primary human voice.`;
 
 // Detect the correct MIME type for Gemini
 function detectGeminiMime(fileType: string): string {
@@ -25,17 +26,24 @@ function detectGeminiMime(fileType: string): string {
 }
 
 // Parse transcript from Gemini response text
-function parseTranscript(text: string): { text: string; start: number; end: number; accent?: boolean }[] | null {
+function parseTranscript(text: string) {
   try {
     const clean = text.replace(/```json\n?/g, '').replace(/```\n?/g, '').trim();
-    const jsonMatch = clean.match(/\{[\s\S]*\}/);
-    if (!jsonMatch) return null;
-    const data = JSON.parse(jsonMatch[0]);
-    if (data.transcript && Array.isArray(data.transcript) && data.transcript.length > 0) {
-      return data.transcript;
+    
+    // Attempt 1: Direct JSON parse
+    try {
+      const data = JSON.parse(clean);
+      if (data.transcript && Array.isArray(data.transcript)) return data.transcript;
+    } catch (e) {}
+
+    // Attempt 2: Regex extraction
+    const match = text.match(/\{[\s\S]*"transcript"[\s\S]*\}/);
+    if (match) {
+      const data = JSON.parse(match[0]);
+      if (data.transcript && Array.isArray(data.transcript)) return data.transcript;
     }
     return null;
-  } catch {
+  } catch (e) {
     return null;
   }
 }
@@ -158,8 +166,13 @@ export async function POST(req: NextRequest) {
           }
           const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
           const result = await model.generateContent([{ text: TRANSCRIPTION_PROMPT }, { fileData: { mimeType: geminiMime, fileUri } }]);
-          const transcript = parseTranscript(result.response.text());
-          if (transcript) return NextResponse.json({ transcript });
+          const rawText = result.response.text();
+          const transcript = parseTranscript(rawText);
+          if (transcript) return NextResponse.json({ transcript, engine: 'gemini-file' });
+          
+          return NextResponse.json({ 
+            error: `[Gemini] Неверный формат: ${rawText.slice(0, 150)}...` 
+          }, { status: 500 });
         }
       }
     } catch (e: any) {
@@ -167,7 +180,7 @@ export async function POST(req: NextRequest) {
     }
 
     return NextResponse.json({
-      error: 'Не удалось расшифровать аудио. OpenAI и Google вернули ошибку. Попробуйте записать более короткое видео или проверьте лимиты API.'
+      error: 'Не удалось расшифровать аудио. Попробуйте еще раз или проверьте лимиты API.'
     }, { status: 500 });
 
   } catch (error: any) {

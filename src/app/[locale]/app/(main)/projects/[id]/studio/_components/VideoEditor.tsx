@@ -670,66 +670,10 @@ export const VideoEditor = React.memo(({
 
         console.log(`[Editor] sourceBlob size: ${(sourceBlob.size / 1024 / 1024).toFixed(2)} MB, type: ${sourceBlob.type}`);
 
-        // тФАтФА STEP 1: Attempt to use the parallel audio-only recording to skip FFmpeg completely
-        let audioBlob: Blob | null = null;
-        try {
-          const audioRecId = await idb.get(`pending_audio_${projectId}`, 'ProjectDrafts');
-          if (audioRecId && typeof audioRecId === 'string') {
-            const rawAudio = await idb.get(audioRecId, 'MediaBuffer');
-            if (rawAudio instanceof Blob && rawAudio.size > 0) {
-              audioBlob = rawAudio;
-              console.log('[Editor] Found parallel audio recording, skipping FFmpeg extraction entirely! Size:', (audioBlob.size/1024).toFixed(0), 'KB');
-            }
-          }
-        } catch (e) {
-          console.warn('[Editor] Failed to check for parallel audio:', e);
-        }
-
-        const sizeMB = sourceBlob.size / 1024 / 1024;
-        const ua = typeof navigator !== 'undefined' ? navigator.userAgent : '';
-        const isMobile = /iPhone|iPad|iPod|Android/i.test(ua);
-        
-        if (isMobile) {
-          // 🚀 Give system a full second to breathe after mounting
-          await delay(1000);
-        }
-        if (!audioBlob) {
-          // 🚀 ONLY extract audio on client if file is LARGE (>30MB)
-          // For smaller files, direct upload is more reliable (like "3 days ago")
-          if (sizeMB > 30) {
-            console.log(`[Editor] File is large (${sizeMB.toFixed(1)}MB), extracting audio to save bandwidth...`);
-            try {
-              audioBlob = await extractAudioNative(sourceBlob);
-            } catch (err) {
-              console.warn('[Editor] Native Audio Extraction Failed, falling back to full media...', err);
-            }
-          } else {
-            console.log(`[Editor] File is small (${sizeMB.toFixed(1)}MB), bypassing extraction for maximum reliability.`);
-          }
-        }
-
-        let formData: FormData | null = new FormData();
-
-        if (audioBlob && audioBlob.size > 1000) {
-          const mime = audioBlob.type;
-          const ext = mime.includes('mp4') ? 'm4a' : mime.includes('wav') ? 'wav' : 'webm';
-          formData.append('file', audioBlob as Blob, `audio.${ext}`);
-          console.log('[Editor] Sending extracted audio:', (audioBlob.size/1024).toFixed(0), 'KB');
-        } else if (sourceBlob) {
-          const sizeMB = sourceBlob.size / 1024 / 1024;
-          setStageMessage(`Загрузка (${sizeMB.toFixed(1)} MB)...`);
-          console.log('[Editor] Using fallback: full media upload, size:', sizeMB.toFixed(1), 'MB');
-          
-          if (sizeMB > 100) {
-             throw new Error(`Файл слишком велик (${sizeMB.toFixed(1)}MB). Лимит 100MB.`);
-          }
-
-          const mime = sourceBlob.type || 'video/mp4';
-          const ext  = mime.includes('webm') ? 'webm' : 'mp4';
-          formData.append('file', sourceBlob, `video.${ext}`);
         }
 
         setStageMessage('AI расшифровка голоса...');
+        console.log(`[Editor] Sending to API: ${sourceBlob?.type || audioBlob?.type}, size: ${((sourceBlob?.size || audioBlob?.size || 0)/1024/1024).toFixed(2)} MB`);
 
         const controller = new AbortController();
         const timeoutId  = setTimeout(() => controller.abort(), 90000);
@@ -772,7 +716,8 @@ export const VideoEditor = React.memo(({
 
     // 2. Handle failure
     if (!transcriptionOk || words.length === 0) {
-      const finalError = transcriptionError || (words.length === 0 ? 'Голос не найден или аудио-дорожка пуста' : 'Не удалось распознать голос');
+      const fileInfo = `File: ${((rawFile?.size || 0)/1024/1024).toFixed(1)}MB, ${rawFile?.type || 'unknown'}`;
+      const finalError = transcriptionError || (words.length === 0 ? `Голос не найден. Проверьте звук в видео. (${fileInfo})` : 'Не удалось распознать голос');
       setStageMessage('Ошибка анализа аудио');
       setTranscriptionError(finalError);
       return;

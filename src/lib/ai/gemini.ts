@@ -30,9 +30,14 @@ export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en') {
                 messages: [
                   { 
                     role: "system", 
-                    content: `You are an ELITE AI STRATEGIST. 
-                    CRITICAL: YOU MUST RESPOND EXCLUSIVELY IN ${language.toUpperCase()}.
-                    ${config.systemInstruction || ''}`
+                    content: `${config.systemInstruction || ''}
+                    
+                    CRITICAL LANGUAGE RULES:
+                    1. Respond EXCLUSIVELY in ${language.toUpperCase()}.
+                    2. NEVER use English introductory phrases like "The thing is...", "Notice this...", "That's why...", "However...".
+                    3. Instead, use natural ${language.toUpperCase()} equivalents (e.g. for Russian: "Дело в том, что...", "Заметьте...", "Именно поэтому...", "Но самое интересное...").
+                    4. Start directly with the text. No conversational filler.
+                    5. Keep the output descriptive, engaging, and professional. Avoid dry or overly robotic phrasing.`
                   },
                   { role: "user", content: textPrompt }
                 ],
@@ -90,10 +95,14 @@ export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en') {
             messages: [
               { 
                 role: "system", 
-                content: `You are a professional AI assistant. 
-                CRITICAL: YOU MUST RESPOND EXCLUSIVELY IN ${language.toUpperCase()}.
-                1. Always return valid JSON if requested.
-                2. Technical fields (ai_prompt) can be in English, but all user-facing content MUST BE IN ${language.toUpperCase()}.` 
+                content: `${getSystemPrompt('', locale)}
+                
+                CRITICAL LANGUAGE RULES:
+                1. Respond EXCLUSIVELY in ${language.toUpperCase()}.
+                2. NEVER use English introductory phrases like "The thing is...", "Notice this...", "That's why...". 
+                3. Use natural ${language.toUpperCase()} transitions.
+                4. Always return valid JSON if requested.
+                5. Output should be vivid, descriptive and high-conversion.` 
               },
               { role: "user", content: textPrompt }
             ],
