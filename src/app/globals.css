@@ -714,4 +714,14 @@
   .animate-flicker-3 { animation: neon-flicker 3.7s infinite; }
   .animate-blink-slow { animation: neon-blink 7s step-end infinite; }
   .animate-blink-fast { animation: neon-blink 2s step-end infinite; }
+
+  @keyframes gradient-x {
+    0% { background-position: 0% 50%; }
+    50% { background-position: 100% 50%; }
+    100% { background-position: 0% 50%; }
+  }
+
+  .animate-gradient-x {
+    animation: gradient-x 3s ease infinite;
+  }
 }

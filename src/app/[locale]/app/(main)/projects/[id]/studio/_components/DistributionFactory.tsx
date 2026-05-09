@@ -57,7 +57,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       if (manifest.distributionImages) {
         setImageResults(manifest.distributionImages);
       }
-    } else if (scriptText && scriptText.length > 20 && !assets && !isGenerating) {
+    } else if (scriptText && scriptText.length > 5 && !assets && !isGenerating) {
       generateAssets();
     }
   }, [manifest, scriptText]);
@@ -200,7 +200,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         <button 
           onClick={generateAssets}
           disabled={isGenerating}
-          className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white text-black text-[10px] font-bold uppercase tracking-widest hover:scale-105 active:scale-95 transition-all disabled:opacity-50 shadow-[0_10px_30px_rgba(255,255,255,0.1)]"
+          className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-purple-600/20 backdrop-blur-md border border-purple-500/30 text-purple-100 text-[10px] font-bold uppercase tracking-widest hover:bg-purple-600/40 hover:border-purple-500/60 active:scale-95 transition-all disabled:opacity-50 shadow-[0_0_30px_rgba(168,85,247,0.1)]"
         >
           {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
           {assets ? 'REGENERATE ALL' : 'GENERATE CONTENT PACK'}
@@ -208,19 +208,61 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       </div>
 
       {!assets && !isGenerating ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-12 text-center">
-          <div className="w-24 h-24 rounded-[2.5rem] bg-white/[0.02] border border-white/5 flex items-center justify-center mb-8 relative">
-            <Layers size={40} className="text-white/10" />
-            <motion.div 
-              animate={{ opacity: [0.1, 0.3, 0.1] }}
-              transition={{ repeat: Infinity, duration: 3 }}
-              className="absolute inset-0 rounded-[2.5rem] bg-purple-500/10 blur-xl" 
-            />
+        <div className="flex-1 flex flex-col p-8 overflow-y-auto custom-scrollbar">
+          <div className="max-w-4xl mx-auto w-full space-y-12 py-10">
+            <div className="text-center space-y-4">
+              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[9px] font-black uppercase tracking-widest animate-pulse">
+                <Brain size={12} /> Strategist Ready to Architect
+              </div>
+              <h3 className="text-3xl font-bold uppercase tracking-tighter text-white">Social Distribution <span className="text-purple-500">Blueprint</span></h3>
+              <p className="text-[11px] text-white/30 font-medium uppercase tracking-widest max-w-lg mx-auto leading-relaxed">
+                Our AI Strategist has analyzed your script and is ready to expand it into a full-scale digital ecosystem.
+              </p>
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {platforms.map((p, i) => (
+                <div key={p.id} className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 space-y-4 group hover:border-purple-500/20 transition-all">
+                  <div className="flex items-center justify-between">
+                    <div className="w-10 h-10 rounded-2xl bg-white/[0.03] flex items-center justify-center text-white/20 group-hover:text-purple-400 group-hover:bg-purple-500/10 transition-all">
+                      <p.icon size={20} />
+                    </div>
+                    <span className="text-[8px] font-black text-white/10 uppercase tracking-widest">Phase 0{i+1}</span>
+                  </div>
+                  <div>
+                    <h4 className="text-[11px] font-bold text-white uppercase tracking-widest mb-1">{p.label}</h4>
+                    <p className="text-[9px] text-white/30 font-medium leading-relaxed">
+                      {p.id === 'sfv' ? 'High-retention captions with viral hooks and trending hashtags.' : 
+                       p.id === 'threads' ? 'Multi-part narrative threads designed for deep engagement.' : 
+                       p.id === 'linkedin' ? 'Professional insights and executive-level summaries.' : 
+                       p.id === 'carousel' ? '6-slide visual sequence with AI-generated storytelling.' : 
+                       'Custom high-CTR thumbnail with hard-hitting headlines.'}
+                    </p>
+                  </div>
+                  <div className="pt-4 flex gap-1">
+                    <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
+                       <div className="h-full w-1/3 bg-white/10 group-hover:bg-purple-500/20 transition-all" />
+                    </div>
+                    <div className="h-1 flex-1 bg-white/5 rounded-full" />
+                    <div className="h-1 flex-1 bg-white/5 rounded-full" />
+                  </div>
+                </div>
+              ))}
+            </div>
+
+            <div className="pt-10 flex flex-col items-center">
+              <button 
+                onClick={generateAssets}
+                className="group relative px-10 py-5 rounded-[2rem] bg-purple-600 text-white text-[13px] font-black uppercase tracking-[0.2em] shadow-[0_20px_50px_rgba(168,85,247,0.3)] hover:scale-105 active:scale-95 transition-all overflow-hidden"
+              >
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 bg-[length:200%_auto] animate-gradient-x" />
+                <span className="relative flex items-center gap-3">
+                  <Zap size={18} /> Architect Social Ecosystem
+                </span>
+              </button>
+              <p className="mt-6 text-[9px] text-white/20 font-black uppercase tracking-[0.3em]">Estimated synthesis time: ~15 seconds</p>
+            </div>
           </div>
-          <h3 className="text-white font-bold uppercase tracking-[0.2em] mb-3">Awaiting Production</h3>
-          <p className="text-white/30 text-[10px] font-bold uppercase tracking-widest max-w-xs leading-relaxed">
-            Once your A-Roll is ready, our Strategist will architect your entire social media presence.
-          </p>
         </div>
       ) : isGenerating ? (
         <div className="flex-1 flex flex-col items-center justify-center p-12">
@@ -407,7 +449,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                     <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                        <button 
                                          onClick={() => handleDownload(url, `slide_${i+1}.webp`)}
-                                         className="px-4 py-2 rounded-xl bg-white text-black text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
+                                         className="px-4 py-2 rounded-xl bg-purple-500/20 backdrop-blur-md border border-purple-500/30 text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all shadow-lg"
                                        >
                                          <Download size={12} /> Save
                                        </button>
@@ -437,7 +479,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                     onClick={() => generateSingleImage(prompt, '4:5', key)}
                                     className="absolute inset-0 flex items-center justify-center bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity"
                                   >
-                                    <div className="px-4 py-2 rounded-xl bg-white text-black text-[9px] font-bold uppercase tracking-widest flex items-center gap-2">
+                                    <div className="px-4 py-2 rounded-xl bg-purple-500/20 backdrop-blur-md border border-purple-500/30 text-white text-[9px] font-bold uppercase tracking-widest flex items-center gap-2">
                                       <Wand2 size={12} /> Generate
                                     </div>
                                   </button>
@@ -500,7 +542,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                              <div className="flex gap-3">
                                <button 
                                  onClick={() => handleDownload(imageResults['banner'], 'thumbnail.webp')}
-                                 className="flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-xl"
+                                 className="flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-[11px] font-black uppercase tracking-[0.2em] hover:bg-white/20 transition-all shadow-xl"
                                >
                                  <Download size={18} /> Save Thumbnail
                                </button>

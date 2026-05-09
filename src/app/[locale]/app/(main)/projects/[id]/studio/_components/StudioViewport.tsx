@@ -17,6 +17,9 @@ interface StudioViewportProps {
   subtitlePos: { x: number; y: number };
   setSubtitlePos: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
   subtitleSize: number;
+  setSubtitleSize: React.Dispatch<React.SetStateAction<number>>;
+  setCurrentTime: (time: number) => void;
+  setARollDuration: (dur: number) => void;
   onUploadClick: () => void;
   // Stage props
   stage: string;
@@ -72,7 +75,8 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
 
 export const StudioViewport: React.FC<StudioViewportProps> = ({
   videoRef, aRollUrl, isMuted, isPlaying, currentTime, togglePlay,
-  brollClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, onUploadClick,
+  brollClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
+  setCurrentTime, setARollDuration, onUploadClick,
   stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage
 }) => {
   return (
@@ -87,7 +91,9 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               muted={isMuted} 
               className="w-full h-full object-cover" 
               playsInline 
-              onClick={togglePlay} 
+              onClick={togglePlay}
+              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
+              onLoadedMetadata={(e) => setARollDuration(e.currentTarget.duration)}
             />
             
             {/* B-ROLL OVERLAY */}

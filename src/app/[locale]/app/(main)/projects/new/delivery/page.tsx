@@ -743,7 +743,7 @@ export default function DeliveryPage() {
               <a 
                 href={job.output_url} 
                 download={`ViralEngine_Final_${projectId}.mp4`}
-                className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white text-black text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.2)]"
+                className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-[11px] font-black uppercase tracking-widest hover:bg-purple-500/20 hover:border-purple-500/50 hover:scale-105 active:scale-95 transition-all shadow-[0_10px_40px_rgba(168,85,247,0.15)]"
               >
                 <Download size={16} /> Save Final Video
               </a>

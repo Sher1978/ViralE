@@ -32,6 +32,7 @@ export const VideoEditor = React.memo(({
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const {
+    persistenceLoaded,
     stage, setStage, stageMessage, setStageMessage,
     aRollUrl, setARollUrl, isPlaying, setIsPlaying, isMuted, setIsMuted,
     currentTime, setCurrentTime, aRollDuration, setARollDuration, duration,
@@ -147,7 +148,7 @@ export const VideoEditor = React.memo(({
   const phaseLabels = ['Upload', 'Subtitles', 'B-Roll'];
   const phaseIndex = stage === 'empty' ? 0 : stage === 'transcribing' ? 1 : stage === 'editing' ? 1 : 2;
 
-  if (!initialManifest && !aRollUrl && stage === 'empty') {
+  if (!persistenceLoaded) {
     return (
       <div className="flex-1 bg-black flex flex-col items-center justify-center gap-6">
         <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
@@ -209,7 +210,8 @@ export const VideoEditor = React.memo(({
       {/* VIEWPORT */}
       <StudioViewport 
         videoRef={videoRef} aRollUrl={aRollUrl} isMuted={isMuted} isPlaying={isPlaying} currentTime={currentTime} togglePlay={togglePlay}
-        brollClips={brollClips} subtitleClips={subtitleClips} subtitlePos={subtitlePos} setSubtitlePos={setSubtitlePos} subtitleSize={subtitleSize}
+        setCurrentTime={setCurrentTime} setARollDuration={setARollDuration}
+        brollClips={brollClips} subtitleClips={subtitleClips} subtitlePos={subtitlePos} setSubtitlePos={setSubtitlePos} subtitleSize={subtitleSize} setSubtitleSize={setSubtitleSize}
         onUploadClick={() => fileInputRef.current?.click()}
         stage={stage} stageMessage={stageMessage} transcriptionError={transcriptionError} heartbeat={heartbeat}
         runTranscriptionAndPhrases={runTranscriptionAndPhrases} setStage={setStage} setTranscriptionError={setTranscriptionError} setStageMessage={setStageMessage}

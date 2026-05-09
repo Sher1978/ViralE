@@ -100,13 +100,14 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   const [phrases, setPhrases] = useState<BRollPhrase[]>([]);
   
   // UI State
+  const [persistenceLoaded, setPersistenceLoaded] = useState(false);
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [isAnalyzingBroll, setIsAnalyzingBroll] = useState(false);
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 });
   const [subtitleSize, setSubtitleSize] = useState(16);
   const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({});
   const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
-
+  
   // Refs for logic
   const transcriptionStartedRef = useRef(false);
   const persistenceLoadedRef = useRef(false);
@@ -116,12 +117,20 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   useEffect(() => {
     if (!projectId || persistenceLoadedRef.current) return;
     
+    // Safety timeout: if IDB is stuck, we still want to show the editor shell
+    const safetyTimeout = setTimeout(() => {
+      if (!persistenceLoadedRef.current) {
+        console.warn('[Studio] Persistence recovery timed out, forcing ready state');
+        setPersistenceLoaded(true);
+      }
+    }, 2000);
+
     async function recoverDraft() {
       const key = `viral_editor_draft_${projectId}`;
-      const data = await idb.get(key, 'ProjectDrafts');
-      
-      if (data) {
-        try {
+      try {
+        const data = await idb.get(key, 'ProjectDrafts');
+        
+        if (data) {
           if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
           if (data.transcript) setTranscript(data.transcript);
           if (data.subtitleClips?.length > 0) {
@@ -135,30 +144,32 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
           if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
             setARollUrl(data.aRollUrl);
           }
-        } catch (e) { console.error('Failed to parse draft:', e); }
-      }
-      
-      try {
+        }
+
         const cachedFile = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
         if (cachedFile instanceof Blob) {
           const url = URL.createObjectURL(cachedFile);
           setARollUrl(url);
           setRawFile(cachedFile as File);
         }
-      } catch (e) { console.error('Failed to recover from IDB:', e); }
 
-      if (data?.brollClips) {
-        const restoredClips = await Promise.all(data.brollClips.map(async (clip: BRollClip) => {
-          try {
-            const blob = await idb.get(`broll_file_${clip.id}`, 'MediaBuffer');
-            if (blob instanceof Blob) return { ...clip, url: URL.createObjectURL(blob) };
-          } catch (e) {}
-          return clip;
-        }));
-        setBrollClips(restoredClips);
+        if (data?.brollClips) {
+          const restoredClips = await Promise.all(data.brollClips.map(async (clip: BRollClip) => {
+            try {
+              const blob = await idb.get(`broll_file_${clip.id}`, 'MediaBuffer');
+              if (blob instanceof Blob) return { ...clip, url: URL.createObjectURL(blob) };
+            } catch (e) {}
+            return clip;
+          }));
+          setBrollClips(restoredClips);
+        }
+      } catch (err) {
+        console.error('[Studio] Persistence recovery failed:', err);
+      } finally {
+        persistenceLoadedRef.current = true;
+        setPersistenceLoaded(true);
+        clearTimeout(safetyTimeout);
       }
-      
-      persistenceLoadedRef.current = true;
     }
     
     recoverDraft();
@@ -359,6 +370,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   }, [aRollDuration, brollClips, duration]);
 
   return {
+    persistenceLoaded,
     stage, setStage, stageMessage, setStageMessage,
     aRollUrl, setARollUrl, isPlaying, setIsPlaying, isMuted, setIsMuted,
     currentTime, setCurrentTime, aRollDuration, setARollDuration, duration,
