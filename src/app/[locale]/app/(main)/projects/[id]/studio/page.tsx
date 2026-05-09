@@ -293,16 +293,18 @@ export default function StudioPage() {
           }
         }
 
-        // 5. ENUMERATE DEVICES
-        const devices = await navigator.mediaDevices.enumerateDevices();
-        const v = devices.filter(d => d.kind === 'videoinput');
-        const a = devices.filter(d => d.kind === 'audioinput');
-        setVideoDevices(v);
-        setAudioDevices(a);
-        
-        // Initial auto-selection if not set
-        if (!selectedVideoDeviceId && v.length > 0) setSelectedVideoDeviceId(v[0].deviceId);
-        if (!selectedAudioDeviceId && a.length > 0) setSelectedAudioDeviceId(a[0].deviceId);
+        // 5. ENUMERATE DEVICES (Safely)
+        if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
+          const devices = await navigator.mediaDevices.enumerateDevices();
+          const v = devices.filter(d => d.kind === 'videoinput');
+          const a = devices.filter(d => d.kind === 'audioinput');
+          setVideoDevices(v);
+          setAudioDevices(a);
+          
+          // Initial auto-selection if not set
+          if (!selectedVideoDeviceId && v.length > 0) setSelectedVideoDeviceId(v[0].deviceId);
+          if (!selectedAudioDeviceId && a.length > 0) setSelectedAudioDeviceId(a[0].deviceId);
+        }
 
       } catch (err) {
         console.error('Failed to load studio data:', err);
@@ -318,8 +320,17 @@ export default function StudioPage() {
       setVideoDevices(devices.filter(d => d.kind === 'videoinput'));
       setAudioDevices(devices.filter(d => d.kind === 'audioinput'));
     };
-    navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
-    return () => navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+    const hasMediaAPI = typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.addEventListener;
+    
+    if (hasMediaAPI) {
+      navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+    }
+    
+    return () => {
+      if (hasMediaAPI) {
+        navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+      }
+    };
   }, [projectId]);
 
   // 📹 Auto-init camera when entering teleprompter
