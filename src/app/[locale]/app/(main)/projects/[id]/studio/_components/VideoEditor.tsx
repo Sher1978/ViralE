@@ -587,11 +587,12 @@ export const VideoEditor = React.memo(({
 
   const runTranscriptionAndPhrases = async (forceFresh = false) => {
     console.log('[Editor] Starting transcription flow, forceFresh:', forceFresh);
+    if (!aRollUrl && !rawFile && !manifest?.transcript) {
+      console.log('[Editor] No source to transcribe yet, skipping...');
+      return;
+    }
+
     setStageMessage('Анализ аудио...');
-    setTranscriptionError(null);
-    setSubtitleClips([]); // CLEAR OLD SUBS
-    setTranscript([]);     // CLEAR OLD WORDS
-    await delay(400);
 
     let words: TranscriptWord[] = [];
     let transcriptionOk = false;
