@@ -123,12 +123,14 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         console.warn('[Studio] Persistence recovery timed out, forcing ready state');
         setPersistenceLoaded(true);
       }
-    }, 2000);
+    }, 1000);
 
     async function recoverDraft() {
       const key = `viral_editor_draft_${projectId}`;
+      let dataToRestore: any = null;
       try {
         const data = await idb.get(key, 'ProjectDrafts');
+        dataToRestore = data;
         
         if (data) {
           if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
@@ -152,23 +154,27 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
           setARollUrl(url);
           setRawFile(cachedFile as File);
         }
-
-        if (data?.brollClips) {
-          const restoredClips = await Promise.all(data.brollClips.map(async (clip: BRollClip) => {
-            try {
-              const blob = await idb.get(`broll_file_${clip.id}`, 'MediaBuffer');
-              if (blob instanceof Blob) return { ...clip, url: URL.createObjectURL(blob) };
-            } catch (e) {}
-            return clip;
-          }));
-          setBrollClips(restoredClips);
-        }
       } catch (err) {
         console.error('[Studio] Persistence recovery failed:', err);
       } finally {
         persistenceLoadedRef.current = true;
         setPersistenceLoaded(true);
         clearTimeout(safetyTimeout);
+        
+        // Background restoration of heavy assets (B-Rolls)
+        if (dataToRestore?.brollClips) {
+          const brolls = dataToRestore.brollClips;
+          (async () => {
+             const restoredClips = await Promise.all(brolls.map(async (clip: BRollClip) => {
+               try {
+                 const blob = await idb.get(`broll_file_${clip.id}`, 'MediaBuffer');
+                 if (blob instanceof Blob) return { ...clip, url: URL.createObjectURL(blob) };
+               } catch (e) {}
+               return clip;
+             }));
+             setBrollClips(restoredClips);
+          })();
+        }
       }
     }
     

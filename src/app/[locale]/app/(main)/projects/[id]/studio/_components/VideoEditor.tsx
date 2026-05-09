@@ -3,7 +3,7 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
-  ArrowLeft, Cpu, Upload, Loader2, Sparkles, Wand2, SkipBack, Play, Pause, VolumeX, Volume2, Mic 
+  ArrowLeft, Cpu, Upload, Loader2, Sparkles, Wand2, SkipBack, Play, Pause, VolumeX, Volume2, Mic, Zap 
 } from 'lucide-react';
 
 import { ProductionManifest } from '@/lib/types/studio';
@@ -150,9 +150,39 @@ export const VideoEditor = React.memo(({
 
   if (!persistenceLoaded) {
     return (
-      <div className="flex-1 bg-black flex flex-col items-center justify-center gap-6">
-        <Loader2 className="w-12 h-12 text-purple-500 animate-spin" />
-        <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20">Initialising Production Canvas...</p>
+      <div className="flex-1 bg-[#05050a] flex flex-col items-center justify-center relative overflow-hidden">
+        {/* Background Gradients */}
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/10 blur-[120px] rounded-full animate-pulse" />
+        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-600/5 blur-[100px] rounded-full" />
+
+        <div className="relative z-10 flex flex-col items-center gap-8">
+          <div className="relative">
+            <div className="w-24 h-24 rounded-[2.5rem] bg-white/[0.03] border border-white/10 flex items-center justify-center relative">
+              <Zap size={48} className="text-white animate-pulse" />
+              <motion.div 
+                animate={{ rotate: 360 }}
+                transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
+                className="absolute -inset-4 border-2 border-t-purple-500 border-r-transparent border-b-blue-500 border-l-transparent rounded-full opacity-20"
+              />
+            </div>
+          </div>
+
+          <div className="flex flex-col items-center gap-3">
+            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">
+              Viral <span className="text-purple-500">Engine</span>
+            </h2>
+            <div className="flex items-center gap-3">
+              <div className="h-[2px] w-12 bg-gradient-to-r from-transparent to-white/20" />
+              <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/40">Initializing Studio</span>
+              <div className="h-[2px] w-12 bg-gradient-to-l from-transparent to-white/20" />
+            </div>
+          </div>
+          
+          <div className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5">
+             <Loader2 size={14} className="text-purple-500 animate-spin" />
+             <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Syncing Production Data</span>
+          </div>
+        </div>
       </div>
     );
   }

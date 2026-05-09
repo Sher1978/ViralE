@@ -6,15 +6,17 @@ export const maxDuration = 60;
 
 const RUNWARE_API_KEY = process.env.RUNWARE_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+const XAI_API_KEY = process.env.XAI_API_KEY;
 
 export async function POST(req: Request) {
   try {
-    const { prompt, style_prefix = '', aspect_ratio = '9:16' } = await req.json();
+    const { prompt, style_prefix = '', aspect_ratio = '9:16', provider = 'flux' } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
+    const isGrokRequested = provider === 'grok' || provider === 'flux';
     const fullPrompt = style_prefix ? `${style_prefix}, ${prompt}` : prompt;
 
     // Map aspect ratios to pixels
@@ -25,7 +27,7 @@ export async function POST(req: Request) {
     if (aspect_ratio === '4:5') {
       width = 864;
       height = 1080;
-      dallESize = "1024x1792"; // Best fallback for 4:5
+      dallESize = "1024x1792"; 
     } else if (aspect_ratio === '1:1') {
       width = 1024;
       height = 1024;
@@ -36,10 +38,38 @@ export async function POST(req: Request) {
       dallESize = "1792x1024";
     }
 
-    // --- OPTION 1: RUNWARE (if key exists) ---
+    // --- OPTION 0: Grok (xAI) if requested and key exists ---
+    if (isGrokRequested && XAI_API_KEY) {
+      try {
+        console.log(`[Image Gen] Using Grok (xAI) for AR ${aspect_ratio}...`);
+        const response = await fetch('https://api.x.ai/v1/images/generations', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${XAI_API_KEY}`
+          },
+          body: JSON.stringify({
+            model: "grok-2-vision-latest", // Grok's primary image gen model (Flux-based)
+            prompt: fullPrompt,
+            n: 1,
+            size: aspect_ratio === '1:1' ? '1024x1024' : aspect_ratio === '16:9' ? '1792x1024' : '1024x1792',
+          })
+        });
+
+        const data = await response.json();
+        if (response.ok && data.data?.[0]?.url) {
+          return NextResponse.json({ url: data.data[0].url, provider: 'grok' });
+        }
+        console.warn('[Image Gen] Grok API failed, falling back...', data);
+      } catch (e) {
+        console.warn('[Image Gen] Grok error:', e);
+      }
+    }
+
+    // --- OPTION 1: RUNWARE (FLUX optimized) ---
     if (RUNWARE_API_KEY) {
       try {
-        console.log(`[Image Gen] Trying Runware with AR ${aspect_ratio}...`);
+        console.log(`[Image Gen] Trying Runware FLUX with AR ${aspect_ratio}...`);
         const payload = [
           { taskType: 'authentication', apiKey: RUNWARE_API_KEY },
           {
@@ -48,7 +78,7 @@ export async function POST(req: Request) {
             positivePrompt: fullPrompt,
             width,
             height,
-            model: 'runware:100@1', 
+            model: 'runware:101@1', // FLUX.1 [schnell] - Fast & Realistic
             numberResults: 1,
             outputFormat: 'webp'
           }

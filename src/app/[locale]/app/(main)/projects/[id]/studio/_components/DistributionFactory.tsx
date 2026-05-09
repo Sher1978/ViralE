@@ -93,7 +93,11 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       const res = await fetch('/api/ai/image-gen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt, aspect_ratio: ar })
+        body: JSON.stringify({ 
+          prompt,
+          aspect_ratio: ar || '4:5',
+          provider: 'grok' 
+        })
       });
       if (res.ok) {
         const data = await res.json();

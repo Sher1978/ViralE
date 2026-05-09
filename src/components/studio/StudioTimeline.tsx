@@ -171,30 +171,46 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
     setPreviewOverlay({ id: dragState.id, start: newStart, dur: newDuration });
   }, [dragState, pxPerSecond, totalDuration]);
 
+  // Use refs to avoid stale closures in global event listeners
+  const dragStateRef = useRef(dragState);
+  const previewOverlayRef = useRef(previewOverlay);
+
+  useEffect(() => {
+    dragStateRef.current = dragState;
+  }, [dragState]);
+
+  useEffect(() => {
+    previewOverlayRef.current = previewOverlay;
+  }, [previewOverlay]);
+
   useEffect(() => {
     if (dragState) {
+      const handleUp = () => {
+        const currentDrag = dragStateRef.current;
+        const currentPreview = previewOverlayRef.current;
+        if (currentDrag && currentPreview) {
+          onUpdateOverlay(currentDrag.type, currentDrag.id, { 
+            startTime: currentPreview.start, 
+            duration: currentPreview.dur 
+          });
+        }
+        setDragState(null);
+        setPreviewOverlay(null);
+      };
+
       window.addEventListener('mousemove', handleGlobalMouseMove);
-      window.addEventListener('mouseup', () => {
-        if (dragState && previewOverlay) {
-           onUpdateOverlay(dragState.type, dragState.id, { startTime: previewOverlay.start, duration: previewOverlay.dur });
-        }
-        setDragState(null);
-        setPreviewOverlay(null);
-      });
+      window.addEventListener('mouseup', handleUp);
       window.addEventListener('touchmove', handleGlobalMouseMove, { passive: false });
-      window.addEventListener('touchend', () => {
-        if (dragState && previewOverlay) {
-           onUpdateOverlay(dragState.type, dragState.id, { startTime: previewOverlay.start, duration: previewOverlay.dur });
-        }
-        setDragState(null);
-        setPreviewOverlay(null);
-      });
+      window.addEventListener('touchend', handleUp);
+      
+      return () => {
+        window.removeEventListener('mousemove', handleGlobalMouseMove);
+        window.removeEventListener('mouseup', handleUp);
+        window.removeEventListener('touchmove', handleGlobalMouseMove);
+        window.removeEventListener('touchend', handleUp);
+      };
     }
-    return () => {
-      window.removeEventListener('mousemove', handleGlobalMouseMove);
-      window.removeEventListener('touchmove', handleGlobalMouseMove);
-    };
-  }, [dragState, handleGlobalMouseMove]);
+  }, [dragState, handleGlobalMouseMove, onUpdateOverlay]);
 
   // Sync scroll to playhead
   useEffect(() => {
@@ -203,7 +219,6 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
       const scrollLeft = containerRef.current.scrollLeft;
       const width = containerRef.current.clientWidth;
       
-      // Auto-scroll if playhead goes out of view
       if (playheadX > scrollLeft + width * 0.8) {
          containerRef.current.scrollTo({ left: playheadX - width * 0.2, behavior: 'smooth' });
       } else if (playheadX < scrollLeft) {
@@ -241,18 +256,20 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
         onPointerDown={(e) => startDrag(e, overlay, 'move')}
         onPointerUp={clearLongPress}
         onPointerLeave={clearLongPress}
-        className={`absolute h-8 rounded-lg border transition-all cursor-grab active:cursor-grabbing flex items-center px-3 overflow-hidden group ${
+        className={`absolute h-9 rounded-lg border transition-all cursor-grab active:cursor-grabbing flex items-center px-3 overflow-hidden group ${
           isSelected ? `ring-2 ring-white border-transparent ${color} shadow-xl z-20` : `bg-white/5 border-white/10 hover:border-white/20 z-10`
         }`}
         style={{ 
           left: displayStart * pxPerSecond, 
           width: displayDur * pxPerSecond,
+          top: '50%',
+          transform: 'translateY(-50%)',
           backgroundColor: isSelected ? undefined : 'rgba(255,255,255,0.05)'
         }}
       >
-        <div className="absolute top-0 bottom-0 w-11 -left-[22px] cursor-ew-resize hover:bg-white/5 flex items-center justify-center z-30" 
+        <div className="absolute top-0 bottom-0 w-8 -left-[4px] cursor-ew-resize hover:bg-white/10 flex items-center justify-center z-30" 
              onPointerDown={(e) => startDrag(e, overlay, 'start')}>
-          <div className="w-1.5 h-4 bg-white/40 rounded-full shadow-sm" />
+          <div className="w-1 h-4 bg-white/40 rounded-full" />
         </div>
         
         <div className="flex items-center gap-2 min-w-0 mx-auto pointer-events-none">
@@ -261,10 +278,10 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
             {overlay.type === 'subtitle' ? overlay.content : 'B-ROLL'}
           </span>
         </div>
-
-        <div className="absolute top-0 bottom-0 w-11 -right-[22px] cursor-ew-resize hover:bg-white/5 flex items-center justify-center z-30" 
+ 
+        <div className="absolute top-0 bottom-0 w-8 -right-[4px] cursor-ew-resize hover:bg-white/10 flex items-center justify-center z-30" 
              onPointerDown={(e) => startDrag(e, overlay, 'end')}>
-          <div className="w-1.5 h-4 bg-white/40 rounded-full shadow-sm" />
+          <div className="w-1 h-4 bg-white/40 rounded-full" />
         </div>
       </motion.div>
     );
@@ -317,7 +334,7 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
           if (onSeek) onSeek(Math.max(0, Math.min(time, totalDuration)));
         }}
       >
-        <div className="relative h-[180px]" style={{ width: safeDuration * pxPerSecond + 400, paddingLeft: 32 }}>
+        <div className="relative h-[240px]" style={{ width: safeDuration * pxPerSecond + 400, paddingLeft: 32 }}>
           
           {/* Playhead (Time Cursor) */}
           <div 
@@ -333,7 +350,7 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
           </div>
  
           {/* Track 1: Master A-Roll (Segments) */}
-          <div className="absolute top-10 left-8 right-0 h-10 flex items-center">
+          <div className="absolute top-10 left-8 right-0 h-12 flex items-center">
              <div className="absolute inset-y-0 left-0 bg-white/[0.02] border-y border-white/5" style={{ width: safeDuration * pxPerSecond }} />
              <div className="flex gap-0 h-full">
                 {segments.map((s, idx) => (
@@ -347,11 +364,10 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
                 ))}
              </div>
           </div>
-
+ 
           {/* Track 2: B-Rolls */}
           <div 
-            className="absolute top-22 left-8 right-0 h-12 border-t border-white/5 flex items-center" 
-            style={{ marginTop: '56px' }}
+            className="absolute top-24 left-8 right-0 h-14 border-t border-white/5 flex items-center" 
             onPointerDown={(e) => startLongPress('empty', e.clientX)}
             onPointerUp={clearLongPress}
             onPointerLeave={clearLongPress}
@@ -359,9 +375,9 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
              <span className="absolute -left-6 top-1/2 -translate-y-1/2 -rotate-90 text-[7px] font-black text-white/10 uppercase tracking-[0.5em] pointer-events-none">B-ROLL</span>
              {brollClips.map(clip => <OverlayItem key={clip.id} overlay={clip} color="bg-blue-600" />)}
           </div>
-
+ 
           {/* Track 3: Subtitles */}
-          <div className="absolute top-34 left-8 right-0 h-12 border-t border-white/5 flex items-center" style={{ marginTop: '104px' }}>
+          <div className="absolute top-40 left-8 right-0 h-14 border-t border-white/5 flex items-center">
              <span className="absolute -left-6 top-1/2 -translate-y-1/2 -rotate-90 text-[7px] font-black text-white/10 uppercase tracking-[0.5em]">SUBS</span>
              {subtitleClips.map(clip => <OverlayItem key={clip.id} overlay={clip} color="bg-amber-600" />)}
           </div>
