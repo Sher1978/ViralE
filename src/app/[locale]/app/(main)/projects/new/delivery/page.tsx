@@ -211,7 +211,13 @@ export default function DeliveryPage() {
       for (let frame = 0; frame < totalFrames; frame++) {
         const time = frame / fps;
         vARoll.currentTime = time;
-        await new Promise(r => { vARoll.onseeked = r; });
+        try {
+          await new Promise((resolve, reject) => { 
+            const t = setTimeout(() => reject(new Error('Seek timeout')), 5000);
+            vARoll.onseeked = () => { clearTimeout(t); resolve(true); }; 
+            vARoll.onerror = () => { clearTimeout(t); reject(new Error('Seek error')); };
+          });
+        } catch (e) { console.warn('Seek failed on frame', frame); }
 
         // Draw A-Roll
         ctx.drawImage(vARoll, 0, 0, canvas.width, canvas.height);
@@ -263,6 +269,11 @@ export default function DeliveryPage() {
 
       recorder.stop();
       const silentVideoBlob = await recordPromise;
+      
+      console.log('[Canvas Render] Silent video blob size:', silentVideoBlob.size);
+      if (silentVideoBlob.size < 100) {
+        throw new Error('Сбой MediaRecorder: итоговый файл пуст. Возможно, браузер ограничил доступ к видео-потоку.');
+      }
 
       // 6. Merge Audio with FFmpeg (Lightning Fast)
       setRenderStatus('Финальная склейка (Audio)...');
@@ -293,12 +304,14 @@ export default function DeliveryPage() {
       setError(`Ошибка Canvas-рендера: ${errorMsg}. Пробую FFmpeg...`);
       
       // Auto-fallback after a short delay so user can see what happened
+      setRenderStatus('Переключаюсь на запасной вариант сборки...');
       setTimeout(() => {
         if (!job || job.status !== 'completed') {
+           setError('Использую запасной метод сборки (FFmpeg) для обеспечения качества...');
            setRenderMode('ffmpeg');
            handleClientRender(ver);
         }
-      }, 3000);
+      }, 2000);
     } finally {
       setIsLaunchingRender(false);
     }
@@ -679,7 +692,14 @@ export default function DeliveryPage() {
         ) : (
           <>
             {previewUrl && (
-              <video src={previewUrl} autoPlay muted loop playsInline className="absolute inset-0 w-full h-full object-cover opacity-60" />
+              <video 
+                src={previewUrl} 
+                autoPlay 
+                muted 
+                loop 
+                playsInline 
+                className="absolute inset-0 w-full h-full object-cover opacity-40 blur-2xl scale-110" 
+              />
             )}
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
               <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
