@@ -609,13 +609,11 @@ export default function DeliveryPage() {
             setIsLoading(false);
             
             // Still load version data for assets
-            const verData = await projectService.getLatestVersion(projectId);
             if (verData) setVersion(verData);
             return;
           }
 
           // 2. IF NO CACHE, START RENDER
-          const verData = await projectService.getLatestVersion(projectId);
           if (verData) {
             setVersion(verData);
             if (renderMode === 'canvas') {
