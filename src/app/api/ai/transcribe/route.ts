@@ -119,7 +119,9 @@ export async function POST(req: NextRequest) {
         ]);
         const transcript = parseTranscript(result.response.text());
         if (transcript) return NextResponse.json({ transcript });
-      } catch (e) {}
+      } catch (e: any) {
+        console.warn('[Transcribe] Gemini Inline exception:', e.message);
+      }
     }
 
     // File API path for large files
@@ -160,10 +162,12 @@ export async function POST(req: NextRequest) {
           if (transcript) return NextResponse.json({ transcript });
         }
       }
-    } catch (e) {}
+    } catch (e: any) {
+      console.error('[Transcribe] Gemini File API exception:', e.message);
+    }
 
     return NextResponse.json({
-      error: 'Не удалось расшифровать аудио. Попробуйте записать более короткое видео.'
+      error: 'Не удалось расшифровать аудио. OpenAI и Google вернули ошибку. Попробуйте записать более короткое видео или проверьте лимиты API.'
     }, { status: 500 });
 
   } catch (error: any) {

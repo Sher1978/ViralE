@@ -773,8 +773,9 @@ export const VideoEditor = React.memo(({
 
     // 2. Handle failure
     if (!transcriptionOk || words.length === 0) {
-      setStageMessage(transcriptionError || 'Ошибка анализа аудио');
-      if (!transcriptionError) setTranscriptionError('Не удалось получить текст автоматически.');
+      const finalError = transcriptionError || 'Не удалось распознать голос. Попробуйте загрузить видео снова или пропустите анализ.';
+      setStageMessage('Ошибка анализа аудио');
+      setTranscriptionError(finalError);
       return;
     }
 
