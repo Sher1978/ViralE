@@ -134,12 +134,49 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   };
 
   const platforms: { id: Platform; label: string; icon: any }[] = [
-    { id: 'sfv', label: 'Shorts/Reels', icon: Zap },
-    { id: 'threads', label: 'Threads/FB', icon: Share2 },
+    { id: 'sfv', label: 'TikTok & Reels', icon: Zap },
+    { id: 'threads', label: 'Threads & FB', icon: Share2 },
     { id: 'linkedin', label: 'LinkedIn', icon: Monitor },
-    { id: 'carousel', label: 'IG Carousel', icon: Camera },
-    { id: 'banner', label: 'Banner', icon: ImageIcon },
+    { id: 'carousel', label: 'Instagram Carousel', icon: Camera },
+    { id: 'banner', label: 'YouTube Thumbnail', icon: ImageIcon },
   ];
+
+  const shareToSocial = async (platform: string, text: string, title?: string) => {
+    if (navigator.share) {
+      try {
+        await navigator.share({
+          title: title || 'Viral Engine Content',
+          text: text,
+          url: window.location.href,
+        });
+      } catch (err) {
+        console.log('Share failed:', err);
+      }
+    } else {
+      const encodedText = encodeURIComponent(text);
+      const urls: Record<string, string> = {
+        telegram: `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodedText}`,
+        twitter: `https://twitter.com/intent/tweet?text=${encodedText}`,
+        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`,
+      };
+
+      if (urls[platform]) {
+        window.open(urls[platform], '_blank');
+      } else {
+        window.open('https://t.me/ViralEngine_Bot', '_blank');
+      }
+    }
+  };
+
+  const saveTextAsFile = (text: string, filename: string) => {
+    const blob = new Blob([text], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = filename;
+    a.click();
+    URL.revokeObjectURL(url);
+  };
 
   return (
     <div className="h-full flex flex-col bg-[#05050a] rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl relative">
@@ -262,6 +299,30 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                            assets?.linkedin_executive.text}
                         </pre>
                       </div>
+
+                      <div className="flex flex-wrap gap-3 mt-6">
+                         <button 
+                           onClick={() => shareToSocial(activePlatform, activePlatform === 'sfv' ? assets!.sfv_description.text : assets!.deep_content.threads_fb_text)}
+                           className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition-all shadow-lg shadow-purple-900/20"
+                         >
+                           <Share2 size={14} /> Post to {activePlatform === 'sfv' ? 'TikTok/Reels' : activePlatform === 'threads' ? 'Threads/FB' : 'LinkedIn'}
+                         </button>
+
+                         <button 
+                           onClick={() => saveTextAsFile(activePlatform === 'sfv' ? assets!.sfv_description.text : assets!.deep_content.threads_fb_text, `${activePlatform}_caption.txt`)}
+                           className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                         >
+                           <Download size={14} /> Save Text
+                         </button>
+
+                         <button 
+                           onClick={() => handleCopy(activePlatform === 'sfv' ? assets!.sfv_description.text : assets!.deep_content.threads_fb_text, activePlatform)}
+                           className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
+                         >
+                           {copying === activePlatform ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
+                           Copy
+                         </button>
+                      </div>
                     </div>
 
                     <div className="space-y-8">
@@ -341,7 +402,23 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                              
                              <div className="relative aspect-[4/5] rounded-[2rem] bg-white/[0.02] border border-white/5 overflow-hidden group flex">
                                 {url ? (
-                                  <img src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                  <>
+                                    <img src={url} className="w-full h-full object-cover transition-transform duration-700 group-hover:scale-110" />
+                                    <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                                       <button 
+                                         onClick={() => handleDownload(url, `slide_${i+1}.webp`)}
+                                         className="px-4 py-2 rounded-xl bg-white text-black text-[9px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-105 active:scale-95 transition-all"
+                                       >
+                                         <Download size={12} /> Save
+                                       </button>
+                                       <button 
+                                         onClick={() => shareToSocial('instagram', prompt, `Carousel Slide ${i+1}`)}
+                                         className="p-2.5 rounded-xl bg-white/20 backdrop-blur-md text-white hover:bg-white/30 transition-all"
+                                       >
+                                         <Share2 size={14} />
+                                       </button>
+                                    </div>
+                                  </>
                                 ) : (
                                   <div className="flex-1 flex flex-col items-center justify-center p-8 text-center">
                                     {isGen ? (
@@ -354,12 +431,6 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                     </p>
                                   </div>
                                 )}
-                                
-                                <div className="absolute inset-x-0 bottom-0 p-4 bg-gradient-to-t from-black/80 to-transparent translate-y-full group-hover:translate-y-0 transition-transform duration-300">
-                                   <p className="text-[8px] text-white/60 leading-relaxed line-clamp-3 italic">
-                                     {prompt}
-                                   </p>
-                                </div>
 
                                 {!url && !isGen && (
                                   <button 
@@ -372,6 +443,15 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                   </button>
                                 )}
                              </div>
+
+                             {url && (
+                               <button 
+                                 onClick={() => handleDownload(url, `slide_${i+1}.webp`)}
+                                 className="w-full py-2.5 rounded-xl bg-white/5 border border-white/5 text-[9px] font-black uppercase tracking-widest text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2"
+                               >
+                                 <Download size={12} /> Download Slide {i+1}
+                               </button>
+                             )}
                            </div>
                          );
                        })}
@@ -406,14 +486,33 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                            </div>
                         </div>
 
-                        <button 
-                          onClick={() => assets && generateSingleImage(assets.video_banner.image_prompt, '9:16', 'banner')}
-                          disabled={isGeneratingImages['banner']}
-                          className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
-                        >
-                          {isGeneratingImages['banner'] ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
-                          {imageResults['banner'] ? 'REGENERATE BANNER' : 'GENERATE BANNER IMAGE'}
-                        </button>
+                        <div className="flex flex-col gap-3">
+                           <button 
+                             onClick={() => assets && generateSingleImage(assets.video_banner.image_prompt, '9:16', 'banner')}
+                             disabled={isGeneratingImages['banner']}
+                             className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[11px] font-bold uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                           >
+                             {isGeneratingImages['banner'] ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
+                             {imageResults['banner'] ? 'REGENERATE THUMBNAIL' : 'GENERATE THUMBNAIL'}
+                           </button>
+
+                           {imageResults['banner'] && (
+                             <div className="flex gap-3">
+                               <button 
+                                 onClick={() => handleDownload(imageResults['banner'], 'thumbnail.webp')}
+                                 className="flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl bg-white text-black text-[11px] font-black uppercase tracking-[0.2em] hover:scale-105 transition-all shadow-xl"
+                               >
+                                 <Download size={18} /> Save Thumbnail
+                               </button>
+                               <button 
+                                 onClick={() => shareToSocial('youtube', assets!.video_banner.text_on_banner, 'YouTube Thumbnail')}
+                                 className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 transition-all"
+                               >
+                                 <Share2 size={20} />
+                               </button>
+                             </div>
+                           )}
+                        </div>
                      </div>
 
                      <div className="flex justify-center">

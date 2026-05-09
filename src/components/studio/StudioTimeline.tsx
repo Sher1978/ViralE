@@ -23,6 +23,7 @@ interface StudioTimelineProps {
   onOpenEditor: (type: 'broll' | 'subtitle', id: string) => void;
   onAddSegment: () => void;
   isRegenerating?: string | null;
+  onSeek?: (time: number) => void;
 }
 
 const StudioTimeline: React.FC<StudioTimelineProps> = ({ 
@@ -39,7 +40,8 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
   onCreateOverlay,
   onOpenEditor,
   onAddSegment,
-  isRegenerating 
+  isRegenerating,
+  onSeek
 }) => {
   const [pxPerSecond, setPxPerSecond] = useState(40); 
   const containerRef = useRef<HTMLDivElement>(null);
@@ -138,6 +140,10 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
 
   const handleGlobalMouseMove = useCallback((e: MouseEvent | TouchEvent) => {
     if (!dragState) return;
+    
+    // Block scrolling while dragging a clip
+    if (e.cancelable) e.preventDefault();
+    
     clearLongPress();
 
     const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
@@ -170,7 +176,7 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
         setDragState(null);
         setPreviewOverlay(null);
       });
-      window.addEventListener('touchmove', handleGlobalMouseMove);
+      window.addEventListener('touchmove', handleGlobalMouseMove, { passive: false });
       window.addEventListener('touchend', () => {
         if (dragState && previewOverlay) {
            onUpdateOverlay(dragState.type, dragState.id, { startTime: previewOverlay.start, duration: previewOverlay.dur });
@@ -292,8 +298,15 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
       {/* Timeline Workspace */}
       <div 
         ref={containerRef}
-        className="relative flex-1 overflow-x-auto overflow-y-hidden custom-scrollbar pb-6"
+        className={`relative flex-1 overflow-y-hidden custom-scrollbar pb-6 ${dragState ? 'overflow-x-hidden' : 'overflow-x-auto'}`}
         onMouseUp={clearLongPress}
+        onClick={(e) => {
+          if (dragState) return;
+          const rect = e.currentTarget.getBoundingClientRect();
+          const x = e.clientX - rect.left + e.currentTarget.scrollLeft - 32; // 32 is paddingLeft
+          const time = x / pxPerSecond;
+          if (onSeek) onSeek(Math.max(0, Math.min(time, totalDuration)));
+        }}
       >
         <div className="relative h-[180px]" style={{ width: safeDuration * pxPerSecond + 400, paddingLeft: 32 }}>
           
@@ -320,7 +333,7 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
                     className={`h-full border-r flex-shrink-0 overflow-hidden relative ${activeIndex === idx ? 'border-purple-500/50 bg-purple-500/10' : 'border-white/5 bg-white/5'}`}
                     style={{ width: (s.duration || 5) * pxPerSecond }}
                   >
-                    {s.assetUrl && <video src={s.assetUrl} className="w-full h-full object-cover opacity-30" muted />}
+                    {s.assetUrl && <video src={`${s.assetUrl}#t=0.001`} className="w-full h-full object-cover opacity-30" muted />}
                   </div>
                 ))}
              </div>

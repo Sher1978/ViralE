@@ -4,7 +4,7 @@ import React, { useState, useEffect, useRef } from 'react';
 import { veoService } from '@/lib/services/veoService';
 import { 
   X, Search, Sparkles, Film, 
-  RefreshCcw, ArrowRight, Video, Play, Upload, Trash2
+  RefreshCcw, ArrowRight, Video, Play, Upload, Trash2, Wand2
 } from 'lucide-react';
 
 interface VideoItem {
@@ -39,7 +39,8 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
 }) => {
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
-  const [searchQuery, setSearchQuery] = useState(segmentText || '');
+  const [searchQuery, setSearchQuery] = useState(''); // Start empty to avoid manual deletion
+  const [hasInteracted, setHasInteracted] = useState(false);
   const [videos, setVideos] = useState<VideoItem[]>([]);
   const [isOptimizing, setIsOptimizing] = useState(false);
   const [previewVideo, setPreviewVideo] = useState<VideoItem | null>(null);
@@ -47,23 +48,17 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   const videoRef = useRef<HTMLVideoElement>(null);
   const loaderTimeoutRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
-  // ⚡ AUTO-OPTIMIZE & SEARCH ON OPEN
+  // Trigger search when searchQuery changes from optimization OR on open if we have pre-fetched
   useEffect(() => {
     if (isOpen) {
       if (preFetchedResults && preFetchedResults.length > 0) {
         setVideos(preFetchedResults);
-      } else {
-        handleOptimizePrompt();
+      } else if (segmentText && !searchQuery && !hasInteracted) {
+        // If we just opened and have no query, try to optimize the segment text automatically
+        handleOptimizePrompt(segmentText);
       }
     }
   }, [isOpen]);
-
-  // Trigger search when searchQuery changes from optimization
-  useEffect(() => {
-    if (isOpen && searchQuery && searchQuery !== segmentText) {
-      handleSearch();
-    }
-  }, [searchQuery]);
 
   // Reset loader on previewVideo change
   useEffect(() => {
@@ -96,24 +91,26 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
     }
   };
 
-  const handleOptimizePrompt = async () => {
-    if (!segmentText) return;
+  const handleOptimizePrompt = async (overrideText?: string) => {
+    const textToOptimize = overrideText || searchQuery || segmentText;
+    if (!textToOptimize) return;
+    
     setIsOptimizing(true);
     try {
       const res = await fetch('/api/ai/optimize-prompt', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ context: segmentText })
+        body: JSON.stringify({ context: textToOptimize, mode: 'search' })
       });
       const data = await res.json();
       if (data.optimized) {
         setSearchQuery(data.optimized);
-      } else {
-        handleSearch(segmentText);
+      } else if (!searchQuery) {
+        handleSearch(textToOptimize);
       }
     } catch (err) {
       console.error('Optimization failed', err);
-      handleSearch(segmentText);
+      if (!searchQuery) handleSearch(textToOptimize);
     } finally {
       setIsOptimizing(false);
     }
@@ -316,22 +313,51 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
 
       {/* ── FOOTER ACTIONS ── */}
       <div className="flex-none px-4 py-4 border-t border-white/5 space-y-3">
-        <div className="bg-white/5 rounded-lg px-4 py-3 border border-white/8 flex gap-3 items-center">
-          <textarea
-            value={searchQuery}
-            onChange={(e) => setSearchQuery(e.target.value)}
-            onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSearch())}
-            rows={1}
-            className="flex-1 bg-transparent text-sm font-bold text-white italic outline-none resize-none placeholder:text-white/20 leading-relaxed"
-            placeholder="Describe the mood or action..."
-          />
-          <button
-            onClick={() => handleSearch()}
-            disabled={isSearching}
-            className="h-9 w-9 rounded-xl bg-white/10 hover:bg-white/20 border border-white/10 text-white flex items-center justify-center flex-none transition-all active:scale-95"
-          >
-            {isSearching ? <RefreshCcw size={13} className="animate-spin" /> : <Search size={13} />}
-          </button>
+        <div className="bg-white/5 rounded-2xl px-4 py-2 border border-white/8 flex gap-3 items-center group focus-within:border-purple-500/50 transition-all">
+          <div className="flex-1 flex items-center gap-3">
+             <Search size={16} className="text-white/20 group-focus-within:text-purple-400 transition-colors" />
+             <textarea
+               value={searchQuery}
+               onChange={(e) => {
+                 setSearchQuery(e.target.value);
+                 setHasInteracted(true);
+               }}
+               onFocus={(e) => {
+                 // If the user clicks and it's the first time, we ensure they can type fresh
+                 if (!hasInteracted) setHasInteracted(true);
+               }}
+               onKeyDown={(e) => e.key === 'Enter' && !e.shiftKey && (e.preventDefault(), handleSearch())}
+               rows={1}
+               className="flex-1 bg-transparent py-2 text-sm font-bold text-white italic outline-none resize-none placeholder:text-white/20 leading-relaxed"
+               placeholder={segmentText || "Describe the mood or action..."}
+             />
+             {searchQuery && (
+               <button 
+                 onClick={() => setSearchQuery('')}
+                 className="p-2 rounded-full hover:bg-white/5 text-white/20 hover:text-white transition-all"
+               >
+                 <X size={14} />
+               </button>
+             )}
+          </div>
+          
+          <div className="flex items-center gap-2 border-l border-white/10 pl-3">
+            <button
+              onClick={() => handleOptimizePrompt()}
+              disabled={isOptimizing || !searchQuery}
+              className="h-10 px-3 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 text-purple-400 flex items-center gap-2 text-[10px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-30"
+            >
+              {isOptimizing ? <RefreshCcw size={12} className="animate-spin" /> : <Wand2 size={12} />}
+              AI Opt
+            </button>
+            <button
+              onClick={() => handleSearch()}
+              disabled={isSearching}
+              className="h-10 w-10 rounded-xl bg-white text-black flex items-center justify-center flex-none transition-all active:scale-95 shadow-lg shadow-white/5"
+            >
+              {isSearching ? <RefreshCcw size={13} className="animate-spin" /> : <Search size={13} />}
+            </button>
+          </div>
         </div>
 
 

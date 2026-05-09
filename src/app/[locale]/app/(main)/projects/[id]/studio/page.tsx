@@ -861,9 +861,29 @@ export default function StudioPage() {
                   textSize={textSize}
                   scriptOpacity={scriptOpacity}
                   scriptColor={scriptColor}
-                  onScriptUpdate={(text) => {
+                  onScriptUpdate={async (text) => {
+                    // 1. Update local states immediately
                     setCustomScript(text);
-                    setManifest(prev => prev ? { ...prev, customScript: text } : prev);
+                    setUseCustomScript(true);
+                    
+                    // 2. Functional update for manifest to avoid closure traps
+                    setManifest(prev => {
+                      if (!prev) return prev;
+                      const next = { 
+                        ...prev, 
+                        customScript: text,
+                        useCustomScript: true 
+                      };
+                      
+                      // 3. Immediate Cloud Sync for Script Edits (Skip Debounce)
+                      if (projectId) {
+                        projectService.updateLatestVersionManifest(projectId, next).then(() => {
+                          console.log('[Studio] Manual Script Edit Saved');
+                        });
+                      }
+                      
+                      return next;
+                    });
                   }}
                   onColorChange={(color) => setScriptColor(color)}
                   onBack={() => setActiveTab('branch')}

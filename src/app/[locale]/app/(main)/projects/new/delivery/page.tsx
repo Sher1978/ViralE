@@ -53,7 +53,7 @@ export default function DeliveryPage() {
   const scriptData = {
     hook: manifest?.hook || manifest?.script?.hook || manifest?.scriptText?.split('\n')?.[0] || manifest?.segments?.[0]?.scriptText?.split('\n')?.[0] || '',
     context: manifest?.context || manifest?.script?.context || '',
-    meat: manifest?.scriptText || manifest?.meat || manifest?.script?.meat || manifest?.segments?.map((s: any) => s.scriptText).join('\n\n') || '',
+    meat: manifest?.customScript || manifest?.scriptText || manifest?.meat || manifest?.script?.meat || manifest?.segments?.map((s: any) => s.scriptText).join('\n\n') || '',
     cta: manifest?.cta || manifest?.script?.cta || '',
   };
 
@@ -715,13 +715,16 @@ export default function DeliveryPage() {
         ) : (
           <>
             {previewUrl && (
-              <video 
+              <motion.video 
                 src={previewUrl} 
                 autoPlay 
                 muted 
                 loop 
                 playsInline 
-                className="absolute inset-0 w-full h-full object-cover opacity-40 blur-2xl scale-110" 
+                initial={{ rotate: 0, scale: 1.2 }}
+                animate={{ rotate: 360 }}
+                transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
+                className="absolute inset-0 w-full h-full object-cover opacity-40 blur-xl" 
               />
             )}
             <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
@@ -730,28 +733,44 @@ export default function DeliveryPage() {
             </div>
           </>
         )}
-        <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center justify-between bg-gradient-to-t from-black/80 to-transparent">
-          <span className="text-[10px] font-black uppercase tracking-widest text-white/50">65 SEC · AI PRODUCTION</span>
-          <div className="flex gap-2">
-            <a href={job?.output_url} download className="p-3 rounded-2xl bg-white/10 hover:bg-white/20 transition-colors">
-              <Download className="w-4 h-4 text-white" />
-            </a>
+        <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-between bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+          <div className="flex flex-col gap-1">
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/50">4K AI PRODUCTION</span>
+            <span className="text-[8px] font-bold uppercase tracking-[0.3em] text-purple-400">Ready for Broadcast</span>
+          </div>
+          <div className="flex gap-3">
+            {job?.output_url && (
+              <a 
+                href={job.output_url} 
+                download={`ViralEngine_Final_${projectId}.mp4`}
+                className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white text-black text-[11px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all shadow-[0_10px_30px_rgba(255,255,255,0.2)]"
+              >
+                <Download size={16} /> Save Final Video
+              </a>
+            )}
           </div>
         </div>
       </div>
 
-      {/* Distribution Factory (New Design) */}
-      <div className="pt-8 h-[600px] mb-8">
-        <DistributionFactory 
-          manifest={manifest}
-          scriptText={scriptData.meat}
-          projectId={projectId as string}
-          locale={locale}
-          onUpdateManifest={(newManifest: any) => {
-             setVersion(prev => (prev ? { ...prev, script_data: newManifest } : prev) as any);
-          }}
-        />
-      </div>
+      {/* Distribution Factory - Main Area */}
+      <section id="distribution-section" className="pt-10 space-y-6">
+        <div className="flex items-center gap-3 px-2">
+           <div className="w-1.5 h-6 bg-purple-500 rounded-full" />
+           <h2 className="text-xl font-black uppercase tracking-tight text-white">Media Distribution Pack</h2>
+        </div>
+        
+        <div className="h-[700px] w-full">
+          <DistributionFactory 
+            manifest={manifest}
+            scriptText={scriptData.meat || "Video Content Analysis"}
+            projectId={projectId as string}
+            locale={locale}
+            onUpdateManifest={(newManifest: any) => {
+               setVersion(prev => (prev ? { ...prev, script_data: newManifest } : prev) as any);
+            }}
+          />
+        </div>
+      </section>
 
       {/* Emergency Rollback UI */}
       <div className="mt-10 pt-10 border-t border-white/5 flex flex-col items-center gap-4">

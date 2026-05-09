@@ -150,8 +150,8 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
       onLoadedData={(e) => {
         const target = e.target as HTMLVideoElement;
         target.style.opacity = "1";
-        // Initial time sync
-        target.currentTime = Math.max(0, currentTime - startTime);
+        // Initial time sync (offset by 0.001 to avoid black frame)
+        target.currentTime = Math.max(0.001, currentTime - startTime);
         if (isPlaying) target.play().catch(() => {});
       }}
       style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
@@ -349,7 +349,8 @@ export const VideoEditor = React.memo(({
   useEffect(() => {
     const v = videoRef.current;
     if (!v || !aRollUrl) return;
-    v.src = aRollUrl;
+    v.src = aRollUrl.includes('#t=') ? aRollUrl : `${aRollUrl}#t=0.001`;
+    v.currentTime = 0.001; // Force first frame render
     const onTime = () => setCurrentTime(v.currentTime);
     const onLoad = () => {
       const dur = v.duration > 0 ? v.duration : 60;
@@ -384,6 +385,10 @@ export const VideoEditor = React.memo(({
   useEffect(() => {
     const move = (e: MouseEvent | TouchEvent) => {
       if (!dragRef.current || !timelineRef.current) return;
+      
+      // Block scroll on mobile while dragging
+      if (e.cancelable) e.preventDefault();
+      
       const { clipId, type, handle, startX, startY, origStart, origEnd } = dragRef.current;
       const clientX = 'touches' in e ? (e as TouchEvent).touches[0].clientX : (e as MouseEvent).clientX;
       const clientY = 'touches' in e ? (e as TouchEvent).touches[0].clientY : (e as MouseEvent).clientY;
@@ -1438,6 +1443,12 @@ export const VideoEditor = React.memo(({
           }
         }}
         onAddSegment={() => {}}
+        onSeek={(time) => {
+          setCurrentTime(time);
+          if (videoRef.current) {
+            videoRef.current.currentTime = time;
+          }
+        }}
       />
 
       {/* SUBTITLE EDITOR MODAL */}

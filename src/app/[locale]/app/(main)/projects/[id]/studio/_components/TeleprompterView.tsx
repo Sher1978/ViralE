@@ -76,8 +76,9 @@ export const TeleprompterView = React.memo(({
   const [isEditing, setIsEditing] = React.useState(false);
   const [editedText, setEditedText] = React.useState('');
   const [isGenerating, setIsGenerating] = React.useState(false);
-  const [suggestion, setSuggestion] = React.useState<string | null>(null);
   const [isUserInteracting, setIsUserInteracting] = React.useState(false);
+  const [saveStatus, setSaveStatus] = React.useState<'idle' | 'saving' | 'saved'>('idle');
+  const [suggestion, setSuggestion] = React.useState<string | null>(null);
   const interactionTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
@@ -156,10 +157,19 @@ export const TeleprompterView = React.memo(({
     setIsEditing(true);
   };
 
-  const handleSaveEdit = () => {
+  const handleSaveEdit = async () => {
+    setSaveStatus('saving');
     onScriptUpdate(editedText);
-    setIsEditing(false);
-    setSuggestion(null);
+    
+    // Artificial delay for UX feedback
+    setTimeout(() => {
+      setSaveStatus('saved');
+      setTimeout(() => {
+        setIsEditing(false);
+        setSaveStatus('idle');
+        setSuggestion(null);
+      }, 800);
+    }, 400);
   };
 
   const handleAIRewrite = async (style: string) => {
@@ -466,8 +476,19 @@ export const TeleprompterView = React.memo(({
             <div className="flex items-center justify-between text-white">
               <h3 className="text-2xl font-black italic uppercase">Edit Script</h3>
               <div className="flex gap-4">
-                <button onClick={() => setIsEditing(false)} className="p-4 rounded-2xl bg-white/5 border border-white/10"><X size={24} /></button>
-                <button onClick={handleSaveEdit} className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs flex items-center gap-3"><Check size={18} /> Apply</button>
+                <button onClick={() => setIsEditing(false)} className="p-4 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-white transition-all"><X size={24} /></button>
+                <button 
+                  onClick={handleSaveEdit} 
+                  disabled={saveStatus !== 'idle'}
+                  className={`px-10 py-4 rounded-2xl font-black uppercase tracking-widest text-xs flex items-center gap-3 transition-all ${
+                    saveStatus === 'saved' ? 'bg-green-500 text-white' : 'bg-purple-600 text-white hover:bg-purple-500 shadow-xl shadow-purple-900/20'
+                  }`}
+                >
+                  {saveStatus === 'saving' ? <RotateCw size={18} className="animate-spin" /> : 
+                   saveStatus === 'saved' ? <Check size={18} /> : <Check size={18} />}
+                  {saveStatus === 'saving' ? 'Saving...' : 
+                   saveStatus === 'saved' ? 'Saved!' : 'Apply & Save'}
+                </button>
               </div>
             </div>
             <div className="flex-1 flex flex-col gap-6 overflow-hidden">
