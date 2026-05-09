@@ -1,0 +1,372 @@
+'use client';
+
+import { useState, useRef, useEffect, useCallback } from 'react';
+import { ProductionManifest } from '@/lib/types/studio';
+import { idb } from '@/lib/idb';
+
+// --- TYPES ---
+
+export type EditorStage = 'empty' | 'transcribing' | 'reviewing_phrases' | 'generating' | 'editing';
+
+export interface TranscriptWord {
+  text: string;
+  start: number;
+  end: number;
+  accent?: boolean;
+}
+
+export interface BRollPhrase {
+  id: string;
+  text: string;
+  start: number;
+  end: number;
+  approved: boolean;
+  brollUrl?: string;
+}
+
+export interface SubtitleClip {
+  id: string;
+  text: string;
+  startTime: number;
+  endTime: number;
+  style: 'minimal' | 'pop' | 'bold';
+}
+
+export interface BRollClip {
+  id: string;
+  phraseId?: string;
+  url: string;
+  label: string;
+  prompt: string;
+  startTime: number;
+  endTime: number;
+  track: number;
+  offsetX?: number;
+}
+
+const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+
+// --- HELPERS ---
+
+function buildTranscript(manifest: ProductionManifest | null, videoDuration: number): TranscriptWord[] {
+  if (!manifest) {
+    return [{ text: "[Редактируйте текст здесь]", start: 0, end: videoDuration }];
+  }
+  const segments = manifest?.segments?.filter((s: any) => s.scriptText) || [];
+  const dur = videoDuration > 0 ? videoDuration : 60;
+
+  if (segments.length === 0) {
+    return [
+      { text: "Welcome to Viral Engine production.", start: 0, end: dur * 0.2 },
+      { text: "This is a demonstration of AI audio analysis.", start: dur * 0.2, end: dur * 0.5 },
+      { text: "You can edit these subtitles or swap B-Roll moments.", start: dur * 0.5, end: dur * 0.8 },
+      { text: "Start creating your masterpiece now!", start: dur * 0.8, end: dur },
+    ];
+  }
+
+  const timePerSeg = dur / segments.length;
+  return segments.map((s: any, i: number) => ({
+    text: s.scriptText,
+    start: i * timePerSeg,
+    end: (i + 1) * timePerSeg,
+  }));
+}
+
+export function useStudioState(projectId: string, initialManifest: ProductionManifest | null, propARollUrl: string | null) {
+  const [manifest, setManifest] = useState<ProductionManifest | null>(initialManifest || null);
+
+  useEffect(() => {
+    if (initialManifest) setManifest(initialManifest);
+  }, [initialManifest]);
+  
+  // Stage machine
+  const initialUrl = propARollUrl || initialManifest?.videoUrl || initialManifest?.segments?.[0]?.assetUrl || null;
+  const [stage, setStage] = useState<EditorStage>(initialUrl ? 'transcribing' : 'empty');
+  const [stageMessage, setStageMessage] = useState('');
+
+  // Video State
+  const [aRollUrl, setARollUrl] = useState<string | null>(initialUrl);
+  const [isPlaying, setIsPlaying] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+  const [currentTime, setCurrentTime] = useState(0);
+  const [aRollDuration, setARollDuration] = useState(60);
+  const [duration, setDuration] = useState(60);
+  const [rawFile, setRawFile] = useState<File | null>(null);
+
+  // Clips State
+  const [transcript, setTranscript] = useState<TranscriptWord[]>([]);
+  const [subtitleClips, setSubtitleClips] = useState<SubtitleClip[]>([]);
+  const [brollClips, setBrollClips] = useState<BRollClip[]>([]);
+  const [phrases, setPhrases] = useState<BRollPhrase[]>([]);
+  
+  // UI State
+  const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
+  const [isAnalyzingBroll, setIsAnalyzingBroll] = useState(false);
+  const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 });
+  const [subtitleSize, setSubtitleSize] = useState(16);
+  const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({});
+  const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
+
+  // Refs for logic
+  const transcriptionStartedRef = useRef(false);
+  const persistenceLoadedRef = useRef(false);
+
+  // --- PERSISTENCE ---
+
+  useEffect(() => {
+    if (!projectId || persistenceLoadedRef.current) return;
+    
+    async function recoverDraft() {
+      const key = `viral_editor_draft_${projectId}`;
+      const data = await idb.get(key, 'ProjectDrafts');
+      
+      if (data) {
+        try {
+          if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
+          if (data.transcript) setTranscript(data.transcript);
+          if (data.subtitleClips?.length > 0) {
+            setStage('editing');
+            transcriptionStartedRef.current = true;
+          } else if (data.stage) {
+            setStage(data.stage);
+          }
+          if (data.subtitlePos) setSubtitlePos(data.subtitlePos);
+          if (data.subtitleSize) setSubtitleSize(data.subtitleSize);
+          if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
+            setARollUrl(data.aRollUrl);
+          }
+        } catch (e) { console.error('Failed to parse draft:', e); }
+      }
+      
+      try {
+        const cachedFile = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+        if (cachedFile instanceof Blob) {
+          const url = URL.createObjectURL(cachedFile);
+          setARollUrl(url);
+          setRawFile(cachedFile as File);
+        }
+      } catch (e) { console.error('Failed to recover from IDB:', e); }
+
+      if (data?.brollClips) {
+        const restoredClips = await Promise.all(data.brollClips.map(async (clip: BRollClip) => {
+          try {
+            const blob = await idb.get(`broll_file_${clip.id}`, 'MediaBuffer');
+            if (blob instanceof Blob) return { ...clip, url: URL.createObjectURL(blob) };
+          } catch (e) {}
+          return clip;
+        }));
+        setBrollClips(restoredClips);
+      }
+      
+      persistenceLoadedRef.current = true;
+    }
+    
+    recoverDraft();
+  }, [projectId]);
+
+  useEffect(() => {
+    if (!projectId || !persistenceLoadedRef.current) return;
+    const key = `viral_editor_draft_${projectId}`;
+    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize };
+    idb.set(key, state, 'ProjectDrafts');
+  }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize]);
+
+  // Heavy file persistence
+  useEffect(() => {
+    if (!projectId || !rawFile || !persistenceLoadedRef.current) return;
+    const saveFile = async () => {
+      try {
+        const lastSaved = await idb.get(`video_file_info_${projectId}`, 'ProjectDrafts');
+        if (lastSaved?.name === rawFile.name && lastSaved?.size === rawFile.size) return;
+        
+        await idb.set(`video_file_${projectId}`, rawFile, 'MediaBuffer');
+        await idb.set(`video_file_info_${projectId}`, { name: rawFile.name, size: rawFile.size }, 'ProjectDrafts');
+      } catch (e) { console.error('Failed to cache video file:', e); }
+    };
+    saveFile();
+  }, [projectId, rawFile]);
+
+  // --- TRANSCRIPTION LOGIC ---
+
+  const buildKaraokeClips = (words: TranscriptWord[]): SubtitleClip[] => {
+    const final: SubtitleClip[] = [];
+    let currentBatch: TranscriptWord[] = [];
+    const flushBatch = () => {
+      if (currentBatch.length === 0) return;
+      const text = currentBatch.map(w => w.text.trim().toUpperCase().replace(/[.,!?;:]/g, '')).join(' ');
+      final.push({
+        id: `sub-${final.length}-${Date.now()}`,
+        startTime: currentBatch[0].start,
+        endTime: currentBatch[currentBatch.length - 1].end,
+        text,
+        style: 'bold'
+      });
+      currentBatch = [];
+    };
+
+    words.forEach((w) => {
+      const parts = w.text.trim().split(/\s+/);
+      parts.forEach((p, pIdx) => {
+        const wordObj: TranscriptWord = {
+          text: p,
+          start: w.start + (pIdx * (w.end - w.start) / parts.length),
+          end: w.start + ((pIdx + 1) * (w.end - w.start) / parts.length),
+          accent: w.accent
+        };
+        if (wordObj.accent) { flushBatch(); currentBatch.push(wordObj); flushBatch(); return; }
+        if (currentBatch.length >= 3) flushBatch();
+        currentBatch.push(wordObj);
+      });
+    });
+    flushBatch();
+    return final;
+  };
+
+  const extractAudioNative = async (videoBlob: Blob): Promise<Blob> => {
+    const arrayBuffer = await videoBlob.arrayBuffer();
+    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+    const targetSampleRate = 16000;
+    const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * targetSampleRate, targetSampleRate);
+    const source = offlineCtx.createBufferSource();
+    source.buffer = audioBuffer;
+    source.connect(offlineCtx.destination);
+    source.start();
+    const resampledBuffer = await offlineCtx.startRendering();
+    
+    const length = resampledBuffer.length * 2 + 44;
+    const buffer = new ArrayBuffer(length);
+    const view = new DataView(buffer);
+    const writeString = (offset: number, string: string) => {
+      for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+    };
+    writeString(0, 'RIFF');
+    view.setUint32(4, 32 + resampledBuffer.length * 2, true);
+    writeString(8, 'WAVE');
+    writeString(12, 'fmt ');
+    view.setUint32(16, 16, true);
+    view.setUint16(20, 1, true);
+    view.setUint16(22, 1, true);
+    view.setUint32(24, targetSampleRate, true);
+    view.setUint32(28, targetSampleRate * 2, true);
+    view.setUint16(32, 2, true);
+    view.setUint16(34, 16, true);
+    writeString(36, 'data');
+    view.setUint32(40, resampledBuffer.length * 2, true);
+    
+    let offset = 44;
+    const channelData = resampledBuffer.getChannelData(0);
+    for (let i = 0; i < channelData.length; i++) {
+      const sample = Math.max(-1, Math.min(1, channelData[i]));
+      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+      offset += 2;
+    }
+    return new Blob([buffer], { type: 'audio/wav' });
+  };
+
+  const runTranscriptionAndPhrases = useCallback(async (forceFresh = false) => {
+    if (!aRollUrl && !rawFile && !manifest?.transcript) return;
+    setTranscriptionError(null);
+    setStageMessage('Анализ аудио...');
+
+    let words: TranscriptWord[] = [];
+    let transcriptionOk = false;
+
+    if (!forceFresh && manifest?.transcript?.length) {
+      words = manifest.transcript.map((t: any) => ({ ...t, accent: t.accent || false }));
+      transcriptionOk = true;
+    } else if (aRollUrl || rawFile) {
+      try {
+        setStageMessage('Извлечение аудио...');
+        let sourceBlob: Blob | null = rawFile;
+        if (!sourceBlob && aRollUrl) {
+          try {
+            const resp = await fetch(aRollUrl);
+            if (resp.ok) sourceBlob = await resp.blob();
+          } catch (e) {
+             const recovered = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+             if (recovered instanceof Blob) sourceBlob = recovered;
+          }
+        }
+        if (!sourceBlob) throw new Error('Не удалось получить файл');
+        const audioBlob = await extractAudioNative(sourceBlob);
+        setStageMessage('AI расшифровка...');
+        const formData = new FormData();
+        formData.append('file', audioBlob, 'audio.wav');
+        const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
+        if (!res.ok) throw new Error('Ошибка сервера транскрибации');
+        const data = await res.json();
+        if (data.transcript) { words = data.transcript; transcriptionOk = true; }
+      } catch (err: any) { setTranscriptionError(err.message || 'Ошибка обработки'); }
+    }
+
+    if (!transcriptionOk || words.length === 0) {
+      setStageMessage('Ошибка анализа аудио');
+      setTranscriptionError(transcriptionError || 'Не удалось распознать голос');
+      return;
+    }
+
+    setStageMessage('Генерация субтитров...');
+    setTranscript(words);
+    setSubtitleClips(buildKaraokeClips(words));
+    setStage('editing');
+    setIsAnalyzingBroll(true);
+
+    try {
+      const fullText = words.map(w => w.text).join(' ');
+      const vsRes = await fetch('/api/ai/visual-script', { method: 'POST', body: JSON.stringify({ scriptText: fullText }) });
+      if (vsRes.ok) {
+        const vsData = await vsRes.json();
+        const segments = vsData.segments || [];
+        const newPhrases: BRollPhrase[] = [];
+        const newBrollClips: BRollClip[] = [];
+        let wordIdx = 0;
+        segments.slice(0, 3).forEach((seg: any, sIdx: number) => {
+          const phrase: BRollPhrase = {
+            id: `phrase-${sIdx}-${Date.now()}`,
+            text: seg.text,
+            start: words[wordIdx]?.start || 0,
+            end: (words[wordIdx]?.start || 0) + 3,
+            approved: true
+          };
+          newPhrases.push(phrase);
+          newBrollClips.push({
+            id: `br-${phrase.id}`, phraseId: phrase.id, startTime: phrase.start, endTime: phrase.end,
+            label: seg.visual_metaphor?.slice(0, 30) || 'AI Scene', url: '',
+            prompt: seg.pexels_query || seg.ai_prompt || seg.visual_metaphor || seg.text, track: 1
+          });
+          wordIdx = Math.min(words.length - 1, wordIdx + 5);
+        });
+        setPhrases(newPhrases);
+        setBrollClips(newBrollClips);
+        setPendingBrollPhrases(newPhrases);
+      }
+    } catch (e) {} finally { setIsAnalyzingBroll(false); setStageMessage(''); }
+  }, [aRollUrl, rawFile, manifest, projectId, transcriptionError]);
+
+  useEffect(() => {
+    if (stage === 'transcribing' && aRollUrl && !transcriptionStartedRef.current) {
+      transcriptionStartedRef.current = true;
+      runTranscriptionAndPhrases();
+    }
+  }, [stage, aRollUrl, runTranscriptionAndPhrases]);
+
+  // Duration sync
+  useEffect(() => {
+    const maxBrollEnd = brollClips.length > 0 ? Math.max(...brollClips.map(c => c.endTime)) : 0;
+    const newDuration = Math.max(aRollDuration, maxBrollEnd, 60);
+    if (Math.abs(newDuration - duration) > 0.1) setDuration(newDuration);
+  }, [aRollDuration, brollClips, duration]);
+
+  return {
+    stage, setStage, stageMessage, setStageMessage,
+    aRollUrl, setARollUrl, isPlaying, setIsPlaying, isMuted, setIsMuted,
+    currentTime, setCurrentTime, aRollDuration, setARollDuration, duration,
+    transcript, setTranscript, subtitleClips, setSubtitleClips,
+    brollClips, setBrollClips, phrases, setPhrases,
+    transcriptionError, setTranscriptionError, isAnalyzingBroll,
+    subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
+    preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
+    runTranscriptionAndPhrases, setRawFile
+  };
+}

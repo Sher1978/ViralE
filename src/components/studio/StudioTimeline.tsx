@@ -95,9 +95,9 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
 
   // --- DRAG & RESIZE LOGIC ---
 
-  const startDrag = (e: React.MouseEvent | React.TouchEvent, overlay: TimelineOverlay, handle: 'move' | 'start' | 'end') => {
+  const startDrag = (e: React.PointerEvent | React.MouseEvent | React.TouchEvent, overlay: TimelineOverlay, handle: 'move' | 'start' | 'end') => {
     e.stopPropagation();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
     
     setDragState({
       id: overlay.id,
@@ -118,13 +118,18 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
     }, 3000); 
   };
 
-  const startLongPress = (type: 'broll' | 'subtitle' | 'empty', id?: string, startTime?: number) => {
+  const startLongPress = (type: 'broll' | 'subtitle' | 'empty', clientX: number) => {
+     clearLongPress();
      longPressTimer.current = setTimeout(() => {
         if (navigator.vibrate) navigator.vibrate(60);
-        if (type === 'empty' && startTime !== undefined) {
-           // Do not auto-create on empty click unless desired
-        } else if (id) {
-           onOpenEditor(type as any, id);
+        
+        if (type === 'empty') {
+           const container = containerRef.current;
+           if (!container) return;
+           const rect = container.getBoundingClientRect();
+           const x = clientX - rect.left + container.scrollLeft - 32;
+           const time = Math.max(0, x / pxPerSecond);
+           onCreateOverlay('broll', time);
         }
      }, 3000); 
   };
@@ -233,10 +238,9 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
     return (
       <motion.div
         layout
-        onMouseDown={(e) => startDrag(e, overlay, 'move')}
-        onTouchStart={(e) => startDrag(e, overlay, 'move')}
-        onMouseUp={clearLongPress}
-        onTouchEnd={clearLongPress}
+        onPointerDown={(e) => startDrag(e, overlay, 'move')}
+        onPointerUp={clearLongPress}
+        onPointerLeave={clearLongPress}
         className={`absolute h-8 rounded-lg border transition-all cursor-grab active:cursor-grabbing flex items-center px-3 overflow-hidden group ${
           isSelected ? `ring-2 ring-white border-transparent ${color} shadow-xl z-20` : `bg-white/5 border-white/10 hover:border-white/20 z-10`
         }`}
@@ -246,21 +250,21 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
           backgroundColor: isSelected ? undefined : 'rgba(255,255,255,0.05)'
         }}
       >
-        <div className="absolute left-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-white/20 flex items-center justify-center" 
-             onMouseDown={(e) => startDrag(e, overlay, 'start')}>
-          <div className="w-0.5 h-3 bg-white/20 rounded-full" />
+        <div className="absolute top-0 bottom-0 w-11 -left-[22px] cursor-ew-resize hover:bg-white/5 flex items-center justify-center z-30" 
+             onPointerDown={(e) => startDrag(e, overlay, 'start')}>
+          <div className="w-1.5 h-4 bg-white/40 rounded-full shadow-sm" />
         </div>
         
-        <div className="flex items-center gap-2 min-w-0 mx-auto">
+        <div className="flex items-center gap-2 min-w-0 mx-auto pointer-events-none">
           {overlay.type === 'broll' ? <Film size={10} className="text-blue-400" /> : <Type size={10} className="text-amber-400" />}
           <span className="text-[8px] font-black uppercase truncate tracking-widest text-white/80">
             {overlay.type === 'subtitle' ? overlay.content : 'B-ROLL'}
           </span>
         </div>
 
-        <div className="absolute right-0 top-0 bottom-0 w-3 cursor-ew-resize hover:bg-white/20 flex items-center justify-center" 
-             onMouseDown={(e) => startDrag(e, overlay, 'end')}>
-          <div className="w-0.5 h-3 bg-white/20 rounded-full" />
+        <div className="absolute top-0 bottom-0 w-11 -right-[22px] cursor-ew-resize hover:bg-white/5 flex items-center justify-center z-30" 
+             onPointerDown={(e) => startDrag(e, overlay, 'end')}>
+          <div className="w-1.5 h-4 bg-white/40 rounded-full shadow-sm" />
         </div>
       </motion.div>
     );
@@ -272,9 +276,10 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
     <div 
       className="w-full bg-[#050508] border-t border-white/5 py-4 flex flex-col gap-2 select-none relative"
       onWheel={handleWheel}
-      onTouchStart={handleTouchStart}
-      onTouchMove={handleTouchMove}
-      onTouchEnd={() => setIsPinching(false)}
+      onPointerDown={handleTouchStart}
+      onPointerMove={handleTouchMove}
+      onPointerUp={() => setIsPinching(false)}
+      onContextMenu={(e) => e.preventDefault()}
     >
       {/* Header HUD - Minimalist */}
       <div className="flex items-center justify-between px-8 mb-2">
@@ -340,8 +345,14 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
           </div>
 
           {/* Track 2: B-Rolls */}
-          <div className="absolute top-22 left-8 right-0 h-12 border-t border-white/5 flex items-center" style={{ marginTop: '56px' }}>
-             <span className="absolute -left-6 top-1/2 -translate-y-1/2 -rotate-90 text-[7px] font-black text-white/10 uppercase tracking-[0.5em]">B-ROLL</span>
+          <div 
+            className="absolute top-22 left-8 right-0 h-12 border-t border-white/5 flex items-center" 
+            style={{ marginTop: '56px' }}
+            onPointerDown={(e) => startLongPress('empty', e.clientX)}
+            onPointerUp={clearLongPress}
+            onPointerLeave={clearLongPress}
+          >
+             <span className="absolute -left-6 top-1/2 -translate-y-1/2 -rotate-90 text-[7px] font-black text-white/10 uppercase tracking-[0.5em] pointer-events-none">B-ROLL</span>
              {brollClips.map(clip => <OverlayItem key={clip.id} overlay={clip} color="bg-blue-600" />)}
           </div>
 
