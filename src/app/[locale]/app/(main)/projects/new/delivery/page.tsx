@@ -744,21 +744,30 @@ export default function DeliveryPage() {
           </p>
           <button 
             onClick={() => {
-              if (job?.status === 'completed') {
-                const confirmed = window.confirm(locale === 'ru' ? 'Видео уже готово. Пересобрать его другим методом? Текущий результат будет удален.' : 'Video is ready. Re-render with another method? Current result will be deleted.');
+              if (job?.status === 'completed' || job?.status === 'processing') {
+                const confirmed = window.confirm(locale === 'ru' ? 'Это прервет текущий процесс и запустит сборку заново другим методом. Продолжить?' : 'This will restart the render using a different method. Continue?');
                 if (!confirmed) return;
               }
+              
               const next = renderMode === 'canvas' ? 'ffmpeg' : 'canvas';
+              console.log('[Delivery] Manual switch to:', next);
+              
               setRenderMode(next);
               setJob(null);
               setError(null);
               setRenderProgress(0);
-              if (version) {
-                setTimeout(() => {
-                  if (next === 'canvas') handleCanvasRender(version);
-                  else handleClientRender(version);
-                }, 100);
-              }
+              setRenderStatus(locale === 'ru' ? 'Подготовка к перезапуску...' : 'Preparing restart...');
+              
+              // Force fresh load of version to be 100% sure we have it
+              projectService.getLatestVersion(projectId).then(v => {
+                if (v) {
+                  setVersion(v);
+                  if (next === 'canvas') handleCanvasRender(v);
+                  else handleClientRender(v);
+                } else {
+                  setError('Не удалось загрузить данные проекта для перезапуска.');
+                }
+              });
             }}
             className="px-6 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black uppercase text-white/40 hover:text-white transition-all"
           >

@@ -765,11 +765,12 @@ export const VideoEditor = React.memo(({
           }
         } catch (fetchErr: any) {
           clearTimeout(timeoutId);
-          throw fetchErr;
+          console.error('Fetch failed:', fetchErr);
+          setTranscriptionError(fetchErr.message || 'Ошибка сети или тайм-аут');
         }
-        const errMsg = err.message || 'Ошибка обработки';
-        console.error('Transcription flow failed:', errMsg);
-        setTranscriptionError(`${errMsg} (Попробуйте обновить страницу или загрузить другое видео)`);
+      } catch (err: any) {
+        console.error('Transcription flow failed:', err);
+        setTranscriptionError(err.message || 'Ошибка обработки');
       }
     }
 
