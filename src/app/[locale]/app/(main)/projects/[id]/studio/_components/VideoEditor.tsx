@@ -692,9 +692,6 @@ export const VideoEditor = React.memo(({
           // 🚀 Give system a full second to breathe after mounting
           await delay(1000);
         }
-
-        const sizeMB = sourceBlob.size / 1024 / 1024;
-        
         if (!audioBlob) {
           // 🚀 ONLY extract audio on client if file is LARGE (>30MB)
           // For smaller files, direct upload is more reliable (like "3 days ago")
