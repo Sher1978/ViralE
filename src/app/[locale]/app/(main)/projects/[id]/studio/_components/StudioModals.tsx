@@ -28,7 +28,7 @@ interface StudioModalsProps {
   setBrollModalOpen: (open: boolean) => void;
   setActiveBrollPhraseId: (id: string | null) => void;
   setStage: (stage: any) => void;
-  handleBRollSelect: (url: string, label: string) => void;
+  handleBRollSelect: (url: string, label?: string) => void;
   activeBrollPrompt: string;
   projectId: string;
   preFetchedBrolls: Record<string, any[]>;

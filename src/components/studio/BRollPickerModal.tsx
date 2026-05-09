@@ -19,7 +19,7 @@ interface VideoItem {
 interface BRollPickerModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (url: string) => void;
+  onSelect: (url: string, label?: string) => void;
   segmentText?: string;
   emotionTags?: string[];
   projectId?: string;
@@ -128,7 +128,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
       const localUrl = URL.createObjectURL(file);
       // We can also upload to server if needed, but local is faster for editing
       // onSelect will handle the URL
-      onSelect(localUrl);
+      onSelect(localUrl, file.name);
       onClose();
     } catch (err) {
       console.error('Upload failed', err);
@@ -447,7 +447,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
             </div>
             <button
               onClick={() => {
-                onSelect(previewVideo.videoUrl);
+                onSelect(previewVideo.videoUrl, previewVideo.title || 'AI Scene');
                 setPreviewVideo(null);
               }}
               className="w-full h-16 rounded-xl bg-white text-black font-black uppercase tracking-[0.3em] text-sm shadow-[0_0_40px_rgba(255,255,255,0.2)] active:scale-95 transition-all"

@@ -6,7 +6,7 @@ import { Loader2, Upload, Wand2 } from 'lucide-react';
 import { BRollClip, SubtitleClip } from '../_hooks/useStudioState';
 
 interface StudioViewportProps {
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   aRollUrl: string | null;
   isMuted: boolean;
   isPlaying: boolean;

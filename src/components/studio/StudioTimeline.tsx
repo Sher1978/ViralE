@@ -21,7 +21,7 @@ interface StudioTimelineProps {
   onDeleteOverlay: (type: 'broll' | 'subtitle', id: string) => void;
   onCreateOverlay: (type: 'broll' | 'subtitle', startTime: number) => void;
   onOpenEditor: (type: 'broll' | 'subtitle', id: string) => void;
-  onAddSegment: () => void;
+  onAddSegment?: () => void;
   isRegenerating?: string | null;
   onSeek?: (time: number) => void;
 }
@@ -276,9 +276,13 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
     <div 
       className="w-full bg-[#050508] border-t border-white/5 py-4 flex flex-col gap-2 select-none relative"
       onWheel={handleWheel}
-      onPointerDown={handleTouchStart}
-      onPointerMove={handleTouchMove}
-      onPointerUp={() => setIsPinching(false)}
+      onPointerDown={(e) => {
+        // We still need onPointerDown for mouse/stylus if we want, 
+        // but for touch we use onTouchStart below
+      }}
+      onTouchStart={handleTouchStart}
+      onTouchMove={handleTouchMove}
+      onTouchEnd={() => setIsPinching(false)}
       onContextMenu={(e) => e.preventDefault()}
     >
       {/* Header HUD - Minimalist */}

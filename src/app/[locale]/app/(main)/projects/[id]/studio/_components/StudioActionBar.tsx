@@ -14,7 +14,7 @@ interface StudioActionBarProps {
   togglePlay: () => void;
   setCurrentTime: (time: number) => void;
   setIsMuted: React.Dispatch<React.SetStateAction<boolean>>;
-  videoRef: React.RefObject<HTMLVideoElement>;
+  videoRef: React.RefObject<HTMLVideoElement | null>;
   
   // Stage & Actions
   stage: string;

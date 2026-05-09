@@ -93,7 +93,7 @@ export const VideoEditor = React.memo(({
     setBrollModalOpen(true);
   };
 
-  const handleBRollSelect = (url: string, label: string) => {
+  const handleBRollSelect = (url: string, label?: string) => {
     if (activeBrollPhraseId) {
       const brollId = `br_${Date.now()}`;
       const downloadAndCache = async (targetUrl: string, clipId: string) => {
