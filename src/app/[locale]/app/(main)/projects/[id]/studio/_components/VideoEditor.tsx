@@ -246,9 +246,14 @@ export const VideoEditor = React.memo(({
         try {
           if (data.subtitleClips) setSubtitleClips(data.subtitleClips);
           if (data.transcript) setTranscript(data.transcript);
-          // 🚀 Optimization: If we have a fresh recording passed via props, 
-          // don't overwrite the 'transcribing' stage with a stale 'editing' stage from IDB.
-          if (data.stage && !propARollUrl) setStage(data.stage);
+          // 🚀 Optimization: Recover stage if we have content. 
+          // If we have subtitles, we are definitely in 'editing' stage.
+          if (data.subtitleClips && data.subtitleClips.length > 0) {
+            setStage('editing');
+            transcriptionStartedRef.current = true; // Block auto-transcription
+          } else if (data.stage) {
+            setStage(data.stage);
+          }
           if (data.subtitlePos) setSubtitlePos(data.subtitlePos);
           if (data.subtitleSize) setSubtitleSize(data.subtitleSize);
           if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {

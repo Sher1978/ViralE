@@ -171,8 +171,21 @@ export default function DeliveryPage() {
       const vARoll = document.createElement('video');
       vARoll.src = aRollUrl;
       vARoll.muted = true;
+      vARoll.playsInline = true;
       vARoll.crossOrigin = 'anonymous';
-      await new Promise((r) => { vARoll.onloadedmetadata = r; vARoll.load(); });
+      
+      const vBRoll = document.createElement('video');
+      vBRoll.muted = true;
+      vBRoll.playsInline = true;
+      vBRoll.crossOrigin = 'anonymous';
+
+      setRenderStatus('Загрузка основного видео...');
+      await new Promise((resolve, reject) => {
+        const timeout = setTimeout(() => reject(new Error('Timeout loading A-Roll')), 15000);
+        vARoll.onloadedmetadata = () => { clearTimeout(timeout); resolve(true); };
+        vARoll.onerror = () => { clearTimeout(timeout); reject(new Error('Failed to load A-Roll video file')); };
+        vARoll.load();
+      });
       
       const duration = vARoll.duration;
       const fps = 30;
@@ -206,13 +219,21 @@ export default function DeliveryPage() {
         // Draw B-Roll
         const activeBR = brolls.find((b: any) => time >= b.startTime && time <= b.endTime && b.url);
         if (activeBR) {
-          const vBR = document.createElement('video');
-          vBR.src = activeBR.url;
-          vBR.muted = true;
-          vBR.crossOrigin = 'anonymous';
-          vBR.currentTime = Math.max(0, time - activeBR.startTime);
-          await new Promise(r => { vBR.onloadeddata = r; vBR.onerror = r; });
-          ctx.drawImage(vBR, 0, 0, canvas.width, canvas.height);
+          if (vBRoll.src !== activeBR.url) {
+            vBRoll.src = activeBR.url;
+            await new Promise(r => { 
+              const t = setTimeout(r, 2000);
+              vBRoll.onloadeddata = () => { clearTimeout(t); r(true); };
+              vBRoll.onerror = () => { clearTimeout(t); r(false); };
+              vBRoll.load();
+            });
+          }
+          vBRoll.currentTime = Math.max(0, time - activeBR.startTime);
+          await new Promise(r => { 
+            const t = setTimeout(r, 500);
+            vBRoll.onseeked = () => { clearTimeout(t); r(true); };
+          });
+          ctx.drawImage(vBRoll, 0, 0, canvas.width, canvas.height);
         }
 
         // Draw Subtitles
@@ -267,11 +288,17 @@ export default function DeliveryPage() {
       setRenderStatus('Готово!');
 
     } catch (err: any) {
-      console.error('[Canvas Render] Failed:', err);
-      setError(`Ошибка Canvas-рендера: ${err.message}. Пробую FFmpeg...`);
-      // Auto-fallback
-      setRenderMode('ffmpeg');
-      setTimeout(() => handleClientRender(ver), 2000);
+      console.error('[Canvas Render] Critical Failure:', err);
+      const errorMsg = err instanceof Error ? err.message : (typeof err === 'object' ? JSON.stringify(err) : String(err));
+      setError(`Ошибка Canvas-рендера: ${errorMsg}. Пробую FFmpeg...`);
+      
+      // Auto-fallback after a short delay so user can see what happened
+      setTimeout(() => {
+        if (!job || job.status !== 'completed') {
+           setRenderMode('ffmpeg');
+           handleClientRender(ver);
+        }
+      }, 3000);
     } finally {
       setIsLaunchingRender(false);
     }
@@ -605,7 +632,12 @@ export default function DeliveryPage() {
           <h2 className="text-xl font-black text-white uppercase tracking-tighter">Delivery Failed</h2>
           <p className="text-sm text-white/40">{error}</p>
         </div>
-        <button onClick={() => router.back()} className="px-8 py-3 rounded-full bg-purple-500 text-white text-xs font-black uppercase tracking-widest">Back to Studio</button>
+        <button 
+          onClick={() => router.push(`/app/projects/${projectId}/studio`)} 
+          className="px-8 py-3 rounded-full bg-purple-500 text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-purple-900/40"
+        >
+          {locale === 'ru' ? 'Вернуться в монтажку' : 'Back to Montage'}
+        </button>
       </div>
     );
   }
@@ -613,8 +645,11 @@ export default function DeliveryPage() {
   return (
     <div className="space-y-5 animate-fade-in pb-10">
       <div className="flex items-center justify-between py-2">
-        <button onClick={() => router.back()} className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all">
-          <ArrowLeft size={14} /> {locale === 'ru' ? 'В СТУДИЮ' : 'STUDIO'}
+        <button 
+          onClick={() => router.push(`/app/projects/${projectId}/studio`)} 
+          className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all"
+        >
+          <ArrowLeft size={14} /> {locale === 'ru' ? 'В МОНТАЖКУ' : 'BACK TO STUDIO'}
         </button>
         <div className="text-[10px] font-black text-white/20 tracking-[0.3em] uppercase">Delivery Lab</div>
       </div>

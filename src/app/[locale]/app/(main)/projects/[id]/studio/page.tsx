@@ -678,6 +678,22 @@ export default function StudioPage() {
         });
       }
       
+      // тЬЕ Sync local draft for immediate recovery if user comes back
+      try {
+        const key = `viral_editor_draft_${projectId}`;
+        const state = { 
+          aRollUrl: resolvedARollUrl, 
+          brollClips: broll || [], 
+          subtitleClips: subs || [], 
+          transcript: manifest.transcript || [], 
+          stage: 'editing',
+          subtitlePos: (manifest as any).subtitlePos || { x: 0, y: 0 },
+          subtitleSize: (manifest as any).subtitleSize || 16
+        };
+        await idb.set(key, state, 'ProjectDrafts');
+        console.log('[Studio] Local draft synced for delivery session');
+      } catch (e) { console.warn('[Studio] Local draft sync failed:', e); }
+
       // тЬЕ Invalidate render cache so delivery always re-renders with fresh subtitles
       try {
         await idb.delete(`final_render_${projectId}`, 'MediaBuffer');
