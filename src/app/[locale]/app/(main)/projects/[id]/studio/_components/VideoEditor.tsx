@@ -1316,7 +1316,24 @@ export const VideoEditor = React.memo(({
                 />
               </div>
               <div className="text-center px-8">
-                <p className="text-xs font-black text-white uppercase tracking-widest leading-relaxed">{stageMessage}</p>
+                <h2 className="text-lg font-black text-white uppercase tracking-tight mb-1">{stageMessage}</h2>
+                {transcriptionError ? (
+                  <div className="mt-2 space-y-4">
+                    <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest leading-relaxed max-w-[260px] mx-auto">
+                      {transcriptionError}
+                    </p>
+                    <button 
+                      onClick={() => {
+                        setTranscriptionError(null);
+                        setStageMessage('Повторная попытка...');
+                        runTranscriptionAndPhrases(true);
+                      }}
+                      className="px-6 py-2 rounded-xl bg-purple-500 text-white text-[9px] font-black uppercase tracking-widest shadow-lg shadow-purple-900/40 active:scale-95 transition-all"
+                    >
+                      Попробовать снова
+                    </button>
+                  </div>
+                ) : (
                   <div className="flex flex-col items-center gap-4">
                     <div className="flex gap-1 justify-center mt-3">
                       {[0, 1, 2].map(i => (
@@ -1325,14 +1342,15 @@ export const VideoEditor = React.memo(({
                           transition={{ duration: 1, repeat: Infinity, delay: i * 0.2 }} />
                       ))}
                     </div>
-                    {/* Emergency skip after some time */}
-                    <button 
-                      onClick={() => setStage('editing')}
-                      className="mt-4 px-4 py-2 rounded-xl text-white/20 text-[9px] font-bold uppercase tracking-widest hover:text-white/40 transition-colors"
-                    >
-                      Пропустить анализ
-                    </button>
                   </div>
+                )}
+
+                <button 
+                  onClick={() => setStage('editing')}
+                  className="mt-6 px-4 py-2 rounded-xl text-white/20 text-[9px] font-bold uppercase tracking-widest hover:text-white/40 transition-colors"
+                >
+                  Пропустить анализ
+                </button>
               </div>
 
             </motion.div>

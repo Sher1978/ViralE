@@ -271,8 +271,8 @@ export default function DeliveryPage() {
       const silentVideoBlob = await recordPromise;
       
       console.log('[Canvas Render] Silent video blob size:', silentVideoBlob.size);
-      if (silentVideoBlob.size < 100) {
-        throw new Error('Сбой MediaRecorder: итоговый файл пуст. Возможно, браузер ограничил доступ к видео-потоку.');
+      if (silentVideoBlob.size < 500) {
+        throw new Error('Сбой MediaRecorder: итоговый файл слишком мал. Вероятно, браузер ограничил доступ к видео-потоку (CORS).');
       }
 
       // 6. Merge Audio with FFmpeg (Lightning Fast)
@@ -591,6 +591,15 @@ export default function DeliveryPage() {
       if (projectId) {
         try {
           // 1. TRY RECOVERING FROM CACHE
+          const cachedRec = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+          const verData = await projectService.getLatestVersion(projectId);
+          
+          if (cachedRec instanceof Blob) {
+            setPreviewUrl(URL.createObjectURL(cachedRec));
+          } else if (verData?.script_data?.aRollUrl) {
+            setPreviewUrl(verData.script_data.aRollUrl);
+          }
+
           const cachedRender = await idb.get(`final_render_${projectId}`, 'MediaBuffer');
           if (cachedRender instanceof Blob) {
             console.log('[Delivery] Restored from IDB cache');
@@ -737,11 +746,20 @@ export default function DeliveryPage() {
           </p>
           <button 
             onClick={() => {
+              if (job?.status === 'completed') {
+                const confirmed = window.confirm(locale === 'ru' ? 'Видео уже готово. Пересобрать его другим методом? Текущий результат будет удален.' : 'Video is ready. Re-render with another method? Current result will be deleted.');
+                if (!confirmed) return;
+              }
               const next = renderMode === 'canvas' ? 'ffmpeg' : 'canvas';
               setRenderMode(next);
+              setJob(null);
+              setError(null);
+              setRenderProgress(0);
               if (version) {
-                if (next === 'canvas') handleCanvasRender(version);
-                else handleClientRender(version);
+                setTimeout(() => {
+                  if (next === 'canvas') handleCanvasRender(version);
+                  else handleClientRender(version);
+                }, 100);
               }
             }}
             className="px-6 py-2 rounded-xl bg-white/5 border border-white/10 text-[9px] font-black uppercase text-white/40 hover:text-white transition-all"
