@@ -69,6 +69,8 @@ export interface ProductionManifest {
   videoUrl?: string;
   transcript?: any[]; 
   totalDuration: number;
+  customScript?: string;
+  useCustomScript?: boolean;
   distributionAssets?: DistributionAssets;
   config: {
     resolution: string;
