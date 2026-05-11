@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { 
-  Play, Pause, Volume2, VolumeX, SkipBack, Sparkles, Mic 
+  Play, Pause, RotateCcw, RotateCw
 } from 'lucide-react';
 import { SubtitleClip } from '../_hooks/useStudioState';
 
@@ -16,7 +16,7 @@ interface StudioActionBarProps {
   setIsMuted: React.Dispatch<React.SetStateAction<boolean>>;
   videoRef: React.RefObject<HTMLVideoElement | null>;
   
-  // Stage & Actions
+  // Stage & Actions (Note: Some of these will move to ToolDrawer)
   stage: string;
   subtitleClips: SubtitleClip[];
   aRollUrl: string | null;
@@ -25,71 +25,50 @@ interface StudioActionBarProps {
   onGenerateBRoll: () => void;
 }
 
-const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
+const fmt = (s: number) => {
+    const min = Math.floor(s / 60);
+    const sec = Math.floor(s % 60);
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+};
 
 export const StudioActionBar: React.FC<StudioActionBarProps> = ({
-  isPlaying, isMuted, currentTime, duration, togglePlay, setCurrentTime, setIsMuted, videoRef,
-  stage, subtitleClips, aRollUrl, onRefineSubtitles, onTranscribe, onGenerateBRoll
+  isPlaying, currentTime, duration, togglePlay
 }) => {
   return (
-    <div className="flex items-center gap-2 px-4 py-2.5 bg-[#0a0a12] border-y border-white/5 flex-shrink-0">
-      {/* Transport */}
-      <button 
-        onClick={() => { 
-          setCurrentTime(0); 
-          if (videoRef.current) videoRef.current.currentTime = 0; 
-        }}
-        className="p-2.5 rounded-xl bg-white/5 active:scale-95"
-      >
-        <SkipBack size={15} className="text-white/50" />
-      </button>
-      
-      <button 
-        onClick={togglePlay}
-        className="w-10 h-10 rounded-lg bg-purple-500 flex items-center justify-center shadow-lg shadow-purple-500/20 active:scale-95"
-      >
-        {isPlaying ? <Pause size={17} fill="white" /> : <Play size={17} fill="white" className="ml-0.5" />}
-      </button>
-      
-      <button 
-        onClick={() => setIsMuted(m => !m)} 
-        className="p-2.5 rounded-xl bg-white/5 active:scale-95"
-      >
-        {isMuted ? <VolumeX size={15} className="text-white/40" /> : <Volume2 size={15} className="text-white/50" />}
-      </button>
-      
-      <span className="text-[12px] font-black text-purple-400 tabular-nums tracking-tight">
-        {fmt(currentTime)}
-        <span className="text-white/20">/{fmt(duration)}</span>
-      </span>
-      
-      <div className="flex-1" />
-
-      {/* Action Buttons */}
-      <button 
-        onClick={onRefineSubtitles}
-        className="flex items-center gap-2 px-3 py-2 rounded-xl bg-white/5 border border-white/10 text-white/40 text-[9px] font-black uppercase tracking-widest hover:text-purple-400 hover:border-purple-500/30 transition-all"
-      >
-        <Sparkles size={12} /> Refine AI Subtitles
-      </button>
-
-      {(stage === 'editing' || stage === 'empty') && subtitleClips.length === 0 && aRollUrl && (
+    <div className="flex items-center justify-between px-6 h-14 bg-black border-y border-white/[0.06] flex-shrink-0 z-40">
+      {/* Left: Transport Controls */}
+      <div className="flex items-center">
         <button 
-          onClick={onTranscribe}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-blue-500/15 border border-blue-500/30 text-blue-400 text-[11px] font-black uppercase active:scale-95 transition-all"
+          onClick={togglePlay}
+          className="w-10 h-10 flex items-center justify-center text-white active:scale-90 transition-all"
         >
-          <Mic size={14} /> Transcribe
+          {isPlaying ? (
+            <Pause size={24} fill="white" strokeWidth={0} />
+          ) : (
+            <Play size={24} fill="white" strokeWidth={0} className="ml-0.5" />
+          )}
         </button>
-      )}
-
-      {stage === 'editing' && subtitleClips.length > 0 && (
-        <button 
-          onClick={onGenerateBRoll}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-xl bg-purple-500/15 border border-purple-500/30 text-purple-400 text-[11px] font-black uppercase active:scale-95 transition-all"
-        >
-          <Sparkles size={14} /> B-Roll
+      </div>
+      
+      {/* Center: Dual-line Timecode */}
+      <div className="flex flex-col items-center justify-center">
+        <span className="text-[16px] font-bold tabular-nums text-white leading-tight tracking-tight">
+          {fmt(currentTime)}
+        </span>
+        <span className="text-[10px] font-medium text-white/30 tabular-nums leading-tight uppercase tracking-widest">
+          {fmt(duration)}
+        </span>
+      </div>
+      
+      {/* Right: History Controls */}
+      <div className="flex items-center gap-4">
+        <button className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white/60 active:scale-90 transition-all">
+          <RotateCcw size={20} strokeWidth={2.5} />
         </button>
-      )}
+        <button className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white/60 active:scale-90 transition-all">
+          <RotateCw size={20} strokeWidth={2.5} />
+        </button>
+      </div>
     </div>
   );
 };

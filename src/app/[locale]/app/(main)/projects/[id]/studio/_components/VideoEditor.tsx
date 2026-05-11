@@ -3,17 +3,21 @@
 import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
-  ArrowLeft, Cpu, Upload, Loader2, Sparkles, Wand2, SkipBack, Play, Pause, VolumeX, Volume2, Mic, Zap 
+  ArrowLeft, Cpu, Upload, Loader2, Sparkles, Wand2, SkipBack, Play, Pause, VolumeX, Volume2, Mic, Zap,
+  Music, Type, Sliders, PlayCircle
 } from 'lucide-react';
 
 import { ProductionManifest } from '@/lib/types/studio';
 import { idb } from '@/lib/idb';
-import { StudioTimeline } from '@/components/studio/StudioTimeline';
 
-// Modular Refactor
+// Modular Components (Edits Style)
 import { useStudioState, BRollClip, SubtitleClip, TranscriptWord } from '../_hooks/useStudioState';
+import { EditorTopBar } from './EditorTopBar';
 import { StudioViewport } from './StudioViewport';
 import { StudioActionBar } from './StudioActionBar';
+import { EditorTimeline } from './EditorTimeline';
+import { EditorToolDrawer } from './EditorToolDrawer';
+import { EditorCaptionEditor } from './EditorCaptionEditor';
 import { StudioModals } from './StudioModals';
 
 interface VideoEditorProps {
@@ -44,6 +48,7 @@ export const VideoEditor = React.memo(({
     runTranscriptionAndPhrases, setRawFile
   } = useStudioState(projectId, initialManifest || null, propARollUrl);
 
+  const [activeTool, setActiveTool] = useState<string | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [subtitleEditorOpen, setSubtitleEditorOpen] = useState(false);
   const [editingSubtitleId, setEditingSubtitleId] = useState<string | null>(null);
@@ -74,6 +79,13 @@ export const VideoEditor = React.memo(({
     if (isPlaying) v.pause(); else v.play();
     setIsPlaying(p => !p);
   }, [isPlaying, aRollUrl]);
+
+  const onSeek = useCallback((time: number) => {
+    setCurrentTime(time);
+    if (videoRef.current) {
+        videoRef.current.currentTime = time;
+    }
+  }, [setCurrentTime]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -144,51 +156,24 @@ export const VideoEditor = React.memo(({
     setEditingPhraseId(null);
   };
 
-  // Phase labels
-  const phaseLabels = ['Upload', 'Subtitles', 'B-Roll'];
-  const phaseIndex = stage === 'empty' ? 0 : stage === 'transcribing' ? 1 : stage === 'editing' ? 1 : 2;
-
   if (!persistenceLoaded) {
     return (
       <div className="flex-1 bg-[#05050a] flex flex-col items-center justify-center relative overflow-hidden">
-        {/* Background Gradients */}
         <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[600px] h-[600px] bg-purple-600/10 blur-[120px] rounded-full animate-pulse" />
-        <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[400px] h-[400px] bg-blue-600/5 blur-[100px] rounded-full" />
-
         <div className="relative z-10 flex flex-col items-center gap-8">
-          <div className="relative">
-            <div className="w-24 h-24 rounded-[2.5rem] bg-white/[0.03] border border-white/10 flex items-center justify-center relative">
-              <Zap size={48} className="text-white animate-pulse" />
-              <motion.div 
-                animate={{ rotate: 360 }}
-                transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
-                className="absolute -inset-4 border-2 border-t-purple-500 border-r-transparent border-b-blue-500 border-l-transparent rounded-full opacity-20"
-              />
-            </div>
+          <div className="w-24 h-24 rounded-[2.5rem] bg-white/[0.03] border border-white/10 flex items-center justify-center relative">
+            <Zap size={48} className="text-white animate-pulse" />
           </div>
-
-          <div className="flex flex-col items-center gap-3">
-            <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">
-              Viral <span className="text-purple-500">Engine</span>
-            </h2>
-            <div className="flex items-center gap-3">
-              <div className="h-[2px] w-12 bg-gradient-to-r from-transparent to-white/20" />
-              <span className="text-[10px] font-bold uppercase tracking-[0.5em] text-white/40">Initializing Studio</span>
-              <div className="h-[2px] w-12 bg-gradient-to-l from-transparent to-white/20" />
-            </div>
-          </div>
-          
-          <div className="mt-4 flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/5">
-             <Loader2 size={14} className="text-purple-500 animate-spin" />
-             <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Syncing Production Data</span>
-          </div>
+          <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">
+            Viral <span className="text-purple-500">Engine</span>
+          </h2>
         </div>
       </div>
     );
   }
 
   return (
-    <div className="flex flex-col bg-[#050508] text-white select-none h-full max-h-[100dvh] relative">
+    <div className="flex flex-col bg-black text-white h-full max-h-[100dvh] relative overflow-hidden select-none">
       <input ref={fileInputRef} type="file" accept="video/*" className="hidden" onChange={handleFileChange} />
 
       {/* FOUNDATION SELECTION */}
@@ -201,17 +186,11 @@ export const VideoEditor = React.memo(({
               <div className="grid gap-4">
                 <button onClick={() => fileInputRef.current?.click()} className="p-8 rounded-[2rem] bg-white/5 border border-white/10 hover:border-purple-500 transition-all flex flex-col items-center gap-4">
                   <Upload size={32} />
-                  <div>
-                    <span className="block font-black uppercase">Upload A-Roll</span>
-                    <span className="text-[10px] text-white/40 uppercase">Use your own recording</span>
-                  </div>
+                  <span className="block font-black uppercase">Upload A-Roll</span>
                 </button>
                 <button onClick={() => onFaceless?.()} className="p-8 rounded-[2rem] bg-white/5 border border-white/10 hover:border-blue-500 transition-all flex flex-col items-center gap-4">
                   <Cpu size={32} />
-                  <div>
-                    <span className="block font-black uppercase">AI Faceless Mode</span>
-                    <span className="text-[10px] text-white/40 uppercase">Generated visual sequence</span>
-                  </div>
+                  <span className="block font-black uppercase">AI Faceless Mode</span>
                 </button>
               </div>
               <button onClick={onBack} className="text-[10px] font-black uppercase text-white/20 tracking-widest">Cancel</button>
@@ -220,24 +199,13 @@ export const VideoEditor = React.memo(({
         )}
       </AnimatePresence>
 
-      {/* NAV BAR */}
-      <div className="flex items-center justify-between px-6 py-4 border-b border-white/5 bg-[#0a0a14]">
-        <button onClick={onBack} className="flex items-center gap-1.5 px-3 py-2 rounded-lg bg-white/5 text-[10px] font-black uppercase tracking-widest">
-          <ArrowLeft size={12} /> Back
-        </button>
-        <div className="flex gap-1.5">
-          {phaseLabels.map((label, i) => (
-            <div key={label} className={`px-2 py-1 rounded-full text-[8px] font-black uppercase tracking-widest ${i === phaseIndex ? 'bg-purple-500/20 text-purple-400 border border-purple-500/30' : 'text-white/30'}`}>
-              {label}
-            </div>
-          ))}
-        </div>
-        <button onClick={() => onNext?.(brollClips, subtitleClips, aRollUrl)} className="px-5 py-2 rounded-lg bg-purple-500 text-[10px] font-black uppercase tracking-widest">
-          Export
-        </button>
-      </div>
+      {/* 1. Header Bar */}
+      <EditorTopBar 
+        onBack={onBack} 
+        onExport={() => onNext?.(brollClips, subtitleClips, aRollUrl)} 
+      />
 
-      {/* VIEWPORT */}
+      {/* 2. Video Preview (Viewport) */}
       <StudioViewport 
         videoRef={videoRef} aRollUrl={aRollUrl} isMuted={isMuted} isPlaying={isPlaying} currentTime={currentTime} togglePlay={togglePlay}
         setCurrentTime={setCurrentTime} setARollDuration={setARollDuration}
@@ -247,66 +215,85 @@ export const VideoEditor = React.memo(({
         runTranscriptionAndPhrases={runTranscriptionAndPhrases} setStage={setStage} setTranscriptionError={setTranscriptionError} setStageMessage={setStageMessage}
       />
 
-      {/* ACTION BAR */}
+      {/* 3. Transport Controls */}
       <StudioActionBar 
         isPlaying={isPlaying} isMuted={isMuted} currentTime={currentTime} duration={duration} togglePlay={togglePlay} setCurrentTime={setCurrentTime} setIsMuted={setIsMuted} videoRef={videoRef}
         stage={stage} subtitleClips={subtitleClips} aRollUrl={aRollUrl}
         onRefineSubtitles={() => { setStage('transcribing'); runTranscriptionAndPhrases(true); }}
         onTranscribe={() => runTranscriptionAndPhrases(true)}
-        onGenerateBRoll={() => {
-          const firstEmpty = brollClips.find(c => !c.url);
-          if (firstEmpty) openBRollHunterForClip(firstEmpty.phraseId || firstEmpty.id, firstEmpty.prompt);
-        }}
+        onGenerateBRoll={() => {}}
       />
 
-      {/* TIMELINE */}
-      <StudioTimeline 
-        segments={initialManifest?.segments || []}
+      {/* 4. Timeline Ruler + Tracks */}
+      <EditorTimeline 
         totalDuration={duration}
         currentTime={currentTime}
-        brollClips={brollClips.map(c => ({ id: c.id, type: 'broll', startTime: c.startTime, duration: c.endTime - c.startTime, content: c.url || c.label }))}
-        subtitleClips={subtitleClips.map(c => ({ id: c.id, type: 'subtitle', startTime: c.startTime, duration: c.endTime - c.startTime, content: c.text }))}
-        activeIndex={0} selectedId={selectedClipId}
-        onSelect={(type, id) => setSelectedClipId(id)}
-        onUpdateOverlay={(type, id, data) => {
-          if (type === 'broll') {
-            setBrollClips(prev => prev.map(c => c.id === id ? { ...c, startTime: data.startTime ?? c.startTime, endTime: (data.startTime ?? c.startTime) + (data.duration ?? (c.endTime - c.startTime)) } : c));
-          } else {
-            setSubtitleClips(prev => prev.map(c => c.id === id ? { ...c, startTime: data.startTime ?? c.startTime, endTime: (data.startTime ?? c.startTime) + (data.duration ?? (c.endTime - c.startTime)) } : c));
-          }
-        }}
-        onDeleteOverlay={(type, id) => {
-          if (type === 'broll') setBrollClips(prev => prev.filter(c => c.id !== id));
-          else setSubtitleClips(prev => prev.filter(c => c.id !== id));
-          setSelectedClipId(null);
-        }}
-        onCreateOverlay={(type, time) => {
-          const id = `${type}_${Date.now()}`;
-          if (type === 'broll') {
+        onSeek={onSeek}
+        aRollUrl={aRollUrl}
+        brollClips={brollClips.map(c => ({ id: c.id, type: 'broll', startTime: c.startTime, duration: c.endTime - c.startTime }))}
+        subtitleClips={subtitleClips.map(c => ({ id: c.id, type: 'subtitle', startTime: c.startTime, duration: c.endTime - c.startTime }))}
+        onCreateBroll={(time) => {
+            const id = `br_${Date.now()}`;
             setBrollClips(prev => [...prev, { id, phraseId: id, startTime: time, endTime: time + 3, label: 'New Scene', url: '', prompt: 'cinematic shot', track: 1 }]);
             openBRollHunterForClip(id, 'cinematic shot');
-          } else {
-            setSubtitleClips(prev => [...prev, { id, text: 'New Text', startTime: time, endTime: time + 2, style: 'minimal' }]);
-          }
-          setSelectedClipId(id);
-        }}
-        onOpenEditor={(type, id) => {
-          setSelectedClipId(id);
-          if (type === 'broll') {
-            const clip = brollClips.find(c => c.id === id);
-            if (clip) openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt);
-          } else {
-            const sub = subtitleClips.find(c => c.id === id);
-            if (sub) { setEditingSubtitleId(id); setSubtitleEditText(sub.text); setSubtitleEditorOpen(true); }
-          }
-        }}
-        onSeek={(time) => {
-          setCurrentTime(time);
-          if (videoRef.current) videoRef.current.currentTime = time;
         }}
       />
 
-      {/* MODALS */}
+      {/* 5. Tool Drawer */}
+      <EditorToolDrawer 
+        activeTool={activeTool}
+        onToolSelect={setActiveTool}
+        onClose={() => setActiveTool(null)}
+      >
+        {activeTool === 'captions' && (
+            <EditorCaptionEditor 
+                subtitleClips={subtitleClips}
+                setSubtitleClips={setSubtitleClips}
+                currentTime={currentTime}
+                onSeek={onSeek}
+                onClose={() => setActiveTool(null)}
+            />
+        )}
+        {activeTool === 'broll' && (
+            <div className="flex flex-col gap-4 py-4">
+                <button 
+                    onClick={() => {
+                        const firstEmpty = brollClips.find(c => !c.url);
+                        if (firstEmpty) openBRollHunterForClip(firstEmpty.phraseId || firstEmpty.id, firstEmpty.prompt);
+                        else {
+                            const id = `br_${Date.now()}`;
+                            setBrollClips(prev => [...prev, { id, phraseId: id, startTime: currentTime, endTime: currentTime + 3, label: 'AI Moment', url: '', prompt: 'cinematic shot', track: 1 }]);
+                            openBRollHunterForClip(id, 'cinematic shot');
+                        }
+                    }}
+                    className="w-full py-6 bg-purple-500 rounded-3xl flex flex-col items-center gap-2 shadow-xl shadow-purple-500/20 active:scale-95 transition-all"
+                >
+                    <Sparkles size={24} />
+                    <span className="text-[12px] font-black uppercase tracking-widest">Find AI Scenes</span>
+                </button>
+                <div className="grid grid-cols-2 gap-3">
+                    <button className="p-6 bg-white/5 border border-white/5 rounded-3xl flex flex-col items-center gap-2 opacity-40">
+                        <Upload size={20} />
+                        <span className="text-[10px] font-bold uppercase">Manual Upload</span>
+                    </button>
+                    <button className="p-6 bg-white/5 border border-white/5 rounded-3xl flex flex-col items-center gap-2 opacity-40">
+                        <Sliders size={20} />
+                        <span className="text-[10px] font-bold uppercase">Settings</span>
+                    </button>
+                </div>
+            </div>
+        )}
+        {(activeTool === 'audio' || activeTool === 'voice' || activeTool === 'filters' || activeTool === 'text') && (
+            <div className="flex flex-col items-center justify-center h-40 gap-4 opacity-20">
+                <div className="w-16 h-16 rounded-full border-2 border-dashed border-white/40 flex items-center justify-center">
+                    <Sliders size={24} />
+                </div>
+                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Coming Soon</span>
+            </div>
+        )}
+      </EditorToolDrawer>
+
+      {/* 6. Modals (Persistent) */}
       <StudioModals 
         subtitleEditorOpen={subtitleEditorOpen} setSubtitleEditorOpen={setSubtitleEditorOpen} subtitleEditText={subtitleEditText} setSubtitleEditText={setSubtitleEditText} editingSubtitleId={editingSubtitleId} setSubtitleClips={setSubtitleClips} setSelectedClipId={setSelectedClipId}
         phrasePickerOpen={phrasePickerOpen} setPhrasePickerOpen={setPhrasePickerOpen} setEditingPhraseId={setEditingPhraseId} transcript={transcript} handleSwapPhrase={handleSwapPhrase}
