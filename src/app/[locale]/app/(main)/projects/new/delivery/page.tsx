@@ -288,8 +288,9 @@ export default function DeliveryPage() {
           ctx.shadowBlur = 0; // Reset
         }
 
-        setRenderProgress(Math.round((frame / totalFrames) * 90));
-        setRenderStatus(`Синтез кадров: ${Math.round((frame / totalFrames) * 100)}%`);
+        const calculatedProgress = Math.max(0, Math.min(90, Math.round((frame / (totalFrames || 1)) * 90)));
+        setRenderProgress(calculatedProgress);
+        setRenderStatus(`Синтез кадров: ${Math.round((frame / (totalFrames || 1)) * 100)}%`);
       }
 
       recorder.stop();
@@ -380,7 +381,8 @@ export default function DeliveryPage() {
       });
       
       ffmpeg.on('progress', ({ progress }) => {
-        const p = Math.min(98, 50 + Math.round(progress * 48));
+        if (typeof progress !== 'number' || isNaN(progress) || progress < 0) return;
+        const p = Math.max(0, Math.min(98, 50 + Math.round(progress * 48)));
         setRenderProgress(p);
       });
 
@@ -704,12 +706,12 @@ export default function DeliveryPage() {
             {job?.status === 'completed' ? t('badge') : (renderStatus || 'Видео в процессе...')}
           </h1>
           <p className="text-[11px] text-white/40 mt-1">
-            {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${renderProgress}%`}
+            {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${Math.max(0, Math.min(100, renderProgress))}%`}
           </p>
         </div>
         {job?.status !== 'completed' && (
           <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-            <motion.div className="h-full bg-purple-500" initial={{ width: 0 }} animate={{ width: `${renderProgress}%` }} />
+            <motion.div className="h-full bg-purple-500" initial={{ width: 0 }} animate={{ width: `${Math.max(0, Math.min(100, renderProgress))}%` }} />
           </div>
         )}
       </div>
