@@ -573,6 +573,43 @@ export default function DeliveryPage() {
     a.click();
   };
 
+  const handleDownload = async () => {
+    if (!job?.output_url) return;
+    
+    // Try native share first on mobile
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile && navigator.share && job.output_url.startsWith('blob:')) {
+      try {
+        const res = await fetch(job.output_url);
+        const blob = await res.blob();
+        const file = new File([blob], `ViralEngine_Final_${projectId}.mp4`, { type: 'video/mp4' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Viral Engine Video',
+            text: 'Check out my AI-generated video!'
+          });
+          return;
+        }
+      } catch (e) {
+        console.warn('[Delivery] Native share failed:', e);
+      }
+    }
+
+    // Standard download fallback
+    try {
+      const link = document.createElement('a');
+      link.href = job.output_url;
+      link.download = `ViralEngine_Final_${projectId}.mp4`;
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+    } catch (err) {
+      window.open(job.output_url, '_blank');
+    }
+  };
+
   const handleExport = async (target: 'telegram' | 'drive') => {
     setIsExporting(true);
     await new Promise(r => setTimeout(r, 1500));
@@ -747,13 +784,12 @@ export default function DeliveryPage() {
           </div>
           <div className="flex gap-3">
             {job?.output_url && (
-              <a 
-                href={job.output_url} 
-                download={`ViralEngine_Final_${projectId}.mp4`}
+              <button 
+                onClick={handleDownload}
                 className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-[11px] font-black uppercase tracking-widest hover:bg-purple-500/20 hover:border-purple-500/50 hover:scale-105 active:scale-95 transition-all shadow-[0_10px_40px_rgba(168,85,247,0.15)]"
               >
-                <Download size={16} /> Save Final Video
-              </a>
+                <Download size={16} /> {/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? (locale === 'ru' ? 'СОХРАНИТЬ / ПОДЕЛИТЬСЯ' : 'SAVE / SHARE') : (locale === 'ru' ? 'СКАЧАТЬ ВИДЕО' : 'DOWNLOAD VIDEO')}
+              </button>
             )}
           </div>
         </div>
