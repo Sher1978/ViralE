@@ -175,11 +175,11 @@ export default function StudioPage() {
   const handleAvatarSelect = async (photoUrl: string, avatarId?: string, avatarType?: string) => {
     setSelectedAvatarPhoto(photoUrl);
     setShowAvatarSelector(false);
-    setActiveTab('timeline_lab');
+    handleTabChange('timeline_lab');
   };
 
   const handleTimelineGeneration = async (timelineSegments: any[]) => {
-    setActiveTab('fusion');
+    handleTabChange('fusion');
     setFusionStatus('segmenting');
     setFusionProgress(10);
     setFusionSegmentsCount(timelineSegments.length);
@@ -226,7 +226,7 @@ export default function StudioPage() {
           await projectService.updateLatestVersionManifest(projectId, newManifest);
         }
 
-        setTimeout(() => setActiveTab('assembly'), 1500);
+        setTimeout(() => handleTabChange('assembly'), 1500);
       } else {
         throw new Error('Fusion failed to return a video URL');
       }
@@ -915,7 +915,7 @@ export default function StudioPage() {
                     });
                   }}
                   onColorChange={(color) => setScriptColor(color)}
-                  onBack={() => setActiveTab('branch')}
+                  onBack={() => handleTabChange('branch')}
                   onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
                   onFlipCamera={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
                   onTextSizeChange={(size) => setTextSize(size)}
@@ -973,7 +973,7 @@ export default function StudioPage() {
                   onClick={() => {
                     setShowAssemblyLauncher(false);
                     // Small delay to let GC run before mounting FFmpeg
-                    setTimeout(() => setActiveTab('assembly'), 300);
+                    setTimeout(() => handleTabChange('assembly'), 300);
                   }}
                   className="w-full max-w-xs py-5 bg-purple-500 rounded-[2rem] text-white font-black uppercase tracking-widest text-sm shadow-2xl shadow-purple-500/30 active:scale-95 transition-all"
                 >
@@ -982,7 +982,7 @@ export default function StudioPage() {
                 <button
                   onClick={() => {
                     setShowAssemblyLauncher(false);
-                    setActiveTab('teleprompter');
+                    handleTabChange('teleprompter');
                   }}
                   className="text-white/20 text-xs uppercase tracking-widest font-bold"
                 >
@@ -1003,12 +1003,12 @@ export default function StudioPage() {
                       projectService.updateLatestVersionManifest(projectId, next);
                       return next;
                     });
-                    setActiveTab('assembly');
+                    handleTabChange('assembly');
                   }
-                  else if (option === 'animate') setActiveTab('timeline_lab');
+                  else if (option === 'animate') handleTabChange('timeline_lab');
                 }}
                 onRetake={() => {
-                   setActiveTab('teleprompter');
+                   handleTabChange('teleprompter');
                    setTimeout(initCamera, 100);
                 }}
                 onDownload={downloadRawVideo}
@@ -1022,7 +1022,7 @@ export default function StudioPage() {
                 videoUrl={lastRecordingUrl}
                 projectId={projectId}
                 availableAvatars={availableAvatars}
-                onBack={() => setActiveTab('post_record_branch')}
+                onBack={() => handleTabChange('post_record_branch')}
                 onGenerate={handleTimelineGeneration}
               />
             )}
@@ -1033,9 +1033,9 @@ export default function StudioPage() {
                 aRollUrl={lastRecordingUrl || ''}
                 onBack={() => {
                   if (isMobileRef.current) {
-                    setActiveTab('teleprompter');
+                    handleTabChange('teleprompter');
                   } else {
-                    setActiveTab('branch');
+                    handleTabChange('branch');
                   }
                 }}
                 onNext={handleFinalExport}
