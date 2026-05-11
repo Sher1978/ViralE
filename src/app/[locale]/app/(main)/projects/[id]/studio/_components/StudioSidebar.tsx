@@ -47,12 +47,11 @@ interface StudioSidebarProps {
   currentProfile: any;
 }
 
-export const StudioSidebar: React.FC<StudioSidebarProps> = ({
+export const StudioSidebar = React.memo(({
   activeTab,
   setActiveTab,
   cameraStream,
   isRecordingVideo,
-  recordingTime,
   facingMode,
   videoResolution,
   videoDevices,
@@ -84,7 +83,7 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
   setScriptOpacity,
   t,
   currentProfile,
-}) => {
+}: StudioSidebarProps) => {
   const router = useRouter();
   const { id: projectId } = useParams() as { id: string };
 
@@ -303,4 +302,26 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
       </div>
     </aside>
   );
-};
+}, (prev, next) => {
+  // Custom comparison to ignore props that change too frequently but don't affect UI
+  // or are complex objects that don't change meaningfully.
+  // We specifically want to avoid re-renders if recordingTime (removed) or other non-visual props change in parent.
+  return (
+    prev.activeTab === next.activeTab &&
+    prev.cameraStream === next.cameraStream &&
+    prev.isRecordingVideo === next.isRecordingVideo &&
+    prev.facingMode === next.facingMode &&
+    prev.videoResolution === next.videoResolution &&
+    prev.selectedVideoDeviceId === next.selectedVideoDeviceId &&
+    prev.selectedAudioDeviceId === next.selectedAudioDeviceId &&
+    prev.useCustomScript === next.useCustomScript &&
+    prev.customScript === next.customScript &&
+    prev.isMirrored === next.isMirrored &&
+    prev.scrollSpeed === next.scrollSpeed &&
+    prev.prompterWidth === next.prompterWidth &&
+    prev.textSize === next.textSize &&
+    prev.scriptOpacity === next.scriptOpacity &&
+    prev.currentProfile === next.currentProfile &&
+    prev.manifest === next.manifest
+  );
+});

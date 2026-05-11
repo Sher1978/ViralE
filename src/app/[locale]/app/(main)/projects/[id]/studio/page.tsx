@@ -19,26 +19,32 @@ import { idb } from '@/lib/idb';
 
 // Atomic Components
 import { StudioSidebar } from './_components/StudioSidebar';
-import { TeleprompterView } from './_components/TeleprompterView';
-import { StoryboardGrid } from './_components/StoryboardGrid';
-import { RecordingReview } from './_components/RecordingReview';
-import { SourcePicker } from './_components/SourcePicker';
-import { AvatarSelector } from './_components/AvatarSelector';
-import { AssemblyProgress } from './_components/AssemblyProgress';
 import dynamic from 'next/dynamic';
-const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false });
-import { ProductionBranch } from './_components/ProductionBranch';
-import { PostRecordBranch } from './_components/PostRecordBranch';
-import { TimelineLab } from './_components/TimelineLab';
-import { FusionView } from './_components/FusionView';
+
+const Spinner = () => (
+  <div className="absolute inset-0 z-50 bg-[#050508]/60 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
+    <RefreshCw size={32} className="animate-spin text-purple-500" />
+    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Loading Engine...</span>
+  </div>
+);
+
+const TeleprompterView = dynamic(() => import('./_components/TeleprompterView').then(m => m.TeleprompterView), { ssr: false, loading: Spinner });
+const StoryboardGrid = dynamic(() => import('./_components/StoryboardGrid').then(m => m.StoryboardGrid), { ssr: false, loading: Spinner });
+const RecordingReview = dynamic(() => import('./_components/RecordingReview').then(m => m.RecordingReview), { ssr: false, loading: Spinner });
+const SourcePicker = dynamic(() => import('./_components/SourcePicker').then(m => m.SourcePicker), { ssr: false, loading: Spinner });
+const AvatarSelector = dynamic(() => import('./_components/AvatarSelector').then(m => m.AvatarSelector), { ssr: false, loading: Spinner });
+const AssemblyProgress = dynamic(() => import('./_components/AssemblyProgress').then(m => m.AssemblyProgress), { ssr: false, loading: Spinner });
+const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false, loading: Spinner });
+const ProductionBranch = dynamic(() => import('./_components/ProductionBranch').then(m => m.ProductionBranch), { ssr: false, loading: Spinner });
+const PostRecordBranch = dynamic(() => import('./_components/PostRecordBranch').then(m => m.PostRecordBranch), { ssr: false, loading: Spinner });
+const TimelineLab = dynamic(() => import('./_components/TimelineLab').then(m => m.TimelineLab), { ssr: false, loading: Spinner });
+const FusionView = dynamic(() => import('./_components/FusionView').then(m => m.FusionView), { ssr: false, loading: Spinner });
+const DistributionFactory = dynamic(() => import('./_components/DistributionFactory'), { ssr: false, loading: Spinner });
+const KnowledgeLab = dynamic(() => import('@/components/studio/KnowledgeLab'), { ssr: false, loading: Spinner });
+const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { ssr: false, loading: Spinner });
+const FacelessStudio = dynamic(() => import('@/components/studio/FacelessStudio'), { ssr: false, loading: Spinner });
+
 import { BottomNav } from '@/components/layout/BottomNav';
-import DistributionFactory from './_components/DistributionFactory';
-
-// Global Shared Components
-
-import KnowledgeLab from '@/components/studio/KnowledgeLab';
-import { StrategistChat } from '@/components/studio/StrategistChat';
-import FacelessStudio from '@/components/studio/FacelessStudio';
 
 export default function StudioPage() {
   const t = useTranslations('studio');
@@ -48,12 +54,19 @@ export default function StudioPage() {
   const searchParams = useSearchParams();
   const initialTab = searchParams.get('tab') as any || 'branch';
 
+  const [isPending, startTransition] = React.useTransition();
   const [isLoading, setIsLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion'>(initialTab);
+  
+  const handleTabChange = useCallback((tab: any) => {
+    startTransition(() => {
+      setActiveTab(tab);
+    });
+  }, []);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
 
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
@@ -320,6 +333,21 @@ export default function StudioPage() {
           // Initial auto-selection if not set
           if (!selectedVideoDeviceId && v.length > 0) setSelectedVideoDeviceId(v[0].deviceId);
           if (!selectedAudioDeviceId && a.length > 0) setSelectedAudioDeviceId(a[0].deviceId);
+
+          // 🚀 Background Pre-init Camera (Non-blocking)
+          if (typeof window !== 'undefined') {
+            const preInit = () => {
+              if (activeTab === 'branch' || activeTab === 'concept') {
+                console.log('[Studio] Pre-initializing camera in background...');
+                initCamera().catch(e => console.warn('Pre-init camera failed (likely no perms):', e));
+              }
+            };
+            if ('requestIdleCallback' in window) {
+              (window as any).requestIdleCallback(preInit, { timeout: 2000 });
+            } else {
+              setTimeout(preInit, 1000);
+            }
+          }
         }
 
       } catch (err) {
@@ -356,9 +384,9 @@ export default function StudioPage() {
       initCamera();
     }
     
-    // 🚀 Auto-stop camera when leaving recording studio to save RAM/CPU
-    if (activeTab === 'assembly' || activeTab === 'assets' || activeTab === 'concept') {
-      console.log(`[Studio] Leaving recording tab (${activeTab}), releasing hardware...`);
+    // 🛑 Explicitly stop camera hardware when leaving prompter
+    if (activeTab !== 'teleprompter' && cameraStream) {
+      console.log('[Studio] Stopping camera hardware (Leaving prompter)...');
       stopCamera();
     }
   }, [activeTab, cameraStream, isLoading]);
@@ -750,7 +778,7 @@ export default function StudioPage() {
         {(!isMobileRef.current || activeTab !== 'assembly') && (
           <StudioSidebar 
             activeTab={activeTab as any}
-            setActiveTab={setActiveTab}
+            setActiveTab={handleTabChange}
             cameraStream={cameraStream}
             isRecordingVideo={isRecordingVideo}
             recordingTime={recordingTime}
@@ -809,6 +837,12 @@ export default function StudioPage() {
           
           {/* Stage Area */}
           <div className="flex-1 relative overflow-hidden">
+            {isPending && (
+              <div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-[2px] flex items-center justify-center pointer-events-none">
+                <RefreshCw size={24} className="animate-spin text-purple-500 opacity-50" />
+              </div>
+            )}
+
             {activeTab === 'concept' && (
               <div className="flex flex-col items-center justify-center h-full gap-4 text-white/20">
                 <RefreshCw size={40} className="animate-spin" />
@@ -819,21 +853,23 @@ export default function StudioPage() {
             {activeTab === 'branch' && (
               <ProductionBranch
                 onSelect={(type) => {
-                  if (type === 'record') {
-                    setShowFaceless(false);
-                    setIsVoiceOnly(false);
-                    setActiveTab('teleprompter');
-                  } else if (type === 'voice-master') {
-                    setShowFaceless(false);
-                    setIsVoiceOnly(true);
-                    setActiveTab('teleprompter');
-                  } else if (type === 'faceless') {
-                    setShowFaceless(true);
-                    setIsVoiceOnly(false);
-                    setActiveTab('assembly');
-                  }
+                  startTransition(() => {
+                    if (type === 'record') {
+                      setShowFaceless(false);
+                      setIsVoiceOnly(false);
+                      setActiveTab('teleprompter');
+                    } else if (type === 'voice-master') {
+                      setShowFaceless(false);
+                      setIsVoiceOnly(true);
+                      setActiveTab('teleprompter');
+                    } else if (type === 'faceless') {
+                      setShowFaceless(true);
+                      setIsVoiceOnly(false);
+                      setActiveTab('assembly');
+                    }
+                  });
                 }}
-                onBack={() => setActiveTab('concept')}
+                onBack={() => handleTabChange('concept')}
               />
             )}
 
@@ -970,6 +1006,10 @@ export default function StudioPage() {
                     setActiveTab('assembly');
                   }
                   else if (option === 'animate') setActiveTab('timeline_lab');
+                }}
+                onRetake={() => {
+                   setActiveTab('teleprompter');
+                   setTimeout(initCamera, 100);
                 }}
                 onDownload={downloadRawVideo}
                 onTelegram={sendRawToTelegram}

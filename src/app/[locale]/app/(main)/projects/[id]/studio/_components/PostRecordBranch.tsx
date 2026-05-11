@@ -2,11 +2,12 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Scissors, Sparkles, ArrowRight, Play, User, Download, Send } from 'lucide-react';
+import { Scissors, Sparkles, ArrowRight, Play, User, Download, Send, RotateCcw } from 'lucide-react';
 
 interface PostRecordBranchProps {
   videoUrl: string;
   onSelect: (type: 'pure' | 'animate') => void;
+  onRetake?: () => void;
   onDownload?: () => void;
   onTelegram?: () => void;
   t: (key: string) => string;
@@ -15,12 +16,26 @@ interface PostRecordBranchProps {
 export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
   videoUrl,
   onSelect,
+  onRetake,
   onDownload,
   onTelegram,
   t
 }) => {
   return (
-    <div className="h-full w-full flex flex-col bg-[#050508] overflow-y-auto pb-10">
+    <div className="h-full w-full flex flex-col bg-[#050508] overflow-y-auto pb-10 relative">
+      {/* iOS Style Retake Button */}
+      <div className="absolute top-8 left-8 z-[60]">
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={onRetake}
+          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-white/60 hover:text-white transition-all shadow-xl"
+        >
+          <RotateCcw size={14} />
+          <span className="text-[10px] font-black uppercase tracking-[0.2em]">Переснять</span>
+        </motion.button>
+      </div>
+
       <div className="flex-1 flex flex-col items-center justify-center p-6">
         <div className="max-w-md w-full space-y-6 flex flex-col items-center">
           
