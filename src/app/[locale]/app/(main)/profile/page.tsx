@@ -23,6 +23,7 @@ import { CreditBadge } from '@/components/ui/CreditBadge';
 import React, { useEffect, useState } from 'react';
 import { profileService } from '@/lib/services/profileService';
 import { Profile } from '@/lib/services/profileService';
+import { supabase } from '@/lib/supabase';
 
 import { useTheme } from 'next-themes';
 
@@ -41,6 +42,15 @@ export default function ProfilePage() {
 
   const toggleTheme = () => {
     setTheme(theme === 'dark' ? 'light' : 'dark');
+  };
+
+  const handleLogout = async () => {
+    try {
+      await supabase.auth.signOut();
+      router.push('/auth');
+    } catch (err) {
+      console.error('Logout failed:', err);
+    }
   };
 
   const SETTINGS_SECTIONS = [
@@ -218,6 +228,7 @@ export default function ProfilePage() {
       {/* Logout & Footer */}
       <motion.div variants={itemVariants} className="px-1 space-y-6">
         <button
+          onClick={handleLogout}
           className="w-full flex items-center justify-center gap-3 py-5 rounded-[2rem] text-sm font-black transition-all hover:bg-[#FF4D6D]/10 active:scale-95 group"
           style={{
             background: 'rgba(255,77,109,0.05)',

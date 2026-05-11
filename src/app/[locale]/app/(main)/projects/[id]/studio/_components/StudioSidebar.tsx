@@ -1,10 +1,12 @@
 'use client';
 
 import React from 'react';
+import { useParams } from 'next/navigation';
 import { 
   Dna, Brain, Scissors, Video, Download, 
   Monitor, FileVideo, RefreshCw, Type, Trash2 
 } from 'lucide-react';
+import { useRouter } from '@/navigation';
 
 interface StudioSidebarProps {
   activeTab: 'concept' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'branch';
@@ -83,6 +85,9 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
   t,
   currentProfile,
 }) => {
+  const router = useRouter();
+  const { id: projectId } = useParams() as { id: string };
+
   return (
     <aside className="hidden lg:flex w-80 bg-[#0a0a14] border-r border-white/5 flex-col z-20 shadow-2xl">
       <div className="p-8 border-b border-white/5 flex items-center justify-between">
@@ -110,7 +115,9 @@ export const StudioSidebar: React.FC<StudioSidebarProps> = ({
               <button 
                 key={tab.id}
                 onClick={() => {
-                  if (tab.id === 'branch') {
+                  if (tab.id === 'concept') {
+                    router.push(`/app/projects/new/script?projectId=${projectId}`);
+                  } else if (tab.id === 'branch') {
                     setActiveTab('branch');
                   } else {
                     setActiveTab(tab.id);

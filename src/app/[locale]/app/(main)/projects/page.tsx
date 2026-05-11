@@ -132,7 +132,7 @@ export default function ProjectsPage() {
       id: 'script',
       title: locale === 'ru' ? 'IDEA LAB' : 'IDEA LAB',
       desc: locale === 'ru' ? 'ЗАПУСТИТЬ ЛАБОРАТОРИЮ КОНТЕНТА ДЛЯ ГЛУБОКОЙ ПРОРАБОТКИ ИДЕЙ' : 'LAUNCH THE PRO CONTENT LAB FOR DEEP AI IDEATION',
-      href: '/app/projects/new/production?tab=concept',
+      href: '/app/projects/new/script',
       image: 'https://images.unsplash.com/photo-1455390582262-044cdead277a?q=80&w=1973&auto=format&fit=crop',
     },
     {

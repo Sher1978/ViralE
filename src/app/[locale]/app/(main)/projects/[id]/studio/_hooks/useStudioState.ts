@@ -258,7 +258,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
     };
     writeString(0, 'RIFF');
-    view.setUint32(4, 32 + resampledBuffer.length * 2, true);
+    view.setUint32(4, 36 + resampledBuffer.length * 2, true);
     writeString(8, 'WAVE');
     writeString(12, 'fmt ');
     view.setUint32(16, 16, true);
@@ -305,16 +305,33 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
              if (recovered instanceof Blob) sourceBlob = recovered;
           }
         }
-        if (!sourceBlob) throw new Error('Не удалось получить файл');
-        const audioBlob = await extractAudioNative(sourceBlob);
+        if (!sourceBlob) throw new Error('Не удалось получить файл для анализа');
+        if (sourceBlob.size === 0) throw new Error('Файл записи пуст. Попробуйте записать еще раз.');
+
+        let audioBlob: Blob;
+        try {
+          setStageMessage('Извлечение аудио...');
+          audioBlob = await extractAudioNative(sourceBlob);
+        } catch (e) {
+          console.warn('[Studio] Native audio extraction failed, falling back to full file upload:', e);
+          audioBlob = sourceBlob; // Fallback: try to transcribe the whole file (Gemini/Whisper can handle it)
+        }
+
         setStageMessage('AI расшифровка...');
         const formData = new FormData();
-        formData.append('file', audioBlob, 'audio.wav');
+        formData.append('file', audioBlob, audioBlob === sourceBlob ? 'video.mp4' : 'audio.wav');
+        
         const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
-        if (!res.ok) throw new Error('Ошибка сервера транскрибации');
+        if (!res.ok) {
+          const errData = await res.json().catch(() => ({}));
+          throw new Error(errData.error || `Ошибка сервера: ${res.status}`);
+        }
         const data = await res.json();
         if (data.transcript) { words = data.transcript; transcriptionOk = true; }
-      } catch (err: any) { setTranscriptionError(err.message || 'Ошибка обработки'); }
+      } catch (err: any) { 
+        console.error('[Studio] Transcription flow failed:', err);
+        setTranscriptionError(err.message || 'Ошибка обработки'); 
+      }
     }
 
     if (!transcriptionOk || words.length === 0) {

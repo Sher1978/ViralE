@@ -6,7 +6,11 @@ import { useState, useEffect } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from '@/navigation';
-import { Sparkles, ArrowRight, Wand2, History, ChevronRight, Loader2, Dna, Lock, Key, AlertTriangle, Cpu, GraduationCap, TrendingUp, Leaf } from 'lucide-react';
+import { 
+  Sparkles, ArrowRight, Wand2, History, ChevronRight, Loader2, Dna, Lock, Key, 
+  AlertTriangle, Cpu, GraduationCap, TrendingUp, Leaf, Zap, Play, Camera, 
+  Share2, Monitor 
+} from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { profileService, Profile } from '@/lib/services/profileService';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
@@ -44,6 +48,7 @@ export default function ScriptLabPage() {
   const [isAiLocked, setIsAiLocked] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitModalData, setLimitModalData] = useState({ title: '', desc: '', type: 'trial' as any });
+  const [selectedPlatform, setSelectedPlatform] = useState<'tiktok' | 'youtube' | 'instagram' | 'threads' | 'linkedin'>('tiktok');
 
 
   const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>('evergreen');
@@ -646,15 +651,32 @@ export default function ScriptLabPage() {
             </div>
           )}
           <div className="relative group space-y-2">
-            <div className="flex items-center gap-2 px-1">
+            <div className="flex items-center justify-between px-1">
                <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 ml-2">
                  {locale === 'ru' ? 'СУТЬ РОЛИКА' : 'VIDEO ESSENCE'}
                </span>
-               <InfoTooltip 
-                 content={locale === 'ru' 
-                   ? "Опишите коротко, о чем ваше видео (например, '5 ошибок новичков в инвестициях'). Чем точнее запрос — тем мощнее сценарий." 
-                   : "Briefly describe your video idea. The clearer the prompt, the more powerful the script."} 
-               />
+               <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-xl">
+                  {[
+                    { id: 'tiktok', icon: Zap, color: 'text-purple-400' },
+                    { id: 'youtube', icon: Play, color: 'text-red-500' },
+                    { id: 'instagram', icon: Camera, color: 'text-pink-500' },
+                    { id: 'threads', icon: Share2, color: 'text-blue-400' },
+                    { id: 'linkedin', icon: Monitor, color: 'text-blue-600' }
+                  ].map((p) => (
+                    <button
+                      key={p.id}
+                      onClick={() => setSelectedPlatform(p.id as any)}
+                      className={`p-2.5 rounded-xl transition-all ${
+                        selectedPlatform === p.id 
+                          ? 'bg-white/10 border border-white/10 text-white shadow-lg' 
+                          : 'text-white/20 hover:text-white/40'
+                      }`}
+                      title={p.id.toUpperCase()}
+                    >
+                      <p.icon size={14} className={selectedPlatform === p.id ? p.color : ''} />
+                    </button>
+                  ))}
+                </div>
             </div>
             <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 top-6" />
             <textarea

@@ -119,6 +119,11 @@ export default function StudioPage() {
   useEffect(() => {
     if (isLoading) return;
     
+    if (activeTab === 'concept') {
+      router.push(`/app/projects/new/script?projectId=${projectId}`);
+      return;
+    }
+
     // Defer URL update to avoid conflict with heavy UI transitions (especially on Android)
     const timeout = setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
@@ -797,29 +802,9 @@ export default function StudioPage() {
           {/* Stage Area */}
           <div className="flex-1 relative overflow-hidden">
             {activeTab === 'concept' && (
-              <div className="max-w-4xl mx-auto h-full relative">
-                <StrategistChat 
-                  projectId={projectId}
-                  userId={currentProfile?.id || ''}
-                  manifest={manifest || undefined} 
-                  setManifest={(m) => setManifest(m)} 
-                  containerClassName="relative h-full"
-                />
-
-                {manifest && (
-                  <motion.div 
-                    initial={{ opacity: 0, y: 20 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    className="absolute bottom-10 left-1/2 -translate-x-1/2 z-[110]"
-                  >
-                    <button
-                      onClick={() => setActiveTab('branch')}
-                      className="flex items-center gap-3 px-8 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.4)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.6)] active:scale-95 transition-all group"
-                    >
-                      ПЕРЕЙТИ К ПРОДАКШНУ <ChevronRight size={20} className="group-hover:translate-x-1 transition-transform" />
-                    </button>
-                  </motion.div>
-                )}
+              <div className="flex flex-col items-center justify-center h-full gap-4 text-white/20">
+                <RefreshCw size={40} className="animate-spin" />
+                <p className="text-[10px] font-black uppercase tracking-[0.2em]">Switching to Idea Lab...</p>
               </div>
             )}
             
@@ -1010,7 +995,7 @@ export default function StudioPage() {
 
                 onJumpToConcept={() => {
                   setShowFaceless(false);
-                  setActiveTab('concept');
+                  router.push(`/app/projects/new/script?projectId=${projectId}`);
                 }}
                 onComplete={(videoBlob, transcriptData) => {
                   const localUrl = URL.createObjectURL(videoBlob);
