@@ -12,6 +12,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { idb } from '@/lib/idb';
 import DistributionFactory from '@/app/[locale]/app/(main)/projects/[id]/studio/_components/DistributionFactory';
+import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
+import { fetchFile } from '@ffmpeg/util';
 
 export default function DeliveryPage() {
   const t = useTranslations('delivery');
@@ -34,7 +36,14 @@ export default function DeliveryPage() {
   const [renderStatus, setRenderStatus] = useState('');
   const [renderLogs, setRenderLogs] = useState<string[]>([]);
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const [renderMode, setRenderMode] = useState<'canvas' | 'ffmpeg'>('ffmpeg');
+  const [renderMode, setRenderMode] = useState<'canvas' | 'ffmpeg'>(() => {
+    try {
+      const { browserCapabilities } = require('@/lib/browser-capabilities');
+      return browserCapabilities.suggestRenderMode();
+    } catch (e) {
+      return 'ffmpeg';
+    }
+  });
   
   const canvasRef = useRef<HTMLCanvasElement | null>(null);
   const renderVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -45,6 +54,7 @@ export default function DeliveryPage() {
     setRenderLogs(prev => [...prev.slice(-15), msg]);
   };
   const ffmpegRef = useRef<any>(null);
+  const isLaunchingRenderRef = useRef(false);
   
   const manifest = version?.script_data as any;
   const distributionAssets = manifest?.distributionAssets as any;
@@ -134,7 +144,8 @@ export default function DeliveryPage() {
   };
 
   const handleCanvasRender = async (ver: ProjectVersion) => {
-    if (isLaunchingRender) return;
+    if (isLaunchingRenderRef.current) return;
+    isLaunchingRenderRef.current = true;
     setIsLaunchingRender(true);
     setRenderStatus('Инициализация GPU...');
     setRenderProgress(5);
@@ -291,10 +302,7 @@ export default function DeliveryPage() {
 
       // 6. Merge Audio with FFmpeg (Lightning Fast)
       setRenderStatus('Финальная склейка (Audio)...');
-      const { FFmpeg } = await import('@ffmpeg/ffmpeg');
-      const { fetchFile } = await import('@ffmpeg/util');
-      const ffmpeg = new FFmpeg();
-      await ffmpeg.load();
+      const ffmpeg = await getFFmpeg();
 
       await ffmpeg.writeFile('silent.mp4', await fetchFile(silentVideoBlob));
       await ffmpeg.writeFile('source.mp4', await fetchFile(aRollUrl));
@@ -333,11 +341,13 @@ export default function DeliveryPage() {
       }, 2000);
     } finally {
       setIsLaunchingRender(false);
+      isLaunchingRenderRef.current = false;
     }
   };
 
   const handleClientRender = async (ver: ProjectVersion) => {
-    if (isLaunchingRender) return;
+    if (isLaunchingRenderRef.current) return;
+    isLaunchingRenderRef.current = true;
     
     // 0. CHECK CACHE FIRST
     try {
@@ -362,9 +372,7 @@ export default function DeliveryPage() {
       }
 
       addLog('[System] Инициализация ядра...');
-      const { FFmpeg } = await import('@ffmpeg/ffmpeg');
-      const { toBlobURL, fetchFile } = await import('@ffmpeg/util');
-      const ffmpeg = new FFmpeg();
+      const ffmpeg = await getFFmpeg();
       ffmpegRef.current = ffmpeg;
 
       ffmpeg.on('log', ({ message }) => {
@@ -376,18 +384,7 @@ export default function DeliveryPage() {
         setRenderProgress(p);
       });
 
-      setRenderStatus('Загрузка модулей сборки (WASM)...');
-      const baseURL = '/ffmpeg';
-      
-      try {
-        await ffmpeg.load({
-          coreURL: await toBlobURL(`${baseURL}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${baseURL}/ffmpeg-core.wasm`, 'application/wasm'),
-        });
-      } catch (loadErr) {
-        console.error('[Delivery] FFmpeg load failed:', loadErr);
-        throw new Error('Не удалось загрузить ядро рендера. Проверьте соединение.');
-      }
+      setRenderStatus('Проверка готовности WASM...');
 
       const manifest = ver.script_data as any;
       const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
@@ -560,6 +557,7 @@ export default function DeliveryPage() {
       setError(err.message || 'Ошибка рендера');
     } finally {
       setIsLaunchingRender(false);
+      isLaunchingRenderRef.current = false;
     }
   };
 
@@ -604,6 +602,13 @@ export default function DeliveryPage() {
     }
     return () => clearInterval(pollInterval);
   }, [projectId, !!distributionAssets, job?.status]);
+
+  useEffect(() => {
+    return () => {
+      console.log('[Delivery] Cleaning up FFmpeg instance...');
+      resetFFmpeg();
+    };
+  }, []);
 
   useEffect(() => {
     async function loadResults() {
