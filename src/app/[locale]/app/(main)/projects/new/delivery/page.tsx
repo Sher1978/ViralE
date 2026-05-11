@@ -713,7 +713,7 @@ export default function DeliveryPage() {
           <p className="text-sm text-white/40">{error}</p>
         </div>
         <button 
-          onClick={() => router.push(`/app/projects/${projectId}/studio`)} 
+          onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
           className="px-8 py-3 rounded-full bg-purple-500 text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-purple-900/40"
         >
           {locale === 'ru' ? 'Вернуться в монтажку' : 'Back to Montage'}
@@ -726,7 +726,7 @@ export default function DeliveryPage() {
     <div className="space-y-5 animate-fade-in pb-10">
       <div className="flex items-center justify-between py-2">
         <button 
-          onClick={() => router.push(`/app/projects/${projectId}/studio`)} 
+          onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
           className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all"
         >
           <ArrowLeft size={14} /> {locale === 'ru' ? 'В МОНТАЖКУ' : 'BACK TO STUDIO'}

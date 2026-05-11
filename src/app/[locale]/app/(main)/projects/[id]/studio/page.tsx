@@ -46,7 +46,7 @@ export default function StudioPage() {
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
 
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') as any || 'concept';
+  const initialTab = searchParams.get('tab') as any || 'branch';
 
   const [isLoading, setIsLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
@@ -297,7 +297,15 @@ export default function StudioPage() {
             console.log('[Studio] Recovered pending recording from crash:', pendingRecId);
             const url = URL.createObjectURL(blob);
             setLastRecordingUrl(url);
-            setShowRecordingReview(true);
+          }
+        }
+
+        // 5. Fallback to Manifest videoUrl
+        if (!lastRecordingUrl) {
+          const m = cachedLocal?.manifest || (latestVersion?.script_data as ProductionManifest);
+          if (m?.videoUrl) {
+            console.log('[Studio] Recovered video from manifest:', m.videoUrl);
+            setLastRecordingUrl(m.videoUrl);
           }
         }
 
@@ -951,7 +959,16 @@ export default function StudioPage() {
               <PostRecordBranch 
                 videoUrl={lastRecordingUrl}
                 onSelect={(option) => {
-                  if (option === 'pure') setActiveTab('assembly');
+                  if (option === 'pure') {
+                    // Save videoUrl to manifest for persistence
+                    setManifest(prev => {
+                      if (!prev) return prev;
+                      const next = { ...prev, videoUrl: lastRecordingUrl || '' };
+                      projectService.updateLatestVersionManifest(projectId, next);
+                      return next;
+                    });
+                    setActiveTab('assembly');
+                  }
                   else if (option === 'animate') setActiveTab('timeline_lab');
                 }}
                 onDownload={downloadRawVideo}
