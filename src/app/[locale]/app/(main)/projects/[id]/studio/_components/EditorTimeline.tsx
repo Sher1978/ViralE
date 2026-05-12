@@ -21,6 +21,10 @@ interface EditorTimelineProps {
   subtitleClips?: TimelineOverlay[];
   onCreateBroll?: (time: number) => void;
   onCaptionClick?: (id: string) => void;
+  onSubtitleTrackClick?: () => void;
+  onBrollMove?: (id: string, newStartTime: number) => void;
+  onBrollResize?: (id: string, newDuration: number) => void;
+  onBrollLongPress?: (id: string) => void;
 }
 
 const PX_PER_SECOND = 100; // High density for Edits style
@@ -33,7 +37,11 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   brollClips = [],
   subtitleClips = [],
   onCreateBroll,
-  onCaptionClick
+  onCaptionClick,
+  onSubtitleTrackClick,
+  onBrollMove,
+  onBrollResize,
+  onBrollLongPress
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
@@ -111,38 +119,77 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
         >
             <div className="relative h-full" style={{ width: totalDuration * PX_PER_SECOND + 1000, paddingLeft: '50%', paddingRight: '50%' }}>
                 
-                {/* B-ROLL TRACK */}
-                <div className="absolute top-2 h-12 flex gap-1 pointer-events-auto">
+                {/* B-ROLL TRACK (INTERACTIVE) */}
+                <div 
+                    className="absolute top-2 h-14 w-full cursor-copy pointer-events-auto group/track"
+                    onDoubleClick={(e) => {
+                        const rect = e.currentTarget.getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const time = x / PX_PER_SECOND;
+                        onCreateBroll?.(time);
+                    }}
+                >
+                    <div className="absolute inset-0 bg-white/[0.02] border-y border-white/[0.05] group-hover/track:bg-white/[0.04] transition-colors" />
                     {brollClips.map(clip => (
-                        <div 
+                        <motion.div 
                             key={clip.id}
-                            className="absolute h-full rounded-md bg-blue-500/20 border border-blue-500/30 flex items-center px-2 overflow-hidden"
+                            drag="x"
+                            dragMomentum={false}
+                            onDrag={(e, info) => {
+                                // Simplified drag logic for now
+                                const newX = (clip.startTime * PX_PER_SECOND) + info.delta.x;
+                                const newTime = newX / PX_PER_SECOND;
+                                onBrollMove?.(clip.id, newTime);
+                            }}
+                            className="absolute h-full rounded-lg bg-blue-500/30 border-2 border-blue-500/50 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing group/clip"
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
                                 width: clip.duration * PX_PER_SECOND 
                             }}
                         >
-                            <Layers size={12} className="text-blue-400 mr-1 flex-shrink-0" />
-                            <span className="text-[9px] text-blue-200 truncate font-bold uppercase">Scene</span>
-                        </div>
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-transparent" />
+                            <Layers size={14} className="text-blue-300 relative z-10" />
+                            
+                            {/* Resize Handles */}
+                            <div 
+                                className="absolute right-0 top-0 bottom-0 w-2 bg-blue-400/40 hover:bg-blue-400 cursor-ew-resize z-20"
+                                onPointerDown={(e) => {
+                                    e.stopPropagation();
+                                    const startX = e.clientX;
+                                    const startDur = clip.duration;
+                                    const move = (me: PointerEvent) => {
+                                        const delta = (me.clientX - startX) / PX_PER_SECOND;
+                                        onBrollResize?.(clip.id, Math.max(0.5, startDur + delta));
+                                    };
+                                    const up = () => {
+                                        window.removeEventListener('pointermove', move);
+                                        window.removeEventListener('pointerup', up);
+                                    };
+                                    window.addEventListener('pointermove', move);
+                                    window.addEventListener('pointerup', up);
+                                }}
+                            />
+                        </motion.div>
                     ))}
                 </div>
 
-                {/* SUBTITLE TRACK */}
-                <div className="absolute bottom-2 h-8 flex gap-1 pointer-events-auto">
+                {/* SUBTITLE TRACK (INTERACTIVE) */}
+                <div 
+                    className="absolute bottom-2 h-10 w-full cursor-pointer pointer-events-auto"
+                    onClick={() => onSubtitleTrackClick?.()}
+                >
+                    <div className="absolute inset-0 bg-yellow-500/[0.03] border-y border-yellow-500/[0.05]" />
                     {subtitleClips.map(clip => (
-                        <button 
+                        <div 
                             key={clip.id}
-                            onClick={() => onCaptionClick?.(clip.id)}
-                            className={`absolute h-full rounded bg-yellow-500/10 border border-yellow-500/20 hover:bg-yellow-500/30 transition-colors flex items-center px-2 overflow-hidden ${Math.abs(currentTime - clip.startTime) < 0.2 ? 'ring-1 ring-yellow-400' : ''}`}
+                            className={`absolute h-full rounded-md bg-yellow-500/20 border border-yellow-500/30 flex items-center px-2 overflow-hidden transition-all ${Math.abs(currentTime - clip.startTime) < 0.2 ? 'ring-2 ring-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]' : ''}`}
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
                                 width: clip.duration * PX_PER_SECOND 
                             }}
                         >
-                            <Type size={10} className="text-yellow-400 mr-1 flex-shrink-0" />
-                            <span className="text-[8px] text-yellow-200 truncate font-medium">{clip.content || '...'}</span>
-                        </button>
+                            <span className="text-[9px] text-yellow-100 truncate font-bold uppercase tracking-tighter">{clip.content || '...'}</span>
+                        </div>
                     ))}
                 </div>
             </div>
@@ -154,22 +201,6 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
         </div>
       </div>
       
-      {/* 3. Action Row */}
-      <div className="h-10 border-t border-white/5 bg-white/[0.02] flex items-center px-4 justify-between">
-          <div className="flex items-center gap-4">
-              <span className="text-[10px] font-black uppercase text-white/40 tracking-widest">Main Track</span>
-              <div className="w-[1px] h-3 bg-white/10" />
-              <span className="text-[10px] font-black uppercase text-blue-500/60 tracking-widest">B-Roll</span>
-              <span className="text-[10px] font-black uppercase text-yellow-500/60 tracking-widest">Captions</span>
-          </div>
-          <button 
-              onClick={() => onCreateBroll?.(currentTime)}
-              className="flex items-center gap-2 px-3 py-1 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 transition-all"
-          >
-              <Plus size={14} className="text-white/60" />
-              <span className="text-[10px] font-bold uppercase text-white/60">Moment</span>
-          </button>
-      </div>
     </div>
   );
 };

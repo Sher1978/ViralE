@@ -208,16 +208,7 @@ export const VideoEditor = React.memo(({
         runTranscriptionAndPhrases={runTranscriptionAndPhrases} setStage={setStage} setTranscriptionError={setTranscriptionError} setStageMessage={setStageMessage}
       />
 
-      {/* 3. Transport Controls */}
-      <StudioActionBar 
-        isPlaying={isPlaying} isMuted={isMuted} currentTime={currentTime} duration={duration} togglePlay={togglePlay} setCurrentTime={setCurrentTime} setIsMuted={setIsMuted} videoRef={videoRef}
-        stage={stage} subtitleClips={subtitleClips} aRollUrl={aRollUrl}
-        onRefineSubtitles={() => { setStage('transcribing'); runTranscriptionAndPhrases(true); }}
-        onTranscribe={() => runTranscriptionAndPhrases(true)}
-        onGenerateBRoll={() => {}}
-      />
 
-      {/* 4. Timeline Ruler + Tracks */}
       <EditorTimeline 
         totalDuration={duration}
         currentTime={currentTime}
@@ -231,6 +222,17 @@ export const VideoEditor = React.memo(({
             openBRollHunterForClip(id, 'cinematic shot');
         }}
         onCaptionClick={handleCaptionClick}
+        onSubtitleTrackClick={() => setActiveTool('captions')}
+        onBrollMove={(id, newStart) => {
+            setBrollClips(prev => prev.map(c => c.id === id ? { ...c, startTime: newStart, endTime: newStart + (c.endTime - c.startTime) } : c));
+        }}
+        onBrollResize={(id, newDur) => {
+            setBrollClips(prev => prev.map(c => c.id === id ? { ...c, endTime: c.startTime + newDur } : c));
+        }}
+        onBrollLongPress={(id) => {
+            const clip = brollClips.find(c => c.id === id);
+            if (clip) openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt);
+        }}
       />
 
       {/* 5. Tool Drawer */}
