@@ -145,6 +145,15 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 const newTime = newX / PX_PER_SECOND;
                                 onBrollMove?.(clip.id, newTime);
                             }}
+                            onPointerDown={(e) => {
+                                const timer = setTimeout(() => {
+                                    if ('vibrate' in navigator) navigator.vibrate(50);
+                                    onBrollLongPress?.(clip.id);
+                                }, 3000);
+                                const clear = () => clearTimeout(timer);
+                                e.currentTarget.addEventListener('pointerup', clear, { once: true });
+                                e.currentTarget.addEventListener('pointerleave', clear, { once: true });
+                            }}
                             className="absolute h-full rounded-lg bg-blue-500/30 border-2 border-blue-500/50 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing group/clip"
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
@@ -186,6 +195,15 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                     {subtitleClips.map(clip => (
                         <div 
                             key={clip.id}
+                            onPointerDown={(e) => {
+                                const timer = setTimeout(() => {
+                                    if ('vibrate' in navigator) navigator.vibrate(50);
+                                    onCaptionClick?.(clip.id);
+                                }, 3000);
+                                const clear = () => clearTimeout(timer);
+                                e.currentTarget.addEventListener('pointerup', clear, { once: true });
+                                e.currentTarget.addEventListener('pointerleave', clear, { once: true });
+                            }}
                             className={`absolute h-full rounded-md bg-yellow-500/20 border border-yellow-500/30 flex items-center px-2 overflow-hidden transition-all ${Math.abs(currentTime - clip.startTime) < 0.2 ? 'ring-2 ring-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]' : ''}`}
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
