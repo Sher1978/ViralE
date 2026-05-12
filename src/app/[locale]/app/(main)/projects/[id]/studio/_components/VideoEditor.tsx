@@ -209,6 +209,16 @@ export const VideoEditor = React.memo(({
       />
 
 
+      <StudioActionBar 
+        isPlaying={isPlaying}
+        isMuted={isMuted}
+        currentTime={currentTime}
+        duration={duration}
+        togglePlay={togglePlay}
+        onSeek={onSeek}
+        setIsMuted={setIsMuted}
+      />
+
       <EditorTimeline 
         totalDuration={duration}
         currentTime={currentTime}
