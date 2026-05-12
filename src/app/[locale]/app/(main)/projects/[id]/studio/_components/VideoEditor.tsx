@@ -24,7 +24,7 @@ interface VideoEditorProps {
   projectId: string;
   aRollUrl: string;
   onBack: () => void;
-  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null) => Promise<void>;
+  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null, subPos?: { x: number, y: number }, subSize?: number) => Promise<void>;
   manifest?: ProductionManifest | null;
   onFaceless?: () => void;
 }
@@ -48,7 +48,8 @@ export const VideoEditor = React.memo(({
     runTranscriptionAndPhrases, setRawFile
   } = useStudioState(projectId, initialManifest || null, propARollUrl);
 
-  const [activeTool, setActiveTool] = useState<string | null>(null);
+  const [activeTool, setActiveTool] = useState<'captions' | 'broll' | 'audio' | 'style' | null>(null);
+  const [selectedCaptionId, setSelectedCaptionId] = useState<string | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [subtitleEditorOpen, setSubtitleEditorOpen] = useState(false);
   const [editingSubtitleId, setEditingSubtitleId] = useState<string | null>(null);
@@ -58,18 +59,6 @@ export const VideoEditor = React.memo(({
   const [brollModalOpen, setBrollModalOpen] = useState(false);
   const [activeBrollPrompt, setActiveBrollPrompt] = useState('');
   const [activeBrollPhraseId, setActiveBrollPhraseId] = useState<string | null>(null);
-
-  // Heartbeat for debugging UI freezes
-  const [heartbeat, setHeartbeat] = useState(0);
-  useEffect(() => {
-    let frame: number;
-    const tick = () => {
-      setHeartbeat(h => (h + 1) % 100);
-      frame = requestAnimationFrame(tick);
-    };
-    frame = requestAnimationFrame(tick);
-    return () => cancelAnimationFrame(frame);
-  }, []);
 
   // --- ACTIONS ---
 
@@ -105,6 +94,11 @@ export const VideoEditor = React.memo(({
     setActiveBrollPrompt(prompt);
     setBrollModalOpen(true);
   };
+
+  const handleCaptionClick = useCallback((id: string) => {
+    setSelectedCaptionId(id);
+    setActiveTool('captions');
+  }, []);
 
   const handleBRollSelect = (url: string, label?: string) => {
     if (activeBrollPhraseId) {
@@ -199,10 +193,9 @@ export const VideoEditor = React.memo(({
         )}
       </AnimatePresence>
 
-      {/* 1. Header Bar */}
       <EditorTopBar 
         onBack={onBack} 
-        onExport={() => onNext?.(brollClips, subtitleClips, aRollUrl)} 
+        onExport={() => onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize)} 
       />
 
       {/* 2. Video Preview (Viewport) */}
@@ -211,7 +204,7 @@ export const VideoEditor = React.memo(({
         setCurrentTime={setCurrentTime} setARollDuration={setARollDuration}
         brollClips={brollClips} subtitleClips={subtitleClips} subtitlePos={subtitlePos} setSubtitlePos={setSubtitlePos} subtitleSize={subtitleSize} setSubtitleSize={setSubtitleSize}
         onUploadClick={() => fileInputRef.current?.click()}
-        stage={stage} stageMessage={stageMessage} transcriptionError={transcriptionError} heartbeat={heartbeat}
+        stage={stage} stageMessage={stageMessage} transcriptionError={transcriptionError} heartbeat={0}
         runTranscriptionAndPhrases={runTranscriptionAndPhrases} setStage={setStage} setTranscriptionError={setTranscriptionError} setStageMessage={setStageMessage}
       />
 
@@ -231,19 +224,26 @@ export const VideoEditor = React.memo(({
         onSeek={onSeek}
         aRollUrl={aRollUrl}
         brollClips={brollClips.map(c => ({ id: c.id, type: 'broll', startTime: c.startTime, duration: c.endTime - c.startTime }))}
-        subtitleClips={subtitleClips.map(c => ({ id: c.id, type: 'subtitle', startTime: c.startTime, duration: c.endTime - c.startTime }))}
+        subtitleClips={subtitleClips.map(c => ({ id: c.id, type: 'subtitle', startTime: c.startTime, duration: (c.endTime - c.startTime) || 0.5, content: c.text }))}
         onCreateBroll={(time) => {
             const id = `br_${Date.now()}`;
             setBrollClips(prev => [...prev, { id, phraseId: id, startTime: time, endTime: time + 3, label: 'New Scene', url: '', prompt: 'cinematic shot', track: 1 }]);
             openBRollHunterForClip(id, 'cinematic shot');
         }}
+        onCaptionClick={handleCaptionClick}
       />
 
       {/* 5. Tool Drawer */}
       <EditorToolDrawer 
-        activeTool={activeTool}
-        onToolSelect={setActiveTool}
-        onClose={() => setActiveTool(null)}
+        activeTool={activeTool as any}
+        onToolSelect={(tool) => {
+            setActiveTool(tool);
+            if (tool !== 'captions') setSelectedCaptionId(null);
+        }}
+        onClose={() => {
+            setActiveTool(null);
+            setSelectedCaptionId(null);
+        }}
       >
         {activeTool === 'captions' && (
             <EditorCaptionEditor 
@@ -251,7 +251,11 @@ export const VideoEditor = React.memo(({
                 setSubtitleClips={setSubtitleClips}
                 currentTime={currentTime}
                 onSeek={onSeek}
-                onClose={() => setActiveTool(null)}
+                onClose={() => {
+                    setActiveTool(null);
+                    setSelectedCaptionId(null);
+                }}
+                initialSelectedId={selectedCaptionId}
             />
         )}
         {activeTool === 'broll' && (

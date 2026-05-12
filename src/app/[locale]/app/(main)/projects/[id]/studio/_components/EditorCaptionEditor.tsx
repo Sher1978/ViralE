@@ -14,6 +14,7 @@ interface EditorCaptionEditorProps {
   currentTime: number;
   onSeek: (time: number) => void;
   onClose: () => void;
+  initialSelectedId?: string | null;
 }
 
 const fmt = (s: number) => {
@@ -27,21 +28,28 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
   setSubtitleClips,
   currentTime,
   onSeek,
-  onClose
+  onClose,
+  initialSelectedId
 }) => {
-  const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId || null);
   const [editingText, setEditingText] = useState('');
   const inputRef = useRef<HTMLTextAreaElement>(null);
   const listRef = useRef<HTMLDivElement>(null);
 
-  // Auto-select based on current time if nothing selected
+  // Auto-select based on current time if nothing selected or initialSelectedId provided
   useEffect(() => {
-    const active = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
-    if (active && !selectedId) {
-      setSelectedId(active.id);
-      setEditingText(active.text);
+    if (initialSelectedId) {
+        setSelectedId(initialSelectedId);
+        const sub = subtitleClips.find(s => s.id === initialSelectedId);
+        if (sub) setEditingText(sub.text);
+    } else {
+        const active = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
+        if (active && !selectedId) {
+          setSelectedId(active.id);
+          setEditingText(active.text);
+        }
     }
-  }, [currentTime, subtitleClips, selectedId]);
+  }, [initialSelectedId, currentTime, subtitleClips]);
 
   const handleSelect = (sub: SubtitleClip) => {
     setSelectedId(sub.id);
@@ -93,7 +101,7 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
   };
 
   return (
-    <div className="flex flex-col h-full bg-[#111] text-white">
+    <div className="flex flex-col h-full bg-[#0a0a0c] text-white">
       {/* List Area */}
       <div 
         ref={listRef}
@@ -106,20 +114,21 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
           return (
             <button
               key={sub.id}
+              id={`sub-item-${sub.id}`}
               onClick={() => handleSelect(sub)}
               className={`w-full text-left p-4 rounded-2xl transition-all border ${
                 isActive 
-                  ? 'bg-white/10 border-white/20 shadow-lg' 
+                  ? 'bg-yellow-500/10 border-yellow-500/30 shadow-lg shadow-yellow-500/5' 
                   : isCurrent 
-                    ? 'bg-white/5 border-purple-500/30' 
-                    : 'bg-transparent border-transparent opacity-40'
+                    ? 'bg-white/5 border-white/20' 
+                    : 'bg-transparent border-transparent opacity-40 hover:opacity-100 hover:bg-white/[0.02]'
               }`}
             >
               <div className="flex items-start gap-4">
-                <span className={`text-[10px] font-bold tabular-nums mt-1 ${isActive || isCurrent ? 'text-purple-400' : 'text-white/20'}`}>
+                <span className={`text-[10px] font-bold tabular-nums mt-1 ${isActive ? 'text-yellow-400' : isCurrent ? 'text-white/60' : 'text-white/20'}`}>
                   {fmt(sub.startTime)}
                 </span>
-                <p className={`text-[15px] leading-snug font-medium ${isActive ? 'text-white' : 'text-white/70'}`}>
+                <p className={`text-[15px] leading-snug font-black italic uppercase tracking-tighter ${isActive ? 'text-yellow-400' : 'text-white/70'}`}>
                   {sub.text}
                 </p>
               </div>
@@ -129,40 +138,35 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
       </div>
 
       {/* Editing Toolbar & Input */}
-      <div className="bg-black/80 backdrop-blur-xl border-t border-white/10 p-4 space-y-4">
+      <div className="bg-black/90 backdrop-blur-3xl border-t border-white/10 p-6 space-y-6">
         {/* Context Actions */}
         <div className="flex items-center justify-between px-2">
-            <div className="flex items-center gap-4">
-                <button className="flex flex-col items-center gap-1 opacity-40 hover:opacity-100 transition-opacity">
-                    <ArrowUp size={18} />
-                    <span className="text-[9px] font-bold uppercase tracking-tighter">Merge</span>
-                </button>
-                <button className="flex flex-col items-center gap-1 opacity-40 hover:opacity-100 transition-opacity">
-                    <ArrowDown size={18} />
-                    <span className="text-[9px] font-bold uppercase tracking-tighter">Merge</span>
+            <div className="flex items-center gap-6">
+                <button className="flex flex-col items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity">
+                    <ArrowUp size={20} />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Merge Up</span>
                 </button>
                 <button 
                     onClick={handleSplit}
-                    className="flex flex-col items-center gap-1 opacity-40 hover:opacity-100 transition-opacity"
+                    className="flex flex-col items-center gap-1.5 opacity-40 hover:opacity-100 transition-opacity"
                 >
-                    <Scissors size={18} />
-                    <span className="text-[9px] font-bold uppercase tracking-tighter">Split</span>
+                    <Scissors size={20} />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-white/40">Split</span>
                 </button>
                 <button 
                     onClick={handleDelete}
-                    className="flex flex-col items-center gap-1 text-red-500/60 hover:text-red-500 transition-colors"
+                    className="flex flex-col items-center gap-1.5 text-red-500/40 hover:text-red-500 transition-colors"
                 >
-                    <Trash2 size={18} />
-                    <span className="text-[9px] font-bold uppercase tracking-tighter">Delete</span>
+                    <Trash2 size={20} />
+                    <span className="text-[9px] font-black uppercase tracking-widest text-red-500/60">Delete</span>
                 </button>
             </div>
             
             <button 
                 onClick={onClose}
-                className="flex flex-col items-center gap-1 text-white/40 hover:text-white"
+                className="px-6 py-2 rounded-full bg-white/10 border border-white/10 hover:bg-white/20 transition-all"
             >
-                <X size={18} />
-                <span className="text-[9px] font-bold uppercase tracking-tighter">Dismiss</span>
+                <span className="text-[10px] font-black uppercase tracking-widest">Done</span>
             </button>
         </div>
 
@@ -173,7 +177,7 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
                 value={editingText}
                 onChange={(e) => handleUpdateText(e.target.value)}
                 placeholder="Select a caption to edit..."
-                className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white text-[16px] focus:outline-none focus:border-purple-500/50 transition-all resize-none h-20"
+                className="w-full bg-white/[0.03] border border-white/10 rounded-[2rem] p-6 text-white text-[18px] font-black italic uppercase tracking-tighter focus:outline-none focus:border-yellow-500/50 transition-all resize-none h-24 placeholder:text-white/10"
                 onFocus={() => {
                     if (!selectedId && subtitleClips.length > 0) {
                         setSelectedId(subtitleClips[0].id);
@@ -181,21 +185,27 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
                     }
                 }}
             />
+            <div className="absolute bottom-4 right-6 flex items-center gap-2">
+                <div className="w-2 h-2 rounded-full bg-yellow-500 animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-widest text-yellow-500/60">Live Edit</span>
+            </div>
         </div>
 
         {/* Style/Secondary Actions */}
-        <div className="flex items-center justify-center gap-8 py-2 border-t border-white/5">
-            <button className="flex items-center gap-2 text-white/40 hover:text-white transition-colors">
-                <Palette size={16} />
-                <span className="text-[11px] font-bold uppercase tracking-widest">Style</span>
+        <div className="flex items-center justify-around py-2">
+            <button className="flex items-center gap-3 text-white/30 hover:text-yellow-400 transition-colors group">
+                <Palette size={18} className="group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Styles</span>
             </button>
-            <button className="flex items-center gap-2 text-white/40 hover:text-white transition-colors">
-                <Highlighter size={16} />
-                <span className="text-[11px] font-bold uppercase tracking-widest">Highlight</span>
+            <div className="w-[1px] h-4 bg-white/10" />
+            <button className="flex items-center gap-3 text-white/30 hover:text-yellow-400 transition-colors group">
+                <Highlighter size={18} className="group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Highlight</span>
             </button>
-            <button className="flex items-center gap-2 text-white/40 hover:text-white transition-colors">
-                <Replace size={16} />
-                <span className="text-[11px] font-bold uppercase tracking-widest">Replace</span>
+            <div className="w-[1px] h-4 bg-white/10" />
+            <button className="flex items-center gap-3 text-white/30 hover:text-yellow-400 transition-colors group">
+                <Replace size={18} className="group-hover:scale-110 transition-transform" />
+                <span className="text-[10px] font-black uppercase tracking-[0.2em]">Magic Fix</span>
             </button>
         </div>
       </div>

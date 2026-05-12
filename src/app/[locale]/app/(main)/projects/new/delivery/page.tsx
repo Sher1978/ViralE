@@ -127,15 +127,25 @@ export default function DeliveryPage() {
 
     const drawtextChain = clips.map(c => {
       const txt = esc((c.text || '').toUpperCase());
+      const subtitlePos = manifest?.subtitlePos || { x: 0, y: 0 };
+      const subSize = manifest?.subtitleSize || 82;
+      
+      // Calculate final Y position (FFmpeg 0,0 is top-left)
+      // StudioViewport default is bottom: 15% (approx 1632px in 1920p)
+      const baseVerticalPos = 1632; 
+      const finalY = baseVerticalPos - subtitlePos.y;
+
       return [
         `drawtext=fontfile=font.ttf:text='${txt}'`,
-        `fontsize=72`,
-        `fontcolor=#facc15`, // yellow-400 equivalent
-        `shadowcolor=black`,
-        `shadowx=4`,
-        `shadowy=4`,
-        `x=(w-text_w)/2`,
-        `y=h-420`,
+        `fontsize=${subSize}`,
+        `fontcolor=#facc15`, // Yellow
+        `borderw=4`,
+        `bordercolor=black`,
+        `shadowcolor=black@0.8`,
+        `shadowx=2`,
+        `shadowy=2`,
+        `x=(w-text_w)/2 + ${subtitlePos.x}`,
+        `y=${finalY}`,
         `enable='between(t,${c.startTime},${c.endTime})'`,
       ].join(':');
     }).join(',');
@@ -270,22 +280,31 @@ export default function DeliveryPage() {
         // Draw Subtitles
         const activeSub = subs.find((s: any) => time >= s.startTime && time <= s.endTime);
         if (activeSub) {
-          ctx.font = '900 82px Roboto-Bold, sans-serif';
+          const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
+          const subSize = manifest?.subtitleSize || 82;
+          
+          ctx.font = `900 ${subSize + 10}px Roboto-Bold, sans-serif`;
           ctx.textAlign = 'center';
           ctx.fillStyle = '#facc15';
-          ctx.shadowColor = 'black';
-          ctx.shadowBlur = 10;
-          ctx.shadowOffsetX = 4;
-          ctx.shadowOffsetY = 4;
+          
+          // Outline
+          ctx.strokeStyle = 'black';
+          ctx.lineWidth = 12;
+          ctx.lineJoin = 'round';
           
           const words = activeSub.text.toUpperCase().split(' ');
           const line1 = words.slice(0, 3).join(' ');
           const line2 = words.slice(3).join(' ');
           
-          ctx.fillText(line1, canvas.width / 2, canvas.height - 450);
-          if (line2) ctx.fillText(line2, canvas.width / 2, canvas.height - 350);
+          const baseIdx = canvas.height - 450 - subPos.y;
           
-          ctx.shadowBlur = 0; // Reset
+          // Draw Outline first
+          ctx.strokeText(line1, canvas.width / 2 + subPos.x, baseIdx);
+          if (line2) ctx.strokeText(line2, canvas.width / 2 + subPos.x, baseIdx + 100);
+          
+          // Draw Text
+          ctx.fillText(line1, canvas.width / 2 + subPos.x, baseIdx);
+          if (line2) ctx.fillText(line2, canvas.width / 2 + subPos.x, baseIdx + 100);
         }
 
         const calculatedProgress = Math.max(0, Math.min(90, Math.round((frame / (totalFrames || 1)) * 90)));
@@ -759,15 +778,12 @@ export default function DeliveryPage() {
         ) : (
           <>
             {previewUrl && (
-              <motion.video 
+              <video 
                 src={previewUrl} 
                 autoPlay 
                 muted 
                 loop 
                 playsInline 
-                initial={{ rotate: 0, scale: 1.2 }}
-                animate={{ rotate: 360 }}
-                transition={{ duration: 60, repeat: Infinity, ease: "linear" }}
                 className="absolute inset-0 w-full h-full object-cover opacity-40 blur-xl" 
               />
             )}

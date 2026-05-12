@@ -30,6 +30,7 @@ interface StudioViewportProps {
   setStage: (stage: any) => void;
   setTranscriptionError: (err: string | null) => void;
   setStageMessage: (msg: string) => void;
+  selectedCaptionId?: string | null;
 }
 
 const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: { 
@@ -48,7 +49,11 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
     }
 
     const relativeTime = Math.max(0, currentTime - startTime);
-    if (Math.abs(v.currentTime - relativeTime) > 0.15) {
+    const drift = Math.abs(v.currentTime - relativeTime);
+    
+    // If playing, only sync if drift is large (> 0.5s) to avoid micro-stutters
+    // If paused, sync always to show the correct frame
+    if (!isPlaying || drift > 0.5) {
       v.currentTime = relativeTime;
     }
   }, [isPlaying, currentTime, startTime]);
@@ -77,7 +82,8 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
   videoRef, aRollUrl, isMuted, isPlaying, currentTime, togglePlay,
   brollClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
   setCurrentTime, setARollDuration, onUploadClick,
-  stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage
+  stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage,
+  selectedCaptionId
 }) => {
   return (
     <div className="w-full px-4 py-3 flex items-center justify-center bg-black" style={{ height: '55vh' }}>
@@ -96,12 +102,13 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
             />
             
             {/* B-ROLL OVERLAY */}
-            <AnimatePresence>
+            <AnimatePresence mode="wait">
               {(() => {
                 const activeBR = brollClips.find(c => c.url && c.url.length > 5 && currentTime >= c.startTime && currentTime <= c.endTime);
                 if (!activeBR) return null;
                 return (
                   <motion.div 
+                    key={activeBR.id}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
@@ -127,6 +134,8 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                 const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
                 if (!activeSub) return null;
 
+                const isSelected = selectedCaptionId === activeSub.id;
+
                 return (
                   <motion.div
                     key={activeSub.id}
@@ -138,12 +147,48 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                         y: prev.y + info.delta.y
                       }));
                     }}
-                    className="absolute inset-x-4 flex justify-center pointer-events-auto cursor-grab active:cursor-grabbing"
+                    className={`absolute inset-x-4 flex justify-center pointer-events-auto cursor-grab active:cursor-grabbing ${isSelected ? 'ring-2 ring-yellow-400 ring-offset-4 ring-offset-black/20 rounded-xl' : ''}`}
                     style={{ bottom: '15%', x: subtitlePos.x, y: subtitlePos.y }}
                   >
-                    <div className="px-3 py-1.5 bg-black/60 backdrop-blur-md rounded-lg text-white font-bold text-center border border-white/5"
-                         style={{ fontSize: `${subtitleSize}px`, textShadow: '0 2px 8px rgba(0,0,0,0.8)' }}>
-                      {activeSub.text}
+                    <div className="relative group">
+                      <div className="px-6 py-3 text-[#facc15] font-black text-center uppercase tracking-tight"
+                           style={{ 
+                              fontSize: `${subtitleSize}px`, 
+                              fontFamily: "'Inter', sans-serif",
+                              fontWeight: 900,
+                              textShadow: '0 2px 12px rgba(0,0,0,0.9), 0 0 20px rgba(250,204,21,0.3)',
+                              lineHeight: '1',
+                              WebkitTextStroke: '1px rgba(0,0,0,0.5)'
+                           }}>
+                        {activeSub.text}
+                      </div>
+
+                      {/* Resize Handle */}
+                      {isSelected && (
+                        <div 
+                          className="absolute -bottom-2 -right-2 w-6 h-6 bg-yellow-400 rounded-full border-2 border-black flex items-center justify-center cursor-nwse-resize z-50 shadow-lg"
+                          onPointerDown={(e) => {
+                            e.stopPropagation();
+                            const startX = e.clientX;
+                            const startSize = subtitleSize;
+                            
+                            const onPointerMove = (moveEvent: PointerEvent) => {
+                              const delta = moveEvent.clientX - startX;
+                              setSubtitleSize(Math.max(20, Math.min(200, startSize + delta * 0.5)));
+                            };
+                            
+                            const onPointerUp = () => {
+                              window.removeEventListener('pointermove', onPointerMove);
+                              window.removeEventListener('pointerup', onPointerUp);
+                            };
+                            
+                            window.addEventListener('pointermove', onPointerMove);
+                            window.addEventListener('pointerup', onPointerUp);
+                          }}
+                        >
+                          <div className="w-2 h-2 bg-black rounded-full" />
+                        </div>
+                      )}
                     </div>
                   </motion.div>
                 );

@@ -675,7 +675,7 @@ export default function StudioPage() {
     }
   };
 
-  const handleFinalExport = async (broll?: any[], subs?: any[], explicitARollUrl?: string | null) => {
+  const handleFinalExport = async (broll?: any[], subs?: any[], explicitARollUrl?: string | null, subPos?: { x: number, y: number }, subSize?: number) => {
     setIsSaving(true);
     try {
       if (!manifest) {
@@ -683,7 +683,7 @@ export default function StudioPage() {
         return;
       }
 
-      // ЁЯФе Merge editor state into manifest
+      // 🚀 Merge editor state into manifest
       const manifestAny = manifest as any;
       const resolvedARollUrl = 
         explicitARollUrl ||
@@ -702,6 +702,8 @@ export default function StudioPage() {
         scriptText: finalScriptText, // Save for distribution
         brollClips: broll || [],
         subtitleClips: subs || [],
+        subtitlePos: subPos || (manifest as any).subtitlePos || { x: 0, y: 0 },
+        subtitleSize: subSize || (manifest as any).subtitleSize || 16,
         _log_subs_count: subs?.length || 0,
         segments: manifest.segments.map((s: any, i: number) => i === 0 ? { 
           ...s, 

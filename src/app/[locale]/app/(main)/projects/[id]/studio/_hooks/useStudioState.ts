@@ -104,7 +104,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [isAnalyzingBroll, setIsAnalyzingBroll] = useState(false);
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 });
-  const [subtitleSize, setSubtitleSize] = useState(16);
+  const [subtitleSize, setSubtitleSize] = useState(80);
   const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({});
   const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
   
@@ -142,7 +142,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
             setStage(data.stage);
           }
           if (data.subtitlePos) setSubtitlePos(data.subtitlePos);
-          if (data.subtitleSize) setSubtitleSize(data.subtitleSize);
+          if (data.subtitleSize) setSubtitleSize(data.subtitleSize || 80);
           if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
             setARollUrl(data.aRollUrl);
           }
