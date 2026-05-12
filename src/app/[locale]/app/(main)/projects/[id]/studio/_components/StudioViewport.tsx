@@ -51,9 +51,9 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
     const relativeTime = Math.max(0, currentTime - startTime);
     const drift = Math.abs(v.currentTime - relativeTime);
     
-    // If playing, only sync if drift is large (> 0.5s) to avoid micro-stutters
-    // If paused, sync always to show the correct frame
-    if (!isPlaying || drift > 0.5) {
+    // Ensure frame sync during drag or pause
+    // We use a smaller drift threshold (0.2s) for better responsiveness
+    if (!isPlaying || drift > 0.2) {
       v.currentTime = relativeTime;
     }
   }, [isPlaying, currentTime, startTime]);
@@ -73,7 +73,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
         target.currentTime = Math.max(0.001, currentTime - startTime);
         if (isPlaying) target.play().catch(() => {});
       }}
-      style={{ opacity: 0, transition: 'opacity 0.3s ease' }}
+      style={{ opacity: 0, transition: 'opacity 0.2s ease' }}
     />
   );
 });

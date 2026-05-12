@@ -1,8 +1,7 @@
 'use client';
 
 import React, { useRef, useState, useEffect, useMemo } from 'react';
-import { Plus, Type, Layers } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { Layers } from 'lucide-react';
 
 interface TimelineOverlay {
   id: string;
@@ -136,36 +135,66 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                 >
                     <div className="absolute inset-0 bg-white/[0.02] border-y border-white/[0.05] group-hover/track:bg-white/[0.04] transition-colors" />
                     {brollClips.map(clip => (
-                        <motion.div 
+                        <div 
                             key={clip.id}
-                            drag="x"
-                            dragMomentum={false}
-                            onDrag={(e, info) => {
-                                const newX = (clip.startTime * PX_PER_SECOND) + info.delta.x;
-                                const newTime = newX / PX_PER_SECOND;
-                                onBrollMove?.(clip.id, newTime);
-                            }}
                             onPointerDown={(e) => {
+                                // --- STILL LONG PRESS LOGIC ---
+                                const startX = e.clientX;
+                                const startY = e.clientY;
+                                let movedTooMuch = false;
+
                                 const timer = setTimeout(() => {
-                                    if ('vibrate' in navigator) navigator.vibrate(50);
-                                    onBrollLongPress?.(clip.id);
+                                    if (!movedTooMuch) {
+                                        if ('vibrate' in navigator) navigator.vibrate(50);
+                                        onBrollLongPress?.(clip.id);
+                                    }
                                 }, 3000);
-                                const clear = () => clearTimeout(timer);
-                                e.currentTarget.addEventListener('pointerup', clear, { once: true });
-                                e.currentTarget.addEventListener('pointerleave', clear, { once: true });
+                                
+                                const onMove = (me: PointerEvent) => {
+                                    const dist = Math.sqrt(Math.pow(me.clientX - startX, 2) + Math.pow(me.clientY - startY, 2));
+                                    if (dist > 8) {
+                                        movedTooMuch = true;
+                                        clearTimeout(timer);
+                                    }
+                                };
+                                const onUp = () => {
+                                    clearTimeout(timer);
+                                    window.removeEventListener('pointermove', onMove);
+                                    window.removeEventListener('pointerup', onUp);
+                                };
+                                window.addEventListener('pointermove', onMove);
+                                window.addEventListener('pointerup', onUp);
+
+                                // --- INDEPENDENT DRAG LOGIC ---
+                                if ((e.target as HTMLElement).classList.contains('resize-handle')) return;
+                                
+                                const initialStartTime = clip.startTime;
+                                const initialMouseX = e.clientX;
+                                
+                                const onDragMove = (me: PointerEvent) => {
+                                    const deltaX = me.clientX - initialMouseX;
+                                    const newStartTime = initialStartTime + (deltaX / PX_PER_SECOND);
+                                    onBrollMove?.(clip.id, Math.max(0, newStartTime));
+                                };
+                                const onDragUp = () => {
+                                    window.removeEventListener('pointermove', onDragMove);
+                                    window.removeEventListener('pointerup', onDragUp);
+                                };
+                                window.addEventListener('pointermove', onDragMove);
+                                window.addEventListener('pointerup', onDragUp);
                             }}
-                            className="absolute h-full rounded-lg bg-blue-500/30 border-2 border-blue-500/50 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing group/clip"
+                            className="absolute h-full rounded-lg bg-blue-500/30 border-2 border-blue-500/50 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10"
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
                                 width: clip.duration * PX_PER_SECOND 
                             }}
                         >
-                            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-transparent" />
-                            <Layers size={14} className="text-blue-300 relative z-10" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-transparent pointer-events-none" />
+                            <Layers size={14} className="text-blue-300 relative z-10 pointer-events-none" />
                             
                             {/* Resize Handle */}
                             <div 
-                                className="absolute right-0 top-0 bottom-0 w-2 bg-blue-400/40 hover:bg-blue-400 cursor-ew-resize z-20"
+                                className="resize-handle absolute right-0 top-0 bottom-0 w-4 bg-blue-400/20 hover:bg-blue-400/60 cursor-ew-resize z-20 flex items-center justify-center"
                                 onPointerDown={(e) => {
                                     e.stopPropagation();
                                     const startX = e.clientX;
@@ -181,8 +210,10 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                     window.addEventListener('pointermove', move);
                                     window.addEventListener('pointerup', up);
                                 }}
-                            />
-                        </motion.div>
+                            >
+                                <div className="w-[2px] h-4 bg-blue-200/50 rounded-full pointer-events-none" />
+                            </div>
+                        </div>
                     ))}
                 </div>
 
@@ -196,13 +227,32 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                         <div 
                             key={clip.id}
                             onPointerDown={(e) => {
+                                // --- STILL LONG PRESS LOGIC ---
+                                const startX = e.clientX;
+                                const startY = e.clientY;
+                                let movedTooMuch = false;
+
                                 const timer = setTimeout(() => {
-                                    if ('vibrate' in navigator) navigator.vibrate(50);
-                                    onCaptionClick?.(clip.id);
+                                    if (!movedTooMuch) {
+                                        if ('vibrate' in navigator) navigator.vibrate(50);
+                                        onCaptionClick?.(clip.id);
+                                    }
                                 }, 3000);
-                                const clear = () => clearTimeout(timer);
-                                e.currentTarget.addEventListener('pointerup', clear, { once: true });
-                                e.currentTarget.addEventListener('pointerleave', clear, { once: true });
+                                
+                                const onMove = (me: PointerEvent) => {
+                                    const dist = Math.sqrt(Math.pow(me.clientX - startX, 2) + Math.pow(me.clientY - startY, 2));
+                                    if (dist > 8) {
+                                        movedTooMuch = true;
+                                        clearTimeout(timer);
+                                    }
+                                };
+                                const onUp = () => {
+                                    clearTimeout(timer);
+                                    window.removeEventListener('pointermove', onMove);
+                                    window.removeEventListener('pointerup', onUp);
+                                };
+                                window.addEventListener('pointermove', onMove);
+                                window.addEventListener('pointerup', onUp);
                             }}
                             className={`absolute h-full rounded-md bg-yellow-500/20 border border-yellow-500/30 flex items-center px-2 overflow-hidden transition-all ${Math.abs(currentTime - clip.startTime) < 0.2 ? 'ring-2 ring-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]' : ''}`}
                             style={{ 
@@ -210,7 +260,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 width: clip.duration * PX_PER_SECOND 
                             }}
                         >
-                            <span className="text-[9px] text-yellow-100 truncate font-bold uppercase tracking-tighter">{clip.content || '...'}</span>
+                            <span className="text-[9px] text-yellow-100 truncate font-bold uppercase tracking-tighter pointer-events-none">{clip.content || '...'}</span>
                         </div>
                     ))}
                 </div>
