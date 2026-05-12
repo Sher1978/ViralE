@@ -27,8 +27,6 @@ interface EditorTimelineProps {
   onBrollLongPress?: (id: string) => void;
 }
 
-const PX_PER_SECOND = 100; // High density for Edits style
-
 export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   totalDuration = 60,
   currentTime = 0,
@@ -44,18 +42,25 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   onBrollLongPress
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
+  const trackRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
-
   const isProgrammaticScrollRef = useRef(false);
+
+  const PX_PER_SECOND = 100;
 
   // Sync scroll position with current time
   useEffect(() => {
+    const targetX = currentTime * PX_PER_SECOND;
+    
     if (containerRef.current && !isScrolling) {
-      const targetX = currentTime * PX_PER_SECOND;
       if (Math.abs(containerRef.current.scrollLeft - targetX) > 5) {
         isProgrammaticScrollRef.current = true;
         containerRef.current.scrollLeft = targetX;
       }
+    }
+    
+    if (trackRef.current) {
+        trackRef.current.scrollLeft = targetX;
     }
   }, [currentTime, isScrolling]);
 
@@ -111,15 +116,15 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
         </div>
       </div>
 
-      {/* 2. Audio/Needle Layer */}
+      {/* 2. Tracks Layer */}
       <div className="flex-1 relative overflow-hidden bg-black/40">
         <div 
+            ref={trackRef}
             className="absolute inset-0 overflow-x-auto no-scrollbar pointer-events-none"
-            style={{ scrollLeft: currentTime * PX_PER_SECOND }}
         >
             <div className="relative h-full" style={{ width: totalDuration * PX_PER_SECOND + 1000, paddingLeft: '50%', paddingRight: '50%' }}>
                 
-                {/* B-ROLL TRACK (INTERACTIVE) */}
+                {/* B-ROLL TRACK */}
                 <div 
                     className="absolute top-2 h-14 w-full cursor-copy pointer-events-auto group/track"
                     onDoubleClick={(e) => {
@@ -136,7 +141,6 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                             drag="x"
                             dragMomentum={false}
                             onDrag={(e, info) => {
-                                // Simplified drag logic for now
                                 const newX = (clip.startTime * PX_PER_SECOND) + info.delta.x;
                                 const newTime = newX / PX_PER_SECOND;
                                 onBrollMove?.(clip.id, newTime);
@@ -150,7 +154,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-transparent" />
                             <Layers size={14} className="text-blue-300 relative z-10" />
                             
-                            {/* Resize Handles */}
+                            {/* Resize Handle */}
                             <div 
                                 className="absolute right-0 top-0 bottom-0 w-2 bg-blue-400/40 hover:bg-blue-400 cursor-ew-resize z-20"
                                 onPointerDown={(e) => {
@@ -173,7 +177,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                     ))}
                 </div>
 
-                {/* SUBTITLE TRACK (INTERACTIVE) */}
+                {/* SUBTITLE TRACK */}
                 <div 
                     className="absolute bottom-2 h-10 w-full cursor-pointer pointer-events-auto"
                     onClick={() => onSubtitleTrackClick?.()}
@@ -195,12 +199,11 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
             </div>
         </div>
 
-        {/* Center Needle (Fixed) */}
+        {/* Needle */}
         <div className="absolute inset-y-0 left-1/2 w-[2px] bg-white z-20 pointer-events-none shadow-[0_0_15px_rgba(255,255,255,0.5)]">
             <div className="absolute top-0 left-1/2 -translate-x-1/2 w-3 h-3 bg-white rotate-45" />
         </div>
       </div>
-      
     </div>
   );
 };

@@ -48,7 +48,7 @@ export const VideoEditor = React.memo(({
     runTranscriptionAndPhrases, setRawFile
   } = useStudioState(projectId, initialManifest || null, propARollUrl);
 
-  const [activeTool, setActiveTool] = useState<'captions' | 'broll' | 'audio' | 'style' | null>(null);
+  const [activeTool, setActiveTool] = useState<'captions' | 'broll' | 'audio' | 'style' | 'voice' | 'filters' | 'text' | null>(null);
   const [selectedCaptionId, setSelectedCaptionId] = useState<string | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [subtitleEditorOpen, setSubtitleEditorOpen] = useState(false);
@@ -239,7 +239,7 @@ export const VideoEditor = React.memo(({
       <EditorToolDrawer 
         activeTool={activeTool as any}
         onToolSelect={(tool) => {
-            setActiveTool(tool);
+            setActiveTool(tool as any);
             if (tool !== 'captions') setSelectedCaptionId(null);
         }}
         onClose={() => {
