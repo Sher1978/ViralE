@@ -322,6 +322,7 @@ export default function DeliveryPage() {
           const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
           const subSize = manifest?.subtitleSize || 82;
           const subStyleIdx = manifest?.subtitleStyle || 0;
+          const baseIdx = canvas.height - 450 - subPos.y;
           
           let fontStyle = '';
           let fillStyle = '#facc15';
@@ -371,7 +372,6 @@ export default function DeliveryPage() {
           const line1 = words.slice(0, 3).join(' ');
           const line2 = words.slice(3).join(' ');
           
-          const baseIdx = canvas.height - 450 - subPos.y;
           
           if (useBox) {
             ctx.fillStyle = boxColor;
