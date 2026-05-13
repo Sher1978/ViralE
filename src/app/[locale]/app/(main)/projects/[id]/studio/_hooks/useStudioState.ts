@@ -244,45 +244,55 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   };
 
   const extractAudioNative = async (videoBlob: Blob): Promise<Blob> => {
-    const arrayBuffer = await videoBlob.arrayBuffer();
-    const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
-    const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
-    const targetSampleRate = 16000;
-    const offlineCtx = new OfflineAudioContext(1, audioBuffer.duration * targetSampleRate, targetSampleRate);
-    const source = offlineCtx.createBufferSource();
-    source.buffer = audioBuffer;
-    source.connect(offlineCtx.destination);
-    source.start();
-    const resampledBuffer = await offlineCtx.startRendering();
-    
-    const length = resampledBuffer.length * 2 + 44;
-    const buffer = new ArrayBuffer(length);
-    const view = new DataView(buffer);
-    const writeString = (offset: number, string: string) => {
-      for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
-    };
-    writeString(0, 'RIFF');
-    view.setUint32(4, 36 + resampledBuffer.length * 2, true);
-    writeString(8, 'WAVE');
-    writeString(12, 'fmt ');
-    view.setUint32(16, 16, true);
-    view.setUint16(20, 1, true);
-    view.setUint16(22, 1, true);
-    view.setUint32(24, targetSampleRate, true);
-    view.setUint32(28, targetSampleRate * 2, true);
-    view.setUint16(32, 2, true);
-    view.setUint16(34, 16, true);
-    writeString(36, 'data');
-    view.setUint32(40, resampledBuffer.length * 2, true);
-    
-    let offset = 44;
-    const channelData = resampledBuffer.getChannelData(0);
-    for (let i = 0; i < channelData.length; i++) {
-      const sample = Math.max(-1, Math.min(1, channelData[i]));
-      view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
-      offset += 2;
+    try {
+      const arrayBuffer = await videoBlob.arrayBuffer();
+      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      
+      // Attempt to decode. If this fails (e.g. unsupported codec in browser), it will throw.
+      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      
+      // Use 16kHz mono (standard for Whisper/AI)
+      const targetSampleRate = 16000;
+      const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetSampleRate), targetSampleRate);
+      const source = offlineCtx.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(offlineCtx.destination);
+      source.start();
+      const resampledBuffer = await offlineCtx.startRendering();
+      
+      const length = resampledBuffer.length * 2 + 44;
+      const buffer = new ArrayBuffer(length);
+      const view = new DataView(buffer);
+      const writeString = (offset: number, string: string) => {
+        for (let i = 0; i < string.length; i++) view.setUint8(offset + i, string.charCodeAt(i));
+      };
+      
+      writeString(0, 'RIFF');
+      view.setUint32(4, 36 + resampledBuffer.length * 2, true);
+      writeString(8, 'WAVE');
+      writeString(12, 'fmt ');
+      view.setUint32(16, 16, true);
+      view.setUint16(20, 1, true); // PCM
+      view.setUint16(22, 1, true); // Mono
+      view.setUint32(24, targetSampleRate, true);
+      view.setUint32(28, targetSampleRate * 2, true);
+      view.setUint16(32, 2, true);
+      view.setUint16(34, 16, true);
+      writeString(36, 'data');
+      view.setUint32(40, resampledBuffer.length * 2, true);
+      
+      let offset = 44;
+      const channelData = resampledBuffer.getChannelData(0);
+      for (let i = 0; i < channelData.length; i++) {
+        const sample = Math.max(-1, Math.min(1, channelData[i]));
+        view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
+        offset += 2;
+      }
+      return new Blob([buffer], { type: 'audio/wav' });
+    } catch (err) {
+      console.error('[Studio] Native extraction failed:', err);
+      throw err; // Let the caller handle fallback
     }
-    return new Blob([buffer], { type: 'audio/wav' });
   };
 
   const runTranscriptionAndPhrases = useCallback(async (forceFresh = false) => {
@@ -323,6 +333,12 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
 
         setStageMessage('AI расшифровка...');
         console.log(`[Studio] Sending to transcribe. Size: ${(audioBlob.size / 1024 / 1024).toFixed(2)}MB, Type: ${audioBlob.type}`);
+        
+        // Vercel / Serverless body limit is typically 4.5MB
+        if (audioBlob.size > 4.5 * 1024 * 1024) {
+          throw new Error('Файл слишком велик для обработки. Попробуйте укоротить видео до 2 минут.');
+        }
+
         const formData = new FormData();
         formData.append('file', audioBlob, audioBlob === sourceBlob ? 'video.mp4' : 'audio.wav');
         
