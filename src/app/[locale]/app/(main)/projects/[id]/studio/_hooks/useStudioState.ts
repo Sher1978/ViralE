@@ -3,6 +3,8 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ProductionManifest } from '@/lib/types/studio';
 import { idb } from '@/lib/idb';
+import { getFFmpeg } from '@/lib/ffmpeg-delivery';
+import { fetchFile } from '@ffmpeg/util';
 
 // --- TYPES ---
 
@@ -244,14 +246,20 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   };
 
   const extractAudioNative = async (videoBlob: Blob): Promise<Blob> => {
+    // Attempt 1: Web Audio API (Fastest)
     try {
+      console.log('[Studio] Attempting AudioContext extraction...');
       const arrayBuffer = await videoBlob.arrayBuffer();
-      const audioContext = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext);
+      const audioContext = new AudioCtx();
       
-      // Attempt to decode. If this fails (e.g. unsupported codec in browser), it will throw.
-      const audioBuffer = await audioContext.decodeAudioData(arrayBuffer);
+      const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
+        audioContext.decodeAudioData(arrayBuffer, resolve, (err) => {
+            // Fallback for older browsers where it might not return a promise
+            reject(err || new Error('Decode failed'));
+        }).then(resolve).catch(reject);
+      });
       
-      // Use 16kHz mono (standard for Whisper/AI)
       const targetSampleRate = 16000;
       const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetSampleRate), targetSampleRate);
       const source = offlineCtx.createBufferSource();
@@ -272,8 +280,8 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       writeString(8, 'WAVE');
       writeString(12, 'fmt ');
       view.setUint32(16, 16, true);
-      view.setUint16(20, 1, true); // PCM
-      view.setUint16(22, 1, true); // Mono
+      view.setUint16(20, 1, true); 
+      view.setUint16(22, 1, true); 
       view.setUint32(24, targetSampleRate, true);
       view.setUint32(28, targetSampleRate * 2, true);
       view.setUint16(32, 2, true);
@@ -288,10 +296,28 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
         offset += 2;
       }
+      console.log('[Studio] AudioContext extraction successful');
       return new Blob([buffer], { type: 'audio/wav' });
     } catch (err) {
-      console.error('[Studio] Native extraction failed:', err);
-      throw err; // Let the caller handle fallback
+      console.warn('[Studio] AudioContext extraction failed, trying FFmpeg fallback...', err);
+      
+      // Attempt 2: FFmpeg WASM (Most Reliable)
+      try {
+        const ffmpeg = await getFFmpeg();
+        const inputName = 'input.mp4';
+        const outputName = 'output.wav';
+        
+        await ffmpeg.writeFile(inputName, await fetchFile(videoBlob));
+        // Extract mono 16khz wav
+        await ffmpeg.exec(['-i', inputName, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', outputName]);
+        
+        const data = await ffmpeg.readFile(outputName);
+        console.log('[Studio] FFmpeg extraction successful');
+        return new Blob([data as any], { type: 'audio/wav' });
+      } catch (ffErr) {
+        console.error('[Studio] FFmpeg extraction failed:', ffErr);
+        throw ffErr;
+      }
     }
   };
 
