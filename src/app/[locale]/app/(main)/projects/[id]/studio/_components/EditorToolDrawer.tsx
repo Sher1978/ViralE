@@ -49,7 +49,9 @@ export const EditorToolDrawer: React.FC<EditorToolDrawerProps> = ({
               animate={{ y: 0 }}
               exit={{ y: '100%' }}
               transition={{ type: 'spring', damping: 25, stiffness: 200 }}
-              className="fixed bottom-0 inset-x-0 bg-[#111] rounded-t-[32px] h-[45%] z-[70] shadow-2xl flex flex-col border-t border-white/5"
+              className={`fixed bottom-0 inset-x-0 bg-[#111] rounded-t-[32px] z-[70] shadow-2xl flex flex-col border-t border-white/5 ${
+                activeTool === 'text' ? 'h-[92%]' : 'h-[45%]'
+              }`}
             >
               <div className="w-10 h-1.5 rounded-full bg-white/20 mx-auto mt-3 mb-2" />
               

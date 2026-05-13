@@ -31,11 +31,8 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
   onSeek,
   onClose,
   initialSelectedId,
-  subtitleStyle,
-  setSubtitleStyle
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId || null);
-  const [view, setView] = useState<'list' | 'style'>('list');
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -56,34 +53,21 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
     setSubtitleClips(prev => prev.map(s => s.id === id ? { ...s, text: newText } : s));
   };
 
-  if (view === 'style') {
-    return (
-      <CaptionStyleSelector 
-        currentStyle={subtitleStyle}
-        onSelect={(idx) => {
-            setSubtitleStyle(idx);
-            setView('list');
-        }}
-        onClose={() => setView('list')}
-      />
-    );
-  }
-
   return (
     <div className="flex flex-col h-full bg-[#0d0d12] text-white rounded-t-[3rem] overflow-hidden">
       {/* Header */}
-      <div className="relative flex items-center justify-between px-6 py-8 border-b border-white/5">
+      <div className="relative flex items-center justify-between px-6 py-5 border-b border-white/5">
         <button onClick={onClose} className="p-2 text-white/40 hover:text-white transition-colors">
-            <Undo2 size={24} />
+            <Undo2 size={22} />
         </button>
-        <h2 className="text-xl font-bold tracking-tight uppercase">Edit captions</h2>
-        <div className="w-10" /> {/* Spacer */}
+        <h2 className="text-lg font-black tracking-tight uppercase italic">Script Editor</h2>
+        <div className="w-10" />
       </div>
 
       {/* Phrase List */}
       <div 
         ref={listRef}
-        className="flex-1 overflow-y-auto px-6 py-4 space-y-6 custom-scrollbar"
+        className="flex-1 overflow-y-auto px-6 py-4 space-y-4 custom-scrollbar"
       >
         {subtitleClips.map((sub) => {
           const isActive = selectedId === sub.id;
@@ -91,11 +75,11 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
           return (
             <div
               key={sub.id}
-              className="w-full text-left transition-all flex items-start gap-6 group"
+              className="w-full text-left transition-all flex items-start gap-4 group"
             >
               <button 
                 onClick={() => handleSelect(sub)}
-                className={`text-[13px] font-medium tabular-nums mt-1 w-10 shrink-0 ${isActive ? 'text-white/60' : 'text-white/20'}`}
+                className={`text-[11px] font-bold tabular-nums mt-1 w-10 shrink-0 ${isActive ? 'text-purple-400' : 'text-white/20'}`}
               >
                 {fmt(sub.startTime)}
               </button>
@@ -106,14 +90,14 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
                         autoFocus
                         value={sub.text}
                         onChange={(e) => handleTextChange(sub.id, e.target.value)}
-                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-[17px] leading-relaxed font-bold text-white focus:outline-none focus:border-purple-500 transition-all resize-none"
+                        className="w-full bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[15px] leading-snug font-bold text-white focus:outline-none focus:border-purple-500 transition-all resize-none"
                         rows={2}
                     />
                 </div>
               ) : (
                 <button 
                     onClick={() => handleSelect(sub)}
-                    className="text-[17px] leading-relaxed font-bold flex-1 text-left text-white/40 group-hover:text-white/60"
+                    className="text-[15px] leading-snug font-bold flex-1 text-left text-white/40 group-hover:text-white/60 transition-colors"
                 >
                     {sub.text}
                 </button>
@@ -121,33 +105,7 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
             </div>
           );
         })}
-      </div>
-
-      {/* Bottom Tabs */}
-      <div className="bg-[#0a0a0f] border-t border-white/5 px-8 pt-6 pb-10 flex items-center justify-between">
-        <button 
-            onClick={() => setView('style')}
-            className="flex flex-col items-center gap-2 group"
-        >
-            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
-                <Palette size={22} className="text-white/60 group-hover:text-white" />
-            </div>
-            <span className="text-[11px] font-bold text-white/40 group-hover:text-white/60">Style</span>
-        </button>
-
-        <button className="flex flex-col items-center gap-2 group opacity-20 pointer-events-none">
-            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
-                <Highlighter size={22} className="text-white/60 group-hover:text-white" />
-            </div>
-            <span className="text-[11px] font-bold text-white/40 group-hover:text-white/60">Highlight</span>
-        </button>
-
-        <button className="flex flex-col items-center gap-2 group opacity-20 pointer-events-none">
-            <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
-                <Replace size={22} className="text-white/60 group-hover:text-white" />
-            </div>
-            <span className="text-[11px] font-bold text-white/40 group-hover:text-white/60">Replace</span>
-        </button>
+        <div className="h-20" /> {/* Extra scroll space */}
       </div>
     </div>
   );

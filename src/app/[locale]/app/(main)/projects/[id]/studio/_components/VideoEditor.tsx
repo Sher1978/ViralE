@@ -18,6 +18,7 @@ import { StudioActionBar } from './StudioActionBar';
 import { EditorTimeline } from './EditorTimeline';
 import { EditorToolDrawer } from './EditorToolDrawer';
 import { EditorCaptionEditor } from './EditorCaptionEditor';
+import { CaptionStyleSelector } from './CaptionStyleSelector';
 import { StudioModals } from './StudioModals';
 
 interface VideoEditorProps {
@@ -298,6 +299,15 @@ export const VideoEditor = React.memo(({
         }}
       >
         {activeTool === 'captions' && (
+            <CaptionStyleSelector 
+                currentStyle={subtitleStyle}
+                onSelect={(idx) => {
+                    setSubtitleStyle(idx);
+                }}
+                onClose={() => setActiveTool(null)}
+            />
+        )}
+        {activeTool === 'text' && (
             <EditorCaptionEditor 
                 subtitleClips={subtitleClips}
                 setSubtitleClips={setSubtitleClips}
