@@ -43,7 +43,7 @@ export const VideoEditor = React.memo(({
     transcript, setTranscript, subtitleClips, setSubtitleClips,
     brollClips, setBrollClips, phrases, setPhrases,
     transcriptionError, setTranscriptionError, isAnalyzingBroll,
-    subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize, subtitleStyle,
+    subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize, subtitleStyle, setSubtitleStyle, pxPerSecond, setPxPerSecond,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
     runTranscriptionAndPhrases, setRawFile, deleteBroll
   } = useStudioState(projectId, initialManifest || null, propARollUrl);
