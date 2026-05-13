@@ -24,7 +24,7 @@ interface VideoEditorProps {
   projectId: string;
   aRollUrl: string;
   onBack: () => void;
-  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null, subPos?: { x: number, y: number }, subSize?: number) => Promise<void>;
+  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number) => Promise<void>;
   manifest?: ProductionManifest | null;
   onFaceless?: () => void;
 }
@@ -43,9 +43,9 @@ export const VideoEditor = React.memo(({
     transcript, setTranscript, subtitleClips, setSubtitleClips,
     brollClips, setBrollClips, phrases, setPhrases,
     transcriptionError, setTranscriptionError, isAnalyzingBroll,
-    subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
+    subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize, subtitleStyle,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
-    runTranscriptionAndPhrases, setRawFile
+    runTranscriptionAndPhrases, setRawFile, deleteBroll
   } = useStudioState(projectId, initialManifest || null, propARollUrl);
 
   const [activeTool, setActiveTool] = useState<'captions' | 'broll' | 'audio' | 'style' | 'voice' | 'filters' | 'text' | null>(null);
@@ -195,7 +195,7 @@ export const VideoEditor = React.memo(({
 
       <EditorTopBar 
         onBack={onBack} 
-        onExport={() => onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize)} 
+        onExport={() => onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize, subtitleStyle)} 
       />
 
       {/* 2. Video Preview (Viewport) */}
@@ -206,6 +206,7 @@ export const VideoEditor = React.memo(({
         onUploadClick={() => fileInputRef.current?.click()}
         stage={stage} stageMessage={stageMessage} transcriptionError={transcriptionError} heartbeat={0}
         runTranscriptionAndPhrases={runTranscriptionAndPhrases} setStage={setStage} setTranscriptionError={setTranscriptionError} setStageMessage={setStageMessage}
+        subtitleStyle={subtitleStyle}
       />
 
 
@@ -233,16 +234,55 @@ export const VideoEditor = React.memo(({
         }}
         onCaptionClick={handleCaptionClick}
         onSubtitleTrackClick={() => setActiveTool('captions')}
+        pxPerSecond={pxPerSecond}
+        onPxPerSecondChange={setPxPerSecond}
         onBrollMove={(id, newStart) => {
-            setBrollClips(prev => prev.map(c => c.id === id ? { ...c, startTime: newStart, endTime: newStart + (c.endTime - c.startTime) } : c));
+            setBrollClips(prev => {
+                const clip = prev.find(c => c.id === id);
+                if (!clip) return prev;
+                const duration = clip.endTime - clip.startTime;
+                let finalStart = newStart;
+                
+                // Collision detection
+                prev.forEach(other => {
+                    if (other.id === id) return;
+                    
+                    // If moving forward and hitting someone
+                    if (finalStart < other.endTime && finalStart + duration > other.startTime) {
+                        // Determine which side we hit
+                        if (clip.startTime >= other.endTime) {
+                            finalStart = other.endTime; // Snap to right
+                        } else if (clip.startTime + duration <= other.startTime) {
+                            finalStart = other.startTime - duration; // Snap to left
+                        }
+                    }
+                });
+
+                return prev.map(c => c.id === id ? { ...c, startTime: finalStart, endTime: finalStart + duration } : c);
+            });
         }}
         onBrollResize={(id, newDur) => {
-            setBrollClips(prev => prev.map(c => c.id === id ? { ...c, endTime: c.startTime + newDur } : c));
+            setBrollClips(prev => {
+                const clip = prev.find(c => c.id === id);
+                if (!clip) return prev;
+                let finalDur = newDur;
+
+                // Collision detection for resize (right edge)
+                prev.forEach(other => {
+                    if (other.id === id) return;
+                    if (clip.startTime < other.startTime && clip.startTime + finalDur > other.startTime) {
+                        finalDur = other.startTime - clip.startTime;
+                    }
+                });
+
+                return prev.map(c => c.id === id ? { ...c, endTime: c.startTime + finalDur } : c);
+            });
         }}
         onBrollLongPress={(id) => {
             const clip = brollClips.find(c => c.id === id);
             if (clip) openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt);
         }}
+        onDeleteBroll={deleteBroll}
       />
 
       {/* 5. Tool Drawer */}
@@ -268,6 +308,8 @@ export const VideoEditor = React.memo(({
                     setSelectedCaptionId(null);
                 }}
                 initialSelectedId={selectedCaptionId}
+                subtitleStyle={subtitleStyle}
+                setSubtitleStyle={setSubtitleStyle}
             />
         )}
         {activeTool === 'broll' && (

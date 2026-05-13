@@ -104,7 +104,9 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [isAnalyzingBroll, setIsAnalyzingBroll] = useState(false);
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 });
-  const [subtitleSize, setSubtitleSize] = useState(80);
+  const [subtitleSize, setSubtitleSize] = useState(25); // Reduced default size 3x (was 80)
+  const [subtitleStyle, setSubtitleStyle] = useState<number>(0);
+  const [pxPerSecond, setPxPerSecond] = useState(100);
   const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({});
   const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
   
@@ -123,7 +125,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         console.warn('[Studio] Persistence recovery timed out, forcing ready state');
         setPersistenceLoaded(true);
       }
-    }, 1000);
+    }, 3000);
 
     async function recoverDraft() {
       const key = `viral_editor_draft_${projectId}`;
@@ -142,7 +144,9 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
             setStage(data.stage);
           }
           if (data.subtitlePos) setSubtitlePos(data.subtitlePos);
-          if (data.subtitleSize) setSubtitleSize(data.subtitleSize || 80);
+          if (data.subtitleSize) setSubtitleSize(data.subtitleSize || 25);
+          if (data.subtitleStyle !== undefined) setSubtitleStyle(data.subtitleStyle);
+          if (data.pxPerSecond) setPxPerSecond(data.pxPerSecond);
           if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
             setARollUrl(data.aRollUrl);
           }
@@ -184,9 +188,9 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   useEffect(() => {
     if (!projectId || !persistenceLoadedRef.current) return;
     const key = `viral_editor_draft_${projectId}`;
-    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize };
+    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, pxPerSecond };
     idb.set(key, state, 'ProjectDrafts');
-  }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize]);
+  }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, pxPerSecond]);
 
   // Heavy file persistence
   useEffect(() => {
@@ -314,7 +318,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
           audioBlob = await extractAudioNative(sourceBlob);
         } catch (e) {
           console.warn('[Studio] Native audio extraction failed, falling back to full file upload:', e);
-          audioBlob = sourceBlob; // Fallback: try to transcribe the whole file (Gemini/Whisper can handle it)
+          audioBlob = sourceBlob;
         }
 
         setStageMessage('AI расшифровка...');
@@ -344,38 +348,8 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     setTranscript(words);
     setSubtitleClips(buildKaraokeClips(words));
     setStage('editing');
-    setIsAnalyzingBroll(true);
-
-    try {
-      const fullText = words.map(w => w.text).join(' ');
-      const vsRes = await fetch('/api/ai/visual-script', { method: 'POST', body: JSON.stringify({ scriptText: fullText }) });
-      if (vsRes.ok) {
-        const vsData = await vsRes.json();
-        const segments = vsData.segments || [];
-        const newPhrases: BRollPhrase[] = [];
-        const newBrollClips: BRollClip[] = [];
-        let wordIdx = 0;
-        segments.slice(0, 3).forEach((seg: any, sIdx: number) => {
-          const phrase: BRollPhrase = {
-            id: `phrase-${sIdx}-${Date.now()}`,
-            text: seg.text,
-            start: words[wordIdx]?.start || 0,
-            end: (words[wordIdx]?.start || 0) + 3,
-            approved: true
-          };
-          newPhrases.push(phrase);
-          newBrollClips.push({
-            id: `br-${phrase.id}`, phraseId: phrase.id, startTime: phrase.start, endTime: phrase.end,
-            label: seg.visual_metaphor?.slice(0, 30) || 'AI Scene', url: '',
-            prompt: seg.pexels_query || seg.ai_prompt || seg.visual_metaphor || seg.text, track: 1
-          });
-          wordIdx = Math.min(words.length - 1, wordIdx + 5);
-        });
-        setPhrases(newPhrases);
-        setBrollClips(newBrollClips);
-        setPendingBrollPhrases(newPhrases);
-      }
-    } catch (e) {} finally { setIsAnalyzingBroll(false); setStageMessage(''); }
+    setIsAnalyzingBroll(false); // Disable auto-creation of B-rolls
+    setStageMessage('');
   }, [aRollUrl, rawFile, manifest, projectId, transcriptionError]);
 
   useEffect(() => {
@@ -401,7 +375,9 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     brollClips, setBrollClips, phrases, setPhrases,
     transcriptionError, setTranscriptionError, isAnalyzingBroll,
     subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
+    subtitleStyle, setSubtitleStyle, pxPerSecond, setPxPerSecond,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
-    runTranscriptionAndPhrases, setRawFile
+    runTranscriptionAndPhrases, setRawFile,
+    deleteBroll: (id: string) => setBrollClips(prev => prev.filter(c => c.id !== id))
   };
 }

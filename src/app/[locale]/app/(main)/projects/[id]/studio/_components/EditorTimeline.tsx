@@ -24,6 +24,9 @@ interface EditorTimelineProps {
   onBrollMove?: (id: string, newStartTime: number) => void;
   onBrollResize?: (id: string, newDuration: number) => void;
   onBrollLongPress?: (id: string) => void;
+  onDeleteBroll?: (id: string) => void;
+  pxPerSecond: number;
+  onPxPerSecondChange: (px: number) => void;
 }
 
 export const EditorTimeline: React.FC<EditorTimelineProps> = ({
@@ -38,14 +41,17 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   onSubtitleTrackClick,
   onBrollMove,
   onBrollResize,
-  onBrollLongPress
+  onBrollLongPress,
+  onDeleteBroll,
+  pxPerSecond: PX_PER_SECOND,
+  onPxPerSecondChange
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
   const isProgrammaticScrollRef = useRef(false);
-
-  const PX_PER_SECOND = 100;
+  const lastTouchDistance = useRef<number | null>(null);
+  const [placeholderTime, setPlaceholderTime] = useState<number | null>(null);
 
   // Sync scroll position with current time
   useEffect(() => {
@@ -61,7 +67,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
     if (trackRef.current) {
         trackRef.current.scrollLeft = targetX;
     }
-  }, [currentTime, isScrolling]);
+  }, [currentTime, isScrolling, PX_PER_SECOND]);
 
   const handleScroll = () => {
     if (isProgrammaticScrollRef.current) {
@@ -72,16 +78,42 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
     if (containerRef.current) {
       const scrollLeft = containerRef.current.scrollLeft;
       const newTime = scrollLeft / PX_PER_SECOND;
-      if (Math.abs(newTime - currentTime) > 0.1) {
+      if (Math.abs(newTime - currentTime) > 0.01) {
         onSeek(Math.max(0, Math.min(newTime, totalDuration)));
       }
+    }
+  };
+
+  const handlePinch = (e: React.TouchEvent, mode: 'timeline' | 'clip', clipId?: string) => {
+    if (e.touches.length === 2) {
+        const touch1 = e.touches[0];
+        const touch2 = e.touches[1];
+        const distance = Math.sqrt(
+            Math.pow(touch2.clientX - touch1.clientX, 2) + 
+            Math.pow(touch2.clientY - touch1.clientY, 2)
+        );
+
+        if (lastTouchDistance.current !== null) {
+            const delta = distance - lastTouchDistance.current;
+            if (mode === 'timeline') {
+                const newPx = Math.max(20, Math.min(500, PX_PER_SECOND + delta * 0.5));
+                onPxPerSecondChange(newPx);
+            } else if (mode === 'clip' && clipId) {
+                const clip = brollClips.find(c => c.id === clipId);
+                if (clip) {
+                    const newDur = Math.max(0.2, clip.duration + delta / PX_PER_SECOND);
+                    onBrollResize?.(clipId, newDur);
+                }
+            }
+        }
+        lastTouchDistance.current = distance;
     }
   };
 
   // Generate frame markers for the ruler
   const markers = useMemo(() => {
     const items = [];
-    const step = 0.5;
+    const step = PX_PER_SECOND < 50 ? 2 : PX_PER_SECOND < 100 ? 1 : 0.5;
     for (let i = 0; i <= totalDuration; i += step) {
       const isFullSecond = i % 1 === 0;
       items.push(
@@ -96,7 +128,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
       );
     }
     return items;
-  }, [totalDuration]);
+  }, [totalDuration, PX_PER_SECOND]);
 
   return (
     <div className="w-full bg-[#080808] border-t border-white/[0.06] flex flex-col select-none h-48">
@@ -107,6 +139,9 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
           onScroll={handleScroll}
           onMouseDown={() => setIsScrolling(true)}
           onMouseUp={() => setIsScrolling(false)}
+          onTouchStart={(e) => { if (e.touches.length === 2) lastTouchDistance.current = null; setIsScrolling(true); }}
+          onTouchMove={(e) => handlePinch(e, 'timeline')}
+          onTouchEnd={() => { lastTouchDistance.current = null; setIsScrolling(false); }}
           className="absolute inset-0 overflow-x-auto no-scrollbar"
         >
           <div className="relative h-full" style={{ width: totalDuration * PX_PER_SECOND + 1000, paddingLeft: '50%', paddingRight: '50%' }}>
@@ -126,17 +161,37 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                 {/* B-ROLL TRACK */}
                 <div 
                     className="absolute top-2 h-14 w-full cursor-copy pointer-events-auto group/track"
-                    onDoubleClick={(e) => {
+                    onClick={(e) => {
+                        if ((e.target as HTMLElement).closest('.broll-clip-box')) return;
                         const rect = e.currentTarget.getBoundingClientRect();
                         const x = e.clientX - rect.left;
-                        const time = x / PX_PER_SECOND;
-                        onCreateBroll?.(time);
+                        const time = (x - rect.width / 2 + containerRef.current!.scrollLeft) / PX_PER_SECOND;
+                        setPlaceholderTime(time);
                     }}
                 >
                     <div className="absolute inset-0 bg-white/[0.02] border-y border-white/[0.05] group-hover/track:bg-white/[0.04] transition-colors" />
+                    
+                    {/* Placeholder */}
+                    {placeholderTime !== null && (
+                        <div 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onCreateBroll?.(placeholderTime);
+                                setPlaceholderTime(null);
+                            }}
+                            className="absolute h-full w-12 bg-white/10 border-2 border-dashed border-white/20 rounded-lg flex items-center justify-center cursor-pointer hover:bg-white/20 hover:border-white/40 transition-all animate-in fade-in zoom-in duration-200 z-30"
+                            style={{ left: placeholderTime * PX_PER_SECOND }}
+                        >
+                            <span className="text-xl font-bold text-white/40">+</span>
+                        </div>
+                    )}
+
                     {brollClips.map(clip => (
                         <div 
                             key={clip.id}
+                            onTouchStart={(e) => { if (e.touches.length === 2) lastTouchDistance.current = null; }}
+                            onTouchMove={(e) => handlePinch(e, 'clip', clip.id)}
+                            onTouchEnd={() => { lastTouchDistance.current = null; }}
                             onPointerDown={(e) => {
                                 // --- STILL LONG PRESS LOGIC ---
                                 const startX = e.clientX;
@@ -167,6 +222,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
 
                                 // --- INDEPENDENT DRAG LOGIC ---
                                 if ((e.target as HTMLElement).classList.contains('resize-handle')) return;
+                                if ((e.target as HTMLElement).closest('.delete-btn')) return;
                                 
                                 const initialStartTime = clip.startTime;
                                 const initialMouseX = e.clientX;
@@ -183,7 +239,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 window.addEventListener('pointermove', onDragMove);
                                 window.addEventListener('pointerup', onDragUp);
                             }}
-                            className="absolute h-full rounded-lg bg-blue-500/30 border-2 border-blue-500/50 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10"
+                            className="broll-clip-box absolute h-full rounded-lg bg-blue-500/30 border-2 border-blue-500/50 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10"
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
                                 width: clip.duration * PX_PER_SECOND 
@@ -192,6 +248,14 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-transparent pointer-events-none" />
                             <Layers size={14} className="text-blue-300 relative z-10 pointer-events-none" />
                             
+                            {/* Delete Button */}
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onDeleteBroll?.(clip.id); }}
+                                className="delete-btn absolute top-1 right-1 p-1 bg-black/40 rounded-full opacity-0 group-hover/clip:opacity-100 transition-opacity hover:bg-red-500/80 z-30"
+                            >
+                                <span className="text-[10px] text-white">тЬХ</span>
+                            </button>
+
                             {/* Resize Handle */}
                             <div 
                                 className="resize-handle absolute right-0 top-0 bottom-0 w-4 bg-blue-400/20 hover:bg-blue-400/60 cursor-ew-resize z-20 flex items-center justify-center"
@@ -201,7 +265,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                     const startDur = clip.duration;
                                     const move = (me: PointerEvent) => {
                                         const delta = (me.clientX - startX) / PX_PER_SECOND;
-                                        onBrollResize?.(clip.id, Math.max(0.5, startDur + delta));
+                                        onBrollResize?.(clip.id, Math.max(0.2, startDur + delta));
                                     };
                                     const up = () => {
                                         window.removeEventListener('pointermove', move);

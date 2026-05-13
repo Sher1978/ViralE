@@ -268,6 +268,13 @@ export default function StudioPage() {
   useEffect(() => {
     async function loadData() {
       if (!projectId) return;
+      
+      // Safety timeout: if fetching hangs, force stop loading after 3s
+      const safetyTimeout = setTimeout(() => {
+        setIsLoading(false);
+        console.warn('[Studio] loadData timed out, forcing ready state');
+      }, 3000);
+
       setIsLoading(true);
       try {
         const [profileData, projectData, latestVersion, cachedLocal] = await Promise.all([
@@ -354,6 +361,7 @@ export default function StudioPage() {
         console.error('Failed to load studio data:', err);
       } finally {
         setIsLoading(false);
+        clearTimeout(safetyTimeout);
       }
     }
     loadData();
@@ -675,7 +683,7 @@ export default function StudioPage() {
     }
   };
 
-  const handleFinalExport = async (broll?: any[], subs?: any[], explicitARollUrl?: string | null, subPos?: { x: number, y: number }, subSize?: number) => {
+  const handleFinalExport = async (broll?: any[], subs?: any[], explicitARollUrl?: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number) => {
     setIsSaving(true);
     try {
       if (!manifest) {
@@ -703,12 +711,15 @@ export default function StudioPage() {
         brollClips: broll || [],
         subtitleClips: subs || [],
         subtitlePos: subPos || (manifest as any).subtitlePos || { x: 0, y: 0 },
-        subtitleSize: subSize || (manifest as any).subtitleSize || 16,
+        subtitleSize: subSize || (manifest as any).subtitleSize || 25,
+        subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
         _log_subs_count: subs?.length || 0,
         segments: manifest.segments.map((s: any, i: number) => i === 0 ? { 
           ...s, 
           brollClips: broll || [], 
-          subtitleClips: subs || [] 
+          subtitleClips: subs || [],
+          subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
+          subtitleSize: subSize || (manifest as any).subtitleSize || 25
         } : s)
       };
 

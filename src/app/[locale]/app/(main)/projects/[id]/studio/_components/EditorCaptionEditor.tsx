@@ -2,9 +2,10 @@
 
 import React, { useState, useEffect, useRef } from 'react';
 import { 
-  ArrowLeft, Palette, Highlighter, Replace, Undo2
+  ArrowLeft, Palette, Highlighter, Replace, Undo2, Check
 } from 'lucide-react';
 import { SubtitleClip } from '../_hooks/useStudioState';
+import { CaptionStyleSelector } from './CaptionStyleSelector';
 
 interface EditorCaptionEditorProps {
   subtitleClips: SubtitleClip[];
@@ -13,6 +14,8 @@ interface EditorCaptionEditorProps {
   onSeek: (time: number) => void;
   onClose: () => void;
   initialSelectedId?: string | null;
+  subtitleStyle: number;
+  setSubtitleStyle: (style: number) => void;
 }
 
 const fmt = (s: number) => {
@@ -27,9 +30,12 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
   currentTime,
   onSeek,
   onClose,
-  initialSelectedId
+  initialSelectedId,
+  subtitleStyle,
+  setSubtitleStyle
 }) => {
   const [selectedId, setSelectedId] = useState<string | null>(initialSelectedId || null);
+  const [view, setView] = useState<'list' | 'style'>('list');
   const listRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -46,6 +52,23 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
     onSeek(sub.startTime);
   };
 
+  const handleTextChange = (id: string, newText: string) => {
+    setSubtitleClips(prev => prev.map(s => s.id === id ? { ...s, text: newText } : s));
+  };
+
+  if (view === 'style') {
+    return (
+      <CaptionStyleSelector 
+        currentStyle={subtitleStyle}
+        onSelect={(idx) => {
+            setSubtitleStyle(idx);
+            setView('list');
+        }}
+        onClose={() => setView('list')}
+      />
+    );
+  }
+
   return (
     <div className="flex flex-col h-full bg-[#0d0d12] text-white rounded-t-[3rem] overflow-hidden">
       {/* Header */}
@@ -53,7 +76,7 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
         <button onClick={onClose} className="p-2 text-white/40 hover:text-white transition-colors">
             <Undo2 size={24} />
         </button>
-        <h2 className="text-xl font-bold tracking-tight">Edit caption</h2>
+        <h2 className="text-xl font-bold tracking-tight uppercase">Edit captions</h2>
         <div className="w-10" /> {/* Spacer */}
       </div>
 
@@ -66,39 +89,60 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
           const isActive = selectedId === sub.id;
           
           return (
-            <button
+            <div
               key={sub.id}
-              onClick={() => handleSelect(sub)}
               className="w-full text-left transition-all flex items-start gap-6 group"
             >
-              <span className={`text-[13px] font-medium tabular-nums mt-1 w-10 shrink-0 ${isActive ? 'text-white/60' : 'text-white/20'}`}>
+              <button 
+                onClick={() => handleSelect(sub)}
+                className={`text-[13px] font-medium tabular-nums mt-1 w-10 shrink-0 ${isActive ? 'text-white/60' : 'text-white/20'}`}
+              >
                 {fmt(sub.startTime)}
-              </span>
-              <p className={`text-[17px] leading-relaxed font-bold flex-1 ${isActive ? 'text-white' : 'text-white/40 group-hover:text-white/60'}`}>
-                {sub.text}
-              </p>
-            </button>
+              </button>
+              
+              {isActive ? (
+                <div className="flex-1 relative">
+                    <textarea 
+                        autoFocus
+                        value={sub.text}
+                        onChange={(e) => handleTextChange(sub.id, e.target.value)}
+                        className="w-full bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-[17px] leading-relaxed font-bold text-white focus:outline-none focus:border-purple-500 transition-all resize-none"
+                        rows={2}
+                    />
+                </div>
+              ) : (
+                <button 
+                    onClick={() => handleSelect(sub)}
+                    className="text-[17px] leading-relaxed font-bold flex-1 text-left text-white/40 group-hover:text-white/60"
+                >
+                    {sub.text}
+                </button>
+              )}
+            </div>
           );
         })}
       </div>
 
       {/* Bottom Tabs */}
       <div className="bg-[#0a0a0f] border-t border-white/5 px-8 pt-6 pb-10 flex items-center justify-between">
-        <button className="flex flex-col items-center gap-2 group">
+        <button 
+            onClick={() => setView('style')}
+            className="flex flex-col items-center gap-2 group"
+        >
             <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
                 <Palette size={22} className="text-white/60 group-hover:text-white" />
             </div>
             <span className="text-[11px] font-bold text-white/40 group-hover:text-white/60">Style</span>
         </button>
 
-        <button className="flex flex-col items-center gap-2 group">
+        <button className="flex flex-col items-center gap-2 group opacity-20 pointer-events-none">
             <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
                 <Highlighter size={22} className="text-white/60 group-hover:text-white" />
             </div>
             <span className="text-[11px] font-bold text-white/40 group-hover:text-white/60">Highlight</span>
         </button>
 
-        <button className="flex flex-col items-center gap-2 group">
+        <button className="flex flex-col items-center gap-2 group opacity-20 pointer-events-none">
             <div className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center group-hover:bg-white/10 transition-all">
                 <Replace size={22} className="text-white/60 group-hover:text-white" />
             </div>

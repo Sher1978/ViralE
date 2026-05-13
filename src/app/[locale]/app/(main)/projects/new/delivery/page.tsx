@@ -125,29 +125,58 @@ export default function DeliveryPage() {
       .replace(/\[/g, '\\\\[')
       .replace(/\]/g, '\\\\]');
 
+    const subStyleIdx = manifest?.subtitleStyle || 0;
+    const subSize = manifest?.subtitleSize || 82;
+    const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
+
     const drawtextChain = clips.map(c => {
       const txt = esc((c.text || '').toUpperCase());
-      const subtitlePos = manifest?.subtitlePos || { x: 0, y: 0 };
-      const subSize = manifest?.subtitleSize || 82;
       
+      // Style mapping
+      let fontcolor = 'white';
+      let box = 0;
+      let boxcolor = 'black@0.5';
+      let borderw = 2;
+      let bordercolor = 'black';
+      let shadowx = 0;
+      let shadowy = 0;
+      let italic = 0;
+
+      if (subStyleIdx === 0) { // Classic Yellow Italic
+        fontcolor = '#facc15';
+        borderw = 4;
+        shadowx = 2;
+        shadowy = 2;
+        italic = 1;
+      } else if (subStyleIdx === 5) { // Boxy Yellow
+        fontcolor = 'black';
+        box = 1;
+        boxcolor = '#facc15';
+      } else if (subStyleIdx === 3) { // Cyber Neon
+        fontcolor = '#22d3ee';
+        shadowx = 0;
+        shadowy = 0;
+        italic = 1;
+      }
+
       // Calculate final Y position (FFmpeg 0,0 is top-left)
-      // StudioViewport default is bottom: 15% (approx 1632px in 1920p)
       const baseVerticalPos = 1632; 
-      const finalY = baseVerticalPos - subtitlePos.y;
+      const finalY = baseVerticalPos - subPos.y;
 
       return [
         `drawtext=fontfile=font.ttf:text='${txt}'`,
         `fontsize=${subSize}`,
-        `fontcolor=#facc15`, // Yellow
-        `borderw=4`,
-        `bordercolor=black`,
+        `fontcolor=${fontcolor}`,
+        `borderw=${borderw}`,
+        `bordercolor=${bordercolor}`,
         `shadowcolor=black@0.8`,
-        `shadowx=2`,
-        `shadowy=2`,
-        `x=(w-text_w)/2 + ${subtitlePos.x}`,
+        `shadowx=${shadowx}`,
+        `shadowy=${shadowy}`,
+        box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
+        `x=(w-text_w)/2 + ${subPos.x}`,
         `y=${finalY}`,
         `enable='between(t,${c.startTime},${c.endTime})'`,
-      ].join(':');
+      ].filter(Boolean).join(':');
     }).join(',');
 
     return baseFilter ? `${baseFilter},${drawtextChain}` : drawtextChain;
@@ -282,21 +311,56 @@ export default function DeliveryPage() {
         if (activeSub) {
           const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
           const subSize = manifest?.subtitleSize || 82;
+          const subStyleIdx = manifest?.subtitleStyle || 0;
           
-          ctx.font = `900 ${subSize + 10}px Roboto-Bold, sans-serif`;
+          let fontStyle = '';
+          let fillStyle = '#facc15';
+          let shadowBlur = 0;
+          let shadowColor = 'transparent';
+          let useBox = false;
+          let boxColor = '#facc15';
+
+          if (subStyleIdx === 0) { // Yellow Italic
+            fontStyle = 'italic';
+            fillStyle = '#facc15';
+          } else if (subStyleIdx === 3) { // Cyber Neon
+            fontStyle = 'italic';
+            fillStyle = '#22d3ee';
+            shadowBlur = 20;
+            shadowColor = '#22d3ee';
+          } else if (subStyleIdx === 5) { // Boxy Yellow
+            fillStyle = 'black';
+            useBox = true;
+          } else if (subStyleIdx === 1) { // White
+            fillStyle = 'white';
+          }
+
+          ctx.font = `900 ${fontStyle} ${subSize + 10}px Roboto-Bold, sans-serif`;
           ctx.textAlign = 'center';
-          ctx.fillStyle = '#facc15';
+          ctx.fillStyle = fillStyle;
           
-          // Outline
-          ctx.strokeStyle = 'black';
-          ctx.lineWidth = 12;
-          ctx.lineJoin = 'round';
-          
+          if (shadowBlur > 0) {
+            ctx.shadowBlur = shadowBlur;
+            ctx.shadowColor = shadowColor;
+          }
+
           const words = activeSub.text.toUpperCase().split(' ');
           const line1 = words.slice(0, 3).join(' ');
           const line2 = words.slice(3).join(' ');
           
           const baseIdx = canvas.height - 450 - subPos.y;
+          
+          if (useBox) {
+            ctx.fillStyle = boxColor;
+            const metrics = ctx.measureText(line1);
+            ctx.fillRect(canvas.width / 2 + subPos.x - metrics.width / 2 - 20, baseIdx - subSize, metrics.width + 40, subSize + 40);
+            ctx.fillStyle = fillStyle;
+          }
+
+          // Outline
+          ctx.strokeStyle = 'black';
+          ctx.lineWidth = 12;
+          ctx.lineJoin = 'round';
           
           // Draw Outline first
           ctx.strokeText(line1, canvas.width / 2 + subPos.x, baseIdx);
@@ -305,6 +369,9 @@ export default function DeliveryPage() {
           // Draw Text
           ctx.fillText(line1, canvas.width / 2 + subPos.x, baseIdx);
           if (line2) ctx.fillText(line2, canvas.width / 2 + subPos.x, baseIdx + 100);
+          
+          // Reset shadow
+          ctx.shadowBlur = 0;
         }
 
         const calculatedProgress = Math.max(0, Math.min(90, Math.round((frame / (totalFrames || 1)) * 90)));

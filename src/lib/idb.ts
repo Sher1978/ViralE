@@ -8,7 +8,12 @@ export const idb = {
 
   async getDB(): Promise<IDBDatabase> {
     return new Promise((resolve, reject) => {
+      const timeout = setTimeout(() => {
+        reject(new Error('IndexedDB open timeout after 3000ms'));
+      }, 3000);
+
       const request = indexedDB.open(this.dbName, this.version);
+      
       request.onupgradeneeded = (event: any) => {
         const db = request.result;
         if (!db.objectStoreNames.contains(this.stores.drafts)) {
@@ -18,8 +23,16 @@ export const idb = {
           db.createObjectStore(this.stores.media);
         }
       };
-      request.onsuccess = () => resolve(request.result);
-      request.onerror = () => reject(request.error);
+
+      request.onsuccess = () => {
+        clearTimeout(timeout);
+        resolve(request.result);
+      };
+
+      request.onerror = () => {
+        clearTimeout(timeout);
+        reject(request.error);
+      };
     });
   },
 
