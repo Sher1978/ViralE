@@ -313,7 +313,15 @@ export default function DeliveryPage() {
             const t = setTimeout(r, 500);
             vBRoll.onseeked = () => { clearTimeout(t); r(true); };
           });
+          const brX = activeBR.x || 0;
+          const brY = activeBR.y || 0;
+          const brScale = activeBR.scale || 1;
+          
+          ctx.save();
+          ctx.translate(brX, brY);
+          ctx.scale(brScale, brScale);
           ctx.drawImage(vBRoll, 0, 0, canvas.width, canvas.height);
+          ctx.restore();
         }
 
         // Draw Subtitles
@@ -610,8 +618,14 @@ export default function DeliveryPage() {
         for (let i = 0; i < processedBrolls.length; i++) {
           const broll = processedBrolls[i];
           const nextOutput = i % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
+          const brX = broll.clip.x || 0;
+          const brY = broll.clip.y || 0;
+          const brScale = broll.clip.scale || 1;
+          
           setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
-          const overlayFilter = `[0:v][1:v]overlay=enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
+          
+          // Apply scale to the broll before overlaying
+          const overlayFilter = `[1:v]scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
           await ffmpeg.exec([
             '-i', currentInput,
             '-i', broll.name,

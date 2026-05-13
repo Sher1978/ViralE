@@ -32,6 +32,7 @@ interface StudioViewportProps {
   setStageMessage: (msg: string) => void;
   selectedCaptionId?: string | null;
   subtitleStyle: number;
+  setBrollClips: React.Dispatch<React.SetStateAction<BRollClip[]>>;
 }
 
 const SUBTITLE_STYLES: Record<number, any> = {
@@ -174,8 +175,15 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
   brollClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
   setCurrentTime, setARollDuration, onUploadClick,
   stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage,
-  selectedCaptionId, subtitleStyle
+  selectedCaptionId, subtitleStyle, setBrollClips
 }) => {
+  const viewportRef = useRef<HTMLDivElement>(null);
+
+  const getScaleFactor = () => {
+    const rect = viewportRef.current?.getBoundingClientRect();
+    if (!rect) return 1;
+    return 1080 / rect.width;
+  };
   // 🚀 High-frequency sync for smoother timeline (60fps)
   useEffect(() => {
     let frameId: number;
@@ -193,7 +201,10 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
 
   return (
     <div className="w-full px-4 py-3 flex items-center justify-center bg-black" style={{ height: '55vh' }}>
-      <div className="relative h-full aspect-[9/16] bg-neutral-900 rounded-[20px] overflow-hidden shadow-2xl border border-white/5 group">
+      <div 
+        ref={viewportRef}
+        className="relative h-full aspect-[9/16] bg-neutral-900 rounded-[20px] overflow-hidden shadow-2xl border border-white/5 group"
+      >
         {aRollUrl ? (
           <div className="relative w-full h-full" onClick={togglePlay}>
             <video 
@@ -215,10 +226,26 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                 return (
                   <motion.div 
                     key={activeBR.id}
+                    drag
+                    dragMomentum={false}
+                    onDrag={(e, info) => {
+                      const sf = getScaleFactor();
+                      setBrollClips(prev => prev.map(c => c.id === activeBR.id ? {
+                        ...c,
+                        x: (c.x || 0) + info.delta.x * sf,
+                        y: (c.y || 0) + info.delta.y * sf
+                      } : c));
+                    }}
                     initial={{ opacity: 0 }}
                     animate={{ opacity: 1 }}
                     exit={{ opacity: 0 }}
-                    className="absolute inset-0 z-20 bg-black flex items-center justify-center"
+                    className={`absolute z-20 flex items-center justify-center cursor-grab active:cursor-grabbing border-2 ${isPlaying ? 'border-transparent' : 'border-purple-500/50'}`}
+                    style={{ 
+                      inset: 0,
+                      x: activeBR.x || 0,
+                      y: activeBR.y || 0,
+                      scale: activeBR.scale || 1
+                    }}
                   >
                     <div className="absolute inset-0 flex items-center justify-center bg-[#0a0a0f] z-0">
                       <Loader2 className="w-8 h-8 text-purple-500/40 animate-spin" />
@@ -229,6 +256,34 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                       currentTime={currentTime}
                       isPlaying={isPlaying}
                     />
+                    
+                    {/* Resize Handle for B-Roll */}
+                    {!isPlaying && (
+                      <div 
+                        className="absolute -bottom-2 -right-2 w-8 h-8 bg-purple-500 rounded-full border-2 border-white flex items-center justify-center cursor-nwse-resize z-50 shadow-lg pointer-events-auto"
+                        onPointerDown={(e) => {
+                          e.stopPropagation();
+                          const startX = e.clientX;
+                          const startScale = activeBR.scale || 1;
+                          
+                          const onPointerMove = (moveEvent: PointerEvent) => {
+                            const delta = moveEvent.clientX - startX;
+                            const newScale = Math.max(0.1, Math.min(5, startScale + delta * 0.005));
+                            setBrollClips(prev => prev.map(c => c.id === activeBR.id ? { ...c, scale: newScale } : c));
+                          };
+                          
+                          const onPointerUp = () => {
+                            window.removeEventListener('pointermove', onPointerMove);
+                            window.removeEventListener('pointerup', onPointerUp);
+                          };
+                          
+                          window.addEventListener('pointermove', onPointerMove);
+                          window.addEventListener('pointerup', onPointerUp);
+                        }}
+                      >
+                        <Wand2 size={14} className="text-white" />
+                      </div>
+                    )}
                   </motion.div>
                 );
               })()}
@@ -250,9 +305,10 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                       drag
                       dragMomentum={false}
                       onDrag={(e, info) => {
+                        const sf = getScaleFactor();
                         setSubtitlePos(prev => ({
-                          x: prev.x + info.delta.x,
-                          y: prev.y + info.delta.y
+                          x: prev.x + info.delta.x * sf,
+                          y: prev.y + info.delta.y * sf
                         }));
                       }}
                       initial={styleConfig.animation.initial}

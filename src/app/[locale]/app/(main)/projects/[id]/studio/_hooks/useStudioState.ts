@@ -44,7 +44,9 @@ export interface BRollClip {
   startTime: number;
   endTime: number;
   track: number;
-  offsetX?: number;
+  x?: number;
+  y?: number;
+  scale?: number;
 }
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
