@@ -40,7 +40,7 @@ const SUBTITLE_STYLES: Record<number, any> = {
     fontStyle: 'italic',
     textShadow: '2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 0px 4px 10px rgba(0,0,0,0.8)',
     fontWeight: '900',
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: "'Roboto-Bold', sans-serif",
     textTransform: 'uppercase' as const,
     animation: { initial: { opacity: 0, y: 10, scale: 0.9 }, animate: { opacity: 1, y: 0, scale: 1 }, exit: { opacity: 0, scale: 1.1 } }
   },
@@ -48,7 +48,7 @@ const SUBTITLE_STYLES: Record<number, any> = {
     color: '#ffffff',
     textShadow: '0 4px 20px rgba(0,0,0,0.5)',
     fontWeight: '900',
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: "'Roboto-Bold', sans-serif",
     textTransform: 'uppercase' as const,
     animation: { initial: { opacity: 0, scale: 0.5 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 1.5 } }
   },
@@ -57,7 +57,7 @@ const SUBTITLE_STYLES: Record<number, any> = {
     WebkitTextStroke: '2px white',
     textShadow: '4px 4px 0px rgba(0,0,0,0.5)',
     fontWeight: '900',
-    fontFamily: "'Inter', sans-serif",
+    fontFamily: "'Roboto-Bold', sans-serif",
     animation: { initial: { x: -50, opacity: 0 }, animate: { x: 0, opacity: 1 }, exit: { x: 50, opacity: 0 } }
   },
   3: { // Cyber Neon
