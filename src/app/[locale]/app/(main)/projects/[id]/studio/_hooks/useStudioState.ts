@@ -5,6 +5,7 @@ import { ProductionManifest } from '@/lib/types/studio';
 import { idb } from '@/lib/idb';
 import { getFFmpeg } from '@/lib/ffmpeg-delivery';
 import { fetchFile } from '@ffmpeg/util';
+import { renderService } from '@/lib/services/renderService';
 
 // --- TYPES ---
 
@@ -348,27 +349,41 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         if (!sourceBlob) throw new Error('Не удалось получить файл для анализа');
         if (sourceBlob.size === 0) throw new Error('Файл записи пуст. Попробуйте записать еще раз.');
 
-        let audioBlob: Blob;
+        let audioBlob: Blob | null = null;
+        let publicUrl: string | null = null;
+
         try {
           setStageMessage('Извлечение аудио...');
           audioBlob = await extractAudioNative(sourceBlob);
+          
+          // Vercel / Serverless body limit is 4.5MB
+          if (audioBlob.size > 4.5 * 1024 * 1024) {
+            console.warn('[Studio] Audio blob too large for direct POST, switching to Cloud Path...');
+            setStageMessage('Облачная загрузка (большой файл)...');
+            const uploadRes = await renderService.uploadMedia(projectId, audioBlob, 'audio');
+            publicUrl = uploadRes.publicUrl;
+          }
         } catch (e) {
-          console.warn('[Studio] Native audio extraction failed, falling back to full file upload:', e);
-          audioBlob = sourceBlob;
+          console.warn('[Studio] Local audio extraction failed, falling back to full cloud upload:', e);
+          setStageMessage('Облачная загрузка (резервный путь)...');
+          const uploadRes = await renderService.uploadMedia(projectId, sourceBlob, 'video');
+          publicUrl = uploadRes.publicUrl;
         }
 
         setStageMessage('AI расшифровка...');
-        console.log(`[Studio] Sending to transcribe. Size: ${(audioBlob.size / 1024 / 1024).toFixed(2)}MB, Type: ${audioBlob.type}`);
-        
-        // Vercel / Serverless body limit is typically 4.5MB
-        if (audioBlob.size > 4.5 * 1024 * 1024) {
-          throw new Error('Файл слишком велик для обработки. Попробуйте укоротить видео до 2 минут.');
+        const formData = new FormData();
+        if (publicUrl) {
+          formData.append('fileUrl', publicUrl);
+        } else if (audioBlob) {
+          formData.append('file', audioBlob, 'audio.wav');
+        } else {
+          throw new Error('Не удалось подготовить файл для транскрибации');
         }
 
-        const formData = new FormData();
-        formData.append('file', audioBlob, audioBlob === sourceBlob ? 'video.mp4' : 'audio.wav');
-        
-        const res = await fetch('/api/ai/transcribe', { method: 'POST', body: formData });
+        const res = await fetch('/api/ai/transcribe', { 
+          method: 'POST', 
+          body: formData 
+        });
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || `Ошибка сервера: ${res.status}`);
