@@ -322,6 +322,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         }
 
         setStageMessage('AI расшифровка...');
+        console.log(`[Studio] Sending to transcribe. Size: ${(audioBlob.size / 1024 / 1024).toFixed(2)}MB, Type: ${audioBlob.type}`);
         const formData = new FormData();
         formData.append('file', audioBlob, audioBlob === sourceBlob ? 'video.mp4' : 'audio.wav');
         
@@ -331,16 +332,23 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
           throw new Error(errData.error || `Ошибка сервера: ${res.status}`);
         }
         const data = await res.json();
-        if (data.transcript) { words = data.transcript; transcriptionOk = true; }
+        if (data.transcript && data.transcript.length > 0) {
+           words = data.transcript; 
+           transcriptionOk = true; 
+        } else {
+           throw new Error('AI не обнаружил голос в этом видео. Проверьте звук.');
+        }
       } catch (err: any) { 
         console.error('[Studio] Transcription flow failed:', err);
         setTranscriptionError(err.message || 'Ошибка обработки'); 
+        setStageMessage('');
+        return;
       }
     }
 
     if (!transcriptionOk || words.length === 0) {
-      setStageMessage('Ошибка анализа аудио');
-      setTranscriptionError(transcriptionError || 'Не удалось распознать голос');
+      setStageMessage('');
+      setTranscriptionError('Не удалось распознать голос. Попробуйте записать еще раз или загрузить другой файл.');
       return;
     }
 
