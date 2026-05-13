@@ -58,7 +58,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
     const targetX = currentTime * PX_PER_SECOND;
     
     if (containerRef.current && !isScrolling) {
-      if (Math.abs(containerRef.current.scrollLeft - targetX) > 5) {
+      if (Math.abs(containerRef.current.scrollLeft - targetX) > 0.1) {
         isProgrammaticScrollRef.current = true;
         containerRef.current.scrollLeft = targetX;
       }

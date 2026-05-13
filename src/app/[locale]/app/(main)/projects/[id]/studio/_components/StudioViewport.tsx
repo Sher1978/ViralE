@@ -176,6 +176,21 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
   stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage,
   selectedCaptionId, subtitleStyle
 }) => {
+  // 🚀 High-frequency sync for smoother timeline (60fps)
+  useEffect(() => {
+    let frameId: number;
+    const sync = () => {
+      if (videoRef.current && isPlaying) {
+        setCurrentTime(videoRef.current.currentTime);
+        frameId = requestAnimationFrame(sync);
+      }
+    };
+    if (isPlaying) {
+      frameId = requestAnimationFrame(sync);
+    }
+    return () => cancelAnimationFrame(frameId);
+  }, [isPlaying, setCurrentTime, videoRef]);
+
   return (
     <div className="w-full px-4 py-3 flex items-center justify-center bg-black" style={{ height: '55vh' }}>
       <div className="relative h-full aspect-[9/16] bg-neutral-900 rounded-[20px] overflow-hidden shadow-2xl border border-white/5 group">
@@ -290,18 +305,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               </AnimatePresence>
             </div>
 
-            {/* Play/Pause Overlay Indicator on Click */}
-            <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
-                {!isPlaying && (
-                    <motion.div 
-                        initial={{ opacity: 0, scale: 0.5 }}
-                        animate={{ opacity: 1, scale: 1 }}
-                        className="w-16 h-16 rounded-full bg-black/40 backdrop-blur-sm flex items-center justify-center"
-                    >
-                        <RefreshCw size={32} className="text-white/60 ml-1" />
-                    </motion.div>
-                )}
-            </div>
+            {/* Play/Pause Overlay Indicator on Click - REMOVED per user request */}
           </div>
         ) : (
           <div className="flex flex-col items-center justify-center gap-6 w-full h-full p-8 bg-[#0a0a0f]">
