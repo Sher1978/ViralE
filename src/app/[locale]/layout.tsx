@@ -60,6 +60,8 @@ export const viewport: Viewport = {
 
 import { Providers } from "@/components/Providers";
 
+import { SplashHider } from "@/components/layout/SplashHider";
+
 export default async function LocaleLayout({
   children,
   params,
@@ -81,6 +83,8 @@ export default async function LocaleLayout({
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} ${inter.variable} antialiased min-h-screen`}
         style={{ background: '#050505', color: '#F5F0E8' }}
       >
+        <SplashHider />
+
         {/* Instant Splash Screen (Pre-hydration) */}
         <div id="instant-splash" style={{
           position: 'fixed',
@@ -103,19 +107,6 @@ export default async function LocaleLayout({
             background: 'radial-gradient(circle at center, transparent 0%, rgba(0,0,0,0.4) 100%)'
           }}></div>
         </div>
-
-        <script dangerouslySetInnerHTML={{ __html: `
-          function hideSplash() {
-            var splash = document.getElementById('instant-splash');
-            if (splash && splash.style.opacity !== '0') {
-              splash.style.opacity = '0';
-              setTimeout(function() { splash.style.display = 'none'; }, 800);
-            }
-          }
-          // Hide on load OR after 1.5s safety timeout
-          window.addEventListener('load', hideSplash);
-          setTimeout(hideSplash, 1500);
-        `}} />
 
         <Providers>
           <NextIntlClientProvider locale={locale} messages={messages}>
