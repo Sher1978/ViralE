@@ -134,18 +134,22 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
     const v = vRef.current;
     if (!v) return;
 
+    // Handle play/pause
     if (isPlaying) {
       if (v.paused) v.play().catch(() => {});
     } else {
       if (!v.paused) v.pause();
     }
 
+    // Handle time sync
     const relativeTime = Math.max(0, currentTime - startTime);
     const drift = Math.abs(v.currentTime - relativeTime);
     
-    // Ensure frame sync during drag or pause
-    // We use a smaller drift threshold (0.2s) for better responsiveness
-    if (!isPlaying || drift > 0.2) {
+    // 🔥 OPTIMIZATION: Only seek if we are paused/dragging OR if the drift is significant (>300ms)
+    // Seeking every frame (60fps) kills performance.
+    const needsSeek = !isPlaying || drift > 0.3;
+
+    if (needsSeek) {
       v.currentTime = relativeTime;
     }
   }, [isPlaying, currentTime, startTime]);
@@ -214,12 +218,11 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               muted={isMuted} 
               className="w-full h-full object-cover" 
               playsInline 
-              onTimeUpdate={(e) => setCurrentTime(e.currentTarget.currentTime)}
               onLoadedMetadata={(e) => setARollDuration(e.currentTarget.duration)}
             />
             
             {/* B-ROLL OVERLAY */}
-            <AnimatePresence mode="wait">
+            <AnimatePresence>
               {(() => {
                 const activeBR = brollClips.find(c => c.url && c.url.length > 5 && currentTime >= c.startTime && currentTime <= c.endTime);
                 if (!activeBR) return null;
