@@ -140,6 +140,7 @@ export default function DeliveryPage() {
       let bordercolor = 'black';
       let shadowx = 0;
       let shadowy = 0;
+      let shadowcolor = 'black@0.8';
       let italic = 0;
 
       if (subStyleIdx === 0) { // Classic Yellow Italic
@@ -178,7 +179,7 @@ export default function DeliveryPage() {
         `fontcolor=${fontcolor}`,
         `borderw=${borderw}`,
         `bordercolor=${bordercolor}`,
-        `shadowcolor=black@0.8`,
+        `shadowcolor=${shadowcolor}`,
         `shadowx=${shadowx}`,
         `shadowy=${shadowy}`,
         box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
