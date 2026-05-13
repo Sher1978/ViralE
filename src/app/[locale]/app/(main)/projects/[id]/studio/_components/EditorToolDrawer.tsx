@@ -15,9 +15,9 @@ interface EditorToolDrawerProps {
 
 const TOOLS = [
   { id: 'audio', label: 'Audio', icon: Music },
-  { id: 'text', label: 'Text', icon: Type },
+  { id: 'text', label: 'Script', icon: Type },
   { id: 'voice', label: 'Voice', icon: Mic },
-  { id: 'captions', label: 'Captions', icon: ClosedCaption },
+  { id: 'captions', label: 'CC', icon: ClosedCaption },
   { id: 'filters', label: 'Filters', icon: Sliders },
   { id: 'broll', label: 'AI B-Roll', icon: Sparkles },
 ];

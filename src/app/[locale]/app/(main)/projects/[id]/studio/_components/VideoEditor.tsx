@@ -318,8 +318,6 @@ export const VideoEditor = React.memo(({
                     setSelectedCaptionId(null);
                 }}
                 initialSelectedId={selectedCaptionId}
-                subtitleStyle={subtitleStyle}
-                setSubtitleStyle={setSubtitleStyle}
             />
         )}
         {activeTool === 'broll' && (

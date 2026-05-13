@@ -143,20 +143,29 @@ export default function DeliveryPage() {
       let italic = 0;
 
       if (subStyleIdx === 0) { // Classic Yellow Italic
-        fontcolor = '#facc15';
-        borderw = 4;
-        shadowx = 2;
-        shadowy = 2;
-        italic = 1;
-      } else if (subStyleIdx === 5) { // Boxy Yellow
-        fontcolor = 'black';
-        box = 1;
-        boxcolor = '#facc15';
+        fontcolor = '#facc15'; borderw = 4; shadowx = 2; shadowy = 2; italic = 1;
+      } else if (subStyleIdx === 1) { // White Bold
+        fontcolor = 'white'; borderw = 2; shadowy = 4;
+      } else if (subStyleIdx === 2) { // Red Outline
+        fontcolor = '#ef4444'; borderw = 6; bordercolor = 'white';
       } else if (subStyleIdx === 3) { // Cyber Neon
-        fontcolor = '#22d3ee';
-        shadowx = 0;
-        shadowy = 0;
-        italic = 1;
+        fontcolor = '#22d3ee'; shadowx = 0; shadowy = 0; italic = 1; borderw = 0;
+      } else if (subStyleIdx === 4) { // Minimalist
+        fontcolor = 'white'; box = 1; boxcolor = 'black@0.6';
+      } else if (subStyleIdx === 5) { // Boxy Yellow
+        fontcolor = 'black'; box = 1; boxcolor = '#facc15';
+      } else if (subStyleIdx === 6) { // Gradient (Approx)
+        fontcolor = 'white'; shadowy = 2; shadowcolor = 'black@0.5';
+      } else if (subStyleIdx === 7) { // Soft Pink
+        fontcolor = '#f472b6'; shadowy = 2;
+      } else if (subStyleIdx === 8) { // Ghostly
+        fontcolor = 'white@0.4';
+      } else if (subStyleIdx === 9) { // Impact
+        fontcolor = 'white'; shadowx = 0; shadowy = 0; borderw = 8; bordercolor = 'white@0.5';
+      } else if (subStyleIdx === 10) { // Green Hacker
+        fontcolor = '#10b981'; shadowx = 0; shadowy = 0;
+      } else if (subStyleIdx === 11) { // Royal Gold
+        fontcolor = '#fbbf24'; italic = 1; shadowy = 2;
       }
 
       // Calculate final Y position (FFmpeg 0,0 is top-left)
@@ -321,18 +330,31 @@ export default function DeliveryPage() {
           let boxColor = '#facc15';
 
           if (subStyleIdx === 0) { // Yellow Italic
-            fontStyle = 'italic';
-            fillStyle = '#facc15';
-          } else if (subStyleIdx === 3) { // Cyber Neon
-            fontStyle = 'italic';
-            fillStyle = '#22d3ee';
-            shadowBlur = 20;
-            shadowColor = '#22d3ee';
-          } else if (subStyleIdx === 5) { // Boxy Yellow
-            fillStyle = 'black';
-            useBox = true;
-          } else if (subStyleIdx === 1) { // White
+            fontStyle = 'italic'; fillStyle = '#facc15';
+          } else if (subStyleIdx === 1) { // White Bold
             fillStyle = 'white';
+          } else if (subStyleIdx === 2) { // Red Outline
+            fillStyle = '#ef4444'; ctx.strokeStyle = 'white'; ctx.lineWidth = 15;
+          } else if (subStyleIdx === 3) { // Cyber Neon
+            fontStyle = 'italic'; fillStyle = '#22d3ee'; shadowBlur = 20; shadowColor = '#22d3ee';
+          } else if (subStyleIdx === 4) { // Minimalist
+            fillStyle = 'white'; useBox = true; boxColor = 'rgba(0,0,0,0.6)';
+          } else if (subStyleIdx === 5) { // Boxy Yellow
+            fillStyle = 'black'; useBox = true; boxColor = '#facc15';
+          } else if (subStyleIdx === 6) { // Gradient
+            const grad = ctx.createLinearGradient(0, baseIdx - 50, 0, baseIdx + 50);
+            grad.addColorStop(0, '#ffffff'); grad.addColorStop(1, '#888888');
+            fillStyle = grad;
+          } else if (subStyleIdx === 7) { // Soft Pink
+            fillStyle = '#f472b6'; shadowBlur = 10; shadowColor = 'rgba(244,114,182,0.4)';
+          } else if (subStyleIdx === 8) { // Ghostly
+            fillStyle = 'rgba(255,255,255,0.4)';
+          } else if (subStyleIdx === 9) { // Impact
+            fillStyle = 'white'; shadowBlur = 30; shadowColor = 'white';
+          } else if (subStyleIdx === 10) { // Green Hacker
+            fillStyle = '#10b981'; shadowBlur = 5; shadowColor = '#10b981';
+          } else if (subStyleIdx === 11) { // Royal Gold
+            fontStyle = 'italic'; fillStyle = '#fbbf24';
           }
 
           ctx.font = `900 ${fontStyle} ${subSize + 10}px Roboto-Bold, sans-serif`;
@@ -405,7 +427,7 @@ export default function DeliveryPage() {
         throw new Error('Финальный файл слишком мал. Попробуйте переключиться на FFmpeg-режим внизу страницы.');
       }
       
-      await idb.set(`final_render_${projectId}`, finalBlob, 'MediaBuffer');
+      await idb.set(`final_render_${projectId}_${ver.id}`, finalBlob, 'MediaBuffer');
       const finalUrl = URL.createObjectURL(finalBlob);
       
       setJob({ id: 'canvas-render', status: 'completed', output_url: finalUrl, progress: 100 } as any);
@@ -438,9 +460,9 @@ export default function DeliveryPage() {
     
     // 0. CHECK CACHE FIRST
     try {
-      const cachedRender = await idb.get(`final_render_${projectId}`, 'MediaBuffer');
+      const cachedRender = await idb.get(`final_render_${projectId}_${ver.id}`, 'MediaBuffer');
       if (cachedRender instanceof Blob) {
-        console.log('[Delivery] Found cached render in IDB, skipping generation');
+        console.log('[Delivery] Found cached render for version', ver.id);
         const url = URL.createObjectURL(cachedRender);
         setJob({ id: 'local-render', status: 'completed', output_url: url, progress: 100 } as any);
         setRenderProgress(100);
@@ -626,7 +648,7 @@ export default function DeliveryPage() {
       const videoBlob = new Blob([finalData as any], { type: 'video/mp4' });
       
       // PERSIST TO IDB
-      await idb.set(`final_render_${projectId}`, videoBlob, 'MediaBuffer');
+      await idb.set(`final_render_${projectId}_${ver.id}`, videoBlob, 'MediaBuffer');
       
       const videoUrl = URL.createObjectURL(videoBlob);
       
