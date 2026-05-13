@@ -325,7 +325,7 @@ export default function DeliveryPage() {
           const baseIdx = canvas.height - 450 - subPos.y;
           
           let fontStyle = '';
-          let fillStyle = '#facc15';
+          let fillStyle: string | CanvasGradient = '#facc15';
           let shadowBlur = 0;
           let shadowColor = 'transparent';
           let useBox = false;
