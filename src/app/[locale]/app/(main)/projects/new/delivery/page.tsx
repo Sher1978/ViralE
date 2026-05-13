@@ -860,27 +860,32 @@ export default function DeliveryPage() {
       <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'processing'} />
 
       <div className="rounded-3xl p-6 text-center space-y-4 bg-white/[0.02] border border-white/5">
-        <div className="text-5xl">{job?.status === 'completed' ? '🎉' : '⚙️'}</div>
+        <div className="text-4xl">{job?.status === 'completed' ? '🎬' : '⚡'}</div>
         <div>
           <h1 className="text-2xl font-black tracking-tighter uppercase text-white">
-            {job?.status === 'completed' ? t('badge') : (renderStatus || 'Видео в процессе...')}
+            {job?.status === 'completed' ? t('badge') : (renderStatus || 'Сборка проекта...')}
           </h1>
-          <p className="text-[11px] text-white/40 mt-1">
-            {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${Math.max(0, Math.min(100, renderProgress))}%`}
+          <p className="text-[11px] text-white/40 mt-1 font-bold uppercase tracking-widest">
+            {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${Math.round(renderProgress)}%`}
           </p>
         </div>
         {job?.status !== 'completed' && (
-          <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden">
-            <motion.div className="h-full bg-purple-500" initial={{ width: 0 }} animate={{ width: `${Math.max(0, Math.min(100, renderProgress))}%` }} />
+          <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner">
+            <motion.div 
+                className="h-full bg-gradient-to-r from-purple-600 to-blue-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]" 
+                initial={{ width: 0 }} 
+                animate={{ width: `${Math.max(0, Math.min(100, renderProgress))}%` }} 
+                transition={{ type: 'spring', damping: 25, stiffness: 50 }}
+            />
           </div>
         )}
       </div>
 
-      <div className="rounded-[2rem] overflow-hidden bg-[#0a0a1a] border border-white/5 aspect-[9/16] max-h-[500px] mx-auto relative shadow-2xl">
+      <div className="rounded-[2.5rem] overflow-hidden bg-[#050508] border border-white/10 aspect-[9/16] max-h-[500px] mx-auto relative shadow-2xl group">
         {job?.output_url ? (
           <video src={job.output_url} controls className="w-full h-full object-cover" />
         ) : (
-          <>
+          <div className="relative w-full h-full">
             {previewUrl && (
               <video 
                 src={previewUrl} 
@@ -888,16 +893,27 @@ export default function DeliveryPage() {
                 muted 
                 loop 
                 playsInline 
-                className="absolute inset-0 w-full h-full object-cover opacity-40 blur-xl" 
+                className="absolute inset-0 w-full h-full object-cover transition-all duration-1000" 
+                style={{ 
+                    filter: `blur(${Math.max(0, 12 - (renderProgress / 100) * 12)}px) brightness(${0.4 + (renderProgress / 100) * 0.6})`,
+                    opacity: 0.3 + (renderProgress / 100) * 0.7
+                }}
               />
             )}
-            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/40 backdrop-blur-md">
-              <Loader2 className="w-12 h-12 text-purple-500 animate-spin mb-4" />
-              <p className="text-[10px] font-black uppercase tracking-[0.4em] text-purple-400">Generating Final Cut...</p>
+            <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/20">
+              <div className="relative">
+                <Loader2 className="w-16 h-16 text-purple-500/40 animate-spin" />
+                <div className="absolute inset-0 flex items-center justify-center">
+                    <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center animate-pulse">
+                        <Play size={16} className="text-purple-400 translate-x-0.5" />
+                    </div>
+                </div>
+              </div>
+              <p className="mt-6 text-[10px] font-black uppercase tracking-[0.5em] text-purple-400 animate-pulse">Generating Final Cut</p>
             </div>
-          </>
+          </div>
         )}
-        <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-between bg-gradient-to-t from-black/90 via-black/40 to-transparent">
+        <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-between bg-gradient-to-t from-black via-black/40 to-transparent">
           <div className="flex flex-col gap-1">
             <span className="text-[10px] font-black uppercase tracking-widest text-white/50">4K AI PRODUCTION</span>
             <span className="text-[8px] font-bold uppercase tracking-[0.3em] text-purple-400">Ready for Broadcast</span>

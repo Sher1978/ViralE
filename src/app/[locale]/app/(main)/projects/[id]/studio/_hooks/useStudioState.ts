@@ -447,6 +447,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
     subtitleStyle, setSubtitleStyle, pxPerSecond, setPxPerSecond,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
+    voiceoverUrl, setVoiceoverUrl,
     runTranscriptionAndPhrases, setRawFile,
     deleteBroll: (id: string) => setBrollClips(prev => prev.filter(c => c.id !== id))
   };
