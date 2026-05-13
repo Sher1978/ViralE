@@ -151,7 +151,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
       </div>
 
       {/* 2. Tracks Layer */}
-      <div className="flex-1 relative overflow-hidden bg-black/40">
+      <div className="flex-1 relative overflow-hidden bg-black/20">
         <div 
             ref={trackRef}
             className="absolute inset-0 overflow-x-auto no-scrollbar pointer-events-none"
@@ -160,7 +160,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                 
                 {/* B-ROLL TRACK */}
                 <div 
-                    className="absolute top-2 h-14 w-full cursor-copy pointer-events-auto group/track"
+                    className="absolute top-1 h-10 w-full cursor-copy pointer-events-auto group/track"
                     onClick={(e) => {
                         if ((e.target as HTMLElement).closest('.broll-clip-box')) return;
                         const rect = e.currentTarget.getBoundingClientRect();
@@ -246,16 +246,8 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                             }}
                         >
                             <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-transparent pointer-events-none" />
-                            <Layers size={14} className="text-blue-300 relative z-10 pointer-events-none" />
+                            <Layers size={12} className="text-blue-300 relative z-10 pointer-events-none" />
                             
-                            {/* Delete Button */}
-                            <button 
-                                onClick={(e) => { e.stopPropagation(); onDeleteBroll?.(clip.id); }}
-                                className="delete-btn absolute top-1 right-1 p-1 bg-black/40 rounded-full opacity-0 group-hover/clip:opacity-100 transition-opacity hover:bg-red-500/80 z-30"
-                            >
-                                <span className="text-[10px] text-white">тЬХ</span>
-                            </button>
-
                             {/* Resize Handle */}
                             <div 
                                 className="resize-handle absolute right-0 top-0 bottom-0 w-4 bg-blue-400/20 hover:bg-blue-400/60 cursor-ew-resize z-20 flex items-center justify-center"
@@ -283,7 +275,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
 
                 {/* SUBTITLE TRACK */}
                 <div 
-                    className="absolute bottom-2 h-10 w-full cursor-pointer pointer-events-auto"
+                    className="absolute bottom-1 h-8 w-full cursor-pointer pointer-events-auto"
                     onClick={() => onSubtitleTrackClick?.()}
                 >
                     <div className="absolute inset-0 bg-yellow-500/[0.03] border-y border-yellow-500/[0.05]" />

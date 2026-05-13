@@ -46,6 +46,7 @@ export const VideoEditor = React.memo(({
     transcriptionError, setTranscriptionError, isAnalyzingBroll,
     subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize, subtitleStyle, setSubtitleStyle, pxPerSecond, setPxPerSecond,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
+    voiceoverUrl, setVoiceoverUrl,
     runTranscriptionAndPhrases, setRawFile, deleteBroll
   } = useStudioState(projectId, initialManifest || null, propARollUrl);
 
@@ -60,6 +61,9 @@ export const VideoEditor = React.memo(({
   const [brollModalOpen, setBrollModalOpen] = useState(false);
   const [activeBrollPrompt, setActiveBrollPrompt] = useState('');
   const [activeBrollPhraseId, setActiveBrollPhraseId] = useState<string | null>(null);
+  const [isRecording, setIsRecording] = useState(false);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioChunksRef = useRef<Blob[]>([]);
 
   // --- ACTIONS ---
 
@@ -142,6 +146,35 @@ export const VideoEditor = React.memo(({
     setStage('editing');
   };
 
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mr = new MediaRecorder(stream);
+      audioChunksRef.current = [];
+      mr.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+      mr.onstop = () => {
+        const blob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const url = URL.createObjectURL(blob);
+        setVoiceoverUrl(url);
+        setIsMuted(true);
+      };
+      mr.start();
+      mediaRecorderRef.current = mr;
+      setIsRecording(true);
+    } catch (err) {
+      console.error('Recording failed:', err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
+
   const handleSwapPhrase = (word: TranscriptWord) => {
     if (!editingPhraseId) return;
     setPhrases(prev => prev.map(p => p.id === editingPhraseId ? {
@@ -208,6 +241,7 @@ export const VideoEditor = React.memo(({
         stage={stage} stageMessage={stageMessage} transcriptionError={transcriptionError} heartbeat={0}
         runTranscriptionAndPhrases={runTranscriptionAndPhrases} setStage={setStage} setTranscriptionError={setTranscriptionError} setStageMessage={setStageMessage}
         subtitleStyle={subtitleStyle}
+        voiceoverUrl={voiceoverUrl}
       />
 
 
@@ -342,14 +376,55 @@ export const VideoEditor = React.memo(({
                         <Upload size={20} />
                         <span className="text-[10px] font-bold uppercase">Manual Upload</span>
                     </button>
-                    <button className="p-6 bg-white/5 border border-white/5 rounded-3xl flex flex-col items-center gap-2 opacity-40">
-                        <Sliders size={20} />
-                        <span className="text-[10px] font-bold uppercase">Settings</span>
+                    <button 
+                        onClick={() => setActiveTool(null)}
+                        className="p-6 bg-purple-500/20 border border-purple-500/30 rounded-3xl flex flex-col items-center gap-2 text-purple-400 active:scale-95 transition-all"
+                    >
+                        <Zap size={20} />
+                        <span className="text-[10px] font-black uppercase tracking-widest">Use & Close</span>
                     </button>
                 </div>
             </div>
         )}
-        {(activeTool === 'audio' || activeTool === 'voice' || activeTool === 'filters' || activeTool === 'text') && (
+        {activeTool === 'voice' && (
+            <div className="flex flex-col items-center justify-center py-8 gap-8">
+                <div className="relative">
+                    <button 
+                        onPointerDown={startRecording}
+                        onPointerUp={stopRecording}
+                        className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
+                            isRecording ? 'bg-red-500 scale-125 shadow-[0_0_40px_rgba(239,68,68,0.5)]' : 'bg-white/5 border border-white/10 hover:bg-white/10'
+                        }`}
+                    >
+                        {isRecording ? <div className="w-6 h-6 bg-white rounded-sm animate-pulse" /> : <Mic size={32} className="text-white" />}
+                    </button>
+                    {isRecording && (
+                        <motion.div 
+                            animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
+                            transition={{ duration: 1, repeat: Infinity }}
+                            className="absolute inset-0 rounded-full bg-red-500 -z-10"
+                        />
+                    )}
+                </div>
+                <div className="text-center space-y-2">
+                    <h3 className="text-sm font-black uppercase tracking-widest">
+                        {isRecording ? 'Recording...' : voiceoverUrl ? 'Voiceover Recorded' : 'Hold to Record'}
+                    </h3>
+                    <p className="text-[10px] text-white/40 uppercase font-bold tracking-[0.2em]">
+                        Your voice will replace the video audio
+                    </p>
+                </div>
+                {voiceoverUrl && !isRecording && (
+                    <button 
+                        onClick={() => setVoiceoverUrl(null)}
+                        className="text-[10px] text-red-400 font-bold uppercase tracking-widest hover:text-red-300 transition-colors"
+                    >
+                        Delete & Retry
+                    </button>
+                )}
+            </div>
+        )}
+        {(activeTool === 'filters') && (
             <div className="flex flex-col items-center justify-center h-40 gap-4 opacity-20">
                 <div className="w-16 h-16 rounded-full border-2 border-dashed border-white/40 flex items-center justify-center">
                     <Sliders size={24} />

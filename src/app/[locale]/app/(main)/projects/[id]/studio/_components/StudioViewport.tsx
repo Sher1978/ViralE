@@ -33,6 +33,7 @@ interface StudioViewportProps {
   selectedCaptionId?: string | null;
   subtitleStyle: number;
   setBrollClips: React.Dispatch<React.SetStateAction<BRollClip[]>>;
+  voiceoverUrl: string | null;
 }
 
 const SUBTITLE_STYLES: Record<number, any> = {
@@ -179,9 +180,29 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
   brollClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
   setCurrentTime, setARollDuration, onUploadClick,
   stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage,
-  selectedCaptionId, subtitleStyle, setBrollClips
+  selectedCaptionId, subtitleStyle, setBrollClips, voiceoverUrl
 }) => {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const voiceoverRef = useRef<HTMLAudioElement>(null);
+
+  useEffect(() => {
+    const v = videoRef.current;
+    const a = voiceoverRef.current;
+    if (!v) return;
+
+    if (voiceoverUrl) {
+        v.muted = true;
+        if (a) {
+            if (isPlaying) a.play().catch(() => {});
+            else a.pause();
+            
+            const drift = Math.abs(a.currentTime - v.currentTime);
+            if (drift > 0.1) a.currentTime = v.currentTime;
+        }
+    } else {
+        v.muted = isMuted;
+    }
+  }, [isPlaying, voiceoverUrl, isMuted, currentTime, videoRef]);
 
   const getScaleFactor = () => {
     const rect = viewportRef.current?.getBoundingClientRect();
@@ -220,6 +241,10 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               playsInline 
               onLoadedMetadata={(e) => setARollDuration(e.currentTarget.duration)}
             />
+
+            {voiceoverUrl && (
+                <audio ref={voiceoverRef} src={voiceoverUrl} preload="auto" />
+            )}
             
             {/* B-ROLL OVERLAY */}
             <AnimatePresence>

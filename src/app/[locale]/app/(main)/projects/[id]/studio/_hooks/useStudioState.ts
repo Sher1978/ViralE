@@ -114,6 +114,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   const [pxPerSecond, setPxPerSecond] = useState(100);
   const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({});
   const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
+  const [voiceoverUrl, setVoiceoverUrl] = useState<string | null>(null);
   
   // Refs for logic
   const transcriptionStartedRef = useRef(false);
@@ -125,12 +126,14 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     if (!projectId || persistenceLoadedRef.current) return;
     
     // Safety timeout: if IDB is stuck, we still want to show the editor shell
+    // Safety timeout: if IDB is stuck, we still want to show the editor shell
     const safetyTimeout = setTimeout(() => {
       if (!persistenceLoadedRef.current) {
         console.warn('[Studio] Persistence recovery timed out, forcing ready state');
+        persistenceLoadedRef.current = true;
         setPersistenceLoaded(true);
       }
-    }, 3000);
+    }, 2000); // Reduced to 2s for faster recovery
 
     async function recoverDraft() {
       const key = `viral_editor_draft_${projectId}`;

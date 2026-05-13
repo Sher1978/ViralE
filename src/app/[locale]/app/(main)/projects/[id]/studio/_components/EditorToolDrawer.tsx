@@ -14,12 +14,11 @@ interface EditorToolDrawerProps {
 }
 
 const TOOLS = [
-  { id: 'audio', label: 'Audio', icon: Music },
+  { id: 'broll', label: 'AI B-Roll', icon: Sparkles },
   { id: 'text', label: 'Script', icon: Type },
-  { id: 'voice', label: 'Voice', icon: Mic },
+  { id: 'voice', label: 'Voiceover', icon: Mic },
   { id: 'captions', label: 'CC', icon: ClosedCaption },
   { id: 'filters', label: 'Filters', icon: Sliders },
-  { id: 'broll', label: 'AI B-Roll', icon: Sparkles },
 ];
 
 export const EditorToolDrawer: React.FC<EditorToolDrawerProps> = ({
