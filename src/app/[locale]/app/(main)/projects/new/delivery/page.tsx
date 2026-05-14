@@ -9,6 +9,7 @@ import { StatusStepper } from '@/components/ui/StatusStepper';
 import { renderService, RenderJob } from '@/lib/services/renderService';
 import { socialService } from '@/lib/services/socialService';
 import { motion, AnimatePresence } from 'framer-motion';
+import dynamic from 'next/dynamic';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { idb } from '@/lib/idb';
 const DistributionFactory = dynamic(() => import('../../[id]/studio/_components/DistributionFactory'), { ssr: false });
