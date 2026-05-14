@@ -122,8 +122,10 @@ export default function IdeasPage() {
 
   const handleToScript = (content: string, rationale?: string) => {
     let finalContent = content;
-    if (rationale && rationale.length > 5 && !rationale.includes('(')) {
-      finalContent = `${content}: ${rationale}`;
+    if (rationale && rationale.length > 3) {
+      // Clean up rationale if it's just repeating the category or contains parenthetical noise
+      const cleanRationale = rationale.replace(/^\(.*\)\s*/, '');
+      finalContent = `${content}\n\n${cleanRationale}`;
     }
     let url = `/app/projects/new/script?topic=${encodeURIComponent(finalContent)}`;
     router.push(url);
@@ -273,7 +275,7 @@ export default function IdeasPage() {
                   title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
                   subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
                   ideas={groupedIdeas[cat] || []}
-                  onToScript={(topic) => handleToScript(topic, cat)}
+                  onToScript={(topic, rationale) => handleToScript(topic, rationale)}
                   onToggleArchive={handleToggleArchive}
                   onRefresh={(force) => refreshIdeas('new', cat, force)}
                 />

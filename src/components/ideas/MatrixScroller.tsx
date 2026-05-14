@@ -12,7 +12,7 @@ interface MatrixScrollerProps {
   title: string;
   subtitle?: string;
   ideas: Idea[];
-  onToScript: (topic: string) => void;
+  onToScript: (topic: string, rationale?: string) => void;
   onToggleArchive: (id: string, status: string) => void;
   onRefresh?: (force?: boolean) => Promise<void>;
 }
