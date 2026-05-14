@@ -36,7 +36,7 @@ export async function POST(req: Request) {
       User_DNA_Profile: ${userDNA}
       Raw_Transcription: ${scriptText}
 
-      ИНСТРУКЦИИ ПО ГЕНЕРАЦИИ (5 ЭТАПОВ):
+      ИНСТРУКЦИИ ПО ГЕНЕРАЦИИ (6 ЭТАПОВ):
       1. Текст-описание для SFV (Shorts, Reels, TikTok)
       Стиль: Энергичный, адаптированный под Tone_of_Voice. Взрывной хук -> 3-4 буллет-поинта -> CTA. (До 500 симв).
 
@@ -46,11 +46,14 @@ export async function POST(req: Request) {
       3. Аналитический пост для LinkedIn
       Стиль: Executive-level, сухой, деловой. ROI, факты, тезис -> обоснование -> вывод.
 
-      4. Промпты для Instagram Carousel (6 слайдов)
+      4. Полноценный лонгрид/статья (Longread Article)
+      Стиль: Глубокий анализ, структурированный заголовок, введение, 3-4 смысловых блока с подзаголовками, заключение и мощный финальный вывод. (3000+ симв).
+
+      5. Промпты для Instagram Carousel (6 слайдов)
       Ultra-realistic, cinematic lighting, 4K, 8K, depth of field. AR 4:5. 
       Сюжет: Слайд 1 - Метафора проблемы. 2-5 - Пошаговая визуализация смыслов. 6 - Финальный слайд с CTA.
 
-      5. Промпт обложки видео (Shorts/Reels Banner)
+      6. Промпт обложки видео (Shorts/Reels Banner)
       AR 9:16. Sharp focus. Реалистичный герой в контексте мысли.
       Текст (Overlay): Выдели самую хлесткую фразу-смысл для наложения.
 
@@ -68,6 +71,10 @@ export async function POST(req: Request) {
         },
         "linkedin_executive": {
           "text": "..."
+        },
+        "longread_article": {
+          "title": "Заголовок статьи",
+          "text": "Полный текст статьи с разметкой..."
         },
         "ig_carousel": {
           "technical_specs": "Resolution 1080x1350, AR 4:5",
