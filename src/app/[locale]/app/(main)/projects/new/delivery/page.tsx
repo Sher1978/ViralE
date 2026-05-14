@@ -11,11 +11,13 @@ import { socialService } from '@/lib/services/socialService';
 import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { idb } from '@/lib/idb';
-import DistributionFactory from '@/app/[locale]/app/(main)/projects/[id]/studio/_components/DistributionFactory';
+const DistributionFactory = dynamic(() => import('../../[id]/studio/_components/DistributionFactory'), { ssr: false });
 import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
 import { fetchFile } from '@ffmpeg/util';
 
-export default function DeliveryPage() {
+import { Suspense } from 'react';
+
+function DeliveryPageContent() {
   const t = useTranslations('delivery');
   const commonT = useTranslations('common');
   const router = useRouter();
@@ -990,6 +992,14 @@ export default function DeliveryPage() {
           </button>
       </div>
     </div>
+  );
+}
+
+export default function DeliveryPage() {
+  return (
+    <Suspense fallback={<div className="h-screen bg-black flex items-center justify-center"><Loader2 className="animate-spin text-purple-500" /></div>}>
+      <DeliveryPageContent />
+    </Suspense>
   );
 }
 

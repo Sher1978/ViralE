@@ -12,7 +12,11 @@ export async function getAuthContext() {
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
   let projectRef = '';
   try {
-    projectRef = supabaseUrl.split('.')[0].split('//')[1];
+    // Robust extraction: matches xyz in https://xyz.supabase.co or xyz.supabase.co
+    const match = supabaseUrl.match(/(?:https?:\/\/)?([^.]+)/);
+    if (match && match[1]) {
+      projectRef = match[1];
+    }
   } catch (e) {
     console.error('Failed to parse Supabase URL for projectRef:', supabaseUrl);
   }
