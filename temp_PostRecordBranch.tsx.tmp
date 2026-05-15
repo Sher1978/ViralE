@@ -1,39 +1,43 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Scissors, Sparkles, ArrowRight, Play, User, Download, Send, RotateCcw } from 'lucide-react';
+import { Scissors, Sparkles, ArrowRight, Play, User, Download, Send, RotateCw } from 'lucide-react';
 
 interface PostRecordBranchProps {
   videoUrl: string;
   onSelect: (type: 'pure' | 'animate') => void;
-  onRetake?: () => void;
   onDownload?: () => void;
   onTelegram?: () => void;
+  onRetake?: () => void;
   t: (key: string) => string;
 }
 
 export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
   videoUrl,
   onSelect,
-  onRetake,
   onDownload,
   onTelegram,
+  onRetake,
   t
 }) => {
   return (
     <div className="h-full w-full flex flex-col bg-[#050508] overflow-y-auto pb-10 relative">
-      {/* iOS Style Retake Button */}
-      <div className="absolute top-8 left-8 z-[60]">
-        <motion.button
-          whileHover={{ scale: 1.05 }}
-          whileTap={{ scale: 0.95 }}
-          onClick={onRetake}
-          className="flex items-center gap-2 px-5 py-2.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md text-white/60 hover:text-white transition-all shadow-xl"
+      
+      {/* ЁЯФД Top Action Bar - Retake Button */}
+      <div className="absolute top-6 right-6 z-50">
+        <button 
+          onClick={() => {
+            const confirmed = window.confirm(t?.('retake_confirm') || '╨н╤В╨╛ ╨┤╨╡╨╣╤Б╤В╨▓╨╕╨╡ ╤Г╨┤╨░╨╗╨╕╤В ╤В╨╡╨║╤Г╤Й╤Г╤О ╨╖╨░╨┐╨╕╤Б╤М. ╨Я╤А╨╛╨┤╨╛╨╗╨╢╨╕╤В╤М?');
+            if (confirmed) onRetake?.();
+          }}
+          className="px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-red-500/20 hover:border-red-500/30 transition-all active:scale-95 flex items-center gap-2 group"
         >
-          <RotateCcw size={14} />
-          <span className="text-[10px] font-black uppercase tracking-[0.2em]">Переснять</span>
-        </motion.button>
+          <RotateCw size={16} className="group-hover:rotate-180 transition-transform duration-500" />
+          <span className="text-[10px] font-black uppercase tracking-widest">
+            {t?.('retake') || '╨Я╨Х╨а╨Х╨б╨Э╨п╨в╨м'}
+          </span>
+        </button>
       </div>
 
       <div className="flex-1 flex flex-col items-center justify-center p-6">
@@ -74,7 +78,7 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               onClick={() => onSelect('pure')}
               className="w-full py-5 rounded-[2rem] bg-purple-600 text-white font-black uppercase tracking-[0.2em] text-sm shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
             >
-              В МОНТАЖ <ArrowRight size={16} />
+              ╨Т ╨Ь╨Ю╨Э╨в╨Р╨Ц <ArrowRight size={16} />
             </motion.button>
 
             <motion.button
@@ -83,7 +87,7 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               onClick={() => onSelect('animate')}
               className="w-full py-4 rounded-[2rem] bg-white/5 border border-white/10 text-white font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2"
             >
-              АВАТАР СТУДИЯ <Sparkles size={14} className="text-purple-400" />
+              ╨С╨Ш╨С╨Ы╨Ш╨Ю╨в╨Х╨Ъ╨Р ╨Ы╨г╨Ъ╨Ю╨Т <Sparkles size={14} className="text-purple-400" />
             </motion.button>
           </div>
 

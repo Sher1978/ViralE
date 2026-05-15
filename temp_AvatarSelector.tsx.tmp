@@ -1,11 +1,11 @@
-'use client';
+﻿'use client';
 
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Upload, User, Check, Sparkles, 
   Image as ImageIcon, Loader2, AlertCircle, 
-  ChevronRight, Cpu, Zap, Activity, Trash2
+  ChevronRight, Cpu, Zap, Activity
 } from 'lucide-react';
 import { useLocale } from 'next-intl';
 import { storageService } from '@/lib/services/storageService';
@@ -105,19 +105,6 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
     }
   };
 
-  const handleAssetDelete = async (assetId: string) => {
-    try {
-      setAssets(prev => prev.filter(a => a.id !== assetId));
-      if (selectedId === assetId) setSelectedId(null);
-      
-      await fetch(`/api/projects/${projectId}/assets/${assetId}`, {
-        method: 'DELETE'
-      });
-    } catch (e) {
-      console.error('Failed to delete asset:', e);
-    }
-  };
-
   const handleConfirm = () => {
     const allOptions = [...defaultAvatars, ...assets];
     const selected = allOptions.find(a => a.id === selectedId);
@@ -147,10 +134,10 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
              <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between">
                 <div>
                    <h2 className="text-2xl md:text-3xl font-black italic uppercase text-white tracking-tighter leading-none">
-                      Выберите <span className="text-purple-500">Облик</span>
+                      ╨Т╤Л╨▒╨╡╤А╨╕╤В╨╡ <span className="text-purple-500">╨Ю╨▒╨╗╨╕╨║</span>
                    </h2>
                    <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-1">
-                      Это фото будет "оживлено" под ваш голос
+                      ╨н╤В╨╛ ╤Д╨╛╤В╨╛ ╨▒╤Г╨┤╨╡╤В "╨╛╨╢╨╕╨▓╨╗╨╡╨╜╨╛" ╨┐╨╛╨┤ ╨▓╨░╤И ╨│╨╛╨╗╨╛╤Б
                    </p>
                 </div>
                 <button 
@@ -195,7 +182,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                             </div>
                             
                             <div className="space-y-2">
-                               <h3 className="text-xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none">Склейка <span className="text-purple-400">А-Ролла</span></h3>
+                               <h3 className="text-xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none">╨б╨║╨╗╨╡╨╣╨║╨░ <span className="text-purple-400">╨Р-╨а╨╛╨╗╨╗╨░</span></h3>
                                <p className="text-[8px] md:text-[10px] font-bold text-white/30 uppercase tracking-[0.4em] animate-pulse">Mastering Audio + Visual Identity</p>
                             </div>
 
@@ -218,7 +205,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
 
                       <div className="max-w-md space-y-4">
                          <p className="text-white/40 text-[10px] md:text-[11px] leading-relaxed italic">
-                            "Мы объединяем ваш уникальный тембр голоса с визуальным аватаром. ИИ анализирует каждую фонему для создания идеальной мимики и синхронизации губ."
+                            "╨Ь╤Л ╨╛╨▒╤К╨╡╨┤╨╕╨╜╤П╨╡╨╝ ╨▓╨░╤И ╤Г╨╜╨╕╨║╨░╨╗╤М╨╜╤Л╨╣ ╤В╨╡╨╝╨▒╤А ╨│╨╛╨╗╨╛╤Б╨░ ╤Б ╨▓╨╕╨╖╤Г╨░╨╗╤М╨╜╤Л╨╝ ╨░╨▓╨░╤В╨░╤А╨╛╨╝. ╨Ш╨Ш ╨░╨╜╨░╨╗╨╕╨╖╨╕╤А╤Г╨╡╤В ╨║╨░╨╢╨┤╤Г╤О ╤Д╨╛╨╜╨╡╨╝╤Г ╨┤╨╗╤П ╤Б╨╛╨╖╨┤╨░╨╜╨╕╤П ╨╕╨┤╨╡╨░╨╗╤М╨╜╨╛╨╣ ╨╝╨╕╨╝╨╕╨║╨╕ ╨╕ ╤Б╨╕╨╜╤Е╤А╨╛╨╜╨╕╨╖╨░╤Ж╨╕╨╕ ╨│╤Г╨▒."
                          </p>
                       </div>
                    </div>
@@ -276,31 +263,20 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                             <h4 className="text-[10px] font-black uppercase text-white/20 tracking-[0.2em] ml-1">Your Assets</h4>
                             <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                                {assets.map((asset) => (
-                                  <div key={asset.id} className="relative group">
-                                    <button 
-                                      onClick={() => setSelectedId(asset.id)}
-                                      className={`w-full aspect-square rounded-[2rem] overflow-hidden border-2 transition-all ${
-                                        selectedId === asset.id ? 'border-purple-500 shadow-lg shadow-purple-500/20' : 'border-white/5 hover:border-white/20'
-                                      }`}
-                                    >
-                                       <img src={asset.url} className="w-full h-full object-cover" alt="User asset" />
-                                       {selectedId === asset.id && (
-                                          <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white">
-                                             <Check size={14} strokeWidth={4} />
-                                          </div>
-                                       )}
-                                    </button>
-                                    
-                                    <button
-                                      onClick={(e) => {
-                                        e.stopPropagation();
-                                        handleAssetDelete(asset.id);
-                                      }}
-                                      className="absolute -top-2 -right-2 w-8 h-8 rounded-full bg-red-500 text-white flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity shadow-xl z-20 hover:scale-110 active:scale-90"
-                                    >
-                                      <Trash2 size={14} />
-                                    </button>
-                                  </div>
+                                  <button 
+                                    key={asset.id}
+                                    onClick={() => setSelectedId(asset.id)}
+                                    className={`relative aspect-square rounded-[2rem] overflow-hidden border-2 transition-all ${
+                                      selectedId === asset.id ? 'border-purple-500' : 'border-white/5'
+                                    }`}
+                                  >
+                                     <img src={asset.url} className="w-full h-full object-cover" alt="User asset" />
+                                     {selectedId === asset.id && (
+                                        <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white">
+                                           <Check size={14} strokeWidth={4} />
+                                        </div>
+                                     )}
+                                  </button>
                                ))}
                             </div>
                          </div>
@@ -320,7 +296,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
              {!isGenerating && (
                 <div className="p-6 md:p-8 bg-black/40 border-t border-white/5 flex flex-col md:flex-row items-center justify-between gap-4">
                    <p className="text-[9px] text-white/20 font-bold uppercase tracking-widest flex items-center gap-2">
-                      <AlertCircle size={12} /> Потребуется ~1-2 минуты для рендера
+                      <AlertCircle size={12} /> ╨Я╨╛╤В╤А╨╡╨▒╤Г╨╡╤В╤Б╤П ~1-2 ╨╝╨╕╨╜╤Г╤В╤Л ╨┤╨╗╤П ╤А╨╡╨╜╨┤╨╡╤А╨░
                    </p>
                    <button 
                      onClick={handleConfirm}
@@ -331,7 +307,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                           : 'bg-white/5 text-white/10 cursor-not-allowed'
                      }`}
                    >
-                      Оживить Фото <ChevronRight size={16} className="inline ml-1" />
+                      ╨Ю╨╢╨╕╨▓╨╕╤В╤М ╨д╨╛╤В╨╛ <ChevronRight size={16} className="inline ml-1" />
                    </button>
                 </div>
              )}

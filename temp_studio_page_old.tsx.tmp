@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import React, { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { useTranslations } from 'next-intl';
@@ -6,7 +6,7 @@ import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from '@/navigation';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { 
-  Plus, CheckCircle2, Lock, Scissors, RefreshCw, Wand2, Brain, Monitor, FileVideo, Download, X, Layout, ChevronRight
+  Plus, CheckCircle2, Lock, Scissors, RefreshCw, Wand2, Brain, Monitor, FileVideo, Download, X, Layout, ChevronRight, Sparkles
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project } from '@/lib/services/projectService';
@@ -16,35 +16,29 @@ import { ProductionManifest, AnimationStyle, AvatarProvider } from '@/lib/types/
 import { createInitialManifest } from '@/lib/studio-utils';
 import { v4 as uuidv4 } from 'uuid';
 import { idb } from '@/lib/idb';
+import { StrategistStudio } from './_components/StrategistStudio';
 
 // Atomic Components
 import { StudioSidebar } from './_components/StudioSidebar';
+import { TeleprompterView } from './_components/TeleprompterView';
+import { StoryboardGrid } from './_components/StoryboardGrid';
+import { RecordingReview } from './_components/RecordingReview';
+import { SourcePicker } from './_components/SourcePicker';
+import { AvatarSelector } from './_components/AvatarSelector';
+import { AssemblyProgress } from './_components/AssemblyProgress';
 import dynamic from 'next/dynamic';
-
-const Spinner = () => (
-  <div className="absolute inset-0 z-50 bg-[#050508]/60 backdrop-blur-sm flex flex-col items-center justify-center gap-4">
-    <RefreshCw size={32} className="animate-spin text-purple-500" />
-    <span className="text-[10px] font-black uppercase tracking-[0.3em] text-white/40">Loading Engine...</span>
-  </div>
-);
-
-const TeleprompterView = dynamic(() => import('./_components/TeleprompterView').then(m => m.TeleprompterView), { ssr: false, loading: Spinner });
-const StoryboardGrid = dynamic(() => import('./_components/StoryboardGrid').then(m => m.StoryboardGrid), { ssr: false, loading: Spinner });
-const RecordingReview = dynamic(() => import('./_components/RecordingReview').then(m => m.RecordingReview), { ssr: false, loading: Spinner });
-const SourcePicker = dynamic(() => import('./_components/SourcePicker').then(m => m.SourcePicker), { ssr: false, loading: Spinner });
-const AvatarSelector = dynamic(() => import('./_components/AvatarSelector').then(m => m.AvatarSelector), { ssr: false, loading: Spinner });
-const AssemblyProgress = dynamic(() => import('./_components/AssemblyProgress').then(m => m.AssemblyProgress), { ssr: false, loading: Spinner });
-const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false, loading: Spinner });
-const ProductionBranch = dynamic(() => import('./_components/ProductionBranch').then(m => m.ProductionBranch), { ssr: false, loading: Spinner });
-const PostRecordBranch = dynamic(() => import('./_components/PostRecordBranch').then(m => m.PostRecordBranch), { ssr: false, loading: Spinner });
-const TimelineLab = dynamic(() => import('./_components/TimelineLab').then(m => m.TimelineLab), { ssr: false, loading: Spinner });
-const FusionView = dynamic(() => import('./_components/FusionView').then(m => m.FusionView), { ssr: false, loading: Spinner });
-const DistributionFactory = dynamic(() => import('./_components/DistributionFactory'), { ssr: false, loading: Spinner });
-const KnowledgeLab = dynamic(() => import('@/components/studio/KnowledgeLab'), { ssr: false, loading: Spinner });
-const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { ssr: false, loading: Spinner });
-const FacelessStudio = dynamic(() => import('@/components/studio/FacelessStudio'), { ssr: false, loading: Spinner });
-
+const VideoEditor = dynamic(() => import('./_components/VideoEditor').then(m => m.VideoEditor), { ssr: false });
+import { ProductionBranch } from './_components/ProductionBranch';
+import { PostRecordBranch } from './_components/PostRecordBranch';
+import { TimelineLab } from './_components/TimelineLab';
+import { FusionView } from './_components/FusionView';
 import { BottomNav } from '@/components/layout/BottomNav';
+import DistributionFactory from './_components/DistributionFactory';
+
+// Global Shared Components
+
+import KnowledgeLab from '@/components/studio/KnowledgeLab';
+import FacelessStudio from '@/components/studio/FacelessStudio';
 
 export default function StudioPage() {
   const t = useTranslations('studio');
@@ -52,21 +46,14 @@ export default function StudioPage() {
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
 
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') as any || 'branch';
+  const initialTab = searchParams.get('tab') as any || 'concept';
 
-  const [isPending, startTransition] = React.useTransition();
   const [isLoading, setIsLoading] = useState(true);
   const [project, setProject] = useState<Project | null>(null);
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
   const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion'>(initialTab);
-  
-  const handleTabChange = useCallback((tab: any) => {
-    startTransition(() => {
-      setActiveTab(tab);
-    });
-  }, []);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
 
   const [currentVersionId, setCurrentVersionId] = useState<string | null>(null);
@@ -128,16 +115,10 @@ export default function StudioPage() {
   const isMobileRef = useRef(typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Honor/i.test(navigator.userAgent));
 
 
-  // State Sync Effect (URL Persistence)
+  // State Sync Effect (URL Persistence & Browser Back Support)
   useEffect(() => {
     if (isLoading) return;
     
-    if (activeTab === 'concept') {
-      router.push(`/app/projects/new/script?projectId=${projectId}`);
-      return;
-    }
-
-    // Defer URL update to avoid conflict with heavy UI transitions (especially on Android)
     const timeout = setTimeout(() => {
       const params = new URLSearchParams(window.location.search);
       params.set('tab', activeTab);
@@ -149,16 +130,35 @@ export default function StudioPage() {
       
       try {
         if (window.location.search !== `?${params.toString()}`) {
-          window.history.replaceState({ path: newUrl }, '', newUrl);
-          console.log('[Studio] Syncing URL:', newUrl);
+          // Use pushState to allow browser 'Back' button/swipe to work within studio tabs
+          window.history.pushState({ tab: activeTab, mode: showFaceless ? 'faceless' : 'normal' }, '', newUrl);
+          console.log('[Studio] Syncing URL (pushState):', newUrl);
         }
       } catch (e) {
-        console.warn('[Studio] replaceState failed:', e);
+        console.warn('[Studio] pushState failed:', e);
       }
     }, 150);
 
     return () => clearTimeout(timeout);
   }, [activeTab, showFaceless, isLoading]);
+
+  // Handle Browser Back/Forward
+  useEffect(() => {
+    const handlePopState = (e: PopStateEvent) => {
+      if (e.state && e.state.tab) {
+        setActiveTab(e.state.tab);
+        if (e.state.mode === 'faceless') setShowFaceless(true);
+        else setShowFaceless(false);
+      } else {
+        // Fallback to URL params if state is missing
+        const params = new URLSearchParams(window.location.search);
+        const tab = params.get('tab') as any;
+        if (tab) setActiveTab(tab);
+      }
+    };
+    window.addEventListener('popstate', handlePopState);
+    return () => window.removeEventListener('popstate', handlePopState);
+  }, []);
 
   // Prevent accidental data loss
   useEffect(() => {
@@ -175,11 +175,11 @@ export default function StudioPage() {
   const handleAvatarSelect = async (photoUrl: string, avatarId?: string, avatarType?: string) => {
     setSelectedAvatarPhoto(photoUrl);
     setShowAvatarSelector(false);
-    handleTabChange('timeline_lab');
+    setActiveTab('timeline_lab');
   };
 
   const handleTimelineGeneration = async (timelineSegments: any[]) => {
-    handleTabChange('fusion');
+    setActiveTab('fusion');
     setFusionStatus('segmenting');
     setFusionProgress(10);
     setFusionSegmentsCount(timelineSegments.length);
@@ -226,7 +226,7 @@ export default function StudioPage() {
           await projectService.updateLatestVersionManifest(projectId, newManifest);
         }
 
-        setTimeout(() => handleTabChange('assembly'), 1500);
+        setTimeout(() => setActiveTab('assembly'), 1500);
       } else {
         throw new Error('Fusion failed to return a video URL');
       }
@@ -238,7 +238,7 @@ export default function StudioPage() {
     }
   };
 
-  // тЬТ AUTOSAVE & RECOVERY (IndexedDB + Cloud Sync) тЬТ
+  // ╤В╨м╨в AUTOSAVE & RECOVERY (IndexedDB + Cloud Sync) ╤В╨м╨в
   useEffect(() => {
     if (manifest && projectId && !isLoading) {
       // 1. Instant local backup
@@ -268,13 +268,6 @@ export default function StudioPage() {
   useEffect(() => {
     async function loadData() {
       if (!projectId) return;
-      
-      // Safety timeout: if fetching hangs, force stop loading after 3s
-      const safetyTimeout = setTimeout(() => {
-        setIsLoading(false);
-        console.warn('[Studio] loadData timed out, forcing ready state');
-      }, 3000);
-
       setIsLoading(true);
       try {
         const [profileData, projectData, latestVersion, cachedLocal] = await Promise.all([
@@ -317,15 +310,7 @@ export default function StudioPage() {
             console.log('[Studio] Recovered pending recording from crash:', pendingRecId);
             const url = URL.createObjectURL(blob);
             setLastRecordingUrl(url);
-          }
-        }
-
-        // 5. Fallback to Manifest videoUrl
-        if (!lastRecordingUrl) {
-          const m = cachedLocal?.manifest || (latestVersion?.script_data as ProductionManifest);
-          if (m?.videoUrl) {
-            console.log('[Studio] Recovered video from manifest:', m.videoUrl);
-            setLastRecordingUrl(m.videoUrl);
+            setShowRecordingReview(true);
           }
         }
 
@@ -340,28 +325,12 @@ export default function StudioPage() {
           // Initial auto-selection if not set
           if (!selectedVideoDeviceId && v.length > 0) setSelectedVideoDeviceId(v[0].deviceId);
           if (!selectedAudioDeviceId && a.length > 0) setSelectedAudioDeviceId(a[0].deviceId);
-
-          // 🚀 Background Pre-init Camera (Non-blocking)
-          if (typeof window !== 'undefined') {
-            const preInit = () => {
-              if (activeTab === 'branch' || activeTab === 'concept') {
-                console.log('[Studio] Pre-initializing camera in background...');
-                initCamera().catch(e => console.warn('Pre-init camera failed (likely no perms):', e));
-              }
-            };
-            if ('requestIdleCallback' in window) {
-              (window as any).requestIdleCallback(preInit, { timeout: 2000 });
-            } else {
-              setTimeout(preInit, 1000);
-            }
-          }
         }
 
       } catch (err) {
         console.error('Failed to load studio data:', err);
       } finally {
         setIsLoading(false);
-        clearTimeout(safetyTimeout);
       }
     }
     loadData();
@@ -385,16 +354,16 @@ export default function StudioPage() {
     };
   }, [projectId]);
 
-  // 📹 Auto-init camera when entering teleprompter
+  // ЁЯУ╣ Auto-init camera when entering teleprompter
   useEffect(() => {
     if (activeTab === 'teleprompter' && !cameraStream && !isLoading) {
       console.log('[Studio] Auto-initializing camera for teleprompter...');
       initCamera();
     }
     
-    // 🛑 Explicitly stop camera hardware when leaving prompter
+    // ЁЯЪА Auto-stop camera when leaving recording studio to save RAM/CPU
     if (activeTab !== 'teleprompter' && cameraStream) {
-      console.log('[Studio] Stopping camera hardware (Leaving prompter)...');
+      console.log(`[Studio] Tab changed to ${activeTab}, releasing hardware...`);
       stopCamera();
     }
   }, [activeTab, cameraStream, isLoading]);
@@ -488,7 +457,7 @@ export default function StudioPage() {
       }
 
       if (!activeStream) {
-        const errorMsg = "Камера не запущена. Проверьте разрешения или попробуйте перезагрузить вкладку.";
+        const errorMsg = "╨Ъ╨░╨╝╨╡╤А╨░ ╨╜╨╡ ╨╖╨░╨┐╤Г╤Й╨╡╨╜╨░. ╨Я╤А╨╛╨▓╨╡╤А╤М╤В╨╡ ╤А╨░╨╖╤А╨╡╤И╨╡╨╜╨╕╤П ╨╕╨╗╨╕ ╨┐╨╛╨┐╤А╨╛╨▒╤Г╨╣╤В╨╡ ╨┐╨╡╤А╨╡╨╖╨░╨│╤А╤Г╨╖╨╕╤В╤М ╨▓╨║╨╗╨░╨┤╨║╤Г.";
         alert(errorMsg);
         return;
       }
@@ -581,35 +550,37 @@ export default function StudioPage() {
           
         } catch (err: any) {
           console.error('[Studio] MediaRecorder fail:', err);
-          const detail = err.name === 'NotReadableError' ? 'Камера занята другим приложением' : (err.message || err.name);
-          alert(`Ошибка старта записи: ${detail}. Попробуйте перезагрузить страницу.`);
+          const detail = err.name === 'NotReadableError' ? '╨Ъ╨░╨╝╨╡╤А╨░ ╨╖╨░╨╜╤П╤В╨░ ╨┤╤А╤Г╨│╨╕╨╝ ╨┐╤А╨╕╨╗╨╛╨╢╨╡╨╜╨╕╨╡╨╝' : (err.message || err.name);
+          alert(`╨Ю╤И╨╕╨▒╨║╨░ ╤Б╤В╨░╤А╤В╨░ ╨╖╨░╨┐╨╕╤Б╨╕: ${detail}. ╨Я╨╛╨┐╤А╨╛╨▒╤Г╨╣╤В╨╡ ╨┐╨╡╤А╨╡╨╖╨░╨│╤А╤Г╨╖╨╕╤В╤М ╤Б╤В╤А╨░╨╜╨╕╤Ж╤Г.`);
           setIsReading(false);
         }
       }, 3000);
     } catch (err: any) {
-      alert("Ошибка инициализации: " + (err.message || err.name));
+      alert("╨Ю╤И╨╕╨▒╨║╨░ ╨╕╨╜╨╕╤Ж╨╕╨░╨╗╨╕╨╖╨░╤Ж╨╕╨╕: " + (err.message || err.name));
     }
   };
 
   const stopVideoRecording = () => {
+    console.log('[Studio] Finishing recording flow...');
     setIsReading(false);
+    setIsRecordingVideo(false);
+    if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
+
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
       const aRec = (window as any)._audioRecorder as MediaRecorder;
       if (aRec && aRec.state !== 'inactive') aRec.stop();
-      
-      setIsRecordingVideo(false);
-      if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);
-      
-      // Release camera when record is done and we're entering review
-      stopCamera();
     }
+    
+    // ЁЯФе FORCE RELEASE: Always release hardware when record is finished/stopped
+    // regardless of the MediaRecorder state.
+    stopCamera();
   };
 
   const downloadRawVideo = async () => {
     if (!lastRecordingUrl) return;
     
-    // 🚀 Mobile-first: Use Web Share API for native "Save to Gallery/Files"
+    // ЁЯЪА Mobile-first: Use Web Share API for native "Save to Gallery/Files"
     if (navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
       try {
         const response = await fetch(lastRecordingUrl);
@@ -638,10 +609,10 @@ export default function StudioPage() {
     document.body.removeChild(a);
   };
 
-  const sendRawToTelegram = () => {
+  const sendRawToTelegram = async () => {
     // On mobile, the "Save" (Share) API already covers Telegram.
     // But we can specifically trigger the share sheet again or show a message.
-    downloadRawVideo(); 
+    await downloadRawVideo(); 
   };
 
   // Manifest Handlers - Memoized to prevent cascade re-renders
@@ -683,15 +654,15 @@ export default function StudioPage() {
     }
   };
 
-  const handleFinalExport = async (broll?: any[], subs?: any[], explicitARollUrl?: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number) => {
+  const handleFinalExport = async (broll?: any[], subs?: any[], explicitARollUrl?: string | null) => {
     setIsSaving(true);
     try {
       if (!manifest) {
-        alert('Ошибка: манифест проекта не загружен. Попробуйте обновить страницу.');
+        alert('╨Ю╤И╨╕╨▒╨║╨░: ╨╝╨░╨╜╨╕╤Д╨╡╤Б╤В ╨┐╤А╨╛╨╡╨║╤В╨░ ╨╜╨╡ ╨╖╨░╨│╤А╤Г╨╢╨╡╨╜. ╨Я╨╛╨┐╤А╨╛╨▒╤Г╨╣╤В╨╡ ╨╛╨▒╨╜╨╛╨▓╨╕╤В╤М ╤Б╤В╤А╨░╨╜╨╕╤Ж╤Г.');
         return;
       }
 
-      // 🚀 Merge editor state into manifest
+      // ╨Б╨п╨д╨╡ Merge editor state into manifest
       const manifestAny = manifest as any;
       const resolvedARollUrl = 
         explicitARollUrl ||
@@ -710,27 +681,22 @@ export default function StudioPage() {
         scriptText: finalScriptText, // Save for distribution
         brollClips: broll || [],
         subtitleClips: subs || [],
-        subtitlePos: subPos || (manifest as any).subtitlePos || { x: 0, y: 0 },
-        subtitleSize: subSize || (manifest as any).subtitleSize || 25,
-        subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
         _log_subs_count: subs?.length || 0,
         segments: manifest.segments.map((s: any, i: number) => i === 0 ? { 
           ...s, 
           brollClips: broll || [], 
-          subtitleClips: subs || [],
-          subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
-          subtitleSize: subSize || (manifest as any).subtitleSize || 25
+          subtitleClips: subs || [] 
         } : s)
       };
 
-      // тЬЕ Trigger background distribution asset generation
+      // ╤В╨м╨Х Trigger background distribution asset generation
       fetch('/api/ai/distribution-assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scriptText: finalScriptText, projectId, locale, background: true })
       }).then(res => res.json()).then(async assets => { if (assets && !assets.error) { await projectService.updateLatestVersionManifest(projectId, { ...updatedManifest, distributionAssets: assets }); } }).catch(e => console.error('[Studio] Prefetch failed:', e));
 
-      // тЬЕ Background Save manifest тАФ wait for it to prevent race condition on Delivery page
+      // ╤В╨м╨Х Background Save manifest ╤В╨Р╨д wait for it to prevent race condition on Delivery page
       let savedVersion = null;
       if (currentVersionId) {
         savedVersion = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
@@ -746,7 +712,7 @@ export default function StudioPage() {
         });
       }
       
-      // тЬЕ Sync local draft for immediate recovery if user comes back
+      // ╤В╨м╨Х Sync local draft for immediate recovery if user comes back
       try {
         const key = `viral_editor_draft_${projectId}`;
         const state = { 
@@ -762,18 +728,18 @@ export default function StudioPage() {
         console.log('[Studio] Local draft synced for delivery session');
       } catch (e) { console.warn('[Studio] Local draft sync failed:', e); }
 
-      // тЬЕ Invalidate render cache so delivery always re-renders with fresh subtitles
+      // ╤В╨м╨Х Invalidate render cache so delivery always re-renders with fresh subtitles
       try {
         await idb.delete(`final_render_${projectId}`, 'MediaBuffer');
-        console.log('[Studio] Render cache invalidated — delivery will re-render with subtitles');
+        console.log('[Studio] Render cache invalidated тАФ delivery will re-render with subtitles');
       } catch (e) { /* ignore */ }
 
-      // тЬЕ Final Redirect
+      // ╤В╨м╨Х Final Redirect
       router.push(`/app/projects/new/delivery?projectId=${projectId}`);
 
     } catch (err: any) {
       console.error('Export failed:', err);
-      alert(`Не удалось сохранить проект: ${err.message}`);
+      alert(`╨Э╨╡ ╤Г╨┤╨░╨╗╨╛╤Б╤М ╤Б╨╛╤Е╤А╨░╨╜╨╕╤В╤М ╨┐╤А╨╛╨╡╨║╤В: ${err.message}`);
     } finally {
       setIsSaving(false);
     }
@@ -786,12 +752,12 @@ export default function StudioPage() {
 
   return (
     <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
-      {/* ЁЯЪА Pro Studio Mainframe - Full Screen Immersion */}
+      {/* ╨Б╨п╨к╨Р Pro Studio Mainframe - Full Screen Immersion */}
       <div className="flex h-full w-full overflow-hidden">
         {(!isMobileRef.current || activeTab !== 'assembly') && (
           <StudioSidebar 
             activeTab={activeTab as any}
-            setActiveTab={handleTabChange}
+            setActiveTab={setActiveTab}
             cameraStream={cameraStream}
             isRecordingVideo={isRecordingVideo}
             recordingTime={recordingTime}
@@ -850,39 +816,29 @@ export default function StudioPage() {
           
           {/* Stage Area */}
           <div className="flex-1 relative overflow-hidden">
-            {isPending && (
-              <div className="absolute inset-0 z-[100] bg-black/40 backdrop-blur-[2px] flex items-center justify-center pointer-events-none">
-                <RefreshCw size={24} className="animate-spin text-purple-500 opacity-50" />
-              </div>
-            )}
-
             {activeTab === 'concept' && (
-              <div className="flex flex-col items-center justify-center h-full gap-4 text-white/20">
-                <RefreshCw size={40} className="animate-spin" />
-                <p className="text-[10px] font-black uppercase tracking-[0.2em]">Switching to Idea Lab...</p>
+              <div className="w-full h-full relative">
+                <StrategistStudio 
+                  projectId={projectId}
+                  userId={currentProfile?.id || ''}
+                  manifest={manifest || undefined} 
+                  setManifest={(m) => setManifest(m)}
+                  setActiveTab={setActiveTab}
+                  setShowFaceless={setShowFaceless}
+                />
               </div>
             )}
             
             {activeTab === 'branch' && (
-              <ProductionBranch
+              <ProductionBranch 
                 onSelect={(type) => {
-                  startTransition(() => {
-                    if (type === 'record') {
-                      setShowFaceless(false);
-                      setIsVoiceOnly(false);
-                      setActiveTab('teleprompter');
-                    } else if (type === 'voice-master') {
-                      setShowFaceless(false);
-                      setIsVoiceOnly(true);
-                      setActiveTab('teleprompter');
-                    } else if (type === 'faceless') {
-                      setShowFaceless(true);
-                      setIsVoiceOnly(false);
-                      setActiveTab('assembly');
-                    }
-                  });
+                  if (type === 'record') setActiveTab('teleprompter');
+                  else if (type === 'faceless') {
+                    setShowFaceless(true);
+                    setActiveTab('assembly');
+                  }
                 }}
-                onBack={() => handleTabChange('concept')}
+                onBack={() => setActiveTab('concept')}
               />
             )}
 
@@ -928,7 +884,7 @@ export default function StudioPage() {
                     });
                   }}
                   onColorChange={(color) => setScriptColor(color)}
-                  onBack={() => handleTabChange('branch')}
+                  onBack={() => setActiveTab('branch')}
                   onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
                   onFlipCamera={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
                   onTextSizeChange={(size) => setTextSize(size)}
@@ -979,27 +935,27 @@ export default function StudioPage() {
                   <Scissors size={32} className="text-purple-400" />
                 </div>
                 <div className="text-center space-y-3">
-                  <h2 className="text-2xl font-black text-white uppercase tracking-tight">Запись сохранена!</h2>
-                  <p className="text-sm text-white/40 leading-relaxed">Запись сохранена в памяти устройства.<br/>Нажми кнопку, чтобы открыть монтажку.</p>
+                  <h2 className="text-2xl font-black text-white uppercase tracking-tight">╨Ч╨░╨┐╨╕╤Б╤М ╤Б╨╛╤Е╤А╨░╨╜╨╡╨╜╨░!</h2>
+                  <p className="text-sm text-white/40 leading-relaxed">╨Ч╨░╨┐╨╕╤Б╤М ╤Б╨╛╤Е╤А╨░╨╜╨╡╨╜╨░ ╨▓ ╨┐╨░╨╝╤П╤В╨╕ ╤Г╤Б╤В╤А╨╛╨╣╤Б╤В╨▓╨░.<br/>╨Э╨░╨╢╨╝╨╕ ╨║╨╜╨╛╨┐╨║╤Г, ╤З╤В╨╛╨▒╤Л ╨╛╤В╨║╤А╤Л╤В╤М ╨╝╨╛╨╜╤В╨░╨╢╨║╤Г.</p>
                 </div>
                 <button
                   onClick={() => {
                     setShowAssemblyLauncher(false);
                     // Small delay to let GC run before mounting FFmpeg
-                    setTimeout(() => handleTabChange('assembly'), 300);
+                    setTimeout(() => setActiveTab('assembly'), 300);
                   }}
                   className="w-full max-w-xs py-5 bg-purple-500 rounded-[2rem] text-white font-black uppercase tracking-widest text-sm shadow-2xl shadow-purple-500/30 active:scale-95 transition-all"
                 >
-                  Открыть монтажку →
+                  ╨Ю╤В╨║╤А╤Л╤В╤М ╨╝╨╛╨╜╤В╨░╨╢╨║╤Г тЖТ
                 </button>
                 <button
                   onClick={() => {
                     setShowAssemblyLauncher(false);
-                    handleTabChange('teleprompter');
+                    setActiveTab('teleprompter');
                   }}
                   className="text-white/20 text-xs uppercase tracking-widest font-bold"
                 >
-                  Записать ещё раз
+                  ╨Ч╨░╨┐╨╕╤Б╨░╤В╤М ╨╡╤Й╤С ╤А╨░╨╖
                 </button>
               </motion.div>
             )}
@@ -1008,24 +964,15 @@ export default function StudioPage() {
               <PostRecordBranch 
                 videoUrl={lastRecordingUrl}
                 onSelect={(option) => {
-                  if (option === 'pure') {
-                    // Save videoUrl to manifest for persistence
-                    setManifest(prev => {
-                      if (!prev) return prev;
-                      const next = { ...prev, videoUrl: lastRecordingUrl || '' };
-                      projectService.updateLatestVersionManifest(projectId, next);
-                      return next;
-                    });
-                    handleTabChange('assembly');
-                  }
-                  else if (option === 'animate') handleTabChange('timeline_lab');
-                }}
-                onRetake={() => {
-                   handleTabChange('teleprompter');
-                   setTimeout(initCamera, 100);
+                  if (option === 'pure') setActiveTab('assembly');
+                  else if (option === 'animate') setActiveTab('timeline_lab');
                 }}
                 onDownload={downloadRawVideo}
                 onTelegram={sendRawToTelegram}
+                onRetake={() => {
+                  stopCamera(); // Safety clear
+                  setActiveTab('teleprompter');
+                }}
                 t={t}
               />
             )}
@@ -1034,21 +981,43 @@ export default function StudioPage() {
               <TimelineLab 
                 videoUrl={lastRecordingUrl}
                 projectId={projectId}
-                onBack={() => handleTabChange('post_record_branch')}
+                availableAvatars={availableAvatars}
+                onBack={() => setActiveTab('post_record_branch')}
                 onGenerate={handleTimelineGeneration}
               />
             )}
 
-            {activeTab === 'assembly' && !showFaceless && (
+            {activeTab === 'assembly' && !showFaceless && !lastRecordingUrl && (
+              <SourcePicker 
+                onSelect={(type) => {
+                  if (type === 'ai') setShowFaceless(true);
+                  else if (type === 'upload') {
+                    // Trigger hidden file input or upload logic
+                    const input = document.createElement('input');
+                    input.type = 'file';
+                    input.accept = 'video/*,audio/*';
+                    input.onchange = (e) => {
+                      const file = (e.target as HTMLInputElement).files?.[0];
+                      if (file) {
+                        const url = URL.createObjectURL(file);
+                        setLastRecordingUrl(url);
+                      }
+                    };
+                    input.click();
+                  } else if (type === 'record') {
+                    setActiveTab('teleprompter');
+                  }
+                }}
+                onBack={() => setActiveTab('branch')}
+              />
+            )}
+
+            {activeTab === 'assembly' && !showFaceless && lastRecordingUrl && (
               <VideoEditor 
                 projectId={projectId}
                 aRollUrl={lastRecordingUrl || ''}
                 onBack={() => {
-                  if (isMobileRef.current) {
-                    handleTabChange('teleprompter');
-                  } else {
-                    handleTabChange('branch');
-                  }
+                  setLastRecordingUrl(null);
                 }}
                 onNext={handleFinalExport}
                 manifest={manifest}
@@ -1064,7 +1033,7 @@ export default function StudioPage() {
 
                 onJumpToConcept={() => {
                   setShowFaceless(false);
-                  router.push(`/app/projects/new/script?projectId=${projectId}`);
+                  setActiveTab('concept');
                 }}
                 onComplete={(videoBlob, transcriptData) => {
                   const localUrl = URL.createObjectURL(videoBlob);
@@ -1099,7 +1068,12 @@ export default function StudioPage() {
               <div className="max-w-6xl mx-auto h-full p-10">
                 <DistributionFactory 
                   manifest={manifest}
-                  scriptText={(manifest as any)?.scriptText || manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
+                  scriptText={
+                    (manifest as any)?.scriptText || 
+                    manifest?.customScript || 
+                    manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || 
+                    ''
+                  }
                   projectId={projectId}
                   locale={locale}
                   onUpdateManifest={(newManifest) => {
@@ -1129,7 +1103,34 @@ export default function StudioPage() {
         balance={currentProfile?.credits_balance}
       />
 
-      {/* тЬЕ Mobile Bottom Navigation (Visible only on Level 1 & 2) */}
+      {/* ЁЯЫбя╕П RECOVERY & REVIEW OVERLAY */}
+      <RecordingReview 
+        showRecordingReview={showRecordingReview}
+        lastRecordingUrl={lastRecordingUrl}
+        currentProfile={currentProfile}
+        downloadRawVideo={downloadRawVideo}
+        sendRawToTelegram={sendRawToTelegram}
+        setShowRecordingReview={setShowRecordingReview}
+        setLastRecordingUrl={setLastRecordingUrl}
+        updateSegmentField={(id, field, value) => {
+           // Basic sync
+        }}
+        handleAcceptRecording={(url) => {
+           setShowRecordingReview(false);
+           setActiveTab('post_record_branch');
+        }}
+        onDiscard={() => {
+          setShowRecordingReview(false);
+          setLastRecordingUrl(null);
+          stopCamera();
+          setActiveTab('teleprompter');
+        }}
+        manifest={manifest}
+        selectedSegmentId={selectedSegmentId}
+        isVoiceOnly={isVoiceOnly}
+      />
+
+      {/* ЁЯУ▒ Mobile Bottom Navigation (Visible only on Level 1 & 2) */}
       <AnimatePresence>
         {isMobileRef.current && (activeTab === 'concept' || activeTab === 'branch') && (
           <motion.div 

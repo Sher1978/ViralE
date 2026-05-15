@@ -30,10 +30,6 @@ interface GeneratedAsset {
   linkedin_executive: {
     text: string;
   };
-  longread_article: {
-    title: string;
-    text: string;
-  };
   ig_carousel: {
     technical_specs: string;
     prompts: string[];
@@ -44,7 +40,7 @@ interface GeneratedAsset {
   };
 }
 
-type Platform = 'sfv' | 'threads' | 'linkedin' | 'longread' | 'carousel' | 'banner';
+type Platform = 'sfv' | 'threads' | 'linkedin' | 'carousel' | 'banner';
 
 export default function DistributionFactory({ manifest, scriptText, projectId, locale, onUpdateManifest }: DistributionFactoryProps) {
   const [activePlatform, setActivePlatform] = useState<Platform>('sfv');
@@ -145,7 +141,6 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     { id: 'sfv', label: 'TikTok & Reels', icon: Zap },
     { id: 'threads', label: 'Threads & FB', icon: Share2 },
     { id: 'linkedin', label: 'LinkedIn', icon: Monitor },
-    { id: 'longread', label: 'Article / Blog', icon: Brain },
     { id: 'carousel', label: 'Instagram Carousel', icon: Camera },
     { id: 'banner', label: 'YouTube Thumbnail', icon: ImageIcon },
   ];
@@ -321,8 +316,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                 transition={{ duration: 0.2 }}
                 className="max-w-5xl mx-auto"
               >
-                {/* 1. TEXT PLATFORMS (SFV, Threads, LinkedIn, Longread) */}
-                {(activePlatform === 'sfv' || activePlatform === 'threads' || activePlatform === 'linkedin' || activePlatform === 'longread') && (
+                {/* 1. TEXT PLATFORMS (SFV, Threads, LinkedIn) */}
+                {(activePlatform === 'sfv' || activePlatform === 'threads' || activePlatform === 'linkedin') && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     <div className="lg:col-span-2 space-y-6">
                       <div className="flex items-center justify-between">
@@ -333,8 +328,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                           onClick={() => {
                             const text = activePlatform === 'sfv' ? assets?.sfv_description.text : 
                                         activePlatform === 'threads' ? assets?.deep_content.threads_fb_text : 
-                                        activePlatform === 'linkedin' ? assets?.linkedin_executive.text :
-                                        `# ${assets?.longread_article.title}\n\n${assets?.longread_article.text}`;
+                                        assets?.linkedin_executive.text;
                             if(text) handleCopy(text, activePlatform);
                           }}
                           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[9px] font-bold uppercase tracking-widest transition-all active:scale-90"
@@ -345,41 +339,23 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                       </div>
                       
                       <div className="p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/5 relative group min-h-[300px]">
-                        <div className="text-[15px] text-white/80 leading-relaxed font-sans whitespace-pre-wrap">
-                          {activePlatform === 'longread' && (
-                            <h2 className="text-2xl font-bold mb-6 text-white uppercase tracking-tighter">
-                              {assets?.longread_article.title}
-                            </h2>
-                          )}
+                        <pre className="text-[15px] text-white/80 leading-relaxed font-sans whitespace-pre-wrap">
                           {activePlatform === 'sfv' ? assets?.sfv_description.text : 
                            activePlatform === 'threads' ? assets?.deep_content.threads_fb_text : 
-                           activePlatform === 'linkedin' ? assets?.linkedin_executive.text :
-                           assets?.longread_article.text}
-                        </div>
+                           assets?.linkedin_executive.text}
+                        </pre>
                       </div>
 
                       <div className="flex flex-wrap gap-3 mt-6">
                          <button 
-                           onClick={() => {
-                             const text = activePlatform === 'sfv' ? assets!.sfv_description.text : 
-                                         activePlatform === 'threads' ? assets!.deep_content.threads_fb_text : 
-                                         activePlatform === 'linkedin' ? assets!.linkedin_executive.text :
-                                         assets!.longread_article.text;
-                             shareToSocial(activePlatform, text);
-                           }}
+                           onClick={() => shareToSocial(activePlatform, activePlatform === 'sfv' ? assets!.sfv_description.text : assets!.deep_content.threads_fb_text)}
                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition-all shadow-lg shadow-purple-900/20"
                          >
-                           <Share2 size={14} /> Post to {activePlatform === 'sfv' ? 'TikTok/Reels' : activePlatform === 'threads' ? 'Threads/FB' : activePlatform === 'linkedin' ? 'LinkedIn' : 'Blog'}
+                           <Share2 size={14} /> Post to {activePlatform === 'sfv' ? 'TikTok/Reels' : activePlatform === 'threads' ? 'Threads/FB' : 'LinkedIn'}
                          </button>
 
                          <button 
-                           onClick={() => {
-                             const text = activePlatform === 'sfv' ? assets!.sfv_description.text : 
-                                         activePlatform === 'threads' ? assets!.deep_content.threads_fb_text : 
-                                         activePlatform === 'linkedin' ? assets!.linkedin_executive.text :
-                                         assets!.longread_article.text;
-                             saveTextAsFile(text, `${activePlatform}_content.txt`);
-                           }}
+                           onClick={() => saveTextAsFile(activePlatform === 'sfv' ? assets!.sfv_description.text : assets!.deep_content.threads_fb_text, `${activePlatform}_caption.txt`)}
                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                          >
                            <Download size={14} /> Save Text

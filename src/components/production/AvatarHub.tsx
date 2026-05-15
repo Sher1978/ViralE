@@ -3,13 +3,13 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Key, Image as ImageIcon, Upload, CheckCircle2, Info, Loader2, AlertCircle, Sparkles, Copy, ExternalLink } from 'lucide-react';
+import { User, Key, Image as ImageIcon, Upload, CheckCircle2, Info, Loader2, Trash2, Sparkles, Copy, ExternalLink, AlertCircle } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '@/lib/supabase';
 
 interface AvatarAsset {
   id: string;
-  url: string;
+  public_url: string;
   name?: string;
   created_at: string;
 }
@@ -17,9 +17,10 @@ interface AvatarAsset {
 interface AvatarHubProps {
   onSelect: (config: any) => void;
   currentConfig?: any;
+  projectId: string;
 }
 
-export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
+export default function AvatarHub({ onSelect, currentConfig, projectId }: AvatarHubProps) {
   const t = useTranslations('profile');
   const common = useTranslations('common');
   const [activeTab, setActiveTab] = useState<'stock' | 'byok' | 'photo'>(currentConfig?.mode || 'stock');
@@ -40,10 +41,33 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
   
   const fileInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync state with parent
-  useEffect(() => {
-    onSelect({ mode: activeTab, assetId: selectedAsset });
-  }, [activeTab, selectedAsset]);
+  const STOCK_AVATARS = [
+    { id: 'stock_1', name: 'Mark', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+    { id: 'stock_2', name: 'Sarah', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+    { id: 'stock_3', name: 'David', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+    { id: 'stock_4', name: 'Elena', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+    { id: 'stock_5', name: 'James', url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+    { id: 'stock_6', name: 'Aisha', url: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+    { id: 'stock_7', name: 'Lucas', url: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
+    { id: 'stock_8', name: 'Sofia', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' }
+  ];
+
+  const handleConfirm = () => {
+    if (!selectedAsset) return;
+    
+    let url = null;
+    if (activeTab === 'stock') {
+      url = STOCK_AVATARS.find(a => a.id === selectedAsset)?.url || null;
+    } else if (activeTab === 'photo') {
+      url = assets.find(a => a.id === selectedAsset)?.public_url || null;
+    }
+
+    onSelect({ 
+      mode: activeTab === 'photo' ? 'fal' : activeTab, 
+      assetId: selectedAsset,
+      photoUrl: url
+    });
+  };
 
   // Fetch Assets when "photo" tab is active
   useEffect(() => {
@@ -56,13 +80,9 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
     setLoading(true);
     setError(null);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
       const { data, error } = await supabase
         .from('media_assets')
         .select('*')
-        .eq('user_id', user.id)
         .eq('asset_type', 'image')
         .order('created_at', { ascending: false });
 
@@ -107,8 +127,9 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
       const { data: asset, error: dbError } = await supabase
         .from('media_assets')
         .insert({
-          user_id: user.id,
-          url: publicUrl,
+          project_id: projectId,
+          public_url: publicUrl,
+          file_path: filePath,
           asset_type: 'image',
           metadata: { name: file.name, size: file.size }
         })
@@ -125,6 +146,36 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
     } finally {
       setUploading(false);
       if (fileInputRef.current) fileInputRef.current.value = '';
+    }
+  };
+
+  const handleDeleteAsset = async (e: React.MouseEvent, asset: AvatarAsset) => {
+    e.stopPropagation();
+    if (!confirm('Удалить это фото навсегда?')) return;
+
+    try {
+      // 1. Delete from Storage
+      if ((asset as any).file_path) {
+        await supabase.storage
+          .from('media')
+          .remove([(asset as any).file_path]);
+      }
+
+      // 2. Delete from DB
+      const { error } = await supabase
+        .from('media_assets')
+        .delete()
+        .eq('id', asset.id);
+
+      if (error) throw error;
+
+      // 3. Update State
+      setAssets(prev => prev.filter(a => a.id !== asset.id));
+      if (selectedAsset === asset.id) setSelectedAsset(null);
+      if ('vibrate' in navigator) navigator.vibrate(50);
+    } catch (err: any) {
+      console.error('Delete failed:', err);
+      alert('Не удалось удалить: ' + err.message);
     }
   };
 
@@ -186,8 +237,8 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
         ))}
       </div>
 
-      {/* Content Area */}
-      <div className="min-h-[300px]">
+      {/* Content Area - Scrollable */}
+      <div className="flex-1 overflow-y-auto px-1 min-h-0 pb-32">
         <AnimatePresence mode="wait">
           <motion.div
             key={activeTab}
@@ -199,16 +250,7 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
           >
             {activeTab === 'stock' && (
               <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {[
-                  { id: 'stock_1', name: 'Mark', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
-                  { id: 'stock_2', name: 'Sarah', url: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
-                  { id: 'stock_3', name: 'David', url: 'https://images.unsplash.com/photo-1500648767791-00dcc994a43e?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
-                  { id: 'stock_4', name: 'Elena', url: 'https://images.unsplash.com/photo-1534528741775-53994a69daeb?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
-                  { id: 'stock_5', name: 'James', url: 'https://images.unsplash.com/photo-1506794778202-cad84cf45f1d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
-                  { id: 'stock_6', name: 'Aisha', url: 'https://images.unsplash.com/photo-1531123897727-8f129e1688ce?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
-                  { id: 'stock_7', name: 'Lucas', url: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
-                  { id: 'stock_8', name: 'Sofia', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' }
-                ].map((item) => (
+                {STOCK_AVATARS.map((item) => (
                   <div 
                     key={item.id}
                     onClick={() => setSelectedAsset(item.id)}
@@ -266,96 +308,7 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
                   </div>
                 )}
 
-                {/* Prompt Helper Section */}
-                <div className="mb-6">
-                  <button
-                    onClick={() => setShowPromptGenerator(!showPromptGenerator)}
-                    className="flex items-center gap-2 text-sm font-medium text-white/60 hover:text-white/90 transition-colors group"
-                    id="toggle-prompt-wizard"
-                  >
-                    <Sparkles className={clsx("w-4 h-4 transition-transform", showPromptGenerator && "rotate-12")} />
-                    <span>{t('promptHelperTitle')}</span>
-                  </button>
-
-                  <AnimatePresence>
-                    {showPromptGenerator && (
-                      <motion.div
-                        initial={{ height: 0, opacity: 0 }}
-                        animate={{ height: 'auto', opacity: 1 }}
-                        exit={{ height: 0, opacity: 0 }}
-                        className="overflow-hidden"
-                      >
-                        <div className="mt-4 p-5 rounded-3xl border border-white/10 bg-white/5 space-y-4 shadow-2xl backdrop-blur-xl">
-                          <div className="space-y-1">
-                            <h4 className="text-sm font-semibold text-white/80">{t('promptHelperTitle')}</h4>
-                            <p className="text-[11px] text-white/40 leading-relaxed">{t('promptHelperSub')}</p>
-                          </div>
-                          
-                          <div className="flex gap-2">
-                            <input
-                              type="text"
-                              value={promptInput}
-                              onChange={(e) => setPromptInput(e.target.value)}
-                              placeholder={t('promptHelperPlaceholder')}
-                              className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-4 py-3 text-sm text-white placeholder:text-white/20 outline-none focus:ring-1 focus:ring-white/20 transition-all"
-                              onKeyDown={(e) => e.key === 'Enter' && handleGeneratePrompt()}
-                            />
-                            <button
-                              onClick={handleGeneratePrompt}
-                              disabled={isGeneratingPrompt || !promptInput.trim()}
-                              className="bg-white text-black hover:bg-white/90 disabled:opacity-30 px-5 py-3 rounded-2xl text-sm font-bold transition-all flex items-center gap-2 shadow-[0_0_20px_rgba(255,255,255,0.1)] active:scale-95"
-                            >
-                              {isGeneratingPrompt ? (
-                                <Loader2 className="w-4 h-4 animate-spin" />
-                              ) : (
-                                <Sparkles className="w-4 h-4" />
-                              )}
-                              <span>{t('promptHelperBtn')}</span>
-                            </button>
-                          </div>
-
-                          {generatedPrompt && (
-                            <motion.div
-                              initial={{ opacity: 0, scale: 0.95 }}
-                              animate={{ opacity: 1, scale: 1 }}
-                              className="p-4 rounded-2xl bg-black/40 border border-white/5 relative group selection:bg-white/20"
-                            >
-                              <p className="text-xs font-mono leading-relaxed pr-10 text-white/70">{generatedPrompt}</p>
-                              <button
-                                onClick={handleCopy}
-                                className="absolute top-3 right-3 p-2 rounded-xl bg-white/5 hover:bg-white/10 transition-all text-white/60 hover:text-white group"
-                                title={t('copyPrompt')}
-                              >
-                                {copied ? (
-                                  <CheckCircle2 className="w-4 h-4 text-green-400" />
-                                ) : (
-                                  <Copy className="w-4 h-4" />
-                                )}
-                              </button>
-                              {copied && (
-                                <motion.span 
-                                  initial={{ opacity: 0, y: 10 }}
-                                  animate={{ opacity: 1, y: 0 }}
-                                  className="absolute -top-8 right-0 text-[10px] font-bold text-green-400 uppercase tracking-widest"
-                                >
-                                  Copied!
-                                </motion.span>
-                              )}
-                            </motion.div>
-                          )}
-
-                          <div className="flex items-start gap-3 p-4 rounded-2xl bg-white/[0.02] border border-white/5">
-                            <Info className="w-4 h-4 text-white/30 shrink-0 mt-0.5" />
-                            <p className="text-[11px] text-white/40 leading-relaxed">
-                              {t('instructionGrok')}
-                            </p>
-                            <ExternalLink className="w-3 h-3 text-white/20 ml-auto shrink-0" />
-                          </div>
-                        </div>
-                      </motion.div>
-                    )}
-                  </AnimatePresence>
-                </div>
+                {/* Prompt Helper Removed per user request */}
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                   {/* Upload Card */}
@@ -400,7 +353,16 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
                           selectedAsset === asset.id ? "ring-white/50 scale-[1.02]" : "ring-white/10 opacity-70 hover:opacity-100 shadow-lg"
                         )}
                       >
-                        <img src={asset.url} alt="Library Photo" className="w-full h-full object-cover" />
+                        <img src={asset.public_url} alt="Library Photo" className="w-full h-full object-cover" />
+                        
+                        {/* Delete Button */}
+                        <button 
+                          onClick={(e) => handleDeleteAsset(e, asset)}
+                          className="absolute top-2 right-2 p-1.5 bg-black/60 backdrop-blur-md rounded-full border border-white/10 text-white/40 hover:text-red-400 hover:bg-black/80 transition-all opacity-0 group-hover:opacity-100 z-30"
+                        >
+                          <Trash2 size={14} />
+                        </button>
+
                         {selectedAsset === asset.id && (
                           <div className="absolute top-2 right-2 text-white bg-black/40 rounded-full p-1 backdrop-blur-md">
                             <CheckCircle2 className="w-4 h-4" />
@@ -430,7 +392,23 @@ export default function AvatarHub({ onSelect, currentConfig }: AvatarHubProps) {
         </AnimatePresence>
       </div>
 
-      <div className="h-px bg-white/5" />
+
+      {/* Fixed Footer */}
+      <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center justify-between bg-[#0a0a14]/90 backdrop-blur-xl border-t border-white/5 z-[200]">
+         <div className="flex items-center gap-2">
+            <CheckCircle2 size={16} className={selectedAsset ? "text-green-500" : "text-white/10"} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
+               {selectedAsset ? 'Облик выбран' : 'Выберите персонажа'}
+            </span>
+         </div>
+         <button
+           onClick={handleConfirm}
+           disabled={!selectedAsset}
+           className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-white/90 disabled:opacity-30 disabled:grayscale transition-all active:scale-95 shadow-xl shadow-white/5"
+         >
+           Выбрать персонажа
+         </button>
+      </div>
     </div>
   );
 }
