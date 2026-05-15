@@ -442,6 +442,19 @@ function DeliveryPageContent() {
       await idb.set(`final_render_${projectId}_${ver.id}`, finalBlob, 'MediaBuffer');
       const finalUrl = URL.createObjectURL(finalBlob);
       
+      // CLEANUP FFmpeg FS
+      try {
+        await ffmpeg.deleteFile('silent.mp4');
+        await ffmpeg.deleteFile('source.mp4');
+        await ffmpeg.deleteFile('output.mp4');
+      } catch (e) { /* ignore */ }
+
+      // CLEANUP Video Elements
+      vARoll.src = '';
+      vARoll.load();
+      vBRoll.src = '';
+      vBRoll.load();
+      
       setJob({ id: 'canvas-render', status: 'completed', output_url: finalUrl, progress: 100 } as any);
       setRenderProgress(100);
       setRenderStatus('Готово!');
@@ -680,6 +693,16 @@ function DeliveryPageContent() {
 
       setJob({ id: 'local-render', status: 'completed', output_url: videoUrl, progress: 100 } as any);
 
+      // CLEANUP FFmpeg FS
+      try {
+        const files = await ffmpeg.listDir('.');
+        for (const f of files) {
+          if (!f.isDir && f.name !== '.' && f.name !== '..') {
+            await ffmpeg.deleteFile(f.name);
+          }
+        }
+      } catch (e) { /* ignore cleanup errors */ }
+
     } catch (err: any) {
       console.error('[Delivery] Client render failed:', err);
       setError(err.message || 'Ошибка рендера');
@@ -770,10 +793,12 @@ function DeliveryPageContent() {
 
   useEffect(() => {
     return () => {
-      console.log('[Delivery] Cleaning up FFmpeg instance...');
+      console.log('[Delivery] Cleaning up FFmpeg instance and Blob URLs...');
       resetFFmpeg();
+      if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
+      if (job?.output_url?.startsWith('blob:')) URL.revokeObjectURL(job.output_url);
     };
-  }, []);
+  }, [previewUrl, job?.output_url]);
 
   useEffect(() => {
     async function loadResults() {
