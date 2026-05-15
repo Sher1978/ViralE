@@ -1104,8 +1104,8 @@ export default function StudioPage() {
             {activeTab === 'avatar_hub' && (
               <AvatarHub 
                 projectId={projectId}
-                onSelect={(url, id, type) => {
-                  setSelectedAvatarPhoto(url);
+                onSelect={(config) => {
+                  setSelectedAvatarPhoto(config.photoUrl);
                   handleTabChange('timeline_lab');
                 }}
                 onBack={() => handleTabChange('post_record_branch')}
