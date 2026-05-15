@@ -34,13 +34,13 @@ interface GeneratedAsset {
     technical_specs: string;
     prompts: string[];
   };
-  video_banner: {
-    image_prompt: string;
-    text_on_banner: string;
+  longread_article?: {
+    title: string;
+    text: string;
   };
 }
 
-type Platform = 'sfv' | 'threads' | 'linkedin' | 'carousel' | 'banner';
+type Platform = 'sfv' | 'threads' | 'linkedin' | 'article' | 'carousel' | 'banner';
 
 export default function DistributionFactory({ manifest, scriptText, projectId, locale, onUpdateManifest }: DistributionFactoryProps) {
   const [activePlatform, setActivePlatform] = useState<Platform>('sfv');
@@ -141,6 +141,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     { id: 'sfv', label: 'TikTok & Reels', icon: Zap },
     { id: 'threads', label: 'Threads & FB', icon: Share2 },
     { id: 'linkedin', label: 'LinkedIn', icon: Monitor },
+    { id: 'article', label: 'Longread Article', icon: Layers },
     { id: 'carousel', label: 'Instagram Carousel', icon: Camera },
     { id: 'banner', label: 'YouTube Thumbnail', icon: ImageIcon },
   ];
@@ -316,8 +317,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                 transition={{ duration: 0.2 }}
                 className="max-w-5xl mx-auto"
               >
-                {/* 1. TEXT PLATFORMS (SFV, Threads, LinkedIn) */}
-                {(activePlatform === 'sfv' || activePlatform === 'threads' || activePlatform === 'linkedin') && (
+                {/* 1. TEXT PLATFORMS (SFV, Threads, LinkedIn, Article) */}
+                {(activePlatform === 'sfv' || activePlatform === 'threads' || activePlatform === 'linkedin' || activePlatform === 'article') && (
                   <div className="grid grid-cols-1 lg:grid-cols-3 gap-10">
                     <div className="lg:col-span-2 space-y-6">
                       <div className="flex items-center justify-between">
@@ -328,7 +329,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                           onClick={() => {
                             const text = activePlatform === 'sfv' ? assets?.sfv_description.text : 
                                         activePlatform === 'threads' ? assets?.deep_content.threads_fb_text : 
-                                        assets?.linkedin_executive.text;
+                                        activePlatform === 'linkedin' ? assets?.linkedin_executive.text :
+                                        assets?.longread_article?.text;
                             if(text) handleCopy(text, activePlatform);
                           }}
                           className="flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 text-white text-[9px] font-bold uppercase tracking-widest transition-all active:scale-90"
@@ -342,27 +344,55 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                         <pre className="text-[15px] text-white/80 leading-relaxed font-sans whitespace-pre-wrap">
                           {activePlatform === 'sfv' ? assets?.sfv_description.text : 
                            activePlatform === 'threads' ? assets?.deep_content.threads_fb_text : 
-                           assets?.linkedin_executive.text}
+                           activePlatform === 'linkedin' ? assets?.linkedin_executive.text :
+                           activePlatform === 'article' ? (
+                             <>
+                               {assets?.longread_article?.title && (
+                                 <div className="text-xl font-black text-white mb-6 uppercase tracking-tight">
+                                   {assets.longread_article.title}
+                                 </div>
+                               )}
+                               {assets?.longread_article?.text}
+                             </>
+                           ) : null}
                         </pre>
                       </div>
 
                       <div className="flex flex-wrap gap-3 mt-6">
                          <button 
-                           onClick={() => shareToSocial(activePlatform, activePlatform === 'sfv' ? assets!.sfv_description.text : assets!.deep_content.threads_fb_text)}
+                           onClick={() => {
+                             const text = activePlatform === 'sfv' ? assets?.sfv_description.text : 
+                                         activePlatform === 'threads' ? assets?.deep_content.threads_fb_text : 
+                                         activePlatform === 'linkedin' ? assets?.linkedin_executive.text :
+                                         assets?.longread_article?.text;
+                             shareToSocial(activePlatform, text || '');
+                           }}
                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-purple-700 transition-all shadow-lg shadow-purple-900/20"
                          >
-                           <Share2 size={14} /> Post to {activePlatform === 'sfv' ? 'TikTok/Reels' : activePlatform === 'threads' ? 'Threads/FB' : 'LinkedIn'}
+                           <Share2 size={14} /> Post to {activePlatform === 'sfv' ? 'TikTok/Reels' : activePlatform === 'threads' ? 'Threads/FB' : activePlatform === 'linkedin' ? 'LinkedIn' : 'Blog'}
                          </button>
 
                          <button 
-                           onClick={() => saveTextAsFile(activePlatform === 'sfv' ? assets!.sfv_description.text : assets!.deep_content.threads_fb_text, `${activePlatform}_caption.txt`)}
+                           onClick={() => {
+                            const text = activePlatform === 'sfv' ? assets?.sfv_description.text : 
+                                        activePlatform === 'threads' ? assets?.deep_content.threads_fb_text : 
+                                        activePlatform === 'linkedin' ? assets?.linkedin_executive.text :
+                                        assets?.longread_article?.text;
+                            saveTextAsFile(text || '', `${activePlatform}_caption.txt`);
+                           }}
                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                          >
                            <Download size={14} /> Save Text
                          </button>
 
                          <button 
-                           onClick={() => handleCopy(activePlatform === 'sfv' ? assets!.sfv_description.text : assets!.deep_content.threads_fb_text, activePlatform)}
+                           onClick={() => {
+                             const text = activePlatform === 'sfv' ? assets?.sfv_description.text : 
+                                         activePlatform === 'threads' ? assets?.deep_content.threads_fb_text : 
+                                         activePlatform === 'linkedin' ? assets?.linkedin_executive.text :
+                                         assets?.longread_article?.text;
+                             handleCopy(text || '', activePlatform);
+                           }}
                            className="flex items-center gap-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all"
                          >
                            {copying === activePlatform ? <Check size={14} className="text-green-500" /> : <Copy size={14} />}
@@ -379,7 +409,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                          <div className="p-5 rounded-3xl bg-purple-500/5 border border-purple-500/10 text-[11px] text-white/50 leading-relaxed italic">
                            {activePlatform === 'sfv' ? assets?.sfv_description.platform_notes : 
                             activePlatform === 'threads' ? 'Narrative structure using the "But/Therefore" formula for maximum retention.' : 
-                            'Executive-level analysis focused on ROI, systemic logic, and industry facts.'}
+                            activePlatform === 'linkedin' ? 'Executive-level analysis focused on ROI, systemic logic, and industry facts.' :
+                            'Comprehensive long-form analysis for high SEO and deep-dive value.'}
                          </div>
                        </div>
                        
@@ -406,6 +437,11 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                            {activePlatform === 'linkedin' && (
                              <div className="flex items-center gap-3 text-[10px] font-bold text-white/30 uppercase tracking-widest">
                                <div className="w-1.5 h-1.5 rounded-full bg-blue-600" /> LinkedIn Professional Grade
+                             </div>
+                           )}
+                           {activePlatform === 'article' && (
+                             <div className="flex items-center gap-3 text-[10px] font-bold text-white/30 uppercase tracking-widest">
+                               <div className="w-1.5 h-1.5 rounded-full bg-orange-500" /> High SEO Value
                              </div>
                            )}
                          </div>
