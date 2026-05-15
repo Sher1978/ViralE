@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Key, Image as ImageIcon, Upload, CheckCircle2, Info, Loader2, Trash2, Sparkles, Copy, ExternalLink, AlertCircle } from 'lucide-react';
+import { User, Key, Image as ImageIcon, Upload, CheckCircle2, Info, Loader2, Trash2, Sparkles, Copy, ExternalLink, AlertCircle, Plus } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '@/lib/supabase';
 
@@ -439,6 +439,7 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }
           </motion.div>
         </AnimatePresence>
       </div>
+    </div>
 
 
       {/* Fixed Footer */}
