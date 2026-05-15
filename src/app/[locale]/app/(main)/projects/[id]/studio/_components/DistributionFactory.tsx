@@ -38,6 +38,10 @@ interface GeneratedAsset {
     title: string;
     text: string;
   };
+  video_banner: {
+    image_prompt: string;
+    text_on_banner: string;
+  };
 }
 
 type Platform = 'sfv' | 'threads' | 'linkedin' | 'article' | 'carousel' | 'banner';
