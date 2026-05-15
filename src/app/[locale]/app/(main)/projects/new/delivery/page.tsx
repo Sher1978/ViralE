@@ -592,88 +592,60 @@ function DeliveryPageContent() {
       setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
       setRenderProgress(60);
 
-      // 1-3. Optimized Execution Path
-      const hasBrolls = processedBrolls.length > 0;
-      let currentInput = 'input_aroll.mp4';
-
-      if (!hasBrolls) {
-        // 🚀 FAST PATH: No B-Rolls (Faceless or Simple Teleprompter) -> 1 PASS!
-        setRenderStatus(`Быстрая сборка ${isMobile ? '720p' : '1080p'}...`);
-        const subOutput = 'final_fast.mp4';
+      // 🚀 OPTIMIZED SINGLE-PASS PATH: Combine B-Rolls and Subtitles
+      setRenderStatus(`Сборка видео (единый проход)...`);
+      
+      const inputs = ['-i', 'input_aroll.mp4'];
+      let filterComplex = '';
+      let lastOutput = '[0:v]';
+      
+      // 1. Add B-Roll inputs and build overlay chain
+      for (let i = 0; i < processedBrolls.length; i++) {
+        const { name, clip } = processedBrolls[i];
+        inputs.push('-i', name);
         
-        let vfFilter = scale;
-        if (subs.length > 0) {
-          setRenderStatus(`Быстрая сборка + субтитры (${subs.length})...`);
-          vfFilter = buildDrawtextFilter(subs, scale);
-        }
-
-        await ffmpeg.exec([
-          '-i', currentInput,
-          '-vf', vfFilter,
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
-          '-c:a', 'aac', '-b:a', '128k',
-          subOutput
-        ]);
-        try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-        currentInput = subOutput;
-
-      } else {
-        // 🐢 MULTI-PASS PATH: Has B-Rolls (Requires complex overlay)
-        setRenderStatus(`Масштабирование исходника...`);
-        const scaledOutput = `temp_A.mp4`;
-        await ffmpeg.exec([
-          '-i', currentInput,
-          '-vf', scale,
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
-          '-c:a', 'aac', '-b:a', '128k',
-          scaledOutput
-        ]);
-        try { await ffmpeg.deleteFile('input_aroll.mp4'); } catch(e) {}
-        currentInput = scaledOutput;
-
-        for (let i = 0; i < processedBrolls.length; i++) {
-          const broll = processedBrolls[i];
-          const nextOutput = i % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
-          const brX = broll.clip.x || 0;
-          const brY = broll.clip.y || 0;
-          const brScale = broll.clip.scale || 1;
-          
-          setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
-          
-          // Apply scale to the broll before overlaying
-          const overlayFilter = `[1:v]scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
-          await ffmpeg.exec([
-            '-i', currentInput,
-            '-i', broll.name,
-            '-filter_complex', overlayFilter,
-            '-map', '[out]',
-            '-map', '0:a',
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
-          ]);
-          try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-          try { await ffmpeg.deleteFile(broll.name); } catch(e) {}
-          currentInput = nextOutput;
-        }
-
-        if (subs.length > 0) {
-          setRenderStatus(`Наложение субтитров (${subs.length})...`);
-          const subOutput = currentInput === 'temp_A.mp4' ? `temp_B.mp4` : `temp_A.mp4`;
-          const vfFilter = buildDrawtextFilter(subs, '');
-          
-          const exitCodeSub = await ffmpeg.exec([
-            '-i', currentInput,
-            '-vf', vfFilter,
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
-            '-c:a', 'copy',
-            subOutput
-          ]);
-          
-          if (exitCodeSub === 0) {
-            try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-            currentInput = subOutput;
-          }
-        }
+        const brIdx = i + 1;
+        const brX = clip.x || 0;
+        const brY = clip.y || 0;
+        const brScale = clip.scale || 1;
+        
+        const label = `v${brIdx}`;
+        const scaledLabel = `ovl${brIdx}`;
+        
+        // Scale and overlay each B-Roll
+        filterComplex += `[${brIdx}:v]scale=iw*${brScale}:-1[${scaledLabel}];`;
+        filterComplex += `${lastOutput}[${scaledLabel}]overlay=x=${brX}:y=${brY}:enable='between(t,${clip.startTime},${clip.endTime})'[${label}];`;
+        lastOutput = `[${label}]`;
       }
+      
+      // 2. Add Subtitles to the chain (using drawtext)
+      if (subs.length > 0) {
+        setRenderStatus(`Наложение субтитров (${subs.length})...`);
+        const drawtextChain = buildDrawtextFilter(subs, '');
+        filterComplex += `${lastOutput}${drawtextChain}[vfinal]`;
+        lastOutput = '[vfinal]';
+      } else {
+        // If no subs, we need to name the last output for mapping
+        filterComplex += `${lastOutput}null[vfinal]`;
+        lastOutput = '[vfinal]';
+      }
+
+      const finalOutput = 'output_final.mp4';
+      const ffmpegArgs = [
+        ...inputs,
+        '-filter_complex', filterComplex,
+        '-map', lastOutput,
+        '-map', '0:a',
+        '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
+        '-c:a', 'aac', '-b:a', '128k',
+        finalOutput
+      ];
+
+      addLog(`[FFmpeg] Starting single-pass render with ${processedBrolls.length} B-Rolls and ${subs.length} subs`);
+      const exitCode = await ffmpeg.exec(ffmpegArgs);
+      
+      if (exitCode !== 0) throw new Error('FFmpeg processing failed');
+      currentInput = finalOutput;
 
       const finalData = await ffmpeg.readFile(currentInput);
       const videoBlob = new Blob([finalData as any], { type: 'video/mp4' });
