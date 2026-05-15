@@ -43,7 +43,7 @@ const DistributionFactory = dynamic(() => import('./_components/DistributionFact
 const KnowledgeLab = dynamic(() => import('@/components/studio/KnowledgeLab'), { ssr: false, loading: Spinner });
 const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { ssr: false, loading: Spinner });
 const FacelessStudio = dynamic(() => import('@/components/studio/FacelessStudio'), { ssr: false, loading: Spinner });
-const AvatarHub = dynamic(() => import('@/components/production/AvatarHub').then(m => m.AvatarHub), { ssr: false, loading: Spinner });
+const AvatarHub = dynamic(() => import('@/components/production/AvatarHub'), { ssr: false, loading: Spinner });
 const FusionPreview = dynamic(() => import('./_components/FusionPreview').then(m => m.FusionPreview), { ssr: false, loading: Spinner });
 
 import { BottomNav } from '@/components/layout/BottomNav';
