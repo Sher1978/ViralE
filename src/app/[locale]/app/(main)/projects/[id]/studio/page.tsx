@@ -43,6 +43,8 @@ const DistributionFactory = dynamic(() => import('./_components/DistributionFact
 const KnowledgeLab = dynamic(() => import('@/components/studio/KnowledgeLab'), { ssr: false, loading: Spinner });
 const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { ssr: false, loading: Spinner });
 const FacelessStudio = dynamic(() => import('@/components/studio/FacelessStudio'), { ssr: false, loading: Spinner });
+const AvatarHub = dynamic(() => import('@/components/production/AvatarHub').then(m => m.AvatarHub), { ssr: false, loading: Spinner });
+const FusionPreview = dynamic(() => import('./_components/FusionPreview').then(m => m.FusionPreview), { ssr: false, loading: Spinner });
 
 import { BottomNav } from '@/components/layout/BottomNav';
 
@@ -60,7 +62,7 @@ export default function StudioPage() {
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion' | 'avatar_hub' | 'fusion_preview'>(initialTab);
   
   const handleTabChange = useCallback((tab: any) => {
     startTransition(() => {
@@ -172,25 +174,20 @@ export default function StudioPage() {
     return () => window.removeEventListener('beforeunload', handleBeforeUnload);
   }, [activeTab, showFaceless]);
 
-  const handleAvatarSelect = async (photoUrl: string, avatarId?: string, avatarType?: string) => {
+  const handleAvatarSelect = async (photoUrl: string) => {
     setSelectedAvatarPhoto(photoUrl);
-    setShowAvatarSelector(false);
+    // Update the Master Track in Timeline (we'll need to pass this to TimelineLab)
     handleTabChange('timeline_lab');
   };
 
   const handleTimelineGeneration = async (timelineSegments: any[]) => {
+    setFusionSegments(timelineSegments);
     handleTabChange('fusion');
     setFusionStatus('segmenting');
-    setFusionProgress(10);
-    setFusionSegmentsCount(timelineSegments.length);
-    setFusionCompletedSegments(0);
-    setFusionError(null);
-
+    setFusionProgress(5);
+    
     try {
-      // 1. Prepare segments (ensure we have URLs)
-      // For now, we assume lastRecordingUrl is already uploaded to Supabase or IDB.
-      // We'll need a real API call here.
-      const res = await fetch('/api/ai/fal/process-timeline', {
+      const response = await fetch('/api/ai/fal/process-timeline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
@@ -200,41 +197,31 @@ export default function StudioPage() {
         })
       });
 
-      if (!res.ok) {
-        const errorData = await res.json();
-        throw new Error(errorData.error || `Fusion API error: ${res.status}`);
+      if (!response.ok) {
+        const errorData = await response.json();
+        throw new Error(errorData.error || 'Synthesis failed');
       }
 
-      const data = await res.json();
-      
+      const reader = response.body?.getReader();
+      if (!reader) throw new Error('No response body');
+
+      // Note: If the API returns a stream, we can track progress. 
+      // If it's a simple JSON, we just wait for completion.
+      const data = await response.json();
+
       if (data.status === 'completed' && data.videoUrl) {
         setFusionStatus('completed');
         setFusionProgress(100);
-        setLastRecordingUrl(data.videoUrl);
-
-        // Update Manifest
-        if (manifest) {
-          const segmentId = selectedSegmentId || manifest?.segments[0]?.id || '';
-          const newManifest = {
-             ...manifest,
-             videoUrl: data.videoUrl,
-             segments: manifest.segments.map((s: any) => 
-                s.id === segmentId ? { ...s, assetUrl: data.videoUrl, type: 'user_recording' } : s
-             )
-          };
-          setManifest(newManifest);
-          await projectService.updateLatestVersionManifest(projectId, newManifest);
-        }
-
-        setTimeout(() => handleTabChange('assembly'), 1500);
+        setFusedVideoUrl(data.videoUrl); 
+        setTimeout(() => handleTabChange('fusion_preview'), 1000);
       } else {
-        throw new Error('Fusion failed to return a video URL');
+        throw new Error('Synthesis failed to return a result');
       }
 
     } catch (err: any) {
       console.error('[Fusion] Failed:', err);
       setFusionStatus('failed');
-      setFusionError(err.message);
+      // setFusionError(err.message);
     }
   };
 
@@ -886,6 +873,7 @@ export default function StudioPage() {
               />
             )}
 
+
             {activeTab === 'teleprompter' && (
                 <TeleprompterView 
                   cameraStream={cameraStream}
@@ -1018,7 +1006,7 @@ export default function StudioPage() {
                     });
                     handleTabChange('assembly');
                   }
-                  else if (option === 'animate') handleTabChange('timeline_lab');
+                  else if (option === 'animate') handleTabChange('avatar_hub');
                 }}
                 onRetake={() => {
                    handleTabChange('teleprompter');
@@ -1034,8 +1022,9 @@ export default function StudioPage() {
               <TimelineLab 
                 videoUrl={lastRecordingUrl}
                 projectId={projectId}
-                onBack={() => handleTabChange('post_record_branch')}
+                initialMasterAvatar={selectedAvatarPhoto || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2'}
                 onGenerate={handleTimelineGeneration}
+                onBack={() => handleTabChange('post_record_branch')}
               />
             )}
 
@@ -1108,6 +1097,17 @@ export default function StudioPage() {
                   }}
                 />
               </div>
+            )}
+
+            {activeTab === 'avatar_hub' && (
+              <AvatarHub 
+                projectId={projectId}
+                onSelect={(url, id, type) => {
+                  setSelectedAvatarPhoto(url);
+                  handleTabChange('timeline_lab');
+                }}
+                onBack={() => handleTabChange('post_record_branch')}
+              />
             )}
 
             {activeTab === 'knowledge' && (

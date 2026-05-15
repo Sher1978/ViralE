@@ -16,11 +16,12 @@ interface AvatarAsset {
 
 interface AvatarHubProps {
   onSelect: (config: any) => void;
-  currentConfig?: any;
+  onBack?: () => void;
   projectId: string;
+  currentConfig?: any;
 }
 
-export default function AvatarHub({ onSelect, currentConfig, projectId }: AvatarHubProps) {
+export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }: AvatarHubProps) {
   const t = useTranslations('profile');
   const common = useTranslations('common');
   const [activeTab, setActiveTab] = useState<'stock' | 'byok' | 'photo'>(currentConfig?.mode || 'stock');
@@ -83,6 +84,7 @@ export default function AvatarHub({ onSelect, currentConfig, projectId }: Avatar
       const { data, error } = await supabase
         .from('media_assets')
         .select('*')
+        .eq('project_id', projectId) // Use project_id as per schema_v2.sql
         .eq('asset_type', 'image')
         .order('created_at', { ascending: false });
 
@@ -212,7 +214,28 @@ export default function AvatarHub({ onSelect, currentConfig, projectId }: Avatar
   ];
 
   return (
-    <div className="w-full space-y-6">
+    <div className="h-full w-full flex flex-col bg-[#050508] relative">
+      {/* Premium Header */}
+      <div className="p-8 pb-4 flex items-center justify-between">
+        <div>
+           <h1 className="text-4xl font-black italic uppercase tracking-tighter text-white leading-none">
+             SELECT AI<br/>
+             <span className="text-transparent bg-clip-text bg-gradient-to-r from-purple-400 to-blue-400">PERSONA</span>
+           </h1>
+           <p className="text-[9px] font-black uppercase tracking-[0.4em] text-white/20 mt-2">Archetype Selection Engine</p>
+        </div>
+        
+        {onBack && (
+          <button 
+            onClick={onBack}
+            className="w-12 h-12 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all hover:bg-white/10"
+          >
+             <AlertCircle className="rotate-45" size={20} />
+          </button>
+        )}
+      </div>
+
+      <div className="flex-1 overflow-y-auto px-8 space-y-8 custom-scrollbar pb-40">
       {/* Tab Switcher */}
       <div className="flex p-1 bg-white/5 backdrop-blur-md rounded-2xl border border-white/10 overflow-hidden">
         {tabs.map((tab) => (
@@ -249,51 +272,69 @@ export default function AvatarHub({ onSelect, currentConfig, projectId }: Avatar
             className="space-y-6"
           >
             {activeTab === 'stock' && (
-              <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                {STOCK_AVATARS.map((item) => (
-                  <div 
-                    key={item.id}
-                    onClick={() => setSelectedAsset(item.id)}
-                    className={clsx(
-                      "aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 relative group",
-                      selectedAsset === item.id ? "ring-2 ring-white/50 scale-[1.02]" : "ring-1 ring-white/10 grayscale-[0.3] hover:grayscale-0"
-                    )}
-                  >
-                    <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
-                    <div className="absolute inset-0 bg-gradient-to-t from-black/60 to-transparent flex items-end p-3">
-                      <p className="text-xs text-white/80 font-medium">{item.name}</p>
-                    </div>
-                    {selectedAsset === item.id && (
-                      <div className="absolute top-2 right-2 text-white bg-black/40 rounded-full p-1 backdrop-blur-md">
-                        <CheckCircle2 className="w-4 h-4" />
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {STOCK_AVATARS.map((item) => (
+                    <button 
+                      key={item.id}
+                      onClick={() => setSelectedAsset(item.id)}
+                      className={clsx(
+                        "aspect-[3/4] rounded-[2rem] overflow-hidden transition-all duration-500 relative group border-2",
+                        selectedAsset === item.id ? "border-purple-500 scale-[1.02] shadow-2xl shadow-purple-500/20" : "border-white/5 grayscale-[0.3] hover:grayscale-0 hover:border-white/20"
+                      )}
+                    >
+                      <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
+                      <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
+                        <p className="text-[10px] font-black uppercase tracking-widest text-white/90 italic">{item.name}</p>
                       </div>
-                    )}
-                  </div>
-                ))}
-              </div>
+                      {selectedAsset === item.id && (
+                        <div className="absolute top-4 right-4 text-white bg-purple-500 rounded-full p-1 shadow-xl">
+                          <CheckCircle2 className="w-4 h-4" strokeWidth={3} />
+                        </div>
+                      )}
+                    </button>
+                  ))}
+                </div>
             )}
 
             {activeTab === 'byok' && (
-              <div className="space-y-4 p-6 bg-white/5 rounded-3xl border border-white/10">
-                <div className="flex items-center gap-3 mb-2">
-                  <Key className="w-6 h-6 text-white/60" />
-                  <h3 className="text-lg font-semibold">{t('avatarByokTitle')}</h3>
-                </div>
-                <p className="text-sm text-white/50 leading-relaxed italic">
-                  {t('heygenKeyHint')}
-                </p>
-                <div className="space-y-2">
-                  <label className="text-xs font-bold text-white/30 uppercase tracking-widest pl-1">
-                    {t('heygenKeyLabel')}
-                  </label>
-                  <input 
-                    type="password"
-                    placeholder={t('heygenKeyPlaceholder')}
-                    className="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-white placeholder:text-white/20 focus:outline-none focus:ring-1 focus:ring-white/20 transition-all font-mono text-sm"
-                  />
-                  <div className="flex items-center gap-2 mt-4 text-[11px] text-white/40 uppercase tracking-wider pl-1">
-                    <Info className="w-3 h-3" />
-                    <span>Cost per render: Standard HeyGen API rate</span>
+              <div className="space-y-6 max-w-xl mx-auto py-10">
+                <div className="p-10 rounded-[3rem] bg-gradient-to-br from-purple-600/10 via-blue-600/5 to-transparent border border-white/10 shadow-2xl relative overflow-hidden group">
+                  <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
+                    <Key size={80} />
+                  </div>
+                  
+                  <div className="flex items-center gap-4 mb-6">
+                    <div className="w-14 h-14 rounded-2xl bg-white/5 flex items-center justify-center text-purple-400">
+                      <Key size={24} />
+                    </div>
+                    <div>
+                      <h3 className="text-xl font-black italic uppercase tracking-tighter text-white">HeyGen BYOK</h3>
+                      <p className="text-[9px] font-black uppercase tracking-widest text-white/20">Bring Your Own Key Integration</p>
+                    </div>
+                  </div>
+
+                  <p className="text-xs text-white/40 leading-relaxed font-bold uppercase tracking-widest mb-8">
+                    {t('heygenKeyHint') || 'Unlock direct access to your HeyGen personas. Synthesis costs will be billed to your HeyGen account.'}
+                  </p>
+
+                  <div className="space-y-3">
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] pl-1">
+                      HeyGen API Key
+                    </label>
+                    <div className="relative">
+                      <input 
+                        type="password"
+                        placeholder="sk_..."
+                        className="w-full bg-black/40 border border-white/5 rounded-2xl p-5 text-white placeholder:text-white/10 focus:outline-none focus:ring-1 focus:ring-purple-500/50 transition-all font-mono text-sm shadow-inner"
+                      />
+                      <div className="absolute right-4 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-[8px] font-black uppercase tracking-widest border border-purple-500/20">
+                        Secure
+                      </div>
+                    </div>
+                    <div className="flex items-center gap-2 mt-6 text-[9px] text-white/20 font-black uppercase tracking-widest pl-1">
+                      <Info className="w-4 h-4 text-purple-500/40" />
+                      <span>Cost per render: 0 Credits (Billed via HeyGen)</span>
+                    </div>
                   </div>
                 </div>
               </div>
@@ -311,22 +352,24 @@ export default function AvatarHub({ onSelect, currentConfig, projectId }: Avatar
                 {/* Prompt Helper Removed per user request */}
 
                 <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {/* Upload Card */}
-                  <div 
+                   <div 
                     onClick={() => fileInputRef.current?.click()}
                     className={clsx(
-                      "aspect-[3/4] rounded-2xl border-2 border-dashed border-white/10 flex flex-col items-center justify-center gap-3 cursor-pointer hover:bg-white/5 hover:border-white/20 transition-all group relative overflow-hidden",
+                      "aspect-[3/4] rounded-[2rem] border-2 border-dashed border-white/5 flex flex-col items-center justify-center gap-4 cursor-pointer hover:bg-white/[0.03] hover:border-white/10 transition-all group relative overflow-hidden",
                       uploading && "pointer-events-none opacity-50"
                     )}
                   >
                     {uploading ? (
-                      <Loader2 className="w-6 h-6 text-white/60 animate-spin" />
+                      <Loader2 className="w-8 h-8 text-purple-500 animate-spin" />
                     ) : (
                       <>
-                        <div className="w-10 h-10 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-all">
-                          <Upload className="w-5 h-5 text-white/60" />
+                        <div className="w-16 h-16 rounded-full bg-white/5 flex items-center justify-center group-hover:scale-110 transition-all border border-white/5 shadow-2xl">
+                          <Plus className="w-6 h-6 text-white/40" />
                         </div>
-                        <span className="text-xs font-medium text-white/40">{t('uploadPhoto')}</span>
+                        <div className="text-center">
+                          <span className="text-[10px] font-black text-white/60 uppercase tracking-widest block">{t('uploadPhoto') || 'Upload Photo'}</span>
+                          <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest mt-1 block">JPG / PNG Supported</span>
+                        </div>
                       </>
                     )}
                     <input 
@@ -341,19 +384,29 @@ export default function AvatarHub({ onSelect, currentConfig, projectId }: Avatar
                   {/* Real Library Assets */}
                   {loading ? (
                     Array.from({ length: 3 }).map((_, i) => (
-                      <div key={i} className="aspect-[3/4] rounded-2xl bg-white/5 animate-pulse border border-white/5" />
+                      <div key={i} className="aspect-[3/4] rounded-[2rem] bg-white/5 animate-pulse border border-white/5" />
                     ))
                   ) : (
                     assets.map((asset) => (
-                      <div 
+                      <button 
                         key={asset.id}
                         onClick={() => setSelectedAsset(asset.id)}
                         className={clsx(
-                          "aspect-[3/4] rounded-2xl overflow-hidden cursor-pointer transition-all duration-500 relative ring-1",
-                          selectedAsset === asset.id ? "ring-white/50 scale-[1.02]" : "ring-white/10 opacity-70 hover:opacity-100 shadow-lg"
+                          "aspect-[3/4] rounded-[2rem] overflow-hidden transition-all duration-500 relative group border-2",
+                          selectedAsset === asset.id ? "border-purple-500 scale-[1.02] shadow-2xl shadow-purple-500/20" : "border-white/5 grayscale-[0.3] hover:grayscale-0 hover:border-white/20"
                         )}
                       >
                         <img src={asset.public_url} alt="Library Photo" className="w-full h-full object-cover" />
+                        
+                        <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
+                          <p className="text-[9px] font-black uppercase tracking-widest text-white/90 italic">User Photo</p>
+                        </div>
+
+                        {selectedAsset === asset.id && (
+                          <div className="absolute top-4 right-4 text-white bg-purple-500 rounded-full p-1 shadow-xl">
+                            <CheckCircle2 className="w-4 h-4" strokeWidth={3} />
+                          </div>
+                        )}
                         
                         {/* Delete Button */}
                         <button 
@@ -363,12 +416,7 @@ export default function AvatarHub({ onSelect, currentConfig, projectId }: Avatar
                           <Trash2 size={14} />
                         </button>
 
-                        {selectedAsset === asset.id && (
-                          <div className="absolute top-2 right-2 text-white bg-black/40 rounded-full p-1 backdrop-blur-md">
-                            <CheckCircle2 className="w-4 h-4" />
-                          </div>
-                        )}
-                      </div>
+                      </button>
                     ))
                   )}
                 </div>
@@ -394,17 +442,27 @@ export default function AvatarHub({ onSelect, currentConfig, projectId }: Avatar
 
 
       {/* Fixed Footer */}
-      <div className="absolute bottom-0 left-0 right-0 p-6 flex items-center justify-between bg-[#0a0a14]/90 backdrop-blur-xl border-t border-white/5 z-[200]">
-         <div className="flex items-center gap-2">
-            <CheckCircle2 size={16} className={selectedAsset ? "text-green-500" : "text-white/10"} />
-            <span className="text-[10px] font-black uppercase tracking-widest text-white/40">
-               {selectedAsset ? 'Облик выбран' : 'Выберите персонажа'}
-            </span>
+      <div className="absolute bottom-0 left-0 right-0 p-8 flex items-center justify-between bg-[#0a0a14]/95 backdrop-blur-2xl border-t border-white/5 z-[200]">
+         <div className="flex items-center gap-3">
+            <div className={clsx(
+              "w-10 h-10 rounded-full flex items-center justify-center transition-all",
+              selectedAsset ? "bg-green-500/10 text-green-500" : "bg-white/5 text-white/10"
+            )}>
+              <CheckCircle2 size={20} strokeWidth={selectedAsset ? 3 : 2} />
+            </div>
+            <div className="flex flex-col">
+              <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/80">
+                {selectedAsset ? 'Облик выбран' : 'Выберите персонажа'}
+              </span>
+              <span className="text-[7px] font-bold text-white/20 uppercase tracking-widest">
+                {selectedAsset ? 'Ready for AI Synthesis' : 'Please select an identity above'}
+              </span>
+            </div>
          </div>
          <button
            onClick={handleConfirm}
            disabled={!selectedAsset}
-           className="px-10 py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-xs hover:bg-white/90 disabled:opacity-30 disabled:grayscale transition-all active:scale-95 shadow-xl shadow-white/5"
+           className="px-12 py-5 rounded-[2rem] bg-white text-black font-black uppercase tracking-[0.2em] text-xs hover:bg-white/90 disabled:opacity-20 disabled:grayscale transition-all active:scale-95 shadow-2xl shadow-white/10"
          >
            Выбрать персонажа
          </button>
