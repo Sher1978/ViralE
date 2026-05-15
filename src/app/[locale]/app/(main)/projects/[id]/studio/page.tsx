@@ -114,6 +114,8 @@ export default function StudioPage() {
   const [cameraError, setCameraError] = useState<string | null>(null);
 
   // Fusion Engine States
+  const [fusionSegments, setFusionSegments] = useState<any[]>([]);
+  const [fusedVideoUrl, setFusedVideoUrl] = useState<string | null>(null);
   const [fusionSegmentsCount, setFusionSegmentsCount] = useState(0);
   const [fusionCompletedSegments, setFusionCompletedSegments] = useState(0);
   const [fusionError, setFusionError] = useState<string | null>(null);
@@ -1107,6 +1109,17 @@ export default function StudioPage() {
                   handleTabChange('timeline_lab');
                 }}
                 onBack={() => handleTabChange('post_record_branch')}
+              />
+            )}
+
+            {activeTab === 'fusion_preview' && fusedVideoUrl && (
+              <FusionPreview 
+                videoUrl={fusedVideoUrl}
+                onRegenerate={() => handleTabChange('timeline_lab')}
+                onExportToMontage={() => {
+                  setLastRecordingUrl(fusedVideoUrl);
+                  handleTabChange('assembly');
+                }}
               />
             )}
 
