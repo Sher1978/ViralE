@@ -645,7 +645,7 @@ function DeliveryPageContent() {
       const exitCode = await ffmpeg.exec(ffmpegArgs);
       
       if (exitCode !== 0) throw new Error('FFmpeg processing failed');
-      currentInput = finalOutput;
+      let currentInput = finalOutput;
 
       const finalData = await ffmpeg.readFile(currentInput);
       const videoBlob = new Blob([finalData as any], { type: 'video/mp4' });
