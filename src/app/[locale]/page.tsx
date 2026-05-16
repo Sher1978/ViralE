@@ -185,7 +185,7 @@ export default function LandingPage() {
   // Auth check is now handled by middleware for faster server-side redirects.
   // We keep a lightweight background check here only as a fallback.
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }) => {
+    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
       if (session && !session.user.is_anonymous) {
         router.push(`/app/projects`);
       }
