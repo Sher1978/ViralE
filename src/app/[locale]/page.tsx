@@ -182,60 +182,15 @@ export default function LandingPage() {
   const locale = useLocale();
   const router = useRouter();
   const searchParams = useSearchParams();
-  const [isRedirecting, setIsRedirecting] = useState(false);
-
+  // Auth check is now handled by middleware for faster server-side redirects.
+  // We keep a lightweight background check here only as a fallback.
   useEffect(() => {
-    // Immediate pre-fetch/check
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
-      const mode = searchParams?.get('mode');
-      const isStandalone = typeof window !== 'undefined' && (window.matchMedia('(display-mode: standalone)').matches || mode === 'standalone');
-      
-      if (isStandalone || (session && !session.user.is_anonymous)) {
-        setIsRedirecting(true);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      if (session && !session.user.is_anonymous) {
         router.push(`/app/projects`);
       }
     });
-  }, [locale, router, searchParams]);
-
-  if (isRedirecting) {
-    return (
-      <div key="splash-container" className="min-h-screen bg-[#020408] flex flex-col items-center justify-center relative overflow-hidden transition-colors duration-0">
-        {/* Fullscreen zooming image */}
-        <motion.div 
-          initial={{ scale: 1, opacity: 0, filter: "brightness(0)" }}
-          animate={{ 
-            scale: 1.15, 
-            opacity: [0, 0.7, 0.7], 
-            filter: ["brightness(0)", "brightness(1)", "brightness(1)"] 
-          }}
-          transition={{ 
-            duration: 8, 
-            ease: "easeOut",
-            times: [0, 0.2, 1] // Brightness and opacity hit peak at 20% of the 8s duration (1.6s)
-          }}
-          className="absolute inset-0 z-0 origin-center"
-        >
-          <img 
-            src="/cyberpunk_splash.png" 
-            alt="Viral Engine" 
-            className="w-full h-full object-cover" 
-          />
-        </motion.div>
-
-        {/* Gradients to blend content with edges and darken for text readability */}
-        <div className="absolute inset-0 z-10 bg-gradient-to-t from-[#020408] via-transparent to-[#020408]/30" />
-        <div className="absolute inset-0 z-10 bg-[#020408]/40" />
-
-        <motion.div
-           animate={{ opacity: [0.3, 1, 0.3] }}
-           transition={{ duration: 2, repeat: Infinity, ease: "easeInOut" }}
-           className="absolute bottom-16 text-cyan-400 font-black tracking-[0.5em] uppercase text-[10px] z-20"
-        >
-           LOADING KERNEL...
-        </motion.div>
-      </div>
-    );
-  }
+  }, [router]);
 
   const containerVariants = {
     hidden: { opacity: 0 },

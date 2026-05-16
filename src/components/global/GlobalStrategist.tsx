@@ -3,7 +3,11 @@
 import { useState, useEffect } from 'react';
 import { useParams } from 'next/navigation';
 import { profileService, Profile } from '@/lib/services/profileService';
-import { StrategistChat } from '@/components/studio/StrategistChat';
+import dynamic from 'next/dynamic';
+const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { 
+  ssr: false,
+  loading: () => null 
+});
 
 export function GlobalStrategist() {
   const params = useParams();

@@ -7,6 +7,7 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { PageShell } from "@/components/layout/PageShell";
+import { FFmpegPreloader } from "@/components/ffmpeg/FFmpegPreloader";
 
 const geistSans = Geist({
   variable: "--font-geist-sans",
@@ -120,6 +121,7 @@ export default async function LocaleLayout({
         <Providers>
           <NextIntlClientProvider locale={locale} messages={messages}>
             <SessionSync />
+            <FFmpegPreloader />
             
             {/* Decorative Orbs (Global) */}
             <div className="orb orb-gold" />

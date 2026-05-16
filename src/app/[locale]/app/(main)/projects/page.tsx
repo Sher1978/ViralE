@@ -1,7 +1,8 @@
 'use client';
 
 import { useState, useEffect, useCallback, useRef } from 'react';
-import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
+import dynamic from 'next/dynamic';
+const PremiumLimitModal = dynamic(() => import('@/components/ui/PremiumLimitModal').then(m => m.PremiumLimitModal), { ssr: false });
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { 
@@ -11,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project } from '@/lib/services/projectService';
 import { profileService } from '@/lib/services/profileService';
 import { useRouter } from '@/navigation';
-import { StrategistChat } from '@/components/studio/StrategistChat';
+const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { ssr: false });
 
 // ── Project Card Helper ───────────────────────────────────────────────────
 function ProjectCard({ project, locale, router, onDelete }: { project: Project, locale: string, router: any, onDelete: (id: string) => void }) {
