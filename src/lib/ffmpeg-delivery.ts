@@ -15,29 +15,28 @@ export async function getFFmpeg(): Promise<FFmpeg> {
   loadPromise = (async () => {
     try {
       const instance = new FFmpeg();
-      
-      // Prioritize local WASM files (copied during postinstall)
-      // Fallback to CDN only if local files are missing or inaccessible
-      const localBase = '/ffmpeg';
+      const base = typeof window !== 'undefined' ? window.location.origin : '';
       const cdnBase = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
       
       try {
         await instance.load({
-          coreURL: await toBlobURL(`${localBase}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${localBase}/ffmpeg-core.wasm`, 'application/wasm'),
+          coreURL: `${base}/ffmpeg/ffmpeg-core.js`,
+          wasmURL: `${base}/ffmpeg/ffmpeg-core.wasm`,
         });
-        console.log('[FFmpeg] Loaded from local assets');
+        console.log('[FFmpeg] Loaded from local assets directly');
+        ffmpeg = instance;
+        return instance;
       } catch (e) {
-        console.warn('[FFmpeg] Local load failed, falling back to CDN:', e);
-        await instance.load({
+        console.warn('[FFmpeg] Local direct load failed, instantiating new FFmpeg object for CDN fallback:', e);
+        const cdnInstance = new FFmpeg();
+        await cdnInstance.load({
           coreURL: await toBlobURL(`${cdnBase}/ffmpeg-core.js`, 'text/javascript'),
           wasmURL: await toBlobURL(`${cdnBase}/ffmpeg-core.wasm`, 'application/wasm'),
         });
         console.log('[FFmpeg] Loaded from CDN');
+        ffmpeg = cdnInstance;
+        return cdnInstance;
       }
-
-      ffmpeg = instance;
-      return instance;
     } catch (err) {
       console.error('[FFmpeg] Initialization failed globally, resetting promise to allow retry:', err);
       loadPromise = null; // RESET SO NEXT CALL CAN RETRY!
