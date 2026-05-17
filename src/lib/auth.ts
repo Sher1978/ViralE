@@ -77,9 +77,13 @@ export async function getAuthContext() {
 
     if (profileError && profileError.code === 'PGRST116') {
       console.log('[Auth] Creating missing profile for user:', user.id);
+      const stableNum = parseInt(user.id.slice(0, 4), 16) % 10000;
+      const defaultName = `Media Creator #${stableNum}`;
       await supabase.from('profiles').insert({
         id: user.id,
         email: user.email || `anon_${user.id}@viral.engine`,
+        full_name: user.user_metadata?.full_name || defaultName,
+        avatar_url: user.user_metadata?.avatar_url || null,
         credits_balance: 100
       });
     }

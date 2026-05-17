@@ -16,11 +16,16 @@ import {
   Cpu, 
   Settings2,
   Sparkles,
-  Zap
+  Zap,
+  Camera,
+  Check,
+  X,
+  Edit2,
+  Loader2
 } from 'lucide-react';
-import { motion } from 'framer-motion';
+import { motion, AnimatePresence } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
-import React, { useEffect, useState } from 'react';
+import React, { useEffect, useState, useRef } from 'react';
 import { profileService } from '@/lib/services/profileService';
 import { Profile } from '@/lib/services/profileService';
 import { supabase } from '@/lib/supabase';
@@ -34,10 +39,23 @@ export default function ProfilePage() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isEditing, setIsEditing] = useState(false);
+  const [editName, setEditName] = useState('');
+  const [uploading, setUploading] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    profileService.getOrCreateProfile().then(setProfile);
+    profileService.getOrCreateProfile().then(p => {
+      setProfile(p);
+      if (p?.full_name) {
+        setEditName(p.full_name);
+      }
+    });
   }, []);
 
   const toggleTheme = () => {
@@ -50,6 +68,69 @@ export default function ProfilePage() {
       router.push('/auth');
     } catch (err) {
       console.error('Logout failed:', err);
+    }
+  };
+
+  const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    setUploading(true);
+    setSuccessMsg(null);
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error('User not authenticated');
+
+      const fileExt = file.name.split('.').pop();
+      const fileName = `${user.id}/${Date.now()}.${fileExt}`;
+      const filePath = `avatars/${fileName}`;
+
+      // Upload image to public 'media' storage bucket (reusing existing schema)
+      const { error: uploadError } = await supabase.storage
+        .from('media')
+        .upload(filePath, file);
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from('media')
+        .getPublicUrl(filePath);
+
+      // Save to profile
+      const success = await profileService.updateProfile(user.id, {
+        avatar_url: publicUrl
+      });
+
+      if (success) {
+        setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+        setSuccessMsg(t('uploadSuccess'));
+        setTimeout(() => setSuccessMsg(null), 3000);
+      }
+    } catch (err) {
+      console.error('Error uploading avatar:', err);
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const handleSaveProfile = async () => {
+    if (!profile || !editName.trim()) return;
+    setSaving(true);
+    setSuccessMsg(null);
+    try {
+      const success = await profileService.updateProfile(profile.id, {
+        full_name: editName
+      });
+      if (success) {
+        setProfile(prev => prev ? { ...prev, full_name: editName } : null);
+        setIsEditing(false);
+        setSuccessMsg(t('updateSuccess'));
+        setTimeout(() => setSuccessMsg(null), 3000);
+      }
+    } catch (err) {
+      console.error('Error saving profile:', err);
+    } finally {
+      setSaving(false);
     }
   };
 
@@ -103,6 +184,12 @@ export default function ProfilePage() {
     visible: { y: 0, opacity: 1 }
   };
 
+  // Determine fallback initial letter
+  const defaultInitial = profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : 'M';
+  // Determine stable number in case full_name is missing
+  const stableNum = profile ? parseInt(profile.id.slice(0, 4), 16) % 10000 : 0;
+  const defaultName = locale === 'ru' ? `Медиа Криейтор #${stableNum}` : `Media Creator #${stableNum}`;
+
   return (
     <motion.div 
       variants={containerVariants}
@@ -110,7 +197,7 @@ export default function ProfilePage() {
       animate="visible"
       className="space-y-6 pb-24"
     >
-      {/* Profile Header - Aligned with Strategist */}
+      {/* Profile Header - Dynamic & Fully Interactive */}
       <motion.div
         variants={itemVariants}
         className="relative overflow-hidden pt-4 pb-8 pl-16 pr-4 border-b border-white/10 bg-black/50"
@@ -121,33 +208,143 @@ export default function ProfilePage() {
 
         <div className="flex items-start justify-between relative z-10">
           <div className="flex items-center gap-5">
-            {/* Avatar with dynamic glow */}
-            <div className="relative">
-              <div className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center text-3xl shadow-xl">
-                🧑‍💻
+            
+            {/* Dynamic Avatar with photo upload & micro-animations */}
+            <div className="relative group">
+              <input 
+                type="file" 
+                ref={fileInputRef} 
+                onChange={handleAvatarUpload} 
+                className="hidden" 
+                accept="image/*" 
+              />
+              <div 
+                onClick={() => !uploading && fileInputRef.current?.click()}
+                className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center overflow-hidden cursor-pointer shadow-xl relative transition-all group-hover:scale-105 group-hover:border-cyan-500/50"
+              >
+                {uploading ? (
+                  <Loader2 className="animate-spin text-cyan-400" size={24} />
+                ) : profile?.avatar_url ? (
+                  <img 
+                    src={profile.avatar_url} 
+                    alt={profile.full_name || 'Avatar'} 
+                    className="w-full h-full object-cover" 
+                  />
+                ) : (
+                  <span className="text-3xl font-black text-cyan-400 select-none">
+                    {defaultInitial}
+                  </span>
+                )}
+                
+                {/* Upload Hover Overlay */}
+                {!uploading && (
+                  <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                    <Camera size={16} className="text-white" />
+                    <span className="text-[8px] font-black uppercase text-white/80 tracking-wider">
+                      {t('uploadNewPhoto')}
+                    </span>
+                  </div>
+                )}
               </div>
-              <div className="absolute -bottom-1 -right-1 bg-[#00FFCC] w-6 h-6 rounded-full border-4 border-[#0b1229] flex items-center justify-center">
+              <div className="absolute -bottom-1 -right-1 bg-[#00FFCC] w-6 h-6 rounded-full border-4 border-[#0b1229] flex items-center justify-center shadow-lg">
                 <Zap size={10} className="text-black fill-black" />
               </div>
             </div>
 
-            <div>
-              <h1 className="text-2xl font-black text-white/90 tracking-tight leading-none mb-1">
-                {locale === 'ru' ? 'Авто Эксперт' : 'Car Expert'}
-              </h1>
-              <p className="text-xs text-white/40 font-medium mb-3">expert@auto.io</p>
-              <div className="flex items-center gap-2">
+            {/* Dynamic Details with Inline Edit Mode */}
+            <div className="space-y-1">
+              <AnimatePresence mode="wait">
+                {isEditing ? (
+                  <motion.div 
+                    initial={{ opacity: 0, x: -10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: 10 }}
+                    className="flex items-center gap-2"
+                  >
+                    <input 
+                      type="text" 
+                      value={editName}
+                      onChange={(e) => setEditName(e.target.value)}
+                      placeholder={t('editNamePlaceholder')}
+                      className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white font-black text-lg tracking-tight focus:outline-none focus:border-cyan-500/50 w-full max-w-[200px]"
+                      onKeyDown={(e) => {
+                        if (e.key === 'Enter') handleSaveProfile();
+                        if (e.key === 'Escape') setIsEditing(false);
+                      }}
+                      autoFocus
+                    />
+                    <button 
+                      onClick={handleSaveProfile}
+                      disabled={saving || !editName.trim()}
+                      className="p-2 rounded-xl bg-green-500/20 border border-green-500/30 hover:bg-green-500/30 text-green-400 hover:scale-105 active:scale-95 transition-all"
+                    >
+                      {saving ? <Loader2 className="animate-spin" size={14} /> : <Check size={14} />}
+                    </button>
+                    <button 
+                      onClick={() => setIsEditing(false)}
+                      className="p-2 rounded-xl bg-red-500/20 border border-red-500/30 hover:bg-red-500/30 text-red-400 hover:scale-105 active:scale-95 transition-all"
+                    >
+                      <X size={14} />
+                    </button>
+                  </motion.div>
+                ) : (
+                  <motion.div 
+                    initial={{ opacity: 0, x: 10 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0, x: -10 }}
+                    className="flex items-center gap-2.5"
+                  >
+                    <h1 className="text-2xl font-black text-white/90 tracking-tight leading-none">
+                      {profile?.full_name || defaultName}
+                    </h1>
+                    <button 
+                      onClick={() => {
+                        setEditName(profile?.full_name || defaultName);
+                        setIsEditing(true);
+                      }}
+                      className="p-1.5 rounded-lg bg-white/5 border border-white/10 hover:bg-white/15 transition-all text-white/40 hover:text-white/80"
+                      title={t('editProfile')}
+                    >
+                      <Edit2 size={11} />
+                    </button>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+
+              <p className="text-xs text-white/40 font-medium">{profile?.email || 'creator@virale.io'}</p>
+              
+              <div className="flex items-center gap-2 pt-1">
+                {/* Dynamically Styled Tier Badge */}
                 <div className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center gap-1.5">
                   <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
                   <span className="text-[9px] font-black uppercase text-yellow-400 tracking-wider">
-                    PRO STATUS
+                    {profile?.tier ? `${profile.tier} STATUS` : 'FREE STATUS'}
                   </span>
                 </div>
-                <CreditBadge credits={840} packs={8} />
+                {/* Dynamic Calculated Credits Packs */}
+                <CreditBadge 
+                  credits={profile?.credits_balance ?? 0} 
+                  packs={Math.max(0, Math.floor((profile?.credits_balance ?? 0) / 100))} 
+                />
               </div>
             </div>
+
           </div>
         </div>
+
+        {/* Global Toast Success Message */}
+        <AnimatePresence>
+          {successMsg && (
+            <motion.div 
+              initial={{ opacity: 0, y: -10 }}
+              animate={{ opacity: 1, y: 0 }}
+              exit={{ opacity: 0, y: -10 }}
+              className="absolute top-4 right-4 bg-green-500/10 border border-green-500/30 text-green-400 text-[10px] font-black uppercase tracking-wider px-4 py-2 rounded-xl z-20 backdrop-blur-md"
+            >
+              {successMsg}
+            </motion.div>
+          )}
+        </AnimatePresence>
 
         {/* DNA Quick Preview - Gold Style */}
         {profile?.digital_shadow_prompt && (

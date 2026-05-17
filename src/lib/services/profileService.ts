@@ -44,6 +44,11 @@ export const profileService = {
       .eq('id', user.id)
       .single();
 
+    const stableNum = parseInt(user.id.slice(0, 4), 16) % 10000;
+    const defaultName = `Media Creator #${stableNum}`;
+    const googleName = user.user_metadata?.full_name;
+    const googleAvatar = user.user_metadata?.avatar_url;
+
     if (error && error.code === 'PGRST116') {
       // Profile missing, create it
       const { data: newProfile, error: createError } = await supabase
@@ -51,8 +56,9 @@ export const profileService = {
         .insert([
           {
             id: user.id,
-            email: user.email,
-            full_name: user.user_metadata?.full_name || 'Creator',
+            email: user.email || `anon_${user.id}@viral.engine`,
+            full_name: googleName || defaultName,
+            avatar_url: googleAvatar || null,
             credits_balance: 100, // Starting credits
             tier: 'free',
             subscription_status: 'active'
@@ -71,6 +77,34 @@ export const profileService = {
     if (error) {
       console.error('Error ensuring profile:', error);
       return null;
+    }
+
+    // Dynamic sync/back-fill for existing profiles
+    let needsUpdate = false;
+    const updates: Partial<Profile> = {};
+
+    // If profile has generic "Creator" or is missing a full name, update it
+    if (!profile.full_name || profile.full_name === 'Creator') {
+      updates.full_name = googleName || defaultName;
+      needsUpdate = true;
+    }
+    // If profile is missing avatar URL but Google has one, sync it
+    if (!profile.avatar_url && googleAvatar) {
+      updates.avatar_url = googleAvatar;
+      needsUpdate = true;
+    }
+
+    if (needsUpdate) {
+      const { data: updatedProfile, error: updateError } = await supabase
+        .from('profiles')
+        .update(updates)
+        .eq('id', user.id)
+        .select()
+        .single();
+      
+      if (!updateError && updatedProfile) {
+        return updatedProfile;
+      }
     }
 
     return profile;
