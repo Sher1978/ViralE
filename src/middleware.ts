@@ -5,10 +5,9 @@ import { NextRequest, NextResponse } from 'next/server';
 const intlMiddleware = createMiddleware(routing);
 
 /**
- * CUSTOM PROXY MIDDLEWARE
- * Note: This project uses 'proxy.ts' instead of 'middleware.ts' due to custom Next.js build constraints.
+ * STANDARD NEXT.JS MIDDLEWARE
  */
-export function proxy(request: NextRequest) {
+export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
   // 1. Run i18n middleware first to handle locales
@@ -45,8 +44,7 @@ export function proxy(request: NextRequest) {
   return response;
 }
 
-// Export as default for standard Next.js compatibility (if any)
-export default proxy;
+export default middleware;
 
 export const config = {
   matcher: ['/((?!api|_next|_vercel|.*\\..*).*)'],

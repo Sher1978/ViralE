@@ -1,9 +1,7 @@
 'use client';
 
-import Link from 'next/link';
-import { usePathname } from 'next/navigation';
 import { useLocale, useTranslations } from 'next-intl';
-import { useRouter } from '@/navigation';
+import { Link, useRouter, usePathname } from '@/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { LayoutDashboard, Lightbulb, FolderKanban, User, CreditCard, Archive, Monitor, Sparkles, Library } from 'lucide-react';
 
@@ -18,10 +16,10 @@ export function BottomNav() {
   const t = useTranslations('nav');
 
   const navItems = [
-    { key: 'home', href: `/${locale}/app/ideas`, icon: Lightbulb }, // Ideas/Discover
-    { key: 'studio', href: `/${locale}/app/projects`, icon: Sparkles },
-    { key: 'library', href: `/${locale}/app/archive`, icon: Library },
-    { key: 'profile', href: `/${locale}/app/profile`, icon: User },
+    { key: 'home', href: '/app/ideas', icon: Lightbulb }, // Ideas/Discover
+    { key: 'studio', href: '/app/projects', icon: Sparkles },
+    { key: 'library', href: '/app/archive', icon: Library },
+    { key: 'profile', href: '/app/profile', icon: User },
   ];
 
   const getActiveColor = (key: string) => {
@@ -55,10 +53,8 @@ export function BottomNav() {
       >
         <ul className="flex items-center justify-between px-3">
           {navItems.map((item) => {
-            // Robust matching: strip locale from pathname or compare both versions
             const isActive = pathname === item.href || 
-                             pathname.startsWith(item.href + '/') ||
-                             pathname.replace(`/${locale}`, '') === item.href.replace(`/${locale}`, '');
+                             pathname.startsWith(item.href + '/');
             
             const Icon = item.icon;
             const activeColor = getActiveColor(item.key);
