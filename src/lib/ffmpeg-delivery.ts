@@ -15,25 +15,30 @@ export async function getFFmpeg(): Promise<FFmpeg> {
   loadPromise = (async () => {
     try {
       const instance = new FFmpeg();
-      const localBase = '/ffmpeg';
-      const cdnBase = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd';
+      const base = typeof window !== 'undefined' ? window.location.origin : '';
+      const localCore = `${base}/ffmpeg/ffmpeg-core.js`;
+      const localWasm = `${base}/ffmpeg/ffmpeg-core.wasm`;
+      
+      const cdnBase = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
+      const cdnCore = `${cdnBase}/ffmpeg-core.js`;
+      const cdnWasm = `${cdnBase}/ffmpeg-core.wasm`;
       
       try {
         await instance.load({
-          coreURL: await toBlobURL(`${localBase}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${localBase}/ffmpeg-core.wasm`, 'application/wasm'),
+          coreURL: localCore,
+          wasmURL: localWasm,
         });
-        console.log('[FFmpeg] Loaded from local assets');
+        console.log('[FFmpeg] Loaded ESM from local assets directly');
         ffmpeg = instance;
         return instance;
       } catch (e) {
-        console.warn('[FFmpeg] Local load failed, falling back to CDN:', e);
+        console.warn('[FFmpeg] Local ESM load failed, falling back to CDN ESM:', e);
         const cdnInstance = new FFmpeg();
         await cdnInstance.load({
-          coreURL: await toBlobURL(`${cdnBase}/ffmpeg-core.js`, 'text/javascript'),
-          wasmURL: await toBlobURL(`${cdnBase}/ffmpeg-core.wasm`, 'application/wasm'),
+          coreURL: cdnCore,
+          wasmURL: cdnWasm,
         });
-        console.log('[FFmpeg] Loaded from CDN');
+        console.log('[FFmpeg] Loaded ESM from CDN directly');
         ffmpeg = cdnInstance;
         return cdnInstance;
       }
