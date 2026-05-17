@@ -725,3 +725,25 @@
     animation: gradient-x 3s ease infinite;
   }
 }
+
+/* === INSTANT SPLASH PURE CSS TRANSITION === */
+@keyframes fadeOutSplash {
+  0% {
+    opacity: 1;
+    visibility: visible;
+  }
+  99% {
+    opacity: 0;
+    visibility: visible;
+  }
+  100% {
+    opacity: 0;
+    visibility: hidden;
+    display: none !important;
+  }
+}
+
+#instant-splash {
+  animation: fadeOutSplash 0.4s cubic-bezier(0.25, 1, 0.5, 1) 0.8s forwards;
+}
+
