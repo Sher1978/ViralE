@@ -117,6 +117,54 @@ export default async function LocaleLayout({
           // Hide on load OR after 1.5s safety timeout
           window.addEventListener('load', hideSplash);
           setTimeout(hideSplash, 1500);
+
+          // 🔥 Global Self-Healing Chunk Error Recovery Handler
+          window.addEventListener('error', function(e) {
+            var msg = (e && e.message) || '';
+            var target = e && e.target;
+            var url = (target && (target.src || target.href)) || '';
+            
+            var isChunkError = 
+              msg.indexOf('ChunkLoadError') !== -1 || 
+              msg.indexOf('Loading chunk') !== -1 || 
+              msg.indexOf('Failed to fetch') !== -1 ||
+              (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK') && url.indexOf('/_next/static/') !== -1);
+
+            if (isChunkError) {
+              console.warn('[System Recovery] Dynamic chunk or asset failed to load. Forcing a hard reload to latest version...', e);
+              var lastReload = localStorage.getItem('last_chunk_reload');
+              var now = Date.now();
+              // Prevent infinite loop if user is completely offline
+              if (!lastReload || now - parseInt(lastReload, 10) > 10000) {
+                localStorage.setItem('last_chunk_reload', now.toString());
+                window.location.reload();
+              }
+            }
+          }, true); // true = capture phase to intercept failed script tags before they crash
+
+          // 🔥 Link Click Throttle to prevent cancelled/aborted fetch requests in WebViews
+          var lastClickTime = 0;
+          document.addEventListener('click', function(e) {
+            var target = e.target;
+            while (target && target.tagName !== 'A') {
+              target = target.parentNode;
+            }
+            if (target && target.tagName === 'A') {
+              var href = target.getAttribute('href') || '';
+              // Ignore hash anchors or JS executions
+              if (!href || href.indexOf('#') === 0 || href.indexOf('javascript:') === 0) {
+                return;
+              }
+              var now = Date.now();
+              if (now - lastClickTime < 450) {
+                e.preventDefault();
+                e.stopPropagation();
+                console.warn('[System Recovery] Throttled rapid link click to prevent WebView fetch cancellation.');
+                return false;
+              }
+              lastClickTime = now;
+            }
+          }, true); // Intercept in capture phase before Next.js processes the navigation
         `}} />
 
         <Providers>
