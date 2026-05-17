@@ -8,7 +8,7 @@ const dest = join(root, 'public', 'ffmpeg');
 
 mkdirSync(dest, { recursive: true });
 
-const coreDist = join(root, 'node_modules', '@ffmpeg', 'core', 'dist', 'esm');
+const coreDist = join(root, 'node_modules', '@ffmpeg', 'core', 'dist', 'umd');
 copyFileSync(join(coreDist, 'ffmpeg-core.js'),   join(dest, 'ffmpeg-core.js'));
 copyFileSync(join(coreDist, 'ffmpeg-core.wasm'), join(dest, 'ffmpeg-core.wasm'));
 

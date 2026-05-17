@@ -24,8 +24,6 @@ export const browserCapabilities = {
    * Suggests the best render mode based on capabilities.
    */
   suggestRenderMode(): 'canvas' | 'ffmpeg' {
-    if (this.isMobile()) return 'ffmpeg'; // Canvas loop is too heavy/flaky on iOS
-    if (this.hasSharedArrayBuffer()) return 'ffmpeg'; // Best quality/speed on desktop
-    return 'canvas'; // Fallback for browsers without COOP/COEP or low specs
+    return 'ffmpeg';
   }
 };
