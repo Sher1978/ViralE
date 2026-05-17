@@ -116,7 +116,7 @@ function DeliveryPageContent() {
   };
 
   // Build drawtext filter chain — works without libass in single-thread @ffmpeg/core
-  const buildDrawtextFilter = (clips: any[], baseFilter: string): string => {
+  const buildDrawtextFilter = (clips: any[], baseFilter: string, videoHeight: number = 1920): string => {
     if (clips.length === 0) return baseFilter;
     
     // Escape special chars for FFmpeg drawtext
@@ -173,11 +173,11 @@ function DeliveryPageContent() {
       }
 
       // Calculate final Y position (FFmpeg 0,0 is top-left)
-      const baseVerticalPos = 1632; 
+      const baseVerticalPos = videoHeight - Math.round(videoHeight * 0.15); 
       const finalY = baseVerticalPos - subPos.y;
 
       return [
-        `drawtext=fontfile=font.ttf:text='${txt}'`,
+        `drawtext=fontfile=/font.ttf:text='${txt}'`,
         `fontsize=${subSize}`,
         `fontcolor=${fontcolor}`,
         `borderw=${borderw}`,
@@ -612,8 +612,8 @@ function DeliveryPageContent() {
         const label = `v${brIdx}`;
         const scaledLabel = `ovl${brIdx}`;
         
-        // Scale and overlay each B-Roll
-        filterComplex += `[${brIdx}:v]scale=iw*${brScale}:-1[${scaledLabel}];`;
+        // Scale B-Roll and shift timestamps using setpts so that its t=0 starts at clip.startTime
+        filterComplex += `[${brIdx}:v]scale=iw*${brScale}:-1,setpts=PTS-STARTPTS+${clip.startTime}/TB[${scaledLabel}];`;
         filterComplex += `${lastOutput}[${scaledLabel}]overlay=x=${brX}:y=${brY}:enable='between(t,${clip.startTime},${clip.endTime})'[${label}];`;
         lastOutput = `[${label}]`;
       }
@@ -621,7 +621,7 @@ function DeliveryPageContent() {
       // 2. Add Subtitles to the chain (using drawtext)
       if (subs.length > 0) {
         setRenderStatus(`Наложение субтитров (${subs.length})...`);
-        const drawtextChain = buildDrawtextFilter(subs, '');
+        const drawtextChain = buildDrawtextFilter(subs, '', isMobile ? 1280 : 1920);
         filterComplex += `${lastOutput}${drawtextChain}[vfinal]`;
         lastOutput = '[vfinal]';
       } else {
@@ -786,7 +786,7 @@ function DeliveryPageContent() {
             setPreviewUrl(verData.script_data.aRollUrl);
           }
 
-          const cachedRender = await idb.get(`final_render_${projectId}`, 'MediaBuffer');
+          const cachedRender = verData ? await idb.get(`final_render_${projectId}_${verData.id}`, 'MediaBuffer') : null;
           if (cachedRender instanceof Blob) {
             console.log('[Delivery] Restored from IDB cache');
             const url = URL.createObjectURL(cachedRender);
