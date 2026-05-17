@@ -127,7 +127,7 @@ export default async function LocaleLayout({
             var isChunkError = 
               msg.indexOf('ChunkLoadError') !== -1 || 
               msg.indexOf('Loading chunk') !== -1 || 
-              msg.indexOf('Failed to fetch') !== -1 ||
+              msg.indexOf('Failed to fetch dynamically imported module') !== -1 ||
               (target && (target.tagName === 'SCRIPT' || target.tagName === 'LINK') && url.indexOf('/_next/static/') !== -1);
 
             if (isChunkError) {
