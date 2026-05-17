@@ -176,8 +176,11 @@ function DeliveryPageContent() {
       const baseVerticalPos = videoHeight - Math.round(videoHeight * 0.15); 
       const finalY = baseVerticalPos - subPos.y;
 
+      const subStart = typeof c.startTime === 'number' && !isNaN(c.startTime) ? c.startTime : 0;
+      const subEnd = typeof c.endTime === 'number' && !isNaN(c.endTime) ? c.endTime : subStart + 3;
+
       return [
-        `drawtext=fontfile=/font.ttf:text='${txt}'`,
+        `drawtext=fontfile=font.ttf:text='${txt}'`,
         `fontsize=${subSize}`,
         `fontcolor=${fontcolor}`,
         `borderw=${borderw}`,
@@ -188,7 +191,7 @@ function DeliveryPageContent() {
         box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
         `x=(w-text_w)/2 + ${subPos.x}`,
         `y=${finalY}`,
-        `enable='between(t,${c.startTime},${c.endTime})'`,
+        `enable='between(t,${subStart},${subEnd})'`,
       ].filter(Boolean).join(':');
     }).join(',');
 
@@ -581,8 +584,13 @@ function DeliveryPageContent() {
         setRenderStatus(`Оптимизация B-Roll ${i+1}/${brollFiles.length}...`);
         const { name, clip } = brollFiles[i];
         const optName = `opt_${name}`;
-        await ffmpeg.exec(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', (clip.endTime - clip.startTime).toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
-        processedBrolls.push({ name: optName, clip });
+        
+        const clipStart = typeof clip.startTime === 'number' && !isNaN(clip.startTime) ? clip.startTime : 0;
+        const clipEnd = typeof clip.endTime === 'number' && !isNaN(clip.endTime) ? clip.endTime : clipStart + 5;
+        const duration = Math.max(0.1, clipEnd - clipStart);
+
+        await ffmpeg.exec(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', duration.toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
+        processedBrolls.push({ name: optName, clip: { ...clip, startTime: clipStart, endTime: clipEnd } });
         try { await ffmpeg.deleteFile(name); } catch(e) {}
       }
 
@@ -612,9 +620,12 @@ function DeliveryPageContent() {
         const label = `v${brIdx}`;
         const scaledLabel = `ovl${brIdx}`;
         
+        const clipStart = clip.startTime;
+        const clipEnd = clip.endTime;
+        
         // Scale B-Roll and shift timestamps using setpts so that its t=0 starts at clip.startTime
-        filterComplex += `[${brIdx}:v]scale=iw*${brScale}:-1,setpts=PTS-STARTPTS+${clip.startTime}/TB[${scaledLabel}];`;
-        filterComplex += `${lastOutput}[${scaledLabel}]overlay=x=${brX}:y=${brY}:enable='between(t,${clip.startTime},${clip.endTime})'[${label}];`;
+        filterComplex += `[${brIdx}:v]scale=iw*${brScale}:-1,setpts=PTS-STARTPTS+${clipStart}/TB[${scaledLabel}];`;
+        filterComplex += `${lastOutput}[${scaledLabel}]overlay=x=${brX}:y=${brY}:enable='between(t,${clipStart},${clipEnd})'[${label}];`;
         lastOutput = `[${label}]`;
       }
       
