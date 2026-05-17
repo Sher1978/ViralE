@@ -5,7 +5,7 @@ import { cookies } from 'next/headers';
  * Server-side helper to get the authenticated context (user + authorized client).
  * This ensures that API routes can query data that respects RLS.
  */
-export async function getAuthContext() {
+export async function getAuthContext({ skipProfileCheck = false }: { skipProfileCheck?: boolean } = {}) {
   const cookieStore = await cookies();
   
   // Extract project ref from URL for cookie naming
@@ -68,27 +68,29 @@ export async function getAuthContext() {
   console.log(`✓ [Auth] Context established for user: ${user.id} (${user.aud})`);
 
   // Ensure profile exists in DB to prevent foreign key violations (projects_user_id_fkey)
-  try {
-    const { data: profile, error: profileError } = await supabase
-      .from('profiles')
-      .select('id')
-      .eq('id', user.id)
-      .single();
+  if (!skipProfileCheck) {
+    try {
+      const { data: profile, error: profileError } = await supabase
+        .from('profiles')
+        .select('id')
+        .eq('id', user.id)
+        .single();
 
-    if (profileError && profileError.code === 'PGRST116') {
-      console.log('[Auth] Creating missing profile for user:', user.id);
-      const stableNum = parseInt(user.id.slice(0, 4), 16) % 10000;
-      const defaultName = `Media Creator #${stableNum}`;
-      await supabase.from('profiles').insert({
-        id: user.id,
-        email: user.email || `anon_${user.id}@viral.engine`,
-        full_name: user.user_metadata?.full_name || defaultName,
-        avatar_url: user.user_metadata?.avatar_url || null,
-        credits_balance: 100
-      });
+      if (profileError && profileError.code === 'PGRST116') {
+        console.log('[Auth] Creating missing profile for user:', user.id);
+        const stableNum = parseInt(user.id.slice(0, 4), 16) % 10000;
+        const defaultName = `Media Creator #${stableNum}`;
+        await supabase.from('profiles').insert({
+          id: user.id,
+          email: user.email || `anon_${user.id}@viral.engine`,
+          full_name: user.user_metadata?.full_name || defaultName,
+          avatar_url: user.user_metadata?.avatar_url || null,
+          credits_balance: 100
+        });
+      }
+    } catch (err) {
+      console.warn('[Auth] Failed to ensure profile:', err);
     }
-  } catch (err) {
-    console.warn('[Auth] Failed to ensure profile:', err);
   }
 
   return { user, supabase };
