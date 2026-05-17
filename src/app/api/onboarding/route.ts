@@ -23,22 +23,28 @@ export async function POST(req: Request) {
 
     console.log('[Onboarding] Updating profile for user:', userId);
     
-    // 2. Update Profile with DNA and mark onboarding complete
-    // We update both the old and new column names for safety during migration
+    // 2. Upsert Profile with DNA and mark onboarding complete
+    // We upsert to safely handle cases where the profile row does not exist yet.
     const { data, error } = await authorizedSupabase
       .from('profiles')
-      .update({
-        digital_shadow_prompt: masterPrompt,
-        synthetic_training_data: masterPrompt, // New column
-        raw_onboarding_data: answers,
-        onboarding_completed: true
+      .upsert({
+        id: userId,
+        email: user.email || `anon_${userId}@viral.engine`,
+        full_name: user.user_metadata?.full_name || `Media Creator #${parseInt(userId.slice(0, 4), 16) % 10000}`,
+        avatar_url: user.user_metadata?.avatar_url || null,
+        digital_shadow_prompt: masterPrompt || null,
+        synthetic_training_data: masterPrompt || null, // New column
+        raw_onboarding_data: answers || null,
+        onboarding_completed: true,
+        credits_balance: 100,
+        tier: 'free',
+        subscription_status: 'active'
       })
-      .eq('id', userId)
       .select()
       .single();
 
     if (error) {
-      console.error('[Onboarding] Database update failed:', error);
+      console.error('[Onboarding] Database upsert failed:', error);
       throw error;
     }
 
