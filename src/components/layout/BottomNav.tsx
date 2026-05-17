@@ -67,11 +67,6 @@ export function BottomNav() {
                <li key={item.href} className="flex-1">
                 <Link
                   href={item.href}
-                  onPointerDown={(e) => {
-                    // Instant prefetch/navigation start on mobile touch
-                    const link = e.currentTarget as HTMLAnchorElement;
-                    if (link.href) router.push(item.href);
-                  }}
                   className={cn(
                     "flex flex-col items-center justify-center py-2 transition-all duration-100 relative select-none touch-manipulation",
                     isActive ? "scale-105" : "text-white/20"
