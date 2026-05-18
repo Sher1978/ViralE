@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter, Link } from '@/navigation';
-import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, ArrowLeft, Loader2, AlertCircle , HardDrive, Image as ImageIcon } from 'lucide-react';
+import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, ArrowLeft, Loader2, AlertCircle , HardDrive, Image as ImageIcon, Folder, Plus } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { renderService, RenderJob } from '@/lib/services/renderService';
 import { socialService } from '@/lib/services/socialService';
@@ -946,14 +946,41 @@ function DeliveryPageContent() {
 
   return (
     <div className="space-y-5 animate-fade-in pb-10">
-      <div className="flex items-center justify-between py-2">
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 px-4 rounded-[2rem] bg-white/[0.02] border border-white/5 backdrop-blur-md">
+        {/* Left: Back to Montage */}
         <button 
           onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
-          className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest hover:text-white transition-all"
+          className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest hover:text-white hover:bg-white/10 active:scale-95 transition-all w-full md:w-auto"
         >
           <ArrowLeft size={14} /> {locale === 'ru' ? 'В МОНТАЖКУ' : 'BACK TO STUDIO'}
         </button>
-        <div className="text-[10px] font-black text-white/20 tracking-[0.3em] uppercase">Delivery Lab</div>
+
+        {/* Center: Title / Logo */}
+        <div className="hidden md:flex flex-col items-center">
+          <span className="text-[11px] font-black text-white/40 tracking-[0.3em] uppercase">Delivery Lab</span>
+          <span className="text-[8px] font-bold text-purple-400/60 uppercase tracking-widest mt-0.5">Finalizing Project</span>
+        </div>
+
+        {/* Right: Quick actions for Library & New Script */}
+        <div className="flex items-center gap-2 w-full md:w-auto">
+          {/* Library Link */}
+          <button 
+            onClick={() => router.push('/app/projects')}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600/10 to-blue-500/10 border border-blue-500/20 text-blue-300 text-[10px] font-black uppercase tracking-widest hover:from-blue-600/20 hover:to-blue-500/20 active:scale-95 transition-all"
+          >
+            <Folder size={14} className="text-blue-400" />
+            {locale === 'ru' ? 'БИБЛИОТЕКА' : 'LIBRARY'}
+          </button>
+
+          {/* New Project Link */}
+          <button 
+            onClick={() => router.push('/app/projects/new/script')}
+            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600/15 to-purple-500/15 border border-purple-500/25 text-purple-300 text-[10px] font-black uppercase tracking-widest hover:from-purple-600/25 hover:to-purple-500/25 active:scale-95 transition-all shadow-lg shadow-purple-950/20"
+          >
+            <Plus size={14} className="text-purple-400" />
+            {locale === 'ru' ? 'НОВЫЙ ПРОЕКТ' : 'NEW PROJECT'}
+          </button>
+        </div>
       </div>
 
       <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'processing'} />
