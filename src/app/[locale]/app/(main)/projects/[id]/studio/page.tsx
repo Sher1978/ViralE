@@ -543,6 +543,7 @@ export default function StudioPage() {
                 await idb.set(`pending_audio_${projectId}`, recordingId, 'ProjectDrafts');
               } else {
                 await idb.set(`pending_upload_${projectId}`, recordingId, 'ProjectDrafts');
+                await idb.set(`video_file_${projectId}`, blob, 'MediaBuffer');
               }
               
               if (!isVoiceOnly && audioChunks.length > 0) {
