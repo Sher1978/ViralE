@@ -799,14 +799,35 @@ function DeliveryPageContent() {
     return () => clearInterval(pollInterval);
   }, [projectId, !!distributionAssets, job?.status]);
 
+  // CRITICAL: FFmpeg should ONLY be reset when the component completely unmounts.
+  // Running resetFFmpeg when previewUrl or output_url changes causes a race condition:
+  // mid-render state updates trigger this cleanup, terminating the FFmpeg instance while it is actively rendering.
   useEffect(() => {
     return () => {
-      console.log('[Delivery] Cleaning up FFmpeg instance and Blob URLs...');
+      console.log('[Delivery] Cleaning up FFmpeg instance on unmount...');
       resetFFmpeg();
-      if (previewUrl?.startsWith('blob:')) URL.revokeObjectURL(previewUrl);
-      if (job?.output_url?.startsWith('blob:')) URL.revokeObjectURL(job.output_url);
     };
-  }, [previewUrl, job?.output_url]);
+  }, []);
+
+  // Separate, safe cleanups for blob URLs
+  useEffect(() => {
+    return () => {
+      if (previewUrl?.startsWith('blob:')) {
+        console.log('[Delivery] Revoking preview URL:', previewUrl);
+        URL.revokeObjectURL(previewUrl);
+      }
+    };
+  }, [previewUrl]);
+
+  useEffect(() => {
+    return () => {
+      const url = job?.output_url;
+      if (url?.startsWith('blob:')) {
+        console.log('[Delivery] Revoking output URL:', url);
+        URL.revokeObjectURL(url);
+      }
+    };
+  }, [job?.output_url]);
 
   useEffect(() => {
     async function loadResults() {
