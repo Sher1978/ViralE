@@ -48,9 +48,21 @@ export default function IdeasPage() {
   const locale = useLocale();
   const router = useRouter();
 
-  const { ideas: allNewIdeas, archivedIdeas, refreshIdeas, loadingIdeas, updateProfile, moveIdeaLocally, dnaComplete: isDnaComplete, loadingArchived } = useAppData();
+  const { 
+    ideas: allNewIdeas, 
+    archivedIdeas, 
+    usedIdeas, 
+    refreshIdeas, 
+    loadingIdeas, 
+    updateProfile, 
+    moveIdeaLocally, 
+    markIdeaAsUsed, 
+    dnaComplete: isDnaComplete, 
+    loadingArchived, 
+    loadingUsed 
+  } = useAppData();
 
-  const [activeTab, setActiveTab] = useState<'new' | 'archived'>('new');
+  const [activeTab, setActiveTab] = useState<'new' | 'archived' | 'used'>('new');
   const [processingId, setProcessingId] = useState<string | null>(null);
   const [synthesisLoading, setSynthesisLoading] = useState(false);
   const [showDnaEditor, setShowDnaEditor] = useState(false);
@@ -75,8 +87,8 @@ export default function IdeasPage() {
   
   const sentinelRef = useRef<HTMLDivElement>(null);
 
-  const ideas = activeTab === 'new' ? allNewIdeas : archivedIdeas;
-  const globalLoading = activeTab === 'new' ? loadingIdeas : loadingArchived;
+  const ideas = activeTab === 'new' ? allNewIdeas : activeTab === 'archived' ? archivedIdeas : usedIdeas;
+  const globalLoading = activeTab === 'new' ? loadingIdeas : activeTab === 'archived' ? loadingArchived : loadingUsed;
 
   const groupedIdeas = useMemo(() => {
     const groups: Record<string, Idea[]> = {};
@@ -120,7 +132,10 @@ export default function IdeasPage() {
     return () => observer.disconnect();
   }, [synthesizeNextCategory]);
 
-  const handleToScript = (content: string, rationale?: string) => {
+  const handleToScript = async (content: string, rationale?: string, ideaId?: string) => {
+    if (ideaId) {
+      await markIdeaAsUsed(ideaId);
+    }
     let finalContent = content;
     if (rationale && rationale.length > 3) {
       // Clean up rationale if it's just repeating the category or contains parenthetical noise
@@ -150,6 +165,7 @@ export default function IdeasPage() {
   const tabs = [
     { id: 'new', label: t('tabFeed') || 'Discover', icon: <TrendingUp className="w-3 h-3" /> },
     { id: 'archived', label: t('tabSaved') || 'Library', icon: <Bookmark className="w-3 h-3" /> },
+    { id: 'used', label: locale === 'ru' ? 'Отработанные' : 'Spent Ideas', icon: <Target className="w-3 h-3" /> },
   ];
 
   return (
@@ -157,7 +173,11 @@ export default function IdeasPage() {
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none">
-            {activeTab === 'new' ? (locale === 'ru' ? 'ИНСАЙТЫ' : 'INSIGHTS') : (locale === 'ru' ? 'БИБЛИОТЕКА' : 'LIBRARY')}
+            {activeTab === 'new' 
+              ? (locale === 'ru' ? 'ИНСАЙТЫ' : 'INSIGHTS') 
+              : activeTab === 'archived'
+              ? (locale === 'ru' ? 'БИБЛИОТЕКА' : 'LIBRARY')
+              : (locale === 'ru' ? 'ОТРАБОТАННЫЕ' : 'SPENT IDEAS')}
           </h1>
           {isDnaComplete && activeTab === 'new' && (
             <div className="flex items-center gap-2">
@@ -173,7 +193,11 @@ export default function IdeasPage() {
           )}
         </div>
         <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-black">
-          {activeTab === 'new' ? (locale === 'ru' ? 'СИНТЕЗ МАТРИЦЫ КОНТЕНТА' : 'CONTENT MATRIX SYNTHESIS') : (locale === 'ru' ? 'ЗАПАС ЗОЛОТЫХ ИДЕЙ' : 'GOLDEN IDEAS VAULT')}
+          {activeTab === 'new' 
+            ? (locale === 'ru' ? 'СИНТЕЗ МАТРИЦЫ КОНТЕНТА' : 'CONTENT MATRIX SYNTHESIS') 
+            : activeTab === 'archived'
+            ? (locale === 'ru' ? 'ЗАПАС ЗОЛОТЫХ ИДЕЙ' : 'GOLDEN IDEAS VAULT')
+            : (locale === 'ru' ? 'КАТАЛОГ ИСПОЛЬЗОВАННЫХ ИДЕЙ' : 'SPENT IDEAS CATALOGUE')}
         </p>
       </div>
 
@@ -190,7 +214,7 @@ export default function IdeasPage() {
         )}
       </AnimatePresence>
 
-      {(activeTab === 'new' || activeTab === 'archived') && (
+      {(activeTab === 'new' || activeTab === 'archived' || activeTab === 'used') && (
         <div className="relative z-10 w-full max-w-xl">
           <TopicInput onLaunch={(topic) => handleToScript(topic)} />
         </div>
@@ -275,7 +299,7 @@ export default function IdeasPage() {
                   title={CATEGORY_LABELS[cat]?.[locale as 'en'|'ru'] || cat}
                   subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
                   ideas={groupedIdeas[cat] || []}
-                  onToScript={(topic, rationale) => handleToScript(topic, rationale)}
+                  onToScript={(topic, rationale, ideaId) => handleToScript(topic, rationale, ideaId)}
                   onToggleArchive={handleToggleArchive}
                   onRefresh={(force) => refreshIdeas('new', cat, force)}
                 />
@@ -311,7 +335,9 @@ export default function IdeasPage() {
               ))
             ) : (
               <div className="text-center py-20 text-white/20 uppercase text-[10px] tracking-widest font-black">
-                  {locale === 'ru' ? 'Библиотека пуста' : 'Library is empty'}
+                  {activeTab === 'used' 
+                    ? (locale === 'ru' ? 'Использованных идей пока нет' : 'No spent ideas yet') 
+                    : (locale === 'ru' ? 'Библиотека пуста' : 'Library is empty')}
               </div>
             )}
           </div>

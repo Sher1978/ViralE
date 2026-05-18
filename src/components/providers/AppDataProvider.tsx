@@ -10,11 +10,14 @@ interface AppDataContextType {
   dnaComplete: boolean;
   ideas: Idea[];
   archivedIdeas: Idea[];
+  usedIdeas: Idea[];
   loadingIdeas: boolean;
   loadingArchived: boolean;
-  refreshIdeas: (status: 'new' | 'archived', category?: string, force?: boolean) => Promise<void>;
+  loadingUsed: boolean;
+  refreshIdeas: (status: 'new' | 'archived' | 'used', category?: string, force?: boolean) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => void;
   moveIdeaLocally: (ideaId: string, fromStatus: string, toStatus: string) => void;
+  markIdeaAsUsed: (ideaId: string) => Promise<void>;
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
@@ -23,8 +26,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [profile, setProfile] = useState<Profile | null>(null);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [archivedIdeas, setArchivedIdeas] = useState<Idea[]>([]);
+  const [usedIdeas, setUsedIdeas] = useState<Idea[]>([]);
   const [loadingIdeas, setLoadingIdeas] = useState(true);
   const [loadingArchived, setLoadingArchived] = useState(true);
+  const [loadingUsed, setLoadingUsed] = useState(true);
   const [dnaComplete, setDnaComplete] = useState(false);
 
   const fetchProfile = useCallback(async () => {
@@ -38,10 +43,11 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
   }, []);
 
-  const fetchIdeas = useCallback(async (status: 'new' | 'archived', category?: string, force?: boolean) => {
+  const fetchIdeas = useCallback(async (status: 'new' | 'archived' | 'used', category?: string, force?: boolean) => {
     try {
       if (status === 'new') setLoadingIdeas(true);
-      else setLoadingArchived(true);
+      else if (status === 'archived') setLoadingArchived(true);
+      else if (status === 'used') setLoadingUsed(true);
 
       let url = `/api/ideas?status=${status}`;
       if (category) {
@@ -66,15 +72,18 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           } else {
             setIdeas(ideasList);
           }
-        } else {
+        } else if (status === 'archived') {
           setArchivedIdeas(ideasList);
+        } else if (status === 'used') {
+          setUsedIdeas(ideasList);
         }
       }
     } catch (err) {
       console.error(`Failed to fetch ${status} ideas:`, err);
     } finally {
       if (status === 'new') setLoadingIdeas(false);
-      else setLoadingArchived(false);
+      else if (status === 'archived') setLoadingArchived(false);
+      else if (status === 'used') setLoadingUsed(false);
     }
   }, []);
 
@@ -88,6 +97,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     if (profile) {
       fetchIdeas('new');
       fetchIdeas('archived');
+      fetchIdeas('used');
     }
   }, [profile, fetchIdeas]);
 
@@ -129,17 +139,54 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [ideas, fetchIdeas]);
 
+  const markIdeaAsUsed = useCallback(async (ideaId: string) => {
+    // 1. Instantly move in local state for zero-latency UX
+    let ideaToMove: Idea | undefined;
+    
+    setIdeas(prev => {
+      ideaToMove = prev.find(i => i.id === ideaId);
+      return prev.filter(i => i.id !== ideaId);
+    });
+    
+    setArchivedIdeas(prev => {
+      if (!ideaToMove) ideaToMove = prev.find(i => i.id === ideaId);
+      return prev.filter(i => i.id !== ideaId);
+    });
+
+    if (ideaToMove) {
+      const updatedIdea = { ...ideaToMove, status: 'used' as const };
+      setUsedIdeas(prev => {
+        if (prev.find(p => p.id === ideaId)) return prev;
+        return [updatedIdea, ...prev];
+      });
+    }
+
+    // 2. Persist to Supabase via API
+    try {
+      await fetch('/api/ideas', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ ideaId, status: 'used' }),
+      });
+    } catch (err) {
+      console.error('Failed to mark idea as used:', err);
+    }
+  }, [ideas]);
+
   return (
     <AppDataContext.Provider value={{
       profile,
       dnaComplete,
       ideas,
       archivedIdeas,
+      usedIdeas,
       loadingIdeas,
       loadingArchived,
+      loadingUsed,
       refreshIdeas: fetchIdeas,
       updateProfile: updateProfileState,
-      moveIdeaLocally
+      moveIdeaLocally,
+      markIdeaAsUsed
     }}>
       {children}
     </AppDataContext.Provider>

@@ -247,6 +247,10 @@ function DeliveryPageContent() {
         const font = new FontFace('Roboto-Bold', 'url(/fonts/Roboto-Bold.ttf)');
         await font.load();
         document.fonts.add(font);
+
+        const fontItalic = new FontFace('Roboto-BoldItalic', 'url(/fonts/Roboto-BoldItalic.ttf)', { style: 'italic' });
+        await fontItalic.load();
+        document.fonts.add(fontItalic);
       } catch (e) { console.warn('Font load failed, fallback to sans-serif'); }
 
       // 2. Setup Canvas
@@ -404,7 +408,7 @@ function DeliveryPageContent() {
             fontStyle = 'italic'; fillStyle = '#fbbf24';
           }
 
-          ctx.font = `900 ${fontStyle} ${subSize + 10}px Roboto-Bold, sans-serif`;
+          ctx.font = `900 ${fontStyle} ${subSize + 10}px ${fontStyle === 'italic' ? 'Roboto-BoldItalic' : 'Roboto-Bold'}, sans-serif`;
           ctx.textAlign = 'center';
           ctx.fillStyle = fillStyle;
           
@@ -413,9 +417,10 @@ function DeliveryPageContent() {
             ctx.shadowColor = shadowColor;
           }
 
-          const words = activeSub.text.toUpperCase().split(' ');
-          const line1 = words.slice(0, 3).join(' ');
-          const line2 = words.slice(3).join(' ');
+          const words = (activeSub.text || '').toUpperCase().split(' ');
+          const midpoint = Math.ceil(words.length / 2);
+          const line1 = words.slice(0, midpoint).join(' ');
+          const line2 = words.slice(midpoint).join(' ');
           
           
           if (useBox) {
@@ -611,7 +616,7 @@ function DeliveryPageContent() {
       }
 
       try {
-        const italicFontData = await fetchFile('https://fonts.gstatic.com/s/roboto/v30/KFOkCnqEu92Fr1Mu51xIIzc.ttf');
+        const italicFontData = await fetchFile('/fonts/Roboto-BoldItalic.ttf');
         await ffmpeg.writeFile('font_italic.ttf', italicFontData);
       } catch (e) {
         console.warn('[Delivery] Failed to load italic font, falling back to standard font copy:', e);
@@ -690,8 +695,8 @@ function DeliveryPageContent() {
           
           setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
           
-          // Apply scale to the broll before overlaying
-          const overlayFilter = `[1:v]scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
+          // Apply scale and PTS shift to the broll before overlaying to ensure it plays as a video instead of freezing on the last frame
+          const overlayFilter = `[1:v]setpts=PTS-STARTPTS+${broll.clip.startTime}/TB,scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
           await ffmpeg.exec([
             '-i', currentInput,
             '-i', broll.name,

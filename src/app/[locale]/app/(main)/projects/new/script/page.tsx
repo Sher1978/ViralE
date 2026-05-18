@@ -50,6 +50,81 @@ export default function ScriptLabPage() {
   const [limitModalData, setLimitModalData] = useState({ title: '', desc: '', type: 'trial' as any });
   const [selectedPlatform, setSelectedPlatform] = useState<'tiktok' | 'youtube' | 'instagram' | 'threads' | 'linkedin'>('tiktok');
 
+  const [initialTab, setInitialTab] = useState<'new' | 'used'>('new');
+  const [usedIdeas, setUsedIdeas] = useState<any[]>([]);
+  const [loadingUsed, setLoadingUsed] = useState(false);
+
+  useEffect(() => {
+    async function loadUsedIdeas() {
+      setLoadingUsed(true);
+      try {
+        const res = await fetch(`/api/ideas?status=used`);
+        if (res.ok) {
+          const data = await res.json();
+          setUsedIdeas(Array.isArray(data) ? data : data.ideas || []);
+        }
+      } catch (err) {
+        console.error('Failed to load spent ideas:', err);
+      } finally {
+        setLoadingUsed(false);
+      }
+    }
+    loadUsedIdeas();
+  }, []);
+
+  const handleRestartGeneration = async (topic: string) => {
+    setTopicInput(topic);
+    setInitialTab('new');
+    setIsLoading(true);
+    try {
+      const response = await fetch('/api/script/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coreIdea: topic,
+          mode: 'initial',
+          locale,
+          engine: selectedEngine
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || (locale === 'ru' ? 'Ошибка генерации' : 'Generation failed'));
+
+      const fullScript = data.script;
+      if (fullScript.evergreen) {
+        setAllScenarios(fullScript);
+        setScriptData(fullScript.evergreen);
+        setActiveScenario('evergreen');
+        if (typeof window !== 'undefined') {
+          sessionStorage.setItem('allScenarios', JSON.stringify(fullScript));
+        }
+      } else {
+        setScriptData(fullScript);
+      }
+
+      if (data.onboardingIncomplete) {
+        setOnboardingIncomplete(true);
+      }
+      
+      const prof = await profileService.getOrCreateProfile();
+      setUser(prof);
+      
+      setIsGenerating(true);
+      if (typeof window !== 'undefined') {
+        sessionStorage.setItem('isGenerating', 'true');
+      }
+      
+      router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
+    } catch (err: any) {
+      console.error('[ScriptLab] Restart generation failed:', err);
+      setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
+      setIsGenerating(false);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
 
   const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>('evergreen');
   const [allScenarios, setAllScenarios] = useState<any>(() => {
@@ -644,164 +719,238 @@ export default function ScriptLabPage() {
           </p>
         </div>
 
-        <div className="space-y-8">
-          {error && (
-            <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold animate-shake uppercase tracking-widest text-center">
-              {error}
-            </div>
-          )}
-          <div className="relative group space-y-2">
-            <div className="flex items-center justify-between px-1">
-               <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 ml-2">
-                 {locale === 'ru' ? 'СУТЬ РОЛИКА' : 'VIDEO ESSENCE'}
-               </span>
-               <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-xl">
-                  {[
-                    { id: 'tiktok', icon: Zap, color: 'text-purple-400' },
-                    { id: 'youtube', icon: Play, color: 'text-red-500' },
-                    { id: 'instagram', icon: Camera, color: 'text-pink-500' },
-                    { id: 'threads', icon: Share2, color: 'text-blue-400' },
-                    { id: 'linkedin', icon: Monitor, color: 'text-blue-600' }
-                  ].map((p) => (
-                    <button
-                      key={p.id}
-                      onClick={() => setSelectedPlatform(p.id as any)}
-                      className={`p-2.5 rounded-xl transition-all ${
-                        selectedPlatform === p.id 
-                          ? 'bg-white/10 border border-white/10 text-white shadow-lg' 
-                          : 'text-white/20 hover:text-white/40'
-                      }`}
-                      title={p.id.toUpperCase()}
-                    >
-                      <p.icon size={14} className={selectedPlatform === p.id ? p.color : ''} />
-                    </button>
-                  ))}
-                </div>
-            </div>
-            <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 top-6" />
-            <textarea
-              id="topic-textarea"
-              value={topicInput}
-              onChange={(e) => {
-                console.log('Topic change:', e.target.value);
-                setTopicInput(e.target.value);
-              }}
-              placeholder={locale === 'ru' ? 'Напр: 5 секретов как выбрать лучшее авто...' : 'E.g.: 5 secrets to picking the best car...'}
-              className="w-full h-48 bg-[#0d0d1a] border border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500/50 transition-all resize-none shadow-2xl relative z-10"
-            />
-          </div>
+        {/* Sub-navigation tabs inside Initial Script Lab */}
+        <div className="flex border-b border-white/5 gap-6 justify-center">
+          <button 
+            onClick={() => setInitialTab('new')} 
+            className={`flex items-center gap-2 py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${initialTab === 'new' ? 'text-white' : 'text-white/20 hover:text-white/40'}`}
+          >
+            <Zap className="w-3.5 h-3.5" />
+            {locale === 'ru' ? 'Новый сценарий' : 'New Script'}
+            {initialTab === 'new' && <motion.div layoutId="initialActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />}
+          </button>
+          <button 
+            onClick={() => setInitialTab('used')} 
+            className={`flex items-center gap-2 py-4 text-[11px] font-black uppercase tracking-widest transition-all relative ${initialTab === 'used' ? 'text-white' : 'text-white/20 hover:text-white/40'}`}
+          >
+            <History className="w-3.5 h-3.5" />
+            {locale === 'ru' ? 'История идей' : 'Spent Ideas'}
+            {initialTab === 'used' && <motion.div layoutId="initialActiveTab" className="absolute bottom-0 left-0 right-0 h-0.5 bg-purple-500" />}
+          </button>
+        </div>
 
-          {!isAiLocked && (
-            <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
-              <div className="flex items-center gap-2 ml-2">
-                <label className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60">
-                  {locale === 'ru' ? 'Выбор ИИ' : 'AI Engine'}
-                </label>
-                <InfoTooltip 
-                  content={locale === 'ru' 
-                    ? "Gemini — быстрая классика. Claude — глубокий анализ. Groq — моментальная генерация." 
-                    : "Gemini — fast classic. Claude — deep analysis. Groq — lightning fast generation."} 
-                />
+        {initialTab === 'used' ? (
+          <div className="space-y-4 animate-in fade-in duration-300">
+            {loadingUsed ? (
+              <div className="flex flex-col items-center justify-center py-20 gap-3">
+                <Loader2 className="w-6 h-6 animate-spin text-purple-500" />
+                <p className="text-[10px] text-white/40 uppercase tracking-[0.2em] font-bold animate-pulse">
+                  {locale === 'ru' ? 'Загрузка истории...' : 'Loading Spent Ideas...'}
+                </p>
               </div>
-              <div className="flex flex-wrap gap-2 p-1.5 bg-black/40 rounded-[1.5rem] border border-white/5 backdrop-blur-xl">
-                <button
-                  onClick={() => setSelectedEngine('gemini')}
-                  className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest ${
-                    selectedEngine === 'gemini' 
-                      ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
-                      : 'text-white/20 hover:text-white/40'
-                  }`}
-                >
-                  Gemini 3
-                </button>
-                <button
-                  onClick={() => setSelectedEngine('claude')}
-                  className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest ${
-                    selectedEngine === 'claude' 
-                      ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
-                      : 'text-white/20 hover:text-white/40'
-                  }`}
-                >
-                  Claude 4
-                </button>
-                {user?.anthropic_api_key && (
+            ) : usedIdeas.length > 0 ? (
+              <div className="grid gap-4">
+                {usedIdeas.map((idea, index) => (
+                  <div 
+                    key={idea.id || index}
+                    className="p-6 rounded-[2rem] border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-4 group"
+                  >
+                    <div className="space-y-2 flex-1">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[8px] font-black uppercase tracking-[0.2em] px-2 py-0.5 rounded-md bg-white/5 border border-white/10 text-white/40">
+                          {idea.category || 'Idea'}
+                        </span>
+                      </div>
+                      <h3 className="text-lg font-black text-white uppercase italic tracking-tight leading-tight">
+                        {idea.topic_title}
+                      </h3>
+                      {idea.rationale && (
+                        <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest line-clamp-2">
+                          {idea.rationale}
+                        </p>
+                      )}
+                    </div>
+                    <button
+                      onClick={() => handleRestartGeneration(idea.topic_title)}
+                      disabled={isLoading}
+                      className="px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600/10 to-purple-500/10 border border-purple-500/20 hover:from-purple-600/20 hover:to-purple-500/20 text-purple-300 text-[10px] font-black uppercase tracking-widest hover:scale-105 active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:scale-100"
+                    >
+                      {isLoading ? (
+                        <Loader2 size={12} className="animate-spin text-purple-400" />
+                      ) : (
+                        <Wand2 size={12} className="text-purple-400" />
+                      )}
+                      {locale === 'ru' ? 'Перезапустить генерацию' : 'Restart Generation'}
+                    </button>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center py-20 text-white/20 uppercase text-[10px] tracking-widest font-black rounded-[2rem] border border-dashed border-white/5 bg-white/[0.01]">
+                {locale === 'ru' ? 'История пуста. Вы еще не генерировали сценарии из идей.' : 'Idea history is empty.'}
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="space-y-8 animate-in fade-in duration-300">
+            {error && (
+              <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold animate-shake uppercase tracking-widest text-center">
+                {error}
+              </div>
+            )}
+            <div className="relative group space-y-2">
+              <div className="flex items-center justify-between px-1">
+                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 ml-2">
+                   {locale === 'ru' ? 'СУТЬ РОЛИКА' : 'VIDEO ESSENCE'}
+                 </span>
+                 <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-xl">
+                    {[
+                      { id: 'tiktok', icon: Zap, color: 'text-purple-400' },
+                      { id: 'youtube', icon: Play, color: 'text-red-500' },
+                      { id: 'instagram', icon: Camera, color: 'text-pink-500' },
+                      { id: 'threads', icon: Share2, color: 'text-blue-400' },
+                      { id: 'linkedin', icon: Monitor, color: 'text-blue-600' }
+                    ].map((p) => (
+                      <button
+                        key={p.id}
+                        onClick={() => setSelectedPlatform(p.id as any)}
+                        className={`p-2.5 rounded-xl transition-all ${
+                          selectedPlatform === p.id 
+                            ? 'bg-white/10 border border-white/10 text-white shadow-lg' 
+                            : 'text-white/20 hover:text-white/40'
+                        }`}
+                        title={p.id.toUpperCase()}
+                      >
+                        <p.icon size={14} className={selectedPlatform === p.id ? p.color : ''} />
+                      </button>
+                    ))}
+                  </div>
+              </div>
+              <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 top-6" />
+              <textarea
+                id="topic-textarea"
+                value={topicInput}
+                onChange={(e) => {
+                  console.log('Topic change:', e.target.value);
+                  setTopicInput(e.target.value);
+                }}
+                placeholder={locale === 'ru' ? 'Напр: 5 секретов как выбрать лучшее авто...' : 'E.g.: 5 secrets to picking the best car...'}
+                className="w-full h-48 bg-[#0d0d1a] border border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500/50 transition-all resize-none shadow-2xl relative z-10"
+              />
+            </div>
+
+            {!isAiLocked && (
+              <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
+                <div className="flex items-center gap-2 ml-2">
+                  <label className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60">
+                    {locale === 'ru' ? 'Выбор ИИ' : 'AI Engine'}
+                  </label>
+                  <InfoTooltip 
+                    content={locale === 'ru' 
+                      ? "Gemini — быстрая классика. Claude — глубокий анализ. Groq — моментальная генерация." 
+                      : "Gemini — fast classic. Claude — deep analysis. Groq — lightning fast generation."} 
+                  />
+                </div>
+                <div className="flex flex-wrap gap-2 p-1.5 bg-black/40 rounded-[1.5rem] border border-white/5 backdrop-blur-xl">
                   <button
-                    onClick={() => setSelectedEngine('claude-byok' as any)}
-                    className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-purple-500/30 ${
-                      selectedEngine === ('claude-byok' as any)
+                    onClick={() => setSelectedEngine('gemini')}
+                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest ${
+                      selectedEngine === 'gemini' 
                         ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
-                        : 'text-purple-400/40 hover:text-purple-400'
+                        : 'text-white/20 hover:text-white/40'
                     }`}
                   >
-                    <Key className="w-3 h-3" />
-                    Claude (BYOK)
+                    Gemini 3
                   </button>
-                )}
+                  <button
+                    onClick={() => setSelectedEngine('claude')}
+                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest ${
+                      selectedEngine === 'claude' 
+                        ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
+                        : 'text-white/20 hover:text-white/40'
+                    }`}
+                  >
+                    Claude 4
+                  </button>
+                  {user?.anthropic_api_key && (
+                    <button
+                      onClick={() => setSelectedEngine('claude-byok' as any)}
+                      className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-purple-500/30 ${
+                        selectedEngine === ('claude-byok' as any)
+                          ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
+                          : 'text-purple-400/40 hover:text-purple-400'
+                      }`}
+                    >
+                      <Key className="w-3 h-3" />
+                      Claude (BYOK)
+                    </button>
+                  )}
+                  <button
+                    onClick={() => setSelectedEngine('groq' as any)}
+                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-orange-500/30 ${
+                      selectedEngine === ('groq' as any)
+                        ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(255,100,0,0.3)]' 
+                        : 'text-orange-400/40 hover:text-orange-400'
+                    }`}
+                  >
+                    Groq
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {isAiLocked ? (
+              <div className="space-y-4">
                 <button
-                  onClick={() => setSelectedEngine('groq' as any)}
-                  className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-orange-500/30 ${
-                    selectedEngine === ('groq' as any)
-                      ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(255,100,0,0.3)]' 
-                      : 'text-orange-400/40 hover:text-orange-400'
-                  }`}
+                  onClick={handleManualStart}
+                  disabled={!topicInput || topicInput.trim().length < 3 || isLoading}
+                  className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
                 >
-                  Groq
+                  {isLoading ? (
+                    <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
+                  ) : (
+                    <>
+                      <span className="font-black text-lg uppercase tracking-widest">
+                        {locale === 'ru' ? 'Написать вручную' : 'Write Manually'}
+                      </span>
+                      <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                    </>
+                  )}
+                </button>
+                <button
+                  onClick={() => router.push('/app/profile/subscription')}
+                  className="w-full bg-white text-black py-6 rounded-[2rem] flex items-center justify-center gap-4 group font-black text-lg uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all relative z-10"
+                >
+                  <Sparkles className="w-6 h-6 animate-pulse" />
+                  {locale === 'ru' ? 'Разблокировать ИИ' : 'Unlock AI Engine'}
                 </button>
               </div>
-            </div>
-          )}
-
-          {isAiLocked ? (
-            <div className="space-y-4">
+            ) : (
               <button
-                onClick={handleManualStart}
+                id="generate-script-btn"
+                onClick={handleInitialGenerate}
                 disabled={!topicInput || topicInput.trim().length < 3 || isLoading}
-                className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
+                className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group disabled:opacity-30 disabled:grayscale transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
               >
                 {isLoading ? (
                   <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
                 ) : (
                   <>
-                    <span className="font-black text-lg uppercase tracking-widest">
-                      {locale === 'ru' ? 'Написать вручную' : 'Write Manually'}
+                    <span className="font-black text-lg uppercase tracking-widest flex items-center gap-3">
+                      {locale === 'ru' ? 'Создать сценарий' : 'Generate Script'}
+                      <InfoTooltip 
+                        content={locale === 'ru' ? "На следующем шаге система выдаст вам целую Матрицу (5 разных сценариев на выбор). Смело жмите!" : "The system will generate a full Content Matrix with 5 scenarios for you to choose from."} 
+                        iconClassName="text-white hover:text-white/80"
+                        size={18}
+                      />
                     </span>
                     <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                   </>
                 )}
               </button>
-              <button
-                onClick={() => router.push('/app/profile/subscription')}
-                className="w-full bg-white text-black py-6 rounded-[2rem] flex items-center justify-center gap-4 group font-black text-lg uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all relative z-10"
-              >
-                <Sparkles className="w-6 h-6 animate-pulse" />
-                {locale === 'ru' ? 'Разблокировать ИИ' : 'Unlock AI Engine'}
-              </button>
-            </div>
-          ) : (
-            <button
-              id="generate-script-btn"
-              onClick={handleInitialGenerate}
-              disabled={!topicInput || topicInput.trim().length < 3 || isLoading}
-              className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group disabled:opacity-30 disabled:grayscale transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
-            >
-              {isLoading ? (
-                <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
-              ) : (
-                <>
-                  <span className="font-black text-lg uppercase tracking-widest flex items-center gap-3">
-                    {locale === 'ru' ? 'Создать сценарий' : 'Generate Script'}
-                    <InfoTooltip 
-                      content={locale === 'ru' ? "На следующем шаге система выдаст вам целую Матрицу (5 разных сценариев на выбор). Смело жмите!" : "The system will generate a full Content Matrix with 5 scenarios for you to choose from."} 
-                      iconClassName="text-white hover:text-white/80"
-                      size={18}
-                    />
-                  </span>
-                  <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-                </>
-              )}
-            </button>
-          )}
-        </div>
+            )}
+          </div>
+        )}
       </div>
     );
   }
