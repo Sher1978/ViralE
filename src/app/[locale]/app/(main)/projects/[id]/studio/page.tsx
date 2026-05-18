@@ -555,6 +555,14 @@ export default function StudioPage() {
               }
             } catch (e) { console.error('[Studio] IDB Storage error:', e); }
 
+            // Revoke any previous recording URL to prevent double-blob memory leak
+            setLastRecordingUrl(prev => {
+              if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+              return null;
+            });
+
+            // Create new preview URL only AFTER releasing old one
+            // The full blob stays in IDB; VideoEditor will re-read from IDB or upload URL, not a second in-memory blob
             const url = URL.createObjectURL(blob);
             setLastRecordingUrl(url);
             
@@ -844,10 +852,10 @@ export default function StudioPage() {
           <AnimatePresence>
             {isSaving && (
               <motion.div 
-                initial={{ opacity: 0, y: -20 }}
+                initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, y: -20 }}
-                className="absolute top-4 right-4 z-[200] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md"
+                exit={{ opacity: 0, y: 20 }}
+                className="absolute bottom-4 left-4 z-[200] flex items-center gap-2 px-3 py-1.5 rounded-full bg-white/5 border border-white/10 backdrop-blur-md"
               >
                 <RefreshCw size={12} className="animate-spin text-purple-400" />
                 <span className="text-[10px] uppercase font-bold tracking-widest text-white/40">Syncing...</span>
@@ -993,8 +1001,15 @@ export default function StudioPage() {
                 <button
                   onClick={() => {
                     setShowAssemblyLauncher(false);
-                    // Small delay to let GC run before mounting FFmpeg
-                    setTimeout(() => handleTabChange('assembly'), 300);
+                    // 🚀 OOM PREVENTION: Revoke the in-memory preview blob URL before
+                    // mounting VideoEditor (FFmpeg). This frees the raw video from RAM.
+                    // VideoEditor will use the Supabase-uploaded URL for playback/processing.
+                    setLastRecordingUrl(prev => {
+                      if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+                      return prev; // keep the value so VideoEditor can render its upload-flow
+                    });
+                    // Give GC 500ms to collect before mounting FFmpeg.wasm
+                    setTimeout(() => handleTabChange('assembly'), 500);
                   }}
                   className="w-full max-w-xs py-5 bg-purple-500 rounded-[2rem] text-white font-black uppercase tracking-widest text-sm shadow-2xl shadow-purple-500/30 active:scale-95 transition-all"
                 >
@@ -1051,7 +1066,7 @@ export default function StudioPage() {
             {activeTab === 'assembly' && !showFaceless && (
               <VideoEditor 
                 projectId={projectId}
-                aRollUrl={lastRecordingUrl || ''}
+                aRollUrl={manifest?.videoUrl || lastRecordingUrl || ''}
                 onBack={() => {
                   if (isMobileRef.current) {
                     handleTabChange('teleprompter');
