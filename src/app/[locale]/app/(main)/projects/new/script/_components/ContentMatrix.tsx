@@ -190,26 +190,7 @@ export function ContentMatrix({
 
   return (
     <div className="relative pb-40">
-      {/* Background Processing Indicator */}
-      <AnimatePresence>
-        {isGenerating && (
-          <motion.div 
-            initial={{ opacity: 0, y: -10 }}
-            animate={{ opacity: 1, y: 0 }}
-            exit={{ opacity: 0, y: -10 }}
-            className="fixed top-24 left-1/2 -translate-x-1/2 z-50 px-6 py-3 rounded-full bg-purple-600/90 border border-purple-400/30 backdrop-blur-xl shadow-[0_10px_30px_rgba(168,85,247,0.4)] flex items-center gap-3 pointer-events-none"
-          >
-            <div className="flex gap-1">
-              <div className="w-1.5 h-4 bg-white/40 rounded-full animate-pulse" />
-              <div className="w-1.5 h-6 bg-white/80 rounded-full animate-pulse delay-75" />
-              <div className="w-1.5 h-4 bg-white/40 rounded-full animate-pulse delay-150" />
-            </div>
-            <span className="text-[10px] font-black uppercase tracking-widest text-white">
-              Digital DNA Ingesting... Matrix Update Active
-            </span>
-          </motion.div>
-        )}
-      </AnimatePresence>
+
 
       <AnimatePresence>
         {isGenerating && (
