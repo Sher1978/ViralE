@@ -359,12 +359,18 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
 
         try {
           setStageMessage('Извлечение аудио...');
-          
-          // CRITICAL: Skip local AudioContext extraction if the video file is larger than 3MB.
-          // Decoding WebM video files in Chrome V8 using decodeAudioData is single-threaded and locks the main thread, causing "Page Unresponsive" errors.
-          if (sourceBlob.size > 3 * 1024 * 1024) {
-            console.warn('[Studio] File size exceeds 3MB, skipping local AudioContext extraction to prevent browser freeze...');
-            throw new Error('File size exceeds 3MB, falling back to safe cloud upload');
+
+          // CRITICAL: Only skip local AudioContext extraction on Chrome Desktop (non-mobile).
+          // Chrome Desktop decodes WebM via decodeAudioData in a single thread → OOM crash.
+          // iPhone/Safari records native MP4/AAC which Safari handles efficiently without OOM.
+          // Applying the guard to iPhone caused a WORSE freeze: uploading 30-50MB MP4 to cloud on main thread.
+          const isChromeDesktop = typeof navigator !== 'undefined' &&
+            /Chrome/.test(navigator.userAgent) &&
+            !/Mobile|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
+
+          if (isChromeDesktop && sourceBlob.size > 15 * 1024 * 1024) {
+            console.warn('[Studio] Chrome Desktop + large file detected, skipping local AudioContext extraction to prevent OOM crash...');
+            throw new Error('Chrome Desktop: file too large for local extraction, fallback to cloud upload');
           }
 
           audioBlob = await extractAudioNative(sourceBlob);
@@ -412,6 +418,10 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         console.error('[Studio] Transcription flow failed:', err);
         setTranscriptionError(err.message || 'Ошибка обработки'); 
         setStageMessage('');
+        // IMPORTANT: Do NOT clear aRollUrl or reset stage to 'empty' here.
+        // The video must remain visible in the editor so user can retry transcription.
+        // Just set stage back to allow retry button to appear.
+        setStage('transcribing');
         return;
       }
     }

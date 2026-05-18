@@ -75,10 +75,19 @@ export const renderService = {
 
     const filePath = `user_recordings/${fileName}`;
 
-    // 1. Upload to Storage
-    const { data: uploadData, error: uploadError } = await supabase.storage
-      .from('media') // User specified 'videos' or 'media'. schema.sql uses 'media_assets' table.
+    // 1. Upload to Storage (with 30s timeout to prevent iOS Safari freeze on slow networks)
+    const uploadPromise = supabase.storage
+      .from('media')
       .upload(filePath, blob);
+
+    const timeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('Upload timeout after 30s — check network connection')), 30000)
+    );
+
+    const { data: uploadData, error: uploadError } = await Promise.race([
+      uploadPromise,
+      timeoutPromise as any
+    ]) as any;
 
     if (uploadError) throw uploadError;
 
