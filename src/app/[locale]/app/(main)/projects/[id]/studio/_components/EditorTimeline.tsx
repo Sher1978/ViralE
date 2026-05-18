@@ -53,6 +53,9 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   const lastTouchDistance = useRef<number | null>(null);
   const [placeholderTime, setPlaceholderTime] = useState<number | null>(null);
 
+  const lastTapRef = useRef<number>(0);
+  const lastSubtitleTapRef = useRef<number>(0);
+
   // Sync scroll position with current time
   useEffect(() => {
     const targetX = currentTime * PX_PER_SECOND;
@@ -185,25 +188,39 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                             <span className="text-xl font-bold text-white/40">+</span>
                         </div>
                     )}
-
+ 
                     {brollClips.map(clip => (
                         <div 
                             key={clip.id}
                             onTouchStart={(e) => { if (e.touches.length === 2) lastTouchDistance.current = null; }}
                             onTouchMove={(e) => handlePinch(e, 'clip', clip.id)}
                             onTouchEnd={() => { lastTouchDistance.current = null; }}
+                            onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                onBrollLongPress?.(clip.id);
+                            }}
                             onPointerDown={(e) => {
-                                // --- STILL LONG PRESS LOGIC ---
+                                // --- DOUBLE TAP DETECTION (Mobile/Responsive) ---
+                                const now = Date.now();
+                                if (now - lastTapRef.current < 300) {
+                                    onBrollLongPress?.(clip.id);
+                                    if ('vibrate' in navigator) navigator.vibrate([30, 30]);
+                                    lastTapRef.current = 0;
+                                    return;
+                                }
+                                lastTapRef.current = now;
+
+                                // --- STILL LONG PRESS LOGIC (500ms for high responsiveness) ---
                                 const startX = e.clientX;
                                 const startY = e.clientY;
                                 let movedTooMuch = false;
-
+ 
                                 const timer = setTimeout(() => {
                                     if (!movedTooMuch) {
                                         if ('vibrate' in navigator) navigator.vibrate(50);
                                         onBrollLongPress?.(clip.id);
                                     }
-                                }, 3000);
+                                }, 500);
                                 
                                 const onMove = (me: PointerEvent) => {
                                     const dist = Math.sqrt(Math.pow(me.clientX - startX, 2) + Math.pow(me.clientY - startY, 2));
@@ -219,7 +236,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 };
                                 window.addEventListener('pointermove', onMove);
                                 window.addEventListener('pointerup', onUp);
-
+ 
                                 // --- INDEPENDENT DRAG LOGIC ---
                                 if ((e.target as HTMLElement).classList.contains('resize-handle')) return;
                                 if ((e.target as HTMLElement).closest('.delete-btn')) return;
@@ -239,15 +256,28 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 window.addEventListener('pointermove', onDragMove);
                                 window.addEventListener('pointerup', onDragUp);
                             }}
-                            className="broll-clip-box absolute h-full rounded-lg bg-blue-500/30 border-2 border-blue-500/50 flex items-center justify-center overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10"
+                            className="broll-clip-box absolute h-full rounded-lg bg-blue-500/35 border-2 border-blue-400/60 flex items-center justify-between overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10"
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
                                 width: clip.duration * PX_PER_SECOND 
                             }}
                         >
-                            <div className="absolute inset-0 bg-gradient-to-br from-blue-400/20 to-transparent pointer-events-none" />
-                            <Layers size={12} className="text-blue-300 relative z-10 pointer-events-none" />
+                            <div className="absolute inset-0 bg-gradient-to-br from-blue-300/10 to-transparent pointer-events-none" />
                             
+                            {/* Visual Drag Dots indicator or layer icon */}
+                            <Layers size={11} className="text-blue-200/60 relative z-10 ml-3 pointer-events-none" style={{ minWidth: '11px' }} />
+                            
+                            {/* Delete/Delete-btn Trigger (restored correctly!) */}
+                            <button
+                                className="delete-btn absolute left-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-red-500/90 border border-white/10 hover:bg-red-600 active:scale-95 text-white flex items-center justify-center z-30 transition-all opacity-0 group-hover/clip:opacity-100 touch-none shadow-md"
+                                onPointerDown={(e) => {
+                                    e.stopPropagation();
+                                    onDeleteBroll?.(clip.id);
+                                }}
+                            >
+                                <span className="text-[11px] font-black leading-none" style={{ marginTop: '-1px' }}>×</span>
+                            </button>
+
                             {/* Resize Handle */}
                             <div 
                                 className="resize-handle absolute right-0 top-0 bottom-0 w-4 bg-blue-400/20 hover:bg-blue-400/60 cursor-ew-resize z-20 flex items-center justify-center"
@@ -272,7 +302,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                         </div>
                     ))}
                 </div>
-
+ 
                 {/* SUBTITLE TRACK */}
                 <div 
                     className="absolute bottom-1 h-8 w-full cursor-pointer pointer-events-auto"
@@ -282,18 +312,32 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                     {subtitleClips.map(clip => (
                         <div 
                             key={clip.id}
+                            onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                onCaptionClick?.(clip.id);
+                            }}
                             onPointerDown={(e) => {
-                                // --- STILL LONG PRESS LOGIC ---
+                                // --- DOUBLE TAP DETECTION (Mobile/Responsive) ---
+                                const now = Date.now();
+                                if (now - lastSubtitleTapRef.current < 300) {
+                                    onCaptionClick?.(clip.id);
+                                    if ('vibrate' in navigator) navigator.vibrate([30, 30]);
+                                    lastSubtitleTapRef.current = 0;
+                                    return;
+                                }
+                                lastSubtitleTapRef.current = now;
+
+                                // --- STILL LONG PRESS LOGIC (500ms for high responsiveness) ---
                                 const startX = e.clientX;
                                 const startY = e.clientY;
                                 let movedTooMuch = false;
-
+ 
                                 const timer = setTimeout(() => {
                                     if (!movedTooMuch) {
                                         if ('vibrate' in navigator) navigator.vibrate(50);
                                         onCaptionClick?.(clip.id);
                                     }
-                                }, 3000);
+                                }, 500);
                                 
                                 const onMove = (me: PointerEvent) => {
                                     const dist = Math.sqrt(Math.pow(me.clientX - startX, 2) + Math.pow(me.clientY - startY, 2));
