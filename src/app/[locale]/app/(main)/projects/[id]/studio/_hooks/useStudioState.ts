@@ -360,11 +360,11 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         try {
           setStageMessage('Извлечение аудио...');
           
-          // CRITICAL: Skip local AudioContext extraction if the video file is large (>15MB).
-          // Decoding large WebM files in Chrome V8 using decodeAudioData causes massive RAM spike and OOM crashes.
-          if (sourceBlob.size > 15 * 1024 * 1024) {
-            console.warn('[Studio] Large file detected, skipping local AudioContext extraction to prevent OOM crash...');
-            throw new Error('File too large for local extraction, fallback to cloud upload');
+          // CRITICAL: Skip local AudioContext extraction if the video file is larger than 3MB.
+          // Decoding WebM video files in Chrome V8 using decodeAudioData is single-threaded and locks the main thread, causing "Page Unresponsive" errors.
+          if (sourceBlob.size > 3 * 1024 * 1024) {
+            console.warn('[Studio] File size exceeds 3MB, skipping local AudioContext extraction to prevent browser freeze...');
+            throw new Error('File size exceeds 3MB, falling back to safe cloud upload');
           }
 
           audioBlob = await extractAudioNative(sourceBlob);
