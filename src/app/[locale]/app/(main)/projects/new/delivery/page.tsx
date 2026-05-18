@@ -132,10 +132,17 @@ function DeliveryPageContent() {
     const subSize = manifest?.subtitleSize || 82;
     const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
 
-    const drawtextChain = clips.map(c => {
-      const txt = esc((c.text || '').toUpperCase());
+    const drawtextChain = clips.flatMap(c => {
+      // Split words into two balanced lines exactly like Canvas editor does
+      const words = (c.text || '').toUpperCase().split(' ');
+      const midpoint = Math.ceil(words.length / 2);
+      const line1 = words.slice(0, midpoint).join(' ');
+      const line2 = words.slice(midpoint).join(' ');
+
+      const txt1 = esc(line1);
+      const txt2 = esc(line2);
       
-      // Style mapping
+      // Style mapping with FFmpeg-compatible colors
       let fontcolor = 'white';
       let box = 0;
       let boxcolor = 'black@0.5';
@@ -144,43 +151,47 @@ function DeliveryPageContent() {
       let shadowx = 0;
       let shadowy = 0;
       let shadowcolor = 'black@0.8';
-      let italic = 0;
+      let useItalic = false;
 
       if (subStyleIdx === 0) { // Classic Yellow Italic
-        fontcolor = '#facc15'; borderw = 4; shadowx = 2; shadowy = 2; italic = 1;
+        fontcolor = '0xFACC15'; borderw = 4; shadowx = 2; shadowy = 2; useItalic = true;
       } else if (subStyleIdx === 1) { // White Bold
         fontcolor = 'white'; borderw = 2; shadowy = 4;
       } else if (subStyleIdx === 2) { // Red Outline
-        fontcolor = '#ef4444'; borderw = 6; bordercolor = 'white';
+        fontcolor = '0xEF4444'; borderw = 6; bordercolor = 'white';
       } else if (subStyleIdx === 3) { // Cyber Neon
-        fontcolor = '#22d3ee'; shadowx = 0; shadowy = 0; italic = 1; borderw = 0;
+        fontcolor = '0x22D3EE'; shadowx = 0; shadowy = 0; useItalic = true; borderw = 0;
       } else if (subStyleIdx === 4) { // Minimalist
         fontcolor = 'white'; box = 1; boxcolor = 'black@0.6';
       } else if (subStyleIdx === 5) { // Boxy Yellow
-        fontcolor = 'black'; box = 1; boxcolor = '#facc15';
+        fontcolor = 'black'; box = 1; boxcolor = '0xFACC15';
       } else if (subStyleIdx === 6) { // Gradient (Approx)
         fontcolor = 'white'; shadowy = 2; shadowcolor = 'black@0.5';
       } else if (subStyleIdx === 7) { // Soft Pink
-        fontcolor = '#f472b6'; shadowy = 2;
+        fontcolor = '0xF472B6'; shadowy = 2;
       } else if (subStyleIdx === 8) { // Ghostly
         fontcolor = 'white@0.4';
       } else if (subStyleIdx === 9) { // Impact
         fontcolor = 'white'; shadowx = 0; shadowy = 0; borderw = 8; bordercolor = 'white@0.5';
       } else if (subStyleIdx === 10) { // Green Hacker
-        fontcolor = '#10b981'; shadowx = 0; shadowy = 0;
+        fontcolor = '0x10B981'; shadowx = 0; shadowy = 0;
       } else if (subStyleIdx === 11) { // Royal Gold
-        fontcolor = '#fbbf24'; italic = 1; shadowy = 2;
+        fontcolor = '0xFBBF24'; useItalic = true; shadowy = 2;
       }
 
-      // Calculate final Y position (FFmpeg 0,0 is top-left)
-      const baseVerticalPos = videoHeight - Math.round(videoHeight * 0.15); 
+      // Map Y coordinates exactly to canvas editor: 1920 - 450 - subPos.y
+      const baseVerticalPos = videoHeight - 450; 
       const finalY = baseVerticalPos - subPos.y;
 
       const subStart = typeof c.startTime === 'number' && !isNaN(c.startTime) ? c.startTime : 0;
       const subEnd = typeof c.endTime === 'number' && !isNaN(c.endTime) ? c.endTime : subStart + 3;
+      const font = useItalic ? 'font_italic.ttf' : 'font.ttf';
 
-      return [
-        `drawtext=fontfile=font.ttf:text='${txt}'`,
+      const lineFilters = [];
+
+      // Add Line 1
+      lineFilters.push([
+        `drawtext=fontfile=${font}:text='${txt1}'`,
         `fontsize=${subSize}`,
         `fontcolor=${fontcolor}`,
         `borderw=${borderw}`,
@@ -192,7 +203,27 @@ function DeliveryPageContent() {
         `x=(w-text_w)/2 + ${subPos.x}`,
         `y=${finalY}`,
         `enable='between(t,${subStart},${subEnd})'`,
-      ].filter(Boolean).join(':');
+      ].filter(Boolean).join(':'));
+
+      // Add Line 2 if it exists
+      if (line2) {
+        lineFilters.push([
+          `drawtext=fontfile=${font}:text='${txt2}'`,
+          `fontsize=${subSize}`,
+          `fontcolor=${fontcolor}`,
+          `borderw=${borderw}`,
+          `bordercolor=${bordercolor}`,
+          `shadowcolor=${shadowcolor}`,
+          `shadowx=${shadowx}`,
+          `shadowy=${shadowy}`,
+          box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
+          `x=(w-text_w)/2 + ${subPos.x}`,
+          `y=${finalY + subSize + 15}`,
+          `enable='between(t,${subStart},${subEnd})'`,
+        ].filter(Boolean).join(':'));
+      }
+
+      return lineFilters;
     }).join(',');
 
     return baseFilter ? `${baseFilter},${drawtextChain}` : drawtextChain;
@@ -576,7 +607,18 @@ function DeliveryPageContent() {
         const fontData = await fetchFile('/fonts/Roboto-Bold.ttf');
         await ffmpeg.writeFile('font.ttf', fontData);
       } catch (e) {
-        console.warn('[Delivery] Failed to load font:', e);
+        console.warn('[Delivery] Failed to load standard font:', e);
+      }
+
+      try {
+        const italicFontData = await fetchFile('https://fonts.gstatic.com/s/roboto/v30/KFOkCnqEu92Fr1Mu51xIIzc.ttf');
+        await ffmpeg.writeFile('font_italic.ttf', italicFontData);
+      } catch (e) {
+        console.warn('[Delivery] Failed to load italic font, falling back to standard font copy:', e);
+        try {
+          const standardFont = await ffmpeg.readFile('font.ttf');
+          await ffmpeg.writeFile('font_italic.ttf', standardFont);
+        } catch (e2) {}
       }
 
       const processedBrolls = [];
