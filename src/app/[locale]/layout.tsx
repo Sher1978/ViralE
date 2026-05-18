@@ -49,6 +49,11 @@ export const metadata: Metadata = {
     icon: "/icon-512x512.png",
     apple: "/icon-512x512.png",
   },
+  appleWebApp: {
+    capable: true,
+    statusBarStyle: "black-translucent",
+    title: "Viral Studio",
+  },
 };
 
 export const viewport: Viewport = {
@@ -57,6 +62,7 @@ export const viewport: Viewport = {
   initialScale: 1,
   maximumScale: 1,
   userScalable: false,
+  viewportFit: "cover",
 };
 
 import { Providers } from "@/components/Providers";
