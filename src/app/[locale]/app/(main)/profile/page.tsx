@@ -138,22 +138,22 @@ export default function ProfilePage() {
     {
       title: t('sectionProfile'),
       items: [
-        { icon: Fingerprint, label: t('dnaLabel'), sub: t('dnaSub'), href: `/${locale}/app/profile/dna`, accent: '#D4AF37' },
-        { icon: UserCircle2, label: t('avatarLabel'), sub: t('avatarSub'), href: `/${locale}/app/profile/avatar`, accent: '#00FFCC' },
-        { icon: Send, label: t('telegramLabel'), sub: t('telegramSub'), href: `/${locale}/app/profile/telegram`, accent: '#4D9EFF' },
+        { icon: Fingerprint, label: t('dnaLabel'), sub: t('dnaSub'), href: `/app/profile/dna`, accent: '#D4AF37' },
+        { icon: UserCircle2, label: t('avatarLabel'), sub: t('avatarSub'), href: `/app/profile/avatar`, accent: '#00FFCC' },
+        { icon: Send, label: t('telegramLabel'), sub: t('telegramSub'), href: `/app/profile/telegram`, accent: '#4D9EFF' },
       ],
     },
     {
       title: t('sectionPro'),
       items: [
-        { icon: Key, label: t('byokLabel'), sub: t('byokSub'), href: `/${locale}/app/profile/byok`, accent: '#D4AF37' },
-        { icon: ShieldCheck, label: t('securityLabel'), sub: t('securitySub'), href: `/${locale}/app/profile/security`, accent: '#FF4D6D' },
+        { icon: Key, label: t('byokLabel'), sub: t('byokSub'), href: `/app/profile/byok`, accent: '#D4AF37' },
+        { icon: ShieldCheck, label: t('securityLabel'), sub: t('securitySub'), href: `/app/profile/security`, accent: '#FF4D6D' },
       ],
     },
     {
       title: t('sectionSettings'),
       items: [
-        { icon: Bell, label: t('notifLabel'), sub: t('notifSub'), href: `/${locale}/app/profile/notifications`, accent: '#9B5FFF' },
+        { icon: Bell, label: t('notifLabel'), sub: t('notifSub'), href: `/app/profile/notifications`, accent: '#9B5FFF' },
         { 
           icon: Languages, 
           label: locale === 'ru' ? 'Язык Интерфейса' : 'Interface Language', 

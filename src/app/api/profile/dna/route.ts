@@ -29,8 +29,8 @@ export async function PATCH(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
     const userId = user.id;
-    const { newData, visualStyle, locale = 'en' } = await req.json();
-
+    const { newData, visualStyle, locale = 'en', resetPrompt = false } = await req.json();
+ 
     // 1. If only updating visual style
     if (visualStyle && !newData) {
       const { error } = await authorizedSupabase
@@ -40,20 +40,20 @@ export async function PATCH(req: Request) {
       if (error) throw error;
       return NextResponse.json({ success: true, visualStyle });
     }
-
+ 
     if (!newData) {
       return NextResponse.json({ error: 'Missing new data' }, { status: 400 });
     }
-
+ 
     // 2. Get current DNA
     const { data: profile } = await authorizedSupabase
       .from('profiles')
       .select('digital_shadow_prompt')
       .eq('id', userId)
       .single();
-
-    const oldPersona = profile?.digital_shadow_prompt || "";
-
+ 
+    const oldPersona = resetPrompt ? "" : (profile?.digital_shadow_prompt || "");
+ 
     // 3. Synthesize new DNA
     const updatedPersona = await updateDnaPersona(oldPersona, newData, locale);
 

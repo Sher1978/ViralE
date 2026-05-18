@@ -24,6 +24,16 @@ import {
 import { Link } from '@/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
+interface DnaAnswers {
+  sphere: string;
+  audience: string;
+  painPoint: string;
+  approach: string;
+  goal: string;
+  tone: string;
+  advantage: string;
+}
+
 export default function DnaManagementPage() {
   const t = useTranslations('profileDna');
   const locale = useLocale();
@@ -32,14 +42,72 @@ export default function DnaManagementPage() {
   const [dna, setDna] = useState('');
   const [selectedStyle, setSelectedStyle] = useState('startup_valley');
 
-  const [newData, setNewData] = useState('');
+  const [answers, setAnswers] = useState<DnaAnswers>({
+    sphere: '',
+    audience: '',
+    painPoint: '',
+    approach: '',
+    goal: '',
+    tone: '',
+    advantage: '',
+  });
+
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState(false);
   const [resetting, setResetting] = useState(false);
+  const [regeneratingAll, setRegeneratingAll] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
+  const questions: { id: keyof DnaAnswers, label: string, placeholder: string, hint: string }[] = [
+    { 
+       id: 'sphere', 
+       label: locale === 'ru' ? '1. Ниша и Сфера' : '1. Niche & Sphere', 
+       placeholder: locale === 'ru' ? 'Напр: Технологии, Лайфстайл, Бизнес...' : 'e.g. Tech, Lifestyle, Business...',
+       hint: locale === 'ru' ? 'О чем ваш контент в двух словах?' : 'What is your content about in a few words?'
+    },
+    { 
+       id: 'audience', 
+       label: locale === 'ru' ? '2. Ваша Аудитория' : '2. Your Audience', 
+       placeholder: locale === 'ru' ? 'Кто ваши идеальные зрители?' : 'Who are your ideal viewers?',
+       hint: locale === 'ru' ? 'Опишите их боли и желания.' : 'Describe their pains and desires.'
+    },
+    { 
+       id: 'painPoint', 
+       label: locale === 'ru' ? '3. Главная Проблема' : '3. Main Problem', 
+       placeholder: locale === 'ru' ? 'Какую проблему вы решаете?' : 'What problem do you solve?',
+       hint: locale === 'ru' ? 'Почему они должны вас смотреть?' : 'Why should they watch you?'
+    },
+    { 
+       id: 'approach', 
+       label: locale === 'ru' ? '4. Секретный Соус' : '4. Secret Sauce', 
+       placeholder: locale === 'ru' ? 'В чем ваша уникальность?' : 'What makes you unique?',
+       hint: locale === 'ru' ? 'Ваш авторский стиль или метод.' : 'Your author style or method.'
+    },
+    { 
+       id: 'goal', 
+       label: locale === 'ru' ? '5. Цель Контента' : '5. Content Goal', 
+       placeholder: locale === 'ru' ? 'Продажи, лояльность или охват?' : 'Sales, loyalty, or reach?',
+       hint: locale === 'ru' ? 'Какой результат вы ждете от видео?' : 'What result do you expect?'
+    },
+    { 
+       id: 'tone', 
+       label: locale === 'ru' ? '6. Тон Голоса' : '6. Tone of Voice', 
+       placeholder: locale === 'ru' ? 'Ирония, экспертность, драйв?' : 'Irony, expert, drive?',
+       hint: locale === 'ru' ? 'Как вы общаетесь со зрителем?' : 'How do you communicate?'
+    },
+    { 
+       id: 'advantage', 
+       label: locale === 'ru' ? '7. Финальный Оффер' : '7. Final Offer', 
+       placeholder: locale === 'ru' ? 'Почему клиент выберет вас?' : 'Why choose you?',
+       hint: locale === 'ru' ? 'Ваше главное конкурентное преимущество.' : 'Your main competitive advantage.'
+    },
+  ];
+
   useEffect(() => {
-    fetchDna();
+    async function loadData() {
+      await Promise.all([fetchDna(), fetchAnswers()]);
+    }
+    loadData();
   }, []);
 
   async function fetchDna() {
@@ -52,6 +120,20 @@ export default function DnaManagementPage() {
       console.error(e);
     } finally {
       setLoading(false);
+    }
+  }
+
+  async function fetchAnswers() {
+    try {
+      const res = await fetch('/api/profile/dna/answers');
+      if (res.ok) {
+        const data = await res.json();
+        if (data && data.answers) {
+          setAnswers(prev => ({ ...prev, ...data.answers }));
+        }
+      }
+    } catch (e) {
+      console.error('Failed to fetch DNA answers:', e);
     }
   }
 
@@ -68,27 +150,50 @@ export default function DnaManagementPage() {
     }
   }
 
-
   async function handleUpdate() {
-    if (!newData.trim()) return;
     setUpdating(true);
     setError(null);
     try {
-      const res = await fetch('/api/profile/dna', {
+      // 1. Save the 7 DNA Answers
+      const answersRes = await fetch('/api/profile/dna/answers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers, locale })
+      });
+      if (!answersRes.ok) {
+        const errData = await answersRes.json();
+        throw new Error(errData.error || 'Failed to save DNA answers');
+      }
+
+      // 2. Clear old ideas feed to trigger matrix regeneration
+      const resetRes = await fetch('/api/ideas/reset', {
+        method: 'DELETE'
+      });
+      if (!resetRes.ok) {
+        throw new Error('Failed to reset ideas matrix');
+      }
+
+      // 3. Update the digital shadow prompt based on updated answers
+      const compiledAnswers = Object.entries(answers)
+        .map(([key, val]) => `${key.toUpperCase()}: ${val}`)
+        .join('. ');
+      
+      const dnaRes = await fetch('/api/profile/dna', {
         method: 'PATCH',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ newData, locale })
+        body: JSON.stringify({ newData: compiledAnswers, locale, resetPrompt: true })
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || (locale === 'ru' ? 'Ошибка обновления DNA' : 'DNA update failed'));
-      
-      if (data.dna) {
-        setDna(data.dna);
-        setNewData('');
+
+      if (dnaRes.ok) {
+        const dnaData = await dnaRes.json();
+        if (dnaData.dna) setDna(dnaData.dna);
       }
+
+      // 4. Redirect to matrix scroller page to trigger rebuild
+      router.push(`/app/ideas`);
     } catch (e: any) {
-      console.error('[DnaLab] Update error:', e);
-      setError(e.message || 'Update failed');
+      console.error('[DnaLab] Regeneration error:', e);
+      setError(e.message || 'Regeneration failed');
     } finally {
       setUpdating(false);
     }
@@ -107,6 +212,62 @@ export default function DnaManagementPage() {
       setError(e.message || 'Reset failed');
     } finally {
       setResetting(false);
+    }
+  }
+
+  async function handleForceRegenerateAll() {
+    const msg = locale === 'ru' 
+      ? 'Вы уверены, что хотите полностью стереть текущую матрицу и запустить новую генерацию идей на основе вашего ДНК?' 
+      : 'Are you sure you want to completely erase the current matrix and start a new idea generation based on your DNA?';
+    if (!window.confirm(msg)) return;
+
+    setRegeneratingAll(true);
+    setError(null);
+    try {
+      // 1. Save the 7 DNA Answers
+      const answersRes = await fetch('/api/profile/dna/answers', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ answers, locale })
+      });
+      if (!answersRes.ok) {
+        const errData = await answersRes.json();
+        throw new Error(errData.error || 'Failed to save DNA answers');
+      }
+
+      // 2. Clear old ideas feed to trigger matrix regeneration
+      const resetRes = await fetch('/api/ideas/reset', {
+        method: 'DELETE'
+      });
+      if (!resetRes.ok) {
+        throw new Error('Failed to reset ideas matrix');
+      }
+
+      // 3. Update and force rebuild of digital shadow prompt from scratch
+      const compiledAnswers = Object.entries(answers)
+        .map(([key, val]) => `${key.toUpperCase()}: ${val}`)
+        .join('. ');
+      
+      const dnaRes = await fetch('/api/profile/dna', {
+        method: 'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ newData: compiledAnswers, locale, resetPrompt: true })
+      });
+
+      if (!dnaRes.ok) {
+        throw new Error('Failed to rebuild brand DNA prompt');
+      }
+
+      const dnaData = await dnaRes.json();
+      if (dnaData.dna) setDna(dnaData.dna);
+
+      // 4. Redirect to matrix scroller page
+      router.push(`/app/ideas`);
+    } catch (e: any) {
+      console.error('[DnaLab] Rebuild error:', e);
+      setError(e.message || 'Rebuild failed');
+    } finally {
+      setRegeneratingAll(false);
     }
   }
 
@@ -265,21 +426,35 @@ export default function DnaManagementPage() {
               <Zap size={14} className="text-purple-400" />
             </div>
             <div>
-              <h2 className="text-sm font-black text-white uppercase tracking-tight">{t('updateTitle')}</h2>
-              <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold">{t('updateSub')}</p>
+              <h2 className="text-sm font-black text-white uppercase tracking-tight">
+                {locale === 'ru' ? 'КАЛИБРОВКА СМЫСЛОВ (7 ВОПРОСОВ)' : 'SEMANTIC CALIBRATION (7 QUESTIONS)'}
+              </h2>
+              <p className="text-[9px] text-white/30 uppercase tracking-widest font-bold">
+                {locale === 'ru' ? 'Настройте ДНК бренда для точных рекомендаций ИИ' : 'Fine-tune your brand DNA for precise AI suggestions'}
+              </p>
             </div>
           </div>
 
-          <textarea
-            value={newData}
-            onChange={(e) => setNewData(e.target.value)}
-            placeholder={t('placeholder')}
-            className="w-full h-40 bg-white/[0.03] border border-white/[0.08] rounded-2xl p-5 text-sm text-white/80 focus:outline-none focus:border-purple-500/50 transition-all resize-none placeholder:text-white/10 outline-none leading-relaxed font-medium mb-6"
-          />
+          <div className="space-y-5 mb-6">
+            {questions.map((q) => (
+              <div key={q.id} className="space-y-1.5">
+                <label className="text-[10px] font-black uppercase text-purple-400 tracking-wider flex items-center gap-1.5">
+                  <span>{q.label}</span>
+                  <span className="text-[9px] font-bold text-white/20 normal-case">({q.hint})</span>
+                </label>
+                <textarea
+                  value={answers[q.id] || ''}
+                  onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                  placeholder={q.placeholder}
+                  className="w-full h-20 bg-white/[0.03] border border-white/[0.08] rounded-xl p-3 text-xs text-white/80 focus:outline-none focus:border-purple-500/50 transition-all resize-none placeholder:text-white/10 outline-none leading-relaxed font-medium"
+                />
+              </div>
+            ))}
+          </div>
 
           <button
             onClick={handleUpdate}
-            disabled={updating || !newData.trim()}
+            disabled={updating || Object.values(answers).every(v => !v || !v.trim())}
             className="w-full h-14 flex items-center justify-center gap-3 rounded-2xl transition-all font-black uppercase text-xs tracking-[0.2em] disabled:opacity-20 disabled:grayscale disabled:cursor-not-allowed group relative overflow-hidden text-white shadow-[0_10px_30px_rgba(168,85,247,0.2)]"
             style={{
               background: 'linear-gradient(135deg, #A855F7, #7C3AED)'
@@ -291,7 +466,7 @@ export default function DnaManagementPage() {
             ) : (
               <>
                 <Sparkles size={18} className="group-hover:rotate-12 transition-transform" />
-                <span>{t('updateBtn')}</span>
+                <span>{locale === 'ru' ? 'СОХРАНИТЬ И РЕГЕНЕРИРОВАТЬ МАТРИЦУ' : 'SAVE & REGENERATE MATRIX'}</span>
               </>
             )}
           </button>
@@ -301,6 +476,40 @@ export default function DnaManagementPage() {
               ⚠️ {error}
             </div>
           )}
+        </motion.div>
+
+        {/* Force Rebuild & Regenerate Matrix Section */}
+        <motion.div 
+          initial={{ opacity: 0, y: 20 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="p-6 rounded-[2.5rem] bg-purple-500/5 border border-purple-500/10 flex flex-col items-center text-center gap-1.5"
+        >
+          <Sparkles size={24} className="text-purple-400 mb-2 animate-pulse" />
+          <h3 className="text-[10px] font-black text-purple-400 uppercase tracking-[0.3em]">
+            {locale === 'ru' ? 'РЕГЕНЕРИРОВАТЬ МАТРИЦУ' : 'REGENERATE MATRIX'}
+          </h3>
+          <p className="text-[9px] text-white/30 uppercase tracking-widest font-black">
+            {locale === 'ru' ? 'Генерация новой матрицы без условий' : 'Generate new matrix from scratch'}
+          </p>
+          <p className="text-[11px] text-white/40 max-w-[280px] leading-relaxed my-3 font-medium">
+            {locale === 'ru' 
+              ? 'ИИ сотрет ВСЕ старые автомобильные идеи и создаст новые темы исключительно про психологию и ваш коучинг.' 
+              : 'AI will erase ALL old car ideas and construct new themes strictly on psychology and coaching.'}
+          </p>
+          <button
+            onClick={handleForceRegenerateAll}
+            disabled={regeneratingAll || Object.values(answers).every(v => !v || !v.trim())}
+            className="w-full h-14 flex items-center justify-center gap-3 rounded-2xl transition-all font-black uppercase text-xs tracking-[0.2em] disabled:opacity-20 disabled:grayscale disabled:cursor-not-allowed text-white shadow-[0_10px_30px_rgba(168,85,247,0.15)] bg-gradient-to-r from-purple-500 to-indigo-600 hover:from-purple-600 hover:to-indigo-700 hover:scale-[1.02] active:scale-95"
+          >
+            {regeneratingAll ? (
+              <RefreshCw className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                <Sparkles size={16} />
+                <span>{locale === 'ru' ? 'РЕГЕНЕРИРОВАТЬ КОНТЕНТ' : 'РЕГЕНЕРИРОВАТЬ КОНТЕНТ'}</span>
+              </>
+            )}
+          </button>
         </motion.div>
 
         {/* Terminal Options / Danger Zone */}

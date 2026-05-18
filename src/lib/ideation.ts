@@ -76,37 +76,58 @@ export async function generateDailyIdeas(
     }
   }
 
-  if (!dnaContext) {
-    const dnaAnswers = profile?.dna_answers || {};
-    isDnaComplete = Object.values(dnaAnswers).filter((v: any) => v && v.toString().length > 2).length >= 7;
-    dnaContext = isDnaComplete ? formatDNA(dnaAnswers) : "";
+  // Fallback 1: Use database answers if file doesn't exist
+  if (!isDnaComplete && profile?.dna_answers) {
+    const dnaAnswers = profile.dna_answers || {};
+    const validAnswersCount = Object.values(dnaAnswers).filter((v: any) => v && v.toString().length > 2).length;
+    if (validAnswersCount > 0) {
+      dnaContext = formatDNA(dnaAnswers);
+      isDnaComplete = true;
+      console.log(`Using Database DNA answers for user ${userId}.`);
+    }
   }
 
-  // Load Content Lego for ideation constraints
+  // Fallback 2: Use digital shadow prompt if answers are missing but shadow is present
+  if (!isDnaComplete && profile?.digital_shadow_prompt && profile.digital_shadow_prompt.trim().length > 10) {
+    dnaContext = `🧬 DIGITAL SHADOW DNA:\n${profile.digital_shadow_prompt}`;
+    isDnaComplete = true;
+    console.log(`Using Digital Shadow Prompt as DNA fallback for user ${userId}.`);
+  }
+
+  if (!isDnaComplete) {
+    throw new Error(locale === 'ru' ? 'Заполните ДНК бренда перед генерацией матрицы идей.' : 'Please complete your Brand DNA before generating the idea matrix.');
+  }
+
+  // Load Content Lego and General Script for ideation constraints
   let contentLego = "";
+  let generalScript = "";
   try {
     const legoPath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', 'Content_lego.md');
     contentLego = fs.readFileSync(legoPath, 'utf-8');
+    const scriptPath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', 'General_script.md');
+    generalScript = fs.readFileSync(scriptPath, 'utf-8');
   } catch (e) {
-    console.warn('Content Lego file not found for ideation');
+    console.warn('AI prompt files not found for ideation');
   }
 
-  const templateContext = !isDnaComplete 
-    ? (locale === 'ru' ? "Автомобили в Дубае (перепродажа, люкс, пустыня, сервис, покупка, экспорт)" : "Cars in Dubai (resale, luxury, desert, service, buying, export)")
-    : "";
-
-  const digitalShadow = profile?.digital_shadow_prompt || (isDnaComplete ? 'Expert Content Strategist.' : 'Dubai Car Industry Expert');
+  const digitalShadow = profile?.digital_shadow_prompt || 'Expert Content Strategist.';
   const targetCategory = category || "General";
 
   // Pre-format context blocks to avoid complex template literal nesting
-  const brandContextBlock = isDnaComplete ? `USER BRAND DNA: ${dnaContext}` : `TEMPLATE THEMATIC: ${templateContext}`;
-  const strategicContextBlock = isDnaComplete ? `STRATEGIC CONTEXT: ${digitalShadow}` : "";
+  const brandContextBlock = `--- ФАЙЛ: Brand_DNA.md (УНИКАЛЬНЫЙ ДОКУМЕНТ ПОЛЬЗОВАТЕЛЯ) ---\n${dnaContext}`;
+  const strategicContextBlock = `STRATEGIC CONTEXT: ${digitalShadow}`;
 
   const prompt = `
     You are the "Viral Engine" Strategic Consultant.
     
-    GUIDING METHODOLOGY (Content Lego):
+    ${generalScript}
+    
+    --- ФАЙЛ: Content_lego.md ---
     ${contentLego}
+
+    ${brandContextBlock}
+    
+    ${strategicContextBlock}
 
     TASK: Generate 5 high-retention video topic ideas for the category: "${targetCategory}".
     
@@ -114,12 +135,8 @@ export async function generateDailyIdeas(
     Each category matches a stage in the awareness ladder. 
     Focus this specific generation on: "${targetCategory}".
     
-    CRITICAL: All generated text content MUST BE IN THE SAME LANGUAGE as the user's input or the TEMPLATE THEMATIC provided below. If context is in Russian, output Russian. If Ukrainian, output Ukrainian. Default to ${languageName} only if language is ambiguous.
-    
-    ${brandContextBlock}
-    
-    ${strategicContextBlock}
-
+    CRITICAL: All generated text content MUST BE IN THE SAME LANGUAGE as the user's input/brand DNA context. If context is in Russian, output Russian. If Ukrainian, output Ukrainian. Default to ${languageName} only if language is ambiguous.
+ 
     FOR CATEGORY "${targetCategory}":
     - If "Hooks": Generate ONLY the first 5 seconds of a script. These should be viral eye-catchers. 
     - If "Roles": Generate ONLY "Personas" or "Stances" (e.g. "The Cynic", "The Enthusiast", "The Investigative Journalist").
@@ -128,7 +145,7 @@ export async function generateDailyIdeas(
     - If "Solution": Focus on how the methodology or product solves specific issues.
     - If "Loyalty": Focus on social proof, brand values, or community.
     - If "Fast Sales": Sharp CTAs and urgent value.
-    - If "Trends": Hook onto current YouTube viral formats (Dubai luxury, speed, desert challenges).
+    - If "Trends": Hook onto current viral formats suited to the brand DNA niche (do NOT mention cars or Dubai unless explicitly in user DNA).
 
     OUTPUT FORMAT: JSON array of 5 objects
     [

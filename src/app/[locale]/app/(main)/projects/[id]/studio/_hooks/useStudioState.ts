@@ -359,6 +359,14 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
 
         try {
           setStageMessage('Извлечение аудио...');
+          
+          // CRITICAL: Skip local AudioContext extraction if the video file is large (>15MB).
+          // Decoding large WebM files in Chrome V8 using decodeAudioData causes massive RAM spike and OOM crashes.
+          if (sourceBlob.size > 15 * 1024 * 1024) {
+            console.warn('[Studio] Large file detected, skipping local AudioContext extraction to prevent OOM crash...');
+            throw new Error('File too large for local extraction, fallback to cloud upload');
+          }
+
           audioBlob = await extractAudioNative(sourceBlob);
           
           // Vercel / Serverless body limit is 4.5MB
@@ -369,7 +377,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
             publicUrl = uploadRes.publicUrl;
           }
         } catch (e) {
-          console.warn('[Studio] Local audio extraction failed, falling back to full cloud upload:', e);
+          console.warn('[Studio] Local audio extraction skipped or failed, falling back to full cloud upload:', e);
           setStageMessage('Облачная загрузка (резервный путь)...');
           const uploadRes = await renderService.uploadMedia(projectId, sourceBlob, 'video');
           publicUrl = uploadRes.publicUrl;

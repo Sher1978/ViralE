@@ -32,8 +32,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     if (prof) {
       setProfile(prof);
       const answers = (prof as any).dna_answers || {};
-      const isComplete = Object.values(answers).filter((v: any) => v && v.toString().length > 2).length >= 7;
-      setDnaComplete(isComplete);
+      const validAnswersCount = Object.values(answers).filter((v: any) => v && v.toString().length > 2).length;
+      const isComplete = validAnswersCount > 0 || (prof.digital_shadow_prompt && prof.digital_shadow_prompt.trim().length > 10);
+      setDnaComplete(!!isComplete);
     }
   }, []);
 

@@ -83,6 +83,21 @@ export default function StudioPage() {
   const [customScript, setCustomScript] = useState<string>('');
   const [useCustomScript, setUseCustomScript] = useState<boolean>(false);
   const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
+
+  // Auto-revoke blob URL to prevent memory leaks
+  useEffect(() => {
+    return () => {
+      if (lastRecordingUrl && lastRecordingUrl.startsWith('blob:')) {
+        console.log('[Studio] Revoking recording blob URL:', lastRecordingUrl);
+        try {
+          URL.revokeObjectURL(lastRecordingUrl);
+        } catch (e) {
+          console.warn('[Studio] Revoke failed:', e);
+        }
+      }
+    };
+  }, [lastRecordingUrl]);
+
   const [showRecordingReview, setShowRecordingReview] = useState(false);
   const [scriptOpacity, setScriptOpacity] = useState(0.85);
   const [scriptColor, setScriptColor] = useState('#ffffff');
@@ -518,6 +533,7 @@ export default function StudioPage() {
           recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
           recorder.onstop = async () => {
             const blob = new Blob(localChunks, { type: recorder.mimeType });
+            localChunks.length = 0; // Clear chunks to free RAM immediately
             const timestamp = Date.now();
             const recordingId = (isVoiceOnly ? 'raw_audio_' : 'raw_rec_') + projectId + '_' + timestamp;
             
@@ -531,6 +547,7 @@ export default function StudioPage() {
               
               if (!isVoiceOnly && audioChunks.length > 0) {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                audioChunks.length = 0; // Clear audio chunks to free RAM immediately
                 const audioRecId = `raw_rec_audio_${projectId}_${timestamp}`;
                 await idb.set(audioRecId, audioBlob, 'MediaBuffer');
                 await idb.set(`pending_audio_${projectId}`, audioRecId, 'ProjectDrafts');
@@ -1006,7 +1023,7 @@ export default function StudioPage() {
                       projectService.updateLatestVersionManifest(projectId, next);
                       return next;
                     });
-                    handleTabChange('assembly');
+                    setShowAssemblyLauncher(true);
                   }
                   else if (option === 'animate') handleTabChange('avatar_hub');
                 }}
