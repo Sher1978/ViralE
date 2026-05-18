@@ -322,7 +322,10 @@ export const TeleprompterView = React.memo(({
       </AnimatePresence>
       
       {/* 🔮 Top HUD - Reading Zone Marker */}
-      <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black via-black/80 to-transparent z-40" />
+      <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black via-black/85 to-transparent z-40" />
+
+      {/* 🔮 Bottom Fade Gradient - masks text from overlapping bottom record controls */}
+      <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black via-black/90 to-transparent z-30 pointer-events-none" />
       
       <div className="absolute top-8 left-0 right-0 px-6 flex items-center justify-between z-[45]">
         <button 
@@ -359,11 +362,11 @@ export const TeleprompterView = React.memo(({
       >
         <div 
           id="scrolling-content"
-          className="w-full space-y-12 transition-all duration-700 ease-out px-10 text-center flex flex-col pt-[18vh] pb-[100vh]"
+          className="w-full space-y-12 transition-all duration-700 ease-out px-24 sm:px-36 text-center flex flex-col pt-[18vh] pb-[100vh]"
         >
           {/* Eye Contact Guide (Only for Video Mode) */}
           {!isVoiceOnly && (
-            <div className="absolute top-[18vh] inset-x-10 h-32 border-y border-white/5 pointer-events-none z-0" />
+            <div className="absolute top-[18vh] inset-x-24 sm:inset-x-36 h-32 border-y border-white/5 pointer-events-none z-0" />
           )}
           
           <p 
