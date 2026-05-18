@@ -296,12 +296,18 @@ export default function ScriptLabPage() {
         // Stop global loading
         setIsLoading(false);
         setIsGenerating(false);
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('isGenerating');
+        }
         
       } catch (err) {
         console.error('Failed to load script:', err);
         setError('Failed to load project data');
         setIsLoading(false);
         setIsGenerating(false);
+        if (typeof window !== 'undefined') {
+          sessionStorage.removeItem('isGenerating');
+        }
       }
     }
 

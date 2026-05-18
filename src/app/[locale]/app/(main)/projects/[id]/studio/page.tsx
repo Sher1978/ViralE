@@ -526,7 +526,7 @@ export default function StudioPage() {
           } else {
             recorder = new MediaRecorder(activeStream, { 
               mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm',
-              videoBitsPerSecond: isMobile ? 2500000 : 5000000
+              videoBitsPerSecond: isMobile ? 1200000 : 2500000
             });
           }
 

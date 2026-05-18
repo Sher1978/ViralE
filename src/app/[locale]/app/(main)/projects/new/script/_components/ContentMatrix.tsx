@@ -32,7 +32,7 @@ function ScenarioCard({
   });
 
   useEffect(() => {
-    if (inView && !isSelected) {
+    if (inView && !isSelected && typeof window !== 'undefined' && window.innerWidth < 768) {
       onSelect(blockId, scenarioId);
     }
   }, [inView, isSelected, onSelect, blockId, scenarioId]);
@@ -50,16 +50,17 @@ function ScenarioCard({
   return (
     <motion.div
       ref={ref}
+      onClick={() => onSelect(blockId, scenarioId)}
       animate={{ 
         scale: isSelected ? 1.02 : 0.92,
         opacity: isSelected ? 1 : 0.4,
         y: isSelected ? 0 : 10,
       }}
       transition={{ type: 'spring', stiffness: 300, damping: 30 }}
-      className={`flex-none w-[85vw] sm:w-[360px] snap-center rounded-[2.5rem] border transition-all duration-500 overflow-hidden relative backdrop-blur-xl group ${
+      className={`flex-none w-[85vw] sm:w-[360px] snap-center rounded-[2.5rem] border transition-all duration-500 overflow-hidden relative backdrop-blur-xl group cursor-pointer ${
         isSelected 
           ? 'border-purple-500/40 bg-gradient-to-b from-purple-500/10 to-black/80 shadow-[0_20px_50px_rgba(168,85,247,0.25)]' 
-          : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10'
+          : 'border-white/5 bg-white/[0.01] hover:bg-white/[0.03] hover:border-white/10 hover:border-purple-500/20'
       }`}
       style={{ 
         boxShadow: isSelected 
