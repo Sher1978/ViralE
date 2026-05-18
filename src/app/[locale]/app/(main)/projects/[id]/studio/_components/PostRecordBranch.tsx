@@ -74,7 +74,7 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               onClick={() => onSelect('pure')}
               className="w-full py-5 rounded-[2rem] bg-purple-600 text-white font-black uppercase tracking-[0.2em] text-sm shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
             >
-              В МОНТАЖ <ArrowRight size={16} />
+              В МОНТАЖ <Scissors size={16} />
             </motion.button>
 
             <motion.button
@@ -85,26 +85,29 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
             >
               АВАТАР СТУДИЯ <Sparkles size={14} className="text-purple-400" />
             </motion.button>
+
+            <motion.button
+              whileHover={{ scale: 1.02 }}
+              whileTap={{ scale: 0.98 }}
+              onClick={onDownload}
+              className="w-full py-4 rounded-[2rem] bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 text-white font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2 shadow-lg shadow-blue-950/20"
+            >
+              СОХРАНИТЬ НА УСТРОЙСТВО <Download size={14} className="text-blue-400" />
+            </motion.button>
           </div>
 
           {/* SECONDARY ACTIONS (Backup / Safety) */}
-          <div className="grid grid-cols-2 gap-3 w-full pt-4 border-t border-white/5">
-            <button
-              onClick={onDownload}
-              className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.02] border border-white/5 text-white/30 hover:text-white/60 transition-all"
-            >
-              <Download size={14} />
-              <span className="text-[9px] font-black uppercase tracking-widest">Save</span>
-            </button>
-
-            <button
-              onClick={onTelegram}
-              className="flex items-center justify-center gap-2 py-3 rounded-xl bg-white/[0.02] border border-white/5 text-white/30 hover:text-white/60 transition-all"
-            >
-              <Send size={14} />
-              <span className="text-[9px] font-black uppercase tracking-widest">Telegram</span>
-            </button>
-          </div>
+          {onTelegram && (
+            <div className="w-full pt-4 border-t border-white/5 flex justify-center">
+              <button
+                onClick={onTelegram}
+                className="flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-white/[0.02] border border-white/5 text-white/30 hover:text-white/60 transition-all"
+              >
+                <Send size={14} />
+                <span className="text-[9px] font-black uppercase tracking-widest">Telegram Backup</span>
+              </button>
+            </div>
+          )}
         </div>
       </div>
     </div>
