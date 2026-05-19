@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       try {
         const buffer = Buffer.from(await file.arrayBuffer());
         const base64 = buffer.toString('base64');
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
         const result = await model.generateContent([
           { text: TRANSCRIPTION_PROMPT },
           { inlineData: { mimeType: geminiMime, data: base64 } },
@@ -164,7 +164,7 @@ export async function POST(req: NextRequest) {
             if (stateData.state === 'ACTIVE') break;
             attempts++;
           }
-          const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+          const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash' });
           const result = await model.generateContent([{ text: TRANSCRIPTION_PROMPT }, { fileData: { mimeType: geminiMime, fileUri } }]);
           const rawText = result.response.text();
           const transcript = parseTranscript(rawText);
