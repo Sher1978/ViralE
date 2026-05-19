@@ -345,20 +345,8 @@ export default function StudioPage() {
           if (!selectedVideoDeviceId && v.length > 0) setSelectedVideoDeviceId(v[0].deviceId);
           if (!selectedAudioDeviceId && a.length > 0) setSelectedAudioDeviceId(a[0].deviceId);
 
-          // 🚀 Background Pre-init Camera (Non-blocking)
-          if (typeof window !== 'undefined') {
-            const preInit = () => {
-              if (activeTab === 'branch' || activeTab === 'concept') {
-                console.log('[Studio] Pre-initializing camera in background...');
-                initCamera().catch(e => console.warn('Pre-init camera failed (likely no perms):', e));
-              }
-            };
-            if ('requestIdleCallback' in window) {
-              (window as any).requestIdleCallback(preInit, { timeout: 2000 });
-            } else {
-              setTimeout(preInit, 1000);
-            }
-          }
+          // 🚀 Camera pre-initialization in background removed to prevent camera access prompt on selection screens.
+          // Access is requested only when entering the Teleprompter view.
         }
 
       } catch (err) {
