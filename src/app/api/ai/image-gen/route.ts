@@ -10,7 +10,7 @@ const XAI_API_KEY = process.env.XAI_API_KEY;
 
 export async function POST(req: Request) {
   try {
-    const { prompt, style_prefix = '', aspect_ratio = '9:16', provider = 'flux' } = await req.json();
+    const { prompt, style_prefix = '', aspect_ratio = '9:16', provider = 'flux', seed } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
@@ -69,7 +69,7 @@ export async function POST(req: Request) {
     // --- OPTION 1: RUNWARE (FLUX optimized) ---
     if (RUNWARE_API_KEY) {
       try {
-        console.log(`[Image Gen] Trying Runware FLUX with AR ${aspect_ratio}...`);
+        console.log(`[Image Gen] Trying Runware FLUX with AR ${aspect_ratio} and seed ${seed}...`);
         const payload = [
           { taskType: 'authentication', apiKey: RUNWARE_API_KEY },
           {
@@ -80,7 +80,8 @@ export async function POST(req: Request) {
             height,
             model: 'runware:101@1', // FLUX.1 [schnell] - Fast & Realistic
             numberResults: 1,
-            outputFormat: 'webp'
+            outputFormat: 'webp',
+            ...(seed !== undefined && seed !== null && { seed: Number(seed) })
           }
         ];
 

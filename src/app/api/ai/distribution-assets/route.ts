@@ -56,11 +56,7 @@ export async function POST(req: Request) {
       Стиль: Глубокий анализ, структурированный заголовок, введение, 3-4 смысловых блока с подзаголовками, заключение и мощный финальный вывод. (3000+ симв).
       Начни с: "Статья для блога:"
 
-      5. Промпты для Instagram Carousel (6 слайдов)
-      Ultra-realistic, cinematic lighting, 4K, 8K, depth of field. AR 4:5. 
-      Сюжет: Слайд 1 - Метафора проблемы. 2-5 - Пошаговая визуализация смыслов. 6 - Финальный слайд с CTA.
-
-      6. Промпт обложки видео (Shorts/Reels Banner)
+      5. Промпт обложки видео (Shorts/Reels Banner)
       AR 9:16. Sharp focus. Реалистичный герой в контексте мысли.
       Текст (Overlay): Выдели самую хлесткую фразу-смысл для наложения.
 
@@ -82,17 +78,6 @@ export async function POST(req: Request) {
         "longread_article": {
           "title": "Заголовок статьи",
           "text": "Полный текст статьи с разметкой..."
-        },
-        "ig_carousel": {
-          "technical_specs": "Resolution 1080x1350, AR 4:5",
-          "prompts": [
-            "Slide 1: [Prompt...]",
-            "Slide 2: [Prompt...]",
-            "Slide 3: [Prompt...]",
-            "Slide 4: [Prompt...]",
-            "Slide 5: [Prompt...]",
-            "Slide 6: [Prompt...]"
-          ]
         },
         "video_banner": {
           "image_prompt": "Detailed AI prompt for banner with AR 9:16...",
