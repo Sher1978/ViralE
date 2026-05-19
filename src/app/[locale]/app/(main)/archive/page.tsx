@@ -13,23 +13,30 @@ import { ContentPack, JTBDCategory, JTBD_META } from '@/lib/types/contentPack';
 import { profileService } from '@/lib/services/profileService';
 import { projectService } from '@/lib/services/projectService';
 
-// ── Mock service ──────────────────────────────────────────────────────────
-function buildMockPacks(projects: any[]): ContentPack[] {
-  return projects.map((p, i) => ({
-    id: `pack_${p.id}`,
-    projectId: p.id,
-    title: p.title || `Content Pack ${i + 1}`,
-    createdAt: p.created_at || new Date().toISOString(),
-    updatedAt: p.updated_at || new Date().toISOString(),
-    jtbd: (['post_today', 'published', 'in_progress', 'draft'] as JTBDCategory[])[i % 4],
-    videoUrl: undefined,
-    coverImageUrl: undefined,
-    caption: undefined,
-    article: undefined,
-    galleryImages: [],
-    postedTo: i % 4 === 1 ? ['youtube', 'instagram'] : [],
-    assetsReady: [4, 5, 2, 1][i % 4],
-  }));
+function buildRealPacks(projects: any[]): ContentPack[] {
+  return projects.map((p) => {
+    // Map project status to JTBD Category
+    let jtbd: JTBDCategory = 'draft';
+    if (p.status === 'completed') jtbd = 'published';
+    else if (p.status === 'rendering' || p.status === 'storyboard' || p.status === 'scripting') jtbd = 'in_progress';
+    else if (p.status === 'ideation') jtbd = 'post_today';
+
+    return {
+      id: p.id,
+      projectId: p.id,
+      title: p.title || 'Untitled Project',
+      createdAt: p.created_at || new Date().toISOString(),
+      updatedAt: p.updated_at || new Date().toISOString(),
+      jtbd,
+      videoUrl: p.final_video_url,
+      coverImageUrl: undefined,
+      caption: undefined,
+      article: undefined,
+      galleryImages: [],
+      postedTo: [],
+      assetsReady: p.status === 'completed' ? 5 : p.status === 'rendering' ? 3 : 1,
+    };
+  });
 }
 
 // ── Asset icons for cards ──────────────────────────────────────────────────
@@ -64,8 +71,8 @@ export default function LibraryPage() {
       const profile = await profileService.getOrCreateProfile();
       if (!profile) return;
       const projects = await projectService.listProjects(profile.id);
-      const mockPacks = buildMockPacks(projects);
-      setPacks(mockPacks);
+      const realPacks = buildRealPacks(projects);
+      setPacks(realPacks);
     } catch (err) {
       console.error(err);
     } finally {

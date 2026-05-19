@@ -212,7 +212,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   return (
     <div className="fixed inset-0 z-[100] bg-black/97 backdrop-blur-3xl flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-5 py-4 flex-none border-b border-white/5">
+      <div className="flex items-center justify-between px-5 py-4 flex-none border-b border-white/5 safe-top">
         <div>
           <h2 className="text-xl font-black text-white italic tracking-tighter uppercase flex items-center gap-2">
             <Film size={22} className="text-purple-500" />
@@ -395,7 +395,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
       {previewVideo && (
         <div className="fixed inset-0 z-[120] bg-black flex flex-col">
           {/* Top bar */}
-          <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-5 z-20">
+          <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-5 z-20 safe-top">
             <button
               onClick={() => setPreviewVideo(null)}
               className="p-3 rounded-lg bg-black/50 backdrop-blur-md border border-white/10 text-white active:scale-95"

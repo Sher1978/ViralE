@@ -813,7 +813,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                 className="fixed inset-0 bg-[#07070c]/98 backdrop-blur-3xl z-[9999] flex flex-col overflow-hidden text-white"
               >
                 {/* Fixed Blurred Header */}
-                <div className="p-6 border-b border-white/5 flex items-center justify-between shrink-0 bg-black/30 backdrop-blur-md relative z-10">
+                <div className="p-6 border-b border-white/5 flex items-center justify-between shrink-0 bg-black/30 backdrop-blur-md relative z-10 safe-top">
                   <button
                     onClick={() => setSelectedDetail(null)}
                     className="flex items-center gap-2 text-white/50 hover:text-white text-[11px] font-black uppercase tracking-widest active:opacity-60 transition-all"
@@ -1006,16 +1006,25 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                     {selectedDetail === 'carousel' && (
                       <div className="space-y-8 animate-in fade-in duration-300">
                         {/* 1. Header with Global Actions */}
-                        <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5 backdrop-blur-md">
-                          <div>
-                            <h3 className="text-xl font-black uppercase tracking-wider text-white flex items-center gap-3">
-                              <Sparkles size={20} className="text-purple-400" />
-                              {locale === 'ru' ? 'Instagram Студия Галерей' : 'Instagram Carousel Studio'}
-                            </h3>
-                            <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">
-                              {locale === 'ru' ? 'Визуальный холст + тексты постов на базе ДНК' : 'Visual Canvas + Brand DNA Post Optimizer'}
-                            </p>
-                          </div>
+                        <div className="flex flex-col gap-6 p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5 backdrop-blur-md">
+                          {/* Navigation Back Button */}
+                          <button
+                            onClick={() => setSelectedDetail(null)}
+                            className="self-start flex items-center gap-2 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                          >
+                            <ArrowLeft size={14} /> {locale === 'ru' ? 'НАЗАД В МАТРИЦУ' : 'BACK TO MATRIX'}
+                          </button>
+
+                          <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+                            <div>
+                              <h3 className="text-xl font-black uppercase tracking-wider text-white flex items-center gap-3">
+                                <Sparkles size={20} className="text-purple-400" />
+                                {locale === 'ru' ? 'Instagram Студия Галерей' : 'Instagram Carousel Studio'}
+                              </h3>
+                              <p className="text-[10px] text-white/30 font-bold uppercase tracking-widest mt-1">
+                                {locale === 'ru' ? 'Визуальный холст + тексты постов на базе ДНК' : 'Visual Canvas + Brand DNA Post Optimizer'}
+                              </p>
+                            </div>
                           
                           {assets?.ig_carousel && (
                             <div className="flex flex-wrap gap-3">
@@ -1034,107 +1043,101 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 className="px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50"
                               >
                                 {isExportingAll ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                                {locale === 'ru' ? 'Скачать готовую карусель (6 JPG)' : 'Download Finished Carousel (6 JPGs)'}
+                                {locale === 'ru' ? 'Скачать карусель (6 JPG)' : 'Download Carousel (6 JPGs)'}
                               </button>
                             </div>
                           )}
                         </div>
 
-                        {!assets?.ig_carousel ? (
-                          /* LAZY LOADING SETUP COMPONENT */
-                          <div className="max-w-3xl mx-auto p-8 md:p-12 rounded-[2.5rem] bg-white/[0.01] border border-white/5 backdrop-blur-md space-y-8 animate-in zoom-in-95 duration-300">
-                            <div className="text-center space-y-3">
-                              <div className="w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-purple-400 animate-pulse">
-                                <Sparkles size={28} />
+                        {/* 2. Configuration Accordion */}
+                        <div className="rounded-[2.5rem] bg-white/[0.01] border border-white/5 overflow-hidden">
+                          <button
+                            onClick={() => setShowSettings(!showSettings)}
+                            className="w-full flex items-center justify-between p-6 hover:bg-white/[0.02] transition-colors"
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-10 h-10 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400">
+                                <Brain size={20} />
                               </div>
-                              <h4 className="text-lg font-black uppercase tracking-wider text-white">
+                              <span className="font-black uppercase tracking-widest text-[12px] text-purple-400">
                                 {locale === 'ru' ? 'Настройка Генерации Карусели' : 'Configure Carousel Pipeline'}
-                              </h4>
-                              <p className="text-[11px] text-white/40 leading-relaxed max-w-md mx-auto">
-                                {locale === 'ru' 
-                                  ? 'Создай вовлекающую карусель из 6 слайдов, адаптированную под твою ДНК личности, с единым визуальным стилем.'
-                                  : 'Create an engaging 6-slide carousel calibrated through your Brand DNA with visual cohesion.'}
-                              </p>
+                              </span>
+                            </div>
+                            <span className="text-[10px] font-bold text-white/30 hover:text-white/60 transition-colors uppercase tracking-widest">
+                              {showSettings ? (locale === 'ru' ? 'Скрыть ✕' : 'Hide ✕') : (locale === 'ru' ? 'Открыть настройки ⚙' : 'Configure ⚙')}
+                            </span>
+                          </button>
+
+                          {showSettings && (
+                            <div className="px-6 pb-6 pt-2 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
+                            <div className="space-y-3">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                                🎭 {locale === 'ru' ? 'Модель вещания (Tone Mode)' : 'Tone Model Mode'}
+                              </label>
+                              <div className="grid grid-cols-3 gap-2">
+                                {(['expert', 'mentor', 'provocateur'] as const).map(mode => (
+                                  <button
+                                    key={mode}
+                                    onClick={() => setToneMode(mode)}
+                                    className={cn(
+                                      "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all hover:scale-[1.02] active:scale-[0.98]",
+                                      toneMode === mode
+                                        ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/25"
+                                        : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white/80"
+                                    )}
+                                  >
+                                    {mode === 'expert' && (locale === 'ru' ? '🎓 Эксперт' : '🎓 Expert')}
+                                    {mode === 'mentor' && (locale === 'ru' ? '🤝 Наставник' : '🤝 Mentor')}
+                                    {mode === 'provocateur' && (locale === 'ru' ? '🔥 Провокатор' : '🔥 Provocateur')}
+                                  </button>
+                                ))}
+                              </div>
                             </div>
 
-                            <div className="space-y-6">
-                              {/* 1. Tone Switch */}
-                              <div className="space-y-3">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                                  🎭 {locale === 'ru' ? 'Модель вещания (Tone Mode)' : 'Tone Model Mode'}
-                                </label>
-                                <div className="grid grid-cols-3 gap-2">
-                                  {(['expert', 'mentor', 'provocateur'] as const).map(mode => (
-                                    <button
-                                      key={mode}
-                                      onClick={() => setToneMode(mode)}
-                                      className={cn(
-                                        "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all hover:scale-[1.02] active:scale-[0.98]",
-                                        toneMode === mode
-                                          ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/25"
-                                          : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white/80"
-                                      )}
-                                    >
-                                      {mode === 'expert' && (locale === 'ru' ? '🎓 Эксперт' : '🎓 Expert')}
-                                      {mode === 'mentor' && (locale === 'ru' ? '🤝 Наставник' : '🤝 Mentor')}
-                                      {mode === 'provocateur' && (locale === 'ru' ? '🔥 Провокатор' : '🔥 Provocateur')}
-                                    </button>
-                                  ))}
-                                </div>
-                              </div>
-
-                              {/* 2. CTA word & Seed */}
-                              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                <div className="space-y-2">
-                                  <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                                    🔑 {locale === 'ru' ? 'Кодовое слово (CTA)' : 'Automation Code Word'}
-                                  </label>
-                                  <input
-                                    type="text"
-                                    value={ctaWord}
-                                    onChange={(e) => setCtaWord(e.target.value.toUpperCase())}
-                                    placeholder={locale === 'ru' ? 'Например: СТАРТ' : 'E.g. START'}
-                                    className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all"
-                                  />
-                                </div>
-                                <div className="space-y-2">
-                                  <div className="flex justify-between items-center">
-                                    <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                                      🎲 {locale === 'ru' ? 'Генеративный сид' : 'Generative Seed'}
-                                    </label>
-                                    <button 
-                                      onClick={() => setStyleSeed(Math.floor(Math.random() * 9999))}
-                                      className="text-[8px] font-bold text-white/30 uppercase tracking-widest hover:text-white/60 flex items-center gap-1"
-                                    >
-                                      <RefreshCw size={8} /> {locale === 'ru' ? 'Случайный' : 'Shuffle'}
-                                    </button>
-                                  </div>
-                                  <div className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] font-mono text-purple-400 font-bold">
-                                    #{styleSeed}
-                                  </div>
-                                </div>
-                              </div>
-
-                              {/* 3. User brief / prompt wishes */}
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                               <div className="space-y-2">
                                 <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                                  💬 {locale === 'ru' ? 'Твоё пожелание к карусели (Опционально)' : 'Your creative brief / wishes (Optional)'}
+                                  🔑 {locale === 'ru' ? 'Кодовое слово (CTA)' : 'Automation Code Word'}
                                 </label>
-                                <textarea
-                                  value={userBrief}
-                                  onChange={(e) => setUserBrief(e.target.value)}
-                                  placeholder={locale === 'ru'
-                                    ? 'Например: сделай упор на боли новичков, используй юмор, упомяни мой курс по продажам...'
-                                    : 'E.g. focus on beginner pain points, use humor, mention my sales course...'}
-                                  rows={3}
-                                  className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all resize-none"
+                                <input
+                                  type="text"
+                                  value={ctaWord}
+                                  onChange={(e) => setCtaWord(e.target.value.toUpperCase())}
+                                  placeholder={locale === 'ru' ? 'Например: СТАРТ' : 'E.g. START'}
+                                  className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all"
                                 />
-                                <p className="text-[8px] text-white/25 font-bold uppercase tracking-widest">
-                                  {locale === 'ru'
-                                    ? 'Пожелание будет откалибровано через ДНК и подстроено под твой голос автоматически'
-                                    : 'Your brief will be filtered through your Brand DNA and adapted to your voice automatically'}
-                                </p>
                               </div>
+                              <div className="space-y-2">
+                                <div className="flex justify-between items-center">
+                                  <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                                    🎲 {locale === 'ru' ? 'Генеративный сид' : 'Generative Seed'}
+                                  </label>
+                                  <button 
+                                    onClick={() => setStyleSeed(Math.floor(Math.random() * 9999))}
+                                    className="text-[8px] font-bold text-white/30 uppercase tracking-widest hover:text-white/60 flex items-center gap-1"
+                                  >
+                                    <RefreshCw size={8} /> {locale === 'ru' ? 'Случайный' : 'Shuffle'}
+                                  </button>
+                                </div>
+                                <div className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] font-mono text-purple-400 font-bold">
+                                  #{styleSeed}
+                                </div>
+                              </div>
+                            </div>
+
+                            <div className="space-y-2">
+                              <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                                💬 {locale === 'ru' ? 'Твоё пожелание к карусели' : 'Your creative brief'}
+                              </label>
+                              <textarea
+                                value={userBrief}
+                                onChange={(e) => setUserBrief(e.target.value)}
+                                placeholder={locale === 'ru'
+                                  ? 'Например: сделай упор на боли новичков, используй юмор...'
+                                  : 'E.g. focus on beginner pain points, use humor...'}
+                                rows={2}
+                                className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all resize-none custom-scrollbar"
+                              />
                             </div>
 
                             <button
@@ -1143,480 +1146,249 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                               className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl disabled:opacity-50"
                             >
                               {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                              {locale === 'ru' ? '✨ Запустить генерацию карусели' : '✨ Start Carousel Generation'}
+                              {locale === 'ru' ? '✨ Сгенерировать тексты и структуру' : '✨ Generate Texts & Structure'}
                             </button>
-                          </div>
-                        ) : (
-                          /* 2. Main Active Workspace Layout */
-                          <div className="grid grid-cols-1 xl:grid-cols-12 gap-8">
-                            
-                            {/* LEFT PANE (Columns 5): Live Mockup Card & Controls */}
-                            <div className="xl:col-span-5 space-y-6 flex flex-col">
-                              <div className="flex items-center justify-between px-2">
-                                <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">
-                                  {locale === 'ru' ? 'Предварительный просмотр' : 'Instagram Mockup Preview'}
-                                </span>
-                                <span className="text-[10px] font-bold text-white/40">
-                                  {activeSlideIndex + 1} / 6
-                                </span>
-                              </div>
-
-                              {/* Instagram Slide Canvas Container */}
-                              <div 
-                                onClick={() => {
-                                  const key = `carousel-${activeSlideIndex}`;
-                                  if (imageResults[key]) {
-                                    setLightboxType('carousel');
-                                    setLightboxIndex(activeSlideIndex);
-                                  }
-                                }}
-                                className={cn(
-                                  "relative w-full aspect-[4/5] rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl bg-black flex flex-col group transition-all duration-300",
-                                  imageResults[`carousel-${activeSlideIndex}`] ? "cursor-zoom-in hover:scale-[1.01] hover:border-purple-500/30" : ""
-                                )}
-                              >
-                                {/* Eye indicator on hover (desktop) */}
-                                {imageResults[`carousel-${activeSlideIndex}`] && (
-                                  <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none duration-300 z-30">
-                                    <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-100 transition-all duration-300">
-                                      <Eye size={22} />
-                                    </div>
-                                  </div>
-                                )}
-
-                                {/* Always-visible Zoom Eye indicator for touch/mobile devices */}
-                                {imageResults[`carousel-${activeSlideIndex}`] && (
-                                  <div className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/90 shadow-2xl z-20 pointer-events-none active:scale-95 transition-all">
-                                    <Eye size={15} />
-                                  </div>
-                                )}
-
-                                {/* Background Image / Placeholder */}
-                                {(() => {
-                                  const key = `carousel-${activeSlideIndex}`;
-                                  const url = imageResults[key];
-                                  const isGen = isGeneratingImages[key];
-
-                                  if (url) {
-                                    return <img src={url} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-102" alt="Slide BG" />;
-                                  }
-                                  if (isGen) {
-                                    return (
-                                      <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10">
-                                        <Loader2 size={40} className="text-purple-500 animate-spin mb-4" />
-                                        <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest">{locale === 'ru' ? 'Рисуем фон слайда...' : 'Generating background...'}</p>
-                                      </div>
-                                    );
-                                  }
-                                  return (
-                                    <div className="absolute inset-0 bg-gradient-to-br from-slate-900 to-zinc-950 flex flex-col items-center justify-center p-8 text-center border-b border-white/5">
-                                      <ImageIcon size={32} className="text-white/10 mb-4" />
-                                      <p className="text-[10px] font-bold text-white/30 uppercase tracking-widest leading-relaxed">
-                                        {locale === 'ru' ? 'Фон не сгенерирован' : 'No visual background generated'}
-                                      </p>
-                                      <button
-                                        onClick={() => {
-                                          const prompt = customImagePrompts[activeSlideIndex + 1] || (assets?.ig_carousel as any)?.slides?.[activeSlideIndex]?.image_prompt || (assets?.ig_carousel as any)?.prompts?.[activeSlideIndex] || '';
-                                          generateSingleImage(prompt, '4:5', key);
-                                        }}
-                                        className="mt-4 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white text-[9px] font-bold uppercase tracking-widest hover:bg-white/10 transition-all"
-                                      >
-                                        {locale === 'ru' ? 'Сгенерировать' : 'Generate Visual'}
-                                      </button>
-                                    </div>
-                                  );
-                                })()}
-
-                                {/* Styled Live Text Overlay (Updates in Realtime!) */}
-                                <div className="absolute inset-0 flex flex-col justify-between p-10 z-10 pointer-events-none select-none">
-                                  {/* Slide Top branding */}
-                                  <div className="flex items-center justify-between text-white/50 font-bold text-[11px] tracking-wider">
-                                    <span>@viral_engine</span>
-                                    <span className={cn("px-2 py-0.5 rounded bg-black/30 backdrop-blur-md border border-white/10 text-[9px]", activeTheme === 'business' && 'text-slate-500 bg-transparent border-none')}>
-                                      0{activeSlideIndex + 1} / 06
-                                    </span>
-                                  </div>
-
-                                  {/* Slide Body Content Based on Theme */}
-                                  <div className="flex-1 flex flex-col justify-center">
-                                    {activeTheme === 'minimalist' && (
-                                      <div className="w-full h-full absolute inset-0 bg-black/60 border-[4px] border-purple-500/30 flex items-center justify-center p-12 text-center">
-                                        <p className="text-white font-extrabold text-2xl md:text-3xl leading-snug tracking-tight drop-shadow-md">
-                                          {customSlideTexts[activeSlideIndex + 1] || `Slide ${activeSlideIndex + 1}`}
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    {activeTheme === 'cyber' && (
-                                      <div className="w-full p-8 rounded-3xl bg-black/85 border border-pink-500/50 shadow-lg text-left space-y-4">
-                                        <div className="w-16 h-1.5 bg-cyan-400 rounded-full" />
-                                        <p className="text-white font-black text-xl md:text-2xl leading-relaxed tracking-wide uppercase">
-                                          {customSlideTexts[activeSlideIndex + 1] || `Slide ${activeSlideIndex + 1}`}
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    {activeTheme === 'business' && (
-                                      <div className="w-full p-8 rounded-3xl bg-white border border-slate-200 shadow-xl text-left mt-auto space-y-3">
-                                        <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">KEY TAKEAWAY #{activeSlideIndex + 1}</span>
-                                        <p className="text-slate-800 font-bold text-lg md:text-xl leading-snug">
-                                          {customSlideTexts[activeSlideIndex + 1] || `Slide ${activeSlideIndex + 1}`}
-                                        </p>
-                                      </div>
-                                    )}
-
-                                    {activeTheme === 'glow' && (
-                                      <div className="w-full text-center mt-auto pb-4">
-                                        <p className="text-white font-black text-2xl md:text-3xl leading-snug tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)]">
-                                          {customSlideTexts[activeSlideIndex + 1] || `Slide ${activeSlideIndex + 1}`}
-                                        </p>
-                                      </div>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Navigation Chevrons inside preview */}
-                                <div className="absolute inset-x-4 top-1/2 -translate-y-1/2 flex justify-between z-20 pointer-events-none">
-                                  <button
-                                    onClick={() => setActiveSlideIndex(prev => (prev > 0 ? prev - 1 : 5))}
-                                    className="pointer-events-auto p-2.5 rounded-full bg-black/60 border border-white/10 text-white hover:bg-black/80 transition-all hover:scale-105 active:scale-95 shadow-xl"
-                                  >
-                                    <ChevronLeft size={16} />
-                                  </button>
-                                  <button
-                                    onClick={() => setActiveSlideIndex(prev => (prev < 5 ? prev + 1 : 0))}
-                                    className="pointer-events-auto p-2.5 rounded-full bg-black/60 border border-white/10 text-white hover:bg-black/80 transition-all hover:scale-105 active:scale-95 shadow-xl"
-                                  >
-                                    <ChevronRight size={16} />
-                                  </button>
-                                </div>
-                              </div>
-
-                              {/* Slide indicators dot list */}
-                              <div className="flex justify-center gap-2">
-                                {[...Array(6)].map((_, i) => (
-                                  <button
-                                    key={i}
-                                    onClick={() => setActiveSlideIndex(i)}
-                                    className={cn(
-                                      "w-2 h-2 rounded-full transition-all duration-300",
-                                      activeSlideIndex === i ? "w-6 bg-purple-500" : "bg-white/20 hover:bg-white/40"
-                                    )}
-                                  />
-                                ))}
-                              </div>
-
-                              {/* Theme Segmented Toggles */}
-                              <div className="p-1 rounded-2xl bg-white/[0.02] border border-white/5 flex gap-1">
-                                {(['minimalist', 'cyber', 'business', 'glow'] as const).map(theme => (
-                                  <button
-                                    key={theme}
-                                    onClick={() => setActiveTheme(theme)}
-                                    className={cn(
-                                      "flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all",
-                                      activeTheme === theme 
-                                        ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20" 
-                                        : "text-white/40 hover:text-white/70"
-                                    )}
-                                  >
-                                    {theme === 'minimalist' && (locale === 'ru' ? 'Мини' : 'Min')}
-                                    {theme === 'cyber' && (locale === 'ru' ? 'Кибер' : 'Cyber')}
-                                    {theme === 'business' && (locale === 'ru' ? 'Бизнес' : 'Biz')}
-                                    {theme === 'glow' && (locale === 'ru' ? 'Свечение' : 'Glow')}
-                                  </button>
-                                ))}
-                              </div>
-
-                              <button
-                                onClick={() => downloadSingleRenderedSlide(activeSlideIndex + 1)}
-                                className="w-full py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-white flex items-center justify-center gap-2 active:scale-95 transition-all shadow-xl"
-                              >
-                                <Download size={14} className="text-purple-400" />
-                                {locale === 'ru' ? `Скачать Слайд ${activeSlideIndex + 1} (Рендер с текстом)` : `Download Slide ${activeSlideIndex + 1} (Rendered)`}
-                              </button>
-                            </div>
-
-                            {/* RIGHT PANE (Columns 7): Tabbed Editor Console & Brief Settings */}
-                            <div className="xl:col-span-7 flex flex-col space-y-6">
-                              
-                              {/* 1. Collapsible AI Tuning Accordion */}
-                              <div className="p-6 rounded-[2rem] bg-white/[0.01] border border-white/5 space-y-4">
-                                <button
-                                  onClick={() => setShowSettings(!showSettings)}
-                                  className="flex items-center justify-between w-full text-left"
-                                >
-                                  <div className="flex items-center gap-2">
-                                    <Brain size={14} className="text-purple-400" />
-                                    <span className="text-[10px] font-black uppercase tracking-widest text-white/80">
-                                      {locale === 'ru' ? 'AI Пульт Настройки ДНК' : 'AI Brand DNA Calibration'}
-                                    </span>
-                                  </div>
-                                  <span className="text-[9px] font-bold text-purple-400 hover:text-purple-300 transition-all uppercase tracking-widest">
-                                    {showSettings ? (locale === 'ru' ? 'Скрыть ✕' : 'Hide ✕') : (locale === 'ru' ? 'Настроить ⚙' : 'Configure ⚙')}
-                                  </span>
-                                </button>
-
-                                {showSettings && (
-                                  <div className="space-y-6 pt-4 border-t border-white/5 animate-in slide-in-from-top-4 duration-300">
-                                    {/* Tone Mode pills */}
-                                    <div className="space-y-2">
-                                      <label className="text-[8px] font-black uppercase tracking-widest text-white/30">
-                                        {locale === 'ru' ? 'Модель вещания (Tone Mode)' : 'Tone Model Mode'}
-                                      </label>
-                                      <div className="grid grid-cols-3 gap-2">
-                                        {(['expert', 'mentor', 'provocateur'] as const).map(mode => (
-                                          <button
-                                            key={mode}
-                                            onClick={() => setToneMode(mode)}
-                                            className={cn(
-                                              "py-2 rounded-xl text-[9px] font-black uppercase tracking-widest border transition-all active:scale-95",
-                                              toneMode === mode
-                                                ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20"
-                                                : "bg-white/[0.02] border-white/10 text-white/40 hover:text-white/80"
-                                            )}
-                                          >
-                                            {mode === 'expert' && (locale === 'ru' ? 'Эксперт' : 'Expert')}
-                                            {mode === 'mentor' && (locale === 'ru' ? 'Наставник' : 'Mentor')}
-                                            {mode === 'provocateur' && (locale === 'ru' ? 'Провокатор' : 'Provocateur')}
-                                          </button>
-                                        ))}
-                                      </div>
-                                    </div>
-
-                                    {/* CTA Word & Seed */}
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                      <div className="space-y-1.5">
-                                        <label className="text-[8px] font-black uppercase tracking-widest text-white/30">
-                                          {locale === 'ru' ? 'Кодовое слово' : 'CTA Code Word'}
-                                        </label>
-                                        <input
-                                          type="text"
-                                          value={ctaWord}
-                                          onChange={(e) => setCtaWord(e.target.value.toUpperCase())}
-                                          placeholder={locale === 'ru' ? 'СТАРТ' : 'START'}
-                                          className="w-full px-4 py-2 rounded-xl bg-white/[0.02] border border-white/10 text-[11px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all"
-                                        />
-                                      </div>
-                                      <div className="space-y-1.5">
-                                        <div className="flex justify-between items-center">
-                                          <label className="text-[8px] font-black uppercase tracking-widest text-white/30">
-                                            {locale === 'ru' ? 'Визуальный seed' : 'Style Seed'}
-                                          </label>
-                                          <button 
-                                            onClick={() => setStyleSeed(Math.floor(Math.random() * 9999))}
-                                            className="text-[8px] font-bold text-purple-400 hover:text-purple-300 transition-all flex items-center gap-1"
-                                          >
-                                            <RefreshCw size={8} /> {locale === 'ru' ? 'Случайный' : 'Shuffle'}
-                                          </button>
-                                        </div>
-                                        <div className="w-full px-4 py-2 rounded-xl bg-white/[0.02] border border-white/10 text-[11px] font-mono text-purple-400 font-bold">
-                                          #{styleSeed}
-                                        </div>
-                                      </div>
-                                    </div>
-
-                                    {/* User brief wishes */}
-                                    <div className="space-y-1.5">
-                                      <label className="text-[8px] font-black uppercase tracking-widest text-white/30">
-                                        {locale === 'ru' ? 'Твоё пожелание к карусели' : 'Your creative brief'}
-                                      </label>
-                                      <textarea
-                                        value={userBrief}
-                                        onChange={(e) => setUserBrief(e.target.value)}
-                                        placeholder={locale === 'ru'
-                                          ? 'Например: сделай упор на боли новичков, используй юмор...'
-                                          : 'E.g. focus on beginner pain points, use humor...'}
-                                        rows={2}
-                                        className="w-full px-4 py-2.5 rounded-xl bg-white/[0.02] border border-white/10 text-[11px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all resize-none"
-                                      />
-                                    </div>
-
-                                    {/* Re-generate button inside expanded settings */}
-                                    <button
-                                      onClick={generateCarouselOnly}
-                                      disabled={isGenerating}
-                                      className="w-full py-3.5 rounded-xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl disabled:opacity-50"
-                                    >
-                                      {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                                      {locale === 'ru' ? '✨ Перегенерировать тексты карусели' : '✨ Regenerate Carousel Texts'}
-                                    </button>
-                                  </div>
-                                )}
-                              </div>
-
-                              {/* Editor Mode Tabs */}
-                              <div className="p-1.5 rounded-2xl bg-white/[0.02] border border-white/5 flex gap-2">
-                                <button
-                                  className="flex-1 py-3 px-4 rounded-xl bg-white/5 border border-white/10 text-white text-[11px] font-bold uppercase tracking-wider flex items-center justify-center gap-2"
-                                >
-                                  <Layers size={14} className="text-purple-400" />
-                                  {locale === 'ru' ? 'Контент Слайдов' : 'Slide Contents'}
-                                </button>
-                              </div>
-
-                              {/* TAB CONTENT: Slide Details list */}
-                              <div className="space-y-4 max-h-[500px] overflow-y-auto pr-2 custom-scrollbar">
-                                {(() => {
-                                  const rawCarousel = assets?.ig_carousel as any;
-                                  const resolvedSlides = rawCarousel?.slides || rawCarousel?.prompts?.map((p: string, i: number) => ({
-                                    slide_number: i + 1,
-                                    image_prompt: p,
-                                    text_on_slide: `Слайд ${i + 1}`
-                                  })) || [];
-
-                                  return resolvedSlides.map((slide: any) => {
-                                    const num = slide.slide_number;
-                                    const isActive = activeSlideIndex === num - 1;
-                                    const key = `carousel-${num - 1}`;
-                                    const url = imageResults[key];
-                                    const isGen = isGeneratingImages[key];
-
-                                    return (
-                                      <div
-                                        key={num}
-                                        onClick={() => setActiveSlideIndex(num - 1)}
-                                        className={cn(
-                                          "p-6 rounded-[2rem] bg-white/[0.01] border transition-all duration-300 cursor-pointer flex flex-col md:flex-row gap-6 items-start",
-                                          isActive 
-                                            ? "border-purple-500 bg-purple-500/[0.02] shadow-[0_0_20px_rgba(168,85,247,0.05)]" 
-                                            : "border-white/5 hover:border-white/10 hover:bg-white/[0.02]"
-                                        )}
-                                      >
-                                        {/* Mini Thumbnail */}
-                                        <div 
-                                          onClick={(e) => {
-                                            if (url) {
-                                              e.stopPropagation();
-                                              setLightboxType('carousel');
-                                              setLightboxIndex(num - 1);
-                                            }
-                                          }}
-                                          className={cn(
-                                            "w-20 aspect-[4/5] rounded-xl bg-white/5 border border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center relative transition-all duration-300 group/thumb",
-                                            url ? "cursor-zoom-in hover:border-purple-500/50 hover:scale-[1.05]" : ""
-                                          )}
-                                        >
-                                          {url ? (
-                                            <>
-                                              <img src={url} className="w-full h-full object-cover" alt="Thumb" />
-                                              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity pointer-events-none duration-300">
-                                                <Eye size={12} className="text-white" />
-                                              </div>
-                                            </>
-                                          ) : isGen ? (
-                                            <Loader2 size={16} className="text-purple-500 animate-spin" />
-                                          ) : (
-                                            <ImageIcon size={20} className="text-white/10" />
-                                          )}
-                                        </div>
-
-                                        {/* Editors */}
-                                        <div className="flex-1 space-y-4 w-full">
-                                          <div className="flex items-center justify-between w-full">
-                                            <span className="text-[11px] font-black text-purple-400 uppercase tracking-widest">
-                                              Slide {num} — {
-                                                num === 1 ? (locale === 'ru' ? 'Хук / Зацепка' : 'Hook') :
-                                                num === 2 ? (locale === 'ru' ? 'Проблема / Боль' : 'Problem') :
-                                                num === 3 ? (locale === 'ru' ? 'Разворот / Интрига' : 'Pivot / Contrast') :
-                                                num === 4 ? (locale === 'ru' ? 'Польза / Шаг 1' : 'Takeaway 1') :
-                                                num === 5 ? (locale === 'ru' ? 'Польза / Шаг 2' : 'Takeaway 2') :
-                                                (locale === 'ru' ? 'Призыв к действию' : 'Frictionless CTA')
-                                              }
-                                            </span>
-                                            <button
-                                              onClick={(e) => {
-                                                e.stopPropagation();
-                                                generateSingleImage(customImagePrompts[num] || slide.image_prompt, '4:5', key);
-                                              }}
-                                              disabled={isGen}
-                                              className="px-3 py-1.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold uppercase tracking-widest text-white/70 hover:text-white flex items-center gap-1.5 transition-all"
-                                            >
-                                              {isGen ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
-                                              {locale === 'ru' ? 'Перерисовать' : 'Regen'}
-                                            </button>
-                                          </div>
-
-                                          {/* Overlay text field */}
-                                          <div className="space-y-1">
-                                            <label className="text-[8px] font-black uppercase tracking-widest text-white/30">{locale === 'ru' ? 'Текст на слайде' : 'Visual Text Overlay'}</label>
-                                            <input
-                                              type="text"
-                                              value={customSlideTexts[num] || ''}
-                                              onChange={(e) => {
-                                                setCustomSlideTexts(prev => ({ ...prev, [num]: e.target.value }));
-                                              }}
-                                              onClick={(e) => e.stopPropagation()}
-                                              placeholder={locale === 'ru' ? 'Введите текст для слайда...' : 'Enter text overlay...'}
-                                              className="w-full px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5 text-[12px] font-bold text-white focus:outline-none focus:border-purple-500/50 focus:bg-white/[0.04] transition-all"
-                                            />
-                                          </div>
-
-                                          {/* Image Prompt field */}
-                                          <div className="space-y-1">
-                                            <label className="text-[8px] font-black uppercase tracking-widest text-white/30">{locale === 'ru' ? 'Промпт для изображения' : 'Background Image Prompt'}</label>
-                                            <textarea
-                                              value={customImagePrompts[num] || ''}
-                                              onChange={(e) => {
-                                                setCustomImagePrompts(prev => ({ ...prev, [num]: e.target.value }));
-                                              }}
-                                              onClick={(e) => e.stopPropagation()}
-                                              placeholder={locale === 'ru' ? 'Опишите фоновый образ...' : 'Describe visual concept...'}
-                                              rows={2}
-                                              className="w-full px-4 py-3 rounded-xl bg-white/[0.02] border border-white/5 text-[11px] text-white/70 leading-relaxed focus:outline-none focus:border-purple-500/50 focus:bg-white/[0.04] transition-all resize-none"
-                                            />
-                                          </div>
-                                        </div>
-                                      </div>
-                                    );
-                                  });
-                                })()}
-                              </div>
-
-                              {/* Caption Console Section */}
-                              <div className="p-6 rounded-[2rem] bg-white/[0.01] border border-white/5 space-y-4">
-                                <div className="flex items-center justify-between">
-                                  <div className="space-y-1">
-                                    <h4 className="text-[11px] font-black text-blue-400 uppercase tracking-widest">
-                                      {locale === 'ru' ? 'Текст описания к посту' : 'Instagram Caption Console'}
-                                    </h4>
-                                    <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">
-                                      {locale === 'ru' ? 'Откалибровано под ToV вашего ДНК' : 'Calibrated and aligned with your voice DNA'}
-                                    </p>
-                                  </div>
-                                  <button
-                                    onClick={() => {
-                                      navigator.clipboard.writeText(customPostDescription);
-                                      setCopying('caption');
-                                      setTimeout(() => setCopying(null), 2000);
-                                    }}
-                                    className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all"
-                                  >
-                                    {copying === 'caption' ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
-                                    {copying === 'caption' ? (locale === 'ru' ? 'Скопировано!' : 'Copied!') : (locale === 'ru' ? 'Скопировать' : 'Copy')}
-                                  </button>
-                                </div>
-
-                                <textarea
-                                  value={customPostDescription}
-                                  onChange={(e) => setCustomPostDescription(e.target.value)}
-                                  rows={5}
-                                  className="w-full px-5 py-4 rounded-2xl bg-white/[0.01] border border-white/5 text-[12px] text-white/90 leading-relaxed focus:outline-none focus:border-purple-500/50 focus:bg-white/[0.03] transition-all custom-scrollbar resize-none"
-                                />
-
-                                {/* Caption details/stats */}
-                                <div className="flex gap-4 text-[9px] font-bold text-white/30 uppercase tracking-widest">
-                                  <span>{locale === 'ru' ? 'Символов' : 'Chars'}: {customPostDescription.length}</span>
-                                  <span>{locale === 'ru' ? 'Слов' : 'Words'}: {customPostDescription.split(/\s+/).filter(Boolean).length}</span>
-                                  <span>{locale === 'ru' ? 'Хэштеги' : 'Hashtags'}: {customPostDescription.split('#').length - 1}</span>
-                                </div>
-                              </div>
-
-                            </div>
                           </div>
                         )}
                       </div>
-                    )}
 
+                        {/* 3. Pre-rendered 6 Image Slots Grid */}
+                        <div className="space-y-6">
+                          <div className="flex items-center justify-between px-2">
+                            <span className="text-[12px] font-black text-white uppercase tracking-widest">
+                              {locale === 'ru' ? 'Визуальная Матрица (6 Слайдов)' : 'Visual Matrix (6 Slides)'}
+                            </span>
+                            
+                            {/* Theme Toggles inside matrix header */}
+                            <div className="p-1 rounded-2xl bg-white/[0.02] border border-white/5 flex gap-1">
+                              {(['minimalist', 'cyber', 'business', 'glow'] as const).map(theme => (
+                                <button
+                                  key={theme}
+                                  onClick={() => setActiveTheme(theme)}
+                                  className={cn(
+                                    "px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all",
+                                    activeTheme === theme 
+                                      ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20" 
+                                      : "text-white/40 hover:text-white/70"
+                                  )}
+                                >
+                                  {theme === 'minimalist' && (locale === 'ru' ? 'Мини' : 'Min')}
+                                  {theme === 'cyber' && (locale === 'ru' ? 'Кибер' : 'Cyber')}
+                                  {theme === 'business' && (locale === 'ru' ? 'Бизнес' : 'Biz')}
+                                  {theme === 'glow' && (locale === 'ru' ? 'Свечение' : 'Glow')}
+                                </button>
+                              ))}
+                            </div>
+                          </div>
+
+                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                            {(() => {
+                              const rawCarousel = assets?.ig_carousel as any;
+                              const generatedSlides = rawCarousel?.slides || rawCarousel?.prompts?.map((p: string, i: number) => ({
+                                slide_number: i + 1,
+                                image_prompt: p,
+                                text_on_slide: `Слайд ${i + 1}`
+                              })) || [];
+
+                              // Always render 6 slots
+                              return [...Array(6)].map((_, i) => {
+                                const num = i + 1;
+                                const slideData = generatedSlides[i];
+                                const key = `carousel-${num - 1}`;
+                                const url = imageResults[key];
+                                const isGen = isGeneratingImages[key];
+
+                                return (
+                                  <div key={num} className="p-5 rounded-[2.5rem] bg-white/[0.01] border border-white/5 space-y-4 hover:border-white/10 transition-colors flex flex-col group">
+                                    {/* Preview Canvas */}
+                                    <div 
+                                      onClick={() => {
+                                        if (url) {
+                                          setLightboxType('carousel');
+                                          setLightboxIndex(num - 1);
+                                        }
+                                      }}
+                                      className={cn(
+                                        "relative w-full aspect-[4/5] rounded-3xl overflow-hidden flex-shrink-0 transition-all duration-300 border",
+                                        url ? "border-white/10 cursor-zoom-in group-hover:border-purple-500/50" : "border-white/5 bg-gradient-to-br from-white/[0.01] to-white/[0.03]"
+                                      )}
+                                    >
+                                      {url ? (
+                                        <>
+                                          <img src={url} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={`Slide ${num}`} />
+                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none duration-300 z-30">
+                                            <div className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-100 transition-all duration-300">
+                                              <Eye size={18} />
+                                            </div>
+                                          </div>
+                                        </>
+                                      ) : isGen ? (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10 gap-3">
+                                          <Loader2 size={32} className="text-purple-500 animate-spin" />
+                                        </div>
+                                      ) : (
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-glass">
+                                          <div className="w-14 h-14 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center mb-4 shadow-inner">
+                                            <ImageIcon size={24} className="text-white/20" />
+                                          </div>
+                                          <p className="text-white/50 font-black uppercase tracking-widest text-xl glass-text">
+                                            {locale === 'ru' ? `Слайд ${num}` : `Image ${num}`}
+                                          </p>
+                                          <p className="text-white/20 text-[9px] font-bold uppercase tracking-widest mt-2">
+                                            {locale === 'ru' ? 'Ожидает генерации' : 'Awaiting visual'}
+                                          </p>
+                                        </div>
+                                      )}
+
+                                      {/* Text Overlay inside thumbnail preview (only if url exists) */}
+                                      {url && (
+                                        <div className="absolute inset-0 flex flex-col justify-between p-6 z-10 pointer-events-none">
+                                          <div className="flex items-center justify-between text-white/50 font-bold text-[8px] tracking-wider">
+                                            <span>@viral_engine</span>
+                                            <span className={cn("px-1.5 py-0.5 rounded bg-black/30 backdrop-blur-md border border-white/10 text-[7px]", activeTheme === 'business' && 'text-slate-500 bg-transparent border-none')}>
+                                              0{num} / 06
+                                            </span>
+                                          </div>
+                                          <div className="flex-1 flex flex-col justify-center">
+                                            {activeTheme === 'minimalist' && (
+                                              <div className="w-full h-full absolute inset-0 bg-black/60 border-[2px] border-purple-500/30 flex items-center justify-center p-6 text-center">
+                                                <p className="text-white font-extrabold text-sm md:text-base leading-snug tracking-tight">
+                                                  {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
+                                                </p>
+                                              </div>
+                                            )}
+                                            {activeTheme === 'cyber' && (
+                                              <div className="w-full p-4 rounded-xl bg-black/85 border border-pink-500/50 shadow-lg text-left space-y-2">
+                                                <div className="w-8 h-1 bg-cyan-400 rounded-full" />
+                                                <p className="text-white font-black text-xs md:text-sm leading-relaxed tracking-wide uppercase line-clamp-4">
+                                                  {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
+                                                </p>
+                                              </div>
+                                            )}
+                                            {activeTheme === 'business' && (
+                                              <div className="w-full p-4 rounded-xl bg-white border border-slate-200 shadow-xl text-left mt-auto space-y-1">
+                                                <span className="text-[7px] font-black text-indigo-600 uppercase tracking-widest">KEY TAKEAWAY #{num}</span>
+                                                <p className="text-slate-800 font-bold text-[10px] md:text-xs leading-snug line-clamp-3">
+                                                  {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
+                                                </p>
+                                              </div>
+                                            )}
+                                            {activeTheme === 'glow' && (
+                                              <div className="w-full text-center mt-auto pb-2">
+                                                <p className="text-white font-black text-sm md:text-base leading-snug tracking-tighter drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] line-clamp-4">
+                                                  {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
+                                                </p>
+                                              </div>
+                                            )}
+                                          </div>
+                                        </div>
+                                      )}
+                                    </div>
+
+                                    {/* Inline Editors for this slide */}
+                                    <div className="flex-1 flex flex-col space-y-3">
+                                      <div className="flex items-center justify-between">
+                                        <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">
+                                          {num === 1 ? (locale === 'ru' ? 'Хук / Зацепка' : 'Hook') :
+                                           num === 2 ? (locale === 'ru' ? 'Проблема / Боль' : 'Problem') :
+                                           num === 3 ? (locale === 'ru' ? 'Разворот / Интрига' : 'Pivot') :
+                                           num === 4 ? (locale === 'ru' ? 'Польза / Шаг 1' : 'Takeaway 1') :
+                                           num === 5 ? (locale === 'ru' ? 'Польза / Шаг 2' : 'Takeaway 2') :
+                                           (locale === 'ru' ? 'Призыв к действию' : 'CTA')}
+                                        </span>
+                                      </div>
+
+                                      <div className="space-y-1.5">
+                                        <label className="text-[7px] font-black uppercase tracking-widest text-white/30">{locale === 'ru' ? 'Текст на слайде' : 'Visual Text Overlay'}</label>
+                                        <input
+                                          type="text"
+                                          value={customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || '')}
+                                          onChange={(e) => setCustomSlideTexts(prev => ({ ...prev, [num]: e.target.value }))}
+                                          placeholder={locale === 'ru' ? 'Введите текст...' : 'Enter text...'}
+                                          className="w-full px-3 py-2 rounded-xl bg-white/[0.02] border border-white/5 text-[10px] font-bold text-white focus:outline-none focus:border-purple-500/50 transition-all"
+                                        />
+                                      </div>
+
+                                      <div className="space-y-1.5">
+                                        <label className="text-[7px] font-black uppercase tracking-widest text-white/30">{locale === 'ru' ? 'Промпт для изображения' : 'Background Image Prompt'}</label>
+                                        <textarea
+                                          value={customImagePrompts[num] !== undefined ? customImagePrompts[num] : (slideData?.image_prompt || '')}
+                                          onChange={(e) => setCustomImagePrompts(prev => ({ ...prev, [num]: e.target.value }))}
+                                          placeholder={locale === 'ru' ? 'Опишите фоновый образ...' : 'Describe visual...'}
+                                          rows={2}
+                                          className="w-full px-3 py-2 rounded-xl bg-white/[0.02] border border-white/5 text-[9px] text-white/70 focus:outline-none focus:border-purple-500/50 transition-all resize-none custom-scrollbar"
+                                        />
+                                      </div>
+
+                                      <div className="flex gap-2 pt-1 mt-auto">
+                                        <button
+                                          onClick={() => {
+                                            const prompt = customImagePrompts[num] || slideData?.image_prompt || '';
+                                            generateSingleImage(prompt, '4:5', key);
+                                          }}
+                                          disabled={isGen}
+                                          className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold uppercase tracking-widest text-white/70 hover:text-white flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                                        >
+                                          {isGen ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+                                          {url ? (locale === 'ru' ? 'Перерисовать' : 'Regen') : (locale === 'ru' ? 'Сгенерировать' : 'Generate')}
+                                        </button>
+                                        
+                                        {url && (
+                                          <button
+                                            onClick={() => downloadSingleRenderedSlide(num)}
+                                            className="px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 text-[9px] font-bold uppercase tracking-widest transition-all shadow-sm"
+                                            title={locale === 'ru' ? 'Скачать слайд с текстом' : 'Download Slide Render'}
+                                          >
+                                            <Download size={10} />
+                                          </button>
+                                        )}
+                                      </div>
+                                    </div>
+                                  </div>
+                                );
+                              });
+                            })()}
+                          </div>
+                        </div>
+
+                        {/* 4. Caption Console Section */}
+                        {assets?.ig_carousel && (
+                          <div className="p-6 rounded-[2.5rem] bg-white/[0.01] border border-white/5 space-y-4">
+                            <div className="flex items-center gap-3 mb-2">
+                              <div className="w-10 h-10 rounded-2xl bg-blue-500/10 flex items-center justify-center text-blue-400">
+                                <FileText size={20} />
+                              </div>
+                              <h4 className="text-[12px] font-black text-blue-400 uppercase tracking-widest">
+                                {locale === 'ru' ? 'Текст описания к посту (Caption)' : 'Instagram Caption Console'}
+                              </h4>
+                            </div>
+                            <div className="flex items-center justify-between mb-2">
+                              <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">
+                                {locale === 'ru' ? 'Откалибровано под ToV вашего ДНК' : 'Calibrated and aligned with your voice DNA'}
+                              </p>
+                              <button
+                                onClick={() => {
+                                  navigator.clipboard.writeText(customPostDescription);
+                                  setCopying('caption');
+                                  setTimeout(() => setCopying(null), 2000);
+                                }}
+                                className="px-4 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white text-[9px] font-black uppercase tracking-widest flex items-center gap-2 active:scale-95 transition-all"
+                              >
+                                {copying === 'caption' ? <Check size={12} className="text-green-400" /> : <Copy size={12} />}
+                                {copying === 'caption' ? (locale === 'ru' ? 'Скопировано!' : 'Copied!') : (locale === 'ru' ? 'Скопировать' : 'Copy')}
+                              </button>
+                            </div>
+                            <textarea
+                              value={customPostDescription}
+                              onChange={(e) => setCustomPostDescription(e.target.value)}
+                              rows={5}
+                              className="w-full px-5 py-4 rounded-[1.5rem] bg-white/[0.02] border border-white/5 text-[12px] md:text-[13px] text-white/80 focus:outline-none focus:border-purple-500/50 transition-all resize-none custom-scrollbar"
+                            />
+                          </div>
+                        </Section>
+                      )}
+                    </div>
+                  )}
                     {/* 3. YOUTUBE / VIDEO THUMBNAIL PLATFORM */}
                     {selectedDetail === 'banner' && (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
@@ -1756,7 +1528,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
               setLightboxType(null);
               setLightboxIndex(null);
             }}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all z-20 shadow-lg"
+            className="absolute top-[calc(env(safe-area-inset-top,0px)+1.5rem)] right-6 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all z-20 shadow-lg"
           >
             <X size={24} />
           </button>
@@ -1869,7 +1641,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
               e.stopPropagation();
               setLightboxType(null);
             }}
-            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all z-20 shadow-lg"
+            className="absolute top-[calc(env(safe-area-inset-top,0px)+1.5rem)] right-6 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all z-20 shadow-lg"
           >
             <X size={24} />
           </button>

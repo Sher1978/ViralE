@@ -12,6 +12,7 @@ import {
   Play, Pause, Archive, AlertCircle, PackageCheck
 } from 'lucide-react';
 import { ContentPack, PLATFORMS } from '@/lib/types/contentPack';
+import { projectService } from '@/lib/services/projectService';
 
 // ── Mock data loader (replace with real service later) ────────────────────
 function getMockPack(packId: string): ContentPack {
@@ -176,13 +177,56 @@ export default function ContentPackPage() {
   const [activeGalleryIndex, setActiveGalleryIndex] = useState(0);
 
   useEffect(() => {
-    // Simulate loading
-    setTimeout(() => {
-      const data = getMockPack(packId);
-      setPack(data);
-      setPostedTo(data.postedTo);
-      setLoading(false);
-    }, 600);
+    async function loadData() {
+      try {
+        const project = await projectService.getProject(packId);
+        const version = await projectService.getLatestVersion(packId);
+        
+        if (!project) {
+          setLoading(false);
+          return;
+        }
+
+        const manifest = version?.script_data || {};
+        const distributionAssets = manifest.distributionAssets || {};
+        const distributionImages = manifest.distributionImages || {};
+        const carousel = distributionAssets.ig_carousel || {};
+
+        let galleryImages = [];
+        if (carousel.slides) {
+          galleryImages = carousel.slides.map((s: any, i: number) => ({
+             id: `g${i}`,
+             url: distributionImages[`carousel-${i}`] || '',
+             caption: `Slide ${i+1} · ${s.text_on_slide || ''}`
+          })).filter((img: any) => img.url);
+        }
+
+        const data: ContentPack = {
+          id: project.id,
+          projectId: project.id,
+          title: project.title || 'Untitled Project',
+          createdAt: project.created_at,
+          updatedAt: project.updated_at,
+          jtbd: project.status === 'completed' ? 'published' : 'in_progress',
+          videoUrl: project.final_video_url || undefined,
+          coverImageUrl: distributionImages.cover || undefined,
+          caption: distributionAssets.sfv_description?.text || carousel.caption || undefined,
+          article: distributionAssets.linkedin_article?.text || undefined,
+          galleryImages: galleryImages,
+          galleryCaption: carousel.caption || '',
+          postedTo: [],
+          assetsReady: Object.keys(distributionAssets).length,
+        };
+
+        setPack(data);
+        setPostedTo(data.postedTo);
+      } catch (err) {
+        console.error(err);
+      } finally {
+        setLoading(false);
+      }
+    }
+    loadData();
   }, [packId]);
 
   const markPosted = (platform: string) => {

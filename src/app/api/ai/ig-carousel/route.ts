@@ -49,16 +49,22 @@ export async function POST(req: Request) {
     const VALID_TONES = ['expert', 'mentor', 'provocateur'] as const;
     const resolvedTone = (VALID_TONES.includes(toneMode as any) ? toneMode : 'mentor') as typeof VALID_TONES[number];
 
-    // 1. Fetch User DNA & DB Profile (Core Fields)
-    const { data: profile, error: profileErr } = await authorizedSupabase
-      .from('profiles')
-      .select('digital_shadow_prompt, visual_style, knowledge_base_json')
-      .eq('id', userId)
-      .single();
-
-    if (profileErr || !profile) {
-      console.error('[ig-carousel API] Core Profile fetch error:', profileErr);
-      return NextResponse.json({ error: 'Failed to retrieve profile data' }, { status: 500 });
+    // 1. Fetch User DNA & DB Profile (Core Fields) - Wrapped in fallback to be resilient
+    let profile: any = null;
+    try {
+      const { data, error: profileErr } = await authorizedSupabase
+        .from('profiles')
+        .select('digital_shadow_prompt, visual_style, knowledge_base_json')
+        .eq('id', userId)
+        .single();
+      
+      if (!profileErr && data) {
+        profile = data;
+      } else {
+        console.warn('[ig-carousel API] Core Profile fetch warning (using defaults):', profileErr);
+      }
+    } catch (e) {
+      console.warn('[ig-carousel API] Core Profile query failed (using defaults):', e);
     }
 
     const userDNA = profile?.digital_shadow_prompt || 'Niche: General Content Creator. Tone: Professional but engaging.';

@@ -146,10 +146,11 @@ function DeliveryPageContent() {
       const txt1 = esc(line1);
       const txt2 = esc(line2);
       
-      // Style mapping with FFmpeg-compatible colors
+      // Style mapping with FFmpeg-compatible colors matching CSS previews perfectly
       let fontcolor = 'white';
       let box = 0;
       let boxcolor = 'black@0.5';
+      let boxborderw = 10;
       let borderw = 2;
       let bordercolor = 'black';
       let shadowx = 0;
@@ -158,29 +159,29 @@ function DeliveryPageContent() {
       let useItalic = false;
 
       if (subStyleIdx === 0) { // Classic Yellow Italic
-        fontcolor = '0xFACC15'; borderw = 4; shadowx = 2; shadowy = 2; useItalic = true;
+        fontcolor = '0xFACC15'; borderw = 4; bordercolor = 'black'; shadowx = 4; shadowy = 6; shadowcolor = 'black@0.8'; useItalic = true;
       } else if (subStyleIdx === 1) { // White Bold
-        fontcolor = 'white'; borderw = 2; shadowy = 4;
+        fontcolor = 'white'; borderw = 2; bordercolor = 'black@0.3'; shadowx = 0; shadowy = 4; shadowcolor = 'black@0.7';
       } else if (subStyleIdx === 2) { // Red Outline
-        fontcolor = '0xEF4444'; borderw = 6; bordercolor = 'white';
+        fontcolor = '0xEF4444'; borderw = 4; bordercolor = 'white'; shadowx = 4; shadowy = 4; shadowcolor = 'black@0.6';
       } else if (subStyleIdx === 3) { // Cyber Neon
-        fontcolor = '0x22D3EE'; shadowx = 0; shadowy = 0; useItalic = true; borderw = 0;
+        fontcolor = '0x22D3EE'; borderw = 1; bordercolor = '0x22D3EE'; shadowx = 2; shadowy = 2; shadowcolor = '0x22D3EE@0.6'; useItalic = true;
       } else if (subStyleIdx === 4) { // Minimalist
-        fontcolor = 'white'; box = 1; boxcolor = 'black@0.6';
+        fontcolor = 'white'; borderw = 0; shadowx = 0; shadowy = 0; box = 1; boxcolor = 'black@0.6'; boxborderw = 12;
       } else if (subStyleIdx === 5) { // Boxy Yellow
-        fontcolor = 'black'; box = 1; boxcolor = '0xFACC15';
-      } else if (subStyleIdx === 6) { // Gradient (Approx)
-        fontcolor = 'white'; shadowy = 2; shadowcolor = 'black@0.5';
+        fontcolor = 'black'; borderw = 0; shadowx = 0; shadowy = 0; box = 1; boxcolor = '0xFACC15'; boxborderw = 10;
+      } else if (subStyleIdx === 6) { // Gradient Text (Approximation)
+        fontcolor = '0xE2E8F0'; borderw = 2; bordercolor = 'black'; shadowx = 0; shadowy = 3; shadowcolor = 'black@0.5';
       } else if (subStyleIdx === 7) { // Soft Pink
-        fontcolor = '0xF472B6'; shadowy = 2;
+        fontcolor = '0xF472B6'; borderw = 1; bordercolor = 'black@0.3'; shadowx = 0; shadowy = 3; shadowcolor = '0xF472B6@0.4';
       } else if (subStyleIdx === 8) { // Ghostly
-        fontcolor = 'white@0.4';
+        fontcolor = 'white@0.6'; borderw = 0; shadowx = 0; shadowy = 0;
       } else if (subStyleIdx === 9) { // Impact
-        fontcolor = 'white'; shadowx = 0; shadowy = 0; borderw = 8; bordercolor = 'white@0.5';
+        fontcolor = 'white'; borderw = 3; bordercolor = 'black@0.2'; shadowx = 0; shadowy = 0; shadowcolor = 'white@0.8';
       } else if (subStyleIdx === 10) { // Green Hacker
-        fontcolor = '0x10B981'; shadowx = 0; shadowy = 0;
+        fontcolor = '0x10B981'; borderw = 1; bordercolor = '0x10B981@0.5'; shadowx = 0; shadowy = 0;
       } else if (subStyleIdx === 11) { // Royal Gold
-        fontcolor = '0xFBBF24'; useItalic = true; shadowy = 2;
+        fontcolor = '0xFBBF24'; borderw = 2; bordercolor = 'black'; shadowx = 0; shadowy = 3; shadowcolor = 'black@0.5'; useItalic = true;
       }
 
       // Map Y coordinates exactly to canvas editor (matching bottom: '15%' baseline)
@@ -228,7 +229,7 @@ function DeliveryPageContent() {
         `shadowcolor=${shadowcolor}`,
         `shadowx=${shadowx}`,
         `shadowy=${shadowy}`,
-        box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
+        box ? `box=1:boxcolor=${boxcolor}:boxborderw=${boxborderw}` : '',
         `x=${xExpr1}`,
         `y=${yExpr1}`,
         `alpha='${alphaExpr}'`,
@@ -246,7 +247,7 @@ function DeliveryPageContent() {
           `shadowcolor=${shadowcolor}`,
           `shadowx=${shadowx}`,
           `shadowy=${shadowy}`,
-          box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
+          box ? `box=1:boxcolor=${boxcolor}:boxborderw=${boxborderw}` : '',
           `x=${xExpr2}`,
           `y=${yExpr2}`,
           `alpha='${alphaExpr}'`,

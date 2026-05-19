@@ -30,7 +30,7 @@ export function PageShell({ children }: PageShellProps) {
             `,
           }}
         />
-        <main className="relative z-10 w-full min-h-screen">
+        <main className="relative z-10 w-full min-h-screen safe-top">
           {children}
         </main>
       </div>
@@ -61,7 +61,7 @@ export function PageShell({ children }: PageShellProps) {
         }}
       />
 
-      <main className={isStudioMode ? "relative z-10 min-h-screen" : "relative z-10 pb-32 px-5 pt-14 min-h-screen"}>
+      <main className={isStudioMode ? "relative z-10 min-h-screen safe-top" : "relative z-10 pb-32 px-5 pt-8 safe-top min-h-screen"}>
         {children}
       </main>
       {!isStudioMode && <BottomNav />}
