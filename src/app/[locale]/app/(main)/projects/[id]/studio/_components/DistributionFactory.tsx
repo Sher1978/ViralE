@@ -6,7 +6,7 @@ import {
   Camera, Share2, Play, Download, 
   Copy, Check, Sparkles, Loader2, Image as ImageIcon,
   ChevronRight, ChevronLeft, RefreshCw, Layers, Monitor, Brain,
-  Zap, ExternalLink, Wand2, ArrowLeft, X
+  Zap, ExternalLink, Wand2, ArrowLeft, X, Eye
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -92,6 +92,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const [customPostDescription, setCustomPostDescription] = useState<string>('');
   const [isExportingAll, setIsExportingAll] = useState<boolean>(false);
   const [isRegeneratingAll, setIsRegeneratingAll] = useState<boolean>(false);
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+  const [lightboxType, setLightboxType] = useState<'carousel' | 'banner' | null>(null);
 
   // Sync state with assets when loaded
   useEffect(() => {
@@ -1160,7 +1162,28 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                               </div>
 
                               {/* Instagram Slide Canvas Container */}
-                              <div className="relative w-full aspect-[4/5] rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl bg-black flex flex-col group">
+                              <div 
+                                onClick={() => {
+                                  const key = `carousel-${activeSlideIndex}`;
+                                  if (imageResults[key]) {
+                                    setLightboxType('carousel');
+                                    setLightboxIndex(activeSlideIndex);
+                                  }
+                                }}
+                                className={cn(
+                                  "relative w-full aspect-[4/5] rounded-[2.5rem] border border-white/10 overflow-hidden shadow-2xl bg-black flex flex-col group transition-all duration-300",
+                                  imageResults[`carousel-${activeSlideIndex}`] ? "cursor-zoom-in hover:scale-[1.01] hover:border-purple-500/30" : ""
+                                )}
+                              >
+                                {/* Eye indicator on hover */}
+                                {imageResults[`carousel-${activeSlideIndex}`] && (
+                                  <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none duration-300 z-30">
+                                    <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-100 transition-all duration-300">
+                                      <Eye size={22} />
+                                    </div>
+                                  </div>
+                                )}
+
                                 {/* Background Image / Placeholder */}
                                 {(() => {
                                   const key = `carousel-${activeSlideIndex}`;
@@ -1453,9 +1476,26 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                         )}
                                       >
                                         {/* Mini Thumbnail */}
-                                        <div className="w-20 aspect-[4/5] rounded-xl bg-white/5 border border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center relative">
+                                        <div 
+                                          onClick={(e) => {
+                                            if (url) {
+                                              e.stopPropagation();
+                                              setLightboxType('carousel');
+                                              setLightboxIndex(num - 1);
+                                            }
+                                          }}
+                                          className={cn(
+                                            "w-20 aspect-[4/5] rounded-xl bg-white/5 border border-white/10 overflow-hidden flex-shrink-0 flex items-center justify-center relative transition-all duration-300 group/thumb",
+                                            url ? "cursor-zoom-in hover:border-purple-500/50 hover:scale-[1.05]" : ""
+                                          )}
+                                        >
                                           {url ? (
-                                            <img src={url} className="w-full h-full object-cover" alt="Thumb" />
+                                            <>
+                                              <img src={url} className="w-full h-full object-cover" alt="Thumb" />
+                                              <div className="absolute inset-0 bg-black/45 opacity-0 group-hover/thumb:opacity-100 flex items-center justify-center transition-opacity pointer-events-none duration-300">
+                                                <Eye size={12} className="text-white" />
+                                              </div>
+                                            </>
                                           ) : isGen ? (
                                             <Loader2 size={16} className="text-purple-500 animate-spin" />
                                           ) : (
@@ -1631,7 +1671,13 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                         </div>
 
                         <div className="flex justify-center items-start">
-                          <div className="relative w-full max-w-[280px] aspect-[9/16] rounded-[2.5rem] bg-white/[0.02] border border-white/10 overflow-hidden shadow-2xl group">
+                          <div 
+                            onClick={() => imageResults['banner'] && setLightboxType('banner')}
+                            className={cn(
+                              "relative w-full max-w-[280px] aspect-[9/16] rounded-[2.5rem] bg-white/[0.02] border border-white/10 overflow-hidden shadow-2xl group transition-all duration-300",
+                              imageResults['banner'] ? "cursor-zoom-in hover:scale-[1.02] hover:border-purple-500/35" : ""
+                            )}
+                          >
                             {imageResults['banner'] ? (
                               <>
                                 <img src={imageResults['banner']} className="w-full h-full object-cover" />
@@ -1639,6 +1685,13 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center p-6 text-center">
                                   <div className="mt-auto mb-16 bg-white text-black px-4 py-2 font-black italic uppercase tracking-tighter text-md transform -rotate-2 shadow-2xl">
                                     {assets?.video_banner.text_on_banner}
+                                  </div>
+                                </div>
+                                
+                                {/* Eye indicator on hover */}
+                                <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none duration-300">
+                                  <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-100 transition-all duration-300">
+                                    <Eye size={22} />
                                   </div>
                                 </div>
                                 
@@ -1674,6 +1727,169 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             )}
           </AnimatePresence>
         </div>
+
+      {/* Premium iOS Image & Carousel Lightbox Modal */}
+      {lightboxType === 'carousel' && lightboxIndex !== null && (
+        <div 
+          onClick={() => {
+            setLightboxType(null);
+            setLightboxIndex(null);
+          }}
+          className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-10 animate-in fade-in duration-200"
+        >
+          {/* Close button with premium micro-interaction */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxType(null);
+              setLightboxIndex(null);
+            }}
+            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all z-20 shadow-lg"
+          >
+            <X size={24} />
+          </button>
+
+          {/* Lightbox Slide Container */}
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-[420px] aspect-[4/5] rounded-[3rem] border border-white/15 overflow-hidden shadow-2xl bg-black flex flex-col animate-in zoom-in-95 duration-200"
+          >
+            {/* Slide Image */}
+            {(() => {
+              const key = `carousel-${lightboxIndex}`;
+              const url = imageResults[key];
+              if (url) {
+                return <img src={url} className="absolute inset-0 w-full h-full object-cover" alt="Full Slide" />;
+              }
+              return (
+                <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center p-8 text-center text-white/20">
+                  <ImageIcon size={48} />
+                  <p className="mt-4 text-xs font-bold uppercase tracking-widest">{locale === 'ru' ? 'Изображение не сгенерировано' : 'No image generated'}</p>
+                </div>
+              );
+            })()}
+
+            {/* Styled Live Text Overlay (Full-screen version!) */}
+            <div className="absolute inset-0 flex flex-col justify-between p-10 z-10 pointer-events-none select-none">
+              <div className="flex items-center justify-between text-white/50 font-bold text-[10px] tracking-wider">
+                <span>@viral_engine</span>
+                <span className={cn("px-2 py-0.5 rounded bg-black/30 backdrop-blur-md border border-white/10 text-[9px]", activeTheme === 'business' && 'text-slate-500 bg-transparent border-none')}>
+                  0{lightboxIndex + 1} / 06
+                </span>
+              </div>
+
+              <div className="flex-1 flex flex-col justify-center">
+                {activeTheme === 'minimalist' && (
+                  <div className="w-full h-full absolute inset-0 bg-black/60 border-[4px] border-purple-500/30 flex items-center justify-center p-12 text-center">
+                    <p className="text-white font-extrabold text-2xl md:text-3xl leading-snug tracking-tight drop-shadow-md">
+                      {customSlideTexts[lightboxIndex + 1] || `Slide ${lightboxIndex + 1}`}
+                    </p>
+                  </div>
+                )}
+
+                {activeTheme === 'cyber' && (
+                  <div className="w-full p-8 rounded-3xl bg-black/85 border border-pink-500/50 shadow-lg text-left space-y-4">
+                    <div className="w-16 h-1.5 bg-cyan-400 rounded-full" />
+                    <p className="text-white font-black text-xl md:text-2xl leading-relaxed tracking-wide uppercase">
+                      {customSlideTexts[lightboxIndex + 1] || `Slide ${lightboxIndex + 1}`}
+                    </p>
+                  </div>
+                )}
+
+                {activeTheme === 'business' && (
+                  <div className="w-full p-8 rounded-3xl bg-white border border-slate-200 shadow-xl text-left mt-auto space-y-3">
+                    <span className="text-[10px] font-black text-indigo-600 uppercase tracking-widest">KEY TAKEAWAY #{lightboxIndex + 1}</span>
+                    <p className="text-slate-800 font-bold text-lg md:text-xl leading-snug">
+                      {customSlideTexts[lightboxIndex + 1] || `Slide ${lightboxIndex + 1}`}
+                    </p>
+                  </div>
+                )}
+
+                {activeTheme === 'glow' && (
+                  <div className="w-full text-center mt-auto pb-4">
+                    <p className="text-white font-black text-2xl md:text-3xl leading-snug tracking-tighter drop-shadow-[0_4px_12px_rgba(0,0,0,0.95)]">
+                      {customSlideTexts[lightboxIndex + 1] || `Slide ${lightboxIndex + 1}`}
+                    </p>
+                  </div>
+                )}
+              </div>
+            </div>
+          </div>
+
+          {/* Left and Right navigation buttons */}
+          <div className="absolute inset-x-4 sm:inset-x-12 top-1/2 -translate-y-1/2 flex justify-between z-20 pointer-events-none">
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex(prev => prev !== null ? (prev === 0 ? 5 : prev - 1) : 0);
+              }}
+              className="w-14 h-14 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white text-white/60 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 pointer-events-auto shadow-xl"
+            >
+              <ChevronLeft size={28} />
+            </button>
+            <button
+              onClick={(e) => {
+                e.stopPropagation();
+                setLightboxIndex(prev => prev !== null ? (prev === 5 ? 0 : prev + 1) : 0);
+              }}
+              className="w-14 h-14 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:text-white text-white/60 flex items-center justify-center backdrop-blur-md transition-all active:scale-90 pointer-events-auto shadow-xl"
+            >
+              <ChevronRight size={28} />
+            </button>
+          </div>
+
+          {/* Page Counter Label */}
+          <div className="mt-6 text-sm font-bold text-white/40 uppercase tracking-[0.2em]">
+            {locale === 'ru' ? `Слайд ${lightboxIndex + 1} из 6` : `Slide ${lightboxIndex + 1} of 6`}
+          </div>
+        </div>
+      )}
+
+      {/* Premium iOS YouTube Cover Lightbox Modal */}
+      {lightboxType === 'banner' && (
+        <div 
+          onClick={() => setLightboxType(null)}
+          className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-10 animate-in fade-in duration-200"
+        >
+          {/* Close button with premium micro-interaction */}
+          <button 
+            onClick={(e) => {
+              e.stopPropagation();
+              setLightboxType(null);
+            }}
+            className="absolute top-6 right-6 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all z-20 shadow-lg"
+          >
+            <X size={24} />
+          </button>
+
+          {/* Lightbox Banner Container */}
+          <div 
+            onClick={(e) => e.stopPropagation()}
+            className="relative w-full max-w-[360px] aspect-[9/16] rounded-[3rem] border border-white/15 overflow-hidden shadow-2xl bg-black flex flex-col animate-in zoom-in-95 duration-200"
+          >
+            {/* Banner Image */}
+            {imageResults['banner'] ? (
+              <>
+                <img src={imageResults['banner']} className="absolute inset-0 w-full h-full object-cover" alt="Full Cover" />
+                <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center p-8 text-center">
+                  <div className="mt-auto mb-20 bg-white text-black px-6 py-3 font-black italic uppercase tracking-tighter text-xl transform -rotate-2 shadow-2xl">
+                    {assets?.video_banner?.text_on_banner}
+                  </div>
+                </div>
+              </>
+            ) : (
+              <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center p-8 text-center text-white/20">
+                <ImageIcon size={48} />
+                <p className="mt-4 text-xs font-bold uppercase tracking-widest">{locale === 'ru' ? 'Обложка не сгенерирована' : 'No cover generated'}</p>
+              </div>
+            )}
+          </div>
+
+          <div className="mt-6 text-sm font-bold text-white/40 uppercase tracking-[0.2em]">
+            {locale === 'ru' ? 'Предпросмотр обложки' : 'Video Cover Preview'}
+          </div>
+        </div>
+      )}
     </div>
   );
 }
