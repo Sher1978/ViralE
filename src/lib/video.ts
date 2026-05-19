@@ -96,6 +96,11 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
       // 1. Construct Shotstack Edit JSON
       const timeline = {
         background: "#000000",
+        fonts: [
+          {
+            src: "https://cdn.jsdelivr.net/gh/JulietaUla/Montserrat@master/fonts/ttf/Montserrat-ExtraBold.ttf"
+          }
+        ],
         tracks: [
           // Track 1: Subtitles (Text)
           {
