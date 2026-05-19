@@ -1182,7 +1182,7 @@ function DeliveryPageContent() {
            <h2 className="text-xl font-black uppercase tracking-tight text-white">Media Distribution Pack</h2>
         </div>
         
-        <div className="h-[700px] w-full">
+        <div className="w-full">
           <DistributionFactory 
             manifest={manifest}
             scriptText={scriptData.meat || "Video Content Analysis"}

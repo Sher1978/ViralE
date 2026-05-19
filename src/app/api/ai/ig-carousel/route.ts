@@ -273,13 +273,60 @@ export async function POST(req: Request) {
       parsedCarousel = JSON.parse(match[0]);
     }
 
-    // 7. Enforce Schema via Zod
-    const validatedCarousel = IgCarouselSchema.parse(parsedCarousel);
+    // 7. Enforce Schema via Zod with automatic repair/fallback
+    let validatedCarousel: any;
+    const parseResult = IgCarouselSchema.safeParse(parsedCarousel);
+    if (parseResult.success) {
+      validatedCarousel = parseResult.data;
+    } else {
+      console.warn('[ig-carousel API] Zod validation failed. Repairing parsed payload...', parseResult.error.format());
+      
+      const raw = parsedCarousel || {};
+      const slides = Array.isArray(raw.slides) ? raw.slides : [];
+      const repairedSlides = [];
+      const roles = ['hook', 'problem', 'pivot', 'takeaway1', 'takeaway2', 'cta'] as const;
+      
+      for (let i = 0; i < 6; i++) {
+        const rawSlide = slides[i] || {};
+        const role = roles[i];
+        
+        let slideText = rawSlide.text_on_slide || rawSlide.text || '';
+        if (typeof slideText !== 'string' || slideText.length < 3) {
+          slideText = `Слайд ${i + 1}: ${scriptText.slice(0, 50)}...`;
+        }
+        if (slideText.length > 180) {
+          slideText = slideText.slice(0, 177) + '...';
+        }
+        
+        let imgPrompt = rawSlide.image_prompt || rawSlide.prompt || '';
+        if (typeof imgPrompt !== 'string' || imgPrompt.length < 20) {
+          imgPrompt = `${stylePrefix}, conceptual visualization of slide ${i + 1}, highly detailed digital art, 8k`;
+        }
+        
+        repairedSlides.push({
+          slide_number: i + 1,
+          role: role,
+          text_on_slide: slideText,
+          image_prompt: imgPrompt,
+          metaphor_tag: String(rawSlide.metaphor_tag || raw.central_metaphor || 'metaphor')
+        });
+      }
+      
+      validatedCarousel = {
+        cta_word: String(raw.cta_word || ctaWord || 'DETAILS'),
+        central_metaphor: String(raw.central_metaphor || 'success metaphor'),
+        visual_style_prefix: String(raw.visual_style_prefix || stylePrefix),
+        post_description: typeof raw.post_description === 'string' && raw.post_description.length >= 50
+          ? raw.post_description 
+          : `${raw.post_description || ''}\n\nСмотрите карусель полностью, чтобы узнать все секреты! Пишите кодовое слово ${ctaWord || 'ПОЛУЧИТЬ'} в комментариях под этим постом!`,
+        slides: repairedSlides
+      };
+    }
 
     // 8. Copywriting Polish for Slide 1 & 6 (Phase 3.4)
     const resolvedCtaWord = validatedCarousel.cta_word || ctaWord || 'DETAILS';
-    const slide1 = validatedCarousel.slides.find(s => s.slide_number === 1);
-    const slide6 = validatedCarousel.slides.find(s => s.slide_number === 6);
+    const slide1 = validatedCarousel.slides.find((s: any) => s.slide_number === 1);
+    const slide6 = validatedCarousel.slides.find((s: any) => s.slide_number === 6);
     
     if (slide1 && slide6) {
       console.log('[ig-carousel API] Triggering Gemini Pro copywriting polish for Slides 1 & 6 with 8s timeout...');

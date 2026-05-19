@@ -460,7 +460,10 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           userBrief 
         })
       });
-      if (!res.ok) throw new Error('Failed to generate Instagram Carousel');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to generate Instagram Carousel');
+      }
       const data = await res.json();
       
       const updatedAssets = {
@@ -476,9 +479,12 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           distributionAssets: updatedAssets
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error('[Generate IG Carousel Error]:', err);
-      alert(locale === 'ru' ? 'Ошибка генерации карусели' : 'Failed to generate carousel');
+      alert(locale === 'ru' 
+        ? `Ошибка генерации карусели: ${err.message || err}` 
+        : `Failed to generate carousel: ${err.message || err}`
+      );
     } finally {
       setIsGenerating(false);
     }
@@ -582,7 +588,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   };
 
   return (
-    <div className="h-full flex flex-col bg-[#05050a] rounded-[2.5rem] border border-white/5 overflow-hidden shadow-2xl relative">
+    <div className="w-full flex flex-col bg-[#05050a] rounded-[2.5rem] border border-white/5 shadow-2xl relative">
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-600/5 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
@@ -625,7 +631,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         </div>
       )}
 
-      <div className="flex-1 flex flex-col overflow-hidden text-white relative">
+      <div className="w-full flex flex-col text-white relative">
         {/* Global Glassmorphic Loader Overlay when generating all text platforms */}
         {isGenerating && (
           <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-45 flex flex-col items-center justify-center space-y-6">
@@ -655,7 +661,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.2 }}
-                className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar relative z-10"
+                className="w-full p-6 sm:p-8 relative z-10"
               >
                 <div className="max-w-4xl mx-auto space-y-8 pb-10">
                   <div className="text-center space-y-3 py-4">
@@ -787,7 +793,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                 animate={{ opacity: 1, y: 0 }}
                 exit={{ opacity: 0, y: 50 }}
                 transition={{ type: 'spring', damping: 25, stiffness: 350 }}
-                className="absolute inset-0 bg-[#07070c]/98 backdrop-blur-3xl z-50 flex flex-col overflow-hidden text-white"
+                className="fixed inset-0 bg-[#07070c]/98 backdrop-blur-3xl z-[9999] flex flex-col overflow-hidden text-white"
               >
                 {/* Fixed Blurred Header */}
                 <div className="p-6 border-b border-white/5 flex items-center justify-between shrink-0 bg-black/30 backdrop-blur-md relative z-10">
