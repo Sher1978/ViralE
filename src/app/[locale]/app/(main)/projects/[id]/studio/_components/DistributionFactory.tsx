@@ -1175,12 +1175,19 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                   imageResults[`carousel-${activeSlideIndex}`] ? "cursor-zoom-in hover:scale-[1.01] hover:border-purple-500/30" : ""
                                 )}
                               >
-                                {/* Eye indicator on hover */}
+                                {/* Eye indicator on hover (desktop) */}
                                 {imageResults[`carousel-${activeSlideIndex}`] && (
                                   <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none duration-300 z-30">
                                     <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-100 transition-all duration-300">
                                       <Eye size={22} />
                                     </div>
+                                  </div>
+                                )}
+
+                                {/* Always-visible Zoom Eye indicator for touch/mobile devices */}
+                                {imageResults[`carousel-${activeSlideIndex}`] && (
+                                  <div className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/90 shadow-2xl z-20 pointer-events-none active:scale-95 transition-all">
+                                    <Eye size={15} />
                                   </div>
                                 )}
 
@@ -1688,11 +1695,16 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                   </div>
                                 </div>
                                 
-                                {/* Eye indicator on hover */}
+                                {/* Eye indicator on hover (desktop) */}
                                 <div className="absolute inset-0 bg-black/35 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none duration-300">
                                   <div className="w-12 h-12 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-100 transition-all duration-300">
                                     <Eye size={22} />
                                   </div>
+                                </div>
+
+                                {/* Always-visible Zoom Eye indicator for touch/mobile devices */}
+                                <div className="absolute top-4 left-4 w-9 h-9 rounded-full bg-black/60 backdrop-blur-md border border-white/15 flex items-center justify-center text-white/90 shadow-2xl z-20 pointer-events-none active:scale-95 transition-all">
+                                  <Eye size={15} />
                                 </div>
                                 
                                 <button 
