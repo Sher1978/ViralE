@@ -108,72 +108,80 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   // Load User Custom Visual DNA Config
   useEffect(() => {
     const fetchVisualDna = async () => {
+      const defaultTemplate = {
+        "typography": {
+          "primary_font_family": "Outfit, sans-serif",
+          "accent_font_family": "Fira Code, monospace",
+          "base_font_size_mobile": "14px",
+          "base_font_size_desktop": "18px",
+          "line_height": 1.35,
+          "letter_spacing": "-0.02em",
+          "text_transform": "uppercase",
+          "font_weights": { "regular": 400, "bold": 700, "black": 900 }
+        },
+        "color_system": {
+          "palette_mode": "dark",
+          "background": {
+            "canvas_color": "#060608",
+            "gradient_start": "#0A0A0F",
+            "gradient_end": "#020204",
+            "ambient_glow_color": "rgba(168, 85, 247, 0.15)"
+          },
+          "typography_colors": {
+            "primary": "#FFFFFF",
+            "secondary": "rgba(255, 255, 255, 0.6)",
+            "muted": "rgba(255, 255, 255, 0.3)"
+          },
+          "accents": {
+            "primary_brand_color": "#A855F7",
+            "secondary_brand_color": "#06B6D4",
+            "border_color": "rgba(255, 255, 255, 0.05)"
+          }
+        },
+        "layout_and_positioning": {
+          "overlay_anchor_y": "center",
+          "overlay_anchor_x": "center",
+          "text_alignment": "center",
+          "container_card": {
+            "has_backing_card": true,
+            "backing_type": "glassmorphism",
+            "blur_strength": "16px",
+            "opacity": 0.85,
+            "border_radius": "24px",
+            "border_width": "1.5px"
+          }
+        },
+        "image_generation_dna": {
+          "style_preset": "cyberpunk_synthwave",
+          "master_prefix": "Premium 3D render in octane render engine, cyberpunk tech aesthetic, holographic wireframes, glowing neon elements, high-tech abstract nodes, dark ambient atmospheric lighting, ultra high resolution 8k, cinematic color grading, rich textures --no text, words, subtitles",
+          "negative_prompt": "text, letters, words, subtitles, signatures, ugly, lowres, blurry, human face, photo, portrait, realistic skin"
+        }
+      };
+
       try {
+        // Try local storage first
+        const localDna = localStorage.getItem('viral_engine_visual_dna');
+        if (localDna) {
+          setVisualDnaConfig(localDna);
+        } else {
+          setVisualDnaConfig(JSON.stringify(defaultTemplate, null, 2));
+        }
+
         const { data: { user } } = await supabase.auth.getUser();
         if (user) {
-          const { data } = await supabase
+          const { data, error } = await supabase
             .from('profiles')
             .select('visual_dna_config')
             .eq('id', user.id)
             .single();
-          if (data?.visual_dna_config) {
+          
+          if (!error && data?.visual_dna_config) {
             setVisualDnaConfig(JSON.stringify(data.visual_dna_config, null, 2));
-          } else {
-            // High-impact default branding template matching our premium architecture
-            const defaultTemplate = {
-              "typography": {
-                "primary_font_family": "Outfit, sans-serif",
-                "accent_font_family": "Fira Code, monospace",
-                "base_font_size_mobile": "14px",
-                "base_font_size_desktop": "18px",
-                "line_height": 1.35,
-                "letter_spacing": "-0.02em",
-                "text_transform": "uppercase",
-                "font_weights": { "regular": 400, "bold": 700, "black": 900 }
-              },
-              "color_system": {
-                "palette_mode": "dark",
-                "background": {
-                  "canvas_color": "#060608",
-                  "gradient_start": "#0A0A0F",
-                  "gradient_end": "#020204",
-                  "ambient_glow_color": "rgba(168, 85, 247, 0.15)"
-                },
-                "typography_colors": {
-                  "primary": "#FFFFFF",
-                  "secondary": "rgba(255, 255, 255, 0.6)",
-                  "muted": "rgba(255, 255, 255, 0.3)"
-                },
-                "accents": {
-                  "primary_brand_color": "#A855F7",
-                  "secondary_brand_color": "#06B6D4",
-                  "border_color": "rgba(255, 255, 255, 0.05)"
-                }
-              },
-              "layout_and_positioning": {
-                "overlay_anchor_y": "center",
-                "overlay_anchor_x": "center",
-                "text_alignment": "center",
-                "container_card": {
-                  "has_backing_card": true,
-                  "backing_type": "glassmorphism",
-                  "blur_strength": "16px",
-                  "opacity": 0.85,
-                  "border_radius": "24px",
-                  "border_width": "1.5px"
-                }
-              },
-              "image_generation_dna": {
-                "style_preset": "cyberpunk_synthwave",
-                "master_prefix": "Premium 3D render in octane render engine, cyberpunk tech aesthetic, holographic wireframes, glowing neon elements, high-tech abstract nodes, dark ambient atmospheric lighting, ultra high resolution 8k, cinematic color grading, rich textures --no text, words, subtitles",
-                "negative_prompt": "text, letters, words, subtitles, signatures, ugly, lowres, blurry, human face, photo, portrait, realistic skin"
-              }
-            };
-            setVisualDnaConfig(JSON.stringify(defaultTemplate, null, 2));
+            localStorage.setItem('viral_engine_visual_dna', JSON.stringify(data.visual_dna_config, null, 2));
           }
         }
       } catch (e) {
-        console.warn('[Visual DNA Fetch Failed]:', e);
+        console.warn('[Visual DNA Fetch Failed, using localStorage fallback]:', e);
       }
     };
     fetchVisualDna();
@@ -184,15 +192,22 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     setIsSavingDna(true);
     try {
       const parsed = JSON.parse(visualDnaConfig);
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) throw new Error(locale === 'ru' ? 'Пользователь не авторизован' : 'User not authenticated');
       
-      const { error } = await supabase
-        .from('profiles')
-        .update({ visual_dna_config: parsed })
-        .eq('id', user.id);
-        
-      if (error) throw error;
+      // Save locally first to guarantee persistence
+      localStorage.setItem('viral_engine_visual_dna', JSON.stringify(parsed, null, 2));
+
+      // Attempt DB save
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        const { error } = await supabase
+          .from('profiles')
+          .update({ visual_dna_config: parsed })
+          .eq('id', user.id);
+          
+        if (error) {
+          console.warn('[Save Visual DNA to DB skipped/failed, fallback to localStorage successful]:', error);
+        }
+      }
       
       alert(locale === 'ru' ? 'Дизайн-система ДНК успешно сохранена!' : 'Brand DNA design system saved successfully!');
     } catch (err: any) {
@@ -252,7 +267,10 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             ctaWord, 
             toneMode, 
             styleSeed, 
-            userBrief 
+            userBrief,
+            customVisualDna: localStorage.getItem('viral_engine_visual_dna') 
+              ? JSON.parse(localStorage.getItem('viral_engine_visual_dna')!) 
+              : null
           })
         });
         
@@ -619,7 +637,10 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           ctaWord, 
           toneMode, 
           styleSeed, 
-          userBrief 
+          userBrief,
+          customVisualDna: localStorage.getItem('viral_engine_visual_dna') 
+            ? JSON.parse(localStorage.getItem('viral_engine_visual_dna')!) 
+            : null
         })
       });
       if (!res.ok) {
@@ -1204,7 +1225,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 onClick={generateFullGalleryAtOnce}
                                 disabled={isAnyGenerationActive}
                                 className={cn(
-                                  "px-6 py-4 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 border border-white/10",
+                                  "px-3 sm:px-6 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl text-[8px] sm:text-[10px] font-black uppercase tracking-wider sm:tracking-[0.2em] flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 border border-white/10",
                                   isAnyGenerationActive
                                     ? "bg-purple-600/30 text-purple-200 border-purple-500/30"
                                     : "bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-500/10"
@@ -1227,7 +1248,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 <button
                                   onClick={downloadAllRenderedSlides}
                                   disabled={isExportingAll}
-                                  className="px-6 py-4 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                                  className="px-3 sm:px-6 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[8px] sm:text-[10px] font-black uppercase tracking-wider sm:tracking-[0.2em] flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
                                 >
                                   {isExportingAll ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
                                   {locale === 'ru' ? 'Скачать карусель (6 JPG)' : 'Download Carousel (6 JPGs)'}
@@ -1364,8 +1385,9 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 <div className="space-y-4 animate-in fade-in-50 duration-200">
                                   <div className="flex flex-col gap-2">
                                     <div className="flex justify-between items-center">
-                                      <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                                        📊 {locale === 'ru' ? 'Спецификация бренд-кода (JSON)' : 'Visual DNA Schema Config'}
+                                      <label className="text-[9px] font-black uppercase tracking-widest text-purple-400 flex items-center gap-1.5">
+                                        <FileText size={10} />
+                                        {locale === 'ru' ? 'Спецификация бренд-кода (JSON)' : 'Visual DNA Schema Config'}
                                       </label>
                                       {visualDnaError && (
                                         <span className="text-[8px] font-bold text-red-400 uppercase tracking-widest">
@@ -1400,12 +1422,12 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
                         {/* 3. Pre-rendered 6 Image Slots Grid */}
                         <div className="space-y-6">
-                          <div className="flex items-center justify-between px-2">
+                          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 px-2">
                             <span className="text-[12px] font-black text-white uppercase tracking-widest">
                               {locale === 'ru' ? 'Визуальная Матрица (6 Слайдов)' : 'Visual Matrix (6 Slides)'}
                             </span>
                             
-                            <div className="flex items-center gap-3">
+                            <div className="flex flex-wrap items-center gap-2 sm:gap-3 w-full sm:w-auto justify-between sm:justify-end">
                               {/* Theme Toggles inside matrix header */}
                               <div className="p-1 rounded-2xl bg-white/[0.02] border border-white/5 flex gap-1">
                                 {(['minimalist', 'cyber', 'business', 'glow'] as const).map(theme => (

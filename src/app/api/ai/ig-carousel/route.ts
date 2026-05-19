@@ -39,7 +39,8 @@ export async function POST(req: Request) {
       ctaWord = '', 
       toneMode = 'mentor', 
       styleSeed = 42, 
-      userBrief = '' 
+      userBrief = '',
+      customVisualDna = null
     } = await req.json();
 
     if (!scriptText) {
@@ -71,7 +72,7 @@ export async function POST(req: Request) {
     const visualStyleKey = profile?.visual_style || 'startup_valley';
     
     // Resolve visual stylePrefix prioritizing user custom Visual DNA configuration
-    const customConfig = profile?.visual_dna_config as any;
+    const customConfig = customVisualDna || profile?.visual_dna_config as any;
     const stylePrefix = customConfig?.image_generation_dna?.master_prefix 
       || STYLE_PREFIXES[visualStyleKey] 
       || STYLE_PREFIXES.startup_valley;
