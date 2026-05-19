@@ -1385,7 +1385,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                               className="w-full px-5 py-4 rounded-[1.5rem] bg-white/[0.02] border border-white/5 text-[12px] md:text-[13px] text-white/80 focus:outline-none focus:border-purple-500/50 transition-all resize-none custom-scrollbar"
                             />
                           </div>
-                        </Section>
+                        </div>
                       )}
                     </div>
                   )}
