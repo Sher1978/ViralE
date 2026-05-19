@@ -222,7 +222,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     let currentBatch: TranscriptWord[] = [];
     const flushBatch = () => {
       if (currentBatch.length === 0) return;
-      const text = currentBatch.map(w => w.text.trim().toUpperCase().replace(/[.,!?;:]/g, '')).join(' ');
+      const text = currentBatch.map(w => w.text.trim().toUpperCase()).join(' ');
       final.push({
         id: `sub-${final.length}-${Date.now()}`,
         startTime: currentBatch[0].start,
@@ -240,11 +240,15 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
           text: p,
           start: w.start + (pIdx * (w.end - w.start) / parts.length),
           end: w.start + ((pIdx + 1) * (w.end - w.start) / parts.length),
-          accent: w.accent
+          accent: false
         };
-        if (wordObj.accent) { flushBatch(); currentBatch.push(wordObj); flushBatch(); return; }
-        if (currentBatch.length >= 3) flushBatch();
+        
         currentBatch.push(wordObj);
+        
+        const hasTerminalPunctuation = /[.!?]$/.test(p);
+        if (hasTerminalPunctuation || currentBatch.length >= 3) {
+          flushBatch();
+        }
       });
     });
     flushBatch();

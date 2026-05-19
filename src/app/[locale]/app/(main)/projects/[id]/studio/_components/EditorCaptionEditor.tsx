@@ -68,6 +68,24 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
     })));
   };
 
+  const handleRegroup = () => {
+    setSubtitleClips(prev => {
+      const merged: SubtitleClip[] = [];
+      for (let i = 0; i < prev.length; i += 3) {
+        const chunk = prev.slice(i, i + 3);
+        if (chunk.length === 0) continue;
+        merged.push({
+          id: `sub-${merged.length}-${Date.now()}`,
+          startTime: chunk[0].startTime,
+          endTime: chunk[chunk.length - 1].endTime,
+          text: chunk.map(c => c.text.trim().toUpperCase()).join(' '),
+          style: chunk[0].style || 'bold'
+        });
+      }
+      return merged;
+    });
+  };
+
   return (
     <div className="flex flex-col h-full bg-[#0d0d12] text-white rounded-t-[3rem] overflow-hidden">
       {/* Header */}
@@ -84,7 +102,17 @@ export const EditorCaptionEditor: React.FC<EditorCaptionEditorProps> = ({
                 {isBulkEdit ? '‹ Back to List' : 'Edit All Text ›'}
             </button>
         </div>
-        <div className="w-10" />
+        {subtitleClips.length > 0 && subtitleClips.some(c => !c.text.trim().includes(' ')) ? (
+          <button 
+              onClick={handleRegroup} 
+              title="Сгруппировать отдельные слова в красивые фразы"
+              className="p-2 text-purple-400 hover:text-purple-300 transition-colors text-[10px] font-black uppercase tracking-wider shrink-0"
+          >
+              ✨ Слить
+          </button>
+        ) : (
+          <div className="w-10" />
+        )}
       </div>
 
       {/* Phrase List or Bulk Editor */}
