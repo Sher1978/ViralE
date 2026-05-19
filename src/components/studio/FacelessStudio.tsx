@@ -559,9 +559,20 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     }
 
     const chunks: Blob[] = [];
-    const mr = new MediaRecorder(stream, { 
-      mimeType: 'video/webm;codecs=vp9,opus' 
-    });
+    let selectedMime = '';
+    if (typeof MediaRecorder !== 'undefined') {
+      const candidates = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/quicktime'];
+      for (const m of candidates) {
+        if (MediaRecorder.isTypeSupported(m)) {
+          selectedMime = m;
+          break;
+        }
+      }
+    }
+
+    const options: MediaRecorderOptions = {};
+    if (selectedMime) options.mimeType = selectedMime;
+    const mr = new MediaRecorder(stream, options);
     mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
     
     await new Promise<void>(async (resolve) => {

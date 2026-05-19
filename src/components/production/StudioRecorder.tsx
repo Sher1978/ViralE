@@ -96,9 +96,24 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
     if (!streamRef.current) return;
     
     chunksRef.current = [];
-    const recorder = new MediaRecorder(streamRef.current, {
-      mimeType: mode === 'video' ? 'video/webm' : 'audio/webm'
-    });
+    let selectedMime = '';
+    if (typeof MediaRecorder !== 'undefined') {
+      const candidates = mode === 'video' 
+        ? ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4;codecs=avc1', 'video/mp4', 'video/quicktime']
+        : ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/wav'];
+      for (const m of candidates) {
+        if (MediaRecorder.isTypeSupported(m)) {
+          selectedMime = m;
+          break;
+        }
+      }
+    }
+
+    const options: MediaRecorderOptions = {};
+    if (selectedMime) {
+      options.mimeType = selectedMime;
+    }
+    const recorder = new MediaRecorder(streamRef.current, options);
 
     recorder.ondataavailable = (e) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);

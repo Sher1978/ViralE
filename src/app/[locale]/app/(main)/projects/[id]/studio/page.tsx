@@ -524,10 +524,33 @@ export default function StudioPage() {
             const aMime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
             recorder = new MediaRecorder(activeStream, { mimeType: aMime });
           } else {
-            recorder = new MediaRecorder(activeStream, { 
-              mimeType: MediaRecorder.isTypeSupported('video/webm;codecs=vp9,opus') ? 'video/webm;codecs=vp9,opus' : 'video/webm',
+            let selectedMime = '';
+            const candidateMimes = [
+              'video/webm;codecs=vp9,opus',
+              'video/webm;codecs=vp8,opus',
+              'video/webm',
+              'video/mp4;codecs=avc1',
+              'video/mp4',
+              'video/quicktime'
+            ];
+            for (const mime of candidateMimes) {
+              if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
+                selectedMime = mime;
+                break;
+              }
+            }
+
+            const options: MediaRecorderOptions = {
               videoBitsPerSecond: isMobile ? 1200000 : 2500000
-            });
+            };
+            if (selectedMime) {
+              options.mimeType = selectedMime;
+              console.log('[Studio] MediaRecorder using video mimeType:', selectedMime);
+            } else {
+              console.warn('[Studio] No standard video mimeType supported. Letting browser choose default.');
+            }
+
+            recorder = new MediaRecorder(activeStream, options);
           }
 
           recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
@@ -573,12 +596,17 @@ export default function StudioPage() {
           // Secondary audio-only recorder for OOM bypass on mobile (only for video mode)
           if (!isVoiceOnly) {
             try {
-              const aMime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
+              let aMime = '';
+              if (typeof MediaRecorder !== 'undefined') {
+                if (MediaRecorder.isTypeSupported('audio/webm')) aMime = 'audio/webm';
+                else if (MediaRecorder.isTypeSupported('audio/mp4')) aMime = 'audio/mp4';
+              }
               const audioOnlyStream = new MediaStream(activeStream.getAudioTracks());
-              const audioRecorder = new MediaRecorder(audioOnlyStream, { 
-                mimeType: aMime,
-                audioBitsPerSecond: 64000 
-              });
+              const options: MediaRecorderOptions = {
+                audioBitsPerSecond: 64000
+              };
+              if (aMime) options.mimeType = aMime;
+              const audioRecorder = new MediaRecorder(audioOnlyStream, options);
               audioRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
               audioRecorder.start(1000);
               (window as any)._audioRecorder = audioRecorder;
