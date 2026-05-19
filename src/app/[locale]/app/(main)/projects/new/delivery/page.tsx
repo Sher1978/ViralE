@@ -1077,6 +1077,9 @@ function DeliveryPageContent() {
             locale={locale}
             onUpdateManifest={(newManifest: any) => {
                setVersion(prev => (prev ? { ...prev, script_data: newManifest } : prev) as any);
+               if (projectId) {
+                 projectService.updateLatestVersionManifest(projectId, newManifest);
+               }
             }}
           />
         </div>
