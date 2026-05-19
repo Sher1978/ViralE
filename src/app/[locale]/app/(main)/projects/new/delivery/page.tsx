@@ -129,7 +129,11 @@ function DeliveryPageContent() {
       .replace(/\]/g, '\\\\]');
 
     const subStyleIdx = manifest?.subtitleStyle || 0;
-    const subSize = manifest?.subtitleSize || 82;
+    let subSize = manifest?.subtitleSize || 25;
+    // Scale from CSS pixels to 1080p video space if needed (nominal scale factor of 3.2)
+    if (subSize < 60) {
+      subSize = Math.round(subSize * 3.2);
+    }
     const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
 
     const drawtextChain = clips.flatMap(c => {
@@ -179,8 +183,8 @@ function DeliveryPageContent() {
         fontcolor = '0xFBBF24'; useItalic = true; shadowy = 2;
       }
 
-      // Map Y coordinates exactly to canvas editor: 1920 - 450 - subPos.y
-      const baseVerticalPos = videoHeight - 450; 
+      // Map Y coordinates exactly to canvas editor (matching bottom: '15%' baseline)
+      const baseVerticalPos = videoHeight - 288; 
       const finalY = baseVerticalPos - subPos.y;
 
       const subStart = typeof c.startTime === 'number' && !isNaN(c.startTime) ? c.startTime : 0;
@@ -396,9 +400,13 @@ function DeliveryPageContent() {
         const activeSub = subs.find((s: any) => time >= s.startTime && time <= s.endTime);
         if (activeSub) {
           const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
-          const subSize = manifest?.subtitleSize || 82;
+          let subSize = manifest?.subtitleSize || 25;
+          // Scale from CSS pixels to 1080p video space if needed (nominal scale factor of 3.2)
+          if (subSize < 60) {
+            subSize = Math.round(subSize * 3.2);
+          }
           const subStyleIdx = manifest?.subtitleStyle || 0;
-          const baseIdx = canvas.height - 450 - subPos.y;
+          const baseIdx = canvas.height - 288 - subPos.y;
           
           let fontStyle = '';
           let fillStyle: string | CanvasGradient = '#facc15';
@@ -583,7 +591,7 @@ function DeliveryPageContent() {
         throw new Error('Финальный файл слишком мал. Попробуйте переключиться на FFmpeg-режим внизу страницы.');
       }
       
-      await idb.set(`final_render_${projectId}_${ver.id}`, finalBlob, 'MediaBuffer');
+      await idb.set(`final_render_v3_${projectId}_${ver.id}`, finalBlob, 'MediaBuffer');
       const finalUrl = URL.createObjectURL(finalBlob);
       
       // CLEANUP FFmpeg FS
@@ -629,7 +637,7 @@ function DeliveryPageContent() {
     
     // 0. CHECK CACHE FIRST
     try {
-      const cachedRender = await idb.get(`final_render_${projectId}_${ver.id}`, 'MediaBuffer');
+      const cachedRender = await idb.get(`final_render_v3_${projectId}_${ver.id}`, 'MediaBuffer');
       if (cachedRender instanceof Blob) {
         console.log('[Delivery] Found cached render for version', ver.id);
         const url = URL.createObjectURL(cachedRender);
@@ -995,7 +1003,7 @@ function DeliveryPageContent() {
             setPreviewUrl(verData.script_data.aRollUrl);
           }
 
-          const cachedRender = verData ? await idb.get(`final_render_${projectId}_${verData.id}`, 'MediaBuffer') : null;
+          const cachedRender = verData ? await idb.get(`final_render_v3_${projectId}_${verData.id}`, 'MediaBuffer') : null;
           if (cachedRender instanceof Blob) {
             console.log('[Delivery] Restored from IDB cache');
             const url = URL.createObjectURL(cachedRender);
