@@ -66,7 +66,11 @@ export const EditorToolDrawer: React.FC<EditorToolDrawerProps> = ({
                 </button>
               </div>
 
-              <div className="flex-1 overflow-y-auto px-4 pb-8">
+              <div className={
+                activeTool === 'captions' || activeTool === 'text'
+                  ? "flex-1 flex flex-col min-h-0 overflow-hidden"
+                  : "flex-1 overflow-y-auto px-4 pb-8"
+              }>
                 {children}
               </div>
             </motion.div>
