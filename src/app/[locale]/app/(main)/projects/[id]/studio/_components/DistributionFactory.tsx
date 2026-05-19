@@ -1199,6 +1199,21 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 const url = imageResults[key];
                                 const isGen = isGeneratingImages[key];
 
+                                const highlightText = (text: string) => {
+                                  if (!text) return '';
+                                  const words = text.split(/(\s+)/);
+                                  return words.map((word, idx) => {
+                                    const clean = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()""''«»]/g,"");
+                                    if (word.startsWith('"') || word.endsWith('"') || word.startsWith('«') || word.endsWith('»')) {
+                                      return <span key={idx} className="text-yellow-400 font-extrabold">{word}</span>;
+                                    }
+                                    if (clean.length > 2 && clean === clean.toUpperCase() && !/^\d+$/.test(clean)) {
+                                      return <span key={idx} className="text-purple-400 font-black">{word}</span>;
+                                    }
+                                    return word;
+                                  });
+                                };
+
                                 return (
                                   <div key={num} className="p-5 rounded-[2.5rem] bg-white/[0.01] border border-white/5 space-y-4 hover:border-white/10 transition-colors flex flex-col group">
                                     {/* Preview Canvas */}
@@ -1228,62 +1243,86 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                           <Loader2 size={32} className="text-purple-500 animate-spin" />
                                         </div>
                                       ) : (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 bg-glass">
-                                          <div className="w-14 h-14 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-center mb-4 shadow-inner">
-                                            <ImageIcon size={24} className="text-white/20" />
+                                        <div className="absolute inset-0 flex flex-col justify-between text-center p-8 bg-gradient-to-b from-white/[0.03] to-white/[0.01] backdrop-blur-xl border border-white/10 select-none overflow-hidden">
+                                          {/* Ambient Backlight Glow */}
+                                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 filter blur-3xl opacity-60 pointer-events-none group-hover:scale-125 transition-transform duration-700" />
+                                          
+                                          {/* Grid overlay */}
+                                          <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.015)_1.5px,transparent_1.5px)] [background-size:16px_16px] pointer-events-none opacity-80" />
+
+                                          {/* Slide badge */}
+                                          <div className="z-10 self-center px-3 py-1 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-md flex items-center justify-center text-[8px] font-black uppercase tracking-[0.2em] text-purple-400/90 shadow-sm">
+                                            {locale === 'ru' ? `СЛАЙД 0${num}` : `SLIDE 0${num}`}
                                           </div>
-                                          <p className="text-white/50 font-black uppercase tracking-widest text-xl glass-text">
-                                            {locale === 'ru' ? `Слайд ${num}` : `Image ${num}`}
-                                          </p>
-                                          <p className="text-white/20 text-[9px] font-bold uppercase tracking-widest mt-2">
-                                            {locale === 'ru' ? 'Ожидает генерации' : 'Awaiting visual'}
-                                          </p>
+
+                                          {/* Interactive futuristic mockup visual */}
+                                          <div className="z-10 flex flex-col items-center gap-4 my-auto">
+                                            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-b from-white/10 to-white/[0.02] border border-white/15 flex items-center justify-center shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] group-hover:border-purple-500/50 transition-all duration-500">
+                                              <ImageIcon size={20} className="text-white/20 group-hover:text-purple-400 group-hover:scale-110 transition-all duration-500" />
+                                              
+                                              <span className="absolute top-1 left-1 w-1 h-1 border-t border-l border-white/20 group-hover:border-purple-400 transition-colors" />
+                                              <span className="absolute top-1 right-1 w-1 h-1 border-t border-r border-white/20 group-hover:border-purple-400 transition-colors" />
+                                              <span className="absolute bottom-1 left-1 w-1 h-1 border-b border-l border-white/20 group-hover:border-purple-400 transition-colors" />
+                                              <span className="absolute bottom-1 right-1 w-1 h-1 border-b border-r border-white/20 group-hover:border-purple-400 transition-colors" />
+                                            </div>
+                                            
+                                            <div className="space-y-0.5 px-2">
+                                              <p className="text-white/20 text-[7px] font-black uppercase tracking-widest leading-relaxed">
+                                                {locale === 'ru' ? 'Слайд пуст' : 'EMPTY CANVAS'}
+                                              </p>
+                                            </div>
+                                          </div>
+
+                                          {/* Tech hint */}
+                                          <div className="z-10 self-center max-w-[85%] text-[7px] font-black uppercase tracking-wider text-purple-400/50 group-hover:text-purple-400 transition-colors animate-pulse">
+                                            {locale === 'ru' 
+                                              ? 'КЛИКНИТЕ «СГЕНЕРИРОВАТЬ»' 
+                                              : 'TAP «GENERATE» TO DRAW'}
+                                          </div>
                                         </div>
                                       )}
 
-                                      {/* Text Overlay inside thumbnail preview (only if url exists) */}
-                                      {url && (
-                                        <div className="absolute inset-0 flex flex-col justify-between p-6 z-10 pointer-events-none">
-                                          <div className="flex items-center justify-between text-white/50 font-bold text-[8px] tracking-wider">
-                                            <span>@viral_engine</span>
-                                            <span className={cn("px-1.5 py-0.5 rounded bg-black/30 backdrop-blur-md border border-white/10 text-[7px]", activeTheme === 'business' && 'text-slate-500 bg-transparent border-none')}>
-                                              0{num} / 06
-                                            </span>
-                                          </div>
-                                          <div className="flex-1 flex flex-col justify-center">
-                                            {activeTheme === 'minimalist' && (
-                                              <div className="w-full h-full absolute inset-0 bg-black/60 border-[2px] border-purple-500/30 flex items-center justify-center p-6 text-center">
-                                                <p className="text-white font-extrabold text-sm md:text-base leading-snug tracking-tight">
-                                                  {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
-                                                </p>
-                                              </div>
-                                            )}
-                                            {activeTheme === 'cyber' && (
-                                              <div className="w-full p-4 rounded-xl bg-black/85 border border-pink-500/50 shadow-lg text-left space-y-2">
-                                                <div className="w-8 h-1 bg-cyan-400 rounded-full" />
-                                                <p className="text-white font-black text-xs md:text-sm leading-relaxed tracking-wide uppercase line-clamp-4">
-                                                  {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
-                                                </p>
-                                              </div>
-                                            )}
-                                            {activeTheme === 'business' && (
-                                              <div className="w-full p-4 rounded-xl bg-white border border-slate-200 shadow-xl text-left mt-auto space-y-1">
-                                                <span className="text-[7px] font-black text-indigo-600 uppercase tracking-widest">KEY TAKEAWAY #{num}</span>
-                                                <p className="text-slate-800 font-bold text-[10px] md:text-xs leading-snug line-clamp-3">
-                                                  {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
-                                                </p>
-                                              </div>
-                                            )}
-                                            {activeTheme === 'glow' && (
-                                              <div className="w-full text-center mt-auto pb-2">
-                                                <p className="text-white font-black text-sm md:text-base leading-snug tracking-tighter drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] line-clamp-4">
-                                                  {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
-                                                </p>
-                                              </div>
-                                            )}
-                                          </div>
+                                      {/* Text Overlay inside thumbnail preview (ALWAYS visible for perfect visual feedback) */}
+                                      <div className="absolute inset-0 flex flex-col justify-between p-6 z-20 pointer-events-none select-none">
+                                        <div className="flex items-center justify-between text-white/50 font-bold text-[8px] tracking-wider">
+                                          <span>@viral_engine</span>
+                                          <span className={cn("px-1.5 py-0.5 rounded bg-black/30 backdrop-blur-md border border-white/10 text-[7px]", activeTheme === 'business' && 'text-slate-500 bg-transparent border-none')}>
+                                            0{num} / 06
+                                          </span>
                                         </div>
-                                      )}
+                                        <div className="flex-1 flex flex-col justify-center">
+                                          {activeTheme === 'minimalist' && (
+                                            <div className="w-full p-4 rounded-2xl bg-black/75 backdrop-blur-md border border-white/10 flex items-center justify-center text-center shadow-xl">
+                                              <p className="text-white font-extrabold text-[11px] md:text-xs leading-snug tracking-tight">
+                                                {highlightText(customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`)}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {activeTheme === 'cyber' && (
+                                            <div className="w-full p-4 rounded-xl bg-black/90 backdrop-blur-md border border-pink-500/50 shadow-lg text-left space-y-1.5">
+                                              <div className="w-6 h-0.5 bg-cyan-400 rounded-full" />
+                                              <p className="text-white font-black text-[9px] md:text-[10px] leading-relaxed tracking-wide uppercase line-clamp-4">
+                                                {highlightText(customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`)}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {activeTheme === 'business' && (
+                                            <div className="w-full p-4 rounded-xl bg-white border border-slate-200 shadow-xl text-left mt-auto space-y-1">
+                                              <span className="text-[6px] font-black text-indigo-600 uppercase tracking-widest">KEY TAKEAWAY #{num}</span>
+                                              <p className="text-slate-800 font-bold text-[9px] md:text-[10px] leading-snug line-clamp-3">
+                                                {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
+                                              </p>
+                                            </div>
+                                          )}
+                                          {activeTheme === 'glow' && (
+                                            <div className="w-full text-center mt-auto pb-2">
+                                              <p className="text-white font-black text-[11px] md:text-xs leading-snug tracking-tighter drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] line-clamp-4">
+                                                {highlightText(customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`)}
+                                              </p>
+                                            </div>
+                                          )}
+                                        </div>
+                                      </div>
                                     </div>
 
                                     {/* Inline Editors for this slide */}
@@ -1349,6 +1388,81 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 );
                               });
                             })()}
+                          </div>
+
+                          {/* Horizontal Scroll Indicators for Mobile */}
+                          <div className="flex md:hidden items-center justify-center gap-1.5 pt-2 pb-4">
+                            {[...Array(6)].map((_, idx) => (
+                              <button
+                                key={idx}
+                                onClick={() => {
+                                  const container = document.getElementById('carousel-scroller');
+                                  if (container) {
+                                    const cardWidth = container.scrollWidth / 6;
+                                    container.scrollTo({
+                                      left: idx * cardWidth,
+                                      behavior: 'smooth'
+                                    });
+                                  }
+                                }}
+                                className={cn(
+                                  "w-2 h-2 rounded-full transition-all duration-300",
+                                  activeSlideIndex === idx 
+                                    ? "bg-purple-500 w-5" 
+                                    : "bg-white/20 hover:bg-white/40"
+                                )}
+                                aria-label={`Перейти к слайду ${idx + 1}`}
+                              />
+                            ))}
+                          </div>
+
+                          {/* Common Bulk Generate Button under the Scroller */}
+                          <div className="flex justify-center pt-2 pb-6 px-1">
+                            <button
+                              onClick={async () => {
+                                if (!assets?.ig_carousel) return;
+                                setIsRegeneratingAll(true);
+                                try {
+                                  const rawCarousel = assets.ig_carousel as any;
+                                  const resolvedSlides = rawCarousel.slides || rawCarousel.prompts?.map((p: string, i: number) => ({
+                                    slide_number: i + 1,
+                                    image_prompt: p,
+                                    text_on_slide: `Слайд ${i + 1}`
+                                  })) || [];
+
+                                  await Promise.all(
+                                    resolvedSlides.map((slide: any) => {
+                                      const key = `carousel-${slide.slide_number - 1}`;
+                                      const prompt = customImagePrompts[slide.slide_number] || slide.image_prompt;
+                                      return generateSingleImage(prompt, '4:5', key);
+                                    })
+                                  );
+                                } catch (err) {
+                                  console.error('All-slide gen failed:', err);
+                                } finally {
+                                  setIsRegeneratingAll(false);
+                                }
+                              }}
+                              disabled={isRegeneratingAll}
+                              className={cn(
+                                "w-full px-6 py-4 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2.5 shadow-lg active:scale-[0.98] disabled:opacity-50",
+                                isRegeneratingAll
+                                  ? "bg-purple-600/30 text-purple-200 border border-purple-500/30 cursor-not-allowed"
+                                  : "bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white hover:scale-[1.01] border border-white/10"
+                              )}
+                            >
+                              {isRegeneratingAll ? (
+                                <>
+                                  <Loader2 size={13} className="animate-spin text-white" />
+                                  {locale === 'ru' ? 'НЕЙРОСЕТЬ РИСУЕТ ВСЕ СЛАЙДЫ...' : 'NEURAL GENERATING ALL SLIDES...'}
+                                </>
+                              ) : (
+                                <>
+                                  <Wand2 size={13} className="text-white animate-pulse" />
+                                  {locale === 'ru' ? 'Сгенерировать всю карусель (6 слайдов)' : 'Generate Full Carousel (6 Slides)'}
+                                </>
+                              )}
+                            </button>
                           </div>
                         </div>
 

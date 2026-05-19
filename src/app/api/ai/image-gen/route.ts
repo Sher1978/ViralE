@@ -25,8 +25,8 @@ export async function POST(req: Request) {
     let dallESize: "1024x1024" | "1024x1792" | "1792x1024" = "1024x1792";
 
     if (aspect_ratio === '4:5') {
-      width = 864;
-      height = 1080;
+      width = 768;
+      height = 960;
       dallESize = "1024x1792"; 
     } else if (aspect_ratio === '1:1') {
       width = 1024;
