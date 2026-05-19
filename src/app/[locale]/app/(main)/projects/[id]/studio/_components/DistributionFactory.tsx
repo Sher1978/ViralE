@@ -588,36 +588,13 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   };
 
   return (
-    <div className="w-full flex flex-col bg-[#05050a] rounded-[2.5rem] border border-white/5 shadow-2xl relative">
+    <div className="w-full flex flex-col bg-[#05050a] rounded-[2.5rem] border border-white/5 shadow-2xl relative overflow-hidden">
       {/* Background Decor */}
       <div className="absolute top-0 right-0 w-[500px] h-[500px] bg-purple-600/5 blur-[120px] rounded-full -translate-y-1/2 translate-x-1/2 pointer-events-none" />
       <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-600/5 blur-[100px] rounded-full translate-y-1/2 -translate-x-1/2 pointer-events-none" />
       
-      {/* Header */}
-      <div className="p-8 border-b border-white/5 flex items-center justify-between relative z-10 bg-black/20 backdrop-blur-md">
-        <div>
-          <h2 className="text-3xl font-bold italic uppercase tracking-tighter text-white">
-            Distribution <span className="text-purple-500">Suite</span>
-          </h2>
-          {assets?.user_context_applied && (
-            <p className="text-[9px] text-purple-400 font-black uppercase tracking-[0.2em] mt-1 flex items-center gap-2">
-              <Brain size={12} /> {assets.user_context_applied}
-            </p>
-          )}
-        </div>
-
-        <button 
-          onClick={generateAssets}
-          disabled={isGenerating}
-          className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-purple-600/20 backdrop-blur-md border border-purple-500/30 text-purple-100 text-[10px] font-bold uppercase tracking-widest hover:bg-purple-600/40 hover:border-purple-500/60 active:scale-95 transition-all disabled:opacity-50 shadow-[0_0_30px_rgba(168,85,247,0.1)]"
-        >
-          {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <RefreshCw size={16} />}
-          {assets ? 'REGENERATE ALL' : 'GENERATE CONTENT PACK'}
-        </button>
-      </div>
-
       {generationError && (
-        <div className="mx-6 sm:mx-8 mt-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-[11px] text-red-400 font-bold uppercase tracking-widest flex items-center justify-between gap-4 animate-bounce">
+        <div className="mx-6 sm:mx-8 mt-6 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-[11px] text-red-400 font-bold uppercase tracking-widest flex items-center justify-between gap-4 animate-bounce relative z-10">
           <div className="flex items-center gap-2">
             <span>⚠️</span>
             <span>{locale === 'ru' ? `Ошибка генерации: ${generationError}` : `Generation Error: ${generationError}`}</span>
@@ -661,133 +638,171 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
               animate={{ opacity: 1, scale: 1 }}
               exit={{ opacity: 0, scale: 0.98 }}
               transition={{ duration: 0.2 }}
-                className="w-full p-6 sm:p-8 relative z-10"
-              >
-                <div className="max-w-4xl mx-auto space-y-8 pb-10">
-                  <div className="text-center space-y-3 py-4">
-                    <span className="text-[10px] font-black tracking-[0.4em] uppercase text-purple-400">Media Distribution Kit</span>
-                    <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">
-                      {locale === 'ru' ? 'Выберите формат' : 'Select Format'}
-                    </h3>
-                    <p className="text-[10px] sm:text-xs text-white/30 uppercase tracking-widest max-w-md mx-auto leading-relaxed">
-                      {locale === 'ru' ? 'AI сгенерировал 6 готовых форматов для продвижения вашего видео' : 'AI generated 6 high-conversion distribution formats for your socials'}
-                    </p>
-                  </div>
-
-                  <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
-                    {platforms.map((p, i) => {
-                      const isRu = locale === 'ru';
-                      const hasContent = isPlatformGenerated(p.id);
-                      
-                      const metas = {
-                        sfv: {
-                          title: isRu ? 'TikTok & Reels' : 'TikTok & Reels',
-                          subtitle: isRu ? 'Вирусное описание и теги' : 'Viral copy & hashtags',
-                          gradient: hasContent 
-                            ? 'from-[#010101] via-[#00f2fe]/5 to-[#fe2c55]/10 hover:border-[#fe2c55]/30 shadow-[#fe2c55]/5 border-purple-500/20' 
-                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
-                          iconColor: hasContent ? 'text-[#00f2fe]' : 'text-white/20',
-                          badge: hasContent ? (isRu ? '⚡ Видео' : '⚡ Video') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
-                        },
-                        threads: {
-                          title: isRu ? 'Threads & FB' : 'Threads & FB',
-                          subtitle: isRu ? 'Глубокий нарратив' : 'Deep narrative threads',
-                          gradient: hasContent 
-                            ? 'from-[#101010] via-white/5 to-[#1a1a1a] hover:border-white/20 shadow-white/5 border-purple-500/20' 
-                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
-                          iconColor: hasContent ? 'text-white' : 'text-white/20',
-                          badge: hasContent ? (isRu ? '✍️ Текст' : '✍️ Copy') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
-                        },
-                        linkedin: {
-                          title: isRu ? 'LinkedIn' : 'LinkedIn',
-                          subtitle: isRu ? 'Бизнес-инсайт' : 'Executive post',
-                          gradient: hasContent 
-                            ? 'from-[#001c3d] via-[#0a66c2]/5 to-[#0077b5]/10 hover:border-[#0a66c2]/30 shadow-[#0a66c2]/5 border-purple-500/20' 
-                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
-                          iconColor: hasContent ? 'text-[#0A66C2]' : 'text-white/20',
-                          badge: hasContent ? (isRu ? '💼 Эксперт' : '💼 Expert') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
-                        },
-                        article: {
-                          title: isRu ? 'Longread Article' : 'Longread Article',
-                          subtitle: isRu ? 'SEO-статья для блога' : 'Deep-dive blog post',
-                          gradient: hasContent 
-                            ? 'from-[#2b1800] via-[#ffb300]/5 to-[#f57c00]/10 hover:border-[#ffb300]/30 shadow-[#ffb300]/5 border-purple-500/20' 
-                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
-                          iconColor: hasContent ? 'text-[#FFB300]' : 'text-white/20',
-                          badge: hasContent ? (isRu ? '📰 Блог' : '📰 Blog') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
-                        },
-                        carousel: {
-                          title: isRu ? 'Instagram Carousel' : 'Instagram Carousel',
-                          subtitle: isRu ? '6 слайдов сторителлинга' : '6-slide visual series',
-                          gradient: hasContent 
-                            ? 'from-[#2a0845] via-[#e1306c]/5 to-[#ffb347]/10 hover:border-[#e1306c]/30 shadow-[#e1306c]/5 border-purple-500/20' 
-                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
-                          iconColor: hasContent ? 'text-[#E1306C]' : 'text-white/20',
-                          badge: hasContent ? (isRu ? '📸 Галерея' : '📸 Gallery') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
-                        },
-                        banner: {
-                          title: isRu ? 'YouTube Banner' : 'YouTube Banner',
-                          subtitle: isRu ? 'Обложка с высоким CTR' : 'High-CTR thumbnail',
-                          gradient: hasContent 
-                            ? 'from-[#3b0000] via-[#ff0000]/5 to-[#b22222]/10 hover:border-[#ff0000]/30 shadow-[#ff0000]/5 border-purple-500/20' 
-                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
-                          iconColor: hasContent ? 'text-[#FF0000]' : 'text-white/20',
-                          badge: hasContent ? (isRu ? '🖼️ Обложка' : '🖼️ Cover') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
-                        },
-                      };
-                      const meta = metas[p.id];
-                      return (
-                        <motion.button
-                          key={p.id}
-                          onClick={() => {
-                            setActivePlatform(p.id);
-                            setSelectedDetail(p.id);
-                          }}
-                          whileHover={{ scale: 1.02 }}
-                          whileTap={{ scale: 0.98 }}
-                          className={cn(
-                            "relative group p-6 rounded-[2.5rem] bg-gradient-to-br border text-left transition-all duration-300 overflow-hidden flex flex-col justify-between aspect-square shadow-2xl",
-                            meta.gradient,
-                            hasContent ? "border-purple-500/35 hover:border-purple-400/60 shadow-[0_0_20px_rgba(168,85,247,0.15)]" : "border-white/5"
-                          )}
-                        >
-                          {/* Glassmorphic Inner Glow */}
-                          <div className="absolute inset-0 bg-black/40 backdrop-blur-sm opacity-60 pointer-events-none group-hover:opacity-40 transition-opacity" />
-                          
-                          {/* Icon and Badge */}
-                          <div className="relative z-10 flex items-center justify-between w-full">
-                            <div className={cn("w-12 h-12 rounded-2xl bg-white/[0.04] flex items-center justify-center border border-white/10 shadow-inner group-hover:scale-110 transition-transform", meta.iconColor)}>
-                              <p.icon size={22} />
-                            </div>
-                            <span className={cn(
-                              "px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest transition-colors",
-                              hasContent 
-                                ? "bg-white/5 border-white/10 text-white/50 group-hover:text-white" 
-                                : "bg-purple-500/10 border-purple-500/20 text-purple-400 group-hover:bg-purple-500/20"
-                            )}>
-                              {meta.badge}
-                            </span>
-                          </div>
-
-                          {/* Content */}
-                          <div className="relative z-10 space-y-1">
-                            <h4 className="text-[14px] font-black text-white uppercase tracking-wider group-hover:translate-x-1 transition-transform">{meta.title}</h4>
-                            <p className="text-[9px] text-white/40 font-bold uppercase tracking-wide leading-tight group-hover:text-white/60 transition-colors">{meta.subtitle}</p>
-                          </div>
-
-                          {/* Arrow indicator */}
-                          <div className="absolute bottom-6 right-6 text-white/15 group-hover:text-white/60 transition-colors">
-                            <ChevronRight size={18} />
-                          </div>
-                        </motion.button>
-                      );
-                    })}
-                  </div>
+              className="w-full p-6 sm:p-8 relative z-10"
+            >
+              <div className="max-w-4xl mx-auto space-y-8 pb-10">
+                <div className="flex flex-col items-center text-center space-y-2 py-2">
+                  <span className="text-[10px] font-black tracking-[0.3em] uppercase text-purple-500">DIGITAL DNA SYNC</span>
+                  <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">
+                    {locale === 'ru' ? 'КАНАЛЫ ДИСТРИБУЦИИ' : 'DISTRIBUTION CHANNELS'}
+                  </h3>
                 </div>
-              </motion.div>
-            ) : (
-              /* Deep iOS Mobile-optimized Detail Overlay Sheet */
-              <motion.div
+
+                {/* 1. Large Centralized Call-to-Action if pack is not generated yet */}
+                {!assets && (
+                  <div className="flex flex-col items-center justify-center p-8 rounded-[2.5rem] bg-gradient-to-br from-purple-900/10 to-indigo-900/10 border border-purple-500/15 text-center space-y-5 max-w-2xl mx-auto shadow-xl">
+                    <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
+                      <Sparkles size={28} className="animate-pulse" />
+                    </div>
+                    <div className="space-y-2">
+                      <h4 className="text-lg font-black uppercase tracking-wider text-white">{locale === 'ru' ? 'AI Дистрибуция готова' : 'AI Distribution Ready'}</h4>
+                      <p className="text-[11px] text-white/40 uppercase tracking-widest leading-relaxed max-w-md">
+                        {locale === 'ru' 
+                          ? 'Сгенерируйте сразу 6 вирусных форматов продвижения под вашу ДНК бренда в один клик' 
+                          : 'Generate 6 high-conversion social promo formats tailored to your Brand DNA in one tap'}
+                      </p>
+                    </div>
+                    <button
+                      onClick={generateAssets}
+                      disabled={isGenerating}
+                      className="flex items-center gap-3 px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-lg shadow-purple-500/25 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                    >
+                      {isGenerating ? <Loader2 size={16} className="animate-spin" /> : <Sparkles size={16} />}
+                      {locale === 'ru' ? 'СГЕНЕРИРОВАТЬ ВЕСЬ ПАКЕТ' : 'GENERATE FULL PACK'}
+                    </button>
+                  </div>
+                )}
+
+                {/* 2. Premium iOS App Icon Widgets */}
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-6 sm:gap-8">
+                  {platforms.map((p, i) => {
+                    const isRu = locale === 'ru';
+                    const hasContent = isPlatformGenerated(p.id);
+                    
+                    const metas = {
+                      sfv: {
+                        title: isRu ? 'TikTok & Reels' : 'TikTok & Reels',
+                        subtitle: isRu ? 'Вирусное описание' : 'Viral description',
+                        gradient: hasContent 
+                          ? 'from-[#0a0a0f] via-[#fe2c55]/[0.03] to-[#00f2fe]/[0.03] border-[#fe2c55]/30 shadow-[#fe2c55]/5' 
+                          : 'from-neutral-950/40 to-neutral-950/60 border-white/5 border-dashed',
+                        iconColor: hasContent ? 'text-[#fe2c55]' : 'text-white/20',
+                      },
+                      threads: {
+                        title: isRu ? 'Threads & FB' : 'Threads & FB',
+                        subtitle: isRu ? 'Глубокий пост' : 'Deep-dive text',
+                        gradient: hasContent 
+                          ? 'from-[#0a0a0f] via-white/[0.03] to-[#101015] border-white/20 shadow-white/5' 
+                          : 'from-neutral-950/40 to-neutral-950/60 border-white/5 border-dashed',
+                        iconColor: hasContent ? 'text-white' : 'text-white/20',
+                      },
+                      linkedin: {
+                        title: isRu ? 'LinkedIn' : 'LinkedIn',
+                        subtitle: isRu ? 'Бизнес-инсайт' : 'Executive insight',
+                        gradient: hasContent 
+                          ? 'from-[#051120] via-[#0a66c2]/[0.04] to-[#005c9e]/[0.04] border-[#0a66c2]/35 shadow-[#0a66c2]/5' 
+                          : 'from-neutral-950/40 to-neutral-950/60 border-white/5 border-dashed',
+                        iconColor: hasContent ? 'text-[#0A66C2]' : 'text-white/20',
+                      },
+                      article: {
+                        title: isRu ? 'Longread Blog' : 'Longread Blog',
+                        subtitle: isRu ? 'SEO-статья' : 'Deep article',
+                        gradient: hasContent 
+                          ? 'from-[#1a1005] via-[#ffb300]/[0.03] to-[#c28500]/[0.03] border-[#ffb300]/30 shadow-[#ffb300]/5' 
+                          : 'from-neutral-950/40 to-neutral-950/60 border-white/5 border-dashed',
+                        iconColor: hasContent ? 'text-[#FFB300]' : 'text-white/20',
+                      },
+                      carousel: {
+                        title: isRu ? 'IG Carousel' : 'IG Carousel',
+                        subtitle: isRu ? '6 слайдов галереи' : '6-slide storyboard',
+                        gradient: hasContent 
+                          ? 'from-[#1a0515] via-[#e1306c]/[0.04] to-[#f77737]/[0.04] border-[#e1306c]/30 shadow-[#e1306c]/5' 
+                          : 'from-neutral-950/40 to-neutral-950/60 border-white/5 border-dashed',
+                        iconColor: hasContent ? 'text-[#E1306C]' : 'text-white/20',
+                      },
+                      banner: {
+                        title: isRu ? 'YouTube Cover' : 'YouTube Cover',
+                        subtitle: isRu ? 'Высокий CTR клик' : 'High-CTR thumbnail',
+                        gradient: hasContent 
+                          ? 'from-[#200505] via-[#ff0000]/[0.04] to-[#b21212]/[0.04] border-[#ff0000]/30 shadow-[#ff0000]/5' 
+                          : 'from-neutral-950/40 to-neutral-950/60 border-white/5 border-dashed',
+                        iconColor: hasContent ? 'text-[#FF0000]' : 'text-white/20',
+                      },
+                    };
+                    const meta = metas[p.id];
+                    return (
+                      <motion.button
+                        key={p.id}
+                        onClick={() => {
+                          setActivePlatform(p.id);
+                          setSelectedDetail(p.id);
+                        }}
+                        whileHover={{ scale: 1.04, y: -4 }}
+                        whileTap={{ scale: 0.96 }}
+                        className={cn(
+                          "relative group p-6 sm:p-8 rounded-[2.2rem] sm:rounded-[2.6rem] border-2 text-left transition-all duration-300 overflow-hidden flex flex-col justify-between aspect-square shadow-2xl",
+                          meta.gradient,
+                          hasContent ? "hover:border-purple-400/50 shadow-[0_12px_30px_rgba(0,0,0,0.4)]" : "hover:border-white/20 hover:bg-white/[0.02]"
+                        )}
+                      >
+                        {/* Glassmorphic Inner Glow */}
+                        <div className="absolute inset-0 bg-black/40 backdrop-blur-sm opacity-60 pointer-events-none group-hover:opacity-40 transition-opacity" />
+                        
+                        {/* Icon and Sleek iOS Tag */}
+                        <div className="relative z-10 flex items-center justify-between w-full">
+                          <div className={cn(
+                            "w-14 h-14 sm:w-16 sm:h-16 rounded-[1.2rem] sm:rounded-[1.4rem] bg-white/[0.03] border border-white/10 flex items-center justify-center shadow-inner group-hover:scale-110 group-hover:bg-white/[0.08] transition-all duration-300", 
+                            meta.iconColor
+                          )}>
+                            <p.icon size={28} />
+                          </div>
+                          <span className={cn(
+                            "px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest transition-all duration-300 flex items-center gap-1 shadow-sm",
+                            hasContent 
+                              ? "bg-emerald-500/10 border-emerald-500/20 text-emerald-400" 
+                              : "bg-purple-500/10 border-purple-500/20 text-purple-400 group-hover:bg-purple-500/20"
+                          )}>
+                            {hasContent ? (locale === 'ru' ? '• ГОТОВО' : '• READY') : (locale === 'ru' ? '+ СОЗДАТЬ' : '+ CREATE')}
+                          </span>
+                        </div>
+
+                        {/* Text and visual indicator */}
+                        <div className="relative z-10 space-y-1 sm:space-y-1.5 mt-4">
+                          <h4 className="text-[15px] sm:text-[18px] font-black text-white uppercase tracking-tight group-hover:text-purple-300 transition-colors leading-tight">
+                            {meta.title}
+                          </h4>
+                          <p className="text-[9px] sm:text-[10px] text-white/40 font-bold uppercase tracking-widest leading-none group-hover:text-white/60 transition-colors">
+                            {meta.subtitle}
+                          </p>
+                        </div>
+
+                        {/* Subtle Chevron indicator */}
+                        <div className="absolute bottom-6 right-6 text-white/15 group-hover:text-white/60 group-hover:translate-x-1 transition-all">
+                          <ChevronRight size={20} />
+                        </div>
+                      </motion.button>
+                    );
+                  })}
+                </div>
+
+                {/* 3. Subtle iOS Secondary Regenerate Bar */}
+                {assets && (
+                  <div className="flex justify-center pt-4">
+                    <button 
+                      onClick={generateAssets}
+                      disabled={isGenerating}
+                      className="flex items-center gap-2 px-5 py-2.5 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/60 hover:text-white text-[9px] font-black uppercase tracking-widest transition-all active:scale-95 disabled:opacity-50 shadow-md"
+                    >
+                      {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <RefreshCw size={12} />}
+                      {locale === 'ru' ? 'ПЕРЕСОЗДАТЬ ВСЕ ФОРМАТЫ' : 'REGENERATE ALL FORMATS'}
+                    </button>
+                  </div>
+                )}
+              </div>
+            </motion.div>
+          ) : (
+            /* Deep iOS Mobile-optimized Detail Overlay Sheet */
+            <motion.div
                 key="detail"
                 initial={{ opacity: 0, y: 50 }}
                 animate={{ opacity: 1, y: 0 }}
