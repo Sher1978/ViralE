@@ -6,7 +6,7 @@ import {
   Camera, Share2, Play, Download, 
   Copy, Check, Sparkles, Loader2, Image as ImageIcon,
   ChevronRight, ChevronLeft, RefreshCw, Layers, Monitor, Brain,
-  Zap, ExternalLink, Wand2, ArrowLeft, X, Eye
+  Zap, ExternalLink, Wand2, ArrowLeft, X, Eye, FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
@@ -1048,6 +1048,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             </div>
                           )}
                         </div>
+                      </div>
 
                         {/* 2. Configuration Accordion */}
                         <div className="rounded-[2.5rem] bg-white/[0.01] border border-white/5 overflow-hidden">
@@ -1385,10 +1386,9 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                               className="w-full px-5 py-4 rounded-[1.5rem] bg-white/[0.02] border border-white/5 text-[12px] md:text-[13px] text-white/80 focus:outline-none focus:border-purple-500/50 transition-all resize-none custom-scrollbar"
                             />
                           </div>
-                        </div>
-                      )}
-                    </div>
-                  )}
+                        )}
+                      </div>
+                    )}
                     {/* 3. YOUTUBE / VIDEO THUMBNAIL PLATFORM */}
                     {selectedDetail === 'banner' && (
                       <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">

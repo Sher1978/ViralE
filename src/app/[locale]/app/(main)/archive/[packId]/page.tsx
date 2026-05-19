@@ -206,7 +206,7 @@ export default function ContentPackPage() {
           projectId: project.id,
           title: project.title || 'Untitled Project',
           createdAt: project.created_at,
-          updatedAt: project.updated_at,
+          updatedAt: project.created_at,
           jtbd: project.status === 'completed' ? 'published' : 'in_progress',
           videoUrl: project.final_video_url || undefined,
           coverImageUrl: distributionImages.cover || undefined,
