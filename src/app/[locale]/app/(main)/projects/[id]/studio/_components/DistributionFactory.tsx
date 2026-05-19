@@ -9,6 +9,7 @@ import {
   Zap, ExternalLink, Wand2, ArrowLeft, X, Eye, FileText
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
 
 interface DistributionFactoryProps {
   manifest: any;
@@ -97,6 +98,110 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
   const isAnyImageGenerating = Object.values(isGeneratingImages).some(Boolean);
   const isAnyGenerationActive = isGenerating || isRegeneratingAll || isAnyImageGenerating;
+
+  // Visual DNA JSON Schema editor states
+  const [visualDnaConfig, setVisualDnaConfig] = useState<string>('');
+  const [visualDnaError, setVisualDnaError] = useState<string | null>(null);
+  const [isSavingDna, setIsSavingDna] = useState<boolean>(false);
+  const [activeSettingsTab, setActiveSettingsTab] = useState<'parameters' | 'design_json'>('parameters');
+
+  // Load User Custom Visual DNA Config
+  useEffect(() => {
+    const fetchVisualDna = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user) {
+          const { data } = await supabase
+            .from('profiles')
+            .select('visual_dna_config')
+            .eq('id', user.id)
+            .single();
+          if (data?.visual_dna_config) {
+            setVisualDnaConfig(JSON.stringify(data.visual_dna_config, null, 2));
+          } else {
+            // High-impact default branding template matching our premium architecture
+            const defaultTemplate = {
+              "typography": {
+                "primary_font_family": "Outfit, sans-serif",
+                "accent_font_family": "Fira Code, monospace",
+                "base_font_size_mobile": "14px",
+                "base_font_size_desktop": "18px",
+                "line_height": 1.35,
+                "letter_spacing": "-0.02em",
+                "text_transform": "uppercase",
+                "font_weights": { "regular": 400, "bold": 700, "black": 900 }
+              },
+              "color_system": {
+                "palette_mode": "dark",
+                "background": {
+                  "canvas_color": "#060608",
+                  "gradient_start": "#0A0A0F",
+                  "gradient_end": "#020204",
+                  "ambient_glow_color": "rgba(168, 85, 247, 0.15)"
+                },
+                "typography_colors": {
+                  "primary": "#FFFFFF",
+                  "secondary": "rgba(255, 255, 255, 0.6)",
+                  "muted": "rgba(255, 255, 255, 0.3)"
+                },
+                "accents": {
+                  "primary_brand_color": "#A855F7",
+                  "secondary_brand_color": "#06B6D4",
+                  "border_color": "rgba(255, 255, 255, 0.05)"
+                }
+              },
+              "layout_and_positioning": {
+                "overlay_anchor_y": "center",
+                "overlay_anchor_x": "center",
+                "text_alignment": "center",
+                "container_card": {
+                  "has_backing_card": true,
+                  "backing_type": "glassmorphism",
+                  "blur_strength": "16px",
+                  "opacity": 0.85,
+                  "border_radius": "24px",
+                  "border_width": "1.5px"
+                }
+              },
+              "image_generation_dna": {
+                "style_preset": "cyberpunk_synthwave",
+                "master_prefix": "Premium 3D render in octane render engine, cyberpunk tech aesthetic, holographic wireframes, glowing neon elements, high-tech abstract nodes, dark ambient atmospheric lighting, ultra high resolution 8k, cinematic color grading, rich textures --no text, words, subtitles",
+                "negative_prompt": "text, letters, words, subtitles, signatures, ugly, lowres, blurry, human face, photo, portrait, realistic skin"
+              }
+            };
+            setVisualDnaConfig(JSON.stringify(defaultTemplate, null, 2));
+          }
+        }
+      } catch (e) {
+        console.warn('[Visual DNA Fetch Failed]:', e);
+      }
+    };
+    fetchVisualDna();
+  }, []);
+
+  const handleSaveVisualDna = async () => {
+    setVisualDnaError(null);
+    setIsSavingDna(true);
+    try {
+      const parsed = JSON.parse(visualDnaConfig);
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) throw new Error(locale === 'ru' ? 'Пользователь не авторизован' : 'User not authenticated');
+      
+      const { error } = await supabase
+        .from('profiles')
+        .update({ visual_dna_config: parsed })
+        .eq('id', user.id);
+        
+      if (error) throw error;
+      
+      alert(locale === 'ru' ? 'Дизайн-система ДНК успешно сохранена!' : 'Brand DNA design system saved successfully!');
+    } catch (err: any) {
+      console.error('[Save Visual DNA error]:', err);
+      setVisualDnaError(err.message || 'Invalid JSON syntax');
+    } finally {
+      setIsSavingDna(false);
+    }
+  };
 
   // Sync state with assets when loaded
   useEffect(() => {
@@ -1151,79 +1256,146 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             </span>
                           </button>
 
-                          {showSettings && (
+                                                    {showSettings && (
                             <div className="px-6 pb-6 pt-2 border-t border-white/5 animate-in slide-in-from-top-2 duration-300">
-                            <div className="space-y-3">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                                🎭 {locale === 'ru' ? 'Модель вещания (Tone Mode)' : 'Tone Model Mode'}
-                              </label>
-                              <div className="grid grid-cols-3 gap-2">
-                                {(['expert', 'mentor', 'provocateur'] as const).map(mode => (
-                                  <button
-                                    key={mode}
-                                    onClick={() => setToneMode(mode)}
-                                    className={cn(
-                                      "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all hover:scale-[1.02] active:scale-[0.98]",
-                                      toneMode === mode
-                                        ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/25"
-                                        : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white/80"
-                                    )}
-                                  >
-                                    {mode === 'expert' && (locale === 'ru' ? '🎓 Эксперт' : '🎓 Expert')}
-                                    {mode === 'mentor' && (locale === 'ru' ? '🤝 Наставник' : '🤝 Mentor')}
-                                    {mode === 'provocateur' && (locale === 'ru' ? '🔥 Провокатор' : '🔥 Provocateur')}
-                                  </button>
-                                ))}
+                              {/* Tab Selection */}
+                              <div className="flex gap-2 mb-6 border-b border-white/5 pb-3">
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveSettingsTab('parameters')}
+                                  className={cn(
+                                    "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border",
+                                    activeSettingsTab === 'parameters'
+                                      ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20"
+                                      : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white"
+                                  )}
+                                >
+                                  ⚙ {locale === 'ru' ? 'Параметры текста' : 'Text Parameters'}
+                                </button>
+                                <button
+                                  type="button"
+                                  onClick={() => setActiveSettingsTab('design_json')}
+                                  className={cn(
+                                    "px-4 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all border",
+                                    activeSettingsTab === 'design_json'
+                                      ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/20"
+                                      : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white"
+                                  )}
+                                >
+                                  🎨 {locale === 'ru' ? 'Бренд-код (JSON)' : 'Visual DNA JSON'}
+                                </button>
                               </div>
-                            </div>
 
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                              <div className="space-y-2">
-                                <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                                  🔑 {locale === 'ru' ? 'Кодовое слово (CTA)' : 'Automation Code Word'}
-                                </label>
-                                <input
-                                  type="text"
-                                  value={ctaWord}
-                                  onChange={(e) => setCtaWord(e.target.value.toUpperCase())}
-                                  placeholder={locale === 'ru' ? 'Например: СТАРТ' : 'E.g. START'}
-                                  className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all"
-                                />
-                              </div>
-                              <div className="space-y-2">
-                                <div className="flex justify-between items-center">
-                                  <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                                    🎲 {locale === 'ru' ? 'Генеративный сид' : 'Generative Seed'}
-                                  </label>
-                                  <button 
-                                    onClick={() => setStyleSeed(Math.floor(Math.random() * 9999))}
-                                    className="text-[8px] font-bold text-white/30 uppercase tracking-widest hover:text-white/60 flex items-center gap-1"
-                                  >
-                                    <RefreshCw size={8} /> {locale === 'ru' ? 'Случайный' : 'Shuffle'}
-                                  </button>
-                                </div>
-                                <div className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] font-mono text-purple-400 font-bold">
-                                  #{styleSeed}
-                                </div>
-                              </div>
-                            </div>
+                              {activeSettingsTab === 'parameters' ? (
+                                <div className="space-y-4 animate-in fade-in-50 duration-200">
+                                  <div className="space-y-3">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                                      🎭 {locale === 'ru' ? 'Модель вещания (Tone Mode)' : 'Tone Model Mode'}
+                                    </label>
+                                    <div className="grid grid-cols-3 gap-2">
+                                      {(['expert', 'mentor', 'provocateur'] as const).map(mode => (
+                                        <button
+                                          key={mode}
+                                          type="button"
+                                          onClick={() => setToneMode(mode)}
+                                          className={cn(
+                                            "py-3 rounded-2xl text-[10px] font-black uppercase tracking-widest border transition-all hover:scale-[1.02] active:scale-[0.98]",
+                                            toneMode === mode
+                                              ? "bg-purple-600 border-purple-500 text-white shadow-lg shadow-purple-500/25"
+                                              : "bg-white/[0.02] border-white/10 text-white/50 hover:text-white/80"
+                                          )}
+                                        >
+                                          {mode === 'expert' && (locale === 'ru' ? '🎓 Эксперт' : '🎓 Expert')}
+                                          {mode === 'mentor' && (locale === 'ru' ? '🤝 Наставник' : '🤝 Mentor')}
+                                          {mode === 'provocateur' && (locale === 'ru' ? '🔥 Провокатор' : '🔥 Provocateur')}
+                                        </button>
+                                      ))}
+                                    </div>
+                                  </div>
 
-                            <div className="space-y-2">
-                              <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                                💬 {locale === 'ru' ? 'Твоё пожелание к карусели' : 'Your creative brief'}
-                              </label>
-                              <textarea
-                                value={userBrief}
-                                onChange={(e) => setUserBrief(e.target.value)}
-                                placeholder={locale === 'ru'
-                                  ? 'Например: сделай упор на боли новичков, используй юмор...'
-                                  : 'E.g. focus on beginner pain points, use humor...'}
-                                rows={2}
-                                className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all resize-none custom-scrollbar"
-                              />
+                                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                                    <div className="space-y-2">
+                                      <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                                        🔑 {locale === 'ru' ? 'Кодовое слово (CTA)' : 'Automation Code Word'}
+                                      </label>
+                                      <input
+                                        type="text"
+                                        value={ctaWord}
+                                        onChange={(e) => setCtaWord(e.target.value.toUpperCase())}
+                                        placeholder={locale === 'ru' ? 'Например: СТАРТ' : 'E.g. START'}
+                                        className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all"
+                                      />
+                                    </div>
+                                    <div className="space-y-2">
+                                      <div className="flex justify-between items-center">
+                                        <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                                          🎲 {locale === 'ru' ? 'Генеративный сид' : 'Generative Seed'}
+                                        </label>
+                                        <button 
+                                          type="button"
+                                          onClick={() => setStyleSeed(Math.floor(Math.random() * 9999))}
+                                          className="text-[8px] font-bold text-white/30 uppercase tracking-widest hover:text-white/60 flex items-center gap-1"
+                                        >
+                                          <RefreshCw size={8} /> {locale === 'ru' ? 'Случайный' : 'Shuffle'}
+                                        </button>
+                                      </div>
+                                      <div className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] font-mono text-purple-400 font-bold">
+                                        #{styleSeed}
+                                      </div>
+                                    </div>
+                                  </div>
+
+                                  <div className="space-y-2">
+                                    <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                                      💬 {locale === 'ru' ? 'Твоё пожелание к карусели' : 'Your creative brief'}
+                                    </label>
+                                    <textarea
+                                      value={userBrief}
+                                      onChange={(e) => setUserBrief(e.target.value)}
+                                      placeholder={locale === 'ru'
+                                        ? 'Например: сделай упор на боли новичков, используй юмор...'
+                                        : 'E.g. focus on beginner pain points, use humor...'}
+                                      rows={2}
+                                      className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all resize-none custom-scrollbar"
+                                    />
+                                  </div>
+                                </div>
+                              ) : (
+                                <div className="space-y-4 animate-in fade-in-50 duration-200">
+                                  <div className="flex flex-col gap-2">
+                                    <div className="flex justify-between items-center">
+                                      <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                                        📊 {locale === 'ru' ? 'Спецификация бренд-кода (JSON)' : 'Visual DNA Schema Config'}
+                                      </label>
+                                      {visualDnaError && (
+                                        <span className="text-[8px] font-bold text-red-400 uppercase tracking-widest">
+                                          ⚠️ {visualDnaError}
+                                        </span>
+                                      )}
+                                    </div>
+                                    <textarea
+                                      value={visualDnaConfig}
+                                      onChange={(e) => {
+                                        setVisualDnaConfig(e.target.value);
+                                        setVisualDnaError(null);
+                                      }}
+                                      rows={14}
+                                      className="w-full px-4 py-3 rounded-2xl bg-black/40 border border-white/10 font-mono text-[10px] text-green-400 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all resize-y custom-scrollbar"
+                                    />
+                                    <button
+                                      type="button"
+                                      onClick={handleSaveVisualDna}
+                                      disabled={isSavingDna}
+                                      className="w-full py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl disabled:opacity-50"
+                                    >
+                                      {isSavingDna ? <Loader2 size={12} className="animate-spin text-white" /> : <Sparkles size={12} />}
+                                      {locale === 'ru' ? 'Валидировать и сохранить ДНК' : 'Validate & Save Visual DNA'}
+                                    </button>
+                                  </div>
+                                </div>
+                              )}
                             </div>
-                          </div>
-                        )}
+                          )}
                       </div>
 
                         {/* 3. Pre-rendered 6 Image Slots Grid */}

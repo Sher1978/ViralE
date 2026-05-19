@@ -54,7 +54,7 @@ export async function POST(req: Request) {
     try {
       const { data, error: profileErr } = await authorizedSupabase
         .from('profiles')
-        .select('digital_shadow_prompt, visual_style, knowledge_base_json')
+        .select('digital_shadow_prompt, visual_style, knowledge_base_json, visual_dna_config')
         .eq('id', userId)
         .single();
       
@@ -69,7 +69,12 @@ export async function POST(req: Request) {
 
     const userDNA = profile?.digital_shadow_prompt || 'Niche: General Content Creator. Tone: Professional but engaging.';
     const visualStyleKey = profile?.visual_style || 'startup_valley';
-    const stylePrefix = STYLE_PREFIXES[visualStyleKey] || STYLE_PREFIXES.startup_valley;
+    
+    // Resolve visual stylePrefix prioritizing user custom Visual DNA configuration
+    const customConfig = profile?.visual_dna_config as any;
+    const stylePrefix = customConfig?.image_generation_dna?.master_prefix 
+      || STYLE_PREFIXES[visualStyleKey] 
+      || STYLE_PREFIXES.startup_valley;
 
     // 2. Fetch Project Metadata Context
     let projectTitle = '';
