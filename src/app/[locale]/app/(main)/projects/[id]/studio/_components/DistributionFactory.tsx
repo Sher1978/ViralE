@@ -64,6 +64,17 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const [isGenerating, setIsGenerating] = useState(false);
   const [isGeneratingImages, setIsGeneratingImages] = useState<Record<string, boolean>>({});
   const [imageResults, setImageResults] = useState<Record<string, string>>({}); // prompt-hash -> url
+  const [generationError, setGenerationError] = useState<string | null>(null);
+
+  const isPlatformGenerated = (platformId: string) => {
+    if (platformId === 'sfv') return !!assets?.sfv_description?.text;
+    if (platformId === 'threads') return !!assets?.deep_content?.threads_fb_text;
+    if (platformId === 'linkedin') return !!assets?.linkedin_executive?.text;
+    if (platformId === 'article') return !!assets?.longread_article?.text;
+    if (platformId === 'carousel') return !!assets?.ig_carousel;
+    if (platformId === 'banner') return !!imageResults?.banner;
+    return false;
+  };
   const [copying, setCopying] = useState<string | null>(null);
 
   // Upgrade Flow states (Phase 2 & 3 & 4)
@@ -405,13 +416,17 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
   const generateAssets = async () => {
     setIsGenerating(true);
+    setGenerationError(null);
     try {
       const res = await fetch('/api/ai/distribution-assets', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ scriptText, projectId, locale })
       });
-      if (!res.ok) throw new Error('Failed to generate assets');
+      if (!res.ok) {
+        const errorData = await res.json().catch(() => ({}));
+        throw new Error(errorData.error || 'Failed to generate assets');
+      }
       const data = await res.json();
       setAssets(data);
       
@@ -421,8 +436,9 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           distributionAssets: data
         });
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(err);
+      setGenerationError(err.message || 'Unknown generation error');
     } finally {
       setIsGenerating(false);
     }
@@ -594,90 +610,51 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         </button>
       </div>
 
-      {!assets && !isGenerating ? (
-        <div className="flex-1 flex flex-col p-8 overflow-y-auto custom-scrollbar">
-          <div className="max-w-4xl mx-auto w-full space-y-12 py-10">
-            <div className="text-center space-y-4">
-              <div className="inline-flex items-center gap-3 px-4 py-2 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[9px] font-black uppercase tracking-widest animate-pulse">
-                <Brain size={12} /> Strategist Ready to Architect
-              </div>
-              <h3 className="text-3xl font-bold uppercase tracking-tighter text-white">Social Distribution <span className="text-purple-500">Blueprint</span></h3>
-              <p className="text-[11px] text-white/30 font-medium uppercase tracking-widest max-w-lg mx-auto leading-relaxed">
-                Our AI Strategist has analyzed your script and is ready to expand it into a full-scale digital ecosystem.
-              </p>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-              {platforms.map((p, i) => (
-                <div key={p.id} className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 space-y-4 group hover:border-purple-500/20 transition-all">
-                  <div className="flex items-center justify-between">
-                    <div className="w-10 h-10 rounded-2xl bg-white/[0.03] flex items-center justify-center text-white/20 group-hover:text-purple-400 group-hover:bg-purple-500/10 transition-all">
-                      <p.icon size={20} />
-                    </div>
-                    <span className="text-[8px] font-black text-white/10 uppercase tracking-widest">Phase 0{i+1}</span>
-                  </div>
-                  <div>
-                    <h4 className="text-[11px] font-bold text-white uppercase tracking-widest mb-1">{p.label}</h4>
-                    <p className="text-[9px] text-white/30 font-medium leading-relaxed">
-                      {p.id === 'sfv' ? 'High-retention captions with viral hooks and trending hashtags.' : 
-                       p.id === 'threads' ? 'Multi-part narrative threads designed for deep engagement.' : 
-                       p.id === 'linkedin' ? 'Professional insights and executive-level summaries.' : 
-                       p.id === 'carousel' ? '6-slide visual sequence with AI-generated storytelling.' : 
-                       'Custom high-CTR thumbnail with hard-hitting headlines.'}
-                    </p>
-                  </div>
-                  <div className="pt-4 flex gap-1">
-                    <div className="h-1 flex-1 bg-white/5 rounded-full overflow-hidden">
-                       <div className="h-full w-1/3 bg-white/10 group-hover:bg-purple-500/20 transition-all" />
-                    </div>
-                    <div className="h-1 flex-1 bg-white/5 rounded-full" />
-                    <div className="h-1 flex-1 bg-white/5 rounded-full" />
-                  </div>
-                </div>
-              ))}
-            </div>
-
-            <div className="pt-10 flex flex-col items-center">
-              <button 
-                onClick={generateAssets}
-                className="group relative px-10 py-5 rounded-[2rem] bg-purple-600 text-white text-[13px] font-black uppercase tracking-[0.2em] shadow-[0_20px_50px_rgba(168,85,247,0.3)] hover:scale-105 active:scale-95 transition-all overflow-hidden"
-              >
-                <div className="absolute inset-0 bg-gradient-to-r from-purple-600 via-blue-600 to-purple-600 bg-[length:200%_auto] animate-gradient-x" />
-                <span className="relative flex items-center gap-3">
-                  <Zap size={18} /> Architect Social Ecosystem
-                </span>
-              </button>
-              <p className="mt-6 text-[9px] text-white/20 font-black uppercase tracking-[0.3em]">Estimated synthesis time: ~15 seconds</p>
-            </div>
+      {generationError && (
+        <div className="mx-6 sm:mx-8 mt-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-[11px] text-red-400 font-bold uppercase tracking-widest flex items-center justify-between gap-4 animate-bounce">
+          <div className="flex items-center gap-2">
+            <span>⚠️</span>
+            <span>{locale === 'ru' ? `Ошибка генерации: ${generationError}` : `Generation Error: ${generationError}`}</span>
           </div>
+          <button 
+            onClick={() => setGenerationError(null)}
+            className="text-red-400 hover:text-white font-bold"
+          >
+            ✕
+          </button>
         </div>
-      ) : isGenerating ? (
-        <div className="flex-1 flex flex-col items-center justify-center p-12">
-          <div className="relative w-32 h-32 mb-10 text-white">
-             <motion.div 
-               animate={{ rotate: 360 }}
-               transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
-               className="absolute inset-0 border-4 border-t-purple-500 border-r-transparent border-b-blue-500 border-l-transparent rounded-full shadow-[0_0_50px_rgba(168,85,247,0.2)]"
-             />
-             <div className="absolute inset-8 rounded-full bg-white/[0.03] flex items-center justify-center border border-white/5">
-                <Brain size={32} className="text-white animate-pulse" />
-             </div>
+      )}
+
+      <div className="flex-1 flex flex-col overflow-hidden text-white relative">
+        {/* Global Glassmorphic Loader Overlay when generating all text platforms */}
+        {isGenerating && (
+          <div className="absolute inset-0 bg-black/60 backdrop-blur-md z-45 flex flex-col items-center justify-center space-y-6">
+            <div className="relative w-24 h-24 text-white animate-pulse">
+               <motion.div 
+                 animate={{ rotate: 360 }}
+                 transition={{ repeat: Infinity, duration: 4, ease: 'linear' }}
+                 className="absolute inset-0 border-4 border-t-purple-500 border-r-transparent border-b-blue-500 border-l-transparent rounded-full shadow-[0_0_40px_rgba(168,85,247,0.3)]"
+               />
+               <div className="absolute inset-6 rounded-full bg-white/[0.03] flex items-center justify-center border border-white/5">
+                  <Brain size={24} className="text-white animate-pulse" />
+               </div>
+            </div>
+            <div className="flex flex-col items-center gap-2">
+              <span className="text-[11px] font-bold uppercase tracking-[0.5em] text-white">Synthesizing Digital DNA</span>
+              <span className="text-[9px] text-white/40 uppercase tracking-widest">{locale === 'ru' ? 'Это займет около 3 секунд...' : 'Takes about 3 seconds...'}</span>
+            </div>
           </div>
-          <div className="flex flex-col items-center gap-2">
-            <span className="text-[11px] font-bold uppercase tracking-[0.5em] text-white">Synthesizing Digital DNA</span>
-          </div>
-        </div>
-      ) : (
-        <div className="flex-1 flex flex-col overflow-hidden text-white relative">
-          {/* iOS-Style Distribution Grid / Channels */}
-          <AnimatePresence mode="wait">
-            {!selectedDetail ? (
-              <motion.div
-                key="grid"
-                initial={{ opacity: 0, scale: 0.98 }}
-                animate={{ opacity: 1, scale: 1 }}
-                exit={{ opacity: 0, scale: 0.98 }}
-                transition={{ duration: 0.2 }}
+        )}
+
+        {/* iOS-Style Distribution Grid / Channels */}
+        <AnimatePresence mode="wait">
+          {!selectedDetail ? (
+            <motion.div
+              key="grid"
+              initial={{ opacity: 0, scale: 0.98 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.98 }}
+              transition={{ duration: 0.2 }}
                 className="flex-1 overflow-y-auto p-6 sm:p-8 custom-scrollbar relative z-10"
               >
                 <div className="max-w-4xl mx-auto space-y-8 pb-10">
@@ -694,48 +671,62 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                   <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 gap-4 sm:gap-6">
                     {platforms.map((p, i) => {
                       const isRu = locale === 'ru';
+                      const hasContent = isPlatformGenerated(p.id);
+                      
                       const metas = {
                         sfv: {
                           title: isRu ? 'TikTok & Reels' : 'TikTok & Reels',
                           subtitle: isRu ? 'Вирусное описание и теги' : 'Viral copy & hashtags',
-                          gradient: 'from-[#010101] via-[#00f2fe]/5 to-[#fe2c55]/10 hover:border-[#fe2c55]/30 shadow-[#fe2c55]/5',
-                          iconColor: 'text-[#00f2fe]',
-                          badge: isRu ? '⚡ Видео' : '⚡ Video',
+                          gradient: hasContent 
+                            ? 'from-[#010101] via-[#00f2fe]/5 to-[#fe2c55]/10 hover:border-[#fe2c55]/30 shadow-[#fe2c55]/5 border-purple-500/20' 
+                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
+                          iconColor: hasContent ? 'text-[#00f2fe]' : 'text-white/20',
+                          badge: hasContent ? (isRu ? '⚡ Видео' : '⚡ Video') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
                         },
                         threads: {
                           title: isRu ? 'Threads & FB' : 'Threads & FB',
                           subtitle: isRu ? 'Глубокий нарратив' : 'Deep narrative threads',
-                          gradient: 'from-[#101010] via-white/5 to-[#1a1a1a] hover:border-white/20 shadow-white/5',
-                          iconColor: 'text-white',
-                          badge: isRu ? '✍️ Текст' : '✍️ Copy',
+                          gradient: hasContent 
+                            ? 'from-[#101010] via-white/5 to-[#1a1a1a] hover:border-white/20 shadow-white/5 border-purple-500/20' 
+                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
+                          iconColor: hasContent ? 'text-white' : 'text-white/20',
+                          badge: hasContent ? (isRu ? '✍️ Текст' : '✍️ Copy') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
                         },
                         linkedin: {
                           title: isRu ? 'LinkedIn' : 'LinkedIn',
                           subtitle: isRu ? 'Бизнес-инсайт' : 'Executive post',
-                          gradient: 'from-[#001c3d] via-[#0a66c2]/5 to-[#0077b5]/10 hover:border-[#0a66c2]/30 shadow-[#0a66c2]/5',
-                          iconColor: 'text-[#0A66C2]',
-                          badge: isRu ? '💼 Эксперт' : '💼 Expert',
+                          gradient: hasContent 
+                            ? 'from-[#001c3d] via-[#0a66c2]/5 to-[#0077b5]/10 hover:border-[#0a66c2]/30 shadow-[#0a66c2]/5 border-purple-500/20' 
+                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
+                          iconColor: hasContent ? 'text-[#0A66C2]' : 'text-white/20',
+                          badge: hasContent ? (isRu ? '💼 Эксперт' : '💼 Expert') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
                         },
                         article: {
                           title: isRu ? 'Longread Article' : 'Longread Article',
                           subtitle: isRu ? 'SEO-статья для блога' : 'Deep-dive blog post',
-                          gradient: 'from-[#2b1800] via-[#ffb300]/5 to-[#f57c00]/10 hover:border-[#ffb300]/30 shadow-[#ffb300]/5',
-                          iconColor: 'text-[#FFB300]',
-                          badge: isRu ? '📰 Блог' : '📰 Blog',
+                          gradient: hasContent 
+                            ? 'from-[#2b1800] via-[#ffb300]/5 to-[#f57c00]/10 hover:border-[#ffb300]/30 shadow-[#ffb300]/5 border-purple-500/20' 
+                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
+                          iconColor: hasContent ? 'text-[#FFB300]' : 'text-white/20',
+                          badge: hasContent ? (isRu ? '📰 Блог' : '📰 Blog') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
                         },
                         carousel: {
                           title: isRu ? 'Instagram Carousel' : 'Instagram Carousel',
                           subtitle: isRu ? '6 слайдов сторителлинга' : '6-slide visual series',
-                          gradient: 'from-[#2a0845] via-[#e1306c]/5 to-[#ffb347]/10 hover:border-[#e1306c]/30 shadow-[#e1306c]/5',
-                          iconColor: 'text-[#E1306C]',
-                          badge: isRu ? '📸 Галерея' : '📸 Gallery',
+                          gradient: hasContent 
+                            ? 'from-[#2a0845] via-[#e1306c]/5 to-[#ffb347]/10 hover:border-[#e1306c]/30 shadow-[#e1306c]/5 border-purple-500/20' 
+                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
+                          iconColor: hasContent ? 'text-[#E1306C]' : 'text-white/20',
+                          badge: hasContent ? (isRu ? '📸 Галерея' : '📸 Gallery') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
                         },
                         banner: {
                           title: isRu ? 'YouTube Banner' : 'YouTube Banner',
                           subtitle: isRu ? 'Обложка с высоким CTR' : 'High-CTR thumbnail',
-                          gradient: 'from-[#3b0000] via-[#ff0000]/5 to-[#b22222]/10 hover:border-[#ff0000]/30 shadow-[#ff0000]/5',
-                          iconColor: 'text-[#FF0000]',
-                          badge: isRu ? '🖼️ Обложка' : '🖼️ Cover',
+                          gradient: hasContent 
+                            ? 'from-[#3b0000] via-[#ff0000]/5 to-[#b22222]/10 hover:border-[#ff0000]/30 shadow-[#ff0000]/5 border-purple-500/20' 
+                            : 'from-neutral-950/40 to-neutral-950/60 hover:border-white/10 border-white/5',
+                          iconColor: hasContent ? 'text-[#FF0000]' : 'text-white/20',
+                          badge: hasContent ? (isRu ? '🖼️ Обложка' : '🖼️ Cover') : (isRu ? '✨ СОЗДАТЬ' : '✨ READY'),
                         },
                       };
                       const meta = metas[p.id];
@@ -749,8 +740,9 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                           whileHover={{ scale: 1.02 }}
                           whileTap={{ scale: 0.98 }}
                           className={cn(
-                            "relative group p-6 rounded-[2.5rem] bg-gradient-to-br border border-white/5 text-left transition-all duration-300 overflow-hidden flex flex-col justify-between aspect-square shadow-2xl",
-                            meta.gradient
+                            "relative group p-6 rounded-[2.5rem] bg-gradient-to-br border text-left transition-all duration-300 overflow-hidden flex flex-col justify-between aspect-square shadow-2xl",
+                            meta.gradient,
+                            hasContent ? "border-purple-500/35 hover:border-purple-400/60 shadow-[0_0_20px_rgba(168,85,247,0.15)]" : "border-white/5"
                           )}
                         >
                           {/* Glassmorphic Inner Glow */}
@@ -761,7 +753,12 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             <div className={cn("w-12 h-12 rounded-2xl bg-white/[0.04] flex items-center justify-center border border-white/10 shadow-inner group-hover:scale-110 transition-transform", meta.iconColor)}>
                               <p.icon size={22} />
                             </div>
-                            <span className="px-3 py-1 rounded-full bg-white/5 border border-white/10 text-[8px] font-black uppercase tracking-widest text-white/50 group-hover:text-white transition-colors">
+                            <span className={cn(
+                              "px-3 py-1 rounded-full border text-[8px] font-black uppercase tracking-widest transition-colors",
+                              hasContent 
+                                ? "bg-white/5 border-white/10 text-white/50 group-hover:text-white" 
+                                : "bg-purple-500/10 border-purple-500/20 text-purple-400 group-hover:bg-purple-500/20"
+                            )}>
                               {meta.badge}
                             </span>
                           </div>
@@ -823,7 +820,47 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                   <div className="max-w-4xl mx-auto">
                     {/* 1. TEXT PLATFORMS (SFV, Threads, LinkedIn, Article) */}
                     {(selectedDetail === 'sfv' || selectedDetail === 'threads' || selectedDetail === 'linkedin' || selectedDetail === 'article') && (
-                      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+                      <div className="max-w-4xl mx-auto w-full">
+                        {!isPlatformGenerated(selectedDetail) ? (
+                          /* Setup / Onboarding panel for this specific text platform */
+                          <div className="max-w-xl mx-auto py-16 px-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 backdrop-blur-3xl text-center space-y-8 animate-in fade-in duration-300 shadow-2xl relative overflow-hidden">
+                            {/* Ambient background glow */}
+                            <div className="absolute -top-24 -left-24 w-48 h-48 bg-purple-500/10 rounded-full blur-[80px]" />
+                            <div className="absolute -bottom-24 -right-24 w-48 h-48 bg-blue-500/10 rounded-full blur-[80px]" />
+                            
+                            <div className="w-16 h-16 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 mx-auto shadow-inner relative z-10">
+                              <Sparkles size={28} className="animate-pulse" />
+                            </div>
+                            
+                            <div className="space-y-3 relative z-10">
+                              <h3 className="text-2xl font-black uppercase tracking-wider text-white">
+                                {locale === 'ru' ? 'AI Копирайтер готов' : 'AI Copywriter Ready'}
+                              </h3>
+                              <p className="text-[11px] sm:text-xs text-white/40 uppercase tracking-widest max-w-sm mx-auto leading-relaxed">
+                                {locale === 'ru' 
+                                  ? `Нейросеть готова адаптировать ваш сценарий под формат ${platforms.find(p => p.id === selectedDetail)?.label} с использованием вашего уникального цифрового ДНК.`
+                                  : `The AI is ready to adapt your script into ${platforms.find(p => p.id === selectedDetail)?.label} format, fully aligned with your Digital DNA.`}
+                              </p>
+                            </div>
+
+                            {generationError && (
+                              <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-[10px] font-mono text-red-400 text-left max-w-md mx-auto relative z-10">
+                                ⚠️ Error: {generationError}
+                              </div>
+                            )}
+
+                            <button
+                              onClick={generateAssets}
+                              disabled={isGenerating}
+                              className="relative z-10 w-full max-w-xs py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-xl disabled:opacity-50 mx-auto"
+                            >
+                              {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
+                              {locale === 'ru' ? '✨ Запустить генерацию контента' : '✨ Start Content Generation'}
+                            </button>
+                          </div>
+                        ) : (
+                          /* The standard generated workspace (optimised copy, analysis, actions) */
+                          <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
                         <div className="lg:col-span-2 space-y-6">
                           <div className="flex items-center justify-between">
                             <h3 className="text-[10px] font-bold uppercase tracking-[0.3em] text-white/40 flex items-center gap-2">
@@ -937,6 +974,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             </div>
                           </div>
                         </div>
+                          </div>
+                        )}
                       </div>
                     )}
 
@@ -1614,7 +1653,6 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             )}
           </AnimatePresence>
         </div>
-      )}
     </div>
   );
 }
