@@ -108,7 +108,7 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
               asset: {
                 type: "html",
                 html: `<p data-alignment="center">${s.text}</p>`,
-                css: "p { font-family: 'Montserrat'; font-weight: 900; color: #ffffff; font-size: 42px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,0,0,0.8); }",
+                css: "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-weight: normal; color: #ffffff; font-size: 42px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,0,0,0.8); }",
                 width: 800,
                 height: 200
               },
