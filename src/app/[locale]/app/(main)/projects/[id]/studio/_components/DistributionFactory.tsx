@@ -95,6 +95,9 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [lightboxType, setLightboxType] = useState<'carousel' | 'banner' | null>(null);
 
+  const isAnyImageGenerating = Object.values(isGeneratingImages).some(Boolean);
+  const isAnyGenerationActive = isGenerating || isRegeneratingAll || isAnyImageGenerating;
+
   // Sync state with assets when loaded
   useEffect(() => {
     if (assets?.ig_carousel) {
@@ -125,26 +128,78 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     }
   }, [assets]);
 
-  const generateAllCarouselImages = async () => {
-    if (!assets?.ig_carousel) return;
+  const generateFullGalleryAtOnce = async () => {
     setIsRegeneratingAll(true);
+    console.log('[Unified Gen] Starting unified gallery generation flow...');
     try {
-      const rawCarousel = assets.ig_carousel as any;
+      let currentAssets = assets;
+      
+      // Step 1: Generate texts and structure if not already present
+      if (!currentAssets?.ig_carousel) {
+        console.log('[Unified Gen] Step 1: Generating text structure and prompts...');
+        const resText = await fetch('/api/ai/ig-carousel', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            scriptText, 
+            projectId, 
+            locale, 
+            ctaWord, 
+            toneMode, 
+            styleSeed, 
+            userBrief 
+          })
+        });
+        
+        if (!resText.ok) {
+          const errorData = await resText.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to generate carousel texts');
+        }
+        
+        const textData = await resText.json();
+        currentAssets = {
+          ...(assets || {}),
+          ig_carousel: textData
+        } as any;
+        
+        setAssets(currentAssets);
+        
+        if (onUpdateManifest) {
+          onUpdateManifest({
+            ...manifest,
+            distributionAssets: currentAssets
+          });
+        }
+        console.log('[Unified Gen] Step 1 Complete: Text structure created.');
+      }
+      
+      // Step 2: Draw all 6 slide images in parallel
+      console.log('[Unified Gen] Step 2: Drawing 6 slides in parallel...');
+      if (!currentAssets || !currentAssets.ig_carousel) {
+        throw new Error(locale === 'ru' ? 'Текст карусели не был сгенерирован' : 'Carousel texts were not generated');
+      }
+      const rawCarousel = currentAssets.ig_carousel as any;
       const resolvedSlides = rawCarousel.slides || rawCarousel.prompts?.map((p: string, i: number) => ({
         slide_number: i + 1,
         image_prompt: p,
         text_on_slide: `Слайд ${i + 1}`
       })) || [];
 
-      for (const slide of resolvedSlides) {
-        const key = `carousel-${slide.slide_number - 1}`;
-        if (!imageResults[key]) {
+      await Promise.all(
+        resolvedSlides.map((slide: any) => {
+          const key = `carousel-${slide.slide_number - 1}`;
           const prompt = customImagePrompts[slide.slide_number] || slide.image_prompt;
-          await generateSingleImage(prompt, '4:5', key);
-        }
-      }
-    } catch (err) {
-      console.error('All-slide gen failed:', err);
+          return generateSingleImage(prompt, '4:5', key);
+        })
+      );
+      console.log('[Unified Gen] Step 2 Complete: All images drawn.');
+      
+    } catch (err: any) {
+      console.error('[Unified Gen Error]:', err);
+      alert(locale === 'ru' 
+        ? `Ошибка комплексной генерации галереи: ${err.message || err}` 
+        : `Failed to generate unified gallery: ${err.message || err}`
+      );
     } finally {
       setIsRegeneratingAll(false);
     }
@@ -494,6 +549,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
   const generateSingleImage = async (prompt: string, ar: string, key: string) => {
     setIsGeneratingImages(prev => ({ ...prev, [key]: true }));
+    console.log(`[Image Gen] Starting generation for key "${key}" with prompt: "${prompt}"`);
     try {
       const res = await fetch('/api/ai/image-gen', {
         method: 'POST',
@@ -507,6 +563,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       });
       if (res.ok) {
         const data = await res.json();
+        console.log(`[Image Gen] Success for key "${key}"! Received image URL:`, data.url);
         const newResults = { ...imageResults, [key]: data.url };
         setImageResults(newResults);
 
@@ -516,9 +573,20 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             distributionImages: newResults
           });
         }
+      } else {
+        const errText = await res.text();
+        console.error(`[Image Gen] Failed for key "${key}"! Status: ${res.status}, Error:`, errText);
+        alert(locale === 'ru' 
+          ? `Ошибка генерации изображения (${key}): ${errText || 'Неизвестная ошибка сервера'}` 
+          : `Failed to generate image (${key}): ${errText || 'Unknown server error'}`
+        );
       }
-    } catch (err) {
-      console.error(err);
+    } catch (err: any) {
+      console.error(`[Image Gen] Catch error for key "${key}":`, err);
+      alert(locale === 'ru' 
+        ? `Сетевая ошибка при генерации (${key}): ${err.message || err}` 
+        : `Network error during generation (${key}): ${err.message || err}`
+      );
     } finally {
       setIsGeneratingImages(prev => ({ ...prev, [key]: false }));
     }
@@ -1026,27 +1094,41 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                               </p>
                             </div>
                           
-                          {assets?.ig_carousel && (
                             <div className="flex flex-wrap gap-3">
                               <button
-                                onClick={generateAllCarouselImages}
-                                disabled={isRegeneratingAll}
-                                className="px-5 py-3 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                                onClick={generateFullGalleryAtOnce}
+                                disabled={isAnyGenerationActive}
+                                className={cn(
+                                  "px-6 py-4 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 border border-white/10",
+                                  isAnyGenerationActive
+                                    ? "bg-purple-600/30 text-purple-200 border-purple-500/30"
+                                    : "bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white shadow-purple-500/10"
+                                )}
                               >
-                                {isRegeneratingAll ? <Loader2 size={12} className="animate-spin text-purple-400" /> : <Wand2 size={12} className="text-purple-400" />}
-                                {locale === 'ru' ? 'Сгенерировать все фоны' : 'Generate All Backgrounds'}
+                                {isAnyGenerationActive ? (
+                                  <>
+                                    <Loader2 size={12} className="animate-spin text-white" />
+                                    {locale === 'ru' ? 'СОЗДАЕМ...' : 'GENERATING...'}
+                                  </>
+                                ) : (
+                                  <>
+                                    <Wand2 size={12} className="text-white animate-pulse" />
+                                    {locale === 'ru' ? 'Сгенерировать всю галерею (6 слайдов)' : 'Generate Full Gallery (6 Slides)'}
+                                  </>
+                                )}
                               </button>
 
-                              <button
-                                onClick={downloadAllRenderedSlides}
-                                disabled={isExportingAll}
-                                className="px-6 py-3 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50"
-                              >
-                                {isExportingAll ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
-                                {locale === 'ru' ? 'Скачать карусель (6 JPG)' : 'Download Carousel (6 JPGs)'}
-                              </button>
+                              {assets?.ig_carousel && (
+                                <button
+                                  onClick={downloadAllRenderedSlides}
+                                  disabled={isExportingAll}
+                                  className="px-6 py-4 rounded-3xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-[0.2em] flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50"
+                                >
+                                  {isExportingAll ? <Loader2 size={12} className="animate-spin" /> : <Download size={12} />}
+                                  {locale === 'ru' ? 'Скачать карусель (6 JPG)' : 'Download Carousel (6 JPGs)'}
+                                </button>
+                              )}
                             </div>
-                          )}
                         </div>
                       </div>
 
@@ -1140,15 +1222,6 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all resize-none custom-scrollbar"
                               />
                             </div>
-
-                            <button
-                              onClick={generateCarouselOnly}
-                              disabled={isGenerating}
-                              className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-2 hover:scale-[1.01] active:scale-[0.99] transition-all shadow-xl disabled:opacity-50"
-                            >
-                              {isGenerating ? <Loader2 size={12} className="animate-spin" /> : <Sparkles size={12} />}
-                              {locale === 'ru' ? '✨ Сгенерировать тексты и структуру' : '✨ Generate Texts & Structure'}
-                            </button>
                           </div>
                         )}
                       </div>
@@ -1160,25 +1233,51 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                               {locale === 'ru' ? 'Визуальная Матрица (6 Слайдов)' : 'Visual Matrix (6 Slides)'}
                             </span>
                             
-                            {/* Theme Toggles inside matrix header */}
-                            <div className="p-1 rounded-2xl bg-white/[0.02] border border-white/5 flex gap-1">
-                              {(['minimalist', 'cyber', 'business', 'glow'] as const).map(theme => (
-                                <button
-                                  key={theme}
-                                  onClick={() => setActiveTheme(theme)}
-                                  className={cn(
-                                    "px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all",
-                                    activeTheme === theme 
-                                      ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20" 
-                                      : "text-white/40 hover:text-white/70"
-                                  )}
-                                >
-                                  {theme === 'minimalist' && (locale === 'ru' ? 'Мини' : 'Min')}
-                                  {theme === 'cyber' && (locale === 'ru' ? 'Кибер' : 'Cyber')}
-                                  {theme === 'business' && (locale === 'ru' ? 'Бизнес' : 'Biz')}
-                                  {theme === 'glow' && (locale === 'ru' ? 'Свечение' : 'Glow')}
-                                </button>
-                              ))}
+                            <div className="flex items-center gap-3">
+                              {/* Theme Toggles inside matrix header */}
+                              <div className="p-1 rounded-2xl bg-white/[0.02] border border-white/5 flex gap-1">
+                                {(['minimalist', 'cyber', 'business', 'glow'] as const).map(theme => (
+                                  <button
+                                    key={theme}
+                                    onClick={() => setActiveTheme(theme)}
+                                    className={cn(
+                                      "px-3 py-1.5 text-[9px] font-black uppercase tracking-widest rounded-xl transition-all",
+                                      activeTheme === theme 
+                                        ? "bg-purple-600 text-white shadow-lg shadow-purple-500/20" 
+                                        : "text-white/40 hover:text-white/70"
+                                    )}
+                                  >
+                                    {theme === 'minimalist' && (locale === 'ru' ? 'Мини' : 'Min')}
+                                    {theme === 'cyber' && (locale === 'ru' ? 'Кибер' : 'Cyber')}
+                                    {theme === 'business' && (locale === 'ru' ? 'Бизнес' : 'Biz')}
+                                    {theme === 'glow' && (locale === 'ru' ? 'Свечение' : 'Glow')}
+                                  </button>
+                                ))}
+                              </div>
+
+                              {/* ONE Main Unified Generation Action in the Upper Right Corner */}
+                              <button
+                                onClick={generateFullGalleryAtOnce}
+                                disabled={isAnyGenerationActive}
+                                className={cn(
+                                  "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50",
+                                  isAnyGenerationActive
+                                    ? "bg-purple-600/30 text-purple-200 border border-purple-500/30 cursor-not-allowed"
+                                    : "bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white border border-white/10"
+                                )}
+                              >
+                                {isAnyGenerationActive ? (
+                                  <>
+                                    <Loader2 size={10} className="animate-spin text-white" />
+                                    {locale === 'ru' ? 'СОЗДАЕМ...' : 'GENERATING...'}
+                                  </>
+                                ) : (
+                                  <>
+                                    <Wand2 size={10} className="text-white animate-pulse" />
+                                    {locale === 'ru' ? 'Сгенерировать всё' : 'Generate All'}
+                                  </>
+                                )}
+                              </button>
                             </div>
                           </div>
 
@@ -1447,7 +1546,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                       const prompt = customImagePrompts[num] || slideData?.image_prompt || '';
                                       generateSingleImage(prompt, '4:5', key);
                                     }}
-                                    disabled={isGen}
+                                    disabled={isAnyGenerationActive}
                                     className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold uppercase tracking-widest text-white/70 hover:text-white flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
                                   >
                                     {isGen ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
@@ -1468,54 +1567,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             );
                           })()}
 
-                          {/* Common Bulk Generate Button under the Scroller */}
-                          <div className="flex justify-center pt-2 pb-6 px-1">
-                            <button
-                              onClick={async () => {
-                                if (!assets?.ig_carousel) return;
-                                setIsRegeneratingAll(true);
-                                try {
-                                  const rawCarousel = assets.ig_carousel as any;
-                                  const resolvedSlides = rawCarousel.slides || rawCarousel.prompts?.map((p: string, i: number) => ({
-                                    slide_number: i + 1,
-                                    image_prompt: p,
-                                    text_on_slide: `Слайд ${i + 1}`
-                                  })) || [];
-
-                                  await Promise.all(
-                                    resolvedSlides.map((slide: any) => {
-                                      const key = `carousel-${slide.slide_number - 1}`;
-                                      const prompt = customImagePrompts[slide.slide_number] || slide.image_prompt;
-                                      return generateSingleImage(prompt, '4:5', key);
-                                    })
-                                  );
-                                } catch (err) {
-                                  console.error('All-slide gen failed:', err);
-                                } finally {
-                                  setIsRegeneratingAll(false);
-                                }
-                              }}
-                              disabled={isRegeneratingAll}
-                              className={cn(
-                                "w-full px-6 py-4 rounded-3xl text-[10px] font-black uppercase tracking-[0.2em] transition-all flex items-center justify-center gap-2.5 shadow-lg active:scale-[0.98] disabled:opacity-50",
-                                isRegeneratingAll
-                                  ? "bg-purple-600/30 text-purple-200 border border-purple-500/30 cursor-not-allowed"
-                                  : "bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white hover:scale-[1.01] border border-white/10"
-                              )}
-                            >
-                              {isRegeneratingAll ? (
-                                <>
-                                  <Loader2 size={13} className="animate-spin text-white" />
-                                  {locale === 'ru' ? 'НЕЙРОСЕТЬ РИСУЕТ ВСЕ СЛАЙДЫ...' : 'NEURAL GENERATING ALL SLIDES...'}
-                                </>
-                              ) : (
-                                <>
-                                  <Wand2 size={13} className="text-white animate-pulse" />
-                                  {locale === 'ru' ? 'Сгенерировать всю карусель (6 слайдов)' : 'Generate Full Carousel (6 Slides)'}
-                                </>
-                              )}
-                            </button>
-                          </div>
+                          {/* Space padding separator */}
+                          <div className="pt-2" />
                         </div>
 
                         {/* 4. Caption Console Section */}
