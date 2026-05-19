@@ -15,7 +15,7 @@ export async function POST(req: NextRequest) {
     }
 
     // 1. Initialize Gemini 3 Flash (optimized for video/audio understanding)
-    const model = genAI.getGenerativeModel({ model: "gemini-3-flash" });
+    const model = genAI.getGenerativeModel({ model: "gemini-3-flash-preview" });
 
     // 2. Construct Analysis Prompt
     // Note: In a production environment, we would use the File Manager API to upload the video to Gemini.

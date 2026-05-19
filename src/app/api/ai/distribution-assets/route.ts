@@ -26,7 +26,7 @@ export async function POST(req: Request) {
     const userDNA = profile?.digital_shadow_prompt || "Niche: General Content Creator. Tone: Professional but engaging. Philosophy: Value-first.";
 
     const model = genAI.getGenerativeModel({ 
-      model: 'gemini-3-flash',
+      model: 'gemini-3-flash-preview',
       generationConfig: { responseMimeType: "application/json" }
     });
 

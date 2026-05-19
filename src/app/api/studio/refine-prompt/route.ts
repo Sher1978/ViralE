@@ -12,7 +12,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing sceneText' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
 
     const systemPrompt = `You are an expert AI Video Director. 
     Your task is to take a scene description and current prompt, and refine it into a highly detailed, cinematic visual prompt for image/video generation (like Midjourney or Stable Diffusion).

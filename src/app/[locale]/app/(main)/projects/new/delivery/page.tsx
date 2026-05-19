@@ -187,6 +187,31 @@ function DeliveryPageContent() {
       const subEnd = typeof c.endTime === 'number' && !isNaN(c.endTime) ? c.endTime : subStart + 3;
       const font = useItalic ? 'font_italic.ttf' : 'font.ttf';
 
+      // Advanced dynamic math expressions for transition animations in FFmpeg
+      let alphaExpr = `min(1\\, (t-${subStart})/0.15)`; // Default 150ms fade-in
+      let xExpr1 = `(w-text_w)/2 + ${subPos.x}`;
+      let xExpr2 = `(w-text_w)/2 + ${subPos.x}`;
+      let yExpr1 = `${finalY}`;
+      let yExpr2 = `${finalY + subSize + 15}`;
+
+      if (subStyleIdx === 0) { // Classic Yellow Italic: Fade + slide up 15px
+        alphaExpr = `min(1\\, (t-${subStart})/0.15)`;
+        yExpr1 = `${finalY} + 15*(1 - min(1\\, (t-${subStart})/0.15))`;
+        yExpr2 = `${finalY + subSize + 15} + 15*(1 - min(1\\, (t-${subStart})/0.15))`;
+      } else if (subStyleIdx === 2) { // Red Outline: Slide in from left by 50px
+        alphaExpr = `min(1\\, (t-${subStart})/0.2)`;
+        xExpr1 = `(w-text_w)/2 + ${subPos.x} - 50*(1 - min(1\\, (t-${subStart})/0.2))`;
+        xExpr2 = `(w-text_w)/2 + ${subPos.x} - 50*(1 - min(1\\, (t-${subStart})/0.2))`;
+      } else if (subStyleIdx === 6) { // Gradient: Slide up 20px
+        alphaExpr = `min(1\\, (t-${subStart})/0.2)`;
+        yExpr1 = `${finalY} + 20*(1 - min(1\\, (t-${subStart})/0.2))`;
+        yExpr2 = `${finalY + subSize + 15} + 20*(1 - min(1\\, (t-${subStart})/0.2))`;
+      } else if (subStyleIdx === 11) { // Royal Gold: Slide down 10px
+        alphaExpr = `min(1\\, (t-${subStart})/0.15)`;
+        yExpr1 = `${finalY} - 10*(1 - min(1\\, (t-${subStart})/0.15))`;
+        yExpr2 = `${finalY + subSize + 15} - 10*(1 - min(1\\, (t-${subStart})/0.15))`;
+      }
+
       const lineFilters = [];
 
       // Add Line 1
@@ -200,8 +225,9 @@ function DeliveryPageContent() {
         `shadowx=${shadowx}`,
         `shadowy=${shadowy}`,
         box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
-        `x=(w-text_w)/2 + ${subPos.x}`,
-        `y=${finalY}`,
+        `x=${xExpr1}`,
+        `y=${yExpr1}`,
+        `alpha='${alphaExpr}'`,
         `enable='between(t,${subStart},${subEnd})'`,
       ].filter(Boolean).join(':'));
 
@@ -217,8 +243,9 @@ function DeliveryPageContent() {
           `shadowx=${shadowx}`,
           `shadowy=${shadowy}`,
           box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
-          `x=(w-text_w)/2 + ${subPos.x}`,
-          `y=${finalY + subSize + 15}`,
+          `x=${xExpr2}`,
+          `y=${yExpr2}`,
+          `alpha='${alphaExpr}'`,
           `enable='between(t,${subStart},${subEnd})'`,
         ].filter(Boolean).join(':'));
       }
@@ -422,11 +449,87 @@ function DeliveryPageContent() {
           const line1 = words.slice(0, midpoint).join(' ');
           const line2 = words.slice(midpoint).join(' ');
           
+          // --- Dynamic Subtitle Animations (Canvas-based) ---
+          const elapsed = time - activeSub.startTime;
+          let scale = 1.0;
+          let scaleY = 1.0;
+          let offsetX = 0;
+          let offsetY = 0;
+          let opacity = 1.0;
+
+          if (subStyleIdx === 0) { // Classic Yellow Italic (Popup Scale + Slide Up)
+            const animTime = 0.15;
+            if (elapsed < animTime) {
+              const t = elapsed / animTime;
+              scale = 0.9 + t * 0.1;
+              offsetY = 15 * (1 - t);
+              opacity = t;
+            }
+          } else if (subStyleIdx === 1) { // White Bold (Bounce Scale)
+            const animTime = 0.15;
+            if (elapsed < animTime) {
+              const t = elapsed / animTime;
+              scale = 0.5 + t * 0.5;
+              opacity = t;
+            }
+          } else if (subStyleIdx === 2) { // Red Outline (Slide in from Left)
+            const animTime = 0.2;
+            if (elapsed < animTime) {
+              const t = elapsed / animTime;
+              offsetX = -50 * (1 - t);
+              opacity = t;
+            }
+          } else if (subStyleIdx === 3) { // Cyber Neon (Fade In)
+            const animTime = 0.2;
+            if (elapsed < animTime) {
+              opacity = elapsed / animTime;
+            }
+          } else if (subStyleIdx === 5) { // Boxy Yellow (Vertical Flip)
+            const animTime = 0.2;
+            if (elapsed < animTime) {
+              const t = elapsed / animTime;
+              scaleY = t;
+              opacity = t;
+            }
+          } else if (subStyleIdx === 6) { // Gradient (Slide Up)
+            const animTime = 0.2;
+            if (elapsed < animTime) {
+              const t = elapsed / animTime;
+              offsetY = 20 * (1 - t);
+              opacity = t;
+            }
+          } else if (subStyleIdx === 9) { // Impact (Zoom In)
+            const animTime = 0.15;
+            if (elapsed < animTime) {
+              const t = elapsed / animTime;
+              scale = 2.0 - t * 1.0;
+              opacity = t;
+            }
+          } else if (subStyleIdx === 11) { // Royal Gold (Slide down)
+            const animTime = 0.15;
+            if (elapsed < animTime) {
+              const t = elapsed / animTime;
+              offsetY = -10 * (1 - t);
+              opacity = t;
+            }
+          }
+
+          ctx.save();
+          
+          // Translate to subtitle center coordinate + offset
+          ctx.translate(canvas.width / 2 + subPos.x + offsetX, baseIdx + offsetY);
+          
+          // Apply scale transformation
+          ctx.scale(scale, scaleY);
+          
+          // Apply opacity
+          ctx.globalAlpha = opacity;
           
           if (useBox) {
             ctx.fillStyle = boxColor;
             const metrics = ctx.measureText(line1);
-            ctx.fillRect(canvas.width / 2 + subPos.x - metrics.width / 2 - 20, baseIdx - subSize, metrics.width + 40, subSize + 40);
+            // Draw box relative to centered coordinates
+            ctx.fillRect(-metrics.width / 2 - 20, -subSize, metrics.width + 40, subSize + 40);
             ctx.fillStyle = fillStyle;
           }
 
@@ -435,13 +538,15 @@ function DeliveryPageContent() {
           ctx.lineWidth = 12;
           ctx.lineJoin = 'round';
           
-          // Draw Outline first
-          ctx.strokeText(line1, canvas.width / 2 + subPos.x, baseIdx);
-          if (line2) ctx.strokeText(line2, canvas.width / 2 + subPos.x, baseIdx + 100);
+          // Draw Outline first (centered at local 0,0)
+          ctx.strokeText(line1, 0, 0);
+          if (line2) ctx.strokeText(line2, 0, 100);
           
-          // Draw Text
-          ctx.fillText(line1, canvas.width / 2 + subPos.x, baseIdx);
-          if (line2) ctx.fillText(line2, canvas.width / 2 + subPos.x, baseIdx + 100);
+          // Draw Text (centered at local 0,0)
+          ctx.fillText(line1, 0, 0);
+          if (line2) ctx.fillText(line2, 0, 100);
+          
+          ctx.restore();
           
           // Reset shadow
           ctx.shadowBlur = 0;
