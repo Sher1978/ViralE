@@ -1182,22 +1182,29 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             </div>
                           </div>
 
-                          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                            {(() => {
-                              const rawCarousel = assets?.ig_carousel as any;
-                              const generatedSlides = rawCarousel?.slides || rawCarousel?.prompts?.map((p: string, i: number) => ({
-                                slide_number: i + 1,
-                                image_prompt: p,
-                                text_on_slide: `Слайд ${i + 1}`
-                              })) || [];
-
-                              // Always render 6 slots
-                              return [...Array(6)].map((_, i) => {
-                                const num = i + 1;
-                                const slideData = generatedSlides[i];
-                                const key = `carousel-${num - 1}`;
-                                const url = imageResults[key];
-                                const isGen = isGeneratingImages[key];
+                          {/* 1. Horizontal Scroll Track of Previews ONLY */}
+                          <div className="relative">
+                            <div 
+                              id="carousel-scroller"
+                              className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory scrollbar-none scroll-smooth -mx-5 px-5"
+                              onScroll={(e) => {
+                                const target = e.currentTarget;
+                                const scrollLeft = target.scrollLeft;
+                                const width = target.offsetWidth;
+                                const cardWidth = scrollLeft / (width * 0.7);
+                                const index = Math.min(5, Math.max(0, Math.round(cardWidth)));
+                                if (index !== activeSlideIndex) {
+                                  setActiveSlideIndex(index);
+                                }
+                              }}
+                            >
+                              {(() => {
+                                const rawCarousel = assets?.ig_carousel as any;
+                                const generatedSlides = rawCarousel?.slides || rawCarousel?.prompts?.map((p: string, i: number) => ({
+                                  slide_number: i + 1,
+                                  image_prompt: p,
+                                  text_on_slide: `Слайд ${i + 1}`
+                                })) || [];
 
                                 const highlightText = (text: string) => {
                                   if (!text) return '';
@@ -1214,87 +1221,88 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                   });
                                 };
 
-                                return (
-                                  <div key={num} className="p-5 rounded-[2.5rem] bg-white/[0.01] border border-white/5 space-y-4 hover:border-white/10 transition-colors flex flex-col group">
-                                    {/* Preview Canvas */}
+                                return [...Array(6)].map((_, i) => {
+                                  const num = i + 1;
+                                  const slideData = generatedSlides[i];
+                                  const key = `carousel-${num - 1}`;
+                                  const url = imageResults[key];
+                                  const isGen = isGeneratingImages[key];
+
+                                  return (
                                     <div 
+                                      key={num}
                                       onClick={() => {
-                                        if (url) {
-                                          setLightboxType('carousel');
-                                          setLightboxIndex(num - 1);
+                                        setActiveSlideIndex(i);
+                                        const container = document.getElementById('carousel-scroller');
+                                        if (container) {
+                                          const cardWidth = container.scrollWidth / 6;
+                                          container.scrollTo({
+                                            left: i * cardWidth,
+                                            behavior: 'smooth'
+                                          });
                                         }
                                       }}
                                       className={cn(
-                                        "relative w-full aspect-[4/5] rounded-3xl overflow-hidden flex-shrink-0 transition-all duration-300 border",
-                                        url ? "border-white/10 cursor-zoom-in group-hover:border-purple-500/50" : "border-white/5 bg-gradient-to-br from-white/[0.01] to-white/[0.03]"
+                                        "w-[75vw] sm:w-[280px] shrink-0 snap-center transition-all duration-300 cursor-pointer p-1 rounded-[2rem]",
+                                        activeSlideIndex === i 
+                                          ? "scale-100 opacity-100 ring-2 ring-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.2)]" 
+                                          : "scale-95 opacity-50 hover:opacity-80"
                                       )}
                                     >
-                                      {url ? (
-                                        <>
-                                          <img src={url} className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover:scale-105" alt={`Slide ${num}`} />
-                                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center transition-opacity pointer-events-none duration-300 z-30">
-                                            <div className="w-10 h-10 rounded-full bg-black/50 backdrop-blur-md border border-white/20 flex items-center justify-center text-white shadow-xl scale-90 group-hover:scale-100 transition-all duration-300">
-                                              <Eye size={18} />
+                                      {/* Beautiful Slide Preview Canvas */}
+                                      <div className="relative w-full aspect-[4/5] rounded-[1.8rem] overflow-hidden bg-[#0a0a0f] border border-white/5 flex flex-col items-center justify-center p-6 group/canvas">
+                                        {url ? (
+                                          <>
+                                            <img 
+                                              src={url} 
+                                              alt={`Slide ${num}`} 
+                                              className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/canvas:scale-105"
+                                              loading="lazy"
+                                            />
+                                            <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-black/35 to-black/80" />
+                                          </>
+                                        ) : (
+                                          <>
+                                            {/* Glowing ambient backlight inside empty card */}
+                                            <div className="absolute -inset-10 bg-gradient-to-tr from-purple-500/20 to-indigo-500/20 rounded-full blur-3xl opacity-60 group-hover/canvas:opacity-80 group-hover/canvas:scale-110 transition-all duration-700" />
+                                            
+                                            {/* Digital Tech Grid Overlay */}
+                                            <div className="absolute inset-0 bg-[linear-gradient(to_right,rgba(255,255,255,0.015)_1px,transparent_1px),linear-gradient(to_bottom,rgba(255,255,255,0.015)_1px,transparent_1px)] bg-[size:16px_16px]" />
+                                            <div className="absolute inset-0 bg-radial-gradient" />
+                                            
+                                            {/* Tech Brackets & Status */}
+                                            <div className="absolute top-4 left-4 right-4 flex justify-between items-center text-[7px] font-mono tracking-widest text-white/20 uppercase">
+                                              <span>[sensor_active]</span>
+                                              <span>4:5 AR</span>
                                             </div>
-                                          </div>
-                                        </>
-                                      ) : isGen ? (
-                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-sm z-10 gap-3">
-                                          <Loader2 size={32} className="text-purple-500 animate-spin" />
-                                        </div>
-                                      ) : (
-                                        <div className="absolute inset-0 flex flex-col justify-between text-center p-8 bg-gradient-to-b from-white/[0.03] to-white/[0.01] backdrop-blur-xl border border-white/10 select-none overflow-hidden">
-                                          {/* Ambient Backlight Glow */}
-                                          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-48 h-48 rounded-full bg-gradient-to-tr from-purple-500/10 to-indigo-500/10 filter blur-3xl opacity-60 pointer-events-none group-hover:scale-125 transition-transform duration-700" />
-                                          
-                                          {/* Grid overlay */}
-                                          <div className="absolute inset-0 bg-[radial-gradient(rgba(255,255,255,0.015)_1.5px,transparent_1.5px)] [background-size:16px_16px] pointer-events-none opacity-80" />
-
-                                          {/* Slide badge */}
-                                          <div className="z-10 self-center px-3 py-1 rounded-full bg-white/[0.03] border border-white/5 backdrop-blur-md flex items-center justify-center text-[8px] font-black uppercase tracking-[0.2em] text-purple-400/90 shadow-sm">
-                                            {locale === 'ru' ? `СЛАЙД 0${num}` : `SLIDE 0${num}`}
-                                          </div>
-
-                                          {/* Interactive futuristic mockup visual */}
-                                          <div className="z-10 flex flex-col items-center gap-4 my-auto">
-                                            <div className="relative w-14 h-14 rounded-2xl bg-gradient-to-b from-white/10 to-white/[0.02] border border-white/15 flex items-center justify-center shadow-[0_8px_32px_0_rgba(0,0,0,0.37)] group-hover:border-purple-500/50 transition-all duration-500">
-                                              <ImageIcon size={20} className="text-white/20 group-hover:text-purple-400 group-hover:scale-110 transition-all duration-500" />
-                                              
-                                              <span className="absolute top-1 left-1 w-1 h-1 border-t border-l border-white/20 group-hover:border-purple-400 transition-colors" />
-                                              <span className="absolute top-1 right-1 w-1 h-1 border-t border-r border-white/20 group-hover:border-purple-400 transition-colors" />
-                                              <span className="absolute bottom-1 left-1 w-1 h-1 border-b border-l border-white/20 group-hover:border-purple-400 transition-colors" />
-                                              <span className="absolute bottom-1 right-1 w-1 h-1 border-b border-r border-white/20 group-hover:border-purple-400 transition-colors" />
+                                            <div className="absolute bottom-4 left-4 right-4 flex justify-between items-center text-[7px] font-mono tracking-widest text-white/20 uppercase">
+                                              <span>[empty_canvas]</span>
+                                              <span>sl_0{num}</span>
                                             </div>
                                             
-                                            <div className="space-y-0.5 px-2">
-                                              <p className="text-white/20 text-[7px] font-black uppercase tracking-widest leading-relaxed">
-                                                {locale === 'ru' ? 'Слайд пуст' : 'EMPTY CANVAS'}
-                                              </p>
-                                            </div>
-                                          </div>
+                                            <div className="absolute top-4 left-4 w-2 h-2 border-t border-l border-white/15" />
+                                            <div className="absolute top-4 right-4 w-2 h-2 border-t border-r border-white/15" />
+                                            <div className="absolute bottom-4 left-4 w-2 h-2 border-b border-l border-white/15" />
+                                            <div className="absolute bottom-4 right-4 w-2 h-2 border-b border-r border-white/15" />
+                                          </>
+                                        )}
 
-                                          {/* Tech hint */}
-                                          <div className="z-10 self-center max-w-[85%] text-[7px] font-black uppercase tracking-wider text-purple-400/50 group-hover:text-purple-400 transition-colors animate-pulse">
-                                            {locale === 'ru' 
-                                              ? 'КЛИКНИТЕ «СГЕНЕРИРОВАТЬ»' 
-                                              : 'TAP «GENERATE» TO DRAW'}
-                                          </div>
-                                        </div>
-                                      )}
-
-                                      {/* Text Overlay inside thumbnail preview (ALWAYS visible for perfect visual feedback) */}
-                                      <div className="absolute inset-0 flex flex-col justify-between p-6 z-20 pointer-events-none select-none">
-                                        <div className="flex items-center justify-between text-white/50 font-bold text-[8px] tracking-wider">
-                                          <span>@viral_engine</span>
-                                          <span className={cn("px-1.5 py-0.5 rounded bg-black/30 backdrop-blur-md border border-white/10 text-[7px]", activeTheme === 'business' && 'text-slate-500 bg-transparent border-none')}>
+                                        {/* Watermark branding header */}
+                                        <div className="absolute top-6 left-6 right-6 flex items-center justify-between z-10">
+                                          <span className="text-[7px] font-black uppercase tracking-[0.25em] text-white/50 bg-black/30 backdrop-blur-md px-2 py-0.5 rounded-full border border-white/5">
+                                            @viral_engine
+                                          </span>
+                                          <span className="text-[7px] font-black text-purple-400/90 bg-purple-500/10 backdrop-blur-md px-2 py-0.5 rounded-full border border-purple-500/20">
                                             0{num} / 06
                                           </span>
                                         </div>
-                                        <div className="flex-1 flex flex-col justify-center">
+
+                                        {/* Dynamic Theme Subtitles ALWAYS Rendered */}
+                                        <div className="absolute inset-x-6 top-[28%] bottom-16 flex flex-col justify-center items-center text-center z-10 pointer-events-none">
                                           {activeTheme === 'minimalist' && (
                                             <div className="w-full p-4 rounded-2xl bg-black/75 backdrop-blur-md border border-white/10 flex items-center justify-center text-center shadow-xl">
                                               <p className="text-white font-extrabold text-[11px] md:text-xs leading-snug tracking-tight">
-                                                {highlightText(customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`)}
+                                                {highlightText(customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || `Slide ${num}`))}
                                               </p>
                                             </div>
                                           )}
@@ -1302,7 +1310,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                             <div className="w-full p-4 rounded-xl bg-black/90 backdrop-blur-md border border-pink-500/50 shadow-lg text-left space-y-1.5">
                                               <div className="w-6 h-0.5 bg-cyan-400 rounded-full" />
                                               <p className="text-white font-black text-[9px] md:text-[10px] leading-relaxed tracking-wide uppercase line-clamp-4">
-                                                {highlightText(customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`)}
+                                                {highlightText(customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || `Slide ${num}`))}
                                               </p>
                                             </div>
                                           )}
@@ -1310,92 +1318,49 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                             <div className="w-full p-4 rounded-xl bg-white border border-slate-200 shadow-xl text-left mt-auto space-y-1">
                                               <span className="text-[6px] font-black text-indigo-600 uppercase tracking-widest">KEY TAKEAWAY #{num}</span>
                                               <p className="text-slate-800 font-bold text-[9px] md:text-[10px] leading-snug line-clamp-3">
-                                                {customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`}
+                                                {customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || `Slide ${num}`)}
                                               </p>
                                             </div>
                                           )}
                                           {activeTheme === 'glow' && (
                                             <div className="w-full text-center mt-auto pb-2">
                                               <p className="text-white font-black text-[11px] md:text-xs leading-snug tracking-tighter drop-shadow-[0_2px_8px_rgba(0,0,0,0.95)] line-clamp-4">
-                                                {highlightText(customSlideTexts[num] || slideData?.text_on_slide || `Slide ${num}`)}
+                                                {highlightText(customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || `Slide ${num}`))}
                                               </p>
+                                            </div>
+                                          )}
+                                        </div>
+
+                                        {/* Loading / Tap state Overlay */}
+                                        <div className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 opacity-0 group-hover/canvas:opacity-100 transition-opacity duration-300 z-20">
+                                          {isGen ? (
+                                            <div className="flex flex-col items-center gap-2">
+                                              <Loader2 className="animate-spin text-purple-400" size={24} />
+                                              <span className="text-[8px] font-mono tracking-widest text-white/50 uppercase">Rendering...</span>
+                                            </div>
+                                          ) : (
+                                            <div className="flex flex-col items-center gap-1.5 px-4 text-center">
+                                              <span className="text-[8px] font-black uppercase tracking-widest text-purple-400 bg-purple-500/10 border border-purple-500/20 px-2 py-0.5 rounded-full">
+                                                {activeSlideIndex === i ? (locale === 'ru' ? 'Активный слайд' : 'Active Slide') : (locale === 'ru' ? 'Выбрать слайд' : 'Select Slide')}
+                                              </span>
                                             </div>
                                           )}
                                         </div>
                                       </div>
                                     </div>
-
-                                    {/* Inline Editors for this slide */}
-                                    <div className="flex-1 flex flex-col space-y-3">
-                                      <div className="flex items-center justify-between">
-                                        <span className="text-[9px] font-black text-purple-400 uppercase tracking-widest">
-                                          {num === 1 ? (locale === 'ru' ? 'Хук / Зацепка' : 'Hook') :
-                                           num === 2 ? (locale === 'ru' ? 'Проблема / Боль' : 'Problem') :
-                                           num === 3 ? (locale === 'ru' ? 'Разворот / Интрига' : 'Pivot') :
-                                           num === 4 ? (locale === 'ru' ? 'Польза / Шаг 1' : 'Takeaway 1') :
-                                           num === 5 ? (locale === 'ru' ? 'Польза / Шаг 2' : 'Takeaway 2') :
-                                           (locale === 'ru' ? 'Призыв к действию' : 'CTA')}
-                                        </span>
-                                      </div>
-
-                                      <div className="space-y-1.5">
-                                        <label className="text-[7px] font-black uppercase tracking-widest text-white/30">{locale === 'ru' ? 'Текст на слайде' : 'Visual Text Overlay'}</label>
-                                        <input
-                                          type="text"
-                                          value={customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || '')}
-                                          onChange={(e) => setCustomSlideTexts(prev => ({ ...prev, [num]: e.target.value }))}
-                                          placeholder={locale === 'ru' ? 'Введите текст...' : 'Enter text...'}
-                                          className="w-full px-3 py-2 rounded-xl bg-white/[0.02] border border-white/5 text-[10px] font-bold text-white focus:outline-none focus:border-purple-500/50 transition-all"
-                                        />
-                                      </div>
-
-                                      <div className="space-y-1.5">
-                                        <label className="text-[7px] font-black uppercase tracking-widest text-white/30">{locale === 'ru' ? 'Промпт для изображения' : 'Background Image Prompt'}</label>
-                                        <textarea
-                                          value={customImagePrompts[num] !== undefined ? customImagePrompts[num] : (slideData?.image_prompt || '')}
-                                          onChange={(e) => setCustomImagePrompts(prev => ({ ...prev, [num]: e.target.value }))}
-                                          placeholder={locale === 'ru' ? 'Опишите фоновый образ...' : 'Describe visual...'}
-                                          rows={2}
-                                          className="w-full px-3 py-2 rounded-xl bg-white/[0.02] border border-white/5 text-[9px] text-white/70 focus:outline-none focus:border-purple-500/50 transition-all resize-none custom-scrollbar"
-                                        />
-                                      </div>
-
-                                      <div className="flex gap-2 pt-1 mt-auto">
-                                        <button
-                                          onClick={() => {
-                                            const prompt = customImagePrompts[num] || slideData?.image_prompt || '';
-                                            generateSingleImage(prompt, '4:5', key);
-                                          }}
-                                          disabled={isGen}
-                                          className="flex-1 py-2 rounded-xl bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold uppercase tracking-widest text-white/70 hover:text-white flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
-                                        >
-                                          {isGen ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
-                                          {url ? (locale === 'ru' ? 'Перерисовать' : 'Regen') : (locale === 'ru' ? 'Сгенерировать' : 'Generate')}
-                                        </button>
-                                        
-                                        {url && (
-                                          <button
-                                            onClick={() => downloadSingleRenderedSlide(num)}
-                                            className="px-3 py-2 rounded-xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 text-[9px] font-bold uppercase tracking-widest transition-all shadow-sm"
-                                            title={locale === 'ru' ? 'Скачать слайд с текстом' : 'Download Slide Render'}
-                                          >
-                                            <Download size={10} />
-                                          </button>
-                                        )}
-                                      </div>
-                                    </div>
-                                  </div>
-                                );
-                              });
-                            })()}
+                                  );
+                                });
+                              })()}
+                            </div>
                           </div>
 
-                          {/* Horizontal Scroll Indicators for Mobile */}
-                          <div className="flex md:hidden items-center justify-center gap-1.5 pt-2 pb-4">
+                          {/* Pagination dots */}
+                          <div className="flex items-center justify-center gap-1.5 pt-2 pb-4">
                             {[...Array(6)].map((_, idx) => (
                               <button
                                 key={idx}
                                 onClick={() => {
+                                  setActiveSlideIndex(idx);
                                   const container = document.getElementById('carousel-scroller');
                                   if (container) {
                                     const cardWidth = container.scrollWidth / 6;
@@ -1415,6 +1380,93 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                               />
                             ))}
                           </div>
+
+                          {/* 2. Unified Selected Slide Editor Panel */}
+                          {(() => {
+                            const rawCarousel = assets?.ig_carousel as any;
+                            const generatedSlides = rawCarousel?.slides || rawCarousel?.prompts?.map((p: string, i: number) => ({
+                              slide_number: i + 1,
+                              image_prompt: p,
+                              text_on_slide: `Слайд ${i + 1}`
+                            })) || [];
+                            
+                            const num = activeSlideIndex + 1;
+                            const slideData = generatedSlides[activeSlideIndex];
+                            const key = `carousel-${activeSlideIndex}`;
+                            const url = imageResults[key];
+                            const isGen = isGeneratingImages[key];
+
+                            return (
+                              <div className="p-6 rounded-[2.5rem] bg-white/[0.01] border border-white/5 space-y-4 my-4">
+                                <div className="flex items-center justify-between border-b border-white/5 pb-3">
+                                  <div className="flex items-center gap-2">
+                                    <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
+                                    <span className="text-[10px] font-black text-purple-400 uppercase tracking-[0.2em]">
+                                      {locale === 'ru' ? 'Редактор слайда' : 'Active Slide Editor'} 0{num}
+                                    </span>
+                                  </div>
+                                  <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest">
+                                    {num === 1 ? (locale === 'ru' ? 'Хук / Зацепка' : 'Hook') :
+                                     num === 2 ? (locale === 'ru' ? 'Проблема / Боль' : 'Problem') :
+                                     num === 3 ? (locale === 'ru' ? 'Разворот / Интрига' : 'Pivot') :
+                                     num === 4 ? (locale === 'ru' ? 'Польза / Шаг 1' : 'Takeaway 1') :
+                                     num === 5 ? (locale === 'ru' ? 'Польза / Шаг 2' : 'Takeaway 2') :
+                                     (locale === 'ru' ? 'Призыв к действию' : 'CTA')}
+                                  </span>
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="text-[8px] font-black uppercase tracking-widest text-white/30">
+                                    {locale === 'ru' ? 'Текст на слайде' : 'Visual Text Overlay'}
+                                  </label>
+                                  <input
+                                    type="text"
+                                    value={customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || '')}
+                                    onChange={(e) => setCustomSlideTexts(prev => ({ ...prev, [num]: e.target.value }))}
+                                    placeholder={locale === 'ru' ? 'Введите текст...' : 'Enter text...'}
+                                    className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/5 text-[11px] font-bold text-white focus:outline-none focus:border-purple-500/50 transition-all"
+                                  />
+                                </div>
+
+                                <div className="space-y-1.5">
+                                  <label className="text-[8px] font-black uppercase tracking-widest text-white/30">
+                                    {locale === 'ru' ? 'Промпт для изображения' : 'Background Image Prompt'}
+                                  </label>
+                                  <textarea
+                                    value={customImagePrompts[num] !== undefined ? customImagePrompts[num] : (slideData?.image_prompt || '')}
+                                    onChange={(e) => setCustomImagePrompts(prev => ({ ...prev, [num]: e.target.value }))}
+                                    placeholder={locale === 'ru' ? 'Опишите фоновый образ...' : 'Describe visual...'}
+                                    rows={2}
+                                    className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/5 text-[10px] text-white/70 focus:outline-none focus:border-purple-500/50 transition-all resize-none custom-scrollbar"
+                                  />
+                                </div>
+
+                                <div className="flex gap-2 pt-1">
+                                  <button
+                                    onClick={() => {
+                                      const prompt = customImagePrompts[num] || slideData?.image_prompt || '';
+                                      generateSingleImage(prompt, '4:5', key);
+                                    }}
+                                    disabled={isGen}
+                                    className="flex-1 py-3 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-[9px] font-bold uppercase tracking-widest text-white/70 hover:text-white flex items-center justify-center gap-1.5 transition-all disabled:opacity-50"
+                                  >
+                                    {isGen ? <Loader2 size={10} className="animate-spin" /> : <RefreshCw size={10} />}
+                                    {url ? (locale === 'ru' ? 'Перерисовать' : 'Regen') : (locale === 'ru' ? 'Сгенерировать' : 'Generate')}
+                                  </button>
+                                  
+                                  {url && (
+                                    <button
+                                      onClick={() => downloadSingleRenderedSlide(num)}
+                                      className="px-3 py-3 rounded-2xl bg-purple-500/10 hover:bg-purple-500/20 border border-purple-500/20 text-purple-400 text-[9px] font-bold uppercase tracking-widest transition-all shadow-sm"
+                                      title={locale === 'ru' ? 'Скачать слайд с текстом' : 'Download Slide Render'}
+                                    >
+                                      <Download size={10} />
+                                    </button>
+                                  )}
+                                </div>
+                              </div>
+                            );
+                          })()}
 
                           {/* Common Bulk Generate Button under the Scroller */}
                           <div className="flex justify-center pt-2 pb-6 px-1">
@@ -1576,8 +1628,17 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 <img src={imageResults['banner']} className="w-full h-full object-cover" />
                                 {/* TEXT OVERLAY SIMULATION */}
                                 <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center p-6 text-center">
-                                  <div className="mt-auto mb-16 bg-white text-black px-4 py-2 font-black italic uppercase tracking-tighter text-md transform -rotate-2 shadow-2xl">
-                                    {assets?.video_banner.text_on_banner}
+                                  <div className="relative mt-auto mb-16 max-w-[90%] transform -rotate-3 hover:rotate-0 transition-transform duration-300 select-none pointer-events-none">
+                                    <div 
+                                      className="absolute inset-0 bg-black translate-x-1.5 translate-y-1.5"
+                                      style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 8px), calc(100% - 8px) 50%, 100% calc(50% + 8px), 100% 100%, 0% 100%, 0% calc(50% + 8px), 8px 50%, 0% calc(50% - 8px))' }}
+                                    />
+                                    <div 
+                                      className="relative bg-[#FFE600] text-black px-5 py-3.5 font-black italic uppercase tracking-tighter text-xs flex items-center justify-center text-center leading-snug border-2 border-black"
+                                      style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 8px), calc(100% - 8px) 50%, 100% calc(50% + 8px), 100% 100%, 0% 100%, 0% calc(50% + 8px), 8px 50%, 0% calc(50% - 8px))' }}
+                                    >
+                                      {assets?.video_banner.text_on_banner}
+                                    </div>
                                   </div>
                                 </div>
                                 
@@ -1770,8 +1831,17 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
               <>
                 <img src={imageResults['banner']} className="absolute inset-0 w-full h-full object-cover" alt="Full Cover" />
                 <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center p-8 text-center">
-                  <div className="mt-auto mb-20 bg-white text-black px-6 py-3 font-black italic uppercase tracking-tighter text-xl transform -rotate-2 shadow-2xl">
-                    {assets?.video_banner?.text_on_banner}
+                  <div className="relative mt-auto mb-20 max-w-[90%] transform -rotate-3 transition-transform duration-300">
+                    <div 
+                      className="absolute inset-0 bg-black translate-x-2 translate-y-2"
+                      style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 10px), calc(100% - 10px) 50%, 100% calc(50% + 10px), 100% 100%, 0% 100%, 0% calc(50% + 10px), 10px 50%, 0% calc(50% - 10px))' }}
+                    />
+                    <div 
+                      className="relative bg-[#FFE600] text-black px-7 py-4.5 font-black italic uppercase tracking-tighter text-md flex items-center justify-center text-center leading-snug border-[3px] border-black"
+                      style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 10px), calc(100% - 10px) 50%, 100% calc(50% + 10px), 100% 100%, 0% 100%, 0% calc(50% + 10px), 10px 50%, 0% calc(50% - 10px))' }}
+                    >
+                      {assets?.video_banner?.text_on_banner}
+                    </div>
                   </div>
                 </div>
               </>
