@@ -94,9 +94,9 @@ export async function POST(req: NextRequest) {
     await fs.writeFile(concatFilePath, concatContent);
 
     const outputPath = path.join(tmpDir, 'output.mp4');
-    // Extract original audio and bind to the new video sequence
+    // Extract original audio and bind to the new video sequence (re-encode to AAC for absolute compatibility)
     const audioPath = path.join(tmpDir, 'audio.m4a');
-    await execPromise(`"${ffmpegPath}" -i ${originalVideoPath} -vn -acodec copy ${audioPath}`);
+    await execPromise(`"${ffmpegPath}" -i ${originalVideoPath} -vn -c:a aac -b:a 128k ${audioPath}`);
     
     // Concatenate videos and map the original audio back
     await execPromise(`"${ffmpegPath}" -f concat -safe 0 -i ${concatFilePath} -i ${audioPath} -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 ${outputPath}`);
