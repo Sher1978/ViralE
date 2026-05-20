@@ -119,11 +119,25 @@ export async function POST(req: NextRequest) {
       
       return segmentInputPath; // Original Path
     }));
-
     // 3. Final Stitching
     console.log('[Fusion] Final stitching...');
+    
+    // Verify that all segment files are fully written and accessible before proceeding
+    for (const segmentPath of processedSegments) {
+      try {
+        await fs.access(segmentPath);
+        const stats = await fs.stat(segmentPath);
+        if (stats.size === 0) {
+          throw new Error(`Segment file ${segmentPath} is empty`);
+        }
+      } catch (err: any) {
+        throw new Error(`Pre-concat validation failed: Segment ${segmentPath} is not accessible. Details: ${err.message}`);
+      }
+    }
+
     const concatFilePath = path.join(tmpDir, 'concat.txt');
-    const concatContent = processedSegments.map(p => `file '${p}'`).join('\n');
+    // Ensure all file paths in concat.txt use standardized forward slashes to avoid escape character errors
+    const concatContent = processedSegments.map(p => `file '${p.replace(/\\/g, '/')}'`).join('\n');
     await fs.writeFile(concatFilePath, concatContent);
 
     const outputPath = path.join(tmpDir, 'output.mp4');
@@ -131,8 +145,26 @@ export async function POST(req: NextRequest) {
     const audioPath = path.join(tmpDir, 'audio.m4a');
     await execPromise(`"${ffmpegPath}" -i ${originalVideoPath} -vn -c:a aac -b:a 128k ${audioPath}`);
     
-    // Concatenate videos and map the original audio back
-    await execPromise(`"${ffmpegPath}" -f concat -safe 0 -i ${concatFilePath} -i ${audioPath} -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 ${outputPath}`);
+    // Verify audio file is fully written and accessible before launching concat
+    try {
+      await fs.access(audioPath);
+      const stats = await fs.stat(audioPath);
+      if (stats.size === 0) {
+        throw new Error(`Audio file ${audioPath} is empty`);
+      }
+    } catch (err: any) {
+      throw new Error(`Pre-concat validation failed: Audio file ${audioPath} is not accessible. Details: ${err.message}`);
+    }
+
+    // Try fast copy-based concatenation, and gracefully fallback to re-encoding if streams differ
+    try {
+      console.log('[Fusion] Attempting fast stream copy concat...');
+      await execPromise(`"${ffmpegPath}" -f concat -safe 0 -i ${concatFilePath} -i ${audioPath} -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 ${outputPath}`);
+    } catch (copyError: any) {
+      console.warn('[Fusion] Stream copy concat failed, falling back to full re-encoding concat...', copyError.message);
+      // Fallback: Re-encode the video streams to ensure perfect alignment regardless of potential stream drifts
+      await execPromise(`"${ffmpegPath}" -f concat -safe 0 -i ${concatFilePath} -i ${audioPath} -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -c:a aac -map 0:v:0 -map 1:a:0 ${outputPath}`);
+    }
 
     // 4. Upload Result (Using a placeholder for now, you should upload to Vercel Blob/S3)
     const resultBuffer = await fs.readFile(outputPath);
@@ -149,7 +181,11 @@ export async function POST(req: NextRequest) {
 
   } catch (error: any) {
     console.error('[Fusion] Critical Failure:', error);
+    const stderr = error.stderr ? `\nSTDERR: ${error.stderr}` : '';
+    const stdout = error.stdout ? `\nSTDOUT: ${error.stdout}` : '';
+    const detailedMessage = `${error.message}${stderr}${stdout}`;
+    
     if (tmpDir) await fs.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
-    return NextResponse.json({ error: error.message }, { status: 500 });
+    return NextResponse.json({ error: detailedMessage }, { status: 500 });
   }
 }
