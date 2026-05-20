@@ -8,7 +8,9 @@ import { createWriteStream } from 'fs';
 import path from 'path';
 import axios from 'axios';
 import os from 'os';
+import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 
+const ffmpegPath = ffmpegInstaller.path;
 const execPromise = promisify(exec);
 
 export const maxDuration = 300; // Extend to 5 mins for video processing
@@ -44,7 +46,7 @@ export async function POST(req: NextRequest) {
       
       // Cut and normalize segment to 720x1280, 25fps, yuv420p
       const duration = seg.endTime - seg.startTime;
-      await execPromise(`ffmpeg -ss ${seg.startTime} -i ${originalVideoPath} -t ${duration} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset ultrafast -crf 23 -r 25 -pix_fmt yuv420p ${segmentInputPath}`);
+      await execPromise(`"${ffmpegPath}" -ss ${seg.startTime} -i ${originalVideoPath} -t ${duration} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset ultrafast -crf 23 -r 25 -pix_fmt yuv420p ${segmentInputPath}`);
 
       if (seg.avatarUrl) {
         // AI Path
@@ -77,7 +79,7 @@ export async function POST(req: NextRequest) {
         
         // Normalize the AI segment to match exactly 720x1280, 25fps, yuv420p
         const aiPath = path.join(tmpDir, `seg_${idx}_ai.mp4`);
-        await execPromise(`ffmpeg -i ${tempAiPath} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset ultrafast -crf 23 -r 25 -pix_fmt yuv420p ${aiPath}`);
+        await execPromise(`"${ffmpegPath}" -i ${tempAiPath} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset ultrafast -crf 23 -r 25 -pix_fmt yuv420p ${aiPath}`);
         
         return aiPath;
       }
@@ -94,10 +96,10 @@ export async function POST(req: NextRequest) {
     const outputPath = path.join(tmpDir, 'output.mp4');
     // Extract original audio and bind to the new video sequence
     const audioPath = path.join(tmpDir, 'audio.m4a');
-    await execPromise(`ffmpeg -i ${originalVideoPath} -vn -acodec copy ${audioPath}`);
+    await execPromise(`"${ffmpegPath}" -i ${originalVideoPath} -vn -acodec copy ${audioPath}`);
     
     // Concatenate videos and map the original audio back
-    await execPromise(`ffmpeg -f concat -safe 0 -i ${concatFilePath} -i ${audioPath} -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 ${outputPath}`);
+    await execPromise(`"${ffmpegPath}" -f concat -safe 0 -i ${concatFilePath} -i ${audioPath} -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 ${outputPath}`);
 
     // 4. Upload Result (Using a placeholder for now, you should upload to Vercel Blob/S3)
     const resultBuffer = await fs.readFile(outputPath);
