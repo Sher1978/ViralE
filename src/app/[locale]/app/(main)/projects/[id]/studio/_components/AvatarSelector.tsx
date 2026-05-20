@@ -89,7 +89,8 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
           body: JSON.stringify({
             url: publicUrl,
             type: 'talking_photo',
-            metadata: { label: file.name || 'Uploaded Avatar' }
+            metadata: { label: file.name || 'Uploaded Avatar' },
+            projectId
           })
         });
 

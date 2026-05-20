@@ -82,18 +82,11 @@ export default function AvatarStudioPage() {
   const fetchAssets = async () => {
     setLoading(true);
     try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) return;
-
-      const { data, error } = await supabase
-        .from('media_assets')
-        .select('*')
-        .eq('user_id', user.id)
-        .eq('asset_type', 'image')
-        .order('created_at', { ascending: false });
-
-      if (error) throw error;
-      setAssets(data || []);
+      const res = await fetch('/api/profile/assets');
+      const data = await res.json();
+      if (data.assets) {
+        setAssets(data.assets);
+      }
     } catch (err: any) {
       console.error('Error fetching assets:', err);
     } finally {
@@ -126,19 +119,23 @@ export default function AvatarStudioPage() {
         .from('media')
         .getPublicUrl(filePath);
 
-      const { data: asset, error: dbError } = await supabase
-        .from('media_assets')
-        .insert({
-          user_id: user.id,
+      // Save using our unified profile assets API
+      const saveRes = await fetch('/api/profile/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
           url: publicUrl,
-          asset_type: 'image',
+          type: 'photo',
           metadata: { name: file.name, size: file.size }
         })
-        .select()
-        .single();
+      });
 
-      if (dbError) throw dbError;
+      if (!saveRes.ok) {
+        const errorData = await saveRes.json();
+        throw new Error(errorData.error || 'Failed to register avatar');
+      }
 
+      const { asset } = await saveRes.json();
       setAssets(prev => [asset, ...prev]);
       setActiveTab('photo');
     } catch (err: any) {
