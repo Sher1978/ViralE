@@ -9,7 +9,7 @@ import path from 'path';
 import axios from 'axios';
 import os from 'os';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
-import { supabase } from '@/lib/supabase';
+import { supabaseAdmin } from '@/lib/supabase';
 
 const ffmpegPath = ffmpegInstaller.path;
 const execPromise = promisify(exec);
@@ -54,9 +54,9 @@ export async function POST(req: NextRequest) {
         console.log(`[Fusion] Segment ${idx}: Animating with LivePortrait...`);
         const segmentBuffer = await fs.readFile(segmentInputPath);
 
-        // Upload segment to Supabase storage
-        const drivingFileName = `temp_segments/driving_${uuidv4()}.mp4`;
-        const { error: uploadError } = await supabase.storage
+        // Upload segment to Supabase storage (using user_recordings/ prefix to inherit public read SELECT policy)
+        const drivingFileName = `user_recordings/driving_${uuidv4()}.mp4`;
+        const { error: uploadError } = await supabaseAdmin.storage
           .from('media')
           .upload(drivingFileName, segmentBuffer, {
             contentType: 'video/mp4',
@@ -67,7 +67,7 @@ export async function POST(req: NextRequest) {
           throw new Error(`Failed to upload driving segment to Supabase: ${uploadError.message}`);
         }
 
-        const { data: { publicUrl: drivingPublicUrl } } = supabase.storage
+        const { data: { publicUrl: drivingPublicUrl } } = supabaseAdmin.storage
           .from('media')
           .getPublicUrl(drivingFileName);
 
@@ -80,9 +80,9 @@ export async function POST(req: NextRequest) {
             console.log(`[Fusion] Pre-uploading avatar to Supabase: ${seg.avatarUrl}`);
             const avatarRes = await axios.get(seg.avatarUrl, { responseType: 'arraybuffer' });
             const avatarBuffer = Buffer.from(avatarRes.data);
-            const avatarFileName = `temp_segments/avatar_${uuidv4()}.png`;
+            const avatarFileName = `user_recordings/avatar_${uuidv4()}.png`;
             
-            const { error: avatarUploadError } = await supabase.storage
+            const { error: avatarUploadError } = await supabaseAdmin.storage
               .from('media')
               .upload(avatarFileName, avatarBuffer, {
                 contentType: 'image/png',
@@ -90,7 +90,7 @@ export async function POST(req: NextRequest) {
               });
 
             if (!avatarUploadError) {
-              const { data: { publicUrl: avatarPublicUrl } } = supabase.storage
+              const { data: { publicUrl: avatarPublicUrl } } = supabaseAdmin.storage
                 .from('media')
                 .getPublicUrl(avatarFileName);
               finalAvatarUrl = avatarPublicUrl;
