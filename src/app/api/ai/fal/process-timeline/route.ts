@@ -8,7 +8,7 @@ import path from 'path';
 import axios from 'axios';
 import os from 'os';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
-import { supabaseAdmin } from '@/lib/supabase';
+import { supabase } from '@/lib/supabase';
 
 const ffmpegPath = ffmpegInstaller.path;
 
@@ -128,7 +128,7 @@ export async function POST(req: NextRequest) {
 
         // Upload segment to Supabase storage (using user_recordings/ prefix to inherit public read SELECT policy)
         const drivingFileName = `user_recordings/driving_${uuidv4()}.mp4`;
-        const { error: uploadError } = await supabaseAdmin.storage
+        const { error: uploadError } = await supabase.storage
           .from('media')
           .upload(drivingFileName, segmentBuffer, {
             contentType: 'video/mp4',
@@ -139,7 +139,7 @@ export async function POST(req: NextRequest) {
           throw new Error(`Failed to upload driving segment to Supabase: ${uploadError.message}`);
         }
 
-        const { data: { publicUrl: drivingPublicUrl } } = supabaseAdmin.storage
+        const { data: { publicUrl: drivingPublicUrl } } = supabase.storage
           .from('media')
           .getPublicUrl(drivingFileName);
 
@@ -154,7 +154,7 @@ export async function POST(req: NextRequest) {
             const avatarBuffer = Buffer.from(avatarRes.data);
             const avatarFileName = `user_recordings/avatar_${uuidv4()}.png`;
             
-            const { error: avatarUploadError } = await supabaseAdmin.storage
+            const { error: avatarUploadError } = await supabase.storage
               .from('media')
               .upload(avatarFileName, avatarBuffer, {
                 contentType: 'image/png',
@@ -162,7 +162,7 @@ export async function POST(req: NextRequest) {
               });
 
             if (!avatarUploadError) {
-              const { data: { publicUrl: avatarPublicUrl } } = supabaseAdmin.storage
+              const { data: { publicUrl: avatarPublicUrl } } = supabase.storage
                 .from('media')
                 .getPublicUrl(avatarFileName);
               finalAvatarUrl = avatarPublicUrl;
