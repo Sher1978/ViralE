@@ -986,7 +986,6 @@ export default function ScriptLabPage() {
                 />
               </div>
             )}
-          </div>
 
 
             {!isAiLocked && (
