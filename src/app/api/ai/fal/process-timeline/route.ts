@@ -44,9 +44,9 @@ export async function POST(req: NextRequest) {
     const processedSegments = await Promise.all(segments.map(async (seg: any, idx: number) => {
       const segmentInputPath = path.join(tmpDir, `seg_${idx}_raw.mp4`);
       
-      // Cut and normalize segment to 720x1280, 25fps, yuv420p (strip audio with -an for ultimate OpenCV compatibility)
+      // Cut and normalize segment to 720x1280, 25fps, yuv420p (strip audio with -an and use output seeking to guarantee valid keyframes)
       const duration = seg.endTime - seg.startTime;
-      await execPromise(`"${ffmpegPath}" -ss ${seg.startTime} -i ${originalVideoPath} -t ${duration} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset veryfast -crf 23 -r 25 -pix_fmt yuv420p -profile:v main -level:v 3.1 -an -movflags +faststart ${segmentInputPath}`);
+      await execPromise(`"${ffmpegPath}" -i ${originalVideoPath} -ss ${seg.startTime} -t ${duration} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset veryfast -crf 23 -r 25 -pix_fmt yuv420p -profile:v main -level:v 3.1 -an -movflags +faststart ${segmentInputPath}`);
 
       if (seg.avatarUrl) {
         // AI Path
