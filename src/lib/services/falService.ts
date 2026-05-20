@@ -76,8 +76,9 @@ export const falService = {
       };
     } catch (error: any) {
       console.error("[FalService] LivePortrait CRITICAL FAIL:", error);
-      // Detailed error reporting
-      const errorDetail = error.body?.detail || error.message || "Unknown AI error";
+      // Detailed error reporting - stringify complex objects to avoid [object Object] formatting
+      const rawDetail = error.body?.detail || error.message || "Unknown AI error";
+      const errorDetail = typeof rawDetail === 'object' ? JSON.stringify(rawDetail) : String(rawDetail);
       throw new Error(`AI Synthesis Failed: ${errorDetail}`);
     }
   },
