@@ -1,8 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { falService } from '@/lib/services/falService';
 import { v4 as uuidv4 } from 'uuid';
-import { exec } from 'child_process';
-import { promisify } from 'util';
+import { spawn } from 'child_process';
 import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
@@ -12,7 +11,48 @@ import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
 import { supabaseAdmin } from '@/lib/supabase';
 
 const ffmpegPath = ffmpegInstaller.path;
-const execPromise = promisify(exec);
+
+// High-reliability spawn wrapper for FFmpeg to allow real-time stderr output and prevent buffer overflows
+function runFFmpeg(args: string[]): Promise<{ stdout: string; stderr: string }> {
+  return new Promise((resolve, reject) => {
+    console.log(`[FFmpeg] Running command: ffmpeg ${args.join(' ')}`);
+    const proc = spawn(ffmpegPath, args);
+    
+    let stdout = '';
+    let stderr = '';
+    
+    proc.stdout.on('data', (data: any) => {
+      stdout += data.toString();
+    });
+    
+    proc.stderr.on('data', (data: any) => {
+      const str = data.toString();
+      stderr += str;
+      // Real-time stderr reporting directly to the server logs for visibility
+      const lines = str.split('\n');
+      for (const line of lines) {
+        if (line.trim()) {
+          console.log(`[FFmpeg Stderr] ${line.trim()}`);
+        }
+      }
+    });
+    
+    proc.on('close', (code: number) => {
+      if (code === 0) {
+        resolve({ stdout, stderr });
+      } else {
+        const err = new Error(`FFmpeg failed with exit code ${code}`);
+        (err as any).stderr = stderr;
+        (err as any).stdout = stdout;
+        reject(err);
+      }
+    });
+    
+    proc.on('error', (err: any) => {
+      reject(err);
+    });
+  });
+}
 
 export const maxDuration = 300; // Extend to 5 mins for video processing
 
@@ -36,9 +76,20 @@ export async function POST(req: NextRequest) {
     const writer = createWriteStream(originalVideoPath);
     response.data.pipe(writer);
     await new Promise((resolve, reject) => {
-      writer.on('finish', () => resolve(null));
-      writer.on('error', reject);
+      writer.on('finish', () => {
+        setTimeout(resolve, 100); // 100ms extra tick to guarantee full OS sync
+      });
+      writer.on('error', (err) => {
+        writer.destroy();
+        reject(err);
+      });
     });
+
+    // Verify downloaded original video size
+    const origStat = await fs.stat(originalVideoPath);
+    if (origStat.size === 0) {
+      throw new Error('Downloaded original video is empty');
+    }
 
     // 2. Process Segments in Parallel
     console.log('[Fusion] Processing segments...');
@@ -47,7 +98,28 @@ export async function POST(req: NextRequest) {
       
       // Cut and normalize segment to 720x1280, 25fps, yuv420p (strip audio with -an and use output seeking to guarantee valid keyframes)
       const duration = seg.endTime - seg.startTime;
-      await execPromise(`"${ffmpegPath}" -i ${originalVideoPath} -ss ${seg.startTime} -t ${duration} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset veryfast -crf 23 -r 25 -pix_fmt yuv420p -profile:v main -level:v 3.1 -an -movflags +faststart ${segmentInputPath}`);
+      await runFFmpeg([
+        '-i', originalVideoPath,
+        '-ss', seg.startTime.toString(),
+        '-t', duration.toString(),
+        '-vf', 'scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1',
+        '-c:v', 'libx264',
+        '-preset', 'veryfast',
+        '-crf', '23',
+        '-r', '25',
+        '-pix_fmt', 'yuv420p',
+        '-profile:v', 'main',
+        '-level:v', '3.1',
+        '-an',
+        '-movflags', '+faststart',
+        segmentInputPath
+      ]);
+
+      // Verify segment has been correctly written to disk before proceeding
+      const rawSegStat = await fs.stat(segmentInputPath);
+      if (rawSegStat.size === 0) {
+        throw new Error(`Cut segment ${idx} raw video is empty`);
+      }
 
       if (seg.avatarUrl) {
         // AI Path
@@ -108,17 +180,52 @@ export async function POST(req: NextRequest) {
         const aiRes = await axios({ url: aiResult.videoUrl, method: 'GET', responseType: 'stream' });
         const aiWriter = createWriteStream(tempAiPath);
         aiRes.data.pipe(aiWriter);
-        await new Promise((res, rej) => { aiWriter.on('finish', () => res(null)); aiWriter.on('error', rej); });
+        await new Promise((res, rej) => {
+          aiWriter.on('finish', () => {
+            setTimeout(res, 100); // 100ms extra tick to guarantee full OS sync
+          });
+          aiWriter.on('error', (err) => {
+            aiWriter.destroy();
+            rej(err);
+          });
+        });
+
+        // Double check file size and accessibility of the downloaded video chunk to avoid race conditions
+        const stat = await fs.stat(tempAiPath);
+        if (stat.size === 0) {
+          throw new Error(`Downloaded Fal AI video segment is empty: ${tempAiPath}`);
+        }
+        console.log(`[Fusion] Segment ${idx} Fal AI result downloaded successfully: ${stat.size} bytes`);
         
         // Normalize the AI segment to match exactly 720x1280, 25fps, yuv420p
         const aiPath = path.join(tmpDir, `seg_${idx}_ai.mp4`);
-        await execPromise(`"${ffmpegPath}" -i ${tempAiPath} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset veryfast -crf 23 -r 25 -pix_fmt yuv420p -profile:v main -level:v 3.1 -an -movflags +faststart ${aiPath}`);
+        await runFFmpeg([
+          '-i', tempAiPath,
+          '-vf', 'scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1',
+          '-c:v', 'libx264',
+          '-preset', 'veryfast',
+          '-crf', '23',
+          '-r', '25',
+          '-pix_fmt', 'yuv420p',
+          '-profile:v', 'main',
+          '-level:v', '3.1',
+          '-an',
+          '-movflags', '+faststart',
+          aiPath
+        ]);
         
+        // Verify normalized segment exists
+        const normStat = await fs.stat(aiPath);
+        if (normStat.size === 0) {
+          throw new Error(`Normalized segment ${idx} is empty`);
+        }
+
         return aiPath;
       }
       
       return segmentInputPath; // Original Path
     }));
+
     // 3. Final Stitching
     console.log('[Fusion] Final stitching...');
     
@@ -143,7 +250,13 @@ export async function POST(req: NextRequest) {
     const outputPath = path.join(tmpDir, 'output.mp4');
     // Extract original audio and bind to the new video sequence (re-encode to AAC for absolute compatibility)
     const audioPath = path.join(tmpDir, 'audio.m4a');
-    await execPromise(`"${ffmpegPath}" -i ${originalVideoPath} -vn -c:a aac -b:a 128k ${audioPath}`);
+    await runFFmpeg([
+      '-i', originalVideoPath,
+      '-vn',
+      '-c:a', 'aac',
+      '-b:a', '128k',
+      audioPath
+    ]);
     
     // Verify audio file is fully written and accessible before launching concat
     try {
@@ -156,17 +269,25 @@ export async function POST(req: NextRequest) {
       throw new Error(`Pre-concat validation failed: Audio file ${audioPath} is not accessible. Details: ${err.message}`);
     }
 
-    // Try fast copy-based concatenation, and gracefully fallback to re-encoding if streams differ
-    try {
-      console.log('[Fusion] Attempting fast stream copy concat...');
-      await execPromise(`"${ffmpegPath}" -f concat -safe 0 -i ${concatFilePath} -i ${audioPath} -c:v copy -c:a aac -map 0:v:0 -map 1:a:0 ${outputPath}`);
-    } catch (copyError: any) {
-      console.warn('[Fusion] Stream copy concat failed, falling back to full re-encoding concat...', copyError.message);
-      // Fallback: Re-encode the video streams to ensure perfect alignment regardless of potential stream drifts
-      await execPromise(`"${ffmpegPath}" -f concat -safe 0 -i ${concatFilePath} -i ${audioPath} -c:v libx264 -preset veryfast -crf 23 -pix_fmt yuv420p -c:a aac -map 0:v:0 -map 1:a:0 ${outputPath}`);
-    }
+    // Concatenate and force full re-encoding on the output to normalize variable framerates from fal.ai and prevent crashes
+    console.log('[Fusion] Concatenating and re-encoding output to normalize variable framerates...');
+    await runFFmpeg([
+      '-f', 'concat',
+      '-safe', '0',
+      '-i', concatFilePath,
+      '-i', audioPath,
+      '-c:v', 'libx264',
+      '-preset', 'veryfast',
+      '-crf', '23',
+      '-pix_fmt', 'yuv420p',
+      '-c:a', 'aac',
+      '-vsync', '2',
+      '-map', '0:v:0',
+      '-map', '1:a:0',
+      outputPath
+    ]);
 
-    // 4. Upload Result (Using a placeholder for now, you should upload to Vercel Blob/S3)
+    // 4. Upload Result
     const resultBuffer = await fs.readFile(outputPath);
     const finalUrl = await falService.uploadFile(resultBuffer);
 
