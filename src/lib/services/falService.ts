@@ -33,6 +33,8 @@ export const falService = {
       
       const result = await fal.subscribe("fal-ai/live-portrait", {
         input: {
+          image_url: faceImageUrl,
+          video_url: drivingVideoUrl,
           face_image_url: faceImageUrl,
           driving_video_url: drivingVideoUrl,
           live_portrait_config: {
