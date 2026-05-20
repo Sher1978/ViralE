@@ -9,6 +9,7 @@ import path from 'path';
 import axios from 'axios';
 import os from 'os';
 import ffmpegInstaller from '@ffmpeg-installer/ffmpeg';
+import { supabase } from '@/lib/supabase';
 
 const ffmpegPath = ffmpegInstaller.path;
 const execPromise = promisify(exec);
@@ -52,25 +53,55 @@ export async function POST(req: NextRequest) {
         // AI Path
         console.log(`[Fusion] Segment ${idx}: Animating with LivePortrait...`);
         const segmentBuffer = await fs.readFile(segmentInputPath);
-        const segmentFile = new File([segmentBuffer], `driving_${idx}.mp4`, { type: 'video/mp4' });
-        const uploadedUrl = await falService.uploadFile(segmentFile);
-        
-        // Pre-upload avatar photo to Fal CDN if it's a web URL for 100% processing stability
+
+        // Upload segment to Supabase storage
+        const drivingFileName = `temp_segments/driving_${uuidv4()}.mp4`;
+        const { error: uploadError } = await supabase.storage
+          .from('media')
+          .upload(drivingFileName, segmentBuffer, {
+            contentType: 'video/mp4',
+            upsert: true
+          });
+
+        if (uploadError) {
+          throw new Error(`Failed to upload driving segment to Supabase: ${uploadError.message}`);
+        }
+
+        const { data: { publicUrl: drivingPublicUrl } } = supabase.storage
+          .from('media')
+          .getPublicUrl(drivingFileName);
+
+        console.log(`[Fusion] Segment ${idx} driving video uploaded to Supabase: ${drivingPublicUrl}`);
+
+        // Pre-upload avatar photo to Supabase storage if it's from HeyGen/external site for maximum speed/stability
         let finalAvatarUrl = seg.avatarUrl;
-        if (seg.avatarUrl.startsWith('http')) {
+        if (seg.avatarUrl.startsWith('http') && !seg.avatarUrl.includes('supabase.co')) {
           try {
-            console.log(`[Fusion] Pre-uploading avatar photo to Fal Storage: ${seg.avatarUrl}`);
+            console.log(`[Fusion] Pre-uploading avatar to Supabase: ${seg.avatarUrl}`);
             const avatarRes = await axios.get(seg.avatarUrl, { responseType: 'arraybuffer' });
             const avatarBuffer = Buffer.from(avatarRes.data);
-            const avatarFile = new File([avatarBuffer], `avatar_${idx}.png`, { type: 'image/png' });
-            finalAvatarUrl = await falService.uploadFile(avatarFile);
-            console.log(`[Fusion] Avatar photo pre-uploaded successfully: ${finalAvatarUrl}`);
+            const avatarFileName = `temp_segments/avatar_${uuidv4()}.png`;
+            
+            const { error: avatarUploadError } = await supabase.storage
+              .from('media')
+              .upload(avatarFileName, avatarBuffer, {
+                contentType: 'image/png',
+                upsert: true
+              });
+
+            if (!avatarUploadError) {
+              const { data: { publicUrl: avatarPublicUrl } } = supabase.storage
+                .from('media')
+                .getPublicUrl(avatarFileName);
+              finalAvatarUrl = avatarPublicUrl;
+              console.log(`[Fusion] Avatar pre-uploaded to Supabase successfully: ${finalAvatarUrl}`);
+            }
           } catch (err: any) {
-            console.warn(`[Fusion] Pre-upload of avatar photo failed, falling back to original: ${err.message}`);
+            console.warn(`[Fusion] Pre-upload of avatar to Supabase failed: ${err.message}`);
           }
         }
 
-        const aiResult = await falService.animateAvatar(finalAvatarUrl, uploadedUrl);
+        const aiResult = await falService.animateAvatar(finalAvatarUrl, drivingPublicUrl);
         
         // Download AI Result to a temp file
         const tempAiPath = path.join(tmpDir, `seg_${idx}_ai_raw.mp4`);
