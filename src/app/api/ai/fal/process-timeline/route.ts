@@ -139,11 +139,28 @@ export async function POST(req: NextRequest) {
           throw new Error(`Failed to upload driving segment to Supabase: ${uploadError.message}`);
         }
 
-        const { data: { publicUrl: drivingPublicUrl } } = supabase.storage
-          .from('media')
-          .getPublicUrl(drivingFileName);
+        // Wait an additional 500ms to allow Supabase CDN and database writes to fully propagate
+        await new Promise((resolve) => setTimeout(resolve, 500));
 
-        console.log(`[Fusion] Segment ${idx} driving video uploaded to Supabase: ${drivingPublicUrl}`);
+        // Generate a 1-hour signed URL to guarantee that Fal AI can read the file even if the bucket is private
+        const { data: signedData, error: signedError } = await supabase.storage
+          .from('media')
+          .createSignedUrl(drivingFileName, 3600);
+
+        if (signedError || !signedData?.signedUrl) {
+          throw new Error(`Failed to generate signed URL for driving segment: ${signedError?.message || 'Unknown error'}`);
+        }
+
+        const drivingPublicUrl = signedData.signedUrl;
+        console.log(`[Fusion] Segment ${idx} driving video signed URL generated: ${drivingPublicUrl}`);
+
+        // Verification Probe: Confirm the signed URL returns HTTP 200 and video/mp4 right before Fal.ai execution
+        try {
+          const probe = await axios.head(drivingPublicUrl);
+          console.log(`[Fusion] Probe check for Segment ${idx} URL successful: Status = ${probe.status}, Content-Type = ${probe.headers['content-type']}`);
+        } catch (probeError: any) {
+          console.warn(`[Fusion] Probe warning for Segment ${idx} URL: ${probeError.message}`);
+        }
 
         // Pre-upload avatar photo to Supabase storage if it's from HeyGen/external site for maximum speed/stability
         let finalAvatarUrl = seg.avatarUrl;
@@ -162,11 +179,20 @@ export async function POST(req: NextRequest) {
               });
 
             if (!avatarUploadError) {
-              const { data: { publicUrl: avatarPublicUrl } } = supabase.storage
+              const { data: signedAvatar, error: signedAvatarError } = await supabase.storage
                 .from('media')
-                .getPublicUrl(avatarFileName);
-              finalAvatarUrl = avatarPublicUrl;
-              console.log(`[Fusion] Avatar pre-uploaded to Supabase successfully: ${finalAvatarUrl}`);
+                .createSignedUrl(avatarFileName, 3600);
+                
+              if (!signedAvatarError && signedAvatar?.signedUrl) {
+                finalAvatarUrl = signedAvatar.signedUrl;
+                console.log(`[Fusion] Avatar signed URL generated: ${finalAvatarUrl}`);
+              } else {
+                const { data: { publicUrl: avatarPublicUrl } } = supabase.storage
+                  .from('media')
+                  .getPublicUrl(avatarFileName);
+                finalAvatarUrl = avatarPublicUrl;
+                console.log(`[Fusion] Avatar public URL fallback: ${finalAvatarUrl}`);
+              }
             }
           } catch (err: any) {
             console.warn(`[Fusion] Pre-upload of avatar to Supabase failed: ${err.message}`);
