@@ -52,7 +52,8 @@ export async function POST(req: NextRequest) {
         // AI Path
         console.log(`[Fusion] Segment ${idx}: Animating with LivePortrait...`);
         const segmentBuffer = await fs.readFile(segmentInputPath);
-        const uploadedUrl = await falService.uploadFile(segmentBuffer);
+        const segmentFile = new File([segmentBuffer], `driving_${idx}.mp4`, { type: 'video/mp4' });
+        const uploadedUrl = await falService.uploadFile(segmentFile);
         
         // Pre-upload avatar photo to Fal CDN if it's a web URL for 100% processing stability
         let finalAvatarUrl = seg.avatarUrl;
@@ -61,7 +62,8 @@ export async function POST(req: NextRequest) {
             console.log(`[Fusion] Pre-uploading avatar photo to Fal Storage: ${seg.avatarUrl}`);
             const avatarRes = await axios.get(seg.avatarUrl, { responseType: 'arraybuffer' });
             const avatarBuffer = Buffer.from(avatarRes.data);
-            finalAvatarUrl = await falService.uploadFile(avatarBuffer);
+            const avatarFile = new File([avatarBuffer], `avatar_${idx}.png`, { type: 'image/png' });
+            finalAvatarUrl = await falService.uploadFile(avatarFile);
             console.log(`[Fusion] Avatar photo pre-uploaded successfully: ${finalAvatarUrl}`);
           } catch (err: any) {
             console.warn(`[Fusion] Pre-upload of avatar photo failed, falling back to original: ${err.message}`);

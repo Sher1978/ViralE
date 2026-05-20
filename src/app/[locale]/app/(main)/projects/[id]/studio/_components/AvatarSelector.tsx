@@ -59,13 +59,13 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
       syncAvatars();
       fetchAssets();
     }
-  }, [isOpen]);
-
-  const fetchAssets = async () => {
+  }, [isOpen]);  const fetchAssets = async () => {
     try {
-      const res = await fetch(`/api/projects/${projectId}/assets?type=image`);
+      const res = await fetch(`/api/profile/assets`);
       const data = await res.json();
-      setAssets(data.assets || []);
+      // Only keep talking photos (avatars) in this view
+      const filtered = (data.assets || []).filter((a: any) => a.type === 'photo' || a.type === 'talking_photo');
+      setAssets(filtered);
     } catch (e) {
       console.error('Failed to fetch assets:', e);
     } finally {
@@ -82,18 +82,23 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
     try {
       const publicUrl = await storageService.uploadFile(file, `avatar_${uuidv4()}.jpg`, 'media');
       if (publicUrl) {
-        const newAsset = { 
-          id: `manual_${Date.now()}`, 
-          url: publicUrl, 
-          label: 'Uploaded',
-          type: 'talking_photo' 
-        };
-        // Add to assets immediately
-        setAssets(prev => [newAsset, ...prev]);
-        setSelectedId(newAsset.id);
-        
-        // Background: refresh our project assets list
-        fetchAssets();
+        // Persist avatar to global assets database
+        const saveRes = await fetch('/api/profile/assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            url: publicUrl,
+            type: 'talking_photo',
+            metadata: { label: file.name || 'Uploaded Avatar' }
+          })
+        });
+
+        if (!saveRes.ok) throw new Error('Failed to save avatar to catalog');
+        const { asset: persistedAsset } = await saveRes.json();
+
+        // Inject the persisted asset from database directly into our state
+        setAssets(prev => [persistedAsset, ...prev]);
+        setSelectedId(persistedAsset.id);
       } else {
         throw new Error('Upload failed');
       }
@@ -110,14 +115,13 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
       setAssets(prev => prev.filter(a => a.id !== assetId));
       if (selectedId === assetId) setSelectedId(null);
       
-      await fetch(`/api/projects/${projectId}/assets/${assetId}`, {
+      await fetch(`/api/profile/assets?id=${assetId}`, {
         method: 'DELETE'
       });
     } catch (e) {
       console.error('Failed to delete asset:', e);
     }
   };
-
   const handleConfirm = () => {
     const allOptions = [...defaultAvatars, ...assets];
     const selected = allOptions.find(a => a.id === selectedId);
