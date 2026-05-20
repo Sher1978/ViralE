@@ -786,8 +786,9 @@ export default function StudioPage() {
           subtitleClips: subs || [], 
           transcript: manifest.transcript || [], 
           stage: 'editing',
-          subtitlePos: (manifest as any).subtitlePos || { x: 0, y: 0 },
-          subtitleSize: (manifest as any).subtitleSize || 16
+          subtitlePos: subPos || (manifest as any).subtitlePos || { x: 0, y: 0 },
+          subtitleSize: subSize || (manifest as any).subtitleSize || 25,
+          subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0
         };
         await idb.set(key, state, 'ProjectDrafts');
         console.log('[Studio] Local draft synced for delivery session');
@@ -795,6 +796,9 @@ export default function StudioPage() {
 
       // тЬЕ Invalidate render cache so delivery always re-renders with fresh subtitles
       try {
+        if (savedVersion?.id) {
+          await idb.delete(`final_render_v3_${projectId}_${savedVersion.id}`, 'MediaBuffer');
+        }
         await idb.delete(`final_render_${projectId}`, 'MediaBuffer');
         console.log('[Studio] Render cache invalidated — delivery will re-render with subtitles');
       } catch (e) { /* ignore */ }
