@@ -7,15 +7,20 @@ import fs from 'fs/promises';
 import { createWriteStream } from 'fs';
 import path from 'path';
 import axios from 'axios';
+import os from 'os';
 
 const execPromise = promisify(exec);
 
 export const maxDuration = 300; // Extend to 5 mins for video processing
 
 export async function POST(req: NextRequest) {
-  const tmpDir = path.join('/tmp', `fusion-${uuidv4()}`);
+  const tmpDir = path.join(os.tmpdir(), `fusion-${uuidv4()}`);
   
   try {
+    if (!process.env.FAL_KEY) {
+      throw new Error('Fal AI API key (FAL_KEY) is missing in your environment configuration. Please pull Vercel env or add it to .env.local.');
+    }
+
     const { projectId, videoUrl, segments } = await req.json();
     if (!videoUrl || !segments) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
 
@@ -37,23 +42,42 @@ export async function POST(req: NextRequest) {
     const processedSegments = await Promise.all(segments.map(async (seg: any, idx: number) => {
       const segmentInputPath = path.join(tmpDir, `seg_${idx}_raw.mp4`);
       
-      // Cut segment
+      // Cut and normalize segment to 720x1280, 25fps, yuv420p
       const duration = seg.endTime - seg.startTime;
-      await execPromise(`ffmpeg -ss ${seg.startTime} -i ${originalVideoPath} -t ${duration} -c:v libx264 -preset ultrafast -crf 23 ${segmentInputPath}`);
+      await execPromise(`ffmpeg -ss ${seg.startTime} -i ${originalVideoPath} -t ${duration} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset ultrafast -crf 23 -r 25 -pix_fmt yuv420p ${segmentInputPath}`);
 
       if (seg.avatarUrl) {
         // AI Path
         console.log(`[Fusion] Segment ${idx}: Animating with LivePortrait...`);
         const segmentBuffer = await fs.readFile(segmentInputPath);
         const uploadedUrl = await falService.uploadFile(segmentBuffer);
-        const aiResult = await falService.animateAvatar(seg.avatarUrl, uploadedUrl);
         
-        // Download AI Result
-        const aiPath = path.join(tmpDir, `seg_${idx}_ai.mp4`);
+        // Pre-upload avatar photo to Fal CDN if it's a web URL for 100% processing stability
+        let finalAvatarUrl = seg.avatarUrl;
+        if (seg.avatarUrl.startsWith('http')) {
+          try {
+            console.log(`[Fusion] Pre-uploading avatar photo to Fal Storage: ${seg.avatarUrl}`);
+            const avatarRes = await axios.get(seg.avatarUrl, { responseType: 'arraybuffer' });
+            const avatarBuffer = Buffer.from(avatarRes.data);
+            finalAvatarUrl = await falService.uploadFile(avatarBuffer);
+            console.log(`[Fusion] Avatar photo pre-uploaded successfully: ${finalAvatarUrl}`);
+          } catch (err: any) {
+            console.warn(`[Fusion] Pre-upload of avatar photo failed, falling back to original: ${err.message}`);
+          }
+        }
+
+        const aiResult = await falService.animateAvatar(finalAvatarUrl, uploadedUrl);
+        
+        // Download AI Result to a temp file
+        const tempAiPath = path.join(tmpDir, `seg_${idx}_ai_raw.mp4`);
         const aiRes = await axios({ url: aiResult.videoUrl, method: 'GET', responseType: 'stream' });
-        const aiWriter = createWriteStream(aiPath);
+        const aiWriter = createWriteStream(tempAiPath);
         aiRes.data.pipe(aiWriter);
         await new Promise((res, rej) => { aiWriter.on('finish', () => res(null)); aiWriter.on('error', rej); });
+        
+        // Normalize the AI segment to match exactly 720x1280, 25fps, yuv420p
+        const aiPath = path.join(tmpDir, `seg_${idx}_ai.mp4`);
+        await execPromise(`ffmpeg -i ${tempAiPath} -vf "scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1" -c:v libx264 -preset ultrafast -crf 23 -r 25 -pix_fmt yuv420p ${aiPath}`);
         
         return aiPath;
       }

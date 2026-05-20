@@ -204,12 +204,43 @@ export default function StudioPage() {
     setFusionProgress(5);
     
     try {
+      let finalVideoUrl = lastRecordingUrl;
+      
+      // If the video URL is a local blob URL, we MUST upload it to Supabase first
+      if (lastRecordingUrl && lastRecordingUrl.startsWith('blob:')) {
+        setFusionStatus('segmenting');
+        setFusionProgress(10);
+        console.log('[Fusion] Downloading local recording blob for upload...');
+        const blobRes = await fetch(lastRecordingUrl);
+        const videoBlob = await blobRes.blob();
+        
+        console.log('[Fusion] Uploading local recording blob to Supabase...');
+        const uploadResult = await renderService.uploadMedia(projectId, videoBlob, 'video');
+        if (!uploadResult || !uploadResult.publicUrl) {
+          throw new Error('Failed to upload recorded video to storage.');
+        }
+        finalVideoUrl = uploadResult.publicUrl;
+        console.log('[Fusion] Recording successfully uploaded to Supabase:', finalVideoUrl);
+        
+        // Save the public URL back to the manifest and local state for persistence
+        setManifest(prev => {
+          if (!prev) return prev;
+          const next = { ...prev, videoUrl: finalVideoUrl || '' };
+          projectService.updateLatestVersionManifest(projectId, next);
+          return next;
+        });
+        setLastRecordingUrl(finalVideoUrl);
+      }
+      
+      setFusionProgress(35);
+      setFusionStatus('processing');
+
       const response = await fetch('/api/ai/fal/process-timeline', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId,
-          videoUrl: lastRecordingUrl,
+          videoUrl: finalVideoUrl,
           segments: timelineSegments
         })
       });
@@ -219,11 +250,6 @@ export default function StudioPage() {
         throw new Error(errorData.error || 'Synthesis failed');
       }
 
-      const reader = response.body?.getReader();
-      if (!reader) throw new Error('No response body');
-
-      // Note: If the API returns a stream, we can track progress. 
-      // If it's a simple JSON, we just wait for completion.
       const data = await response.json();
 
       if (data.status === 'completed' && data.videoUrl) {
@@ -238,7 +264,7 @@ export default function StudioPage() {
     } catch (err: any) {
       console.error('[Fusion] Failed:', err);
       setFusionStatus('failed');
-      // setFusionError(err.message);
+      setFusionError(err.message || 'Unknown error during synthesis');
     }
   };
 
@@ -995,12 +1021,13 @@ export default function StudioPage() {
                <AssemblyProgress photoUrl={selectedAvatarPhoto || ''} />
             )}
 
-            {isGeneratingFusion && (
+            {activeTab === 'fusion' && (
               <FusionView 
                 status={fusionStatus}
                 progress={fusionProgress}
-                segmentsCount={1}
-                completedSegments={fusionStatus === 'completed' ? 1 : 0}
+                segmentsCount={fusionSegments.length || 1}
+                completedSegments={fusionCompletedSegments}
+                error={fusionError || undefined}
               />
             )}
 
@@ -1087,9 +1114,29 @@ export default function StudioPage() {
               <VideoEditor 
                 projectId={projectId}
                 aRollUrl={manifest?.videoUrl || lastRecordingUrl || ''}
-                onBack={() => {
-                  if (isMobileRef.current) {
-                    handleTabChange('teleprompter');
+                onBack={async () => {
+                  // 🚀 OOM RECOVERY: If the blob URL was revoked to save memory, 
+                  // we must restore it from IDB before returning to post_record_branch
+                  // to prevent "destroying the source video" (black screen).
+                  if (lastRecordingUrl && lastRecordingUrl.startsWith('blob:')) {
+                    try {
+                      const blob = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+                      if (blob instanceof Blob) {
+                        const restoredUrl = URL.createObjectURL(blob);
+                        setLastRecordingUrl(restoredUrl);
+                      }
+                    } catch (e) {
+                      console.warn('[Studio] Failed to restore blob for back navigation', e);
+                    }
+                  }
+
+                  if (fusedVideoUrl && lastRecordingUrl === fusedVideoUrl) {
+                    handleTabChange('fusion_preview');
+                  } else if (lastRecordingUrl || manifest?.videoUrl) {
+                    if (!lastRecordingUrl && manifest?.videoUrl) {
+                      setLastRecordingUrl(manifest.videoUrl);
+                    }
+                    handleTabChange('post_record_branch');
                   } else {
                     handleTabChange('branch');
                   }

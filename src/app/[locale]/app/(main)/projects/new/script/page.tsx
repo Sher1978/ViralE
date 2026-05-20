@@ -9,7 +9,7 @@ import { useRouter } from '@/navigation';
 import { 
   Sparkles, ArrowRight, Wand2, History, ChevronRight, Loader2, Dna, Lock, Key, 
   AlertTriangle, Cpu, GraduationCap, TrendingUp, Leaf, Zap, Play, Camera, 
-  Share2, Monitor 
+  Share2, Monitor, Youtube 
 } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { profileService, Profile } from '@/lib/services/profileService';
@@ -49,6 +49,9 @@ export default function ScriptLabPage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitModalData, setLimitModalData] = useState({ title: '', desc: '', type: 'trial' as any });
   const [selectedPlatform, setSelectedPlatform] = useState<'tiktok' | 'youtube' | 'instagram' | 'threads' | 'linkedin'>('tiktok');
+  const [ideationType, setIdeationType] = useState<'text' | 'youtube'>('text');
+  const [youtubeUrl, setYoutubeUrl] = useState('');
+  const [youtubeLoading, setYoutubeLoading] = useState(false);
 
   const [initialTab, setInitialTab] = useState<'new' | 'used'>('new');
   const [usedIdeas, setUsedIdeas] = useState<any[]>([]);
@@ -486,21 +489,53 @@ export default function ScriptLabPage() {
     if (isAiLocked) {
       return handleManualStart();
     }
-    if (!topicInput.trim()) {
-      setError(locale === 'ru' ? 'Введите идею видео' : 'Please enter a video idea');
-      return;
+    
+    if (ideationType === 'youtube') {
+      if (!youtubeUrl.trim()) {
+        setError(locale === 'ru' ? 'Введите ссылку на YouTube видео' : 'Please enter a YouTube video URL');
+        return;
+      }
+      
+      setYoutubeLoading(true);
+      setError(null);
+      try {
+        const res = await fetch('/api/ai/youtube', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ url: youtubeUrl })
+        });
+        
+        const data = await res.json();
+        if (!res.ok) {
+          throw new Error(data.error || 'Failed to fetch YouTube transcript');
+        }
+        
+        setYoutubeLoading(false);
+        // Execute the AI script generation using the fetched transcript text
+        await executeGeneration(data.transcript);
+      } catch (err: any) {
+        console.error('[YouTubeGen] Error:', err);
+        setError(err.message || 'Error parsing YouTube video');
+        setYoutubeLoading(false);
+      }
+    } else {
+      if (!topicInput.trim()) {
+        setError(locale === 'ru' ? 'Введите идею видео' : 'Please enter a video idea');
+        return;
+      }
+      await executeGeneration();
     }
-    await executeGeneration();
   };
 
-  const executeGeneration = async () => {
+  const executeGeneration = async (overrideIdea?: string) => {
     setIsLoading(true);
+    const ideaToUse = overrideIdea || topicInput;
     try {
       const response = await fetch('/api/script/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          coreIdea: topicInput,
+          coreIdea: ideaToUse,
           mode: 'initial',
           locale,
           engine: selectedEngine
@@ -643,6 +678,59 @@ export default function ScriptLabPage() {
       setIsSaving(false);
     }
   };
+
+  // Show full-screen loader for YouTube subtitle fetching
+  if (youtubeLoading) {
+    return (
+      <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
+        {/* Cinematic Backdrop for Loading */}
+        <div className="absolute inset-0 z-0">
+          <img 
+            src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" 
+            className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110"
+            alt="Splash Background"
+          />
+          <div className="absolute inset-0 bg-[#050508]/60 backdrop-blur-md" />
+        </div>
+
+        <div className="relative z-10 space-y-2 mb-12">
+          <p className="text-[10px] font-black uppercase tracking-[0.2em] text-red-500">YouTube Parser Core</p>
+          <h2 className="text-xl sm:text-2xl font-black italic uppercase text-white tracking-widest leading-tight">
+            {locale === 'ru' ? 'Извлечение субтитров' : 'Extracting Subtitles'}
+          </h2>
+        </div>
+
+        <div className="relative z-10 w-32 h-32 mb-12">
+           <div className="absolute inset-0 border-2 border-red-500/10 rounded-full" />
+           <div className="absolute inset-0 border-2 border-t-red-500 rounded-full animate-spin" />
+           <div className="absolute inset-4 border border-orange-500/20 rounded-full animate-reverse-spin" />
+           <div className="absolute inset-0 flex items-center justify-center">
+              <Youtube className="w-8 h-8 text-red-500 animate-pulse" />
+           </div>
+        </div>
+        
+        <div className="relative z-10 space-y-4 max-w-sm">
+           <div className="space-y-2">
+             <p className="text-xl font-black uppercase italic tracking-tighter text-white">
+               {locale === 'ru' ? 'Скачиваем транскрипт видео...' : 'Downloading video transcript...'}
+             </p>
+             <p className="text-xs font-medium text-white/60">
+               {locale === 'ru' 
+                 ? 'ИИ считывает аудиодорожку и форматирует её для дальнейшего рерайта' 
+                 : 'AI is reading the audio track and formatting it for subsequent rewriting'}
+             </p>
+           </div>
+           <div className="pt-4 space-y-2">
+             <p className="text-[9px] font-black text-white/30 uppercase tracking-[0.4em] leading-relaxed">
+                SHER DIGITAL CORE IS EXTRACTING AUDIO DATA MATRIX
+             </p>
+           </div>
+        </div>
+
+        <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(239,68,68,0.05)_0%,transparent_70%)] pointer-events-none z-10" />
+      </div>
+    );
+  }
 
   // Only show full-screen loader if we have NO data to show yet
   if ((isLoading || isGenerating) && !allScenarios) {
@@ -804,46 +892,102 @@ export default function ScriptLabPage() {
                 {error}
               </div>
             )}
-            <div className="relative group space-y-2">
-              <div className="flex items-center justify-between px-1">
-                 <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 ml-2">
-                   {locale === 'ru' ? 'СУТЬ РОЛИКА' : 'VIDEO ESSENCE'}
-                 </span>
-                 <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-xl">
-                    {[
-                      { id: 'tiktok', icon: Zap, color: 'text-purple-400' },
-                      { id: 'youtube', icon: Play, color: 'text-red-500' },
-                      { id: 'instagram', icon: Camera, color: 'text-pink-500' },
-                      { id: 'threads', icon: Share2, color: 'text-blue-400' },
-                      { id: 'linkedin', icon: Monitor, color: 'text-blue-600' }
-                    ].map((p) => (
-                      <button
-                        key={p.id}
-                        onClick={() => setSelectedPlatform(p.id as any)}
-                        className={`p-2.5 rounded-xl transition-all ${
-                          selectedPlatform === p.id 
-                            ? 'bg-white/10 border border-white/10 text-white shadow-lg' 
-                            : 'text-white/20 hover:text-white/40'
-                        }`}
-                        title={p.id.toUpperCase()}
-                      >
-                        <p.icon size={14} className={selectedPlatform === p.id ? p.color : ''} />
-                      </button>
-                    ))}
-                  </div>
-              </div>
-              <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 top-6" />
-              <textarea
-                id="topic-textarea"
-                value={topicInput}
-                onChange={(e) => {
-                  console.log('Topic change:', e.target.value);
-                  setTopicInput(e.target.value);
-                }}
-                placeholder={locale === 'ru' ? 'Напр: 5 секретов как выбрать лучшее авто...' : 'E.g.: 5 secrets to picking the best car...'}
-                className="w-full h-48 bg-[#0d0d1a] border border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500/50 transition-all resize-none shadow-2xl relative z-10"
-              />
+            
+            {/* Input Type Selector (Text Idea vs YouTube Link) */}
+            <div className="flex gap-3">
+              <button 
+                onClick={() => setIdeationType('text')}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl border text-xs font-black uppercase tracking-wider transition-all relative ${
+                  ideationType === 'text'
+                    ? 'bg-purple-500/10 border-purple-500/30 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.15)]'
+                    : 'bg-white/[0.02] border-white/5 text-white/40 hover:text-white/60 hover:bg-white/[0.04]'
+                }`}
+              >
+                <Sparkles size={14} className={ideationType === 'text' ? 'text-purple-400' : ''} />
+                {locale === 'ru' ? 'Текст Идеи' : 'Text Idea'}
+              </button>
+              <button 
+                onClick={() => setIdeationType('youtube')}
+                className={`flex-1 flex items-center justify-center gap-2 py-4 rounded-2xl border text-xs font-black uppercase tracking-wider transition-all relative ${
+                  ideationType === 'youtube'
+                    ? 'bg-red-500/10 border-red-500/30 text-red-300 shadow-[0_0_15px_rgba(239,68,68,0.15)]'
+                    : 'bg-white/[0.02] border-white/5 text-white/40 hover:text-white/60 hover:bg-white/[0.04]'
+                }`}
+              >
+                <Youtube size={14} className={ideationType === 'youtube' ? 'text-red-500' : ''} />
+                {locale === 'ru' ? 'YouTube Видео' : 'YouTube Video'}
+              </button>
             </div>
+
+            {ideationType === 'youtube' ? (
+              <div className="relative group space-y-3">
+                <div className="flex items-center justify-between px-1">
+                  <span className="text-[10px] font-black uppercase tracking-[0.2em] text-red-400/60 ml-2">
+                    {locale === 'ru' ? 'ССЫЛКА НА YOUTUBE' : 'YOUTUBE LINK'}
+                  </span>
+                  <span className="text-[8px] font-bold text-white/30 uppercase tracking-widest mr-2 flex items-center gap-1">
+                    <span className="w-1.5 h-1.5 rounded-full bg-green-500 animate-pulse" />
+                    {locale === 'ru' ? 'ТРАНСКРИПТ' : 'TRANSCRIPT ACTIVE'}
+                  </span>
+                </div>
+                <div className="absolute -inset-1 bg-gradient-to-r from-red-500 to-orange-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 top-6" />
+                <input
+                  type="text"
+                  value={youtubeUrl}
+                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  placeholder={locale === 'ru' ? 'Вставьте https://www.youtube.com/watch?v=...' : 'Paste https://www.youtube.com/watch?v=...'}
+                  className="w-full bg-[#0d0d1a] border border-white/10 rounded-[2rem] px-8 py-6 text-lg font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-red-500/50 transition-all shadow-2xl relative z-10"
+                />
+                <p className="text-[10px] text-white/40 font-bold uppercase leading-relaxed px-4 pt-1">
+                  {locale === 'ru' 
+                    ? '💡 ИИ автоматически извлечет субтитры из этого видео, проанализирует его структуру и создаст для вас 5 вариантов нового вирусного сценария!'
+                    : '💡 AI will automatically download subtitles from this video, analyze its structure, and generate 5 variants of a new viral script!'}
+                </p>
+              </div>
+            ) : (
+              <div className="relative group space-y-2">
+                <div className="flex items-center justify-between px-1">
+                   <span className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 ml-2">
+                     {locale === 'ru' ? 'СУТЬ РОЛИКА' : 'VIDEO ESSENCE'}
+                   </span>
+                   <div className="flex items-center gap-1.5 p-1 bg-white/5 rounded-2xl border border-white/5 backdrop-blur-xl">
+                      {[
+                        { id: 'tiktok', icon: Zap, color: 'text-purple-400' },
+                        { id: 'youtube', icon: Play, color: 'text-red-500' },
+                        { id: 'instagram', icon: Camera, color: 'text-pink-500' },
+                        { id: 'threads', icon: Share2, color: 'text-blue-400' },
+                        { id: 'linkedin', icon: Monitor, color: 'text-blue-600' }
+                      ].map((p) => (
+                        <button
+                          key={p.id}
+                          onClick={() => setSelectedPlatform(p.id as any)}
+                          className={`p-2.5 rounded-xl transition-all ${
+                            selectedPlatform === p.id 
+                              ? 'bg-white/10 border border-white/10 text-white shadow-lg' 
+                              : 'text-white/20 hover:text-white/40'
+                          }`}
+                          title={p.id.toUpperCase()}
+                        >
+                          <p.icon size={14} className={selectedPlatform === p.id ? p.color : ''} />
+                        </button>
+                      ))}
+                   </div>
+                </div>
+                <div className="absolute -inset-1 bg-gradient-to-r from-purple-500 to-cyan-500 rounded-[2.5rem] blur opacity-20 group-hover:opacity-40 transition duration-1000 top-6" />
+                <textarea
+                  id="topic-textarea"
+                  value={topicInput}
+                  onChange={(e) => {
+                    console.log('Topic change:', e.target.value);
+                    setTopicInput(e.target.value);
+                  }}
+                  placeholder={locale === 'ru' ? 'Напр: 5 секретов как выбрать лучшее авто...' : 'E.g.: 5 secrets to picking the best car...'}
+                  className="w-full h-48 bg-[#0d0d1a] border border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500/50 transition-all resize-none shadow-2xl relative z-10"
+                />
+              </div>
+            )}
+          </div>
+
 
             {!isAiLocked && (
               <div className="flex flex-col gap-3 animate-in fade-in slide-in-from-bottom-2 duration-500">
