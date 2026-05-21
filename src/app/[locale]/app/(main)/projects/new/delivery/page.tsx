@@ -12,7 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { idb } from '@/lib/idb';
-const DistributionFactory = dynamic(() => import('../../[id]/studio/_components/DistributionFactory'), { ssr: false });
+import DistributionFactory from '../../[id]/studio/_components/DistributionFactory';
 import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
 import { fetchFile } from '@ffmpeg/util';
 import { browserCapabilities } from '@/lib/browser-capabilities';
