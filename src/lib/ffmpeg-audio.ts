@@ -3,9 +3,11 @@
  * Client-side audio extraction using FFmpeg.wasm (single-thread).
  * Converts any video (HEVC/MOV/MP4/WebM) to a tiny 16kHz mono MP3.
  * Works on iOS Safari, Android Chrome, Desktop.
+ *
+ * IMPORTANT: Uses static imports to avoid webpack "expression is too dynamic" error.
  */
-import type { FFmpeg } from '@ffmpeg/ffmpeg';
-// import { fetchFile, toBlobURL } from '@ffmpeg/util';
+import { FFmpeg } from '@ffmpeg/ffmpeg';
+import { toBlobURL } from '@ffmpeg/util';
 
 let ffmpegInstance: FFmpeg | null = null;
 let loadPromise: Promise<boolean> | null = null;
@@ -13,28 +15,21 @@ let loadPromise: Promise<boolean> | null = null;
 const CORE_BASE = '/ffmpeg';
 
 /** Singleton — loads FFmpeg WASM once, reuses instance */
-async function getFFmpeg(): Promise<any> {
+async function getFFmpeg(): Promise<FFmpeg> {
   if (ffmpegInstance?.loaded) return ffmpegInstance;
 
   if (!loadPromise) {
-    // 🔥 Dynamic imports inside singleton
-    const [{ FFmpeg }, { fetchFile, toBlobURL }] = await Promise.all([
-      import('@ffmpeg/ffmpeg'),
-      import('@ffmpeg/util')
-    ]);
-
     const ff = new FFmpeg();
     loadPromise = ff.load({
-      coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`,   'text/javascript'),
+      coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
       wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+    }).then(() => {
+      ffmpegInstance = ff;
+      return true;
     });
-    await loadPromise;
-    ffmpegInstance = ff;
-    (window as any)._fetchFile = fetchFile; // Store for reuse
-  } else {
-    await loadPromise;
   }
 
+  await loadPromise;
   return ffmpegInstance!;
 }
 

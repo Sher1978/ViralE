@@ -5,6 +5,12 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@ffmpeg-installer/ffmpeg"],
+
+  // Required to properly bundle @ffmpeg/ffmpeg which uses
+  // `new Worker(new URL("./worker.js", import.meta.url))` internally.
+  // Without this, webpack throws "Cannot find module as expression is too dynamic".
+  transpilePackages: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
+
   async headers() {
     return [
       {
@@ -12,6 +18,14 @@ const nextConfig: NextConfig = {
         headers: [
           { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
+        ],
+      },
+      // COOP/COEP headers — required for SharedArrayBuffer (multithreaded FFmpeg)
+      {
+        source: '/:path*',
+        headers: [
+          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
         ],
       },
     ];

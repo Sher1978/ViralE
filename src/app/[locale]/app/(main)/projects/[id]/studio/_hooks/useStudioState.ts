@@ -259,17 +259,14 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   };
   const extractAudioNative = async (videoBlob: Blob): Promise<Blob> => {
     console.log('[Studio LOG] Starting extractAudioNative. File size:', (videoBlob.size / (1024 * 1024)).toFixed(2), 'MB, MIME type:', videoBlob.type);
-    // Attempt 1: Web Audio API (Fastest)
+    // Attempt 1: Web Audio API (Fastest — works on all platforms including Chrome Desktop)
+    // Previously Chrome Desktop was bypassed here to avoid OOM, but in practice
+    // the Web Audio API path is safe for files under 300MB and much faster than
+    // loading a 30MB FFmpeg WASM binary. Only skip if file > 300MB.
     try {
-      const isChromeDesktop = typeof navigator !== 'undefined' &&
-        /Chrome/.test(navigator.userAgent) &&
-        !/Mobile|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
-      
-      const isVideo = videoBlob.type.includes('video') || !videoBlob.type.includes('audio');
-      
-      if (isChromeDesktop && isVideo) {
-        console.warn('[Studio LOG] Chrome Desktop + Video file detected. Skipping local AudioContext extraction to prevent browser OOM crashes...');
-        throw new Error('Chrome Desktop Video: skipping local extraction to prevent OOM crash');
+      const fileSizeMB = videoBlob.size / (1024 * 1024);
+      if (fileSizeMB > 300) {
+        throw new Error(`File too large for Web Audio API (${fileSizeMB.toFixed(0)}MB > 300MB), using FFmpeg WASM`);
       }
 
       console.log('[Studio LOG] Attempt 1: Starting Web Audio API (AudioContext) extraction...');
@@ -285,10 +282,20 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       console.log('[Studio LOG] Calling decodeAudioData (Warning: this might use substantial memory)...');
       const tDecode = performance.now();
       const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
-        audioContext.decodeAudioData(arrayBuffer, resolve, (err) => {
-            // Fallback for older browsers where it might not return a promise
-            reject(err || new Error('Decode failed'));
-        }).then(resolve).catch(reject);
+        // Modern browsers return a Promise; older ones use callbacks only.
+        // Guard against calling resolve() twice by wrapping in try/catch.
+        try {
+          const p = audioContext.decodeAudioData(arrayBuffer,
+            (buf) => resolve(buf),
+            (err) => reject(err || new Error('decodeAudioData callback error'))
+          );
+          // If it returned a real Promise (modern API), also hook it
+          if (p && typeof p.then === 'function') {
+            p.then(resolve).catch(reject);
+          }
+        } catch (e) {
+          reject(e);
+        }
       });
       console.log('[Studio LOG] decodeAudioData completed in', (performance.now() - tDecode).toFixed(0), 'ms. Buffer duration:', audioBuffer.duration.toFixed(2), 'seconds, Channels:', audioBuffer.numberOfChannels, 'Sample rate:', audioBuffer.sampleRate);
       
