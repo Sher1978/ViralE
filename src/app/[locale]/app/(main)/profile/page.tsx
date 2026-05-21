@@ -21,7 +21,8 @@ import {
   Check,
   X,
   Edit2,
-  Loader2
+  Loader2,
+  Images
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
@@ -140,6 +141,7 @@ export default function ProfilePage() {
       items: [
         { icon: Fingerprint, label: t('dnaLabel'), sub: t('dnaSub'), href: `/app/profile/dna`, accent: '#D4AF37' },
         { icon: UserCircle2, label: t('avatarLabel'), sub: t('avatarSub'), href: `/app/profile/avatar`, accent: '#00FFCC' },
+        { icon: Images, label: 'Мои фотографии', sub: 'Управление библиотекой фото для AI-синтеза', href: `/app/profile/photos`, accent: '#A855F7' },
         { icon: Send, label: t('telegramLabel'), sub: t('telegramSub'), href: `/app/profile/telegram`, accent: '#4D9EFF' },
       ],
     },

@@ -80,29 +80,37 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
     setIsUploading(true);
     setError(null);
     try {
-      const publicUrl = await storageService.uploadFile(file, `avatar_${uuidv4()}.jpg`, 'media');
-      if (publicUrl) {
-        // Persist avatar to global assets database
-        const saveRes = await fetch('/api/profile/assets', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            url: publicUrl,
-            type: 'talking_photo',
-            metadata: { label: file.name || 'Uploaded Avatar' },
-            projectId
-          })
-        });
+      // Upload to user-specific avatars folder so photos appear in the gallery
+      const { data: { user } } = await (await import('@/lib/supabase')).supabase.auth.getUser();
+      const ext = file.name.split('.').pop() || 'jpg';
+      const folderPath = user?.id
+        ? `avatars/${user.id}/${Date.now()}.${ext}`
+        : `avatars/${uuidv4()}.${ext}`;
 
-        if (!saveRes.ok) throw new Error('Failed to save avatar to catalog');
-        const { asset: persistedAsset } = await saveRes.json();
+      const { supabase } = await import('@/lib/supabase');
+      const { error: uploadError } = await supabase.storage.from('media').upload(folderPath, file);
+      if (uploadError) throw uploadError;
 
-        // Inject the persisted asset from database directly into our state
-        setAssets(prev => [persistedAsset, ...prev]);
-        setSelectedId(persistedAsset.id);
-      } else {
-        throw new Error('Upload failed');
-      }
+      const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(folderPath);
+
+      // Persist avatar to global assets database
+      const saveRes = await fetch('/api/profile/assets', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          url: publicUrl,
+          type: 'talking_photo',
+          metadata: { label: file.name || 'Uploaded Avatar' },
+          projectId
+        })
+      });
+
+      if (!saveRes.ok) throw new Error('Failed to save avatar to catalog');
+      const { asset: persistedAsset } = await saveRes.json();
+
+      // Inject the persisted asset from database directly into our state
+      setAssets(prev => [persistedAsset, ...prev]);
+      setSelectedId(persistedAsset.id);
     } catch (e) {
       console.error('Upload failed:', e);
       setError(e instanceof Error ? e.message : 'Failed to upload photo');
