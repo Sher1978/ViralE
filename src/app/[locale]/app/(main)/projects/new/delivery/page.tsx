@@ -671,7 +671,7 @@ function DeliveryPageContent() {
       ffmpegRef.current = ffmpeg;
 
       ffmpegLogsRef.current = [];
-      ffmpeg.on('log', ({ message }) => {
+      ffmpeg.on('log', ({ message }: { message: string }) => {
         console.log('[FFmpeg]', message);
         ffmpegLogsRef.current.push(message);
         if (ffmpegLogsRef.current.length > 100) ffmpegLogsRef.current.shift();
