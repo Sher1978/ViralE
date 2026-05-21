@@ -517,7 +517,8 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   // Duration sync
   useEffect(() => {
     const maxBrollEnd = brollClips.length > 0 ? Math.max(...brollClips.map(c => c.endTime)) : 0;
-    const newDuration = Math.max(aRollDuration, maxBrollEnd, 60);
+    const validARollDur = (typeof aRollDuration === 'number' && isFinite(aRollDuration) && aRollDuration > 0) ? aRollDuration : 60;
+    const newDuration = Math.max(validARollDur, maxBrollEnd, 60);
     if (Math.abs(newDuration - duration) > 0.1) setDuration(newDuration);
   }, [aRollDuration, brollClips, duration]);
 

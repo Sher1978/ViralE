@@ -239,7 +239,23 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               muted={isMuted} 
               className="w-full h-full object-cover" 
               playsInline 
-              onLoadedMetadata={(e) => setARollDuration(e.currentTarget.duration)}
+              onLoadedMetadata={(e) => {
+                const dur = e.currentTarget.duration;
+                if (typeof dur === 'number' && isFinite(dur) && dur > 0) {
+                  console.log('[Studio LOG] Video metadata loaded. safe duration:', dur);
+                  setARollDuration(dur);
+                } else {
+                  console.warn('[Studio LOG] Video duration from loadedmetadata was not finite:', dur);
+                  setARollDuration(60);
+                }
+              }}
+              onDurationChange={(e) => {
+                const dur = e.currentTarget.duration;
+                if (typeof dur === 'number' && isFinite(dur) && dur > 0) {
+                  console.log('[Studio LOG] Video duration updated. safe duration:', dur);
+                  setARollDuration(dur);
+                }
+              }}
             />
 
             {voiceoverUrl && (

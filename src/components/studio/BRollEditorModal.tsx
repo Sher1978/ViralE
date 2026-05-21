@@ -35,11 +35,12 @@ interface Props {
   isOpen: boolean;
   onClose: () => void;
   onSelect: (clipId: string, videoUrl: string, label?: string) => void;
+  onDelete?: (clipId: string) => void;
 }
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 
-const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect }) => {
+const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, onDelete }) => {
   const [screen, setScreen] = useState<Screen>('search');
 
   // Search state
@@ -190,12 +191,25 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect }) 
           </p>
         </div>
         {screen === 'search' && (
-          <button
-            onClick={() => { setEditPromptDraft(visualPrompt); setScreen('generate'); }}
-            className="px-3 py-2 rounded-xl bg-indigo-500/15 border border-indigo-500/25 text-indigo-400 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 active:scale-95 transition-all"
-          >
-            <Zap size={11} /> Генерировать
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => {
+                if (confirm('Вы уверены, что хотите удалить этот Б-ролл?')) {
+                  onDelete?.(clip.id);
+                  onClose();
+                }
+              }}
+              className="px-3 py-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+            >
+              Удалить
+            </button>
+            <button
+              onClick={() => { setEditPromptDraft(visualPrompt); setScreen('generate'); }}
+              className="px-3 py-2 rounded-xl bg-indigo-500/15 border border-indigo-500/25 text-indigo-400 text-[9px] font-black uppercase tracking-widest flex items-center gap-1.5 active:scale-95 transition-all"
+            >
+              <Zap size={11} /> Генерировать
+            </button>
+          </div>
         )}
         {screen !== 'search' && (
           <button onClick={onClose} className="p-2 text-white/25 hover:text-white transition-colors">

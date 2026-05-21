@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   ArrowLeft, Cpu, Upload, Loader2, Sparkles, Wand2, SkipBack, Play, Pause, VolumeX, Volume2, Mic, Zap,
-  Music, Type, Sliders, PlayCircle, Pencil, Clock
+  Music, Type, Sliders, PlayCircle, Pencil, Clock, Trash2
 } from 'lucide-react';
 
 import { ProductionManifest } from '@/lib/types/studio';
@@ -548,21 +548,35 @@ export const VideoEditor = React.memo(({
                                             </span>
                                         </div>
                                     </div>
-                                    {/* Edit button */}
-                                    <button
-                                        onClick={() => setEditingBrollClip({
-                                            id: clip.id,
-                                            label: clip.label,
-                                            startTime: clip.startTime,
-                                            endTime: clip.endTime,
-                                            prompt: clip.prompt,
-                                            visual_prompt: clip.visual_prompt,
-                                            url: clip.url
-                                        })}
-                                        className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 active:scale-90 transition-all flex-shrink-0 hover:bg-purple-500/20"
-                                    >
-                                        <Pencil size={13} />
-                                    </button>
+                                    {/* Action buttons */}
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        {/* Edit button */}
+                                        <button
+                                            onClick={() => setEditingBrollClip({
+                                                id: clip.id,
+                                                label: clip.label,
+                                                startTime: clip.startTime,
+                                                endTime: clip.endTime,
+                                                prompt: clip.prompt,
+                                                visual_prompt: clip.visual_prompt,
+                                                url: clip.url
+                                            })}
+                                            className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 active:scale-90 transition-all hover:bg-purple-500/20"
+                                        >
+                                            <Pencil size={13} />
+                                        </button>
+                                        {/* Delete button */}
+                                        <button
+                                            onClick={() => {
+                                                if (confirm('Вы уверены, что хотите удалить этот Б-ролл?')) {
+                                                    deleteBroll(clip.id);
+                                                }
+                                            }}
+                                            className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 active:scale-90 transition-all hover:bg-red-500/20"
+                                        >
+                                            <Trash2 size={13} />
+                                        </button>
+                                    </div>
                                 </div>
                             ))}
                         </div>
@@ -663,6 +677,7 @@ export const VideoEditor = React.memo(({
         isOpen={editingBrollClip !== null}
         onClose={() => setEditingBrollClip(null)}
         onSelect={handleBrollPromptSelect}
+        onDelete={deleteBroll}
       />
     </div>
   );

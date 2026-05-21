@@ -117,7 +117,12 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   const markers = useMemo(() => {
     const items = [];
     const step = PX_PER_SECOND < 50 ? 2 : PX_PER_SECOND < 100 ? 1 : 0.5;
-    for (let i = 0; i <= totalDuration; i += step) {
+    // Defensive check: Ensure totalDuration is a finite, positive number, capped at 3600s to prevent infinite/OOM loops
+    const safeDuration = (typeof totalDuration === 'number' && isFinite(totalDuration) && totalDuration > 0)
+      ? Math.min(totalDuration, 3600)
+      : 60;
+
+    for (let i = 0; i <= safeDuration; i += step) {
       const isFullSecond = i % 1 === 0;
       items.push(
         <div key={i} className="absolute flex flex-col items-center" style={{ left: i * PX_PER_SECOND }}>
@@ -271,18 +276,6 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                             ) : (
                                 <Layers size={11} className="text-blue-200/60 relative z-10 ml-3 pointer-events-none" style={{ minWidth: '11px' }} />
                             )}
-                            
-                            {/* Delete button */}
-                            <button
-                                className="delete-btn absolute left-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-red-500/90 border border-white/10 hover:bg-red-600 active:scale-95 text-white flex items-center justify-center z-30 transition-all opacity-0 group-hover/clip:opacity-100 touch-none shadow-md"
-                                onPointerDown={(e) => {
-                                    e.stopPropagation();
-                                    onDeleteBroll?.(clip.id);
-                                }}
-                            >
-                                <span className="text-[11px] font-black leading-none" style={{ marginTop: '-1px' }}>×</span>
-                            </button>
-
                             {/* Resize Handle */}
                             <div 
                                 className={`resize-handle absolute right-0 top-0 bottom-0 w-4 hover:bg-blue-400/60 cursor-ew-resize z-20 flex items-center justify-center ${!clip.content ? 'bg-violet-400/10 hover:bg-violet-400/40' : 'bg-blue-400/20'}`}
