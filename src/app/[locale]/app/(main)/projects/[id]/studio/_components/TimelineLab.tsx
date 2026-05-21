@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   Play, Pause, Plus, Wand2, Clock, Trash2, Layers, X,
-  ZoomIn, ZoomOut, AlertCircle, CheckCircle2
+  ZoomIn, ZoomOut, AlertCircle, CheckCircle2, Download, ShieldCheck, Loader2
 } from 'lucide-react';
 import AvatarHub from '@/components/production/AvatarHub';
 import { clsx } from 'clsx';
@@ -447,7 +447,7 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
         </div>
       </div>
 
-      {/* Synthesis Modal */}
+      {/* Two-Step Synthesis Modal */}
       <AnimatePresence>
         {showConfirmModal && (
           <motion.div 
@@ -459,30 +459,62 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
              <motion.div 
                initial={{ scale: 0.9, opacity: 0, y: 20 }}
                animate={{ scale: 1, opacity: 1, y: 0 }}
-               className="max-w-md w-full bg-[#0a0a14] border border-white/10 rounded-[3rem] p-10 text-center space-y-8 shadow-2xl shadow-purple-500/10"
+               className="max-w-sm w-full bg-[#0a0a14] border border-white/10 rounded-[3rem] p-8 text-center space-y-6 shadow-2xl shadow-purple-500/10"
              >
-                <div className="w-24 h-24 rounded-[2rem] bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto shadow-inner">
-                   <Wand2 size={40} className="text-purple-400 animate-pulse" />
+                {/* Step 1: Save & verify */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-left px-2">
+                    <div className="w-8 h-8 rounded-full bg-blue-500/20 border border-blue-500/30 flex items-center justify-center shrink-0">
+                      <span className="text-[11px] font-black text-blue-400">1</span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black text-white uppercase tracking-wider">Сохранить и проверить видео</p>
+                      <p className="text-[9px] text-white/30 mt-0.5">Убедитесь что файл не повреждён перед синтезом</p>
+                    </div>
+                  </div>
+
+                  <a
+                    href={videoUrl}
+                    download="recording.mp4"
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="w-full py-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-blue-500/20"
+                  >
+                    <Download size={14} />
+                    Скачать видео на устройство
+                  </a>
                 </div>
-                <div>
-                   <h3 className="text-3xl font-black italic uppercase tracking-tighter text-white mb-3">Launch Synthesis?</h3>
-                   <p className="text-[10px] text-white/30 leading-relaxed font-bold uppercase tracking-[0.2em]">
-                     AI will now generate {tracks.filter(t => t.isActive).length} personas mapping over your original video stream.
-                   </p>
-                </div>
-                <div className="flex flex-col gap-4">
-                   <button 
-                     onClick={handleGenerate}
-                     className="w-full py-5 rounded-[2rem] bg-white text-black font-black uppercase tracking-[0.2em] text-xs hover:bg-white/90 transition-all active:scale-95 shadow-2xl shadow-white/10"
-                   >
-                     🚀 Synthesize Personas
-                   </button>
-                   <button 
-                     onClick={() => setShowConfirmModal(false)}
-                     className="w-full py-5 rounded-[2rem] bg-white/5 border border-white/10 text-white/30 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-all"
-                   >
-                     Back to Timeline
-                   </button>
+
+                <div className="h-px bg-white/5" />
+
+                {/* Step 2: Launch AI */}
+                <div className="space-y-3">
+                  <div className="flex items-center gap-3 text-left px-2">
+                    <div className="w-8 h-8 rounded-full bg-purple-500/20 border border-purple-500/30 flex items-center justify-center shrink-0">
+                      <span className="text-[11px] font-black text-purple-400">2</span>
+                    </div>
+                    <div>
+                      <p className="text-[11px] font-black text-white uppercase tracking-wider">Запустить AI-синтез</p>
+                      <p className="text-[9px] text-white/30 mt-0.5">
+                        {tracks.filter(t => t.isActive).length} персонаж(ей) × {((duration || 0)).toFixed(0)}с видео
+                      </p>
+                    </div>
+                  </div>
+
+                  <button 
+                    onClick={handleGenerate}
+                    className="w-full py-4 rounded-[2rem] bg-white text-black font-black uppercase tracking-[0.2em] text-xs hover:bg-white/90 transition-all active:scale-95 shadow-2xl shadow-white/10 flex items-center justify-center gap-2"
+                  >
+                    <Wand2 size={16} />
+                    Синтезировать Персонаж
+                  </button>
+
+                  <button 
+                    onClick={() => setShowConfirmModal(false)}
+                    className="w-full py-3 rounded-[2rem] bg-white/5 border border-white/10 text-white/30 font-black uppercase tracking-[0.2em] text-[10px] hover:text-white transition-all"
+                  >
+                    Назад к таймлайну
+                  </button>
                 </div>
              </motion.div>
           </motion.div>
