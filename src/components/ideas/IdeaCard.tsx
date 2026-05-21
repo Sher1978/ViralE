@@ -1,7 +1,8 @@
 'use client';
-
+import { useState } from 'react';
 import { Star, ArrowRight, Loader2, Sparkles } from 'lucide-react';
 import { useTranslations } from 'next-intl';
+import { motion } from 'framer-motion';
 
 export interface Idea {
   id: string;
@@ -31,6 +32,24 @@ export default function IdeaCard({
   onToScript 
 }: IdeaCardProps) {
   const t = useTranslations('ideas');
+  const [isTransferring, setIsTransferring] = useState(false);
+
+  const handleTransfer = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isTransferring) return;
+    
+    setIsTransferring(true);
+    
+    // Play light premium haptics if supported
+    if (window.navigator?.vibrate) {
+      window.navigator.vibrate([45, 30, 45]);
+    }
+    
+    // Animate beautifully before navigating
+    await new Promise(resolve => setTimeout(resolve, 800));
+    
+    onToScript(idea.topic_title, idea.rationale, idea.id);
+  };
 
   const getCategoryTheme = (category?: string) => {
     const themes: Record<string, { img: string, color: string }> = {
@@ -65,7 +84,11 @@ export default function IdeaCard({
 
   return (
     <div
-      className={`card-idea p-6 space-y-4 animate-slide-up opacity-0 group/card relative overflow-visible border ${scoreStyle.border} ${scoreStyle.glow} rounded-[2rem] transition-all duration-500 hover:scale-[1.01]`}
+      className={`card-idea p-6 space-y-4 animate-slide-up opacity-0 group/card relative overflow-visible border ${scoreStyle.border} ${scoreStyle.glow} rounded-[2rem] transition-all duration-500 ${
+        isTransferring 
+          ? 'scale-[0.98] border-purple-500/80 shadow-[0_0_30px_rgba(168,85,247,0.3)] bg-purple-950/10' 
+          : 'hover:scale-[1.01]'
+      }`}
       style={{
         animationFillMode: 'forwards',
         animationDelay: `${0.05 + index * 0.07}s`,
@@ -120,7 +143,7 @@ export default function IdeaCard({
       {/* Invisible overlay for tap-to-script */}
       <div 
         className="absolute inset-0 cursor-pointer z-10 rounded-[2rem]" 
-        onClick={() => onToScript(idea.topic_title, idea.rationale, idea.id)}
+        onClick={handleTransfer}
       />
 
       {/* Content Header */}
@@ -141,18 +164,56 @@ export default function IdeaCard({
 
       {/* Actions */}
       <div className="flex items-center justify-end pt-2 relative z-20">
-        <button
-          onClick={(e) => {
-            e.stopPropagation();
-            onToScript(idea.topic_title, idea.rationale, idea.id);
-          }}
-          className="group flex items-center gap-4 pl-6 pr-1.5 py-1.5 rounded-[1.5rem] bg-white text-black hover:bg-purple-600 hover:text-white transition-all font-black text-[9px] uppercase tracking-[0.2em] shadow-[0_10px_30px_-10px_rgba(255,255,255,0.3)] active:scale-95"
+        <motion.button
+          onClick={handleTransfer}
+          disabled={isTransferring}
+          animate={isTransferring ? {
+            scale: [1, 0.9, 1.05],
+            boxShadow: [
+              "0px 10px 30px -10px rgba(168,85,247,0.3)",
+              "0px 0px 40px rgba(168,85,247,0.8)",
+              "0px 0px 50px rgba(168,85,247,1)"
+            ]
+          } : {}}
+          transition={{ duration: 0.8, ease: "easeInOut" }}
+          className={`group flex items-center gap-4 pl-6 pr-1.5 py-1.5 rounded-[1.5rem] font-black text-[9px] uppercase tracking-[0.2em] transition-all duration-300 relative overflow-hidden ${
+            isTransferring 
+              ? 'bg-purple-600 text-white border border-purple-400/50' 
+              : 'bg-white text-black hover:bg-purple-600 hover:text-white hover:scale-105 active:scale-95'
+          }`}
         >
-          {t('btnScript')}
-          <div className="w-8 h-8 rounded-xl bg-black text-white flex items-center justify-center group-hover:bg-white group-hover:text-black transition-all">
-            <ArrowRight className="w-4 h-4" />
-          </div>
-        </button>
+          {/* Dynamic Laser Light sweeping across */}
+          {isTransferring && (
+            <motion.div 
+              initial={{ left: "-100%" }}
+              animate={{ left: "100%" }}
+              transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
+              className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none"
+            />
+          )}
+
+          <span className="relative z-10 transition-all duration-300">
+            {isTransferring 
+              ? (locale === 'ru' ? 'ПЕРЕНОС В СТУДИЮ...' : 'ROUTING TO STUDIO...') 
+              : t('btnScript')}
+          </span>
+          
+          <motion.div 
+            animate={isTransferring ? { rotate: 360 } : {}}
+            transition={isTransferring ? { repeat: Infinity, duration: 1.5, ease: "linear" } : {}}
+            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${
+              isTransferring 
+                ? 'bg-white text-purple-600' 
+                : 'bg-black text-white group-hover:bg-white group-hover:text-black'
+            }`}
+          >
+            {isTransferring ? (
+              <Loader2 className="w-4 h-4" />
+            ) : (
+              <ArrowRight className="w-4 h-4" />
+            )}
+          </motion.div>
+        </motion.button>
       </div>
     </div>
   );
