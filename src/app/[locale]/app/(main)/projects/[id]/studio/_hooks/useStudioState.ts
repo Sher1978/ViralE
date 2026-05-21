@@ -367,19 +367,20 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         try {
           setStageMessage('Извлечение аудио...');
 
-          // CRITICAL: Skip local AudioContext extraction for video files on Chrome Desktop.
-          // Chrome Desktop's decodeAudioData implementation leaks massive amounts of memory and easily 
-          // crashes the tab (OOM / STATUS_BREAKPOINT) when decoding video containers (WebM/MP4).
-          // Voice-only recordings (light audio blobs) remain safe to decode locally.
-          const isChromeDesktop = typeof navigator !== 'undefined' &&
-            /Chrome/.test(navigator.userAgent) &&
-            !/Mobile|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
+          // CRITICAL: Skip local AudioContext extraction for video files on PC and Android.
+          // Browsers on PC and Android frequently leak memory or run Out Of Memory (OOM) 
+          // when calling decodeAudioData on large video containers (WebM/MP4).
+          // Local native extraction is only safely permitted on iOS/iPadOS devices (where Safari 
+          // handles it natively/efficiently), or for lightweight voice-only audio recordings.
+          const isIOS = typeof navigator !== 'undefined' &&
+            (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
+             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
           
           const isVideo = sourceBlob.type.includes('video') || !sourceBlob.type.includes('audio');
 
-          if (isChromeDesktop && isVideo) {
-            console.warn('[Studio] Chrome Desktop + Video file detected. Skipping local AudioContext extraction to prevent browser OOM crashes...');
-            throw new Error('Chrome Desktop Video: skipping local extraction to prevent OOM crash');
+          if (!isIOS && isVideo) {
+            console.warn('[Studio] Non-iOS device + Video file detected. Skipping local AudioContext extraction to prevent browser OOM crashes...');
+            throw new Error('Non-iOS Video: skipping local extraction to prevent OOM crash');
           }
 
           audioBlob = await extractAudioNative(sourceBlob);
