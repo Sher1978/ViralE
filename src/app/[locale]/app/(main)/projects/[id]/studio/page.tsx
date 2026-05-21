@@ -154,6 +154,7 @@ export default function StudioPage() {
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const scrollPosRef = useRef(0);
+  const recordedBlobRef = useRef<Blob | null>(null);
 
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({ title: '', desc: '', type: 'info' as any });
@@ -628,6 +629,8 @@ export default function StudioPage() {
               return;
             }
 
+            recordedBlobRef.current = blob;
+
             const timestamp = Date.now();
             const recordingId = (isVoiceOnly ? 'raw_audio_' : 'raw_rec_') + projectId + '_' + timestamp;
             
@@ -843,12 +846,18 @@ export default function StudioPage() {
     // 2. INSTANT LOCAL MOBILE WEB SHARE (0 seconds!)
     if (lastRecordingUrl.startsWith('blob:') && isMobile && typeof navigator !== 'undefined' && navigator.share) {
       try {
-        console.log('[Studio] Trying instant local Web Share from blob...');
-        const response = await fetch(lastRecordingUrl);
-        const blob = await response.blob();
+        console.log('[Studio] Trying instant local Web Share...');
+        let fileBlob = recordedBlobRef.current;
+        
+        // Fallback only if ref is empty
+        if (!fileBlob) {
+          console.log('[Studio] recordedBlobRef is empty, fetching blob asynchronously...');
+          const response = await fetch(lastRecordingUrl);
+          fileBlob = await response.blob();
+        }
         
         // Wrap blob in a File object. Use .mp4 extension for native mobile compatibility
-        const file = new File([blob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: blob.type || 'video/mp4' });
+        const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: fileBlob.type || 'video/mp4' });
         
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
@@ -858,7 +867,7 @@ export default function StudioPage() {
           return; // Shared instantly!
         }
       } catch (shareErr) {
-        console.warn('[Studio] Local mobile share failed, falling back to server-side flow:', shareErr);
+        console.warn('[Studio] Synchronous mobile share failed, falling back to server-side flow:', shareErr);
       }
     }
 
