@@ -770,12 +770,29 @@ export default function StudioPage() {
   };
 
   const downloadBackgroundMp4 = async () => {
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
     if (backgroundMp4Url) {
-      console.log('[Studio] Instant download of background MP4:', backgroundMp4Url);
+      console.log('[Studio] Sharing or downloading background MP4:', backgroundMp4Url);
+      
+      // On mobile devices, share the CDN URL natively to prevent PWA reloads!
+      if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          await navigator.share({
+            url: backgroundMp4Url,
+            title: 'Viral Engine H.264 MP4',
+            text: 'Here is your compatible H.264 MP4 video!'
+          });
+          return;
+        } catch (err) {
+          console.warn('[Studio] Web Share failed for normalized MP4:', err);
+        }
+      }
+
+      // PC direct download (no target="_blank" to prevent opening new tabs)
       const a = document.createElement('a');
       a.href = backgroundMp4Url;
       a.download = `ViralEngine_H264_${Date.now()}.mp4`;
-      a.target = '_blank';
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
@@ -811,7 +828,20 @@ export default function StudioPage() {
             const normData = await normRes.json();
             if (normData.publicUrl) {
               setBackgroundMp4Url(normData.publicUrl);
-              window.open(normData.publicUrl, '_blank');
+              
+              if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
+                await navigator.share({
+                  url: normData.publicUrl,
+                  title: 'Viral Engine H.264 MP4',
+                });
+              } else {
+                const a = document.createElement('a');
+                a.href = normData.publicUrl;
+                a.download = `ViralEngine_H264_${Date.now()}.mp4`;
+                document.body.appendChild(a);
+                a.click();
+                document.body.removeChild(a);
+              }
             }
           }
         } catch (e) {
@@ -820,7 +850,19 @@ export default function StudioPage() {
           setIsBackgroundConverting(false);
         }
       } else {
-        window.open(lastRecordingUrl, '_blank');
+        if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
+          await navigator.share({
+            url: lastRecordingUrl,
+            title: 'Viral Engine H.264 MP4',
+          });
+        } else {
+          const a = document.createElement('a');
+          a.href = lastRecordingUrl;
+          a.download = `ViralEngine_H264_${Date.now()}.mp4`;
+          document.body.appendChild(a);
+          a.click();
+          document.body.removeChild(a);
+        }
       }
     }
   };
