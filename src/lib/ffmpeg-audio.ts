@@ -2,31 +2,36 @@
  * ffmpeg-audio.ts
  * Client-side audio extraction using FFmpeg.wasm (single-thread).
  * Converts any video (HEVC/MOV/MP4/WebM) to a tiny 16kHz mono MP3.
- * Works on iOS Safari, Android Chrome, Desktop.
  *
- * IMPORTANT: Uses static imports to avoid webpack "expression is too dynamic" error.
+ * CRITICAL: No static imports of @ffmpeg/ffmpeg or @ffmpeg/util.
+ * Use runtimeImport (new Function trick) so bundlers never try to bundle
+ * these packages — they contain unbundleable dynamic Worker patterns.
  */
-import { FFmpeg } from '@ffmpeg/ffmpeg';
-import { toBlobURL } from '@ffmpeg/util';
 
-let ffmpegInstance: FFmpeg | null = null;
+// eslint-disable-next-line no-new-func
+const runtimeImport = new Function('m', 'return import(m)') as (m: string) => Promise<any>;
+
+let ffmpegInstance: any | null = null;
 let loadPromise: Promise<boolean> | null = null;
 
 const CORE_BASE = '/ffmpeg';
 
 /** Singleton — loads FFmpeg WASM once, reuses instance */
-async function getFFmpeg(): Promise<FFmpeg> {
+async function getFFmpeg(): Promise<any> {
   if (ffmpegInstance?.loaded) return ffmpegInstance;
 
   if (!loadPromise) {
-    const ff = new FFmpeg();
-    loadPromise = ff.load({
-      coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
-      wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
-    }).then(() => {
+    loadPromise = (async () => {
+      const { FFmpeg } = await runtimeImport('@ffmpeg/ffmpeg');
+      const { toBlobURL } = await runtimeImport('@ffmpeg/util');
+      const ff = new FFmpeg();
+      await ff.load({
+        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
+        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
+      });
       ffmpegInstance = ff;
       return true;
-    });
+    })();
   }
 
   await loadPromise;
@@ -51,8 +56,7 @@ export async function extractAudioFFmpeg(
   try {
     onProgress?.('Загрузка аудио-движка...');
     const ff = await getFFmpeg();
-    
-    // Add logging to catch errors in browser console
+
     ff.on('log', ({ message }: { message: string }) => {
       console.log(`[FFmpeg Log] ${message}`);
     });
@@ -71,23 +75,15 @@ export async function extractAudioFFmpeg(
     const outputName = 'output.mp3';
 
     onProgress?.('Анализ видео (на устройстве)...');
-    
-    // 🔥 Memory optimization: Read as ArrayBuffer and immediately convert to Uint8Array
+
     let buffer: ArrayBuffer | null = await videoBlob.arrayBuffer();
     await ff.writeFile(inputName, new Uint8Array(buffer));
-    
-    // 🔥 CRITICAL: Nullify buffer immediately to free memory for WASM heap
-    buffer = null;
+    buffer = null; // Free memory immediately
 
     onProgress?.('Извлечение аудио...');
     const result = await ff.exec([
-      '-y',           // Overwrite if exists
-      '-i', inputName,
-      '-vn',          // no video
-      '-ar', '16000', // 16kHz sample rate (optimal for speech AI)
-      '-ac', '1',     // mono
-      '-b:a', '32k',  // 32 kbps — tiny file, perfect speech quality
-      '-f', 'mp3',
+      '-y', '-i', inputName,
+      '-vn', '-ar', '16000', '-ac', '1', '-b:a', '32k', '-f', 'mp3',
       outputName,
     ]);
 
@@ -102,7 +98,6 @@ export async function extractAudioFFmpeg(
 
     const mp3Blob = new Blob([data as any], { type: 'audio/mpeg' });
 
-    // Cleanup FFmpeg virtual FS
     await ff.deleteFile(inputName).catch(() => {});
     await ff.deleteFile(outputName).catch(() => {});
 

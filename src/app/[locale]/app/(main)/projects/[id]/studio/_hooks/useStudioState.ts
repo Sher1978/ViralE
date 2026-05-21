@@ -3,8 +3,7 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ProductionManifest } from '@/lib/types/studio';
 import { idb } from '@/lib/idb';
-import { getFFmpeg } from '@/lib/ffmpeg-delivery';
-import { fetchFile } from '@ffmpeg/util';
+import { getFFmpeg, getFetchFile } from '@/lib/ffmpeg-delivery';
 import { renderService } from '@/lib/services/renderService';
 
 // --- TYPES ---
@@ -356,6 +355,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         const outputName = 'output.wav';
         
         console.log('[Studio LOG] Writing video file to virtual filesystem...');
+        const fetchFile = await getFetchFile();
         await ffmpeg.writeFile(inputName, await fetchFile(videoBlob));
         
         console.log('[Studio LOG] Executing FFmpeg command to extract 16kHz WAV...');

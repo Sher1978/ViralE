@@ -13,8 +13,7 @@ import dynamic from 'next/dynamic';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { idb } from '@/lib/idb';
 import DistributionFactory from '../../[id]/studio/_components/DistributionFactory';
-import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
-import { fetchFile } from '@ffmpeg/util';
+import { getFFmpeg, resetFFmpeg, getFetchFile } from '@/lib/ffmpeg-delivery';
 import { browserCapabilities } from '@/lib/browser-capabilities';
 
 import { Suspense } from 'react';
@@ -579,8 +578,8 @@ function DeliveryPageContent() {
       setRenderStatus('Финальная склейка (Audio)...');
       const ffmpeg = await getFFmpeg();
 
-      await ffmpeg.writeFile('silent.mp4', await fetchFile(silentVideoBlob));
-      await ffmpeg.writeFile('source.mp4', await fetchFile(aRollUrl));
+      await ffmpeg.writeFile('silent.mp4', await (await getFetchFile())(silentVideoBlob));
+      await ffmpeg.writeFile('source.mp4', await (await getFetchFile())(aRollUrl));
       
       // Extract audio from source and merge into silent video
       await ffmpeg.exec(['-i', 'silent.mp4', '-i', 'source.mp4', '-map', '0:v', '-map', '1:a', '-c', 'copy', 'output.mp4']);
@@ -707,7 +706,7 @@ function DeliveryPageContent() {
       setPreviewUrl(aRollUrl);
 
       setRenderStatus('Скачивание основного видео...');
-      const aRollData = await fetchFile(aRollUrl);
+      const aRollData = await (await getFetchFile())(aRollUrl);
       await ffmpeg.writeFile('input_aroll.mp4', aRollData);
 
       const brollClipsRaw = manifest?.brollClips || [];
@@ -725,7 +724,7 @@ function DeliveryPageContent() {
             }
           }
           if (clipUrl) {
-            const bRollData = await fetchFile(clipUrl);
+            const bRollData = await (await getFetchFile())(clipUrl);
             const name = `broll_${i}.mp4`;
             await ffmpeg.writeFile(name, bRollData);
             brollFiles.push({ name, clip });
@@ -735,14 +734,14 @@ function DeliveryPageContent() {
 
       setRenderStatus('Подготовка субтитров и шрифтов...');
       try {
-        const fontData = await fetchFile('/fonts/Roboto-Bold.ttf');
+        const fontData = await (await getFetchFile())('/fonts/Roboto-Bold.ttf');
         await ffmpeg.writeFile('font.ttf', fontData);
       } catch (e) {
         console.warn('[Delivery] Failed to load standard font:', e);
       }
 
       try {
-        const italicFontData = await fetchFile('/fonts/Roboto-BoldItalic.ttf');
+        const italicFontData = await (await getFetchFile())('/fonts/Roboto-BoldItalic.ttf');
         await ffmpeg.writeFile('font_italic.ttf', italicFontData);
       } catch (e) {
         console.warn('[Delivery] Failed to load italic font, falling back to standard font copy:', e);
