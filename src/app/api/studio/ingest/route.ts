@@ -14,8 +14,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing videoUrl or projectId' }, { status: 400 });
     }
 
-    // 1. Initialize Gemini 1.5 Flash (optimized for video/audio understanding)
-    const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+    // 1. Initialize Gemini 3.5 Flash (optimized for video/audio understanding)
+    const model = genAI.getGenerativeModel({ model: "gemini-3.5-flash" });
 
     // 2. Construct Analysis Prompt
     // Note: In a production environment, we would use the File Manager API to upload the video to Gemini.

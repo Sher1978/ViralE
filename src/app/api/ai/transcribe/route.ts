@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       try {
         const buffer = Buffer.from(await file.arrayBuffer());
         const base64 = buffer.toString('base64');
-        const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+        const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
         const result = await model.generateContent([
           { text: TRANSCRIPTION_PROMPT },
           { inlineData: { mimeType: geminiMime, data: base64 } },
@@ -129,6 +129,9 @@ export async function POST(req: NextRequest) {
         if (transcript) return NextResponse.json({ transcript });
       } catch (e: any) {
         console.warn('[Transcribe] Gemini Inline exception:', e.message);
+        return NextResponse.json({ 
+          error: `[Gemini Inline Error] ${e.message}` 
+        }, { status: 500 });
       }
     }
 
@@ -164,19 +167,22 @@ export async function POST(req: NextRequest) {
             if (stateData.state === 'ACTIVE') break;
             attempts++;
           }
-          const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+          const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
           const result = await model.generateContent([{ text: TRANSCRIPTION_PROMPT }, { fileData: { mimeType: geminiMime, fileUri } }]);
           const rawText = result.response.text();
           const transcript = parseTranscript(rawText);
           if (transcript) return NextResponse.json({ transcript, engine: 'gemini-file' });
           
           return NextResponse.json({ 
-            error: `[Gemini] Неверный формат: ${rawText.slice(0, 150)}...` 
+            error: `[Gemini] Неверный формат ответа: ${rawText.slice(0, 150)}...` 
           }, { status: 500 });
         }
       }
     } catch (e: any) {
       console.error('[Transcribe] Gemini File API exception:', e.message);
+      return NextResponse.json({
+        error: `[Gemini File API Error] ${e.message}`
+      }, { status: 500 });
     }
 
     return NextResponse.json({
