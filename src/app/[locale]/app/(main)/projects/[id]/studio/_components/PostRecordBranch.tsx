@@ -6,6 +6,7 @@ import { Scissors, Sparkles, Download, Send, RotateCcw, Loader2, CheckCircle2 } 
 
 interface PostRecordBranchProps {
   videoUrl: string;
+  recordedSize?: number | null;
   onSelect: (type: 'pure' | 'animate') => void;
   onRetake?: () => void;
   onDownload?: () => void;
@@ -18,6 +19,7 @@ interface PostRecordBranchProps {
 
 export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
   videoUrl,
+  recordedSize = null,
   onSelect,
   onRetake,
   onDownload,
@@ -117,32 +119,45 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onDownload}
-                className="py-4 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 shadow-lg"
+                className="py-3 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex flex-col items-center justify-center gap-1 shadow-lg min-h-[52px]"
               >
-                Скачать RAW <Download size={12} className="text-blue-400" />
+                <span className="flex items-center gap-1">Скачать RAW <Download size={12} className="text-blue-400" /></span>
+                {recordedSize && (
+                  <span className="text-[7px] text-white/40 lowercase tracking-normal">
+                    ({(recordedSize / (1024 * 1024)).toFixed(1)} MB)
+                  </span>
+                )}
               </motion.button>
 
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onDownloadMp4}
-                className="py-4 rounded-[2rem] bg-green-600/10 border border-green-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 shadow-lg"
+                className="py-3 rounded-[2rem] bg-green-600/10 border border-green-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex flex-col items-center justify-center gap-1 shadow-lg min-h-[52px]"
               >
-                Скачать MP4 {isMp4Converting ? <Loader2 size={12} className="animate-spin text-green-400" /> : <Download size={12} className="text-green-400" />}
+                <span className="flex items-center gap-1">Скачать MP4 {isMp4Converting ? <Loader2 size={12} className="animate-spin text-green-400" /> : <Download size={12} className="text-green-400" />}</span>
+                {recordedSize && !isMp4Converting && (
+                  <span className="text-[7px] text-white/40 lowercase tracking-normal">
+                    (~{(recordedSize * 0.8 / (1024 * 1024)).toFixed(1)} MB)
+                  </span>
+                )}
               </motion.button>
             </div>
           </div>
 
           {/* SECONDARY ACTIONS */}
           {onTelegram && (
-            <div className="w-full pt-4 border-t border-white/5 flex justify-center">
+            <div className="w-full pt-4 border-t border-white/5 flex flex-col items-center gap-2">
               <button
                 onClick={onTelegram}
-                className="flex items-center justify-center gap-2 py-3 px-6 rounded-xl bg-white/[0.02] border border-white/5 text-white/30 hover:text-white/60 transition-all"
+                className="flex items-center justify-center gap-2 py-3 px-8 rounded-full bg-[#0088cc]/10 border border-[#0088cc]/20 text-[#0088cc] hover:bg-[#0088cc]/20 active:scale-95 transition-all shadow-xl shadow-cyan-900/10"
               >
-                <Send size={14} />
-                <span className="text-[9px] font-black uppercase tracking-widest">Telegram Backup</span>
+                <Send size={14} className="text-[#0088cc] fill-[#0088cc]/10 animate-pulse" />
+                <span className="text-[9px] font-black uppercase tracking-widest">Отправить в Telegram</span>
               </button>
+              <span className="text-[7px] text-white/30 text-center tracking-normal leading-normal max-w-[280px]">
+                Рекомендуется для мобильных устройств. Загружает файл в облако и отправляет ссылку для обхода ограничений iOS/Telegram.
+              </span>
             </div>
           )}
         </div>

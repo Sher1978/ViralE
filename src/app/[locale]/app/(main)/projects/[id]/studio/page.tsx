@@ -85,6 +85,15 @@ export default function StudioPage() {
   const [customScript, setCustomScript] = useState<string>('');
   const [useCustomScript, setUseCustomScript] = useState<boolean>(false);
   const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
+  const [recordedSize, setRecordedSize] = useState<number | null>(null);
+  const [systemLogs, setSystemLogs] = useState<string[]>([]);
+  const [showLogConsole, setShowLogConsole] = useState(false);
+
+  const addSystemLog = useCallback((msg: string) => {
+    console.log(`[STUDIO-LOG] ${msg}`);
+    const time = new Date().toLocaleTimeString();
+    setSystemLogs(prev => [...prev.slice(-30), `[${time}] ${msg}`]);
+  }, []);
 
   // Background MP4 Normalization States
   const [backgroundMp4Url, setBackgroundMp4Url] = useState<string | null>(null);
@@ -201,19 +210,22 @@ export default function StudioPage() {
     
     const prefetchBlob = async () => {
       try {
-        console.log('[Studio] Prefetching video file from IDB into memory for iOS Share Sheet...');
+        addSystemLog('Начало префетча исходного видео из IndexedDB...');
         const cachedBlob = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
         if (cachedBlob instanceof Blob) {
           recordedBlobRef.current = cachedBlob;
-          console.log('[Studio] Prefetch successful, blob size:', cachedBlob.size);
+          setRecordedSize(cachedBlob.size);
+          addSystemLog(`Префетч успешен. Размер файла: ${(cachedBlob.size / (1024 * 1024)).toFixed(2)} MB (${cachedBlob.size} байт). Тип: ${cachedBlob.type}`);
+        } else {
+          addSystemLog('Префетч: Запись в IndexedDB не найдена (еще нет записанных дублей).');
         }
-      } catch (err) {
-        console.warn('[Studio] Blob prefetch from IDB failed:', err);
+      } catch (err: any) {
+        addSystemLog(`Ошибка префетча из IDB: ${err.message || err}`);
       }
     };
 
     prefetchBlob();
-  }, [projectId, lastRecordingUrl]);
+  }, [projectId, lastRecordingUrl, addSystemLog]);
 
   // Restore lastRecordingUrl from IndexedDB on page load/mount if it is null
   useEffect(() => {
@@ -221,21 +233,24 @@ export default function StudioPage() {
     
     const restoreFromIDB = async () => {
       try {
-        console.log('[Studio] Checking IDB for saved recording to restore state...');
+        addSystemLog('Восстановление сессии: поиск видеозаписи в IndexedDB...');
         const cachedBlob = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
         if (cachedBlob instanceof Blob) {
           const restoredUrl = URL.createObjectURL(cachedBlob);
           setLastRecordingUrl(restoredUrl);
           recordedBlobRef.current = cachedBlob;
-          console.log('[Studio] Restored lastRecordingUrl from IndexedDB successfully:', restoredUrl);
+          setRecordedSize(cachedBlob.size);
+          addSystemLog(`Сессия восстановлена! Запись загружена: ${(cachedBlob.size / (1024 * 1024)).toFixed(2)} MB. Ссылка: ${restoredUrl}`);
+        } else {
+          addSystemLog('Восстановление сессии: Записей in IndexedDB не обнаружено.');
         }
-      } catch (err) {
-        console.warn('[Studio] Failed to restore recording from IDB:', err);
+      } catch (err: any) {
+        addSystemLog(`Ошибка восстановления сессии из IDB: ${err.message || err}`);
       }
     };
 
     restoreFromIDB();
-  }, [projectId, lastRecordingUrl]);
+  }, [projectId, lastRecordingUrl, addSystemLog]);
 
   // Prevent accidental data loss
   useEffect(() => {
@@ -659,25 +674,32 @@ export default function StudioPage() {
 
           recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
           recorder.onstop = async () => {
+            addSystemLog('Запись камеры остановлена. Объединение чанков...');
             const blob = new Blob(localChunks, { type: recorder.mimeType });
             localChunks.length = 0; // Clear chunks to free RAM immediately
             
+            addSystemLog(`Файл RAW создан. Размер: ${(blob.size / (1024 * 1024)).toFixed(2)} MB (${blob.size} байт). MIME-тип: ${recorder.mimeType}`);
+
             // Defensive validation against empty or corrupted recorded blobs
             if (blob.size < 50000 && !isVoiceOnly) {
+              addSystemLog(`КРИТИЧЕСКАЯ ОШИБКА: Видео пустое/повреждено (размер ${blob.size} байт). Порог: 50 KB.`);
               alert("Ошибка: записанное видео пустое или повреждено (размер меньше 50 KB). Пожалуйста, попробуйте сделать запись заново.");
               return;
             }
             if (blob.size < 3000 && isVoiceOnly) {
+              addSystemLog(`КРИТИЧЕСКАЯ ОШИБКА: Аудио слишком короткое (размер ${blob.size} байт). Порог: 3 KB.`);
               alert("Ошибка: записанный звук слишком короткий или поврежден. Пожалуйста, попробуйте записать аудио заново.");
               return;
             }
 
             recordedBlobRef.current = blob;
+            setRecordedSize(blob.size);
 
             const timestamp = Date.now();
             const recordingId = (isVoiceOnly ? 'raw_audio_' : 'raw_rec_') + projectId + '_' + timestamp;
             
             try {
+              addSystemLog(`Сохранение RAW файла в IndexedDB (${recordingId})...`);
               await idb.set(recordingId, blob, 'MediaBuffer');
               if (isVoiceOnly) {
                 await idb.set(`pending_audio_${projectId}`, recordingId, 'ProjectDrafts');
@@ -685,28 +707,37 @@ export default function StudioPage() {
                 await idb.set(`pending_upload_${projectId}`, recordingId, 'ProjectDrafts');
                 await idb.set(`video_file_${projectId}`, blob, 'MediaBuffer');
               }
+              addSystemLog('Сохранение в IndexedDB выполнено успешно.');
               
               if (!isVoiceOnly && audioChunks.length > 0) {
                 const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
                 audioChunks.length = 0; // Clear audio chunks to free RAM immediately
                 const audioRecId = `raw_rec_audio_${projectId}_${timestamp}`;
+                addSystemLog('Сохранение резервной аудиодорожки в IndexedDB...');
                 await idb.set(audioRecId, audioBlob, 'MediaBuffer');
                 await idb.set(`pending_audio_${projectId}`, audioRecId, 'ProjectDrafts');
               }
-            } catch (e) { console.error('[Studio] IDB Storage error:', e); }
+            } catch (e: any) { 
+              addSystemLog(`Ошибка сохранения в IndexedDB: ${e.message || e}`);
+              console.error('[Studio] IDB Storage error:', e); 
+            }
 
             // Revoke any previous recording URL to prevent double-blob memory leak
             setLastRecordingUrl(prev => {
-              if (prev && prev.startsWith('blob:')) URL.revokeObjectURL(prev);
+              if (prev && prev.startsWith('blob:')) {
+                addSystemLog(`Отзыв старого Blob URL: ${prev}`);
+                URL.revokeObjectURL(prev);
+              }
               return null;
             });
 
             // Create new preview URL only AFTER releasing old one
-            // The full blob stays in IDB; VideoEditor will re-read from IDB or upload URL, not a second in-memory blob
             const url = URL.createObjectURL(blob);
             setLastRecordingUrl(url);
+            addSystemLog(`Создана новая Blob-ссылка превью: ${url}`);
             
             // Start background conversion immediately (runs in background so UI is instant!)
+            addSystemLog('Запуск фоновой MP4 нормализации видео...');
             startBackgroundMp4Conversion(blob);
 
             // Explicitly transition to branch screen
@@ -913,12 +944,14 @@ export default function StudioPage() {
   const downloadRawVideo = async () => {
     if (!lastRecordingUrl) return;
     
+    addSystemLog('Запуск скачивания RAW видео...');
     const isTelegram = typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp;
     const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    addSystemLog(`Параметры окружения: Мобильный=${isMobile}, TelegramWebApp=${isTelegram}`);
 
     // 1. INSTANT LOCAL DESKTOP DOWNLOAD (0 seconds!)
     if (lastRecordingUrl.startsWith('blob:') && !isMobile && !isTelegram) {
-      console.log('[Studio] Instant local desktop download from blob URL...');
+      addSystemLog('Запущено локальное скачивание на ПК из Blob URL...');
       let url = lastRecordingUrl;
       
       // If the current blob URL is broken or invalid, make a fresh one from IDB!
@@ -926,31 +959,34 @@ export default function StudioPage() {
         const check = await fetch(lastRecordingUrl, { method: 'HEAD' });
         if (!check.ok) throw new Error("Revoked");
       } catch (e) {
-        console.log('[Studio] Blob URL is revoked, recovering from IDB...');
+        addSystemLog('Упреждающий шаг: Blob URL аннулирован, восстанавливаем из IDB...');
         const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
         if (cached instanceof Blob) {
           url = URL.createObjectURL(cached);
+          addSystemLog(`Создана новая Blob-ссылка: ${url}`);
         }
       }
 
+      addSystemLog('Эмуляция клика по ссылке для скачивания...');
       const a = document.createElement('a');
       a.href = url;
       a.download = `ViralEngine_Raw_${Date.now()}.webm`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
+      addSystemLog('Запрос на скачивание успешно отправлен браузеру ПК.');
       return;
     }
 
     // 2. INSTANT LOCAL MOBILE WEB SHARE (0 seconds!)
     if (lastRecordingUrl.startsWith('blob:') && isMobile && typeof navigator !== 'undefined' && navigator.share) {
       try {
-        console.log('[Studio] Trying instant local Web Share...');
+        addSystemLog('Попытка мгновенного шеринга файла через Web Share API...');
         let fileBlob = recordedBlobRef.current;
         
         // Fallback to IndexedDB (stable) instead of async fetch (unstable/revoked)
         if (!fileBlob) {
-          console.log('[Studio] recordedBlobRef is empty, recovering from IndexedDB...');
+          addSystemLog('Упреждающий шаг: recordedBlobRef пуст, достаем оригинал из IndexedDB...');
           const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
           if (cached instanceof Blob) {
             fileBlob = cached;
@@ -963,16 +999,22 @@ export default function StudioPage() {
         }
         
         // Force video/mp4 MIME type on mobile for 100% native mobile sharing compatibility
+        addSystemLog(`Подготовка объекта File. Размер: ${(fileBlob.size / (1024 * 1024)).toFixed(2)} MB. Принудительный тип: video/mp4`);
         const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: 'video/mp4' });
         
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          addSystemLog('Браузер подтвердил возможность передачи файла. Запуск Share Sheet...');
           await navigator.share({
             files: [file],
             title: 'Viral Engine Video',
           });
+          addSystemLog('Share Sheet успешно закрыт пользователем.');
           return; // Shared instantly!
+        } else {
+          addSystemLog('Браузер сообщил, что не может поделиться этим типом файла.');
         }
-      } catch (shareErr) {
+      } catch (shareErr: any) {
+        addSystemLog(`Локальный Web Share отклонен или завершился ошибкой: ${shareErr.message || shareErr}`);
         console.warn('[Studio] Synchronous mobile share failed, falling back to server-side flow:', shareErr);
       }
     }
@@ -982,11 +1024,12 @@ export default function StudioPage() {
     // 3. FALLBACK: Upload to Supabase and run normalization (needed for Telegram WebApp or incompatible platforms)
     if (lastRecordingUrl.startsWith('blob:')) {
       try {
+        addSystemLog('Локальный шеринг недоступен. Запуск резервного облачного пути...');
         alert("Подготовка видео для скачивания... Пожалуйста, подождите несколько секунд, пока файл загружается на сервер.");
         
         let blob = recordedBlobRef.current;
         if (!blob) {
-          console.log('[Studio] Fetching from IndexedDB for fallback upload...');
+          addSystemLog('Загрузка: Fetching from IndexedDB для резервного аплоада...');
           const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
           if (cached instanceof Blob) {
             blob = cached;
@@ -997,9 +1040,11 @@ export default function StudioPage() {
           throw new Error("Файл записи не найден в локальном кэше IndexedDB.");
         }
         
+        addSystemLog(`Начало загрузки файла (${(blob.size / (1024 * 1024)).toFixed(2)} MB) на Supabase Storage...`);
         const uploadResult = await renderService.uploadMedia(projectId, blob, 'video');
         if (uploadResult && uploadResult.publicUrl) {
           downloadUrl = uploadResult.publicUrl;
+          addSystemLog(`Загрузка завершена. URL в облаке: ${downloadUrl}`);
           
           // Sync back to the manifest
           setManifest(prev => {
@@ -1012,6 +1057,7 @@ export default function StudioPage() {
           throw new Error("Не удалось сохранить файл на сервере.");
         }
       } catch (err: any) {
+        addSystemLog(`Критическая ошибка подготовки видео в облаке: ${err.message}`);
         alert("Ошибка подготовки видео: " + err.message);
         return;
       }
@@ -1020,7 +1066,7 @@ export default function StudioPage() {
     // 4. Server-side H.264 (VP8/Opus) to universally compatible H.264 MP4 normalization (only for fallback path)
     if (downloadUrl && downloadUrl.includes('.webm')) {
       try {
-        console.log('[Studio] Raw WebM detected, invoking server-side H.264/AAC normalization...');
+        addSystemLog('Файл имеет тип .webm. Запуск транскодирования на сервере в H.264 MP4...');
         const normRes = await fetch('/api/studio/normalize-recording', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -1030,8 +1076,8 @@ export default function StudioPage() {
         if (normRes.ok) {
           const normData = await normRes.json();
           if (normData.publicUrl) {
-            console.log('[Studio] Server-side H.264/AAC normalization success:', normData.publicUrl);
             downloadUrl = normData.publicUrl;
+            addSystemLog(`Транскодирование успешно! Новый MP4 URL: ${downloadUrl}`);
             
             // Sync back to the manifest
             setManifest(prev => {
@@ -1041,8 +1087,11 @@ export default function StudioPage() {
               return next;
             });
           }
+        } else {
+          addSystemLog('Сервер вернул ошибку транскодирования.');
         }
-      } catch (normErr) {
+      } catch (normErr: any) {
+        addSystemLog(`Ошибка транскодирования: ${normErr.message || normErr}`);
         console.warn('[Studio] H.264 normalization failed, falling back to raw video:', normErr);
       }
     }
@@ -1050,7 +1099,7 @@ export default function StudioPage() {
     // 5. Telegram WebApp In-App WebView Sandbox Bypass
     const tgWebApp = typeof window !== 'undefined' && (window as any).Telegram?.WebApp;
     if (tgWebApp && tgWebApp.openLink) {
-      console.log('[Studio] Inside Telegram WebApp, opening via WebApp.openLink:', downloadUrl);
+      addSystemLog('Обнаружен Telegram WebApp. Открытие ссылки через openLink...');
       tgWebApp.openLink(downloadUrl);
       return;
     }
@@ -1059,6 +1108,7 @@ export default function StudioPage() {
     if (isMobile) {
       try {
         if (navigator.share) {
+          addSystemLog('Шеринг облачного файла на мобильном...');
           const response = await fetch(downloadUrl);
           const blob = await response.blob();
           const file = new File([blob], `ViralEngine_Take_${Date.now()}.mp4`, { type: 'video/mp4' });
@@ -1068,19 +1118,21 @@ export default function StudioPage() {
               files: [file],
               title: 'Viral Engine Video',
             });
+            addSystemLog('Облачный файл успешно расшарен на мобильном.');
             return;
           }
         }
-      } catch (shareErr) {
-        console.warn('[Studio] Web Share API failed, falling back to direct navigation:', shareErr);
+      } catch (shareErr: any) {
+        addSystemLog(`Шеринг облачного файла не удался: ${shareErr.message || shareErr}`);
       }
 
-      // Safe Fallback: Redirect directly to the CDN file to open iOS/Android native download interface
+      addSystemLog('Резервный мобильный переход: перенаправление на скачивание CDN...');
       window.location.href = downloadUrl;
       return;
     }
 
     // 7. Desktop PC Fallback path
+    addSystemLog('Эмуляция клика по ссылке для облачного файла на ПК...');
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = `ViralEngine_Raw_${Date.now()}.mp4`;
@@ -1088,12 +1140,54 @@ export default function StudioPage() {
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);
+    addSystemLog('Облачный файл успешно запрошен на ПК.');
   };
 
-  const sendRawToTelegram = () => {
-    // On mobile, the "Save" (Share) API already covers Telegram.
-    // But we can specifically trigger the share sheet again or show a message.
-    downloadRawVideo(); 
+  const sendRawToTelegram = async () => {
+    if (!lastRecordingUrl) return;
+    addSystemLog('Начало отправки видео в Telegram...');
+    
+    let urlToShare = lastRecordingUrl;
+
+    if (lastRecordingUrl.startsWith('blob:')) {
+      try {
+        addSystemLog('Видео еще не загружено на сервер. Начинаем фоновую загрузку в облако для Telegram...');
+        alert("Загружаем видео в облако для отправки в Telegram... Пожалуйста, подождите несколько секунд.");
+        
+        let blob = recordedBlobRef.current;
+        if (!blob) {
+          addSystemLog('Восстановление blob из IndexedDB для загрузки...');
+          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+          if (cached instanceof Blob) {
+            blob = cached;
+          }
+        }
+        
+        if (!blob) {
+          throw new Error("Запись не найдена в локальной памяти.");
+        }
+        
+        const uploadResult = await renderService.uploadMedia(projectId, blob, 'video');
+        if (uploadResult && uploadResult.publicUrl) {
+          urlToShare = uploadResult.publicUrl;
+          addSystemLog(`Видео загружено успешно. URL для шаринга: ${urlToShare}`);
+        } else {
+          throw new Error("Не удалось загрузить видео на сервер.");
+        }
+      } catch (err: any) {
+        addSystemLog(`Ошибка загрузки для Telegram: ${err.message || err}`);
+        alert("Не удалось подготовить файл для Telegram: " + err.message);
+        return;
+      }
+    }
+
+    // Official Telegram Share Link
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent('Мое новое видео из Viral Engine!')}`;
+    addSystemLog(`Открытие ссылки Telegram Share: ${tgUrl}`);
+    
+    if (typeof window !== 'undefined') {
+      window.open(tgUrl, '_blank');
+    }
   };
 
   // Manifest Handlers - Memoized to prevent cascade re-renders
@@ -1472,6 +1566,7 @@ export default function StudioPage() {
             {activeTab === 'post_record_branch' && lastRecordingUrl && (
               <PostRecordBranch 
                 videoUrl={lastRecordingUrl}
+                recordedSize={recordedSize}
                 onSelect={(option) => {
                   if (option === 'pure') {
                     // Save videoUrl to manifest for persistence
@@ -1654,6 +1749,49 @@ export default function StudioPage() {
           </motion.div>
         )}
       </AnimatePresence>
+
+      {/* Real-time Diagnostics Log Panel for Mobile Devices */}
+      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2">
+        <button
+          onClick={() => setShowLogConsole(prev => !prev)}
+          className="px-4 py-2.5 rounded-full bg-[#8b5cf6]/90 hover:bg-[#7c3aed] text-white font-black uppercase tracking-widest text-[9px] border border-white/10 backdrop-blur-md shadow-2xl flex items-center gap-1.5 active:scale-95 transition-all"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          ЛОГИ ({systemLogs.length})
+        </button>
+
+        <AnimatePresence>
+          {showLogConsole && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="w-[calc(100vw-2rem)] sm:w-[400px] h-[300px] bg-black/95 border border-white/10 rounded-3xl backdrop-blur-2xl shadow-2xl p-4 flex flex-col"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/50">Внутренний Лог Системы</span>
+                <button
+                  onClick={() => setSystemLogs([])}
+                  className="text-[8px] font-black uppercase tracking-widest text-red-400 hover:text-red-300"
+                >
+                  Очистить
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2 font-mono text-[9px] text-white/70 select-text custom-scrollbar">
+                {systemLogs.length === 0 ? (
+                  <p className="text-white/20 italic text-center pt-24">Ленты логов пусты. Сделайте запись для начала...</p>
+                ) : (
+                  systemLogs.map((log, idx) => (
+                    <div key={idx} className="border-l-2 border-purple-500 pl-2 leading-relaxed text-left">
+                      {log}
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }
