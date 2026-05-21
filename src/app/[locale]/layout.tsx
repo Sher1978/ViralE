@@ -7,7 +7,16 @@ import { getMessages } from 'next-intl/server';
 import { notFound } from 'next/navigation';
 import { routing } from '@/i18n/routing';
 import { PageShell } from "@/components/layout/PageShell";
-import { FFmpegPreloader } from "@/components/ffmpeg/FFmpegPreloader";
+import dynamic from 'next/dynamic';
+
+// CRITICAL: FFmpegPreloader must be loaded with dynamic/ssr:false to prevent
+// Turbopack from trying to statically bundle @ffmpeg/ffmpeg at build time.
+// @ffmpeg/ffmpeg uses `new Worker(new URL('./worker.js', import.meta.url))`
+// internally which Turbopack cannot resolve statically → build error.
+const FFmpegPreloader = dynamic(
+  () => import('@/components/ffmpeg/FFmpegPreloader').then(m => m.FFmpegPreloader),
+  { ssr: false }
+);
 
 const geistSans = Geist({
   variable: "--font-geist-sans",

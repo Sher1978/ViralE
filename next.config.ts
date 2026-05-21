@@ -6,11 +6,6 @@ const withNextIntl = createNextIntlPlugin('./src/i18n/request.ts');
 const nextConfig: NextConfig = {
   serverExternalPackages: ["@ffmpeg-installer/ffmpeg"],
 
-  // Required to properly bundle @ffmpeg/ffmpeg which uses
-  // `new Worker(new URL("./worker.js", import.meta.url))` internally.
-  // Without this, webpack throws "Cannot find module as expression is too dynamic".
-  transpilePackages: ['@ffmpeg/ffmpeg', '@ffmpeg/util'],
-
   async headers() {
     return [
       {
