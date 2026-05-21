@@ -257,11 +257,21 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     flushBatch();
     return final;
   };
-
   const extractAudioNative = async (videoBlob: Blob): Promise<Blob> => {
     console.log('[Studio LOG] Starting extractAudioNative. File size:', (videoBlob.size / (1024 * 1024)).toFixed(2), 'MB, MIME type:', videoBlob.type);
     // Attempt 1: Web Audio API (Fastest)
     try {
+      const isChromeDesktop = typeof navigator !== 'undefined' &&
+        /Chrome/.test(navigator.userAgent) &&
+        !/Mobile|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
+      
+      const isVideo = videoBlob.type.includes('video') || !videoBlob.type.includes('audio');
+      
+      if (isChromeDesktop && isVideo) {
+        console.warn('[Studio LOG] Chrome Desktop + Video file detected. Skipping local AudioContext extraction to prevent browser OOM crashes...');
+        throw new Error('Chrome Desktop Video: skipping local extraction to prevent OOM crash');
+      }
+
       console.log('[Studio LOG] Attempt 1: Starting Web Audio API (AudioContext) extraction...');
       
       const t0 = performance.now();
@@ -411,23 +421,6 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
 
         try {
           setStageMessage('Извлечение аудио...');
-
-          // CRITICAL: Skip local AudioContext extraction for video files on Chrome Desktop.
-          // Chrome Desktop's decodeAudioData implementation leaks massive amounts of memory and easily 
-          // crashes the tab (OOM / STATUS_BREAKPOINT) when decoding video containers (WebM/MP4).
-          // Voice-only recordings (light audio blobs) remain safe to decode locally.
-          const isChromeDesktop = typeof navigator !== 'undefined' &&
-            /Chrome/.test(navigator.userAgent) &&
-            !/Mobile|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
-          
-          const isVideo = sourceBlob.type.includes('video') || !sourceBlob.type.includes('audio');
-          console.log('[Studio LOG] Platform guard checks: isChromeDesktop =', isChromeDesktop, 'isVideo =', isVideo);
-
-          if (isChromeDesktop && isVideo) {
-            console.warn('[Studio LOG] Chrome Desktop + Video file detected. Skipping local AudioContext extraction to prevent browser OOM crashes...');
-            throw new Error('Chrome Desktop Video: skipping local extraction to prevent OOM crash');
-          }
-
           audioBlob = await extractAudioNative(sourceBlob);
           
           // Vercel / Serverless body limit is 4.5MB

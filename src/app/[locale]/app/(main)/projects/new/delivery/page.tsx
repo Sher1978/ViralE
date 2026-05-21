@@ -57,6 +57,7 @@ function DeliveryPageContent() {
     setRenderLogs(prev => [...prev.slice(-15), msg]);
   };
   const ffmpegRef = useRef<any>(null);
+  const ffmpegLogsRef = useRef<string[]>([]);
   const isLaunchingRenderRef = useRef(false);
   
   const manifest = version?.script_data as any;
@@ -615,7 +616,12 @@ function DeliveryPageContent() {
     } catch (err: any) {
       console.error('[Canvas Render] Critical Failure:', err);
       const errorMsg = err instanceof Error ? err.message : (typeof err === 'object' ? JSON.stringify(err) : String(err));
-      setError(`Ошибка Canvas-рендера: ${errorMsg}. Пробую FFmpeg...`);
+      
+      let errMsg = `Ошибка Canvas-рендера: ${errorMsg}.`;
+      if (ffmpegLogsRef.current.length > 0) {
+        errMsg += `\n\n[FFmpeg Engine Logs]:\n` + ffmpegLogsRef.current.slice(-15).join('\n');
+      }
+      setError(`${errMsg} Пробую FFmpeg...`);
       
       // Auto-fallback after a short delay so user can see what happened
       setRenderStatus('Переключаюсь на запасной вариант сборки...');
@@ -662,8 +668,11 @@ function DeliveryPageContent() {
       const ffmpeg = await getFFmpeg();
       ffmpegRef.current = ffmpeg;
 
+      ffmpegLogsRef.current = [];
       ffmpeg.on('log', ({ message }) => {
         console.log('[FFmpeg]', message);
+        ffmpegLogsRef.current.push(message);
+        if (ffmpegLogsRef.current.length > 100) ffmpegLogsRef.current.shift();
       });
       
       ffmpeg.on('progress', ({ progress }) => {
@@ -859,7 +868,11 @@ function DeliveryPageContent() {
 
     } catch (err: any) {
       console.error('[Delivery] Client render failed:', err);
-      setError(err.message || 'Ошибка рендера');
+      let errMsg = err.message || String(err);
+      if (ffmpegLogsRef.current.length > 0) {
+        errMsg += `\n\n[FFmpeg Engine Logs]:\n` + ffmpegLogsRef.current.slice(-20).join('\n');
+      }
+      setError(errMsg);
     } finally {
       setIsLaunchingRender(false);
       isLaunchingRenderRef.current = false;
@@ -1036,19 +1049,47 @@ function DeliveryPageContent() {
   }
 
   if (error) {
+    const hasLogs = error.includes('[FFmpeg Engine Logs]:');
+    const [mainError, logs] = hasLogs ? error.split('[FFmpeg Engine Logs]:') : [error, ''];
+
     return (
-      <div className="flex flex-col items-center justify-center min-h-[60vh] space-y-6">
-        <div className="p-6 rounded-[2.5rem] bg-red-500/10 border border-red-500/20 text-center space-y-4 max-w-sm">
-          <AlertCircle className="w-12 h-12 text-red-500 mx-auto" />
-          <h2 className="text-xl font-black text-white uppercase tracking-tighter">Delivery Failed</h2>
-          <p className="text-sm text-white/40">{error}</p>
+      <div className="flex flex-col items-center justify-center min-h-[70vh] space-y-6 max-w-2xl mx-auto px-4 py-8">
+        <div className="p-8 rounded-[2.5rem] bg-red-500/5 border border-red-500/20 text-center space-y-5 w-full backdrop-blur-md relative overflow-hidden shadow-2xl">
+          <div className="absolute top-0 left-0 right-0 h-1 bg-gradient-to-r from-red-500/50 via-red-600/30 to-transparent" />
+          <AlertCircle className="w-14 h-14 text-red-500 mx-auto drop-shadow-[0_0_15px_rgba(239,68,68,0.4)]" />
+          <h2 className="text-2xl font-black text-white uppercase tracking-tighter">Delivery Failed</h2>
+          <p className="text-sm text-red-200/80 font-semibold leading-relaxed">{mainError.trim()}</p>
+          
+          {hasLogs && (
+            <div className="mt-4 text-left rounded-2xl border border-white/10 bg-black/60 p-4 shadow-inner overflow-hidden flex flex-col gap-2">
+              <div className="flex items-center justify-between border-b border-white/5 pb-2">
+                <span className="text-[9px] font-black uppercase tracking-widest text-white/30 flex items-center gap-1.5">
+                  <span className="w-1.5 h-1.5 rounded-full bg-red-500 animate-pulse" />
+                  Diagnostic Engine Logs
+                </span>
+                <span className="text-[8px] font-bold text-white/20 uppercase">FFmpeg WASM</span>
+              </div>
+              <pre className="text-[10px] text-white/50 font-mono overflow-x-auto max-h-[180px] overflow-y-auto leading-relaxed select-text whitespace-pre-wrap font-semibold custom-scrollbar">
+                {logs.trim()}
+              </pre>
+            </div>
+          )}
         </div>
-        <button 
-          onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
-          className="px-8 py-3 rounded-full bg-purple-500 text-white text-xs font-black uppercase tracking-widest shadow-xl shadow-purple-900/40"
-        >
-          {locale === 'ru' ? 'Вернуться в монтажку' : 'Back to Montage'}
-        </button>
+        
+        <div className="flex gap-4">
+          <button 
+            onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
+            className="px-8 py-3.5 rounded-2xl bg-white/5 border border-white/10 text-white hover:bg-white/10 text-xs font-black uppercase tracking-widest active:scale-95 transition-all"
+          >
+            {locale === 'ru' ? 'В монтажку' : 'Back to Montage'}
+          </button>
+          <button 
+            onClick={() => window.location.reload()} 
+            className="px-8 py-3.5 rounded-2xl bg-purple-600 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-500 shadow-lg shadow-purple-900/40 active:scale-95 transition-all"
+          >
+            {locale === 'ru' ? 'Повторить' : 'Retry'}
+          </button>
+        </div>
       </div>
     );
   }
