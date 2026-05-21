@@ -194,6 +194,27 @@ export default function StudioPage() {
     return () => clearTimeout(timeout);
   }, [activeTab, showFaceless, isLoading]);
 
+  // Pre-load the recorded video blob from IndexedDB into recordedBlobRef memory cache
+  // This guarantees 100% synchronous Web Share activation on iOS/Android without async fetches!
+  useEffect(() => {
+    if (!projectId) return;
+    
+    const prefetchBlob = async () => {
+      try {
+        console.log('[Studio] Prefetching video file from IDB into memory for iOS Share Sheet...');
+        const cachedBlob = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+        if (cachedBlob instanceof Blob) {
+          recordedBlobRef.current = cachedBlob;
+          console.log('[Studio] Prefetch successful, blob size:', cachedBlob.size);
+        }
+      } catch (err) {
+        console.warn('[Studio] Blob prefetch from IDB failed:', err);
+      }
+    };
+
+    prefetchBlob();
+  }, [projectId, lastRecordingUrl]);
+
   // Prevent accidental data loss
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
@@ -876,8 +897,22 @@ export default function StudioPage() {
     // 1. INSTANT LOCAL DESKTOP DOWNLOAD (0 seconds!)
     if (lastRecordingUrl.startsWith('blob:') && !isMobile && !isTelegram) {
       console.log('[Studio] Instant local desktop download from blob URL...');
+      let url = lastRecordingUrl;
+      
+      // If the current blob URL is broken or invalid, make a fresh one from IDB!
+      try {
+        const check = await fetch(lastRecordingUrl, { method: 'HEAD' });
+        if (!check.ok) throw new Error("Revoked");
+      } catch (e) {
+        console.log('[Studio] Blob URL is revoked, recovering from IDB...');
+        const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+        if (cached instanceof Blob) {
+          url = URL.createObjectURL(cached);
+        }
+      }
+
       const a = document.createElement('a');
-      a.href = lastRecordingUrl;
+      a.href = url;
       a.download = `ViralEngine_Raw_${Date.now()}.webm`;
       document.body.appendChild(a);
       a.click();
@@ -891,11 +926,18 @@ export default function StudioPage() {
         console.log('[Studio] Trying instant local Web Share...');
         let fileBlob = recordedBlobRef.current;
         
-        // Fallback only if ref is empty
+        // Fallback to IndexedDB (stable) instead of async fetch (unstable/revoked)
         if (!fileBlob) {
-          console.log('[Studio] recordedBlobRef is empty, fetching blob asynchronously...');
-          const response = await fetch(lastRecordingUrl);
-          fileBlob = await response.blob();
+          console.log('[Studio] recordedBlobRef is empty, recovering from IndexedDB...');
+          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+          if (cached instanceof Blob) {
+            fileBlob = cached;
+            recordedBlobRef.current = cached; // Cache back to ref
+          }
+        }
+        
+        if (!fileBlob) {
+          throw new Error("Запись не найдена в памяти устройства (IndexedDB)");
         }
         
         // Force video/mp4 MIME type on mobile for 100% native mobile sharing compatibility
@@ -920,8 +962,18 @@ export default function StudioPage() {
       try {
         alert("Подготовка видео для скачивания... Пожалуйста, подождите несколько секунд, пока файл загружается на сервер.");
         
-        const response = await fetch(lastRecordingUrl);
-        const blob = await response.blob();
+        let blob = recordedBlobRef.current;
+        if (!blob) {
+          console.log('[Studio] Fetching from IndexedDB for fallback upload...');
+          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+          if (cached instanceof Blob) {
+            blob = cached;
+          }
+        }
+        
+        if (!blob) {
+          throw new Error("Файл записи не найден в локальном кэше IndexedDB.");
+        }
         
         const uploadResult = await renderService.uploadMedia(projectId, blob, 'video');
         if (uploadResult && uploadResult.publicUrl) {

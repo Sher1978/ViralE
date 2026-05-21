@@ -133,6 +133,7 @@ export const renderService = {
       .from('media')
       .upload(filePath, arrayBuffer, {
         contentType,
+        contentDisposition: 'attachment',
         upsert: true
       });
 
