@@ -15,6 +15,7 @@ import { idb } from '@/lib/idb';
 const DistributionFactory = dynamic(() => import('../../[id]/studio/_components/DistributionFactory'), { ssr: false });
 import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
 import { fetchFile } from '@ffmpeg/util';
+import { browserCapabilities } from '@/lib/browser-capabilities';
 
 import { Suspense } from 'react';
 
@@ -41,7 +42,6 @@ function DeliveryPageContent() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [renderMode, setRenderMode] = useState<'canvas' | 'ffmpeg'>(() => {
     try {
-      const { browserCapabilities } = require('@/lib/browser-capabilities');
       return browserCapabilities.suggestRenderMode();
     } catch (e) {
       return 'ffmpeg';
