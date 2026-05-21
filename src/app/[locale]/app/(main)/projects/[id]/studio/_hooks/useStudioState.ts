@@ -259,28 +259,42 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   };
 
   const extractAudioNative = async (videoBlob: Blob): Promise<Blob> => {
+    console.log('[Studio LOG] Starting extractAudioNative. File size:', (videoBlob.size / (1024 * 1024)).toFixed(2), 'MB, MIME type:', videoBlob.type);
     // Attempt 1: Web Audio API (Fastest)
     try {
-      console.log('[Studio] Attempting AudioContext extraction...');
+      console.log('[Studio LOG] Attempt 1: Starting Web Audio API (AudioContext) extraction...');
+      
+      const t0 = performance.now();
       const arrayBuffer = await videoBlob.arrayBuffer();
+      console.log('[Studio LOG] Video blob loaded into ArrayBuffer in', (performance.now() - t0).toFixed(0), 'ms. Size:', arrayBuffer.byteLength, 'bytes');
+      
       const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext);
       const audioContext = new AudioCtx();
+      console.log('[Studio LOG] AudioContext created. State:', audioContext.state, 'Sample rate:', audioContext.sampleRate);
       
+      console.log('[Studio LOG] Calling decodeAudioData (Warning: this might use substantial memory)...');
+      const tDecode = performance.now();
       const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
         audioContext.decodeAudioData(arrayBuffer, resolve, (err) => {
             // Fallback for older browsers where it might not return a promise
             reject(err || new Error('Decode failed'));
         }).then(resolve).catch(reject);
       });
+      console.log('[Studio LOG] decodeAudioData completed in', (performance.now() - tDecode).toFixed(0), 'ms. Buffer duration:', audioBuffer.duration.toFixed(2), 'seconds, Channels:', audioBuffer.numberOfChannels, 'Sample rate:', audioBuffer.sampleRate);
       
       const targetSampleRate = 16000;
+      console.log('[Studio LOG] Starting OfflineAudioContext rendering at 16000Hz...');
       const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetSampleRate), targetSampleRate);
       const source = offlineCtx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(offlineCtx.destination);
       source.start();
-      const resampledBuffer = await offlineCtx.startRendering();
       
+      const tRender = performance.now();
+      const resampledBuffer = await offlineCtx.startRendering();
+      console.log('[Studio LOG] Offline rendering completed in', (performance.now() - tRender).toFixed(0), 'ms');
+      
+      console.log('[Studio LOG] Formating to WAV...');
       const length = resampledBuffer.length * 2 + 44;
       const buffer = new ArrayBuffer(length);
       const view = new DataView(buffer);
@@ -309,57 +323,88 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         view.setInt16(offset, sample < 0 ? sample * 0x8000 : sample * 0x7FFF, true);
         offset += 2;
       }
-      console.log('[Studio] AudioContext extraction successful');
+      console.log('[Studio LOG] Attempt 1 (AudioContext) successful! Result size:', (buffer.byteLength / 1024).toFixed(2), 'KB');
       return new Blob([buffer], { type: 'audio/wav' });
-    } catch (err) {
-      console.warn('[Studio] AudioContext extraction failed, trying FFmpeg fallback...', err);
+    } catch (err: any) {
+      console.warn('[Studio LOG] Attempt 1 (AudioContext) failed or was bypassed. Error:', err?.message || err);
+      console.log('[Studio LOG] Attempt 2: Starting local FFmpeg WASM extraction fallback...');
       
       // Attempt 2: FFmpeg WASM (Most Reliable)
       try {
+        const tFfLoad = performance.now();
         const ffmpeg = await getFFmpeg();
+        console.log('[Studio LOG] FFmpeg WASM instance loaded in', (performance.now() - tFfLoad).toFixed(0), 'ms');
+        
         const inputName = 'input.mp4';
         const outputName = 'output.wav';
         
+        console.log('[Studio LOG] Writing video file to virtual filesystem...');
         await ffmpeg.writeFile(inputName, await fetchFile(videoBlob));
-        // Extract mono 16khz wav
+        
+        console.log('[Studio LOG] Executing FFmpeg command to extract 16kHz WAV...');
+        const tFfExec = performance.now();
         await ffmpeg.exec(['-i', inputName, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', outputName]);
+        console.log('[Studio LOG] FFmpeg execution completed in', (performance.now() - tFfExec).toFixed(0), 'ms');
         
         const data = await ffmpeg.readFile(outputName);
-        console.log('[Studio] FFmpeg extraction successful');
-        return new Blob([data as any], { type: 'audio/wav' });
-      } catch (ffErr) {
-        console.error('[Studio] FFmpeg extraction failed:', ffErr);
+        const resultBlob = new Blob([data as any], { type: 'audio/wav' });
+        console.log('[Studio LOG] Attempt 2 (FFmpeg WASM) successful! Result size:', (resultBlob.size / 1024).toFixed(2), 'KB');
+        return resultBlob;
+      } catch (ffErr: any) {
+        console.error('[Studio LOG] Attempt 2 (FFmpeg WASM) failed. Error:', ffErr?.message || ffErr);
         throw ffErr;
       }
     }
   };
 
   const runTranscriptionAndPhrases = useCallback(async (forceFresh = false) => {
-    if (!aRollUrl && !rawFile && !manifest?.transcript) return;
+    if (!aRollUrl && !rawFile && !manifest?.transcript) {
+      console.log('[Studio LOG] runTranscriptionAndPhrases called but no video url or file or transcript available.');
+      return;
+    }
     setTranscriptionError(null);
     setStageMessage('Анализ аудио...');
+
+    console.log('[Studio LOG] Starting runTranscriptionAndPhrases. Force fresh:', forceFresh);
+    console.log('[Studio LOG] Client Info: UserAgent =', navigator.userAgent, 'Platform =', navigator.platform, 'maxTouchPoints =', navigator.maxTouchPoints);
 
     let words: TranscriptWord[] = [];
     let transcriptionOk = false;
 
     if (!forceFresh && manifest?.transcript?.length) {
+      console.log('[Studio LOG] Using cached manifest transcript segments. Word count:', manifest.transcript.length);
       words = manifest.transcript.map((t: any) => ({ ...t, accent: t.accent || false }));
       transcriptionOk = true;
     } else if (aRollUrl || rawFile) {
       try {
         setStageMessage('Извлечение аудио...');
         let sourceBlob: Blob | null = rawFile;
+        console.log('[Studio LOG] Initial sourceBlob from rawFile:', sourceBlob ? `Size = ${(sourceBlob.size / (1024 * 1024)).toFixed(2)} MB` : 'NULL');
+        
         if (!sourceBlob && aRollUrl) {
           try {
+            console.log('[Studio LOG] No rawFile. Fetching source video blob from aRollUrl:', aRollUrl);
             const resp = await fetch(aRollUrl);
-            if (resp.ok) sourceBlob = await resp.blob();
-          } catch (e) {
+            if (resp.ok) {
+              sourceBlob = await resp.blob();
+              console.log('[Studio LOG] Fetch from aRollUrl successful. Size:', (sourceBlob.size / (1024 * 1024)).toFixed(2), 'MB');
+            }
+          } catch (e: any) {
+             console.warn('[Studio LOG] Fetch from aRollUrl failed. Error:', e?.message || e, '. Trying recovery from IndexedDB...');
              const recovered = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-             if (recovered instanceof Blob) sourceBlob = recovered;
+             if (recovered instanceof Blob) {
+               sourceBlob = recovered;
+               console.log('[Studio LOG] Successfully recovered video blob from IndexedDB. Size:', (sourceBlob.size / (1024 * 1024)).toFixed(2), 'MB');
+             }
           }
         }
-        if (!sourceBlob) throw new Error('Не удалось получить файл для анализа');
-        if (sourceBlob.size === 0) throw new Error('Файл записи пуст. Попробуйте записать еще раз.');
+        
+        if (!sourceBlob) {
+          throw new Error('Не удалось получить файл для анализа. sourceBlob = null');
+        }
+        if (sourceBlob.size === 0) {
+          throw new Error('Файл записи пуст (0 байт). Попробуйте записать еще раз.');
+        }
 
         let audioBlob: Blob | null = null;
         let publicUrl: string | null = null;
@@ -367,70 +412,80 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         try {
           setStageMessage('Извлечение аудио...');
 
-          // CRITICAL: Skip local AudioContext extraction for video files on PC and Android.
-          // Browsers on PC and Android frequently leak memory or run Out Of Memory (OOM) 
-          // when calling decodeAudioData on large video containers (WebM/MP4).
-          // Local native extraction is only safely permitted on iOS/iPadOS devices (where Safari 
-          // handles it natively/efficiently), or for lightweight voice-only audio recordings.
-          const isIOS = typeof navigator !== 'undefined' &&
-            (/iPhone|iPad|iPod/.test(navigator.userAgent) ||
-             (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1));
+          // CRITICAL: Skip local AudioContext extraction for video files on Chrome Desktop.
+          // Chrome Desktop's decodeAudioData implementation leaks massive amounts of memory and easily 
+          // crashes the tab (OOM / STATUS_BREAKPOINT) when decoding video containers (WebM/MP4).
+          // Voice-only recordings (light audio blobs) remain safe to decode locally.
+          const isChromeDesktop = typeof navigator !== 'undefined' &&
+            /Chrome/.test(navigator.userAgent) &&
+            !/Mobile|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
           
           const isVideo = sourceBlob.type.includes('video') || !sourceBlob.type.includes('audio');
+          console.log('[Studio LOG] Platform guard checks: isChromeDesktop =', isChromeDesktop, 'isVideo =', isVideo);
 
-          if (!isIOS && isVideo) {
-            console.warn('[Studio] Non-iOS device + Video file detected. Skipping local AudioContext extraction to prevent browser OOM crashes...');
-            throw new Error('Non-iOS Video: skipping local extraction to prevent OOM crash');
+          if (isChromeDesktop && isVideo) {
+            console.warn('[Studio LOG] Chrome Desktop + Video file detected. Skipping local AudioContext extraction to prevent browser OOM crashes...');
+            throw new Error('Chrome Desktop Video: skipping local extraction to prevent OOM crash');
           }
 
           audioBlob = await extractAudioNative(sourceBlob);
           
           // Vercel / Serverless body limit is 4.5MB
           if (audioBlob.size > 4.5 * 1024 * 1024) {
-            console.warn('[Studio] Audio blob too large for direct POST, switching to Cloud Path...');
+            console.warn('[Studio LOG] Audio blob too large for direct POST (size:', (audioBlob.size / (1024 * 1024)).toFixed(2), 'MB > 4.5MB), switching to Cloud Path...');
             setStageMessage('Облачная загрузка (большой файл)...');
             const uploadRes = await renderService.uploadMedia(projectId, audioBlob, 'audio');
             publicUrl = uploadRes.publicUrl;
+            console.log('[Studio LOG] Audio blob upload successful. publicUrl:', publicUrl);
           }
-        } catch (e) {
-          console.warn('[Studio] Local audio extraction skipped or failed, falling back to full cloud upload:', e);
+        } catch (e: any) {
+          console.warn('[Studio LOG] Local audio extraction failed or was bypassed. Falling back to direct full video cloud upload. Error:', e?.message || e);
           setStageMessage('Облачная загрузка (резервный путь)...');
+          
+          console.log('[Studio LOG] Starting direct full video upload. Video size:', (sourceBlob.size / (1024 * 1024)).toFixed(2), 'MB');
+          const tUpload = performance.now();
           const uploadRes = await renderService.uploadMedia(projectId, sourceBlob, 'video');
           publicUrl = uploadRes.publicUrl;
+          console.log('[Studio LOG] Full video upload successful in', (performance.now() - tUpload).toFixed(0), 'ms. publicUrl:', publicUrl);
         }
 
         setStageMessage('AI расшифровка...');
+        console.log('[Studio LOG] Preparing FormData for transcribe API...');
         const formData = new FormData();
         if (publicUrl) {
           formData.append('fileUrl', publicUrl);
+          console.log('[Studio LOG] FormData: appended fileUrl =', publicUrl);
         } else if (audioBlob) {
           formData.append('file', audioBlob, 'audio.wav');
+          console.log('[Studio LOG] FormData: appended local audioBlob. Size =', (audioBlob.size / 1024).toFixed(2), 'KB');
         } else {
-          throw new Error('Не удалось подготовить файл для транскрибации');
+          throw new Error('Не удалось подготовить файл для транскрибации (no audioBlob and no publicUrl)');
         }
 
+        console.log('[Studio LOG] Sending POST to /api/ai/transcribe...');
+        const tTranscribe = performance.now();
         const res = await fetch('/api/ai/transcribe', { 
           method: 'POST', 
           body: formData 
         });
+        console.log('[Studio LOG] Transcribe API response status:', res.status, 'Time taken:', (performance.now() - tTranscribe).toFixed(0), 'ms');
+        
         if (!res.ok) {
           const errData = await res.json().catch(() => ({}));
           throw new Error(errData.error || `Ошибка сервера: ${res.status}`);
         }
         const data = await res.json();
         if (data.transcript && data.transcript.length > 0) {
+           console.log('[Studio LOG] Transcribe successful! Word count:', data.transcript.length);
            words = data.transcript; 
            transcriptionOk = true; 
         } else {
            throw new Error('AI не обнаружил голос в этом видео. Проверьте звук.');
         }
       } catch (err: any) { 
-        console.error('[Studio] Transcription flow failed:', err);
+        console.error('[Studio LOG] Transcription flow failed. Error details:', err);
         setTranscriptionError(err.message || 'Ошибка обработки'); 
         setStageMessage('');
-        // IMPORTANT: Do NOT clear aRollUrl or reset stage to 'empty' here.
-        // The video must remain visible in the editor so user can retry transcription.
-        // Just set stage back to allow retry button to appear.
         setStage('transcribing');
         return;
       }
@@ -443,11 +498,13 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     }
 
     setStageMessage('Генерация субтитров...');
+    console.log('[Studio LOG] Formatting transcript segments & karaoke clips...');
     setTranscript(words);
     setSubtitleClips(buildKaraokeClips(words));
     setStage('editing');
     setIsAnalyzingBroll(false); // Disable auto-creation of B-rolls
     setStageMessage('');
+    console.log('[Studio LOG] runTranscriptionAndPhrases completed successfully! Transitioned stage to editing.');
   }, [aRollUrl, rawFile, manifest, projectId, transcriptionError]);
 
   useEffect(() => {

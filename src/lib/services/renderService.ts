@@ -70,6 +70,8 @@ export const renderService = {
    * Uploads recorded media to Supabase storage
    */
   async uploadMedia(projectId: string, blob: Blob, type: 'video' | 'audio' | 'image'): Promise<{ assetId: string, publicUrl: string }> {
+    console.log(`[renderService LOG] Starting uploadMedia. projectId = ${projectId}, type = ${type}, blobSize = ${(blob.size / (1024 * 1024)).toFixed(2)} MB, blobType = "${blob.type}"`);
+    
     // Defensive check before uploading to Supabase Storage
     if (type === 'video' && blob.size < 50000) {
       throw new Error(`Записываемый видеофайл пуст или поврежден (${(blob.size / 1024).toFixed(1)} KB). Пожалуйста, сделайте запись заново.`);
@@ -108,21 +110,25 @@ export const renderService = {
     const fileName = `${projectId}/${type}_${Date.now()}.${ext}`;
     const filePath = `user_recordings/${fileName}`;
 
-    console.log(`[renderService] Preparing upload to: "${filePath}". Size: ${blob.size} bytes. blobType: "${blobType}" → contentType: "${contentType}".`);
+    console.log(`[renderService LOG] Preparing upload to: "${filePath}". contentType: "${contentType}".`);
 
     // *** CRITICAL FIX: Convert Blob → ArrayBuffer before upload ***
     // The Supabase JS SDK v2 sometimes fails to stream bytes from a 'raw' browser Blob
     // (created from fetch(blob:URL)) and silently uploads 0 bytes.
     // Reading the entire blob into an ArrayBuffer first guarantees all bytes are present in memory
     // and forces a reliable, buffered upload every single time.
+    console.log(`[renderService LOG] Loading blob into ArrayBuffer (converting blob to buffer)...`);
+    const tBufStart = performance.now();
     const arrayBuffer = await blob.arrayBuffer();
-    console.log(`[renderService] ArrayBuffer ready. byteLength: ${arrayBuffer.byteLength} bytes.`);
+    console.log(`[renderService LOG] ArrayBuffer ready. byteLength: ${arrayBuffer.byteLength} bytes. Time taken: ${(performance.now() - tBufStart).toFixed(0)} ms.`);
 
     if (arrayBuffer.byteLength < 100) {
       throw new Error(`ArrayBuffer пустой (${arrayBuffer.byteLength} байт). Похоже, blob:URL был отозван до загрузки. Пожалуйста, сделайте запись заново.`);
     }
 
     // 1. Upload to Storage (with 60s timeout for large mobile videos)
+    console.log(`[renderService LOG] Initiating Supabase upload to bucket "media"...`);
+    const tUploadStart = performance.now();
     const uploadPromise = supabase.storage
       .from('media')
       .upload(filePath, arrayBuffer, {
@@ -139,14 +145,21 @@ export const renderService = {
       timeoutPromise as any
     ]) as any;
 
-    if (uploadError) throw uploadError;
+    if (uploadError) {
+      console.error(`[renderService LOG] Supabase upload failed after ${(performance.now() - tUploadStart).toFixed(0)} ms. Error details:`, uploadError);
+      throw uploadError;
+    }
+    console.log(`[renderService LOG] Supabase upload successful! Time taken: ${(performance.now() - tUploadStart).toFixed(0)} ms.`);
 
     // 2. Get Public URL
     const { data: { publicUrl } } = supabase.storage
       .from('media')
       .getPublicUrl(filePath);
+    console.log(`[renderService LOG] Generated public URL: "${publicUrl}"`);
 
     // 3. Register Asset
+    console.log(`[renderService LOG] Registering media asset in Database...`);
+    const tDbStart = performance.now();
     const { data: asset, error: assetError } = await supabase
       .from('media_assets')
       .insert({
@@ -159,9 +172,12 @@ export const renderService = {
       .select()
       .single();
 
-    if (assetError) throw assetError;
+    if (assetError) {
+      console.error(`[renderService LOG] Database asset registration failed. Error details:`, assetError);
+      throw assetError;
+    }
 
-    console.log(`[renderService] Upload complete! assetId: ${asset.id}, publicUrl: ${publicUrl}`);
+    console.log(`[renderService LOG] Media asset registration successful! assetId: ${asset.id}. Time taken: ${(performance.now() - tDbStart).toFixed(0)} ms.`);
     return { assetId: asset.id, publicUrl };
   },
 
