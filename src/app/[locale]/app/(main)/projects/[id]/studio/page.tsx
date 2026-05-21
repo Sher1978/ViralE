@@ -856,8 +856,8 @@ export default function StudioPage() {
           fileBlob = await response.blob();
         }
         
-        // Wrap blob in a File object. Use .mp4 extension for native mobile compatibility
-        const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: fileBlob.type || 'video/mp4' });
+        // Force video/mp4 MIME type on mobile for 100% native mobile sharing compatibility
+        const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: 'video/mp4' });
         
         if (navigator.canShare && navigator.canShare({ files: [file] })) {
           await navigator.share({
@@ -884,7 +884,6 @@ export default function StudioPage() {
         const uploadResult = await renderService.uploadMedia(projectId, blob, 'video');
         if (uploadResult && uploadResult.publicUrl) {
           downloadUrl = uploadResult.publicUrl;
-          setLastRecordingUrl(downloadUrl); // cache for future downloads and routes
           
           // Sync back to the manifest
           setManifest(prev => {
@@ -917,7 +916,6 @@ export default function StudioPage() {
           if (normData.publicUrl) {
             console.log('[Studio] Server-side H.264/AAC normalization success:', normData.publicUrl);
             downloadUrl = normData.publicUrl;
-            setLastRecordingUrl(downloadUrl); // cache the MP4 URL
             
             // Sync back to the manifest
             setManifest(prev => {
