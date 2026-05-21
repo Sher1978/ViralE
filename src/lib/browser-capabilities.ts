@@ -24,6 +24,9 @@ export const browserCapabilities = {
    * Suggests the best render mode based on capabilities.
    */
   suggestRenderMode(): 'canvas' | 'ffmpeg' {
+    if (this.isMobile()) {
+      return 'canvas';
+    }
     return 'ffmpeg';
   }
 };
