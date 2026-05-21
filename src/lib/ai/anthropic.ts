@@ -50,7 +50,8 @@ export async function generateScript(
   digitalShadow: string, 
   locale: string = 'en',
   apiKey?: string,
-  brandDna?: any
+  brandDna?: any,
+  trizMatrix?: string
 ) {
   const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
   const anthropic = new Anthropic({ apiKey: authKey });
@@ -60,6 +61,12 @@ export async function generateScript(
 
   const userPrompt = `
     Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) for different content vectors.
+    
+    ${trizMatrix ? `
+    --- STRATEGIC TRIZ 9-SCREEN MATRIX BLUEPRINT ---
+    Use the following marketing analysis to enrich your scenarios, hooks, context and details. Align each scenario style with a relevant screen from this TRIZ matrix (e.g. Evergreen with System/Present, Trend with Supersystem/Future, Storytelling with System/Past):
+    ${trizMatrix}
+    ` : ""}
     
     SCENARIOS TO GENERATE:
     1. evergreen: Universal expert content, timeless value.

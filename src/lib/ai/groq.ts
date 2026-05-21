@@ -8,7 +8,8 @@ export async function generateScript(
   digitalShadow: string, 
   locale: string = 'en',
   apiKey?: string,
-  brandDna?: any
+  brandDna?: any,
+  trizMatrix?: string
 ) {
   const authKey = apiKey || process.env.GROQ_API_KEY || "";
   if (!authKey) throw new Error("Groq API key not configured");
@@ -18,6 +19,12 @@ export async function generateScript(
 
   const userPrompt = `
     Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
+    
+    ${trizMatrix ? `
+    --- STRATEGIC TRIZ 9-SCREEN MATRIX BLUEPRINT ---
+    Use the following marketing analysis to enrich your scenarios, hooks, context and details. Align each scenario style with a relevant screen from this TRIZ matrix (e.g. Evergreen with System/Present, Trend with Supersystem/Future, storytelling with System/Past):
+    ${trizMatrix}
+    ` : ""}
     
     CRITICAL: ALL text content in these scripts MUST be in the SAME LANGUAGE as the input idea: "${coreIdea}".
     

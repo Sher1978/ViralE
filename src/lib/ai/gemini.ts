@@ -186,9 +186,9 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
 }
 
 
-export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string, brandDna?: any, hook?: string, role?: string) {
+export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string, brandDna?: any, hook?: string, role?: string, trizMatrix?: string) {
   if (IS_GROQ_OVERRIDE) {
-    return groq.generateScript(coreIdea, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna);
+    return groq.generateScript(coreIdea, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna, trizMatrix);
   }
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
@@ -203,6 +203,12 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
 
   const userPrompt = `
     Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
+    
+    ${trizMatrix ? `
+    --- STRATEGIC TRIZ 9-SCREEN MATRIX BLUEPRINT ---
+    Use the following marketing analysis to enrich your scenarios, hooks, context and details. Align each scenario style with a relevant screen from this TRIZ matrix (e.g. Evergreen with System/Present, Trend with Supersystem/Future, Storytelling with System/Past):
+    ${trizMatrix}
+    ` : ""}
     
     CRITICAL: ALL text content in these scripts MUST be in the SAME LANGUAGE as the input idea: "${coreIdea}". If the idea/topic is in Ukrainian, every word of the script must be in Ukrainian. If Russian, then Russian.
     
@@ -392,4 +398,12 @@ export async function refineScript(
     console.error('[Gemini] JSON Refinement Parse Error. Raw Text:', text);
     throw new Error('AI returned invalid data format during refinement.');
   }
+}
+
+export async function generateText(prompt: string, customApiKey?: string): Promise<string> {
+  const client = customApiKey ? new GoogleGenerativeAI(customApiKey) : genAI;
+  const targetModel = client.getGenerativeModel({ model: FAST_MODEL });
+  const result = await targetModel.generateContent(prompt);
+  const response = await result.response;
+  return response.text().trim();
 }
