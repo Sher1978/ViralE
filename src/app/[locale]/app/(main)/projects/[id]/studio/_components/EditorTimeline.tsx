@@ -125,7 +125,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
     for (let i = 0; i <= safeDuration; i += step) {
       const isFullSecond = i % 1 === 0;
       items.push(
-        <div key={i} className="absolute flex flex-col items-center" style={{ left: i * PX_PER_SECOND }}>
+        <div key={i} className="absolute bottom-1.5 flex flex-col items-center" style={{ left: i * PX_PER_SECOND }}>
           <div className={`w-[1px] bg-white/${isFullSecond ? '20' : '10'} ${isFullSecond ? 'h-2' : 'h-1'}`} />
           {isFullSecond && (
             <span className="text-[9px] font-medium text-white/30 mt-1 tabular-nums">
@@ -141,7 +141,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   return (
     <div className="w-full bg-[#080808] border-t border-white/[0.06] flex flex-col select-none h-48">
       {/* 1. Ruler Layer */}
-      <div className="h-8 relative overflow-hidden border-b border-white/[0.03]">
+      <div className="h-16 relative overflow-hidden border-b border-white/[0.03]">
         <div 
           ref={containerRef}
           onScroll={handleScroll}
@@ -168,7 +168,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                 
                 {/* B-ROLL TRACK */}
                 <div 
-                    className="absolute top-1 h-10 w-full cursor-copy pointer-events-auto group/track"
+                    className="absolute bottom-11 h-12 w-full cursor-copy pointer-events-auto group/track"
                     onClick={(e) => {
                         if ((e.target as HTMLElement).closest('.broll-clip-box')) return;
                         const rect = e.currentTarget.getBoundingClientRect();
@@ -303,7 +303,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
  
                 {/* SUBTITLE TRACK */}
                 <div 
-                    className="absolute bottom-1 h-8 w-full cursor-pointer pointer-events-auto"
+                    className="absolute bottom-1.5 h-8 w-full cursor-pointer pointer-events-auto"
                     onClick={() => onSubtitleTrackClick?.()}
                 >
                     <div className="absolute inset-0 bg-yellow-500/[0.03] border-y border-yellow-500/[0.05]" />

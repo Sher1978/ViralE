@@ -1,7 +1,35 @@
-
 import { getSystemPrompt } from "./gemini"; // Use the same rules as Gemini
-
+ 
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
+
+export async function generateTrizText(prompt: string, apiKey?: string): Promise<string> {
+  const authKey = apiKey || process.env.GROQ_API_KEY || "";
+  if (!authKey) throw new Error("Groq API key not configured");
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${authKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: "You are a professional neuromarketer and creative strategist." },
+        { role: "user", content: prompt }
+      ]
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || "Groq TRIZ generation failed");
+  }
+
+  const data = await response.json();
+  return data.choices[0].message.content || "";
+}
+
 
 export async function generateScript(
   coreIdea: string, 

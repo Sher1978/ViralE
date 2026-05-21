@@ -1,6 +1,26 @@
 import Anthropic from "@anthropic-ai/sdk";
-
+ 
 const DEFAULT_MODEL = "claude-3-5-sonnet-20240620";
+
+export async function generateTrizText(prompt: string, apiKey?: string): Promise<string> {
+  const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
+  if (!authKey) throw new Error("Anthropic API key not configured");
+  
+  const anthropic = new Anthropic({ apiKey: authKey });
+  const response = await anthropic.messages.create({
+    model: DEFAULT_MODEL,
+    max_tokens: 1024,
+    system: "You are a professional neuromarketer and creative strategist.",
+    messages: [
+      { role: "user", content: prompt }
+    ],
+  });
+
+  const content = response.content[0];
+  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  return content.text;
+}
+
 
 /**
  * Orchestrates the "Digital Shadow" prompt construction with locale support

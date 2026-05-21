@@ -57,7 +57,7 @@ export async function POST(req: Request) {
     // 2. Get Digital Shadow and Brand DNA
     const { data: profile, error: profileError } = await authorizedSupabase
       .from('profiles')
-      .select('digital_shadow_prompt, knowledge_base_json, industry_context, anthropic_api_key, groq_api_key, credits_balance, tier')
+      .select('digital_shadow_prompt, knowledge_base_json, industry_context, anthropic_api_key, groq_api_key, synthetic_training_data, credits_balance, tier')
       .eq('id', userId)
       .single();
 
@@ -68,9 +68,38 @@ export async function POST(req: Request) {
     const digitalShadow = profile?.digital_shadow_prompt || '';
     const anthropicApiKey = profile?.anthropic_api_key || undefined;
     const groqApiKey = profile?.groq_api_key || undefined;
-    const geminiApiKey = undefined; // Not stored in DB yet, use system key
+    
+    // Retrieve Gemini API Key from BYOK (stored in synthetic_training_data)
+    const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
+    const geminiApiKey = syntheticData.gemini_api_key || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || undefined;
+    
     const tier = profile?.tier || 'free';
     const onboardingIncomplete = !digitalShadow;
+
+    // 2.3 Key Validation and User-friendly Warnings
+    if (engine === 'claude' && !anthropicApiKey && !process.env.ANTHROPIC_API_KEY) {
+      return NextResponse.json({ 
+        error: locale === 'ru'
+          ? 'API-ключ Клода не найден. Пожалуйста, перейдите в Профиль -> Digital Connectors и добавьте ваш ключ Anthropic.'
+          : 'Claude API key not found. Please go to Profile -> Digital Connectors and set up your Anthropic API key.'
+      }, { status: 400 });
+    }
+
+    if (engine === 'gemini' && !geminiApiKey) {
+      return NextResponse.json({ 
+        error: locale === 'ru'
+          ? 'API-ключ Gemini не найден. Пожалуйста, перейдите в Профиль -> Digital Connectors и добавьте ваш ключ Gemini.'
+          : 'Gemini API key not found. Please go to Profile -> Digital Connectors and set up your Gemini API key.'
+      }, { status: 400 });
+    }
+
+    if (engine === 'groq' && !groqApiKey && !process.env.GROQ_API_KEY) {
+      return NextResponse.json({ 
+        error: locale === 'ru'
+          ? 'API-ключ Groq не найден. Пожалуйста, перейдите в Профиль -> Digital Connectors и добавьте ваш ключ Groq.'
+          : 'Groq API key not found. Please go to Profile -> Digital Connectors and set up your Groq API key.'
+      }, { status: 400 });
+    }
 
     // 2.5 Tier-based Enforcement (Backend)
     if (mode === 'initial') {

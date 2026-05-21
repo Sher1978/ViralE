@@ -627,7 +627,7 @@ function DeliveryPageContent() {
       setRenderStatus('Переключаюсь на запасной вариант сборки...');
       setTimeout(() => {
         if (!job || job.status !== 'completed') {
-           setError('Использую запасной метод сборки (FFmpeg) для обеспечения качества...');
+           setError(null); // Clear error state to allow the normal rendering loader UI to display
            setRenderMode('ffmpeg');
            handleClientRender(ver);
         }
@@ -641,6 +641,9 @@ function DeliveryPageContent() {
   const handleClientRender = async (ver: ProjectVersion) => {
     if (isLaunchingRenderRef.current) return;
     isLaunchingRenderRef.current = true;
+    
+    // Clear any previous error state before starting rendering
+    setError(null);
     
     // 0. CHECK CACHE FIRST
     try {

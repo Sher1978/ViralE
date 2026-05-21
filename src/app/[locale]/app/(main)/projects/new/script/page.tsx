@@ -1096,7 +1096,11 @@ export default function ScriptLabPage() {
               <button
                 id="generate-script-btn"
                 onClick={handleInitialGenerate}
-                disabled={!topicInput || topicInput.trim().length < 3 || isLoading}
+                disabled={
+                  ideationType === 'youtube'
+                    ? (!youtubeUrl || youtubeUrl.trim().length < 5 || isLoading)
+                    : (!topicInput || topicInput.trim().length < 3 || isLoading)
+                }
                 className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group disabled:opacity-30 disabled:grayscale transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
               >
                 {isLoading ? (

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 const HEYGEN_API_URL = 'https://api.heygen.com';
 
@@ -8,7 +10,24 @@ const CACHE_TTL = 3600000; // 1 hour
 
 export async function GET(req: NextRequest) {
   try {
-    const apiKey = process.env.HEYGEN_API_KEY;
+    let apiKey = process.env.HEYGEN_API_KEY;
+
+    try {
+      const user = await getAuthenticatedUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('heygen_api_key')
+          .eq('id', user.id)
+          .single();
+        if (profile?.heygen_api_key && profile.heygen_api_key.trim() !== '') {
+          apiKey = profile.heygen_api_key.trim();
+        }
+      }
+    } catch (e) {
+      console.warn('[HeyGen Avatars] Failed to fetch user BYOK key, falling back to system key:', e);
+    }
+
     if (!apiKey) throw new Error('HEYGEN_API_KEY missing');
 
     const now = Date.now();

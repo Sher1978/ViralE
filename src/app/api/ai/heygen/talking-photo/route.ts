@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+import { getAuthenticatedUser } from '@/lib/auth';
+import { supabase } from '@/lib/supabase';
 
 const HEYGEN_API_URL = 'https://api.heygen.com';
 
@@ -7,8 +9,30 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { audioUrl, photoUrl, avatarId, avatarType, projectId } = body;
 
-    const apiKey = process.env.HEYGEN_API_KEY;
-    if (!apiKey) throw new Error('System HeyGen API Key missing');
+    let apiKey = process.env.HEYGEN_API_KEY;
+
+    try {
+      const user = await getAuthenticatedUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('heygen_api_key')
+          .eq('id', user.id)
+          .single();
+        if (profile?.heygen_api_key && profile.heygen_api_key.trim() !== '') {
+          apiKey = profile.heygen_api_key.trim();
+          console.log(`[HeyGen V2] Using personal BYOK API key for generation request.`);
+        }
+      }
+    } catch (e) {
+      console.warn('[HeyGen V2] Failed to resolve user BYOK key, falling back to system key:', e);
+    }
+
+    if (!apiKey) {
+      return NextResponse.json({ 
+        error: 'API-ключ HeyGen не найден. Пожалуйста, перейдите в Профиль -> Digital Connectors и добавьте ваш ключ HeyGen.' 
+      }, { status: 400 });
+    }
 
     console.log(`[HeyGen V2] Starting production pipeline. Type: ${avatarType || 'talking_photo'}`);
     
@@ -23,7 +47,7 @@ export async function POST(req: NextRequest) {
         const res = await fetch(url, {
           method: 'POST',
           headers: { 
-            'X-Api-Key': apiKey,
+            'X-Api-Key': apiKey!,
             'Authorization': `Bearer ${apiKey}`,
             'Content-Type': 'application/json',
             'Accept': 'application/json',
@@ -126,7 +150,7 @@ export async function POST(req: NextRequest) {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
-        'X-Api-Key': apiKey,
+        'X-Api-Key': apiKey!,
         'Authorization': `Bearer ${apiKey}`
       },
       body: JSON.stringify(payload)
@@ -157,7 +181,24 @@ export async function GET(req: NextRequest) {
   try {
     const { searchParams } = new URL(req.url);
     const taskId = searchParams.get('taskId');
-    const apiKey = process.env.HEYGEN_API_KEY;
+    
+    let apiKey = process.env.HEYGEN_API_KEY;
+
+    try {
+      const user = await getAuthenticatedUser();
+      if (user) {
+        const { data: profile } = await supabase
+          .from('profiles')
+          .select('heygen_api_key')
+          .eq('id', user.id)
+          .single();
+        if (profile?.heygen_api_key && profile.heygen_api_key.trim() !== '') {
+          apiKey = profile.heygen_api_key.trim();
+        }
+      }
+    } catch (e) {
+      console.warn('[HeyGen Status] Failed to resolve user BYOK key, falling back to system key:', e);
+    }
 
     if (!taskId) return NextResponse.json({ error: 'Task ID missing' }, { status: 400 });
 

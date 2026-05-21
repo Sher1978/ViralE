@@ -70,6 +70,7 @@ export const VideoEditor = React.memo(({
   const [isAutoGeneratingBroll, setIsAutoGeneratingBroll] = useState(false);
   const [editingBrollClip, setEditingBrollClip] = useState<BRollClipMeta | null>(null);
   const [autoGenProgress, setAutoGenProgress] = useState('');
+  const [isExporting, setIsExporting] = useState(false);
 
   // --- ACTIONS ---
 
@@ -315,7 +316,18 @@ export const VideoEditor = React.memo(({
 
       <EditorTopBar 
         onBack={onBack} 
-        onExport={() => onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize, subtitleStyle)} 
+        isExporting={isExporting}
+        onExport={async () => {
+          if (isExporting) return;
+          setIsExporting(true);
+          try {
+            await onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize, subtitleStyle);
+          } catch (e) {
+            console.error('[VideoEditor] Export failed:', e);
+          } finally {
+            setIsExporting(false);
+          }
+        }} 
       />
 
       {/* 2. Video Preview (Viewport) */}

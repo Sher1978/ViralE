@@ -14,16 +14,22 @@ export default function ByokSettingsPage() {
     heygen: { hasKey: boolean; maskedKey: string | null };
     anthropic: { hasKey: boolean; maskedKey: string | null };
     groq: { hasKey: boolean; maskedKey: string | null };
+    gemini: { hasKey: boolean; maskedKey: string | null };
+    elevenlabs: { hasKey: boolean; maskedKey: string | null };
   }>({
     heygen: { hasKey: false, maskedKey: null },
     anthropic: { hasKey: false, maskedKey: null },
-    groq: { hasKey: false, maskedKey: null }
+    groq: { hasKey: false, maskedKey: null },
+    gemini: { hasKey: false, maskedKey: null },
+    elevenlabs: { hasKey: false, maskedKey: null }
   });
 
   const [form, setForm] = useState({
     heygenKey: '',
     anthropicKey: '',
-    groqKey: ''
+    groqKey: '',
+    geminiKey: '',
+    elevenlabsKey: ''
   });
 
   const [loading, setLoading] = useState(true);
@@ -56,12 +62,14 @@ export default function ByokSettingsPage() {
         body: JSON.stringify({
           heygenKey: form.heygenKey || undefined,
           anthropicKey: form.anthropicKey || undefined,
-          groqKey: form.groqKey || undefined
+          groqKey: form.groqKey || undefined,
+          geminiKey: form.geminiKey || undefined,
+          elevenlabsKey: form.elevenlabsKey || undefined
         })
       });
       if (res.ok) {
         await fetchKeys();
-        setForm({ heygenKey: '', anthropicKey: '', groqKey: '' });
+        setForm({ heygenKey: '', anthropicKey: '', groqKey: '', geminiKey: '', elevenlabsKey: '' });
       }
     } catch (e: any) {
       console.error(e);
@@ -153,12 +161,38 @@ export default function ByokSettingsPage() {
             link="https://console.groq.com/keys"
             delay={0.3}
           />
+
+          <KeySection
+            icon={<Sparkles className="w-4 h-4" />}
+            title="Gemini AI Studio (Google)"
+            hint="Used for strategic TRIZ marketing matrices and fast scenarios."
+            placeholder="Enter your AIzaSy..."
+            status={keys.gemini}
+            value={form.geminiKey}
+            onChange={(val: string) => setForm({ ...form, geminiKey: val })}
+            accent="#00C8FF"
+            link="https://aistudio.google.com/app/apikey"
+            delay={0.4}
+          />
+
+          <KeySection
+            icon={<User className="w-4 h-4" />}
+            title="ElevenLabs Voice (Speech Synthesis)"
+            hint="Used to generate human-like synthetic voice narration."
+            placeholder="Enter your ElevenLabs API Key..."
+            status={keys.elevenlabs}
+            value={form.elevenlabsKey}
+            onChange={(val: string) => setForm({ ...form, elevenlabsKey: val })}
+            accent="#00FF9F"
+            link="https://elevenlabs.io/app/settings/api-keys"
+            delay={0.5}
+          />
         </div>
       )}
 
       {/* Floating Action Button */}
       <AnimatePresence>
-        {(form.heygenKey || form.anthropicKey || form.groqKey) && (
+        {(form.heygenKey || form.anthropicKey || form.groqKey || form.geminiKey || form.elevenlabsKey) && (
           <motion.div 
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
