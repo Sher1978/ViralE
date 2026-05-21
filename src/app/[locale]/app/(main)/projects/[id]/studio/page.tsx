@@ -955,7 +955,8 @@ export default function StudioPage() {
       addSystemLog('Запуск скачивания RAW видео...');
       const isTelegram = typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp;
       const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      addSystemLog(`Параметры окружения: Мобильный=${isMobile}, TelegramWebApp=${isTelegram}`);
+      const isiOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      addSystemLog(`Параметры окружения: Мобильный=${isMobile}, iOS=${isiOS}, TelegramWebApp=${isTelegram}`);
 
       // 1. INSTANT LOCAL DESKTOP DOWNLOAD (0 seconds!)
       if (lastRecordingUrl.startsWith('blob:') && !isMobile && !isTelegram) {
@@ -987,7 +988,9 @@ export default function StudioPage() {
       }
 
       // 2. INSTANT LOCAL MOBILE WEB SHARE (0 seconds!)
-      if (lastRecordingUrl.startsWith('blob:') && isMobile && typeof navigator !== 'undefined' && navigator.share) {
+      // iOS / Safari cannot share WebM container files directly via Web Share API (causes silent failures in AVFoundation).
+      // Therefore, we bypass this local share block on iOS so it goes straight to server-side H.264 MP4 normalization.
+      if (lastRecordingUrl.startsWith('blob:') && isMobile && !isiOS && typeof navigator !== 'undefined' && navigator.share) {
         try {
           addSystemLog('Попытка мгновенного шеринга файла через Web Share API...');
           let fileBlob = recordedBlobRef.current;
