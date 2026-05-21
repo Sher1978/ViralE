@@ -67,6 +67,8 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
   const timelineScrollRef = useRef<HTMLDivElement>(null);
   const trackAreaRef = useRef<HTMLDivElement>(null);
 
+  // Fallback: some browsers (especially iOS) fire onDurationChange but not onLoadedMetadata.
+  // Reading directly from videoRef at interaction time is the safest approach.
   const togglePlay = () => {
     if (videoRef.current) {
       if (isPlaying) videoRef.current.pause();
@@ -82,9 +84,40 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
   };
 
   const handleLoadedMetadata = () => {
-    if (videoRef.current) {
-      setDuration(videoRef.current.duration);
+    const d = videoRef.current?.duration;
+    console.log('[TimelineLab] onLoadedMetadata fired. duration =', d, '| videoRef.src =', videoRef.current?.src?.slice(0, 80));
+    if (videoRef.current && d && isFinite(d) && d > 0) {
+      setDuration(d);
     }
+  };
+
+  const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
+    const v = videoRef.current;
+    console.error('[TimelineLab] VIDEO ERROR:', (v as any)?.error?.message, '| code:', (v as any)?.error?.code, '| src:', v?.src?.slice(0, 120));
+  };
+
+  const handleDurationChange = () => {
+    const d = videoRef.current?.duration;
+    console.log('[TimelineLab] onDurationChange fired. duration =', d);
+    if (d && isFinite(d) && d > 0) {
+      setDuration(d);
+    }
+  };
+
+  const handleLoadStart = () => {
+    console.log('[TimelineLab] onLoadStart — video URL:', videoUrl?.slice(0, 120));
+  };
+
+  const handleCanPlay = () => {
+    const d = videoRef.current?.duration;
+    console.log('[TimelineLab] onCanPlay — duration =', d);
+    if (d && isFinite(d) && d > 0 && duration === 0) {
+      setDuration(d);
+    }
+  };
+
+  const handleStalled = () => {
+    console.warn('[TimelineLab] onStalled — video stalled. src:', videoUrl?.slice(0, 120));
   };
 
   const openAvatarLibrary = (trackId: number) => {
@@ -133,6 +166,12 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
       return;
     }
 
+    const activeDuration = duration || (videoRef.current ? videoRef.current.duration : 0);
+    if (!activeDuration || isNaN(activeDuration)) {
+      alert("Video duration is not fully loaded. Please play the video for a split second or wait for it to load.");
+      return;
+    }
+
     // Compile logic: Overlays take priority over Master
     let overlaySegments: ExportSegment[] = [];
     tracks.slice(1).forEach(track => {
@@ -168,20 +207,25 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
        }
        finalMapping.push(overlay);
        lastT = Math.max(lastT, overlay.endTime);
-    }
+     }
 
-    if (lastT < duration) {
+     if (lastT < activeDuration) {
        finalMapping.push({
          id: `master-${lastT}`,
          startTime: lastT,
-         endTime: duration,
+         endTime: activeDuration,
          avatarUrl: mainTrack.avatarUrl!,
          label: 'Master Performance'
        });
-    }
+     }
 
-    onGenerate(finalMapping);
-    setShowConfirmModal(false);
+     if (finalMapping.length === 0) {
+       alert("Synthesis timeline is empty. Please play the video or reload to ensure metadata is loaded.");
+       return;
+     }
+
+     onGenerate(finalMapping);
+     setShowConfirmModal(false);
   };
 
   return (
@@ -202,8 +246,15 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
         </div>
 
         <button 
-          onClick={() => setShowConfirmModal(true)}
-          className="px-10 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
+          onClick={() => {
+            const activeDuration = videoRef.current?.duration || duration;
+            if (!activeDuration || isNaN(activeDuration) || activeDuration <= 0) {
+              alert("Видео ещё не загружено. Попробуйте нажать Play для запуска воспроизведения и подождите секунду.");
+              return;
+            }
+            setShowConfirmModal(true);
+          }}
+          className="px-10 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black uppercase tracking-[0.2em] text-xs shadow-2xl shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-3"
         >
           Синтезировать ИИ
           <Wand2 size={18} />
@@ -219,8 +270,14 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
               src={videoUrl}
               onTimeUpdate={handleTimeUpdate}
               onLoadedMetadata={handleLoadedMetadata}
+              onDurationChange={handleDurationChange}
+              onLoadStart={handleLoadStart}
+              onCanPlay={handleCanPlay}
+              onError={handleVideoError}
+              onStalled={handleStalled}
               className="w-full h-full object-cover"
               playsInline
+              preload="metadata"
               onClick={togglePlay}
             />
             

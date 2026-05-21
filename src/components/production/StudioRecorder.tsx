@@ -121,6 +121,19 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
 
     recorder.onstop = () => {
       const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
+      
+      // Defensive validation against empty or corrupted recorded blobs
+      if (blob.size < 50000 && mode === 'video') {
+        alert("Ошибка: записанное видео пустое или повреждено (размер меньше 50 KB). Пожалуйста, попробуйте записать видео заново.");
+        chunksRef.current = [];
+        return;
+      }
+      if (blob.size < 3000 && mode === 'voice') {
+        alert("Ошибка: записанный звук слишком короткий или поврежден. Пожалуйста, попробуйте записать аудио заново.");
+        chunksRef.current = [];
+        return;
+      }
+
       const url = URL.createObjectURL(blob);
       setRecordedBlob(blob);
       setRecordingUrl(url);
@@ -138,9 +151,17 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
 
   const handleUpload = async () => {
     if (!recordedBlob) return;
+    
+    // Strict pre-upload size check to completely block any empty/corrupt 262-byte uploads
+    if (recordedBlob.size < 50000 && mode === 'video') {
+      alert("Ошибка: файл записи пустой или поврежден (размер менее 50 KB). Пожалуйста, запишите видео заново перед загрузкой.");
+      return;
+    }
+    
     setIsUploading(true);
 
     try {
+      console.log(`[StudioRecorder] Starting upload for recorded ${mode}. Blob size: ${recordedBlob.size} bytes, mimeType: ${recordedBlob.type}`);
       const { assetId, publicUrl } = await renderService.uploadMedia(
         projectId, 
         recordedBlob, 

@@ -362,11 +362,11 @@ export const TeleprompterView = React.memo(({
       >
         <div 
           id="scrolling-content"
-          className="w-full space-y-12 transition-all duration-700 ease-out px-24 sm:px-36 text-center flex flex-col pt-[18vh] pb-[100vh]"
+          className="w-full space-y-12 transition-all duration-700 ease-out pl-8 pr-24 sm:px-36 text-center flex flex-col pt-[18vh] pb-[100vh]"
         >
           {/* Eye Contact Guide (Only for Video Mode) */}
           {!isVoiceOnly && (
-            <div className="absolute top-[18vh] inset-x-24 sm:inset-x-36 h-32 border-y border-white/5 pointer-events-none z-0" />
+            <div className="absolute top-[18vh] inset-x-8 pr-24 sm:inset-x-36 h-32 border-y border-white/5 pointer-events-none z-0" />
           )}
           
           <p 
@@ -444,7 +444,7 @@ export const TeleprompterView = React.memo(({
       </div>
 
       {/* Recording Button - Center Bottom Fixed */}
-      <div className="absolute bottom-12 left-0 right-0 flex justify-center z-50">
+      <div className="absolute bottom-24 left-0 right-0 flex justify-center z-50">
         <motion.button 
           whileTap={{ scale: 0.9 }}
           onClick={onToggleRecording}

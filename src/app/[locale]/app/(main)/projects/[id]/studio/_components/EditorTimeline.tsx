@@ -200,7 +200,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 onBrollLongPress?.(clip.id);
                             }}
                             onPointerDown={(e) => {
-                                // --- DOUBLE TAP DETECTION (Mobile/Responsive) ---
+                                // --- DOUBLE TAP DETECTION ---
                                 const now = Date.now();
                                 if (now - lastTapRef.current < 300) {
                                     onBrollLongPress?.(clip.id);
@@ -210,7 +210,6 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 }
                                 lastTapRef.current = now;
 
-                                // --- STILL LONG PRESS LOGIC (500ms for high responsiveness) ---
                                 const startX = e.clientX;
                                 const startY = e.clientY;
                                 let movedTooMuch = false;
@@ -224,10 +223,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 
                                 const onMove = (me: PointerEvent) => {
                                     const dist = Math.sqrt(Math.pow(me.clientX - startX, 2) + Math.pow(me.clientY - startY, 2));
-                                    if (dist > 8) {
-                                        movedTooMuch = true;
-                                        clearTimeout(timer);
-                                    }
+                                    if (dist > 8) { movedTooMuch = true; clearTimeout(timer); }
                                 };
                                 const onUp = () => {
                                     clearTimeout(timer);
@@ -237,7 +233,6 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 window.addEventListener('pointermove', onMove);
                                 window.addEventListener('pointerup', onUp);
  
-                                // --- INDEPENDENT DRAG LOGIC ---
                                 if ((e.target as HTMLElement).classList.contains('resize-handle')) return;
                                 if ((e.target as HTMLElement).closest('.delete-btn')) return;
                                 
@@ -256,18 +251,28 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 window.addEventListener('pointermove', onDragMove);
                                 window.addEventListener('pointerup', onDragUp);
                             }}
-                            className="broll-clip-box absolute h-full rounded-lg bg-blue-500/35 border-2 border-blue-400/60 flex items-center justify-between overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10"
+                            className={`broll-clip-box absolute h-full rounded-lg flex items-center justify-between overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10 ${
+                                !clip.content
+                                    // Placeholder style — awaiting user confirmation
+                                    ? 'border-2 border-dashed border-violet-400/70 bg-violet-500/15 animate-pulse'
+                                    // Filled clip style
+                                    : 'bg-blue-500/35 border-2 border-blue-400/60'
+                            }`}
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
                                 width: clip.duration * PX_PER_SECOND 
                             }}
                         >
-                            <div className="absolute inset-0 bg-gradient-to-br from-blue-300/10 to-transparent pointer-events-none" />
+                            <div className={`absolute inset-0 pointer-events-none ${!clip.content ? 'bg-gradient-to-br from-violet-400/5 to-transparent' : 'bg-gradient-to-br from-blue-300/10 to-transparent'}`} />
                             
-                            {/* Visual Drag Dots indicator or layer icon */}
-                            <Layers size={11} className="text-blue-200/60 relative z-10 ml-3 pointer-events-none" style={{ minWidth: '11px' }} />
+                            {/* Icon — question mark for placeholders, layers icon for filled */}
+                            {!clip.content ? (
+                                <span className="text-violet-300/80 text-[10px] font-black ml-2 relative z-10 pointer-events-none leading-none">?</span>
+                            ) : (
+                                <Layers size={11} className="text-blue-200/60 relative z-10 ml-3 pointer-events-none" style={{ minWidth: '11px' }} />
+                            )}
                             
-                            {/* Delete/Delete-btn Trigger (restored correctly!) */}
+                            {/* Delete button */}
                             <button
                                 className="delete-btn absolute left-1.5 top-1/2 -translate-y-1/2 w-5 h-5 rounded-full bg-red-500/90 border border-white/10 hover:bg-red-600 active:scale-95 text-white flex items-center justify-center z-30 transition-all opacity-0 group-hover/clip:opacity-100 touch-none shadow-md"
                                 onPointerDown={(e) => {
@@ -280,7 +285,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
 
                             {/* Resize Handle */}
                             <div 
-                                className="resize-handle absolute right-0 top-0 bottom-0 w-4 bg-blue-400/20 hover:bg-blue-400/60 cursor-ew-resize z-20 flex items-center justify-center"
+                                className={`resize-handle absolute right-0 top-0 bottom-0 w-4 hover:bg-blue-400/60 cursor-ew-resize z-20 flex items-center justify-center ${!clip.content ? 'bg-violet-400/10 hover:bg-violet-400/40' : 'bg-blue-400/20'}`}
                                 onPointerDown={(e) => {
                                     e.stopPropagation();
                                     const startX = e.clientX;

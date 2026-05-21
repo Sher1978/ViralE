@@ -15,8 +15,10 @@ const ffmpegPath = ffmpegInstaller.path;
 // High-reliability spawn wrapper for FFmpeg to allow real-time stderr output and prevent buffer overflows
 function runFFmpeg(args: string[]): Promise<{ stdout: string; stderr: string }> {
   return new Promise((resolve, reject) => {
-    console.log(`[FFmpeg] Running command: ffmpeg ${args.join(' ')}`);
-    const proc = spawn(ffmpegPath, args);
+    // Clean up stderr by hiding massive build configuration banners
+    const finalArgs = args.includes('-hide_banner') ? args : ['-hide_banner', ...args];
+    console.log(`[FFmpeg] Running command: ffmpeg ${finalArgs.join(' ')}`);
+    const proc = spawn(ffmpegPath, finalArgs);
     
     let stdout = '';
     let stderr = '';
@@ -54,6 +56,29 @@ function runFFmpeg(args: string[]): Promise<{ stdout: string; stderr: string }> 
   });
 }
 
+function normalizeSupabaseUrl(url: string): string {
+  if (!url) return url;
+  const currentUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+  if (!currentUrl) return url;
+  
+  // 1. Replace old Supabase hosts with the current active one
+  let normalized = url.replace(/https:\/\/[a-z0-9-]+\.supabase\.co/gi, currentUrl);
+  
+  // 2. If it's a signed URL from Supabase, convert it to a direct public URL to bypass token validation of a different project
+  if (normalized.includes('/storage/v1/object/sign/')) {
+    normalized = normalized.replace('/storage/v1/object/sign/', '/storage/v1/object/public/');
+    try {
+      const urlObj = new URL(normalized);
+      urlObj.search = '';
+      normalized = urlObj.toString();
+    } catch (e) {
+      console.warn('[Fusion] URL parsing failed during normalization for:', normalized);
+    }
+  }
+  
+  return normalized;
+}
+
 export const maxDuration = 300; // Extend to 5 mins for video processing
 
 export async function POST(req: NextRequest) {
@@ -67,28 +92,96 @@ export async function POST(req: NextRequest) {
     const { projectId, videoUrl, segments } = await req.json();
     if (!videoUrl || !segments) return NextResponse.json({ error: 'Missing data' }, { status: 400 });
 
-    await fs.mkdir(tmpDir, { recursive: true });
-    const originalVideoPath = path.join(tmpDir, 'original.mp4');
-    
-    // 1. Download Original Video
-    console.log('[Fusion] Downloading original video...');
-    const response = await axios({ url: videoUrl, method: 'GET', responseType: 'stream' });
-    const writer = createWriteStream(originalVideoPath);
-    response.data.pipe(writer);
-    await new Promise((resolve, reject) => {
-      writer.on('finish', () => {
-        setTimeout(resolve, 100); // 100ms extra tick to guarantee full OS sync
-      });
-      writer.on('error', (err) => {
-        writer.destroy();
-        reject(err);
-      });
-    });
+    if (segments.length === 0) {
+      throw new Error('Timeline contains no active video segments. Please wait for the video player to load or add at least one segment.');
+    }
 
-    // Verify downloaded original video size
-    const origStat = await fs.stat(originalVideoPath);
-    if (origStat.size === 0) {
-      throw new Error('Downloaded original video is empty');
+    const normalizedVideoUrl = normalizeSupabaseUrl(videoUrl);
+    console.log(`[Fusion] Original video URL normalized from "${videoUrl}" to "${normalizedVideoUrl}"`);
+
+    await fs.mkdir(tmpDir, { recursive: true });
+    
+    // Detect extension from normalizedVideoUrl to prevent extension-mismatch errors in FFmpeg
+    let extension = 'mp4';
+    if (normalizedVideoUrl.toLowerCase().includes('.webm')) {
+      extension = 'webm';
+    } else if (normalizedVideoUrl.toLowerCase().includes('.mov')) {
+      extension = 'mov';
+    } else if (normalizedVideoUrl.toLowerCase().includes('.avi')) {
+      extension = 'avi';
+    } else if (normalizedVideoUrl.toLowerCase().includes('.mkv')) {
+      extension = 'mkv';
+    }
+    
+    const originalVideoPath = path.join(tmpDir, `original.${extension}`);
+    
+    // 1. Download Original Video with automatic template fallback protection
+    let downloadUrl = normalizedVideoUrl;
+    let fallbackUsed = false;
+
+    const downloadVideoFile = async (url: string, destPath: string) => {
+      console.log(`[Fusion] Downloading video file: "${url}"`);
+      const response = await axios({ 
+        url, 
+        method: 'GET', 
+        responseType: 'stream',
+        timeout: 20000,
+        headers: { 'Accept': 'video/*, */*' }
+      });
+      const writer = createWriteStream(destPath);
+      response.data.pipe(writer);
+      await new Promise<void>((resolve, reject) => {
+        writer.on('finish', () => {
+          setTimeout(resolve, 150); // Extra tick for complete disk write sync
+        });
+        writer.on('error', (err) => {
+          writer.destroy();
+          reject(err);
+        });
+      });
+
+      const stat = await fs.stat(destPath);
+      if (stat.size < 1000) {
+        throw new Error(`Downloaded video file is too small or corrupt (${stat.size} bytes)`);
+      }
+      console.log(`[Fusion] Successfully downloaded video file. Size: ${stat.size} bytes.`);
+    };
+
+    try {
+      await downloadVideoFile(downloadUrl, originalVideoPath);
+    } catch (err: any) {
+      throw new Error(`Failed to download original recording: ${err.message}`);
+    }
+
+    // 1b. Normalize the entire original video into a seekable, fully indexed H.264 MP4.
+    // Browser-recorded WebM files lack indices (cues), which causes FFmpeg input seeking (-ss before -i)
+    // to output corrupted, headerless video chunks. Normalizing first guarantees perfect seeking.
+    console.log('[Fusion] Normalizing browser WebM to seekable H.264 MP4...');
+    const seekableVideoPath = path.join(tmpDir, 'seekable_original.mp4');
+    try {
+      await runFFmpeg([
+        '-i', originalVideoPath,
+        '-c:v', 'libx264',
+        '-preset', 'veryfast',
+        '-crf', '23',
+        '-pix_fmt', 'yuv420p',
+        '-c:a', 'aac',
+        '-y',
+        seekableVideoPath
+      ]);
+    } catch (err: any) {
+      console.warn('[Fusion] Normalization with audio track failed (likely silent/no-mic video). Retrying with video-only normalization...', err.message);
+      await runFFmpeg([
+        '-i', originalVideoPath,
+        '-c:v', 'libx264',
+        '-preset', 'veryfast',
+        '-crf', '23',
+        '-pix_fmt', 'yuv420p',
+        '-an',
+        '-y',
+        seekableVideoPath
+      ]);
+      console.log('[Fusion] Silent/video-only normalization successful.');
     }
 
     // 2. Process Segments in Parallel
@@ -96,11 +189,11 @@ export async function POST(req: NextRequest) {
     const processedSegments = await Promise.all(segments.map(async (seg: any, idx: number) => {
       const segmentInputPath = path.join(tmpDir, `seg_${idx}_raw.mp4`);
       
-      // Cut and normalize segment to 720x1280, 25fps, yuv420p (strip audio with -an and use output seeking to guarantee valid keyframes)
+      // Cut and normalize segment to 720x1280, 25fps, yuv420p (strip audio with -an and use input seeking to guarantee valid keyframes)
       const duration = seg.endTime - seg.startTime;
       await runFFmpeg([
-        '-i', originalVideoPath,
         '-ss', seg.startTime.toString(),
+        '-i', seekableVideoPath,
         '-t', duration.toString(),
         '-vf', 'scale=720:1280:force_original_aspect_ratio=decrease,pad=720:1280:(720-iw)/2:(1280-ih)/2,setsar=1',
         '-c:v', 'libx264',
@@ -126,80 +219,38 @@ export async function POST(req: NextRequest) {
         console.log(`[Fusion] Segment ${idx}: Animating with LivePortrait...`);
         const segmentBuffer = await fs.readFile(segmentInputPath);
 
-        // Upload segment to Supabase storage (using user_recordings/ prefix to inherit public read SELECT policy)
-        const drivingFileName = `user_recordings/driving_${uuidv4()}.mp4`;
-        const { error: uploadError } = await supabase.storage
-          .from('media')
-          .upload(drivingFileName, segmentBuffer, {
-            contentType: 'video/mp4',
-            upsert: true
-          });
-
-        if (uploadError) {
-          throw new Error(`Failed to upload driving segment to Supabase: ${uploadError.message}`);
+        // CRITICAL: Pass Buffer directly to falService.uploadFile, NOT wrapped in Blob.
+        // In Node.js, @fal-ai/client cannot stream bytes from a Web API Blob — it silently uploads 0 bytes.
+        // Buffer is natively supported and ensures the correct byte payload is sent every time.
+        if (segmentBuffer.length === 0) {
+          throw new Error(`Segment ${idx} buffer is empty after fs.readFile — disk write may have failed.`);
         }
+        console.log(`[Fusion] Segment ${idx}: Uploading driving segment (${segmentBuffer.length} bytes) directly to Fal storage...`);
+        const drivingFalUrl = await falService.uploadFile(segmentBuffer, { fileName: `segment_${idx}.mp4`, contentType: 'video/mp4' });
+        console.log(`[Fusion] Segment ${idx} driving video Fal URL: ${drivingFalUrl}`);
 
-        // Wait an additional 500ms to allow Supabase CDN and database writes to fully propagate
-        await new Promise((resolve) => setTimeout(resolve, 500));
-
-        // Generate a 1-hour signed URL to guarantee that Fal AI can read the file even if the bucket is private
-        const { data: signedData, error: signedError } = await supabase.storage
-          .from('media')
-          .createSignedUrl(drivingFileName, 3600);
-
-        if (signedError || !signedData?.signedUrl) {
-          throw new Error(`Failed to generate signed URL for driving segment: ${signedError?.message || 'Unknown error'}`);
-        }
-
-        const drivingPublicUrl = signedData.signedUrl;
-        console.log(`[Fusion] Segment ${idx} driving video signed URL generated: ${drivingPublicUrl}`);
-
-        // Verification Probe: Confirm the signed URL returns HTTP 200 and video/mp4 right before Fal.ai execution
+        // Optimize avatar image URL as well by uploading to Fal Storage
+        let finalAvatarUrl = normalizeSupabaseUrl(seg.avatarUrl);
+        console.log(`[Fusion] Pre-processing avatar URL: ${finalAvatarUrl}`);
+        
         try {
-          const probe = await axios.head(drivingPublicUrl);
-          console.log(`[Fusion] Probe check for Segment ${idx} URL successful: Status = ${probe.status}, Content-Type = ${probe.headers['content-type']}`);
-        } catch (probeError: any) {
-          console.warn(`[Fusion] Probe warning for Segment ${idx} URL: ${probeError.message}`);
-        }
-
-        // Pre-upload avatar photo to Supabase storage if it's from HeyGen/external site for maximum speed/stability
-        let finalAvatarUrl = seg.avatarUrl;
-        if (seg.avatarUrl.startsWith('http') && !seg.avatarUrl.includes('supabase.co')) {
-          try {
-            console.log(`[Fusion] Pre-uploading avatar to Supabase: ${seg.avatarUrl}`);
-            const avatarRes = await axios.get(seg.avatarUrl, { responseType: 'arraybuffer' });
-            const avatarBuffer = Buffer.from(avatarRes.data);
-            const avatarFileName = `user_recordings/avatar_${uuidv4()}.png`;
-            
-            const { error: avatarUploadError } = await supabase.storage
-              .from('media')
-              .upload(avatarFileName, avatarBuffer, {
-                contentType: 'image/png',
-                upsert: true
-              });
-
-            if (!avatarUploadError) {
-              const { data: signedAvatar, error: signedAvatarError } = await supabase.storage
-                .from('media')
-                .createSignedUrl(avatarFileName, 3600);
-                
-              if (!signedAvatarError && signedAvatar?.signedUrl) {
-                finalAvatarUrl = signedAvatar.signedUrl;
-                console.log(`[Fusion] Avatar signed URL generated: ${finalAvatarUrl}`);
-              } else {
-                const { data: { publicUrl: avatarPublicUrl } } = supabase.storage
-                  .from('media')
-                  .getPublicUrl(avatarFileName);
-                finalAvatarUrl = avatarPublicUrl;
-                console.log(`[Fusion] Avatar public URL fallback: ${finalAvatarUrl}`);
-              }
-            }
-          } catch (err: any) {
-            console.warn(`[Fusion] Pre-upload of avatar to Supabase failed: ${err.message}`);
+          console.log(`[Fusion] Downloading avatar and uploading directly to Fal storage for maximum stability...`);
+          const avatarRes = await axios.get(finalAvatarUrl, { responseType: 'arraybuffer' });
+          const avatarBuffer = Buffer.from(avatarRes.data);
+          
+          if (avatarBuffer.length === 0) {
+            throw new Error('Downloaded avatar image buffer is empty — check the avatar URL is accessible.');
           }
+          console.log(`[Fusion] Avatar buffer ready: ${avatarBuffer.length} bytes. Uploading to Fal...`);
+          // Pass Buffer directly — NOT wrapped in Blob (Blob causes 0-byte uploads in Node.js @fal-ai/client)
+          const avatarFalUrl = await falService.uploadFile(avatarBuffer, { fileName: 'avatar.png', contentType: 'image/png' });
+          finalAvatarUrl = avatarFalUrl;
+          console.log(`[Fusion] Avatar Fal storage URL generated: ${finalAvatarUrl}`);
+        } catch (err: any) {
+          console.warn(`[Fusion] Direct upload of avatar to Fal storage failed, falling back to original URL: ${err.message}`);
         }
 
-        const aiResult = await falService.animateAvatar(finalAvatarUrl, drivingPublicUrl);
+        const aiResult = await falService.animateAvatar(finalAvatarUrl, drivingFalUrl);
         
         // Download AI Result to a temp file
         const tempAiPath = path.join(tmpDir, `seg_${idx}_ai_raw.mp4`);
@@ -268,54 +319,81 @@ export async function POST(req: NextRequest) {
       }
     }
 
-    const concatFilePath = path.join(tmpDir, 'concat.txt');
-    // Ensure all file paths in concat.txt use standardized forward slashes to avoid escape character errors
-    const concatContent = processedSegments.map(p => `file '${p.replace(/\\/g, '/')}'`).join('\n');
-    await fs.writeFile(concatFilePath, concatContent);
-
     const outputPath = path.join(tmpDir, 'output.mp4');
     // Extract original audio and bind to the new video sequence (re-encode to AAC for absolute compatibility)
     const audioPath = path.join(tmpDir, 'audio.m4a');
-    await runFFmpeg([
-      '-i', originalVideoPath,
-      '-vn',
-      '-c:a', 'aac',
-      '-b:a', '128k',
-      audioPath
-    ]);
-    
-    // Verify audio file is fully written and accessible before launching concat
     try {
-      await fs.access(audioPath);
+      console.log('[Fusion] Extracting audio from original video...');
+      await runFFmpeg([
+        '-i', originalVideoPath,
+        '-vn',
+        '-c:a', 'aac',
+        '-b:a', '128k',
+        '-y',
+        audioPath
+      ]);
+      
       const stats = await fs.stat(audioPath);
       if (stats.size === 0) {
-        throw new Error(`Audio file ${audioPath} is empty`);
+        throw new Error('Extracted audio file is empty');
       }
     } catch (err: any) {
-      throw new Error(`Pre-concat validation failed: Audio file ${audioPath} is not accessible. Details: ${err.message}`);
+      console.warn('[Fusion] Original video has no audio or audio extraction failed. Generating silent audio fallback...', err.message);
+      // Generate 120 seconds of stereo silence as a fallback so stitching never fails
+      await runFFmpeg([
+        '-f', 'lavfi',
+        '-i', 'anullsrc=channel_layout=stereo:sample_rate=44100',
+        '-t', '120',
+        '-c:a', 'aac',
+        '-y',
+        audioPath
+      ]);
+      console.log('[Fusion] Silent audio fallback generated successfully.');
     }
 
-    // Concatenate and force full re-encoding on the output to normalize variable framerates from fal.ai and prevent crashes
+    // Concatenate and force full re-encoding on the output using advanced FFmpeg concat filter.
+    // This is 100% immune to OS path spaces, slashes, or quotation escaping errors.
     console.log('[Fusion] Concatenating and re-encoding output to normalize variable framerates...');
-    await runFFmpeg([
-      '-f', 'concat',
-      '-safe', '0',
-      '-i', concatFilePath,
-      '-i', audioPath,
+    const concatArgs: string[] = [];
+    
+    // 1. Add all segment videos as inputs
+    for (const segmentPath of processedSegments) {
+      concatArgs.push('-i', segmentPath);
+    }
+    // 2. Add audio file as the last input
+    concatArgs.push('-i', audioPath);
+    
+    // 3. Build the concat filter complex
+    const numSegments = processedSegments.length;
+    let filterString = '';
+    for (let i = 0; i < numSegments; i++) {
+      filterString += `[${i}:v]`;
+    }
+    filterString += `concat=n=${numSegments}:v=1:a=0[outv]`;
+    
+    concatArgs.push(
+      '-filter_complex', filterString,
       '-c:v', 'libx264',
       '-preset', 'veryfast',
       '-crf', '23',
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-vsync', '2',
-      '-map', '0:v:0',
-      '-map', '1:a:0',
+      '-map', '[outv]',
+      '-map', `${numSegments}:a:0`, // Map audio track from the last input
+      '-y',
       outputPath
-    ]);
+    );
+
+    await runFFmpeg(concatArgs);
 
     // 4. Upload Result
     const resultBuffer = await fs.readFile(outputPath);
-    const finalUrl = await falService.uploadFile(resultBuffer);
+    if (resultBuffer.length === 0) {
+      throw new Error('Final output video is empty after stitching — FFmpeg concat may have failed silently.');
+    }
+    console.log(`[Fusion] Final output ready: ${resultBuffer.length} bytes. Uploading to Fal CDN...`);
+    const finalUrl = await falService.uploadFile(resultBuffer, { fileName: 'output.mp4', contentType: 'video/mp4' });
 
     // Cleanup
     await fs.rm(tmpDir, { recursive: true, force: true });

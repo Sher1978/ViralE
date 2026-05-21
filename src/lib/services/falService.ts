@@ -5,12 +5,14 @@ export const falService = {
   /**
    * Uploads a file to Fal.ai storage
    */
-  async uploadFile(fileData: Blob | Buffer | string) {
+  async uploadFile(fileData: Blob | Buffer | string, options?: { fileName?: string; contentType?: string }) {
     try {
       const isBrowser = typeof window !== 'undefined';
       const url = await fal.storage.upload(fileData as any, {
         // @ts-ignore
         proxyUrl: isBrowser ? "/api/ai/fal/proxy" : undefined,
+        fileName: options?.fileName,
+        contentType: options?.contentType,
       });
       return url;
     } catch (error) {
@@ -33,18 +35,19 @@ export const falService = {
       
       const result = await fal.subscribe("fal-ai/live-portrait", {
         input: {
-          image_url: faceImageUrl,
-          video_url: drivingVideoUrl,
-          face_image_url: faceImageUrl,
-          driving_video_url: drivingVideoUrl,
-          live_portrait_config: {
-            crop_driving_video: true,
-            lip_zero: true,
-            eye_retargeting: true,
-            smile_retargeting: true,
-            hand_retargeting: false 
-          }
-        } as any,
+          video_url: drivingVideoUrl,  // The driving video (user's recording)
+          image_url: faceImageUrl,     // The avatar portrait image
+          flag_lip_zero: true,
+          flag_stitching: true,
+          flag_relative: true,
+          flag_pasteback: true,
+          flag_do_crop: true,
+          flag_do_rot: true,
+          dsize: 512,
+          scale: 2.3,
+          vy_ratio: -0.125,
+          batch_size: 32,
+        },
         logs: true,
         // @ts-ignore
         proxyUrl: isBrowser ? "/api/ai/fal/proxy" : undefined,

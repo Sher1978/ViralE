@@ -4,7 +4,7 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   ArrowLeft, Cpu, Upload, Loader2, Sparkles, Wand2, SkipBack, Play, Pause, VolumeX, Volume2, Mic, Zap,
-  Music, Type, Sliders, PlayCircle
+  Music, Type, Sliders, PlayCircle, Pencil, Clock
 } from 'lucide-react';
 
 import { ProductionManifest } from '@/lib/types/studio';
@@ -20,6 +20,7 @@ import { EditorToolDrawer } from './EditorToolDrawer';
 import { EditorCaptionEditor } from './EditorCaptionEditor';
 import { CaptionStyleSelector } from './CaptionStyleSelector';
 import { StudioModals } from './StudioModals';
+import BRollEditorModal, { BRollClipMeta } from '@/components/studio/BRollEditorModal';
 
 interface VideoEditorProps {
   projectId: string;
@@ -65,7 +66,93 @@ export const VideoEditor = React.memo(({
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
+  // Auto-Broll States
+  const [isAutoGeneratingBroll, setIsAutoGeneratingBroll] = useState(false);
+  const [editingBrollClip, setEditingBrollClip] = useState<BRollClipMeta | null>(null);
+  const [autoGenProgress, setAutoGenProgress] = useState('');
+
   // --- ACTIONS ---
+
+  const downloadAndCache = useCallback(async (targetUrl: string, clipId: string) => {
+    try {
+      const res = await fetch(targetUrl);
+      const blob = await res.blob();
+      await idb.set(`broll_file_${clipId}`, blob);
+      const localUrl = URL.createObjectURL(blob);
+      setBrollClips(prev => prev.map(c => c.id === clipId ? { ...c, url: localUrl } : c));
+    } catch (e) { console.error('[Editor] B-roll cache failed:', e); }
+  }, [setBrollClips]);
+
+  const handleAutoGenerateBrolls = async () => {
+    if (subtitleClips.length === 0) return;
+    setIsAutoGeneratingBroll(true);
+    setAutoGenProgress('Анализ текста...');
+    try {
+      const res = await fetch('/api/ai/auto-broll', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subtitles: subtitleClips })
+      });
+      if (!res.ok) throw new Error('API failed');
+
+      const data = await res.json();
+      const brolls = data.brolls || [];
+
+      if (brolls.length === 0) {
+        alert('ИИ не нашёл подходящих моментов. Попробуйте записать более динамичное видео.');
+        setIsAutoGeneratingBroll(false);
+        return;
+      }
+
+      const parseTimestamp = (ts: any): number => {
+        if (typeof ts === 'number') return ts;
+        if (!ts) return 0;
+        const str = String(ts).trim();
+        const parts = str.split(':');
+        // Supports "MM:SS.mmm", "HH:MM:SS", plain seconds
+        if (parts.length === 2) return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+        if (parts.length === 3) return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2]);
+        return parseFloat(str) || 0;
+      };
+
+      // Place placeholders — no stock fetch; user confirms via double-tap on timeline
+      const ts = Date.now();
+      const placeholders = brolls.map((pb: any, index: number) => {
+        const id = `br_${ts}_${index}`;
+        // Prefer new fields, fall back to old field names for compatibility
+        const searchQ     = pb.search_query    || pb.broll_topic || pb.scene_concept || 'cinematic shot';
+        const visualP     = pb.visual_prompt   || pb.broll_topic || '';
+        const sceneC      = pb.scene_concept   || pb.broll_topic || 'AI Scene';
+        const anchorT     = pb.anchor_type     || undefined;
+        const startTime   = parseTimestamp(pb.time_start || pb.timestamp_start);
+        const endTime     = parseTimestamp(pb.time_end   || pb.timestamp_end);
+
+        return {
+          id,
+          phraseId:     id,
+          url:          '',
+          label:        sceneC.slice(0, 24),
+          prompt:       searchQ.split(/\s+/).slice(0, 3).join(' '), // ≤3 words for Pexels
+          visual_prompt: visualP,
+          scene_concept: sceneC,
+          anchor_type:   anchorT,
+          startTime,
+          endTime,
+          track: 1
+        };
+      });
+
+      setBrollClips(placeholders);
+      setAutoGenProgress('');
+      setIsAutoGeneratingBroll(false);
+      setStage('editing');
+    } catch (err: any) {
+      console.error('[Auto-Broll] Failed:', err);
+      alert(`Ошибка автогенерации B-roll: ${err.message || err}`);
+      setIsAutoGeneratingBroll(false);
+    }
+  };
+
 
   const togglePlay = useCallback(() => {
     const v = videoRef.current;
@@ -108,15 +195,6 @@ export const VideoEditor = React.memo(({
   const handleBRollSelect = (url: string, label?: string) => {
     if (activeBrollPhraseId) {
       const brollId = `br_${Date.now()}`;
-      const downloadAndCache = async (targetUrl: string, clipId: string) => {
-        try {
-          const res = await fetch(targetUrl);
-          const blob = await res.blob();
-          await idb.set(`broll_file_${clipId}`, blob);
-          const localUrl = URL.createObjectURL(blob);
-          setBrollClips(prev => prev.map(c => c.id === clipId ? { ...c, url: localUrl } : c));
-        } catch (e) { console.error('[Editor] B-roll cache failed:', e); }
-      };
 
       setBrollClips(prev => {
         const existingIdx = prev.findIndex(c => c.phraseId === activeBrollPhraseId || c.id === `br-${activeBrollPhraseId}`);
@@ -145,6 +223,14 @@ export const VideoEditor = React.memo(({
     setActiveBrollPhraseId(null);
     setStage('editing');
   };
+
+  const handleBrollPromptSelect = useCallback((clipId: string, videoUrl: string, label?: string) => {
+    setBrollClips(prev => prev.map(c => {
+      if (c.id !== clipId) return c;
+      downloadAndCache(videoUrl, clipId);
+      return { ...c, url: videoUrl, label: label?.slice(0, 20) || c.label };
+    }));
+  }, [downloadAndCache, setBrollClips]);
 
   const startRecording = async () => {
     try {
@@ -315,7 +401,17 @@ export const VideoEditor = React.memo(({
         }}
         onBrollLongPress={(id) => {
             const clip = brollClips.find(c => c.id === id);
-            if (clip) openBRollHunterForClip(clip.phraseId || clip.id, clip.prompt);
+            if (clip) {
+              setEditingBrollClip({
+                id: clip.id,
+                label: clip.label,
+                startTime: clip.startTime,
+                endTime: clip.endTime,
+                prompt: clip.prompt,
+                visual_prompt: clip.visual_prompt,
+                url: clip.url
+              });
+            }
         }}
         onDeleteBroll={deleteBroll}
       />
@@ -355,7 +451,125 @@ export const VideoEditor = React.memo(({
             />
         )}
         {activeTool === 'broll' && (
-            <div className="flex flex-col gap-4 py-4">
+            <div className="flex flex-col gap-3 py-4">
+                {/* ── AUTO-GENERATE BROLLS ── */}
+                <button
+                    id="auto-generate-broll-btn"
+                    disabled={isAutoGeneratingBroll || subtitleClips.length === 0}
+                    onClick={handleAutoGenerateBrolls}
+                    className={`w-full relative overflow-hidden rounded-3xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed ${
+                        isAutoGeneratingBroll
+                            ? 'py-5 bg-indigo-600/80'
+                            : 'py-6 bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-600 shadow-xl shadow-purple-900/40 hover:shadow-purple-500/30'
+                    }`}
+                >
+                    {!isAutoGeneratingBroll && (
+                        <motion.div
+                            animate={{ x: ['-100%', '200%'] }}
+                            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.2 }}
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] pointer-events-none"
+                        />
+                    )}
+                    {isAutoGeneratingBroll ? (
+                        <>
+                            <div className="flex items-center gap-3">
+                                <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                                >
+                                    <Sparkles size={20} className="text-white/80" />
+                                </motion.div>
+                                <span className="text-[11px] font-black uppercase tracking-widest text-white/90">
+                                    {autoGenProgress || 'Генерация...'}
+                                </span>
+                            </div>
+                            <div className="flex gap-1.5 mt-0.5">
+                                {[0, 1, 2].map(i => (
+                                    <motion.div
+                                        key={i}
+                                        animate={{ opacity: [0.3, 1, 0.3] }}
+                                        transition={{ duration: 1.2, repeat: Infinity, delay: i * 0.3 }}
+                                        className="w-1.5 h-1.5 rounded-full bg-white/60"
+                                    />
+                                ))}
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex items-center gap-2">
+                                <Wand2 size={20} className="text-white" />
+                                <span className="text-[13px] font-black uppercase tracking-widest text-white">
+                                    Сгенерировать Б-ролл
+                                </span>
+                            </div>
+                            <span className="text-[9px] text-white/50 font-bold uppercase tracking-[0.2em]">
+                                ИИ-режиссёр выберет моменты из субтитров
+                            </span>
+                        </>
+                    )}
+                </button>
+
+                {/* ── GENERATED CLIPS LIST ── */}
+                {brollClips.length > 0 && (
+                    <div className="space-y-1.5">
+                        <p className="text-[8px] font-black uppercase tracking-[0.3em] text-white/25 px-1 pt-1">
+                            Б-ролл на таймлайне ({brollClips.length})
+                        </p>
+                        <div className="space-y-2 max-h-44 overflow-y-auto no-scrollbar">
+                            {brollClips.map((clip) => (
+                                <div
+                                    key={clip.id}
+                                    className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] group"
+                                >
+                                    {/* Thumbnail */}
+                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex-shrink-0 overflow-hidden border border-white/8">
+                                        {clip.url ? (
+                                            <video
+                                                src={clip.url}
+                                                muted
+                                                playsInline
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : (
+                                            <div className="w-full h-full flex items-center justify-center">
+                                                <Sparkles size={14} className="text-purple-400/50 animate-pulse" />
+                                            </div>
+                                        )}
+                                    </div>
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[11px] font-black text-white/80 truncate leading-tight">
+                                            {clip.label}
+                                        </p>
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                            <Clock size={8} className="text-white/25" />
+                                            <span className="text-[8px] text-white/30 font-bold tabular-nums">
+                                                {clip.startTime.toFixed(1)}s – {clip.endTime.toFixed(1)}s
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {/* Edit button */}
+                                    <button
+                                        onClick={() => setEditingBrollClip({
+                                            id: clip.id,
+                                            label: clip.label,
+                                            startTime: clip.startTime,
+                                            endTime: clip.endTime,
+                                            prompt: clip.prompt,
+                                            visual_prompt: clip.visual_prompt,
+                                            url: clip.url
+                                        })}
+                                        className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 active:scale-90 transition-all flex-shrink-0 hover:bg-purple-500/20"
+                                    >
+                                        <Pencil size={13} />
+                                    </button>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ── MANUAL SINGLE HUNT ── */}
                 <button 
                     onClick={() => {
                         const firstEmpty = brollClips.find(c => !c.url);
@@ -366,22 +580,24 @@ export const VideoEditor = React.memo(({
                             openBRollHunterForClip(id, 'cinematic shot');
                         }
                     }}
-                    className="w-full py-6 bg-purple-500 rounded-3xl flex flex-col items-center gap-2 shadow-xl shadow-purple-500/20 active:scale-95 transition-all"
+                    className="w-full py-5 bg-purple-500/10 border border-purple-500/20 rounded-3xl flex flex-col items-center gap-1.5 shadow-lg shadow-purple-500/10 active:scale-95 transition-all hover:bg-purple-500/15"
                 >
-                    <Sparkles size={24} />
-                    <span className="text-[12px] font-black uppercase tracking-widest">Find AI Scenes</span>
+                    <Sparkles size={20} className="text-purple-400" />
+                    <span className="text-[11px] font-black uppercase tracking-widest text-purple-400">Найти Сцену</span>
+                    <span className="text-[9px] text-white/30 font-bold uppercase tracking-[0.15em]">Один клип вручную</span>
                 </button>
+
                 <div className="grid grid-cols-2 gap-3">
-                    <button className="p-6 bg-white/5 border border-white/5 rounded-3xl flex flex-col items-center gap-2 opacity-40">
-                        <Upload size={20} />
-                        <span className="text-[10px] font-bold uppercase">Manual Upload</span>
+                    <button className="p-5 bg-white/5 border border-white/5 rounded-3xl flex flex-col items-center gap-2 opacity-40">
+                        <Upload size={18} />
+                        <span className="text-[9px] font-bold uppercase">Загрузить</span>
                     </button>
                     <button 
                         onClick={() => setActiveTool(null)}
-                        className="p-6 bg-purple-500/20 border border-purple-500/30 rounded-3xl flex flex-col items-center gap-2 text-purple-400 active:scale-95 transition-all"
+                        className="p-5 bg-white/5 border border-white/10 rounded-3xl flex flex-col items-center gap-2 text-white/50 active:scale-95 transition-all hover:text-white hover:bg-white/8"
                     >
-                        <Zap size={20} />
-                        <span className="text-[10px] font-black uppercase tracking-widest">Use & Close</span>
+                        <Zap size={18} />
+                        <span className="text-[9px] font-black uppercase tracking-widest">Закрыть</span>
                     </button>
                 </div>
             </div>
@@ -439,6 +655,14 @@ export const VideoEditor = React.memo(({
         subtitleEditorOpen={subtitleEditorOpen} setSubtitleEditorOpen={setSubtitleEditorOpen} subtitleEditText={subtitleEditText} setSubtitleEditText={setSubtitleEditText} editingSubtitleId={editingSubtitleId} setSubtitleClips={setSubtitleClips} setSelectedClipId={setSelectedClipId}
         phrasePickerOpen={phrasePickerOpen} setPhrasePickerOpen={setPhrasePickerOpen} setEditingPhraseId={setEditingPhraseId} transcript={transcript} handleSwapPhrase={handleSwapPhrase}
         brollModalOpen={brollModalOpen} setBrollModalOpen={setBrollModalOpen} setActiveBrollPhraseId={setActiveBrollPhraseId} setStage={setStage} handleBRollSelect={handleBRollSelect} activeBrollPrompt={activeBrollPrompt} projectId={projectId} preFetchedBrolls={preFetchedBrolls} activeBrollPhraseId={activeBrollPhraseId} brollClips={brollClips} setBrollClips={setBrollClips}
+      />
+
+      {/* 7. B-Roll Editor — opens on double-tap of timeline clip */}
+      <BRollEditorModal
+        clip={editingBrollClip}
+        isOpen={editingBrollClip !== null}
+        onClose={() => setEditingBrollClip(null)}
+        onSelect={handleBrollPromptSelect}
       />
     </div>
   );

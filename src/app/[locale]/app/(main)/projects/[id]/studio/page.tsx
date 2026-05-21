@@ -48,6 +48,8 @@ const FusionPreview = dynamic(() => import('./_components/FusionPreview').then(m
 
 import { BottomNav } from '@/components/layout/BottomNav';
 
+
+
 export default function StudioPage() {
   const t = useTranslations('studio');
   const router = useRouter();
@@ -214,7 +216,7 @@ export default function StudioPage() {
         const blobRes = await fetch(lastRecordingUrl);
         const videoBlob = await blobRes.blob();
         
-        console.log('[Fusion] Uploading local recording blob to Supabase...');
+        console.log(`[Fusion] Uploading local recording blob to Supabase. Size: ${videoBlob.size} bytes, type: ${videoBlob.type}`);
         const uploadResult = await renderService.uploadMedia(projectId, videoBlob, 'video');
         if (!uploadResult || !uploadResult.publicUrl) {
           throw new Error('Failed to upload recorded video to storage.');
@@ -571,6 +573,17 @@ export default function StudioPage() {
           recorder.onstop = async () => {
             const blob = new Blob(localChunks, { type: recorder.mimeType });
             localChunks.length = 0; // Clear chunks to free RAM immediately
+            
+            // Defensive validation against empty or corrupted recorded blobs
+            if (blob.size < 50000 && !isVoiceOnly) {
+              alert("Ошибка: записанное видео пустое или повреждено (размер меньше 50 KB). Пожалуйста, попробуйте сделать запись заново.");
+              return;
+            }
+            if (blob.size < 3000 && isVoiceOnly) {
+              alert("Ошибка: записанный звук слишком короткий или поврежден. Пожалуйста, попробуйте записать аудио заново.");
+              return;
+            }
+
             const timestamp = Date.now();
             const recordingId = (isVoiceOnly ? 'raw_audio_' : 'raw_rec_') + projectId + '_' + timestamp;
             
@@ -666,30 +679,108 @@ export default function StudioPage() {
   const downloadRawVideo = async () => {
     if (!lastRecordingUrl) return;
     
-    // 🚀 Mobile-first: Use Web Share API for native "Save to Gallery/Files"
-    if (navigator.share && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent)) {
+    let downloadUrl = lastRecordingUrl;
+
+    // 1. If the video is a local blob URL, we MUST upload it to Supabase first to make it a public CDN asset
+    if (lastRecordingUrl.startsWith('blob:')) {
       try {
+        alert("Подготовка видео для скачивания... Пожалуйста, подождите несколько секунд, пока файл загружается на сервер.");
+        
         const response = await fetch(lastRecordingUrl);
         const blob = await response.blob();
-        const extension = blob.type.includes('mp4') ? 'mp4' : 'webm';
-        const file = new File([blob], `ViralEngine_Take_${Date.now()}.${extension}`, { type: blob.type });
         
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
-            files: [file],
-            title: 'Viral Engine Recording',
+        const uploadResult = await renderService.uploadMedia(projectId, blob, 'video');
+        if (uploadResult && uploadResult.publicUrl) {
+          downloadUrl = uploadResult.publicUrl;
+          setLastRecordingUrl(downloadUrl); // cache for future downloads and routes
+          
+          // Sync back to the manifest
+          setManifest(prev => {
+            if (!prev) return prev;
+            const next = { ...prev, videoUrl: downloadUrl || '' };
+            projectService.updateLatestVersionManifest(projectId, next);
+            return next;
           });
-          return;
+        } else {
+          throw new Error("Не удалось сохранить файл на сервере.");
         }
-      } catch (e) {
-        console.error('[Studio] Native share failed:', e);
+      } catch (err: any) {
+        alert("Ошибка подготовки видео: " + err.message);
+        return;
       }
     }
 
-    // Desktop Fallback
+    // 1.5. Normalize raw WebM (VP8/Opus) to universally compatible H.264 MP4 with AAC audio
+    // This guarantees perfect sound in Telegram and native mobile player decoders!
+    if (downloadUrl && downloadUrl.includes('.webm')) {
+      try {
+        console.log('[Studio] Raw WebM detected, invoking server-side H.264/AAC normalization...');
+        const normRes = await fetch('/api/studio/normalize-recording', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ videoUrl: downloadUrl, projectId })
+        });
+        
+        if (normRes.ok) {
+          const normData = await normRes.json();
+          if (normData.publicUrl) {
+            console.log('[Studio] Server-side H.264/AAC normalization success:', normData.publicUrl);
+            downloadUrl = normData.publicUrl;
+            setLastRecordingUrl(downloadUrl); // cache the MP4 URL
+            
+            // Sync back to the manifest
+            setManifest(prev => {
+              if (!prev) return prev;
+              const next = { ...prev, videoUrl: downloadUrl || '' };
+              projectService.updateLatestVersionManifest(projectId, next);
+              return next;
+            });
+          }
+        }
+      } catch (normErr) {
+        console.warn('[Studio] H.264 normalization failed, falling back to raw video:', normErr);
+      }
+    }
+
+    // 2. Telegram WebApp In-App WebView Sandbox Bypass
+    const tgWebApp = typeof window !== 'undefined' && (window as any).Telegram?.WebApp;
+    if (tgWebApp && tgWebApp.openLink) {
+      console.log('[Studio] Inside Telegram WebApp, opening via WebApp.openLink:', downloadUrl);
+      tgWebApp.openLink(downloadUrl);
+      return;
+    }
+
+    // 3. Mobile Safari/Chrome Sandbox Bypass: Use Web Share or Redirect to the public CDN file
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    if (isMobile) {
+      try {
+        if (navigator.share) {
+          const response = await fetch(downloadUrl);
+          const blob = await response.blob();
+          const file = new File([blob], `ViralEngine_Take_${Date.now()}.mp4`, { type: 'video/mp4' });
+          
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            await navigator.share({
+              files: [file],
+              title: 'Viral Engine Video',
+            });
+            return;
+          }
+        }
+      } catch (shareErr) {
+        console.warn('[Studio] Web Share API failed, falling back to direct navigation:', shareErr);
+      }
+
+      // Safe Fallback: Redirect directly to the CDN file to open iOS/Android native download interface
+      window.location.href = downloadUrl;
+      return;
+    }
+
+    // 4. Desktop PC Path: standard download click
     const a = document.createElement('a');
-    a.href = lastRecordingUrl;
+    a.href = downloadUrl;
     a.download = `ViralEngine_Raw_${Date.now()}.mp4`;
+    a.target = '_blank';
     document.body.appendChild(a);
     a.click();
     document.body.removeChild(a);

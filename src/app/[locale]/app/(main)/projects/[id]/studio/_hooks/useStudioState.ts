@@ -40,7 +40,10 @@ export interface BRollClip {
   phraseId?: string;
   url: string;
   label: string;
-  prompt: string;
+  prompt: string;            // ≤3-word search query for Pexels (from search_query)
+  visual_prompt?: string;    // Full cinematic prompt for Veo/Runway
+  scene_concept?: string;    // Russian scene description for UI display
+  anchor_type?: 'Literal' | 'Conceptual' | 'Emotional' | 'Data'; // Trigger category
   startTime: number;
   endTime: number;
   track: number;
@@ -364,17 +367,19 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         try {
           setStageMessage('Извлечение аудио...');
 
-          // CRITICAL: Only skip local AudioContext extraction on Chrome Desktop (non-mobile).
-          // Chrome Desktop decodes WebM via decodeAudioData in a single thread → OOM crash.
-          // iPhone/Safari records native MP4/AAC which Safari handles efficiently without OOM.
-          // Applying the guard to iPhone caused a WORSE freeze: uploading 30-50MB MP4 to cloud on main thread.
+          // CRITICAL: Skip local AudioContext extraction for video files on Chrome Desktop.
+          // Chrome Desktop's decodeAudioData implementation leaks massive amounts of memory and easily 
+          // crashes the tab (OOM / STATUS_BREAKPOINT) when decoding video containers (WebM/MP4).
+          // Voice-only recordings (light audio blobs) remain safe to decode locally.
           const isChromeDesktop = typeof navigator !== 'undefined' &&
             /Chrome/.test(navigator.userAgent) &&
             !/Mobile|Android|iPhone|iPad|iPod/.test(navigator.userAgent);
+          
+          const isVideo = sourceBlob.type.includes('video') || !sourceBlob.type.includes('audio');
 
-          if (isChromeDesktop && sourceBlob.size > 15 * 1024 * 1024) {
-            console.warn('[Studio] Chrome Desktop + large file detected, skipping local AudioContext extraction to prevent OOM crash...');
-            throw new Error('Chrome Desktop: file too large for local extraction, fallback to cloud upload');
+          if (isChromeDesktop && isVideo) {
+            console.warn('[Studio] Chrome Desktop + Video file detected. Skipping local AudioContext extraction to prevent browser OOM crashes...');
+            throw new Error('Chrome Desktop Video: skipping local extraction to prevent OOM crash');
           }
 
           audioBlob = await extractAudioNative(sourceBlob);

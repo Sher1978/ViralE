@@ -70,18 +70,68 @@ export const renderService = {
    * Uploads recorded media to Supabase storage
    */
   async uploadMedia(projectId: string, blob: Blob, type: 'video' | 'audio' | 'image'): Promise<{ assetId: string, publicUrl: string }> {
-    const ext = type === 'video' ? 'webm' : type === 'audio' ? 'mp3' : 'png';
-    const fileName = `${projectId}/${type}_${Date.now()}.${ext}`;
+    // Defensive check before uploading to Supabase Storage
+    if (type === 'video' && blob.size < 50000) {
+      throw new Error(`Записываемый видеофайл пуст или поврежден (${(blob.size / 1024).toFixed(1)} KB). Пожалуйста, сделайте запись заново.`);
+    }
+    if (type === 'audio' && blob.size < 3000) {
+      throw new Error(`Записываемый аудиофайл пуст или поврежден (${(blob.size / 1024).toFixed(1)} KB). Пожалуйста, сделайте запись заново.`);
+    }
 
+    // Determine correct extension and content-type from blob.type (handles all WebM codec variants)
+    let ext: string;
+    let contentType: string;
+
+    const blobType = blob.type || '';
+    if (blobType.includes('mp4') || blobType.includes('avc')) {
+      ext = 'mp4'; contentType = 'video/mp4';
+    } else if (blobType.includes('quicktime') || blobType.includes('mov')) {
+      ext = 'mov'; contentType = 'video/quicktime';
+    } else if (blobType.includes('webm') || blobType.startsWith('video/')) {
+      ext = 'webm'; contentType = 'video/webm';
+    } else if (blobType.includes('audio/mp4') || blobType.includes('audio/aac')) {
+      ext = 'mp4'; contentType = 'audio/mp4';
+    } else if (blobType.includes('audio/webm') || blobType.includes('audio/ogg')) {
+      ext = 'webm'; contentType = 'audio/webm';
+    } else if (blobType.includes('audio/')) {
+      ext = 'mp3'; contentType = 'audio/mpeg';
+    } else if (blobType.includes('image/png')) {
+      ext = 'png'; contentType = 'image/png';
+    } else if (blobType.includes('image/jpeg') || blobType.includes('image/jpg')) {
+      ext = 'jpg'; contentType = 'image/jpeg';
+    } else {
+      // Fallback based on type param
+      ext = type === 'video' ? 'webm' : type === 'audio' ? 'mp3' : 'png';
+      contentType = type === 'video' ? 'video/webm' : type === 'audio' ? 'audio/mpeg' : 'image/png';
+    }
+
+    const fileName = `${projectId}/${type}_${Date.now()}.${ext}`;
     const filePath = `user_recordings/${fileName}`;
 
-    // 1. Upload to Storage (with 30s timeout to prevent iOS Safari freeze on slow networks)
+    console.log(`[renderService] Preparing upload to: "${filePath}". Size: ${blob.size} bytes. blobType: "${blobType}" → contentType: "${contentType}".`);
+
+    // *** CRITICAL FIX: Convert Blob → ArrayBuffer before upload ***
+    // The Supabase JS SDK v2 sometimes fails to stream bytes from a 'raw' browser Blob
+    // (created from fetch(blob:URL)) and silently uploads 0 bytes.
+    // Reading the entire blob into an ArrayBuffer first guarantees all bytes are present in memory
+    // and forces a reliable, buffered upload every single time.
+    const arrayBuffer = await blob.arrayBuffer();
+    console.log(`[renderService] ArrayBuffer ready. byteLength: ${arrayBuffer.byteLength} bytes.`);
+
+    if (arrayBuffer.byteLength < 100) {
+      throw new Error(`ArrayBuffer пустой (${arrayBuffer.byteLength} байт). Похоже, blob:URL был отозван до загрузки. Пожалуйста, сделайте запись заново.`);
+    }
+
+    // 1. Upload to Storage (with 60s timeout for large mobile videos)
     const uploadPromise = supabase.storage
       .from('media')
-      .upload(filePath, blob);
+      .upload(filePath, arrayBuffer, {
+        contentType,
+        upsert: true
+      });
 
     const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Upload timeout after 30s — check network connection')), 30000)
+      setTimeout(() => reject(new Error('Upload timeout after 60s — check network connection')), 60000)
     );
 
     const { data: uploadData, error: uploadError } = await Promise.race([
@@ -104,15 +154,17 @@ export const renderService = {
         file_path: filePath,
         public_url: publicUrl,
         asset_type: type,
-        metadata: { studio_recorded: true }
+        metadata: { studio_recorded: true, original_size: blob.size }
       })
       .select()
       .single();
 
     if (assetError) throw assetError;
 
+    console.log(`[renderService] Upload complete! assetId: ${asset.id}, publicUrl: ${publicUrl}`);
     return { assetId: asset.id, publicUrl };
   },
+
   /**
    * Saves studio manifest to dedicated table
    */
