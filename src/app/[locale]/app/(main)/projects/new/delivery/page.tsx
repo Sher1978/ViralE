@@ -677,7 +677,7 @@ function DeliveryPageContent() {
         if (ffmpegLogsRef.current.length > 100) ffmpegLogsRef.current.shift();
       });
       
-      ffmpeg.on('progress', ({ progress }) => {
+      ffmpeg.on('progress', ({ progress }: { progress: number }) => {
         if (typeof progress !== 'number' || isNaN(progress) || progress < 0) return;
         const p = Math.max(0, Math.min(98, 50 + Math.round(progress * 48)));
         setRenderProgress(p);
