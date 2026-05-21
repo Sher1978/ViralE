@@ -109,6 +109,7 @@ export async function POST(req: NextRequest) {
       .from('media')
       .upload(filePath, normalizedBuffer, {
         contentType: 'video/mp4',
+        contentDisposition: 'attachment',
         upsert: true
       });
 
