@@ -402,6 +402,14 @@ export const VideoEditor = React.memo(({
         onBrollLongPress={(id) => {
             const clip = brollClips.find(c => c.id === id);
             if (clip) {
+              const wordsInRange = transcript.filter(w => {
+                return (w.start >= clip.startTime - 0.2 && w.start <= clip.endTime + 0.2) ||
+                       (w.end >= clip.startTime - 0.2 && w.end <= clip.endTime + 0.2) ||
+                       (w.start <= clip.startTime && w.end >= clip.endTime);
+              });
+              const spokenText = wordsInRange.map(w => w.text).join(' ').trim();
+              console.log('[VideoEditor] Spoken words in timeline B-roll time range:', spokenText);
+
               setEditingBrollClip({
                 id: clip.id,
                 label: clip.label,
@@ -409,7 +417,8 @@ export const VideoEditor = React.memo(({
                 endTime: clip.endTime,
                 prompt: clip.prompt,
                 visual_prompt: clip.visual_prompt,
-                url: clip.url
+                url: clip.url,
+                spoken_text: spokenText
               });
             }
         }}
@@ -552,15 +561,26 @@ export const VideoEditor = React.memo(({
                                     <div className="flex items-center gap-1.5 flex-shrink-0">
                                         {/* Edit button */}
                                         <button
-                                            onClick={() => setEditingBrollClip({
-                                                id: clip.id,
-                                                label: clip.label,
-                                                startTime: clip.startTime,
-                                                endTime: clip.endTime,
-                                                prompt: clip.prompt,
-                                                visual_prompt: clip.visual_prompt,
-                                                url: clip.url
-                                            })}
+                                            onClick={() => {
+                                                const wordsInRange = transcript.filter(w => {
+                                                    return (w.start >= clip.startTime - 0.2 && w.start <= clip.endTime + 0.2) ||
+                                                           (w.end >= clip.startTime - 0.2 && w.end <= clip.endTime + 0.2) ||
+                                                           (w.start <= clip.startTime && w.end >= clip.endTime);
+                                                });
+                                                const spokenText = wordsInRange.map(w => w.text).join(' ').trim();
+                                                console.log('[VideoEditor] Spoken words in sidebar B-roll time range:', spokenText);
+
+                                                setEditingBrollClip({
+                                                    id: clip.id,
+                                                    label: clip.label,
+                                                    startTime: clip.startTime,
+                                                    endTime: clip.endTime,
+                                                    prompt: clip.prompt,
+                                                    visual_prompt: clip.visual_prompt,
+                                                    url: clip.url,
+                                                    spoken_text: spokenText
+                                                });
+                                            }}
                                             className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 active:scale-90 transition-all hover:bg-purple-500/20"
                                         >
                                             <Pencil size={13} />

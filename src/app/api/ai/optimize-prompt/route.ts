@@ -9,7 +9,9 @@ const genAI = new GoogleGenerativeAI(apiKey);
 
 export async function POST(req: Request) {
   try {
-    const { context } = await req.json();
+    const body = await req.json().catch(() => ({}));
+    const context = body.context;
+    const mode = body.mode || 'generation';
 
     // 1. Get user DNA & Style
     let dna = 'Generic expert content creator';
@@ -23,10 +25,6 @@ export async function POST(req: Request) {
     } catch (e) {
       console.warn('Unauthorized or profile error in optimize-prompt:', e);
     }
-
-    const model = genAI.getGenerativeModel({ model: 'gemini-3-flash-preview' });
-
-    const mode = (await req.json().catch(() => ({}))).mode || 'generation';
 
     const systemPrompt = mode === 'search' 
       ? `

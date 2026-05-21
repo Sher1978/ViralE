@@ -28,6 +28,7 @@ export interface BRollClipMeta {
   scene_concept?: string;
   anchor_type?: 'Literal' | 'Conceptual' | 'Emotional' | 'Data';
   url: string;
+  spoken_text?: string;
 }
 
 interface Props {
@@ -62,9 +63,6 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
 
   useEffect(() => {
     if (clip && isOpen) {
-      // Trim to ≤3 words for Pexels search
-      const words = (clip.prompt || '').split(/\s+/).slice(0, 3).join(' ');
-      setSearchQuery(words);
       setVisualPrompt(clip.visual_prompt || clip.prompt || '');
       setEditPromptDraft(clip.visual_prompt || clip.prompt || '');
       setScreen('search');
@@ -73,8 +71,44 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
       setGeneratedUrl('');
       setGenJobId('');
       setUserComment('');
-      // Auto-search on open
-      handleSearch(words);
+
+      const initializeSearch = async () => {
+        // If we have spoken text, calculate a highly optimized search query using AI
+        if (clip.spoken_text && clip.spoken_text.trim().length > 0) {
+          console.log('[BRollEditor] Optimizing search query based on spoken text:', clip.spoken_text);
+          setIsSearching(true);
+          setSearchQuery('Анализ...');
+          try {
+            const res = await fetch('/api/ai/optimize-prompt', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ context: clip.spoken_text, mode: 'search' })
+            });
+            const data = await res.json();
+            if (data.optimized) {
+              const optimizedQuery = data.optimized.trim();
+              console.log('[BRollEditor] Got optimized query:', optimizedQuery);
+              setSearchQuery(optimizedQuery);
+              // Trigger search
+              setIsSearching(true);
+              const searchRes = await fetch(`/api/ai/broll-search?query=${encodeURIComponent(optimizedQuery)}`);
+              const searchData = await searchRes.json();
+              setResults(searchData.videos || []);
+              setIsSearching(false);
+              return;
+            }
+          } catch (e) {
+            console.error('[BRollEditor] Spoken text optimization failed, falling back', e);
+          }
+        }
+
+        // Fallback to traditional keywords or prompt
+        const words = (clip.prompt || '').split(/\s+/).slice(0, 3).join(' ');
+        setSearchQuery(words);
+        handleSearch(words);
+      };
+
+      initializeSearch();
     }
     return () => { if (pollRef.current) clearInterval(pollRef.current); };
   }, [clip?.id, isOpen]);
@@ -173,7 +207,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
       className="fixed inset-0 z-[110] bg-black flex flex-col overflow-hidden"
     >
       {/* ── HEADER ── */}
-      <div className="flex-none flex items-center gap-3 px-4 py-3 border-b border-white/[0.06]">
+      <div className="flex-none flex items-center gap-3 px-4 pb-3 pt-[calc(env(safe-area-inset-top,0px)+12px)] md:pt-3 border-b border-white/[0.06]">
         <button
           onClick={screen === 'search' ? onClose : () => setScreen(screen === 'edit-prompt' ? 'generate' : 'search')}
           className="p-2.5 rounded-2xl bg-white/5 border border-white/8 active:scale-95 transition-all"
@@ -290,7 +324,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
           </div>
 
           {/* Footer: Generate button */}
-          <div className="flex-none px-4 py-4 border-t border-white/[0.06]">
+          <div className="flex-none px-4 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] border-t border-white/[0.06]">
             <button
               onClick={() => { setEditPromptDraft(visualPrompt); setScreen('generate'); }}
               className="w-full py-4 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-600 flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[11px] text-white shadow-xl shadow-purple-900/30 active:scale-95 transition-all relative overflow-hidden"
@@ -308,7 +342,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
 
       {/* ── SCREEN: GENERATE ── */}
       {screen === 'generate' && (
-        <div className="flex-1 flex flex-col overflow-y-auto px-4 py-5 gap-4">
+        <div className="flex-1 flex flex-col overflow-y-auto px-4 pt-5 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] gap-4">
           {/* Prompt card */}
           <div className="bg-white/[0.03] border border-white/8 rounded-2xl p-4 space-y-3">
             <div className="flex items-center justify-between">
@@ -415,7 +449,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
 
       {/* ── SCREEN: EDIT-PROMPT ── */}
       {screen === 'edit-prompt' && (
-        <div className="flex-1 flex flex-col px-4 py-5 gap-4 overflow-y-auto">
+        <div className="flex-1 flex flex-col px-4 pt-5 pb-[calc(env(safe-area-inset-bottom,0px)+20px)] gap-4 overflow-y-auto">
           <div className="space-y-2">
             <label className="text-[8px] font-black uppercase tracking-[0.25em] text-white/30 flex items-center gap-1.5">
               <Sparkles size={9} /> Визуальный промпт
@@ -471,7 +505,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
             initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: 20 }}
             className="fixed inset-0 z-[130] bg-black flex flex-col"
           >
-            <div className="absolute top-0 left-0 right-0 flex items-center justify-between p-4 z-20">
+            <div className="absolute top-0 left-0 right-0 flex items-center justify-between px-4 pb-4 pt-[calc(env(safe-area-inset-top,0px)+16px)] md:pt-4 z-20">
               <button onClick={() => setPreviewItem(null)} className="p-3 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 text-white active:scale-95">
                 <ArrowLeft size={18} />
               </button>
@@ -482,7 +516,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
               autoPlay muted loop playsInline
               className="w-full h-full object-cover"
             />
-            <div className="absolute bottom-0 left-0 right-0 p-4 space-y-2.5 z-20">
+            <div className="absolute bottom-0 left-0 right-0 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] md:pb-4 space-y-2.5 z-20 bg-gradient-to-t from-black via-black/80 to-transparent">
               <button
                 onClick={() => { onSelect(clip.id, previewItem.videoUrl, previewItem.title || 'Stock Clip'); setPreviewItem(null); onClose(); }}
                 className="w-full h-14 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-[12px] active:scale-95 transition-all flex items-center justify-center gap-2"
