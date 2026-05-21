@@ -215,6 +215,28 @@ export default function StudioPage() {
     prefetchBlob();
   }, [projectId, lastRecordingUrl]);
 
+  // Restore lastRecordingUrl from IndexedDB on page load/mount if it is null
+  useEffect(() => {
+    if (!projectId || lastRecordingUrl) return;
+    
+    const restoreFromIDB = async () => {
+      try {
+        console.log('[Studio] Checking IDB for saved recording to restore state...');
+        const cachedBlob = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+        if (cachedBlob instanceof Blob) {
+          const restoredUrl = URL.createObjectURL(cachedBlob);
+          setLastRecordingUrl(restoredUrl);
+          recordedBlobRef.current = cachedBlob;
+          console.log('[Studio] Restored lastRecordingUrl from IndexedDB successfully:', restoredUrl);
+        }
+      } catch (err) {
+        console.warn('[Studio] Failed to restore recording from IDB:', err);
+      }
+    };
+
+    restoreFromIDB();
+  }, [projectId, lastRecordingUrl]);
+
   // Prevent accidental data loss
   useEffect(() => {
     const handleBeforeUnload = (e: BeforeUnloadEvent) => {
