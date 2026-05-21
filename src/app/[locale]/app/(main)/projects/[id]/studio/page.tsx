@@ -88,6 +88,7 @@ export default function StudioPage() {
   const [recordedSize, setRecordedSize] = useState<number | null>(null);
   const [systemLogs, setSystemLogs] = useState<string[]>([]);
   const [showLogConsole, setShowLogConsole] = useState(false);
+  const [isSharing, setIsSharing] = useState(false);
 
   const addSystemLog = useCallback((msg: string) => {
     console.log(`[STUDIO-LOG] ${msg}`);
@@ -944,140 +945,114 @@ export default function StudioPage() {
   const downloadRawVideo = async () => {
     if (!lastRecordingUrl) return;
     
-    addSystemLog('Запуск скачивания RAW видео...');
-    const isTelegram = typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp;
-    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    addSystemLog(`Параметры окружения: Мобильный=${isMobile}, TelegramWebApp=${isTelegram}`);
-
-    // 1. INSTANT LOCAL DESKTOP DOWNLOAD (0 seconds!)
-    if (lastRecordingUrl.startsWith('blob:') && !isMobile && !isTelegram) {
-      addSystemLog('Запущено локальное скачивание на ПК из Blob URL...');
-      let url = lastRecordingUrl;
-      
-      // If the current blob URL is broken or invalid, make a fresh one from IDB!
-      try {
-        const check = await fetch(lastRecordingUrl, { method: 'HEAD' });
-        if (!check.ok) throw new Error("Revoked");
-      } catch (e) {
-        addSystemLog('Упреждающий шаг: Blob URL аннулирован, восстанавливаем из IDB...');
-        const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-        if (cached instanceof Blob) {
-          url = URL.createObjectURL(cached);
-          addSystemLog(`Создана новая Blob-ссылка: ${url}`);
-        }
-      }
-
-      addSystemLog('Эмуляция клика по ссылке для скачивания...');
-      const a = document.createElement('a');
-      a.href = url;
-      a.download = `ViralEngine_Raw_${Date.now()}.webm`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      addSystemLog('Запрос на скачивание успешно отправлен браузеру ПК.');
+    if (isSharing) {
+      addSystemLog('Предотвращение повторного шеринга: операция уже выполняется.');
       return;
     }
+    
+    try {
+      setIsSharing(true);
+      addSystemLog('Запуск скачивания RAW видео...');
+      const isTelegram = typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp;
+      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      addSystemLog(`Параметры окружения: Мобильный=${isMobile}, TelegramWebApp=${isTelegram}`);
 
-    // 2. INSTANT LOCAL MOBILE WEB SHARE (0 seconds!)
-    if (lastRecordingUrl.startsWith('blob:') && isMobile && typeof navigator !== 'undefined' && navigator.share) {
-      try {
-        addSystemLog('Попытка мгновенного шеринга файла через Web Share API...');
-        let fileBlob = recordedBlobRef.current;
+      // 1. INSTANT LOCAL DESKTOP DOWNLOAD (0 seconds!)
+      if (lastRecordingUrl.startsWith('blob:') && !isMobile && !isTelegram) {
+        addSystemLog('Запущено локальное скачивание на ПК из Blob URL...');
+        let url = lastRecordingUrl;
         
-        // Fallback to IndexedDB (stable) instead of async fetch (unstable/revoked)
-        if (!fileBlob) {
-          addSystemLog('Упреждающий шаг: recordedBlobRef пуст, достаем оригинал из IndexedDB...');
+        // If the current blob URL is broken or invalid, make a fresh one from IDB!
+        try {
+          const check = await fetch(lastRecordingUrl, { method: 'HEAD' });
+          if (!check.ok) throw new Error("Revoked");
+        } catch (e) {
+          addSystemLog('Упреждающий шаг: Blob URL аннулирован, восстанавливаем из IDB...');
           const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
           if (cached instanceof Blob) {
-            fileBlob = cached;
-            recordedBlobRef.current = cached; // Cache back to ref
+            url = URL.createObjectURL(cached);
+            addSystemLog(`Создана новая Blob-ссылка: ${url}`);
           }
         }
-        
-        if (!fileBlob) {
-          throw new Error("Запись не найдена в памяти устройства (IndexedDB)");
-        }
-        
-        // Force video/mp4 MIME type on mobile for 100% native mobile sharing compatibility
-        addSystemLog(`Подготовка объекта File. Размер: ${(fileBlob.size / (1024 * 1024)).toFixed(2)} MB. Принудительный тип: video/mp4`);
-        const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: 'video/mp4' });
-        
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          addSystemLog('Браузер подтвердил возможность передачи файла. Запуск Share Sheet...');
-          await navigator.share({
-            files: [file],
-            title: 'Viral Engine Video',
-          });
-          addSystemLog('Share Sheet успешно закрыт пользователем.');
-          return; // Shared instantly!
-        } else {
-          addSystemLog('Браузер сообщил, что не может поделиться этим типом файла.');
-        }
-      } catch (shareErr: any) {
-        addSystemLog(`Локальный Web Share отклонен или завершился ошибкой: ${shareErr.message || shareErr}`);
-        console.warn('[Studio] Synchronous mobile share failed, falling back to server-side flow:', shareErr);
-      }
-    }
 
-    let downloadUrl = lastRecordingUrl;
-
-    // 3. FALLBACK: Upload to Supabase and run normalization (needed for Telegram WebApp or incompatible platforms)
-    if (lastRecordingUrl.startsWith('blob:')) {
-      try {
-        addSystemLog('Локальный шеринг недоступен. Запуск резервного облачного пути...');
-        alert("Подготовка видео для скачивания... Пожалуйста, подождите несколько секунд, пока файл загружается на сервер.");
-        
-        let blob = recordedBlobRef.current;
-        if (!blob) {
-          addSystemLog('Загрузка: Fetching from IndexedDB для резервного аплоада...');
-          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-          if (cached instanceof Blob) {
-            blob = cached;
-          }
-        }
-        
-        if (!blob) {
-          throw new Error("Файл записи не найден в локальном кэше IndexedDB.");
-        }
-        
-        addSystemLog(`Начало загрузки файла (${(blob.size / (1024 * 1024)).toFixed(2)} MB) на Supabase Storage...`);
-        const uploadResult = await renderService.uploadMedia(projectId, blob, 'video');
-        if (uploadResult && uploadResult.publicUrl) {
-          downloadUrl = uploadResult.publicUrl;
-          addSystemLog(`Загрузка завершена. URL в облаке: ${downloadUrl}`);
-          
-          // Sync back to the manifest
-          setManifest(prev => {
-            if (!prev) return prev;
-            const next = { ...prev, videoUrl: downloadUrl || '' };
-            projectService.updateLatestVersionManifest(projectId, next);
-            return next;
-          });
-        } else {
-          throw new Error("Не удалось сохранить файл на сервере.");
-        }
-      } catch (err: any) {
-        addSystemLog(`Критическая ошибка подготовки видео в облаке: ${err.message}`);
-        alert("Ошибка подготовки видео: " + err.message);
+        addSystemLog('Эмуляция клика по ссылке для скачивания...');
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `ViralEngine_Raw_${Date.now()}.webm`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        addSystemLog('Запрос на скачивание успешно отправлен браузеру ПК.');
         return;
       }
-    }
 
-    // 4. Server-side H.264 (VP8/Opus) to universally compatible H.264 MP4 normalization (only for fallback path)
-    if (downloadUrl && downloadUrl.includes('.webm')) {
-      try {
-        addSystemLog('Файл имеет тип .webm. Запуск транскодирования на сервере в H.264 MP4...');
-        const normRes = await fetch('/api/studio/normalize-recording', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ videoUrl: downloadUrl, projectId })
-        });
-        
-        if (normRes.ok) {
-          const normData = await normRes.json();
-          if (normData.publicUrl) {
-            downloadUrl = normData.publicUrl;
-            addSystemLog(`Транскодирование успешно! Новый MP4 URL: ${downloadUrl}`);
+      // 2. INSTANT LOCAL MOBILE WEB SHARE (0 seconds!)
+      if (lastRecordingUrl.startsWith('blob:') && isMobile && typeof navigator !== 'undefined' && navigator.share) {
+        try {
+          addSystemLog('Попытка мгновенного шеринга файла через Web Share API...');
+          let fileBlob = recordedBlobRef.current;
+          
+          // Fallback to IndexedDB (stable) instead of async fetch (unstable/revoked)
+          if (!fileBlob) {
+            addSystemLog('Упреждающий шаг: recordedBlobRef пуст, достаем оригинал из IndexedDB...');
+            const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+            if (cached instanceof Blob) {
+              fileBlob = cached;
+              recordedBlobRef.current = cached; // Cache back to ref
+            }
+          }
+          
+          if (!fileBlob) {
+            throw new Error("Запись не найдена в памяти устройства (IndexedDB)");
+          }
+          
+          // Force video/mp4 MIME type on mobile for 100% native mobile sharing compatibility
+          addSystemLog(`Подготовка объекта File. Размер: ${(fileBlob.size / (1024 * 1024)).toFixed(2)} MB. Принудительный тип: video/mp4`);
+          const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: 'video/mp4' });
+          
+          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+            addSystemLog('Браузер подтвердил возможность передачи файла. Запуск Share Sheet...');
+            await navigator.share({
+              files: [file],
+              title: 'Viral Engine Video',
+            });
+            addSystemLog('Share Sheet успешно закрыт пользователем.');
+            return; // Shared instantly!
+          } else {
+            addSystemLog('Браузер сообщил, что не может поделиться этим типом файла.');
+          }
+        } catch (shareErr: any) {
+          addSystemLog(`Локальный Web Share отклонен или завершился ошибкой: ${shareErr.message || shareErr}`);
+          console.warn('[Studio] Synchronous mobile share failed, falling back to server-side flow:', shareErr);
+        }
+      }
+
+      let downloadUrl = lastRecordingUrl;
+
+      // 3. FALLBACK: Upload to Supabase and run normalization (needed for Telegram WebApp or incompatible platforms)
+      if (lastRecordingUrl.startsWith('blob:')) {
+        try {
+          addSystemLog('Локальный шеринг недоступен. Запуск резервного облачного пути...');
+          alert("Подготовка видео для скачивания... Пожалуйста, подождите несколько секунд, пока файл загружается на сервер.");
+          
+          let blob = recordedBlobRef.current;
+          if (!blob) {
+            addSystemLog('Загрузка: Fetching from IndexedDB для резервного аплоада...');
+            const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+            if (cached instanceof Blob) {
+              blob = cached;
+            }
+          }
+          
+          if (!blob) {
+            throw new Error("Файл записи не найден в локальном кэше IndexedDB.");
+          }
+          
+          addSystemLog(`Начало загрузки файла (${(blob.size / (1024 * 1024)).toFixed(2)} MB) на Supabase Storage...`);
+          const uploadResult = await renderService.uploadMedia(projectId, blob, 'video');
+          if (uploadResult && uploadResult.publicUrl) {
+            downloadUrl = uploadResult.publicUrl;
+            addSystemLog(`Загрузка завершена. URL в облаке: ${downloadUrl}`);
             
             // Sync back to the manifest
             setManifest(prev => {
@@ -1086,61 +1061,97 @@ export default function StudioPage() {
               projectService.updateLatestVersionManifest(projectId, next);
               return next;
             });
+          } else {
+            throw new Error("Не удалось сохранить файл на сервере.");
           }
-        } else {
-          addSystemLog('Сервер вернул ошибку транскодирования.');
+        } catch (err: any) {
+          addSystemLog(`Критическая ошибка подготовки видео в облаке: ${err.message}`);
+          alert("Ошибка подготовки видео: " + err.message);
+          return;
         }
-      } catch (normErr: any) {
-        addSystemLog(`Ошибка транскодирования: ${normErr.message || normErr}`);
-        console.warn('[Studio] H.264 normalization failed, falling back to raw video:', normErr);
       }
-    }
 
-    // 5. Telegram WebApp In-App WebView Sandbox Bypass
-    const tgWebApp = typeof window !== 'undefined' && (window as any).Telegram?.WebApp;
-    if (tgWebApp && tgWebApp.openLink) {
-      addSystemLog('Обнаружен Telegram WebApp. Открытие ссылки через openLink...');
-      tgWebApp.openLink(downloadUrl);
-      return;
-    }
-
-    // 6. Mobile Fallback path
-    if (isMobile) {
-      try {
-        if (navigator.share) {
-          addSystemLog('Шеринг облачного файла на мобильном...');
-          const response = await fetch(downloadUrl);
-          const blob = await response.blob();
-          const file = new File([blob], `ViralEngine_Take_${Date.now()}.mp4`, { type: 'video/mp4' });
+      // 4. Server-side H.264 (VP8/Opus) to universally compatible H.264 MP4 normalization (only for fallback path)
+      if (downloadUrl && downloadUrl.includes('.webm')) {
+        try {
+          addSystemLog('Файл имеет тип .webm. Запуск транскодирования на сервере в H.264 MP4...');
+          const normRes = await fetch('/api/studio/normalize-recording', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoUrl: downloadUrl, projectId })
+          });
           
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
-            await navigator.share({
-              files: [file],
-              title: 'Viral Engine Video',
-            });
-            addSystemLog('Облачный файл успешно расшарен на мобильном.');
-            return;
+          if (normRes.ok) {
+            const normData = await normRes.json();
+            if (normData.publicUrl) {
+              downloadUrl = normData.publicUrl;
+              addSystemLog(`Транскодирование успешно! Новый MP4 URL: ${downloadUrl}`);
+              
+              // Sync back to the manifest
+              setManifest(prev => {
+                if (!prev) return prev;
+                const next = { ...prev, videoUrl: downloadUrl || '' };
+                projectService.updateLatestVersionManifest(projectId, next);
+                return next;
+              });
+            }
+          } else {
+            addSystemLog('Сервер вернул ошибку транскодирования.');
           }
+        } catch (normErr: any) {
+          addSystemLog(`Ошибка транскодирования: ${normErr.message || normErr}`);
+          console.warn('[Studio] H.264 normalization failed, falling back to raw video:', normErr);
         }
-      } catch (shareErr: any) {
-        addSystemLog(`Шеринг облачного файла не удался: ${shareErr.message || shareErr}`);
       }
 
-      addSystemLog('Резервный мобильный переход: перенаправление на скачивание CDN...');
-      window.location.href = downloadUrl;
-      return;
-    }
+      // 5. Telegram WebApp In-App WebView Sandbox Bypass
+      const tgWebApp = typeof window !== 'undefined' && (window as any).Telegram?.WebApp;
+      if (tgWebApp && tgWebApp.openLink) {
+        addSystemLog('Обнаружен Telegram WebApp. Открытие ссылки через openLink...');
+        tgWebApp.openLink(downloadUrl);
+        return;
+      }
 
-    // 7. Desktop PC Fallback path
-    addSystemLog('Эмуляция клика по ссылке для облачного файла на ПК...');
-    const a = document.createElement('a');
-    a.href = downloadUrl;
-    a.download = `ViralEngine_Raw_${Date.now()}.mp4`;
-    a.target = '_blank';
-    document.body.appendChild(a);
-    a.click();
-    document.body.removeChild(a);
-    addSystemLog('Облачный файл успешно запрошен на ПК.');
+      // 6. Mobile Fallback path
+      if (isMobile) {
+        try {
+          if (navigator.share) {
+            addSystemLog('Шеринг облачного файла на мобильном...');
+            const response = await fetch(downloadUrl);
+            const blob = await response.blob();
+            const file = new File([blob], `ViralEngine_Take_${Date.now()}.mp4`, { type: 'video/mp4' });
+            
+            if (navigator.canShare && navigator.canShare({ files: [file] })) {
+              await navigator.share({
+                files: [file],
+                title: 'Viral Engine Video',
+              });
+              addSystemLog('Облачный файл успешно расшарен на мобильном.');
+              return;
+            }
+          }
+        } catch (shareErr: any) {
+          addSystemLog(`Шеринг облачного файла не удался: ${shareErr.message || shareErr}`);
+        }
+
+        addSystemLog('Резервный мобильный переход: перенаправление на скачивание CDN...');
+        window.location.href = downloadUrl;
+        return;
+      }
+
+      // 7. Desktop PC Fallback path
+      addSystemLog('Эмуляция клика по ссылке для облачного файла на ПК...');
+      const a = document.createElement('a');
+      a.href = downloadUrl;
+      a.download = `ViralEngine_Raw_${Date.now()}.mp4`;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      addSystemLog('Облачный файл успешно запрошен на ПК.');
+    } finally {
+      setIsSharing(false);
+    }
   };
 
   const sendRawToTelegram = async () => {
