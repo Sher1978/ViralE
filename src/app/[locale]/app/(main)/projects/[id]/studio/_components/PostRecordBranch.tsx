@@ -2,13 +2,16 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Scissors, Sparkles, ArrowRight, Play, User, Download, Send, RotateCcw } from 'lucide-react';
+import { Scissors, Sparkles, Download, Send, RotateCcw, Loader2, CheckCircle2 } from 'lucide-react';
 
 interface PostRecordBranchProps {
   videoUrl: string;
   onSelect: (type: 'pure' | 'animate') => void;
   onRetake?: () => void;
   onDownload?: () => void;
+  onDownloadMp4?: () => void;
+  isMp4Converting?: boolean;
+  mp4Url?: string | null;
   onTelegram?: () => void;
   t: (key: string) => string;
 }
@@ -18,6 +21,9 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
   onSelect,
   onRetake,
   onDownload,
+  onDownloadMp4,
+  isMp4Converting = false,
+  mp4Url = null,
   onTelegram,
   t
 }) => {
@@ -53,6 +59,26 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               playsInline 
               className="w-full h-full object-cover"
             />
+
+            {/* Premium Background Normalization Status Badge */}
+            <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-20 backdrop-blur-md bg-black/60 border border-white/10 px-4 py-2 rounded-full flex items-center gap-2 shadow-2xl">
+              {mp4Url ? (
+                <>
+                  <CheckCircle2 size={12} className="text-green-400 fill-green-400/20" />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-green-400">MP4 Готов для AI</span>
+                </>
+              ) : isMp4Converting ? (
+                <>
+                  <Loader2 size={12} className="animate-spin text-cyan-400" />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-cyan-400">Кодирование MP4 в фоне...</span>
+                </>
+              ) : (
+                <>
+                  <div className="w-1.5 h-1.5 rounded-full bg-white/30 animate-pulse" />
+                  <span className="text-[8px] font-black uppercase tracking-widest text-white/40">Ожидание кодирования</span>
+                </>
+              )}
+            </div>
           </motion.div>
 
           <motion.div 
@@ -66,7 +92,7 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
             </h2>
           </motion.div>
 
-          {/* PRIMARY ACTIONS (JTBD: Finalizing the content) */}
+          {/* PRIMARY ACTIONS */}
           <div className="w-full space-y-3 pt-2">
             <motion.button
               whileHover={{ scale: 1.02 }}
@@ -86,17 +112,28 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               АВАТАР СТУДИЯ <Sparkles size={14} className="text-purple-400" />
             </motion.button>
 
-            <motion.button
-              whileHover={{ scale: 1.02 }}
-              whileTap={{ scale: 0.98 }}
-              onClick={onDownload}
-              className="w-full py-4 rounded-[2rem] bg-gradient-to-r from-blue-600/20 to-purple-600/20 border border-blue-500/30 text-white font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2 shadow-lg shadow-blue-950/20"
-            >
-              СОХРАНИТЬ НА УСТРОЙСТВО <Download size={14} className="text-blue-400" />
-            </motion.button>
+            <div className="grid grid-cols-2 gap-3">
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onDownload}
+                className="py-4 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 shadow-lg"
+              >
+                Скачать RAW <Download size={12} className="text-blue-400" />
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={onDownloadMp4}
+                className="py-4 rounded-[2rem] bg-green-600/10 border border-green-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex items-center justify-center gap-2 shadow-lg"
+              >
+                Скачать MP4 {isMp4Converting ? <Loader2 size={12} className="animate-spin text-green-400" /> : <Download size={12} className="text-green-400" />}
+              </motion.button>
+            </div>
           </div>
 
-          {/* SECONDARY ACTIONS (Backup / Safety) */}
+          {/* SECONDARY ACTIONS */}
           {onTelegram && (
             <div className="w-full pt-4 border-t border-white/5 flex justify-center">
               <button

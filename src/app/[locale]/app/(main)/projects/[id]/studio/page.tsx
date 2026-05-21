@@ -86,6 +86,18 @@ export default function StudioPage() {
   const [useCustomScript, setUseCustomScript] = useState<boolean>(false);
   const [lastRecordingUrl, setLastRecordingUrl] = useState<string | null>(null);
 
+  // Background MP4 Normalization States
+  const [backgroundMp4Url, setBackgroundMp4Url] = useState<string | null>(null);
+  const [isBackgroundConverting, setIsBackgroundConverting] = useState(false);
+
+  // Auto-load backgroundMp4Url if already present in manifest
+  useEffect(() => {
+    const videoUrl = manifest?.videoUrl || (manifest as any)?.aRollUrl;
+    if (videoUrl && !videoUrl.startsWith('blob:') && !videoUrl.includes('.webm')) {
+      setBackgroundMp4Url(videoUrl);
+    }
+  }, [manifest]);
+
   // Auto-revoke blob URL to prevent memory leaks
   useEffect(() => {
     return () => {
@@ -648,6 +660,9 @@ export default function StudioPage() {
             const url = URL.createObjectURL(blob);
             setLastRecordingUrl(url);
             
+            // Start background conversion immediately (runs in background so UI is instant!)
+            startBackgroundMp4Conversion(blob);
+
             // Explicitly transition to branch screen
             setActiveTab('post_record_branch');
           };
@@ -705,6 +720,105 @@ export default function StudioPage() {
       
       // Release camera when record is done and we're entering review
       stopCamera();
+    }
+  };
+
+  const startBackgroundMp4Conversion = async (videoBlob: Blob) => {
+    if (isBackgroundConverting || backgroundMp4Url) return;
+    setIsBackgroundConverting(true);
+    console.log('[Studio] Background MP4 upload & normalization started...');
+    try {
+      // 1. Upload raw WebM to Supabase
+      const uploadResult = await renderService.uploadMedia(projectId, videoBlob, 'video');
+      if (!uploadResult || !uploadResult.publicUrl) {
+        throw new Error('Failed to upload raw video to storage.');
+      }
+      
+      const rawUrl = uploadResult.publicUrl;
+      console.log('[Studio] Background raw video uploaded, starting H.264 normalization:', rawUrl);
+
+      // 2. Call normalization API
+      const normRes = await fetch('/api/studio/normalize-recording', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ videoUrl: rawUrl, projectId })
+      });
+      
+      if (normRes.ok) {
+        const normData = await normRes.json();
+        if (normData.publicUrl) {
+          console.log('[Studio] Background H.264 MP4 normalization completed:', normData.publicUrl);
+          setBackgroundMp4Url(normData.publicUrl);
+          
+          // Also sync to manifest so it's ready for Avatar Studio
+          setManifest(prev => {
+            if (!prev) return prev;
+            const next = { ...prev, videoUrl: normData.publicUrl || '' };
+            projectService.updateLatestVersionManifest(projectId, next);
+            return next;
+          });
+        }
+      }
+    } catch (err) {
+      console.error('[Studio] Background MP4 normalization failed:', err);
+    } finally {
+      setIsBackgroundConverting(false);
+    }
+  };
+
+  const downloadBackgroundMp4 = async () => {
+    if (backgroundMp4Url) {
+      console.log('[Studio] Instant download of background MP4:', backgroundMp4Url);
+      const a = document.createElement('a');
+      a.href = backgroundMp4Url;
+      a.download = `ViralEngine_H264_${Date.now()}.mp4`;
+      a.target = '_blank';
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
+    if (isBackgroundConverting) {
+      alert("Видео ещё кодируется в фоне для совместимости с iOS/AI. Пожалуйста, подождите еще несколько секунд...");
+      return;
+    }
+
+    // Fallback if not started
+    if (lastRecordingUrl && lastRecordingUrl.startsWith('blob:')) {
+      try {
+        alert("Запуск принудительного кодирования MP4. Пожалуйста, подождите...");
+        const response = await fetch(lastRecordingUrl);
+        const blob = await response.blob();
+        await startBackgroundMp4Conversion(blob);
+      } catch (err: any) {
+        alert("Не удалось запустить кодирование: " + err.message);
+      }
+    } else if (lastRecordingUrl) {
+      if (lastRecordingUrl.includes('.webm')) {
+        alert("Запуск конвертации WebM в MP4 на сервере...");
+        setIsBackgroundConverting(true);
+        try {
+          const normRes = await fetch('/api/studio/normalize-recording', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoUrl: lastRecordingUrl, projectId })
+          });
+          if (normRes.ok) {
+            const normData = await normRes.json();
+            if (normData.publicUrl) {
+              setBackgroundMp4Url(normData.publicUrl);
+              window.open(normData.publicUrl, '_blank');
+            }
+          }
+        } catch (e) {
+          console.error(e);
+        } finally {
+          setIsBackgroundConverting(false);
+        }
+      } else {
+        window.open(lastRecordingUrl, '_blank');
+      }
     }
   };
 
@@ -1253,6 +1367,9 @@ export default function StudioPage() {
                    setTimeout(initCamera, 100);
                 }}
                 onDownload={downloadRawVideo}
+                onDownloadMp4={downloadBackgroundMp4}
+                isMp4Converting={isBackgroundConverting}
+                mp4Url={backgroundMp4Url}
                 onTelegram={sendRawToTelegram}
                 t={t}
               />
