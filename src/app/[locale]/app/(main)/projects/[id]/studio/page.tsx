@@ -711,9 +711,46 @@ export default function StudioPage() {
   const downloadRawVideo = async () => {
     if (!lastRecordingUrl) return;
     
+    const isTelegram = typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp;
+    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+
+    // 1. INSTANT LOCAL DESKTOP DOWNLOAD (0 seconds!)
+    if (lastRecordingUrl.startsWith('blob:') && !isMobile && !isTelegram) {
+      console.log('[Studio] Instant local desktop download from blob URL...');
+      const a = document.createElement('a');
+      a.href = lastRecordingUrl;
+      a.download = `ViralEngine_Raw_${Date.now()}.webm`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      return;
+    }
+
+    // 2. INSTANT LOCAL MOBILE WEB SHARE (0 seconds!)
+    if (lastRecordingUrl.startsWith('blob:') && isMobile && !isTelegram && typeof navigator !== 'undefined' && navigator.share) {
+      try {
+        console.log('[Studio] Trying instant local Web Share from blob...');
+        const response = await fetch(lastRecordingUrl);
+        const blob = await response.blob();
+        
+        // Wrap blob in a File object. Use .mp4 extension for native mobile compatibility
+        const file = new File([blob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: blob.type || 'video/mp4' });
+        
+        if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          await navigator.share({
+            files: [file],
+            title: 'Viral Engine Video',
+          });
+          return; // Shared instantly!
+        }
+      } catch (shareErr) {
+        console.warn('[Studio] Local mobile share failed, falling back to server-side flow:', shareErr);
+      }
+    }
+
     let downloadUrl = lastRecordingUrl;
 
-    // 1. If the video is a local blob URL, we MUST upload it to Supabase first to make it a public CDN asset
+    // 3. FALLBACK: Upload to Supabase and run normalization (needed for Telegram WebApp or incompatible platforms)
     if (lastRecordingUrl.startsWith('blob:')) {
       try {
         alert("Подготовка видео для скачивания... Пожалуйста, подождите несколько секунд, пока файл загружается на сервер.");
@@ -742,8 +779,7 @@ export default function StudioPage() {
       }
     }
 
-    // 1.5. Normalize raw WebM (VP8/Opus) to universally compatible H.264 MP4 with AAC audio
-    // This guarantees perfect sound in Telegram and native mobile player decoders!
+    // 4. Server-side H.264 (VP8/Opus) to universally compatible H.264 MP4 normalization (only for fallback path)
     if (downloadUrl && downloadUrl.includes('.webm')) {
       try {
         console.log('[Studio] Raw WebM detected, invoking server-side H.264/AAC normalization...');
@@ -774,7 +810,7 @@ export default function StudioPage() {
       }
     }
 
-    // 2. Telegram WebApp In-App WebView Sandbox Bypass
+    // 5. Telegram WebApp In-App WebView Sandbox Bypass
     const tgWebApp = typeof window !== 'undefined' && (window as any).Telegram?.WebApp;
     if (tgWebApp && tgWebApp.openLink) {
       console.log('[Studio] Inside Telegram WebApp, opening via WebApp.openLink:', downloadUrl);
@@ -782,8 +818,7 @@ export default function StudioPage() {
       return;
     }
 
-    // 3. Mobile Safari/Chrome Sandbox Bypass: Use Web Share or Redirect to the public CDN file
-    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    // 6. Mobile Fallback path
     if (isMobile) {
       try {
         if (navigator.share) {
@@ -808,7 +843,7 @@ export default function StudioPage() {
       return;
     }
 
-    // 4. Desktop PC Path: standard download click
+    // 7. Desktop PC Fallback path
     const a = document.createElement('a');
     a.href = downloadUrl;
     a.download = `ViralEngine_Raw_${Date.now()}.mp4`;
