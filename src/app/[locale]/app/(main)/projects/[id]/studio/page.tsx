@@ -841,7 +841,7 @@ export default function StudioPage() {
     }
 
     // 2. INSTANT LOCAL MOBILE WEB SHARE (0 seconds!)
-    if (lastRecordingUrl.startsWith('blob:') && isMobile && !isTelegram && typeof navigator !== 'undefined' && navigator.share) {
+    if (lastRecordingUrl.startsWith('blob:') && isMobile && typeof navigator !== 'undefined' && navigator.share) {
       try {
         console.log('[Studio] Trying instant local Web Share from blob...');
         const response = await fetch(lastRecordingUrl);
@@ -1382,6 +1382,7 @@ export default function StudioPage() {
                 initialMasterAvatar={selectedAvatarPhoto || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2'}
                 onGenerate={handleTimelineGeneration}
                 onBack={() => handleTabChange('post_record_branch')}
+                onDownload={downloadRawVideo}
               />
             )}
 

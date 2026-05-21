@@ -12,7 +12,17 @@ const ffmpegPath = ffmpegInstaller.path;
 
 export const maxDuration = 60; // 60 seconds is plenty for transcoding a short clip
 
-function runFFmpeg(args: string[]): Promise<{ stdout: string; stderr: string }> {
+async function runFFmpeg(args: string[]): Promise<{ stdout: string; stderr: string }> {
+  // Ensure execute permissions on non-Windows (Linux/macOS server containers)
+  if (process.platform !== 'win32') {
+    try {
+      console.log(`[FFmpeg-Normalize] Setting executable permissions (0755) on ${ffmpegPath}`);
+      await fs.chmod(ffmpegPath, 0o755);
+    } catch (e: any) {
+      console.warn('[FFmpeg-Normalize] chmod execute permission warning (non-fatal):', e.message);
+    }
+  }
+
   return new Promise((resolve, reject) => {
     console.log(`[FFmpeg-Normalize] Running command: ffmpeg ${args.join(' ')}`);
     const proc = spawn(ffmpegPath, args);

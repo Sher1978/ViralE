@@ -37,6 +37,7 @@ interface TimelineLabProps {
   initialMasterAvatar?: string;
   onGenerate: (segments: ExportSegment[]) => void;
   onBack: () => void;
+  onDownload?: () => void;
 }
 
 export const TimelineLab: React.FC<TimelineLabProps> = ({
@@ -44,7 +45,8 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
   projectId,
   initialMasterAvatar,
   onGenerate,
-  onBack
+  onBack,
+  onDownload
 }) => {
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -473,16 +475,24 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
                     </div>
                   </div>
 
-                  <a
-                    href={videoUrl}
-                    download="recording.mp4"
-                    target="_blank"
-                    rel="noopener noreferrer"
+                                  <button
+                    onClick={() => {
+                      if (onDownload) {
+                        onDownload();
+                      } else {
+                        const a = document.createElement('a');
+                        a.href = videoUrl;
+                        a.download = 'recording.mp4';
+                        document.body.appendChild(a);
+                        a.click();
+                        document.body.removeChild(a);
+                      }
+                    }}
                     className="w-full py-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-blue-500/20"
                   >
                     <Download size={14} />
                     Скачать видео на устройство
-                  </a>
+                  </button>
                 </div>
 
                 <div className="h-px bg-white/5" />
