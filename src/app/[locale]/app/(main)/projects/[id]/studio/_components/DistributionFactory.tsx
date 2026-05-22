@@ -1387,7 +1387,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                       <input
                                         type="text"
                                         value={ctaWord}
-                                        onChange={(e) => setCtaWord(e.target.value.toUpperCase())}
+                                        onChange={(e) => setCtaWord((e.target as any).value.toUpperCase())}
                                         placeholder={locale === 'ru' ? 'Например: СТАРТ' : 'E.g. START'}
                                         className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/80 placeholder-white/20 focus:border-purple-500/50 focus:outline-none transition-all"
                                       />
@@ -1417,7 +1417,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                     </label>
                                     <textarea
                                       value={userBrief}
-                                      onChange={(e) => setUserBrief(e.target.value)}
+                                      onChange={(e) => setUserBrief((e.target as any).value)}
                                       placeholder={locale === 'ru'
                                         ? 'Например: сделай упор на боли новичков, используй юмор...'
                                         : 'E.g. focus on beginner pain points, use humor...'}
@@ -1443,7 +1443,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                     <textarea
                                       value={visualDnaConfig}
                                       onChange={(e) => {
-                                        setVisualDnaConfig(e.target.value);
+                                        setVisualDnaConfig((e.target as any).value);
                                         setVisualDnaError(null);
                                       }}
                                       rows={14}
@@ -1526,7 +1526,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                               id="carousel-scroller"
                               className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory scrollbar-none scroll-smooth -mx-5 px-5"
                               onScroll={(e) => {
-                                const target = e.currentTarget;
+                                const target = e.currentTarget as any;
                                 const scrollLeft = target.scrollLeft;
                                 const width = target.offsetWidth;
                                 const cardWidth = scrollLeft / (width * 0.7);
