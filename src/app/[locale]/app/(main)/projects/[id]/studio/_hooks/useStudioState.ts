@@ -283,18 +283,33 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       console.log('[Studio LOG] Calling decodeAudioData (Warning: this might use substantial memory)...');
       const tDecode = performance.now();
       const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
-        // Modern browsers return a Promise; older ones use callbacks only.
-        // Guard against calling resolve() twice by wrapping in try/catch.
+        const timeoutId = setTimeout(() => {
+          console.warn('[Studio LOG] decodeAudioData timed out after 12 seconds. Falling back to FFmpeg WASM.');
+          reject(new Error('decodeAudioData timed out'));
+        }, 12000);
+
         try {
           const p = audioContext.decodeAudioData(arrayBuffer,
-            (buf) => resolve(buf),
-            (err) => reject(err || new Error('decodeAudioData callback error'))
+            (buf) => {
+              clearTimeout(timeoutId);
+              resolve(buf);
+            },
+            (err) => {
+              clearTimeout(timeoutId);
+              reject(err || new Error('decodeAudioData callback error'));
+            }
           );
-          // If it returned a real Promise (modern API), also hook it
           if (p && typeof p.then === 'function') {
-            p.then(resolve).catch(reject);
+            p.then((buf) => {
+              clearTimeout(timeoutId);
+              resolve(buf);
+            }).catch((err) => {
+              clearTimeout(timeoutId);
+              reject(err);
+            });
           }
         } catch (e) {
+          clearTimeout(timeoutId);
           reject(e);
         }
       });
