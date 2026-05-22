@@ -73,7 +73,7 @@ export default function ProfilePage() {
   };
 
   const handleAvatarUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = (e.currentTarget as any).files?.[0];
     if (!file) return;
 
     setUploading(true);
@@ -266,7 +266,7 @@ export default function ProfilePage() {
                     <input 
                       type="text" 
                       value={editName}
-                      onChange={(e) => setEditName(e.target.value)}
+                      onChange={(e) => setEditName(e.currentTarget.value)}
                       placeholder={t('editNamePlaceholder')}
                       className="bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-white font-black text-lg tracking-tight focus:outline-none focus:border-cyan-500/50 w-full max-w-[200px]"
                       onKeyDown={(e) => {
