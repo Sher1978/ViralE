@@ -38,22 +38,47 @@ export async function getFFmpeg(): Promise<any> {
       const cdnCore = `${cdnBase}/ffmpeg-core.js`;
       const cdnWasm = `${cdnBase}/ffmpeg-core.wasm`;
 
+      // Helper function to race loading against a timeout to prevent hanging on mobile/slow networks
+      const loadWithTimeout = (inst: any, config: any, ms: number) => {
+        return Promise.race([
+          inst.load(config),
+          new Promise((_, reject) =>
+            setTimeout(() => reject(new Error(`FFmpeg load timed out after ${ms}ms`)), ms)
+          )
+        ]);
+      };
+
       try {
-        await instance.load({ coreURL: localCore, wasmURL: localWasm });
-        console.log('[FFmpeg] Loaded from local assets');
+        console.log('[FFmpeg] Attempting to load from local assets with 6s timeout...');
+        await loadWithTimeout(instance, { coreURL: localCore, wasmURL: localWasm }, 6000);
+        console.log('[FFmpeg] Loaded successfully from local assets');
         ffmpeg = instance;
         return instance;
       } catch (e) {
-        console.warn('[FFmpeg] Local load failed, falling back to CDN:', e);
+        console.warn('[FFmpeg] Local load failed or timed out, falling back to CDN. Error:', e);
+        try {
+          instance.terminate();
+        } catch (err) {}
+
         const cdnInstance = new FFmpeg();
-        await cdnInstance.load({ coreURL: cdnCore, wasmURL: cdnWasm });
-        console.log('[FFmpeg] Loaded from CDN');
-        ffmpeg = cdnInstance;
-        return cdnInstance;
+        try {
+          console.log('[FFmpeg] Attempting to load from CDN with 10s timeout...');
+          await loadWithTimeout(cdnInstance, { coreURL: cdnCore, wasmURL: cdnWasm }, 10000);
+          console.log('[FFmpeg] Loaded successfully from CDN');
+          ffmpeg = cdnInstance;
+          return cdnInstance;
+        } catch (cdnErr) {
+          console.error('[FFmpeg] CDN load also failed or timed out. Error:', cdnErr);
+          try {
+            cdnInstance.terminate();
+          } catch (err) {}
+          throw cdnErr;
+        }
       }
     } catch (err) {
-      console.error('[FFmpeg] Initialization failed, resetting for retry:', err);
+      console.error('[FFmpeg] Critical initialization failure, resetting singleton:', err);
       loadPromise = null;
+      ffmpeg = null;
       throw err;
     }
   })();

@@ -22,15 +22,35 @@ async function getFFmpeg(): Promise<any> {
 
   if (!loadPromise) {
     loadPromise = (async () => {
-      const { FFmpeg } = await runtimeImport('https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js');
-      const { toBlobURL } = await runtimeImport('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
-      const ff = new FFmpeg();
-      await ff.load({
-        coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
-        wasmURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm'),
-      });
-      ffmpegInstance = ff;
-      return true;
+      try {
+        const { FFmpeg } = await runtimeImport('https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js');
+        const { toBlobURL } = await runtimeImport('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
+        const ff = new FFmpeg();
+        
+        const coreURL = await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript');
+        const wasmURL = await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm');
+
+        // Helper function to race loading against a timeout
+        const loadWithTimeout = (inst: any, config: any, ms: number) => {
+          return Promise.race([
+            inst.load(config),
+            new Promise((_, reject) =>
+              setTimeout(() => reject(new Error(`FFmpeg load timed out after ${ms}ms`)), ms)
+            )
+          ]);
+        };
+
+        console.log('[FFmpeg Audio] Loading FFmpeg WASM with 6s timeout...');
+        await loadWithTimeout(ff, { coreURL, wasmURL }, 6000);
+        console.log('[FFmpeg Audio] Loaded successfully');
+        ffmpegInstance = ff;
+        return true;
+      } catch (err) {
+        console.error('[FFmpeg Audio] Load failed, resetting promise:', err);
+        loadPromise = null;
+        ffmpegInstance = null;
+        throw err;
+      }
     })();
   }
 

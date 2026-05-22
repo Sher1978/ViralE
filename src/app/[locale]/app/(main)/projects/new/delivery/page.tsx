@@ -578,11 +578,27 @@ function DeliveryPageContent() {
       setRenderStatus('Финальная склейка (Audio)...');
       const ffmpeg = await getFFmpeg();
 
+      // Setup logs for diagnostics in case of failures
+      ffmpegLogsRef.current = [];
+      ffmpeg.on('log', ({ message }: { message: string }) => {
+        console.log('[FFmpeg Final Merge]', message);
+        ffmpegLogsRef.current.push(message);
+        if (ffmpegLogsRef.current.length > 100) ffmpegLogsRef.current.shift();
+      });
+
+      console.log('[Canvas Render] Writing silent.mp4...');
       await ffmpeg.writeFile('silent.mp4', await (await getFetchFile())(silentVideoBlob));
-      await ffmpeg.writeFile('source.mp4', await (await getFetchFile())(aRollUrl));
+      
+      console.log('[Canvas Render] Writing source.mp4...');
+      const aRollData = await (await getFetchFile())(aRollUrl);
+      await ffmpeg.writeFile('source.mp4', aRollData);
       
       // Extract audio from source and merge into silent video
-      await ffmpeg.exec(['-i', 'silent.mp4', '-i', 'source.mp4', '-map', '0:v', '-map', '1:a', '-c', 'copy', 'output.mp4']);
+      console.log('[Canvas Render] Running final audio merge...');
+      const mergeExitCode = await ffmpeg.exec(['-i', 'silent.mp4', '-i', 'source.mp4', '-map', '0:v', '-map', '1:a', '-c', 'copy', 'output.mp4']);
+      if (mergeExitCode !== 0) {
+        throw new Error(`FFmpeg merge command failed with exit code ${mergeExitCode}`);
+      }
       
       const finalData = await ffmpeg.readFile('output.mp4');
       const finalBlob = new Blob([finalData as any], { type: 'video/mp4' });
