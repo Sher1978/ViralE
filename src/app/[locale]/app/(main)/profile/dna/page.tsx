@@ -200,7 +200,8 @@ export default function DnaManagementPage() {
   }
 
   async function handleReset() {
-    if (typeof window !== 'undefined' && !window.confirm(t('resetWarning'))) return;
+    const glob = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+    if (glob && glob.confirm && !glob.confirm(t('resetWarning'))) return;
     setResetting(true);
     setError(null);
     try {
@@ -216,10 +217,8 @@ export default function DnaManagementPage() {
   }
 
   async function handleForceRegenerateAll() {
-    const msg = locale === 'ru' 
-      ? 'Вы уверены, что хотите полностью стереть текущую матрицу и запустить новую генерацию идей на основе вашего ДНК?' 
-      : 'Are you sure you want to completely erase the current matrix and start a new idea generation based on your DNA?';
-    if (!window.confirm(msg)) return;
+    const glob = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+    if (glob && glob.confirm && !glob.confirm(msg)) return;
 
     setRegeneratingAll(true);
     setError(null);

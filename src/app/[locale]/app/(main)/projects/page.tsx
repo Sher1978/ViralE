@@ -280,7 +280,8 @@ export default function ProjectsPage() {
                         locale={locale} 
                         router={router} 
                         onDelete={async (id) => {
-                          if (!confirm(locale === 'ru' ? 'Удалить этот проект навсегда?' : 'Delete this project permanently?')) return;
+                          const glob = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+                          if (glob && glob.confirm && !glob.confirm(locale === 'ru' ? 'Удалить этот проект навсегда?' : 'Delete this project permanently?')) return;
                           const ok = await projectService.deleteProject(id);
                           if (ok) setProjects(prev => prev.filter(p => p.id !== id));
                         }} 

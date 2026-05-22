@@ -180,7 +180,8 @@ export default function OnboardingPage() {
           <div className="pt-4 border-t border-white/5 space-y-4">
             <button
               onClick={() => {
-                if (confirm(t('skipWarning'))) {
+                const glob = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+                if (glob && glob.confirm && glob.confirm(t('skipWarning'))) {
                   setIsSubmitting(true);
                   fetch('/api/onboarding', {
                     method: 'POST',
