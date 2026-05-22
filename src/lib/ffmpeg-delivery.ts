@@ -28,11 +28,13 @@ export async function getFFmpeg(): Promise<any> {
 
   loadPromise = (async () => {
     try {
-      const { FFmpeg } = await runtimeImport('https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js');
-      const instance = new FFmpeg();
-      const base = typeof window !== 'undefined' ? window.location.origin : '';
+      const base = typeof globalThis !== 'undefined' && (globalThis as any).window ? (globalThis as any).window.location.origin : '';
+      const localFFmpeg = `${base}/ffmpeg/ffmpeg-esm/index.js`;
       const localCore = `${base}/ffmpeg/ffmpeg-core.js`;
       const localWasm = `${base}/ffmpeg/ffmpeg-core.wasm`;
+
+      const { FFmpeg } = await runtimeImport(localFFmpeg);
+      const instance = new FFmpeg();
 
       const cdnBase = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
       const cdnCore = `${cdnBase}/ffmpeg-core.js`;
@@ -91,7 +93,9 @@ export async function getFFmpeg(): Promise<any> {
  * Use this instead of `import { fetchFile } from '@ffmpeg/util'`.
  */
 export async function getFetchFile(): Promise<(input: string | Blob | ArrayBuffer | Uint8Array) => Promise<Uint8Array>> {
-  const { fetchFile } = await runtimeImport('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
+  const base = typeof globalThis !== 'undefined' && (globalThis as any).window ? (globalThis as any).window.location.origin : '';
+  const localUtil = `${base}/ffmpeg/util-esm/index.js`;
+  const { fetchFile } = await runtimeImport(localUtil);
   return fetchFile;
 }
 

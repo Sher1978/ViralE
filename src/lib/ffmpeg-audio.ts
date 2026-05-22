@@ -23,12 +23,16 @@ async function getFFmpeg(): Promise<any> {
   if (!loadPromise) {
     loadPromise = (async () => {
       try {
-        const { FFmpeg } = await runtimeImport('https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js');
-        const { toBlobURL } = await runtimeImport('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
+        const base = typeof globalThis !== 'undefined' && (globalThis as any).window ? (globalThis as any).window.location.origin : '';
+        const localFFmpeg = `${base}/ffmpeg/ffmpeg-esm/index.js`;
+        const localUtil = `${base}/ffmpeg/util-esm/index.js`;
+
+        const { FFmpeg } = await runtimeImport(localFFmpeg);
+        const { toBlobURL } = await runtimeImport(localUtil);
         const ff = new FFmpeg();
         
-        const coreURL = await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript');
-        const wasmURL = await toBlobURL(`${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm');
+        const coreURL = await toBlobURL(`${base}${CORE_BASE}/ffmpeg-core.js`, 'text/javascript');
+        const wasmURL = await toBlobURL(`${base}${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm');
 
         // Helper function to race loading against a timeout
         const loadWithTimeout = (inst: any, config: any, ms: number) => {
