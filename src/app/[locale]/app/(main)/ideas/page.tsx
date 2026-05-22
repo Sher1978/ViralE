@@ -72,7 +72,8 @@ export default function IdeasPage() {
   
   useEffect(() => {
     const timer = setTimeout(() => setForcedLoading(false), 4000);
-    if (typeof window !== 'undefined' && localStorage.getItem('hideWelcomeIdeas') === 'true') {
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+    if (win && win.localStorage.getItem('hideWelcomeIdeas') === 'true') {
       setShowWelcome(false);
     }
     return () => clearTimeout(timer);
@@ -80,8 +81,9 @@ export default function IdeasPage() {
 
   const handleDismissWelcome = () => {
     setShowWelcome(false);
-    if (typeof window !== 'undefined') {
-      localStorage.setItem('hideWelcomeIdeas', 'true');
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+    if (win) {
+      win.localStorage.setItem('hideWelcomeIdeas', 'true');
     }
   };
   
@@ -232,7 +234,7 @@ export default function IdeasPage() {
       <div className="relative space-y-10">
         {activeTab === 'new' && (!isDnaComplete || showDnaEditor) ? (
           <div className="animate-in fade-in slide-in-from-top-4 duration-500">
-            <DNABlock onComplete={() => { setShowDnaEditor(false); window.location.reload(); }} />
+            <DNABlock onComplete={() => { setShowDnaEditor(false); const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null; if (win) win.location.reload(); }} />
           </div>
         ) : activeTab === 'new' ? (
           <>
