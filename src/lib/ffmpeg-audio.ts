@@ -22,8 +22,8 @@ async function getFFmpeg(): Promise<any> {
 
   if (!loadPromise) {
     loadPromise = (async () => {
-      const { FFmpeg } = await runtimeImport('@ffmpeg/ffmpeg');
-      const { toBlobURL } = await runtimeImport('@ffmpeg/util');
+      const { FFmpeg } = await runtimeImport('https://unpkg.com/@ffmpeg/ffmpeg@0.12.15/dist/esm/index.js');
+      const { toBlobURL } = await runtimeImport('https://unpkg.com/@ffmpeg/util@0.12.2/dist/esm/index.js');
       const ff = new FFmpeg();
       await ff.load({
         coreURL: await toBlobURL(`${CORE_BASE}/ffmpeg-core.js`, 'text/javascript'),
