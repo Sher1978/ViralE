@@ -446,7 +446,7 @@ export default function DnaManagementPage() {
                 </label>
                 <textarea
                   value={answers[q.id] || ''}
-                  onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.currentTarget.value }))}
+                  onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: (e.currentTarget as any).value }))}
                   placeholder={q.placeholder}
                   className="w-full h-20 bg-white/[0.03] border border-white/[0.08] rounded-xl p-3 text-xs text-white/80 focus:outline-none focus:border-purple-500/50 transition-all resize-none placeholder:text-white/10 outline-none leading-relaxed font-medium"
                 />
