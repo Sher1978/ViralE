@@ -1571,9 +1571,9 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                       key={num}
                                       onClick={() => {
                                         setActiveSlideIndex(i);
-                                        const container = document.getElementById('carousel-scroller');
+                                        const container = safeDocument ? safeDocument.getElementById('carousel-scroller') : null;
                                         if (container) {
-                                          const cardWidth = container.scrollWidth / 6;
+                                          const cardWidth = (container as any).scrollWidth / 6;
                                           container.scrollTo({
                                             left: i * cardWidth,
                                             behavior: 'smooth'
