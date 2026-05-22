@@ -25,9 +25,9 @@ export async function polishCriticalSlides(
   if (!apiKey) return fallback;
 
   try {
-    // Using gemini-3.5-flash for high-fidelity creative copywriting
+    // Using gemini-2.5-flash-lite for high-fidelity creative copywriting
     const model = genAI.getGenerativeModel({
-      model: 'gemini-3.5-flash',
+      model: 'gemini-2.5-flash-lite',
       generationConfig: { 
         responseMimeType: 'application/json',
         temperature: 0.85,
