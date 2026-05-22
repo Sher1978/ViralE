@@ -40,8 +40,8 @@ async function getFFmpeg(): Promise<any> {
           ]);
         };
 
-        console.log('[FFmpeg Audio] Loading FFmpeg WASM with 6s timeout...');
-        await loadWithTimeout(ff, { coreURL, wasmURL }, 6000);
+        console.log('[FFmpeg Audio] Loading FFmpeg WASM with 45s timeout...');
+        await loadWithTimeout(ff, { coreURL, wasmURL }, 45000);
         console.log('[FFmpeg Audio] Loaded successfully');
         ffmpegInstance = ff;
         return true;

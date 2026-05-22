@@ -76,7 +76,7 @@ export async function POST(req: Request) {
     const optimized = data.choices[0].message.content.trim().replace(/^"|"$/g, '');
 
     /* Original Gemini Implementation (Commented for Revert)
-    const model = genAI.getGenerativeModel({ model: 'gemini-1.5-flash' });
+    const model = genAI.getGenerativeModel({ model: 'gemini-3.5-flash' });
     const result = await model.generateContent(systemPrompt);
     const optimized = result.response.text().trim().replace(/^"|"$/g, '');
     */

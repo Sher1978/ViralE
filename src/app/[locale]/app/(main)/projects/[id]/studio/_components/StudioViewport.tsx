@@ -448,10 +448,12 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               <div className="text-center space-y-2">
                 <h2 className="text-sm font-black text-white uppercase tracking-wider">{stageMessage}</h2>
                 {transcriptionError ? (
-                  <div className="space-y-4">
-                    <p className="text-[10px] text-red-400 font-bold uppercase tracking-widest leading-relaxed">
-                      {transcriptionError}
-                    </p>
+                  <div className="space-y-4 max-w-xs mx-auto">
+                    <div className="p-3 bg-red-950/40 border border-red-500/20 rounded-xl">
+                      <p className="text-xs text-red-400 font-medium leading-relaxed text-center break-words select-text">
+                        {transcriptionError}
+                      </p>
+                    </div>
                     <button 
                       onClick={() => {
                         setTranscriptionError(null);

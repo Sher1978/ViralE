@@ -49,8 +49,8 @@ export async function getFFmpeg(): Promise<any> {
       };
 
       try {
-        console.log('[FFmpeg] Attempting to load from local assets with 6s timeout...');
-        await loadWithTimeout(instance, { coreURL: localCore, wasmURL: localWasm }, 6000);
+        console.log('[FFmpeg] Attempting to load from local assets with 45s timeout...');
+        await loadWithTimeout(instance, { coreURL: localCore, wasmURL: localWasm }, 45000);
         console.log('[FFmpeg] Loaded successfully from local assets');
         ffmpeg = instance;
         return instance;
@@ -59,11 +59,11 @@ export async function getFFmpeg(): Promise<any> {
         try {
           instance.terminate();
         } catch (err) {}
-
+ 
         const cdnInstance = new FFmpeg();
         try {
-          console.log('[FFmpeg] Attempting to load from CDN with 10s timeout...');
-          await loadWithTimeout(cdnInstance, { coreURL: cdnCore, wasmURL: cdnWasm }, 10000);
+          console.log('[FFmpeg] Attempting to load from CDN with 90s timeout...');
+          await loadWithTimeout(cdnInstance, { coreURL: cdnCore, wasmURL: cdnWasm }, 90000);
           console.log('[FFmpeg] Loaded successfully from CDN');
           ffmpeg = cdnInstance;
           return cdnInstance;
