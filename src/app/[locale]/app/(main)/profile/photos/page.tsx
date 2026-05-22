@@ -159,7 +159,7 @@ export default function PhotoGalleryPage() {
           </h1>
         </div>
         <button
-          onClick={() => fileInputRef.current?.click()}
+          onClick={() => (fileInputRef.current as any)?.click()}
           disabled={uploading}
           className="flex items-center gap-2 px-4 py-2 rounded-full bg-purple-500 text-white text-xs font-bold uppercase tracking-widest active:scale-95 transition-all disabled:opacity-50"
         >
@@ -204,7 +204,7 @@ export default function PhotoGalleryPage() {
               </p>
             </div>
             <button
-              onClick={() => fileInputRef.current?.click()}
+              onClick={() => (fileInputRef.current as any)?.click()}
               className="px-8 py-4 rounded-2xl bg-purple-500/20 border border-purple-500/30 text-purple-300 text-sm font-bold uppercase tracking-widest active:scale-95 transition-all"
             >
               Загрузить первое фото
