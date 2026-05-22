@@ -1243,7 +1243,7 @@ export default function StudioPage() {
     }
   };
 
-  const handleFinalExport = async (broll?: any[], subs?: any[], explicitARollUrl?: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number) => {
+  const handleFinalExport = async (broll?: any[], subs?: any[], explicitARollUrl?: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number, showSubtitles?: boolean) => {
     setIsSaving(true);
     try {
       if (!manifest) {
@@ -1273,13 +1273,15 @@ export default function StudioPage() {
         subtitlePos: subPos || (manifest as any).subtitlePos || { x: 0, y: 0 },
         subtitleSize: subSize || (manifest as any).subtitleSize || 25,
         subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
+        showSubtitles: showSubtitles !== undefined ? showSubtitles : true,
         _log_subs_count: subs?.length || 0,
         segments: manifest.segments.map((s: any, i: number) => i === 0 ? { 
           ...s, 
           brollClips: broll || [], 
           subtitleClips: subs || [],
           subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
-          subtitleSize: subSize || (manifest as any).subtitleSize || 25
+          subtitleSize: subSize || (manifest as any).subtitleSize || 25,
+          showSubtitles: showSubtitles !== undefined ? showSubtitles : true
         } : s)
       };
 
@@ -1317,7 +1319,8 @@ export default function StudioPage() {
           stage: 'editing',
           subtitlePos: subPos || (manifest as any).subtitlePos || { x: 0, y: 0 },
           subtitleSize: subSize || (manifest as any).subtitleSize || 25,
-          subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0
+          subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
+          showSubtitles: showSubtitles !== undefined ? showSubtitles : true
         };
         await idb.set(key, state, 'ProjectDrafts');
         console.log('[Studio] Local draft synced for delivery session');

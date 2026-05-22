@@ -32,6 +32,7 @@ interface StudioViewportProps {
   setStageMessage: (msg: string) => void;
   selectedCaptionId?: string | null;
   subtitleStyle: number;
+  showSubtitles: boolean;
   setBrollClips: React.Dispatch<React.SetStateAction<BRollClip[]>>;
   voiceoverUrl: string | null;
 }
@@ -180,7 +181,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
   brollClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
   setCurrentTime, setARollDuration, onUploadClick,
   stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage,
-  selectedCaptionId, subtitleStyle, setBrollClips, voiceoverUrl
+  selectedCaptionId, subtitleStyle, setBrollClips, voiceoverUrl, showSubtitles
 }) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const voiceoverRef = useRef<HTMLAudioElement>(null);
@@ -337,6 +338,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
             <div className="absolute inset-0 pointer-events-none z-30">
               <AnimatePresence>
                 {(() => {
+                  if (!showSubtitles) return null;
                   const activeSub = subtitleClips.find(s => currentTime >= s.startTime && currentTime <= s.endTime);
                   if (!activeSub) return null;
 

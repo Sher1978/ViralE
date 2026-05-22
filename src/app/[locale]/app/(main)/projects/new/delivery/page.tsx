@@ -270,7 +270,7 @@ function DeliveryPageContent() {
 
     try {
       const manifest = ver.script_data as any;
-      const subs = manifest.subtitleClips || [];
+      const subs = manifest.showSubtitles === false ? [] : (manifest.subtitleClips || []);
       const brolls = manifest.brollClips || [];
       
       // 1. Prepare Font
@@ -782,7 +782,7 @@ function DeliveryPageContent() {
         try { await ffmpeg.deleteFile(name); } catch(e) {}
       }
 
-      const subs = manifest.subtitleClips || manifest.segments?.[0]?.subtitleClips || [];
+      const subs = manifest.showSubtitles === false ? [] : (manifest.subtitleClips || manifest.segments?.[0]?.subtitleClips || []);
       console.log('[Delivery] Subtitle clips found:', subs.length);
 
       // 1-3. Reliable Execution Path (Multi-pass overlay for extreme codec stability)

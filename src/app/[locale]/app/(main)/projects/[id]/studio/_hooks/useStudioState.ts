@@ -113,6 +113,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 });
   const [subtitleSize, setSubtitleSize] = useState(25); // Reduced default size 3x (was 80)
   const [subtitleStyle, setSubtitleStyle] = useState<number>(0);
+  const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
   const [pxPerSecond, setPxPerSecond] = useState(100);
   const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({});
   const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
@@ -156,6 +157,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
           if (data.subtitlePos) setSubtitlePos(data.subtitlePos);
           if (data.subtitleSize) setSubtitleSize(data.subtitleSize || 25);
           if (data.subtitleStyle !== undefined) setSubtitleStyle(data.subtitleStyle);
+          if (data.showSubtitles !== undefined) setShowSubtitles(data.showSubtitles);
           if (data.pxPerSecond) setPxPerSecond(data.pxPerSecond);
           if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
             setARollUrl(data.aRollUrl);
@@ -198,9 +200,9 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   useEffect(() => {
     if (!projectId || !persistenceLoadedRef.current) return;
     const key = `viral_editor_draft_${projectId}`;
-    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, pxPerSecond };
+    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond };
     idb.set(key, state, 'ProjectDrafts');
-  }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, pxPerSecond]);
+  }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond]);
 
   // Heavy file persistence
   useEffect(() => {
@@ -531,7 +533,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     brollClips, setBrollClips, phrases, setPhrases,
     transcriptionError, setTranscriptionError, isAnalyzingBroll,
     subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
-    subtitleStyle, setSubtitleStyle, pxPerSecond, setPxPerSecond,
+    subtitleStyle, setSubtitleStyle, showSubtitles, setShowSubtitles, pxPerSecond, setPxPerSecond,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
     voiceoverUrl, setVoiceoverUrl,
     runTranscriptionAndPhrases, setRawFile,

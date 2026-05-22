@@ -26,7 +26,7 @@ interface VideoEditorProps {
   projectId: string;
   aRollUrl: string;
   onBack: () => void;
-  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number) => Promise<void>;
+  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number, showSubtitles?: boolean) => Promise<void>;
   manifest?: ProductionManifest | null;
   onFaceless?: () => void;
 }
@@ -45,7 +45,7 @@ export const VideoEditor = React.memo(({
     transcript, setTranscript, subtitleClips, setSubtitleClips,
     brollClips, setBrollClips, phrases, setPhrases,
     transcriptionError, setTranscriptionError, isAnalyzingBroll,
-    subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize, subtitleStyle, setSubtitleStyle, pxPerSecond, setPxPerSecond,
+    subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize, subtitleStyle, setSubtitleStyle, showSubtitles, setShowSubtitles, pxPerSecond, setPxPerSecond,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
     voiceoverUrl, setVoiceoverUrl,
     runTranscriptionAndPhrases, setRawFile, deleteBroll
@@ -321,7 +321,7 @@ export const VideoEditor = React.memo(({
           if (isExporting) return;
           setIsExporting(true);
           try {
-            await onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize, subtitleStyle);
+            await onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize, subtitleStyle, showSubtitles);
           } catch (e) {
             console.error('[VideoEditor] Export failed:', e);
           } finally {
@@ -339,6 +339,7 @@ export const VideoEditor = React.memo(({
         stage={stage} stageMessage={stageMessage} transcriptionError={transcriptionError} heartbeat={0}
         runTranscriptionAndPhrases={runTranscriptionAndPhrases} setStage={setStage} setTranscriptionError={setTranscriptionError} setStageMessage={setStageMessage}
         subtitleStyle={subtitleStyle}
+        showSubtitles={showSubtitles}
         voiceoverUrl={voiceoverUrl}
       />
 
@@ -455,6 +456,8 @@ export const VideoEditor = React.memo(({
                 onSelect={(idx) => {
                     setSubtitleStyle(idx);
                 }}
+                showSubtitles={showSubtitles}
+                onToggleSubtitles={setShowSubtitles}
                 onClose={() => setActiveTool(null)}
             />
         )}

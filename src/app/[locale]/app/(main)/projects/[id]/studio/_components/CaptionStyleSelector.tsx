@@ -8,6 +8,8 @@ interface CaptionStyleSelectorProps {
   currentStyle: number;
   onSelect: (index: number) => void;
   onClose: () => void;
+  showSubtitles: boolean;
+  onToggleSubtitles: (show: boolean) => void;
 }
 
 const STYLES_PREVIEW = [
@@ -28,7 +30,9 @@ const STYLES_PREVIEW = [
 export const CaptionStyleSelector: React.FC<CaptionStyleSelectorProps> = ({
   currentStyle,
   onSelect,
-  onClose
+  onClose,
+  showSubtitles,
+  onToggleSubtitles
 }) => {
   return (
     <div className="flex flex-col h-full bg-[#0d0d12] text-white rounded-t-[3rem] overflow-hidden">
@@ -38,6 +42,27 @@ export const CaptionStyleSelector: React.FC<CaptionStyleSelectorProps> = ({
         </button>
         <h2 className="text-lg font-black tracking-tight uppercase italic">Caption Styles</h2>
         <div className="w-10" />
+      </div>
+
+      {/* Subtitles Toggle Switch */}
+      <div className="px-6 py-4 border-b border-white/5 bg-white/[0.01] flex items-center justify-between shrink-0">
+        <div className="flex flex-col">
+          <span className="text-xs font-bold text-white/80 uppercase tracking-wider">Показывать субтитры</span>
+          <span className="text-[10px] text-white/40 uppercase tracking-widest font-semibold mt-0.5">Включить или скрыть текст на видео</span>
+        </div>
+        <button
+          onClick={() => onToggleSubtitles(!showSubtitles)}
+          className={`w-14 h-8 rounded-full p-1 transition-all duration-300 relative flex items-center ${
+            showSubtitles ? 'bg-purple-600' : 'bg-white/10'
+          }`}
+        >
+          <motion.div
+            layout
+            className="w-6 h-6 rounded-full bg-white shadow-md cursor-pointer"
+            animate={{ x: showSubtitles ? 24 : 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          />
+        </button>
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 grid grid-cols-2 gap-4 custom-scrollbar pb-12">
