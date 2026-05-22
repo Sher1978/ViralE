@@ -561,7 +561,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     });
   };
 
-  const drawRoundRect = (ctx: CanvasRenderingContext2D, x: number, y: number, w: number, h: number, r: number) => {
+  const drawRoundRect = (ctx: any, x: number, y: number, w: number, h: number, r: number) => {
     if (w < 2 * r) r = w / 2;
     if (h < 2 * r) r = h / 2;
     ctx.beginPath();
@@ -573,7 +573,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     ctx.closePath();
   };
 
-  const wrapCanvasText = (ctx: CanvasRenderingContext2D, text: string, maxWidth: number): string[] => {
+  const wrapCanvasText = (ctx: any, text: string, maxWidth: number): string[] => {
     const words = text.split(' ');
     let line = '';
     const lines: string[] = [];
@@ -758,7 +758,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   };
 
   const handleCopy = (text: string, id: string) => {
-    navigator.clipboard.writeText(text);
+    (navigator as any).clipboard.writeText(text);
     setCopying(id);
     setTimeout(() => setCopying(null), 2000);
   };
@@ -790,12 +790,12 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   ];
 
   const shareToSocial = async (platform: string, text: string, title?: string) => {
-    if (navigator.share) {
+    if ((navigator as any).share) {
       try {
-        await navigator.share({
+        await (navigator as any).share({
           title: title || 'Viral Engine Content',
           text: text,
-          url: window.location.href,
+          url: safeWindow ? safeWindow.location.href : '',
         });
       } catch (err) {
         console.log('Share failed:', err);
