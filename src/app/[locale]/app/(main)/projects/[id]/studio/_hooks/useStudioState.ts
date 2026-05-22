@@ -466,10 +466,29 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
 
         console.log('[Studio LOG] Sending POST to /api/ai/transcribe...');
         const tTranscribe = performance.now();
-        const res = await fetch('/api/ai/transcribe', { 
-          method: 'POST', 
-          body: formData 
-        });
+        
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => {
+          console.warn('[Studio LOG] Transcription request timed out after 95s. Aborting fetch...');
+          controller.abort();
+        }, 95000);
+
+        let res;
+        try {
+          res = await fetch('/api/ai/transcribe', { 
+            method: 'POST', 
+            body: formData,
+            signal: controller.signal
+          });
+        } catch (fetchErr: any) {
+          if (fetchErr.name === 'AbortError') {
+            throw new Error('Таймаут соединения: транскрибация заняла более 95 секунд. Пожалуйста, попробуйте еще раз или выберите более короткое видео.');
+          }
+          throw fetchErr;
+        } finally {
+          clearTimeout(timeoutId);
+        }
+
         console.log('[Studio LOG] Transcribe API response status:', res.status, 'Time taken:', (performance.now() - tTranscribe).toFixed(0), 'ms');
         
         if (!res.ok) {

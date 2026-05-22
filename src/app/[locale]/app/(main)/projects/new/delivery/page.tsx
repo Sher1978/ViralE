@@ -595,9 +595,13 @@ function DeliveryPageContent() {
       
       // Extract audio from source and merge into silent video
       console.log('[Canvas Render] Running final audio merge...');
-      const mergeExitCode = await ffmpeg.exec(['-i', 'silent.mp4', '-i', 'source.mp4', '-map', '0:v', '-map', '1:a', '-c', 'copy', 'output.mp4']);
+      let mergeExitCode = await ffmpeg.exec(['-i', 'silent.mp4', '-i', 'source.mp4', '-map', '0:v', '-map', '1:a', '-c', 'copy', 'output.mp4']);
       if (mergeExitCode !== 0) {
-        throw new Error(`FFmpeg merge command failed with exit code ${mergeExitCode}`);
+        console.warn('[Canvas Render] Audio merge failed (probably no audio track in source video). Retrying with video-only copy...');
+        mergeExitCode = await ffmpeg.exec(['-i', 'silent.mp4', '-c:v', 'copy', 'output.mp4']);
+        if (mergeExitCode !== 0) {
+          throw new Error(`FFmpeg merge command failed with exit code ${mergeExitCode}`);
+        }
       }
       
       const finalData = await ffmpeg.readFile('output.mp4');
@@ -837,7 +841,7 @@ function DeliveryPageContent() {
           
           // Apply scale to the broll before overlaying
           const overlayFilter = `[1:v]scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
-          const exitCodeOverlay = await ffmpeg.exec([
+          let exitCodeOverlay = await ffmpeg.exec([
             '-i', currentInput,
             '-i', broll.name,
             '-filter_complex', overlayFilter,
@@ -845,7 +849,19 @@ function DeliveryPageContent() {
             '-map', '0:a',
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
           ]);
-          if (exitCodeOverlay !== 0) throw new Error(`FFmpeg overlay failed on B-Roll ${i+1}`);
+          if (exitCodeOverlay !== 0) {
+            console.warn(`[Delivery] Overlay with audio map failed on B-Roll ${i+1} (probably no audio in source). Retrying without audio map...`);
+            exitCodeOverlay = await ffmpeg.exec([
+              '-i', currentInput,
+              '-i', broll.name,
+              '-filter_complex', overlayFilter,
+              '-map', '[out]',
+              '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', nextOutput
+            ]);
+            if (exitCodeOverlay !== 0) {
+              throw new Error(`FFmpeg overlay failed on B-Roll ${i+1}`);
+            }
+          }
           try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
           try { await ffmpeg.deleteFile(broll.name); } catch(e) {}
           currentInput = nextOutput;
@@ -856,7 +872,7 @@ function DeliveryPageContent() {
           const subOutput = currentInput === 'temp_A.mp4' ? `temp_B.mp4` : `temp_A.mp4`;
           const vfFilter = buildDrawtextFilter(subs, '', isMobile ? 1280 : 1920);
           
-          const exitCodeSub = await ffmpeg.exec([
+          let exitCodeSub = await ffmpeg.exec([
             '-i', currentInput,
             '-vf', vfFilter,
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
@@ -864,6 +880,17 @@ function DeliveryPageContent() {
             subOutput
           ]);
           
+          if (exitCodeSub !== 0) {
+            console.warn('[Delivery] Subtitle burn with audio copy failed (probably no audio in source). Retrying without audio copy...');
+            exitCodeSub = await ffmpeg.exec([
+              '-i', currentInput,
+              '-vf', vfFilter,
+              '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
+              '-an',
+              subOutput
+            ]);
+          }
+
           if (exitCodeSub === 0) {
             try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
             currentInput = subOutput;

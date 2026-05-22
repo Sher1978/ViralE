@@ -114,19 +114,41 @@ export async function POST(req: NextRequest) {
     // ── FALLBACK PATH: Gemini (For large files or if Whisper fails) ─────────
     console.log('[Transcribe] Falling back to Gemini...');
     const genAI = new GoogleGenerativeAI(apiKey);
+
+    const tryGenerateContent = async (
+      genAIInstance: GoogleGenerativeAI,
+      parts: any[]
+    ) => {
+      const models = ['gemini-2.5-flash-lite', 'gemini-2.0-flash', 'gemini-1.5-flash'];
+      let lastError: any = null;
+      for (const modelName of models) {
+        try {
+          console.log(`[Transcribe] Attempting transcription using model: ${modelName}...`);
+          const model = genAIInstance.getGenerativeModel({ model: modelName });
+          const result = await model.generateContent(parts);
+          const text = result.response.text();
+          if (text) {
+            console.log(`[Transcribe] Success with model: ${modelName}`);
+            return { text, model: modelName };
+          }
+        } catch (err: any) {
+          console.warn(`[Transcribe] Model ${modelName} failed:`, err.message || err);
+          lastError = err;
+        }
+      }
+      throw lastError || new Error('All Gemini model fallbacks failed');
+    };
     
     // Inline path for small-ish files
     if (fileSizeMB <= 15) {
       try {
         const buffer = Buffer.from(await file.arrayBuffer());
         const base64 = buffer.toString('base64');
-        // 4. Initialize Gemini 2.5 Flash-Lite (optimized for fast, low-cost video/audio understanding)
-        const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
-        const result = await model.generateContent([
+        const result = await tryGenerateContent(genAI, [
           { text: TRANSCRIPTION_PROMPT },
           { inlineData: { mimeType: geminiMime, data: base64 } },
         ]);
-        const transcript = parseTranscript(result.response.text());
+        const transcript = parseTranscript(result.text);
         if (transcript) return NextResponse.json({ transcript });
       } catch (e: any) {
         console.warn('[Transcribe] Gemini Inline exception:', e.message);
@@ -168,9 +190,11 @@ export async function POST(req: NextRequest) {
             if (stateData.state === 'ACTIVE') break;
             attempts++;
           }
-          const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
-          const result = await model.generateContent([{ text: TRANSCRIPTION_PROMPT }, { fileData: { mimeType: geminiMime, fileUri } }]);
-          const rawText = result.response.text();
+          const result = await tryGenerateContent(genAI, [
+            { text: TRANSCRIPTION_PROMPT },
+            { fileData: { mimeType: geminiMime, fileUri } }
+          ]);
+          const rawText = result.text;
           const transcript = parseTranscript(rawText);
           if (transcript) return NextResponse.json({ transcript, engine: 'gemini-file' });
           
