@@ -74,10 +74,14 @@ function openShare(url: string) {
 
 async function downloadAsset(url: string, filename: string) {
   try {
+    const doc = typeof globalThis !== 'undefined' ? (globalThis as any).document : null;
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+    if (!doc || !win) return;
+
     const res = await fetch(url);
     const blob = await res.blob();
-    const a = document.createElement('a');
-    a.href = URL.createObjectURL(blob);
+    const a = doc.createElement('a');
+    a.href = win.URL.createObjectURL(blob);
     a.download = filename;
     a.click();
   } catch {
@@ -89,7 +93,9 @@ async function downloadAsset(url: string, filename: string) {
 }
 
 function copyText(text: string, setCopied: (k: string) => void, key: string) {
-  navigator.clipboard.writeText(text).then(() => {
+  const nav = typeof globalThis !== 'undefined' ? (globalThis as any).navigator : null;
+  if (!nav || !nav.clipboard) return;
+  nav.clipboard.writeText(text).then(() => {
     setCopied(key);
     setTimeout(() => setCopied(''), 2000);
   });
