@@ -83,7 +83,9 @@ export default function LibraryPage() {
   useEffect(() => { load(); }, [load]);
 
   const handleDelete = async (id: string) => {
-    if (!confirm(locale === 'ru' ? 'Удалить этот проект навсегда?' : 'Delete this project permanently?')) return;
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+    if (!win) return;
+    if (!win.confirm(locale === 'ru' ? 'Удалить этот проект навсегда?' : 'Delete this project permanently?')) return;
     const ok = await projectService.deleteProject(id);
     if (ok) {
       setPacks(prev => prev.filter(p => p.projectId !== id));
@@ -232,7 +234,8 @@ function PackCard({
     timerRef.current = setTimeout(() => {
       setShowMenu(true);
       setIsLongPressing(false);
-      if (window.navigator.vibrate) window.navigator.vibrate(50);
+      const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+      if (win && win.navigator && win.navigator.vibrate) win.navigator.vibrate(50);
     }, 600);
   };
 
