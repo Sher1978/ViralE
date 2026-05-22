@@ -58,6 +58,35 @@ interface GeneratedAsset {
 
 type Platform = 'sfv' | 'threads' | 'linkedin' | 'article' | 'carousel' | 'banner';
 
+const safeLocalStorage = {
+  getItem: (key: string): string | null => {
+    if (typeof globalThis === 'undefined' || !(globalThis as any).localStorage) return null;
+    try {
+      return (globalThis as any).localStorage.getItem(key);
+    } catch (e) {
+      return null;
+    }
+  },
+  setItem: (key: string, value: string): void => {
+    if (typeof globalThis === 'undefined' || !(globalThis as any).localStorage) return;
+    try {
+      (globalThis as any).localStorage.setItem(key, value);
+    } catch (e) {}
+  }
+};
+
+const safeAlert = (msg: string) => {
+  if (typeof globalThis !== 'undefined' && (globalThis as any).alert) {
+    (globalThis as any).alert(msg);
+  } else {
+    console.log('[Alert Fallback]:', msg);
+  }
+};
+
+const safeDocument = typeof globalThis !== 'undefined' ? (globalThis as any).document : null;
+const safeImage = typeof globalThis !== 'undefined' ? (globalThis as any).Image : null;
+const safeWindow = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+
 export default function DistributionFactory({ manifest, scriptText, projectId, locale, onUpdateManifest }: DistributionFactoryProps) {
   const [activePlatform, setActivePlatform] = useState<Platform>('sfv');
   const [selectedDetail, setSelectedDetail] = useState<Platform | null>(null);
@@ -160,7 +189,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
       try {
         // Try local storage first
-        const localDna = localStorage.getItem('viral_engine_visual_dna');
+        const localDna = safeLocalStorage.getItem('viral_engine_visual_dna');
         if (localDna) {
           setVisualDnaConfig(localDna);
         } else {
@@ -177,7 +206,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           
           if (!error && data?.visual_dna_config) {
             setVisualDnaConfig(JSON.stringify(data.visual_dna_config, null, 2));
-            localStorage.setItem('viral_engine_visual_dna', JSON.stringify(data.visual_dna_config, null, 2));
+            safeLocalStorage.setItem('viral_engine_visual_dna', JSON.stringify(data.visual_dna_config, null, 2));
           }
         }
       } catch (e) {
@@ -194,7 +223,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       const parsed = JSON.parse(visualDnaConfig);
       
       // Save locally first to guarantee persistence
-      localStorage.setItem('viral_engine_visual_dna', JSON.stringify(parsed, null, 2));
+      safeLocalStorage.setItem('viral_engine_visual_dna', JSON.stringify(parsed, null, 2));
 
       // Attempt DB save
       const { data: { user } } = await supabase.auth.getUser();
@@ -209,7 +238,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         }
       }
       
-      alert(locale === 'ru' ? 'Дизайн-система ДНК успешно сохранена!' : 'Brand DNA design system saved successfully!');
+      safeAlert(locale === 'ru' ? 'Дизайн-система ДНК успешно сохранена!' : 'Brand DNA design system saved successfully!');
     } catch (err: any) {
       console.error('[Save Visual DNA error]:', err);
       setVisualDnaError(err.message || 'Invalid JSON syntax');
@@ -268,8 +297,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             toneMode, 
             styleSeed, 
             userBrief,
-            customVisualDna: localStorage.getItem('viral_engine_visual_dna') 
-              ? JSON.parse(localStorage.getItem('viral_engine_visual_dna')!) 
+            customVisualDna: safeLocalStorage.getItem('viral_engine_visual_dna') 
+              ? JSON.parse(safeLocalStorage.getItem('viral_engine_visual_dna')!) 
               : null
           })
         });
@@ -319,7 +348,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       
     } catch (err: any) {
       console.error('[Unified Gen Error]:', err);
-      alert(locale === 'ru' 
+      safeAlert(locale === 'ru' 
         ? `Ошибка комплексной генерации галереи: ${err.message || err}` 
         : `Failed to generate unified gallery: ${err.message || err}`
       );
@@ -330,7 +359,11 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
   const exportSlideToCanvas = (slideNum: number): Promise<string> => {
     return new Promise((resolve, reject) => {
-      const canvas = document.createElement('canvas');
+      const canvas = safeDocument ? safeDocument.createElement('canvas') : null;
+      if (!canvas) {
+        reject(new Error('Document not available'));
+        return;
+      }
       canvas.width = 1080;
       canvas.height = 1350;
       const ctx = canvas.getContext('2d');
@@ -339,7 +372,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         return;
       }
 
-      const drawContent = (img: HTMLImageElement | null) => {
+      const drawContent = (img: any) => {
         // 1. Draw Background (Image or Gradient)
         if (img) {
           // Object-fit cover math
@@ -513,11 +546,15 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       // Load background image safely
       const bgUrl = imageResults[`carousel-${slideNum - 1}`];
       if (bgUrl) {
-        const img = new Image();
-        img.crossOrigin = 'anonymous'; // critical for CORS issues on external URLs
-        img.onload = () => drawContent(img);
-        img.onerror = () => drawContent(null);
-        img.src = bgUrl;
+        const img = safeImage ? new safeImage() : null;
+        if (img) {
+          img.crossOrigin = 'anonymous'; // critical for CORS issues on external URLs
+          img.onload = () => drawContent(img);
+          img.onerror = () => drawContent(null);
+          img.src = bgUrl;
+        } else {
+          drawContent(null);
+        }
       } else {
         drawContent(null);
       }
@@ -558,13 +595,15 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const downloadSingleRenderedSlide = async (slideNum: number) => {
     try {
       const dataUrl = await exportSlideToCanvas(slideNum);
-      const link = document.createElement('a');
-      link.href = dataUrl;
-      link.download = `slide_${slideNum}_rendered.jpg`;
-      link.click();
+      const link = safeDocument ? safeDocument.createElement('a') : null;
+      if (link) {
+        link.href = dataUrl;
+        link.download = `slide_${slideNum}_rendered.jpg`;
+        link.click();
+      }
     } catch (e) {
       console.error('[Slide Render Error]:', e);
-      alert('Ошибка рендеринга слайда. Попробуйте еще раз.');
+      safeAlert('Ошибка рендеринга слайда. Попробуйте еще раз.');
     }
   };
 
@@ -638,8 +677,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           toneMode, 
           styleSeed, 
           userBrief,
-          customVisualDna: localStorage.getItem('viral_engine_visual_dna') 
-            ? JSON.parse(localStorage.getItem('viral_engine_visual_dna')!) 
+          customVisualDna: safeLocalStorage.getItem('viral_engine_visual_dna') 
+            ? JSON.parse(safeLocalStorage.getItem('viral_engine_visual_dna')!) 
             : null
         })
       });
@@ -664,7 +703,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       }
     } catch (err: any) {
       console.error('[Generate IG Carousel Error]:', err);
-      alert(locale === 'ru' 
+      safeAlert(locale === 'ru' 
         ? `Ошибка генерации карусели: ${err.message || err}` 
         : `Failed to generate carousel: ${err.message || err}`
       );
@@ -702,14 +741,14 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       } else {
         const errText = await res.text();
         console.error(`[Image Gen] Failed for key "${key}"! Status: ${res.status}, Error:`, errText);
-        alert(locale === 'ru' 
+        safeAlert(locale === 'ru' 
           ? `Ошибка генерации изображения (${key}): ${errText || 'Неизвестная ошибка сервера'}` 
           : `Failed to generate image (${key}): ${errText || 'Unknown server error'}`
         );
       }
     } catch (err: any) {
       console.error(`[Image Gen] Catch error for key "${key}":`, err);
-      alert(locale === 'ru' 
+      safeAlert(locale === 'ru' 
         ? `Сетевая ошибка при генерации (${key}): ${err.message || err}` 
         : `Network error during generation (${key}): ${err.message || err}`
       );
@@ -728,12 +767,16 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     try {
       const res = await fetch(url);
       const blob = await res.blob();
-      const link = document.createElement('a');
-      link.href = URL.createObjectURL(blob);
-      link.download = filename;
-      link.click();
+      const link = safeDocument ? safeDocument.createElement('a') : null;
+      if (link) {
+        link.href = URL.createObjectURL(blob);
+        link.download = filename;
+        link.click();
+      }
     } catch (err) {
-      window.open(url, '_blank');
+      if (safeWindow && safeWindow.open) {
+        safeWindow.open(url, '_blank');
+      }
     }
   };
 
@@ -760,15 +803,15 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     } else {
       const encodedText = encodeURIComponent(text);
       const urls: Record<string, string> = {
-        telegram: `https://t.me/share/url?url=${encodeURIComponent(window.location.href)}&text=${encodedText}`,
+        telegram: `https://t.me/share/url?url=${encodeURIComponent(safeWindow ? safeWindow.location.href : '')}&text=${encodedText}`,
         twitter: `https://twitter.com/intent/tweet?text=${encodedText}`,
-        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(window.location.href)}`,
+        linkedin: `https://www.linkedin.com/sharing/share-offsite/?url=${encodeURIComponent(safeWindow ? safeWindow.location.href : '')}`,
       };
 
       if (urls[platform]) {
-        window.open(urls[platform], '_blank');
+        if (safeWindow && safeWindow.open) safeWindow.open(urls[platform], '_blank');
       } else {
-        window.open('https://t.me/ViralEngine_Bot', '_blank');
+        if (safeWindow && safeWindow.open) safeWindow.open('https://t.me/ViralEngine_Bot', '_blank');
       }
     }
   };
@@ -776,10 +819,12 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const saveTextAsFile = (text: string, filename: string) => {
     const blob = new Blob([text], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = filename;
-    a.click();
+    const a = safeDocument ? safeDocument.createElement('a') : null;
+    if (a) {
+      a.href = url;
+      a.download = filename;
+      a.click();
+    }
     URL.revokeObjectURL(url);
   };
 

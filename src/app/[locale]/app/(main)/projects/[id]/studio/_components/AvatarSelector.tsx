@@ -74,7 +74,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = (e.target as any).files?.[0];
     if (!file) return;
 
     setIsUploading(true);
@@ -240,7 +240,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                       {/* Upload Section */}
                       <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                           <button 
-                            onClick={() => fileInputRef.current?.click()}
+                            onClick={() => (fileInputRef.current as any)?.click()}
                             disabled={isUploading}
                             className="aspect-square rounded-[2rem] border-2 border-dashed border-white/10 hover:border-purple-500/50 hover:bg-purple-500/5 transition-all flex flex-col items-center justify-center gap-3 group relative overflow-hidden"
                           >
