@@ -126,7 +126,7 @@ export default function LibraryPage() {
           type="text"
           placeholder="Search packs..."
           value={search}
-          onChange={e => setSearch(e.target.value)}
+          onChange={e => setSearch((e.target as any).value)}
           className="w-full bg-white/[0.03] border border-white/5 rounded-2xl py-3.5 pl-11 pr-4 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/30 focus:bg-white/[0.05] transition-all"
         />
       </div>
