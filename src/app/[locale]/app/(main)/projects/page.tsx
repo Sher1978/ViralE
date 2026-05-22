@@ -22,7 +22,8 @@ function ProjectCard({ project, locale, router, onDelete }: { project: Project, 
   const handleStart = () => {
     timerRef.current = setTimeout(() => {
       setShowMenu(true);
-      if (window.navigator.vibrate) window.navigator.vibrate(50);
+      const nav = (globalThis as any).navigator;
+      if (nav?.vibrate) nav.vibrate(50);
     }, 600);
   };
 

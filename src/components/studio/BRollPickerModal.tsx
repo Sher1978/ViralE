@@ -119,7 +119,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = (e.target as any).files?.[0];
     if (!file) return;
 
     // Show local loading state
@@ -185,7 +185,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
             clearInterval(poll);
             setIsGenerating(false);
             setVideos(prev => prev.filter(v => v.id !== tempId));
-            alert('AI Synthesis failed or timed out. Please try a different prompt.');
+            const win = (globalThis as any).window; if (win) win.alert('AI Synthesis failed or timed out. Please try a different prompt.');
           }
         } catch (pollErr) {
           console.error('Polling failed', pollErr);
@@ -195,7 +195,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
       console.error("Generation failed", error);
       setIsGenerating(false);
       setVideos(prev => prev.filter(v => v.id !== tempId));
-      alert(`Generation failed: ${error.message}`);
+      const win = (globalThis as any).window; if (win) win.alert(`Generation failed: ${error.message}`);
     }
   };
 
@@ -223,7 +223,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
         <div className="flex items-center gap-2">
           {onDelete && (
             <button 
-              onClick={() => { if(confirm('Delete this clip?')) { onDelete(); onClose(); } }}
+              onClick={() => { const win = (globalThis as any).window; if(win && win.confirm('Delete this clip?')) { onDelete(); onClose(); } }}
               className="p-3 rounded-lg bg-red-500/10 hover:bg-red-500/20 text-red-400 transition-all flex items-center gap-2 text-[10px] font-black uppercase tracking-widest mr-2"
             >
               <Trash2 size={18} /> 
@@ -319,7 +319,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
              <textarea
                value={searchQuery}
                onChange={(e) => {
-                 setSearchQuery(e.target.value);
+                 setSearchQuery((e.target as any).value);
                  setHasInteracted(true);
                }}
                onFocus={(e) => {
@@ -363,7 +363,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
 
         <div className="flex gap-3">
           <button
-            onClick={() => fileInputRef.current?.click()}
+            onClick={() => (fileInputRef.current as any)?.click()}
             className="flex-1 h-14 rounded-lg bg-white/5 border border-white/10 hover:bg-white/10 text-white font-black uppercase tracking-widest text-[11px] flex items-center justify-center gap-2 transition-all active:scale-95"
           >
             <Upload size={16} /> My Media
@@ -428,7 +428,7 @@ const BRollPickerModal: React.FC<BRollPickerModalProps> = ({
                 onCanPlay={() => {
                   if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);
                   setIsVideoLoading(false);
-                  videoRef.current?.play().catch(e => console.warn('Autoplay prevented', e));
+                  (videoRef.current as any)?.play().catch((e: any) => console.warn('Autoplay prevented', e));
                 }}
                 onLoadedData={() => {
                   if (loaderTimeoutRef.current) clearTimeout(loaderTimeoutRef.current);

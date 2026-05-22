@@ -31,7 +31,7 @@ export const FactoryMonitor: React.FC<FactoryMonitorProps> = ({ progress, status
     fps: 0
   });
   
-  const logContainerRef = useRef<HTMLDivElement>(null);
+  const logContainerRef = useRef<any>(null);
 
   // Simulated metrics
   useEffect(() => {

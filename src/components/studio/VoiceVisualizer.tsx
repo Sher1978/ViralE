@@ -26,7 +26,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
   isSpeaking,
   frequencyData,
 }) => {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<any>(null);
   const particlesRef = useRef<Particle[]>([]);
   const animationFrameRef = useRef<number | null>(null);
   const timeRef = useRef(0);

@@ -65,12 +65,12 @@ export function StrategistChat({
 
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const analyserRef = useRef<AnalyserNode | null>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioContextRef = useRef<any | null>(null);
+  const analyserRef = useRef<any | null>(null);
+  const mediaRecorderRef = useRef<any | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
   const animationRef = useRef<number | null>(null);
-  const audioPlayerRef = useRef<HTMLAudioElement | null>(null);
+  const audioPlayerRef = useRef<any | null>(null);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -92,12 +92,12 @@ export function StrategistChat({
   }, [userId]);
 
   useEffect(() => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' });
+    (messagesEndRef.current as any)?.scrollIntoView({ behavior: 'smooth' });
   }, [messages]);
 
   const initAudio = () => {
     if (!audioContextRef.current) {
-      audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+      const win = (globalThis as any).window; audioContextRef.current = win ? new (win.AudioContext || win.webkitAudioContext)() : null;
       analyserRef.current = audioContextRef.current.createAnalyser();
       analyserRef.current.fftSize = 256;
       
@@ -118,22 +118,23 @@ export function StrategistChat({
   const startRecording = async () => {
     initAudio();
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const nav = (globalThis as any).navigator; const stream = nav ? await nav.mediaDevices.getUserMedia({ audio: true }) : null;
       const source = audioContextRef.current!.createMediaStreamSource(stream);
       source.connect(analyserRef.current!);
 
-      const recorder = new MediaRecorder(stream);
+      const mr_class = (globalThis as any).MediaRecorder; const recorder = stream && mr_class ? new mr_class(stream) : null;
+      if (!stream || !recorder) return;
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
-      recorder.ondataavailable = (e) => {
+      recorder.ondataavailable = (e: any) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
 
       recorder.onstop = () => {
         const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
         handleSend(audioBlob);
-        stream.getTracks().forEach(track => track.stop());
+        stream.getTracks().forEach((track: any) => track.stop());
       };
 
       recorder.start();
@@ -248,7 +249,8 @@ export function StrategistChat({
       const audioBlob = await response.blob();
       const url = URL.createObjectURL(audioBlob);
       
-      const audio = new Audio(url);
+      const audio_class = (globalThis as any).Audio; const audio = audio_class ? new audio_class(url) : null;
+      if (!audio) return;
       audioPlayerRef.current = audio;
       
       const source = audioContextRef.current!.createMediaElementSource(audio);
@@ -269,7 +271,7 @@ export function StrategistChat({
   };
 
   const copyToClipboard = (text: string, id: number) => {
-    navigator.clipboard.writeText(text);
+    const nav = (globalThis as any).navigator; if (nav && nav.clipboard) nav.clipboard.writeText(text);
     setCopiedId(id);
     setTimeout(() => setCopiedId(null), 2000);
   };
@@ -531,7 +533,7 @@ export function StrategistChat({
                 <div className="relative flex-1">
                   <textarea
                     value={input}
-                    onChange={(e) => setInput(e.target.value)}
+                    onChange={(e) => setInput((e.target as any).value)}
                     onKeyDown={(e) => {
                       if (e.key === 'Enter' && !e.shiftKey) {
                         e.preventDefault();

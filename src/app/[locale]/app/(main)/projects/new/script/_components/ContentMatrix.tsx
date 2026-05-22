@@ -32,7 +32,7 @@ function ScenarioCard({
   });
 
   useEffect(() => {
-    if (inView && !isSelected && typeof window !== 'undefined' && window.innerWidth < 768) {
+    if (inView && !isSelected && typeof (globalThis as any).window !== 'undefined' && (globalThis as any).window.innerWidth < 768) {
       onSelect(blockId, scenarioId);
     }
   }, [inView, isSelected, onSelect, blockId, scenarioId]);
@@ -97,7 +97,7 @@ function ScenarioCard({
       <div className="p-6 relative z-10 flex flex-col min-h-[240px]">
         <textarea
           value={displayContent}
-          onChange={(e) => onUpdate(blockId, scenarioId, e.target.value)}
+          onChange={(e) => onUpdate(blockId, scenarioId, (e.target as any).value)}
           onClick={(e) => e.stopPropagation()}
           onMouseDown={(e) => e.stopPropagation()}
           onTouchStart={(e) => e.stopPropagation()}

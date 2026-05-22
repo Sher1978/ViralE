@@ -13,7 +13,7 @@ export async function POST(req: Request) {
 
     // 1. Deduct Credits for partial generation (reduced cost)
     const cost = segmentType === 'avatar' ? CREDIT_COSTS.AVATAR_HEYGEN : CREDIT_COSTS.RENDER_PREVIEW;
-    await deductCredits(authorizedSupabase, user.id, cost, 'PARTIAL_GEN', projectId);
+    await deductCredits(authorizedSupabase as any, user.id, cost, 'PARTIAL_GEN', projectId);
 
     // 2. Create a "Segment Job" in render_jobs via authorized client
     const { data: job, error: jobError } = await authorizedSupabase

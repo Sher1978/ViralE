@@ -41,8 +41,9 @@ export default function IdeaCard({
     setIsTransferring(true);
     
     // Play light premium haptics if supported
-    if (window.navigator?.vibrate) {
-      window.navigator.vibrate([45, 30, 45]);
+    const win = (globalThis as any).window;
+    if (win && win.navigator?.vibrate) {
+      win.navigator.vibrate([45, 30, 45]);
     }
     
     // Animate beautifully before navigating
@@ -121,7 +122,8 @@ export default function IdeaCard({
       <button
         onClick={(e) => {
           e.stopPropagation();
-          if (window.navigator?.vibrate) window.navigator.vibrate(50);
+          const win = (globalThis as any).window;
+          if (win && win.navigator?.vibrate) win.navigator.vibrate(50);
           onToggleArchive(idea.id, idea.status);
         }}
         disabled={isProcessing}

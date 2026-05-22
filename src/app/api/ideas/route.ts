@@ -77,14 +77,14 @@ export async function GET(req: Request) {
         
         const allFreshIdeas = [];
         for (const cat of categoriesToGenerate) {
-           const fresh = await generateDailyIdeas(authorizedSupabase, userId, locale, cat);
+           const fresh = await generateDailyIdeas(authorizedSupabase as any, userId, locale, cat);
            allFreshIdeas.push(...fresh);
         }
         
         // 🔥 PERSIST TO DATABASE
         if (allFreshIdeas.length > 0) {
           const { saveIdeasToFeed } = await import('@/lib/ideation');
-          await saveIdeasToFeed(authorizedSupabase, userId, allFreshIdeas);
+          await saveIdeasToFeed(authorizedSupabase as any, userId, allFreshIdeas);
         }
 
         return NextResponse.json(allFreshIdeas);

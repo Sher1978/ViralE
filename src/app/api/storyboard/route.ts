@@ -62,7 +62,7 @@ export async function POST(req: Request) {
     // 2. Deduct Credits
     try {
       const cost = mode === 'refine_scene' ? CREDIT_COSTS.REGENERATE_BLOCK : CREDIT_COSTS.GENERATE_STORYBOARD;
-      await deductCredits(authorizedSupabase, userId, cost, 'STORYBOARD_GEN', projectId);
+      await deductCredits(authorizedSupabase as any, userId, cost, 'STORYBOARD_GEN', projectId);
     } catch (e: any) {
       if (e.message === 'INSUFFICIENT_CREDITS') {
         return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });

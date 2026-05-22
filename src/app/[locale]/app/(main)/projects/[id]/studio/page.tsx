@@ -144,8 +144,8 @@ export default function StudioPage() {
   const [cameraStream, setCameraStream] = useState<MediaStream | null>(null);
   const [facingMode, setFacingMode] = useState<'user' | 'environment'>('user');
   const [isVideoMirrored, setIsVideoMirrored] = useState(true);
-  const [videoDevices, setVideoDevices] = useState<MediaDeviceInfo[]>([]);
-  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [videoDevices, setVideoDevices] = useState<any[]>([]);
+  const [audioDevices, setAudioDevices] = useState<any[]>([]);
   const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string>('');
   const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string>('');
   const [videoResolution, setVideoResolution] = useState<'360p' | '720p' | '1080p' | '4k'>('720p');
@@ -161,7 +161,7 @@ export default function StudioPage() {
 
   const prompterRef = useRef<HTMLDivElement>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaRecorderRef = useRef<any>(null);
   const recordingTimerRef = useRef<NodeJS.Timeout | null>(null);
   const scrollPosRef = useRef(0);
   const recordedBlobRef = useRef<Blob | null>(null);
@@ -169,7 +169,7 @@ export default function StudioPage() {
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [modalConfig, setModalConfig] = useState({ title: '', desc: '', type: 'info' as any });
   const [showAssemblyLauncher, setShowAssemblyLauncher] = useState(false);
-  const isMobileRef = useRef(typeof navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Honor/i.test(navigator.userAgent));
+  const isMobileRef = useRef(typeof globalThis.navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Honor/i.test((globalThis.navigator as any).userAgent));
 
 
   // State Sync Effect (URL Persistence)
@@ -183,17 +183,19 @@ export default function StudioPage() {
 
     // Defer URL update to avoid conflict with heavy UI transitions (especially on Android)
     const timeout = setTimeout(() => {
-      const params = new URLSearchParams(window.location.search);
+      const win = globalThis as any;
+      if (!win.location) return;
+      const params = new URLSearchParams(win.location.search);
       params.set('tab', activeTab);
       if (showFaceless) params.set('mode', 'faceless');
       else params.delete('mode');
       
-      const currentPath = window.location.pathname;
+      const currentPath = win.location.pathname;
       const newUrl = `${currentPath}?${params.toString()}`;
       
       try {
-        if (window.location.search !== `?${params.toString()}`) {
-          window.history.replaceState({ path: newUrl }, '', newUrl);
+        if (win.location.search !== `?${params.toString()}`) {
+          win.history.replaceState({ path: newUrl }, '', newUrl);
           console.log('[Studio] Syncing URL:', newUrl);
         }
       } catch (e) {
@@ -255,14 +257,15 @@ export default function StudioPage() {
 
   // Prevent accidental data loss
   useEffect(() => {
-    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+    const handleBeforeUnload = (e: any) => {
       if (activeTab === 'assembly' || activeTab === 'teleprompter' || showFaceless) {
         e.preventDefault();
         e.returnValue = '';
       }
     };
-    window.addEventListener('beforeunload', handleBeforeUnload);
-    return () => window.removeEventListener('beforeunload', handleBeforeUnload);
+    const win = globalThis as any;
+    win.addEventListener?.('beforeunload', handleBeforeUnload);
+    return () => win.removeEventListener?.('beforeunload', handleBeforeUnload);
   }, [activeTab, showFaceless]);
 
   const handleAvatarSelect = async (photoUrl: string) => {
@@ -466,10 +469,11 @@ export default function StudioPage() {
         }
 
         // 5. ENUMERATE DEVICES (Safely)
-        if (typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.enumerateDevices) {
-          const devices = await navigator.mediaDevices.enumerateDevices();
-          const v = devices.filter(d => d.kind === 'videoinput');
-          const a = devices.filter(d => d.kind === 'audioinput');
+        const nav = globalThis.navigator as any;
+        if (typeof globalThis.navigator !== 'undefined' && nav?.mediaDevices && nav?.mediaDevices?.enumerateDevices) {
+          const devices = await nav.mediaDevices.enumerateDevices();
+          const v = devices.filter((d: any) => d.kind === 'videoinput');
+          const a = devices.filter((d: any) => d.kind === 'audioinput');
           setVideoDevices(v);
           setAudioDevices(a);
           
@@ -492,19 +496,22 @@ export default function StudioPage() {
 
     // Permissions change listener
     const handleDeviceChange = async () => {
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      setVideoDevices(devices.filter(d => d.kind === 'videoinput'));
-      setAudioDevices(devices.filter(d => d.kind === 'audioinput'));
+      const nav = globalThis.navigator as any;
+      if (!nav || !nav.mediaDevices) return;
+      const devices = await nav.mediaDevices.enumerateDevices();
+      setVideoDevices(devices.filter((d: any) => d.kind === 'videoinput'));
+      setAudioDevices(devices.filter((d: any) => d.kind === 'audioinput'));
     };
-    const hasMediaAPI = typeof navigator !== 'undefined' && navigator.mediaDevices && navigator.mediaDevices.addEventListener;
+    const navApi = globalThis.navigator as any;
+    const hasMediaAPI = typeof globalThis.navigator !== 'undefined' && navApi?.mediaDevices && navApi?.mediaDevices?.addEventListener;
     
     if (hasMediaAPI) {
-      navigator.mediaDevices.addEventListener('devicechange', handleDeviceChange);
+      navApi.mediaDevices.addEventListener('devicechange', handleDeviceChange);
     }
     
     return () => {
       if (hasMediaAPI) {
-        navigator.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
+        navApi.mediaDevices.removeEventListener('devicechange', handleDeviceChange);
       }
     };
   }, [projectId]);
@@ -528,7 +535,8 @@ export default function StudioPage() {
     try {
       console.log('[Studio] initCamera: Starting, isVoiceOnly:', isVoiceOnly);
       
-      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+      const nav = globalThis.navigator as any;
+      const isMobile = typeof globalThis.navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(nav.userAgent);
       const resMap = {
         '360p': { width: { ideal: 640 }, height: { ideal: 360 } },
         '720p': { width: { ideal: 1280 }, height: { ideal: 720 } },
@@ -536,7 +544,7 @@ export default function StudioPage() {
         '4k': { width: { ideal: 3840 }, height: { ideal: 2160 } }
       };
 
-      const constraints: MediaStreamConstraints = {
+      const constraints: any = {
         video: isVoiceOnly ? false : {
           deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
           facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
@@ -551,19 +559,19 @@ export default function StudioPage() {
       };
 
       try {
-        const stream = await navigator.mediaDevices.getUserMedia(constraints);
+        const stream = await nav.mediaDevices.getUserMedia(constraints);
         setCameraStream(stream);
         if (videoPreviewRef.current && !isVoiceOnly) {
-          videoPreviewRef.current.srcObject = stream;
+          (videoPreviewRef.current as any).srcObject = stream;
         }
         return stream;
       } catch (firstErr: any) {
         console.warn('[Studio] High-res camera init failed, trying basic fallback...', firstErr.name, firstErr.message);
         try {
-          const stream = await navigator.mediaDevices.getUserMedia({ video: !isVoiceOnly, audio: true });
+          const stream = await nav.mediaDevices.getUserMedia({ video: !isVoiceOnly, audio: true });
           setCameraStream(stream);
           if (videoPreviewRef.current && !isVoiceOnly) {
-            videoPreviewRef.current.srcObject = stream;
+            (videoPreviewRef.current as any).srcObject = stream;
           }
           return stream;
         } catch (secondErr: any) {
@@ -582,7 +590,7 @@ export default function StudioPage() {
   const stopCamera = () => {
     console.log('[Studio] stopCamera: Releasing all hardware resources...');
     if (cameraStream) {
-      cameraStream.getTracks().forEach(track => {
+      (cameraStream as any).getTracks().forEach((track: any) => {
         track.stop();
         console.log(`[Studio] Stopped track: ${track.kind}`);
       });
@@ -590,30 +598,31 @@ export default function StudioPage() {
     }
     
     // Safety: scan for any other active streams/tracks and stop them
-    if (typeof navigator !== 'undefined' && (window as any)._audioRecorder) {
-       const aRec = (window as any)._audioRecorder as MediaRecorder;
+    const winObj = globalThis as any;
+    if (typeof globalThis.navigator !== 'undefined' && winObj._audioRecorder) {
+       const aRec = winObj._audioRecorder as any;
        if (aRec.stream) {
-          aRec.stream.getTracks().forEach(t => t.stop());
+          aRec.stream.getTracks().forEach((t: any) => t.stop());
        }
        if (aRec.state !== 'inactive') aRec.stop();
-       delete (window as any)._audioRecorder;
+       delete winObj._audioRecorder;
     }
 
     if (videoPreviewRef.current) {
-      videoPreviewRef.current.srcObject = null;
+      (videoPreviewRef.current as any).srcObject = null;
     }
   };
 
   const startVideoRecording = async () => {
     try {
       let activeStream = cameraStream;
-      if (!activeStream || !activeStream.active) {
+      if (!activeStream || !(activeStream as any).active) {
         activeStream = await initCamera();
       }
 
       if (!activeStream) {
         const errorMsg = "Камера не запущена. Проверьте разрешения или попробуйте перезагрузить вкладку.";
-        alert(errorMsg);
+        (globalThis as any).alert?.(errorMsg);
         return;
       }
 
@@ -637,12 +646,14 @@ export default function StudioPage() {
         const audioChunks: Blob[] = [];
         
         try {
-          const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+          const nav = globalThis.navigator as any;
+          const isMobile = /iPhone|iPad|iPod|Android/i.test(nav ? nav.userAgent : '');
           
-          let recorder: MediaRecorder;
+          let recorder: any;
           if (isVoiceOnly) {
-            const aMime = MediaRecorder.isTypeSupported('audio/webm') ? 'audio/webm' : 'audio/mp4';
-            recorder = new MediaRecorder(activeStream, { mimeType: aMime });
+            const MR = (globalThis as any).MediaRecorder;
+            const aMime = MR?.isTypeSupported?.('audio/webm') ? 'audio/webm' : 'audio/mp4';
+            recorder = new MR(activeStream, { mimeType: aMime });
           } else {
             let selectedMime = '';
             const candidateMimes = [
@@ -653,14 +664,15 @@ export default function StudioPage() {
               'video/mp4',
               'video/quicktime'
             ];
+            const MR = (globalThis as any).MediaRecorder;
             for (const mime of candidateMimes) {
-              if (typeof MediaRecorder !== 'undefined' && MediaRecorder.isTypeSupported(mime)) {
+              if (MR && MR.isTypeSupported(mime)) {
                 selectedMime = mime;
                 break;
               }
             }
 
-            const options: MediaRecorderOptions = {
+            const options: any = {
               videoBitsPerSecond: isMobile ? 1200000 : 2500000
             };
             if (selectedMime) {
@@ -670,10 +682,10 @@ export default function StudioPage() {
               console.warn('[Studio] No standard video mimeType supported. Letting browser choose default.');
             }
 
-            recorder = new MediaRecorder(activeStream, options);
+            recorder = new MR(activeStream, options);
           }
 
-          recorder.ondataavailable = (e) => { if (e.data.size > 0) localChunks.push(e.data); };
+          recorder.ondataavailable = (e: any) => { if (e.data.size > 0) localChunks.push(e.data); };
           recorder.onstop = async () => {
             addSystemLog('Запись камеры остановлена. Объединение чанков...');
             const blob = new Blob(localChunks, { type: recorder.mimeType });
@@ -684,12 +696,12 @@ export default function StudioPage() {
             // Defensive validation against empty or corrupted recorded blobs
             if (blob.size < 50000 && !isVoiceOnly) {
               addSystemLog(`КРИТИЧЕСКАЯ ОШИБКА: Видео пустое/повреждено (размер ${blob.size} байт). Порог: 50 KB.`);
-              alert("Ошибка: записанное видео пустое или повреждено (размер меньше 50 KB). Пожалуйста, попробуйте сделать запись заново.");
+              (globalThis as any).alert?.("Ошибка: записанное видео пустое или повреждено (размер меньше 50 KB). Пожалуйста, попробуйте сделать запись заново.");
               return;
             }
             if (blob.size < 3000 && isVoiceOnly) {
               addSystemLog(`КРИТИЧЕСКАЯ ОШИБКА: Аудио слишком короткое (размер ${blob.size} байт). Порог: 3 KB.`);
-              alert("Ошибка: записанный звук слишком короткий или поврежден. Пожалуйста, попробуйте записать аудио заново.");
+              (globalThis as any).alert?.("Ошибка: записанный звук слишком короткий или поврежден. Пожалуйста, попробуйте записать аудио заново.");
               return;
             }
 
@@ -749,19 +761,20 @@ export default function StudioPage() {
           if (!isVoiceOnly) {
             try {
               let aMime = '';
-              if (typeof MediaRecorder !== 'undefined') {
-                if (MediaRecorder.isTypeSupported('audio/webm')) aMime = 'audio/webm';
-                else if (MediaRecorder.isTypeSupported('audio/mp4')) aMime = 'audio/mp4';
+              const MR = (globalThis as any).MediaRecorder;
+              if (MR) {
+                if (MR.isTypeSupported('audio/webm')) aMime = 'audio/webm';
+                else if (MR.isTypeSupported('audio/mp4')) aMime = 'audio/mp4';
               }
-              const audioOnlyStream = new MediaStream(activeStream.getAudioTracks());
-              const options: MediaRecorderOptions = {
+              const audioOnlyStream = new (globalThis as any).MediaStream((activeStream as any).getAudioTracks());
+              const options: any = {
                 audioBitsPerSecond: 64000
               };
               if (aMime) options.mimeType = aMime;
-              const audioRecorder = new MediaRecorder(audioOnlyStream, options);
-              audioRecorder.ondataavailable = (e) => { if (e.data.size > 0) audioChunks.push(e.data); };
+              const audioRecorder = new MR(audioOnlyStream, options);
+              audioRecorder.ondataavailable = (e: any) => { if (e.data.size > 0) audioChunks.push(e.data); };
               audioRecorder.start(1000);
-              (window as any)._audioRecorder = audioRecorder;
+              (globalThis as any)._audioRecorder = audioRecorder;
             } catch (ae) {
               console.warn('[Studio] Parallel audio recording failed:', ae);
             }
@@ -777,12 +790,12 @@ export default function StudioPage() {
         } catch (err: any) {
           console.error('[Studio] MediaRecorder fail:', err);
           const detail = err.name === 'NotReadableError' ? 'Камера занята другим приложением' : (err.message || err.name);
-          alert(`Ошибка старта записи: ${detail}. Попробуйте перезагрузить страницу.`);
+          (globalThis as any).alert?.(`Ошибка старта записи: ${detail}. Попробуйте перезагрузить страницу.`);
           setIsReading(false);
         }
       }, 3000);
     } catch (err: any) {
-      alert("Ошибка инициализации: " + (err.message || err.name));
+      (globalThis as any).alert?.("Ошибка инициализации: " + (err.message || err.name));
     }
   };
 
@@ -790,7 +803,7 @@ export default function StudioPage() {
     setIsReading(false);
     if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
       mediaRecorderRef.current.stop();
-      const aRec = (window as any)._audioRecorder as MediaRecorder;
+      const aRec = (globalThis as any)._audioRecorder as any;
       if (aRec && aRec.state !== 'inactive') aRec.stop();
       
       setIsRecordingVideo(false);
@@ -845,15 +858,16 @@ export default function StudioPage() {
   };
 
   const downloadBackgroundMp4 = async () => {
-    const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
+    const nav = globalThis.navigator as any;
+    const isMobile = typeof globalThis.navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(nav.userAgent);
 
     if (backgroundMp4Url) {
       console.log('[Studio] Sharing or downloading background MP4:', backgroundMp4Url);
       
       // On mobile devices, share the CDN URL natively to prevent PWA reloads!
-      if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
+      if (isMobile && typeof globalThis.navigator !== 'undefined' && nav.share) {
         try {
-          await navigator.share({
+          await nav.share({
             url: backgroundMp4Url,
             title: 'Viral Engine H.264 MP4',
             text: 'Here is your compatible H.264 MP4 video!'
@@ -865,33 +879,36 @@ export default function StudioPage() {
       }
 
       // PC direct download (no target="_blank" to prevent opening new tabs)
-      const a = document.createElement('a');
-      a.href = backgroundMp4Url;
-      a.download = `ViralEngine_H264_${Date.now()}.mp4`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const doc = (globalThis as any).document;
+      if (doc) {
+        const a = doc.createElement('a');
+        a.href = backgroundMp4Url;
+        a.download = `ViralEngine_H264_${Date.now()}.mp4`;
+        doc.body.appendChild(a);
+        a.click();
+        doc.body.removeChild(a);
+      }
       return;
     }
 
     if (isBackgroundConverting) {
-      alert("Видео ещё кодируется в фоне для совместимости с iOS/AI. Пожалуйста, подождите еще несколько секунд...");
+      (globalThis as any).alert?.("Видео ещё кодируется в фоне для совместимости с iOS/AI. Пожалуйста, подождите еще несколько секунд...");
       return;
     }
 
     // Fallback if not started
     if (lastRecordingUrl && lastRecordingUrl.startsWith('blob:')) {
       try {
-        alert("Запуск принудительного кодирования MP4. Пожалуйста, подождите...");
+        (globalThis as any).alert?.("Запуск принудительного кодирования MP4. Пожалуйста, подождите...");
         const response = await fetch(lastRecordingUrl);
         const blob = await response.blob();
         await startBackgroundMp4Conversion(blob);
       } catch (err: any) {
-        alert("Не удалось запустить кодирование: " + err.message);
+        (globalThis as any).alert?.("Не удалось запустить кодирование: " + err.message);
       }
     } else if (lastRecordingUrl) {
       if (lastRecordingUrl.includes('.webm')) {
-        alert("Запуск конвертации WebM в MP4 на сервере...");
+        (globalThis as any).alert?.("Запуск конвертации WebM в MP4 на сервере...");
         setIsBackgroundConverting(true);
         try {
           const normRes = await fetch('/api/studio/normalize-recording', {
@@ -904,18 +921,22 @@ export default function StudioPage() {
             if (normData.publicUrl) {
               setBackgroundMp4Url(normData.publicUrl);
               
-              if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
-                await navigator.share({
+              const nav = globalThis.navigator as any;
+              if (isMobile && typeof globalThis.navigator !== 'undefined' && nav.share) {
+                await nav.share({
                   url: normData.publicUrl,
                   title: 'Viral Engine H.264 MP4',
                 });
               } else {
-                const a = document.createElement('a');
-                a.href = normData.publicUrl;
-                a.download = `ViralEngine_H264_${Date.now()}.mp4`;
-                document.body.appendChild(a);
-                a.click();
-                document.body.removeChild(a);
+                const doc = (globalThis as any).document;
+                if (doc) {
+                  const a = doc.createElement('a');
+                  a.href = normData.publicUrl;
+                  a.download = `ViralEngine_H264_${Date.now()}.mp4`;
+                  doc.body.appendChild(a);
+                  a.click();
+                  doc.body.removeChild(a);
+                }
               }
             }
           }
@@ -925,18 +946,22 @@ export default function StudioPage() {
           setIsBackgroundConverting(false);
         }
       } else {
-        if (isMobile && typeof navigator !== 'undefined' && navigator.share) {
-          await navigator.share({
+        const nav = globalThis.navigator as any;
+        if (isMobile && typeof globalThis.navigator !== 'undefined' && nav.share) {
+          await nav.share({
             url: lastRecordingUrl,
             title: 'Viral Engine H.264 MP4',
           });
         } else {
-          const a = document.createElement('a');
-          a.href = lastRecordingUrl;
-          a.download = `ViralEngine_H264_${Date.now()}.mp4`;
-          document.body.appendChild(a);
-          a.click();
-          document.body.removeChild(a);
+          const doc = (globalThis as any).document;
+          if (doc) {
+            const a = doc.createElement('a');
+            a.href = lastRecordingUrl;
+            a.download = `ViralEngine_H264_${Date.now()}.mp4`;
+            doc.body.appendChild(a);
+            a.click();
+            doc.body.removeChild(a);
+          }
         }
       }
     }
@@ -953,9 +978,10 @@ export default function StudioPage() {
     try {
       setIsSharing(true);
       addSystemLog('Запуск скачивания RAW видео...');
-      const isTelegram = typeof window !== 'undefined' && !!(window as any).Telegram?.WebApp;
-      const isMobile = typeof navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-      const isiOS = typeof navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(navigator.userAgent);
+      const isTelegram = typeof (globalThis as any).window !== 'undefined' && !!(globalThis as any).Telegram?.WebApp;
+      const nav = (globalThis as any).navigator;
+      const isMobile = typeof (globalThis as any).navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(nav?.userAgent || '');
+      const isiOS = typeof (globalThis as any).navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(nav?.userAgent || '');
       addSystemLog(`Параметры окружения: Мобильный=${isMobile}, iOS=${isiOS}, TelegramWebApp=${isTelegram}`);
 
       // 1. INSTANT LOCAL DESKTOP DOWNLOAD (0 seconds!)
@@ -977,12 +1003,15 @@ export default function StudioPage() {
         }
 
         addSystemLog('Эмуляция клика по ссылке для скачивания...');
-        const a = document.createElement('a');
-        a.href = url;
-        a.download = `ViralEngine_Raw_${Date.now()}.webm`;
-        document.body.appendChild(a);
-        a.click();
-        document.body.removeChild(a);
+        const doc = (globalThis as any).document;
+        if (doc) {
+          const a = doc.createElement('a');
+          a.href = url;
+          a.download = `ViralEngine_Raw_${Date.now()}.webm`;
+          doc.body.appendChild(a);
+          a.click();
+          doc.body.removeChild(a);
+        }
         addSystemLog('Запрос на скачивание успешно отправлен браузеру ПК.');
         return;
       }
@@ -990,7 +1019,7 @@ export default function StudioPage() {
       // 2. INSTANT LOCAL MOBILE WEB SHARE (0 seconds!)
       // iOS / Safari cannot share WebM container files directly via Web Share API (causes silent failures in AVFoundation).
       // Therefore, we bypass this local share block on iOS so it goes straight to server-side H.264 MP4 normalization.
-      if (lastRecordingUrl.startsWith('blob:') && isMobile && !isiOS && typeof navigator !== 'undefined' && navigator.share) {
+      if (lastRecordingUrl.startsWith('blob:') && isMobile && !isiOS && typeof globalThis.navigator !== 'undefined' && nav.share) {
         try {
           addSystemLog('Попытка мгновенного шеринга файла через Web Share API...');
           let fileBlob = recordedBlobRef.current;
@@ -1013,9 +1042,9 @@ export default function StudioPage() {
           addSystemLog(`Подготовка объекта File. Размер: ${(fileBlob.size / (1024 * 1024)).toFixed(2)} MB. Принудительный тип: video/mp4`);
           const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: 'video/mp4' });
           
-          if (navigator.canShare && navigator.canShare({ files: [file] })) {
+          if (nav.canShare && nav.canShare({ files: [file] })) {
             addSystemLog('Браузер подтвердил возможность передачи файла. Запуск Share Sheet...');
-            await navigator.share({
+            await nav.share({
               files: [file],
               title: 'Viral Engine Video',
             });
@@ -1036,7 +1065,7 @@ export default function StudioPage() {
       if (lastRecordingUrl.startsWith('blob:')) {
         try {
           addSystemLog('Локальный шеринг недоступен. Запуск резервного облачного пути...');
-          alert("Подготовка видео для скачивания... Пожалуйста, подождите несколько секунд, пока файл загружается на сервер.");
+          (globalThis as any).alert?.("Подготовка видео для скачивания... Пожалуйста, подождите несколько секунд, пока файл загружается на сервер.");
           
           let blob = recordedBlobRef.current;
           if (!blob) {
@@ -1069,7 +1098,7 @@ export default function StudioPage() {
           }
         } catch (err: any) {
           addSystemLog(`Критическая ошибка подготовки видео в облаке: ${err.message}`);
-          alert("Ошибка подготовки видео: " + err.message);
+          (globalThis as any).alert?.("Ошибка подготовки видео: " + err.message);
           return;
         }
       }
@@ -1108,7 +1137,7 @@ export default function StudioPage() {
       }
 
       // 5. Telegram WebApp In-App WebView Sandbox Bypass
-      const tgWebApp = typeof window !== 'undefined' && (window as any).Telegram?.WebApp;
+      const tgWebApp = typeof (globalThis as any).window !== 'undefined' && (globalThis as any).Telegram?.WebApp;
       if (tgWebApp && tgWebApp.openLink) {
         addSystemLog('Обнаружен Telegram WebApp. Открытие ссылки через openLink...');
         tgWebApp.openLink(downloadUrl);
@@ -1118,14 +1147,14 @@ export default function StudioPage() {
       // 6. Mobile Fallback path
       if (isMobile) {
         try {
-          if (navigator.share) {
+          if (nav.share) {
             addSystemLog('Шеринг облачного файла на мобильном...');
             const response = await fetch(downloadUrl);
             const blob = await response.blob();
             const file = new File([blob], `ViralEngine_Take_${Date.now()}.mp4`, { type: 'video/mp4' });
             
-            if (navigator.canShare && navigator.canShare({ files: [file] })) {
-              await navigator.share({
+            if (nav.canShare && nav.canShare({ files: [file] })) {
+              await nav.share({
                 files: [file],
                 title: 'Viral Engine Video',
               });
@@ -1138,19 +1167,24 @@ export default function StudioPage() {
         }
 
         addSystemLog('Резервный мобильный переход: перенаправление на скачивание CDN...');
-        window.location.href = downloadUrl;
+        if (typeof (globalThis as any).window !== 'undefined') {
+          (globalThis as any).window.location.href = downloadUrl;
+        }
         return;
       }
 
       // 7. Desktop PC Fallback path
       addSystemLog('Эмуляция клика по ссылке для облачного файла на ПК...');
-      const a = document.createElement('a');
-      a.href = downloadUrl;
-      a.download = `ViralEngine_Raw_${Date.now()}.mp4`;
-      a.target = '_blank';
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
+      const doc2 = (globalThis as any).document;
+      if (doc2) {
+        const a = doc2.createElement('a');
+        a.href = downloadUrl;
+        a.download = `ViralEngine_Raw_${Date.now()}.mp4`;
+        a.target = '_blank';
+        doc2.body.appendChild(a);
+        a.click();
+        doc2.body.removeChild(a);
+      }
       addSystemLog('Облачный файл успешно запрошен на ПК.');
     } finally {
       setIsSharing(false);
@@ -1166,7 +1200,7 @@ export default function StudioPage() {
     if (lastRecordingUrl.startsWith('blob:')) {
       try {
         addSystemLog('Видео еще не загружено на сервер. Начинаем фоновую загрузку в облако для Telegram...');
-        alert("Загружаем видео в облако для отправки в Telegram... Пожалуйста, подождите несколько секунд.");
+        (globalThis as any).alert?.("Загружаем видео в облако для отправки в Telegram... Пожалуйста, подождите несколько секунд.");
         
         let blob = recordedBlobRef.current;
         if (!blob) {
@@ -1190,7 +1224,7 @@ export default function StudioPage() {
         }
       } catch (err: any) {
         addSystemLog(`Ошибка загрузки для Telegram: ${err.message || err}`);
-        alert("Не удалось подготовить файл для Telegram: " + err.message);
+        (globalThis as any).alert?.("Не удалось подготовить файл для Telegram: " + err.message);
         return;
       }
     }
@@ -1199,8 +1233,8 @@ export default function StudioPage() {
     const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent('Мое новое видео из Viral Engine!')}`;
     addSystemLog(`Открытие ссылки Telegram Share: ${tgUrl}`);
     
-    if (typeof window !== 'undefined') {
-      window.open(tgUrl, '_blank');
+    if (typeof (globalThis as any).window !== 'undefined') {
+      (globalThis as any).window.open(tgUrl, '_blank');
     }
   };
 
@@ -1247,7 +1281,7 @@ export default function StudioPage() {
     setIsSaving(true);
     try {
       if (!manifest) {
-        alert('Ошибка: манифест проекта не загружен. Попробуйте обновить страницу.');
+        (globalThis as any).alert?.('Ошибка: манифест проекта не загружен. Попробуйте обновить страницу.');
         return;
       }
 
@@ -1340,7 +1374,7 @@ export default function StudioPage() {
 
     } catch (err: any) {
       console.error('Export failed:', err);
-      alert(`Не удалось сохранить проект: ${err.message}`);
+      (globalThis as any).alert?.(`Не удалось сохранить проект: ${err.message}`);
     } finally {
       setIsSaving(false);
     }

@@ -54,9 +54,11 @@ const Navbar = () => {
   const [isScrolled, setIsScrolled] = useState(false);
 
   useEffect(() => {
-    const handleScroll = () => setIsScrolled(window.scrollY > 50);
-    window.addEventListener('scroll', handleScroll);
-    return () => window.removeEventListener('scroll', handleScroll);
+    const win = (globalThis as any).window;
+    if (!win) return;
+    const handleScroll = () => setIsScrolled(win.scrollY > 50);
+    win.addEventListener('scroll', handleScroll);
+    return () => win.removeEventListener('scroll', handleScroll);
   }, []);
 
   return (
@@ -191,14 +193,14 @@ const Hero = () => {
                     required
                     placeholder={tf('emailPlaceholder')}
                     value={email}
-                    onChange={(e) => setEmail(e.target.value)}
+                    onChange={(e) => setEmail((e.target as any).value)}
                     className="bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all"
                   />
                   <div className="relative">
                     <select 
                       required
                       value={niche}
-                      onChange={(e) => setNiche(e.target.value)}
+                      onChange={(e) => setNiche((e.target as any).value)}
                       className="w-full bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all appearance-none cursor-pointer"
                     >
                       <option value="" disabled>{tf('nichePlaceholder')}</option>
@@ -721,14 +723,14 @@ const FinalCTA = () => {
                   required
                   placeholder={tf('emailPlaceholder')}
                   value={email}
-                  onChange={(e) => setEmail(e.target.value)}
+                  onChange={(e) => setEmail((e.target as any).value)}
                   className="bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all"
                 />
                 <div className="relative">
                   <select 
                     required
                     value={niche}
-                    onChange={(e) => setNiche(e.target.value)}
+                    onChange={(e) => setNiche((e.target as any).value)}
                     className="w-full bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all appearance-none cursor-pointer"
                   >
                     <option value="" disabled>{tf('nichePlaceholder')}</option>

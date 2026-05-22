@@ -15,8 +15,8 @@ export async function GET(req: NextRequest) {
     if (error) return NextResponse.json({ error: error.message }, { status: 500 });
 
     const photos = (files || [])
-      .filter(f => f.name !== '.emptyFolderPlaceholder')
-      .map(f => {
+      .filter((f: any) => f.name !== '.emptyFolderPlaceholder')
+      .map((f: any) => {
         const path = `${folder}/${f.name}`;
         const { data: { publicUrl } } = supabaseAdmin.storage.from('media').getPublicUrl(path);
         return {

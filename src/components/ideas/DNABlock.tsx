@@ -39,7 +39,7 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
   const [activeQuestion, setActiveQuestion] = useState<keyof DnaAnswers>('sphere');
   const [saving, setSaving] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaRecorderRef = useRef<any | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
   const questions: { id: keyof DnaAnswers, label: string, placeholder: string, hint: string }[] = [
@@ -112,19 +112,21 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
   // 🎙️ VOICE PROTOCOL LOGIC
   const startRecording = async () => {
      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        const recorder = new MediaRecorder(stream);
+        const nav = (globalThis as any).navigator;
+        if (!nav || !nav.mediaDevices) return;
+        const stream = await nav.mediaDevices.getUserMedia({ audio: true });
+        const recorder = new (globalThis as any).MediaRecorder(stream);
         mediaRecorderRef.current = recorder;
         audioChunksRef.current = [];
 
-        recorder.ondataavailable = (e) => {
+        recorder.ondataavailable = (e: any) => {
            if (e.data.size > 0) audioChunksRef.current.push(e.data);
         };
 
         recorder.onstop = async () => {
            const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
            await handleVoiceTranscription(audioBlob);
-           stream.getTracks().forEach(track => track.stop());
+           stream.getTracks().forEach((track: any) => track.stop());
         };
 
         recorder.start();
@@ -183,11 +185,11 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
         onComplete(answers);
         setIsOpen(false);
       } else {
-        alert(locale === 'ru' ? `Ошибка: ${result.error || 'Неизвестная ошибка'}` : `Error: ${result.error || 'Unknown error'}`);
+        (globalThis as any).alert(locale === 'ru' ? `Ошибка: ${result.error || 'Неизвестная ошибка'}` : `Error: ${result.error || 'Unknown error'}`);
       }
     } catch (err: any) {
       console.error('Failed to save DNA answers:', err);
-      alert(locale === 'ru' ? `Ошибка сети: ${err.message}` : `Network error: ${err.message}`);
+      (globalThis as any).alert(locale === 'ru' ? `Ошибка сети: ${err.message}` : `Network error: ${err.message}`);
     } finally {
       setSaving(false);
     }
@@ -309,7 +311,7 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
                         <textarea
                            autoFocus
                            value={answers[activeQuestion]}
-                           onChange={(e) => setAnswers(prev => ({ ...prev, [activeQuestion]: e.target.value }))}
+                           onChange={(e) => setAnswers(prev => ({ ...prev, [activeQuestion]: (e.target as any).value }))}
                            placeholder={questions[activeIndex].placeholder}
                            className="w-full bg-white/[0.03] border-2 border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500 transition-all min-h-[160px] resize-none shadow-2xl"
                         />

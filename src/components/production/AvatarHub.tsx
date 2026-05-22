@@ -40,7 +40,7 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<any>(null);
 
   const STOCK_AVATARS = [
     { id: 'stock_1', name: 'Mark', url: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
@@ -99,7 +99,7 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }
   };
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = (e.target as any).files?.[0];
     if (!file) return;
 
     setUploading(true);
@@ -153,7 +153,8 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }
 
   const handleDeleteAsset = async (e: React.MouseEvent, asset: AvatarAsset) => {
     e.stopPropagation();
-    if (!confirm('Удалить это фото навсегда?')) return;
+    const win = (globalThis as any).window;
+    if (win && !win.confirm('Удалить это фото навсегда?')) return;
 
     try {
       // 1. Delete from Storage
@@ -174,10 +175,12 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }
       // 3. Update State
       setAssets(prev => prev.filter(a => a.id !== asset.id));
       if (selectedAsset === asset.id) setSelectedAsset(null);
-      if ('vibrate' in navigator) navigator.vibrate(50);
+      const win = (globalThis as any).window;
+      if (win && win.navigator?.vibrate) win.navigator.vibrate(50);
     } catch (err: any) {
       console.error('Delete failed:', err);
-      alert('Не удалось удалить: ' + err.message);
+      const win = (globalThis as any).window;
+      if (win) win.alert('Не удалось удалить: ' + err.message);
     }
   };
 
@@ -202,9 +205,12 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }
 
   const handleCopy = () => {
     if (!generatedPrompt) return;
-    navigator.clipboard.writeText(generatedPrompt);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 2000);
+    const nav = (globalThis as any).navigator;
+    if (nav && nav.clipboard) {
+      nav.clipboard.writeText(generatedPrompt);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    }
   };
 
   const tabs = [

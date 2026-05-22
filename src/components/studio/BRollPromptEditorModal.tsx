@@ -151,7 +151,7 @@ const BRollPromptEditorModal: React.FC<BRollPromptEditorModalProps> = ({
             <div className="bg-white/[0.04] border border-white/8 rounded-2xl flex items-center gap-3 px-4 py-3 focus-within:border-purple-500/40 transition-colors">
               <textarea
                 value={topic}
-                onChange={e => setTopic(e.target.value)}
+                onChange={e => setTopic((e.target as any).value)}
                 rows={2}
                 className="flex-1 bg-transparent text-sm text-white font-semibold italic outline-none resize-none placeholder:text-white/20 leading-relaxed"
                 placeholder="cinematic urban shot, luxury..."
@@ -167,7 +167,7 @@ const BRollPromptEditorModal: React.FC<BRollPromptEditorModalProps> = ({
             <div className="bg-white/[0.04] border border-white/8 rounded-2xl px-4 py-3 focus-within:border-purple-500/40 transition-colors">
               <textarea
                 value={visualPrompt}
-                onChange={e => setVisualPrompt(e.target.value)}
+                onChange={e => setVisualPrompt((e.target as any).value)}
                 rows={4}
                 className="w-full bg-transparent text-[12px] text-white/70 outline-none resize-none placeholder:text-white/20 leading-relaxed"
                 placeholder="Detailed cinematic prompt for video generation..."
@@ -183,7 +183,7 @@ const BRollPromptEditorModal: React.FC<BRollPromptEditorModalProps> = ({
             <div className="bg-white/[0.04] border border-white/8 rounded-2xl px-4 py-3 focus-within:border-amber-500/40 transition-colors">
               <textarea
                 value={userComment}
-                onChange={e => setUserComment(e.target.value)}
+                onChange={e => setUserComment((e.target as any).value)}
                 rows={2}
                 className="w-full bg-transparent text-[12px] text-white/70 outline-none resize-none placeholder:text-white/20 leading-relaxed"
                 placeholder="Хочу больше динамики, городской пейзаж, ночная съемка..."

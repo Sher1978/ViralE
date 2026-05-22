@@ -152,7 +152,7 @@ export default function OnboardingPage() {
                   </span>
                   <button
                     onClick={() => {
-                      navigator.clipboard.writeText(t('step1MagicPrompt'));
+                      ((globalThis as any).navigator)?.clipboard?.writeText(t('step1MagicPrompt'));
                       setIsCopied(true);
                       setTimeout(() => setIsCopied(false), 2000);
                     }}
@@ -171,7 +171,7 @@ export default function OnboardingPage() {
                 className="input-core text-sm py-4 min-h-[160px] resize-none"
                 placeholder={t('step1ImportPlaceholder')}
                 value={dnaText}
-                onChange={(e) => setDnaText(e.target.value)}
+                onChange={(e) => setDnaText((e.target as any).value)}
               />
             </div>
           )}
@@ -188,8 +188,8 @@ export default function OnboardingPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ locale })
                   }).then(res => {
-                    if (res.ok) window.location.href = `/${locale}/app/dashboard`;
-                    else alert('Error skipping DNA');
+                    if (res.ok) (globalThis as any).window.location.href = `/${locale}/app/dashboard`;
+                    else (globalThis as any).alert?.('Error skipping DNA');
                   }).finally(() => setIsSubmitting(false));
                 }
               }}
@@ -280,7 +280,7 @@ export default function OnboardingPage() {
               <p className="text-[11px] text-white/30 mt-1">{t('step3BotLabel')}</p>
             </div>
             <button
-              onClick={() => window.open('https://t.me/viral_engine_bot', '_blank')}
+              onClick={() => (globalThis as any).window?.open('https://t.me/viral_engine_bot', '_blank')}
               className="w-full py-4 rounded-2xl font-black text-sm uppercase tracking-widest transition-all hover:scale-[1.02]"
               style={{
                 background: 'linear-gradient(135deg, #4D9EFF, #0099CC)',
@@ -351,14 +351,14 @@ export default function OnboardingPage() {
                 });
                 
                 if (response.ok) {
-                  window.location.href = `/${locale}/app/dashboard`;
+                  (globalThis as any).window.location.href = `/${locale}/app/dashboard`;
                 } else {
                   const errorData = await response.json();
-                  alert(`Error: ${errorData.error || 'Failed to finalize onboarding'}`);
+                  (globalThis as any).alert?.(`Error: ${errorData.error || 'Failed to finalize onboarding'}`);
                 }
               } catch (err: any) {
                 console.error('Finalize onboarding failed:', err);
-                alert(`System Error: ${err.message || 'Check your connection'}`);
+                (globalThis as any).alert?.(`System Error: ${err.message || 'Check your connection'}`);
               } finally {
                 setIsSubmitting(false);
               }

@@ -38,21 +38,23 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
   const [scriptSource, setScriptSource] = useState<'ai' | 'custom'>('ai');
   const [customScript, setCustomScript] = useState<string>('');
   // Audio device selection
-  const [audioDevices, setAudioDevices] = useState<MediaDeviceInfo[]>([]);
+  const [audioDevices, setAudioDevices] = useState<any[]>([]);
   const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string>('');
 
   const videoRef = useRef<HTMLVideoElement>(null);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
-  const streamRef = useRef<MediaStream | null>(null);
+  const mediaRecorderRef = useRef<any | null>(null);
+  const streamRef = useRef<any | null>(null);
   const chunksRef = useRef<Blob[]>([]);
 
   // Enumerate audio input devices (works on Android, best-effort on iOS)
   const refreshAudioDevices = useCallback(async () => {
     try {
+      const nav = (globalThis as any).navigator;
+      if (!nav || !nav.mediaDevices) return;
       // Must request permission first for labels to appear
-      await navigator.mediaDevices.getUserMedia({ audio: true }).then(s => s.getTracks().forEach(t => t.stop()));
-      const devices = await navigator.mediaDevices.enumerateDevices();
-      const inputs = devices.filter(d => d.kind === 'audioinput');
+      await nav.mediaDevices.getUserMedia({ audio: true }).then((s: any) => s.getTracks().forEach((t: any) => t.stop()));
+      const devices = await nav.mediaDevices.enumerateDevices();
+      const inputs = devices.filter((d: any) => d.kind === 'audioinput');
       setAudioDevices(inputs);
       // Auto-select first device if none selected
       if (!selectedAudioDeviceId && inputs.length > 0) {
@@ -67,17 +69,20 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
   useEffect(() => {
     async function startStream() {
       try {
-        const audioConstraints: MediaTrackConstraints = selectedAudioDeviceId
+        const audioConstraints: any = selectedAudioDeviceId
           ? { deviceId: { exact: selectedAudioDeviceId } }
           : true as any;
 
-        const stream = await navigator.mediaDevices.getUserMedia({
+        const nav = (globalThis as any).navigator;
+        if (!nav || !nav.mediaDevices) return;
+
+        const stream = await nav.mediaDevices.getUserMedia({
           video: mode === 'video',
           audio: audioConstraints
         });
         streamRef.current = stream;
         if (videoRef.current) {
-          videoRef.current.srcObject = stream;
+          (videoRef.current as any).srcObject = stream;
         }
         setPermissionError(null);
       } catch (err: any) {
@@ -88,7 +93,7 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
 
     startStream();
     return () => {
-      streamRef.current?.getTracks().forEach(track => track.stop());
+      streamRef.current?.getTracks().forEach((track: any) => track.stop());
     };
   }, [mode, t, selectedAudioDeviceId]);
 
@@ -97,25 +102,26 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
     
     chunksRef.current = [];
     let selectedMime = '';
-    if (typeof MediaRecorder !== 'undefined') {
+    const MedRec = (globalThis as any).MediaRecorder;
+    if (typeof MedRec !== 'undefined') {
       const candidates = mode === 'video' 
         ? ['video/webm;codecs=vp9,opus', 'video/webm', 'video/mp4;codecs=avc1', 'video/mp4', 'video/quicktime']
         : ['audio/webm', 'audio/mp4', 'audio/mpeg', 'audio/wav'];
       for (const m of candidates) {
-        if (MediaRecorder.isTypeSupported(m)) {
+        if (MedRec.isTypeSupported(m)) {
           selectedMime = m;
           break;
         }
       }
     }
 
-    const options: MediaRecorderOptions = {};
+    const options: any = {};
     if (selectedMime) {
       options.mimeType = selectedMime;
     }
-    const recorder = new MediaRecorder(streamRef.current, options);
+    const recorder = new MedRec(streamRef.current, options);
 
-    recorder.ondataavailable = (e) => {
+    recorder.ondataavailable = (e: any) => {
       if (e.data.size > 0) chunksRef.current.push(e.data);
     };
 
@@ -123,13 +129,14 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
       const blob = new Blob(chunksRef.current, { type: recorder.mimeType });
       
       // Defensive validation against empty or corrupted recorded blobs
+      const win = (globalThis as any).window;
       if (blob.size < 50000 && mode === 'video') {
-        alert("Ошибка: записанное видео пустое или повреждено (размер меньше 50 KB). Пожалуйста, попробуйте записать видео заново.");
+        if (win) win.alert("Ошибка: записанное видео пустое или повреждено (размер меньше 50 KB). Пожалуйста, попробуйте записать видео заново.");
         chunksRef.current = [];
         return;
       }
       if (blob.size < 3000 && mode === 'voice') {
-        alert("Ошибка: записанный звук слишком короткий или поврежден. Пожалуйста, попробуйте записать аудио заново.");
+        if (win) win.alert("Ошибка: записанный звук слишком короткий или поврежден. Пожалуйста, попробуйте записать аудио заново.");
         chunksRef.current = [];
         return;
       }
@@ -154,7 +161,8 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
     
     // Strict pre-upload size check to completely block any empty/corrupt 262-byte uploads
     if (recordedBlob.size < 50000 && mode === 'video') {
-      alert("Ошибка: файл записи пустой или поврежден (размер менее 50 KB). Пожалуйста, запишите видео заново перед загрузкой.");
+      const win = (globalThis as any).window;
+      if (win) win.alert("Ошибка: файл записи пустой или поврежден (размер менее 50 KB). Пожалуйста, запишите видео заново перед загрузкой.");
       return;
     }
     
@@ -178,7 +186,9 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
 
   const pasteFromClipboard = async () => {
     try {
-      const text = await navigator.clipboard.readText();
+      const nav = (globalThis as any).navigator;
+      if (!nav || !nav.clipboard) return;
+      const text = await nav.clipboard.readText();
       setCustomScript(text);
       setScriptSource('custom');
     } catch (err) {
@@ -276,7 +286,10 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
                   {permissionError}
                 </p>
                 <button 
-                  onClick={() => window.location.reload()}
+                  onClick={() => {
+                    const win = (globalThis as any).window;
+                    if (win) win.location.reload();
+                  }}
                   className="px-6 py-2 bg-white/10 border border-white/10 rounded-full text-xs font-black uppercase tracking-widest hover:bg-white/20 transition-all text-white"
                 >
                   Retry Permissions
@@ -334,7 +347,7 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
                    min="5" 
                    max="40" 
                    value={prompterSpeed}
-                   onChange={(e) => setPrompterSpeed(Number(e.target.value))}
+                   onChange={(e) => setPrompterSpeed(Number((e.target as any).value))}
                    className="flex-1 accent-white opacity-40 hover:opacity-100 transition-opacity"
                  />
                  <button 
@@ -380,7 +393,7 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
                   initial={{ opacity: 0, y: 10 }}
                   animate={{ opacity: 1, y: 0 }}
                   value={customScript}
-                  onChange={(e) => setCustomScript(e.target.value)}
+                  onChange={(e) => setCustomScript((e.target as any).value)}
                   placeholder={t('pastePlaceholder')}
                   className="w-full h-32 bg-black/40 border border-white/10 rounded-2xl p-4 text-sm text-white/80 placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all resize-none font-mono"
                 />
@@ -428,7 +441,7 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
                <div className="h-12 w-[1px] bg-black/10" />
 
                <button 
-                 onClick={() => recordingUrl && window.open(recordingUrl)}
+                 onClick={() => recordingUrl && (globalThis as any).window?.open(recordingUrl)}
                  className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-black/5 hover:bg-black/10 transition-all text-xs font-black uppercase tracking-widest"
                >
                  <Play className="w-4 h-4" /> {t('reviewRecording')}
@@ -528,7 +541,7 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
                 <input 
                   type="range" min="32" max="120" step="4"
                   value={fontSize}
-                  onChange={(e) => setFontSize(Number(e.target.value))}
+                  onChange={(e) => setFontSize(Number((e.target as any).value))}
                   className="w-full accent-white h-1 bg-white/10 rounded-full appearance-none cursor-pointer"
                 />
               </div>
@@ -542,7 +555,7 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
                 <input 
                   type="range" min="-5" max="20" step="1"
                   value={letterSpacing}
-                  onChange={(e) => setLetterSpacing(Number(e.target.value))}
+                  onChange={(e) => setLetterSpacing(Number((e.target as any).value))}
                   className="w-full accent-white h-1 bg-white/10 rounded-full appearance-none cursor-pointer"
                 />
               </div>

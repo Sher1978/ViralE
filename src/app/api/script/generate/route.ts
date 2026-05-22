@@ -156,7 +156,7 @@ export async function POST(req: Request) {
       }
 
       console.log(`[ScriptGen] Deducting ${cost} credits...`);
-      await deductCredits(authorizedSupabase, userId, cost, mode === 'refine' ? 'SCRIPT_REFINEMENT' : 'SCRIPT_GEN', projectId);
+      await deductCredits(authorizedSupabase as any, userId, cost, mode === 'refine' ? 'SCRIPT_REFINEMENT' : 'SCRIPT_GEN', projectId);
     } catch (e: any) {
       if (e.message === 'INSUFFICIENT_CREDITS') {
         return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });

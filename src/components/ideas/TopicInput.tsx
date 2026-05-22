@@ -38,7 +38,7 @@ export default function TopicInput({ onLaunch }: TopicInputProps) {
         <div className="relative">
           <textarea
             value={topic}
-            onChange={(e) => setTopic(e.target.value)}
+            onChange={(e) => setTopic((e.target as any).value)}
             placeholder={locale === 'ru' ? 'Введите свою тему здесь...' : 'Enter your custom topic here...'}
             className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-5 text-lg font-bold text-white placeholder:text-white/10 focus:outline-none focus:border-cyan-500/50 transition-all min-h-[120px] resize-none"
           />

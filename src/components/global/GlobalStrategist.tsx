@@ -34,11 +34,12 @@ export function GlobalStrategist() {
   if (isLoading || !profile) return null;
 
   // We don't render the strategist on onboarding or auth pages
-  const isExcluded = typeof window !== 'undefined' && (
-    window.location.pathname.includes('/onboarding') || 
-    window.location.pathname.includes('/auth') ||
-    window.location.pathname.includes('/studio') ||
-    window.location.pathname.includes('/dna')
+  const win = (globalThis as any).window;
+  const isExcluded = typeof win !== 'undefined' && (
+    win.location.pathname.includes('/onboarding') || 
+    win.location.pathname.includes('/auth') ||
+    win.location.pathname.includes('/studio') ||
+    win.location.pathname.includes('/dna')
   );
 
   if (isExcluded) return null;

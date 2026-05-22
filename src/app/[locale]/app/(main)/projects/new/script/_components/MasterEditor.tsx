@@ -20,7 +20,7 @@ export function MasterEditor({
   const [copyFeedback, setCopyFeedback] = useState(false);
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(text);
+    ((globalThis as any).navigator)?.clipboard?.writeText(text);
     setCopyFeedback(true);
     setTimeout(() => setCopyFeedback(false), 2000);
   };
@@ -55,7 +55,7 @@ export function MasterEditor({
         
         <textarea 
           value={text}
-          onChange={(e) => onOverride(e.target.value)}
+          onChange={(e) => onOverride((e.target as any).value)}
           className="w-full bg-white/[0.03] border border-white/10 rounded-[1.5rem] p-5 text-base leading-[1.8] text-white/95 focus:outline-none focus:border-yellow-400/30 resize-none min-h-[250px] font-medium transition-all shadow-inner"
           placeholder="Select blocks above or type here to craft your final script..."
         />

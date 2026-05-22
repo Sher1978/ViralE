@@ -12,13 +12,17 @@ export function InstallPrompt() {
   const [isIOS, setIsIOS] = useState(false);
 
   useEffect(() => {
+    const win = (globalThis as any).window;
+    const nav = (globalThis as any).navigator;
+    if (!win || !nav) return;
+
     // 1. Check if it's already installed
-    if (window.matchMedia('(display-mode: standalone)').matches) {
+    if (win.matchMedia('(display-mode: standalone)').matches) {
       return;
     }
 
     // 2. Check platform
-    const isIOSDevice = /iPad|iPhone|iPod/.test(navigator.userAgent) && !(window as any).MSStream;
+    const isIOSDevice = /iPad|iPhone|iPod/.test(nav.userAgent) && !win.MSStream;
     setIsIOS(isIOSDevice);
 
     // 3. Listen for Android/Chrome install prompt
@@ -28,17 +32,18 @@ export function InstallPrompt() {
       setShow(true);
     };
 
-    window.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+    win.addEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
     const handleTrigger = () => {
       console.log('[PWA] Trigger received');
       setShow(true);
     };
-    window.addEventListener('trigger-pwa-install', handleTrigger);
+    win.addEventListener('trigger-pwa-install', handleTrigger);
 
     // 4. Show iOS prompt automatically after a delay if not standalone
-    if (isIOSDevice && !window.matchMedia('(display-mode: standalone)').matches) {
+    if (isIOSDevice && !win.matchMedia('(display-mode: standalone)').matches) {
       const timer = setTimeout(() => {
-        const hasSeenPrompt = localStorage.getItem('pwa_prompt_seen');
+        const local = (globalThis as any).localStorage;
+        const hasSeenPrompt = local ? local.getItem('pwa_prompt_seen') : null;
         if (!hasSeenPrompt) {
           setShow(true);
         }
@@ -47,8 +52,8 @@ export function InstallPrompt() {
     }
 
     return () => {
-      window.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
-      window.removeEventListener('trigger-pwa-install', handleTrigger);
+      win.removeEventListener('beforeinstallprompt', handleBeforeInstallPrompt);
+      win.removeEventListener('trigger-pwa-install', handleTrigger);
     };
   }, []);
 
@@ -64,7 +69,8 @@ export function InstallPrompt() {
 
   const handleClose = () => {
     setShow(false);
-    localStorage.setItem('pwa_prompt_seen', 'true');
+    const local = (globalThis as any).localStorage;
+    if (local) local.setItem('pwa_prompt_seen', 'true');
   };
 
   return (

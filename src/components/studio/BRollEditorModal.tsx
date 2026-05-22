@@ -181,13 +181,13 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
           } else if (sd.status === 'failed' || attempts > 40) {
             clearInterval(pollRef.current!);
             setIsGenerating(false);
-            alert('Генерация не удалась. Попробуйте другой промпт.');
+            const win = (globalThis as any).window; if (win) win.alert('Генерация не удалась. Попробуйте другой промпт.');
           }
         } catch { /* keep polling */ }
       }, 3000);
     } catch (e: any) {
       setIsGenerating(false);
-      alert(`Ошибка: ${e.message}`);
+      const win = (globalThis as any).window; if (win) win.alert(`Ошибка: ${e.message}`);
     }
   };
 
@@ -228,7 +228,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
           <div className="flex items-center gap-2">
             <button
               onClick={() => {
-                if (confirm('Вы уверены, что хотите удалить этот Б-ролл?')) {
+                const win = (globalThis as any).window; if (win && win.confirm('Вы уверены, что хотите удалить этот Б-ролл?')) {
                   onDelete?.(clip.id);
                   onClose();
                 }
@@ -262,7 +262,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
                 <Search size={13} className="text-white/25 flex-shrink-0" />
                 <input
                   value={searchQuery}
-                  onChange={e => setSearchQuery(e.target.value)}
+                  onChange={e => setSearchQuery((e.target as any).value)}
                   onKeyDown={e => e.key === 'Enter' && handleSearch()}
                   placeholder="1-3 ключевых слова..."
                   className="flex-1 bg-transparent text-[12px] text-white font-semibold outline-none placeholder:text-white/20"
@@ -457,7 +457,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
             <div className="bg-white/[0.04] border border-white/8 rounded-2xl px-4 py-3 focus-within:border-purple-500/40 transition-colors">
               <textarea
                 value={editPromptDraft}
-                onChange={e => setEditPromptDraft(e.target.value)}
+                onChange={e => setEditPromptDraft((e.target as any).value)}
                 rows={6}
                 className="w-full bg-transparent text-[12px] text-white/85 outline-none resize-none placeholder:text-white/20 leading-relaxed"
                 placeholder="Детальный cinematic промпт..."
@@ -472,7 +472,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
             <div className="bg-white/[0.04] border border-white/8 rounded-2xl px-4 py-3 focus-within:border-amber-500/30 transition-colors">
               <textarea
                 value={userComment}
-                onChange={e => setUserComment(e.target.value)}
+                onChange={e => setUserComment((e.target as any).value)}
                 rows={2}
                 className="w-full bg-transparent text-[11px] text-white/70 outline-none resize-none placeholder:text-white/20 leading-relaxed"
                 placeholder="Хочу больше движения, ночная съёмка..."

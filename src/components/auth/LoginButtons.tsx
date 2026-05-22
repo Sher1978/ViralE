@@ -19,10 +19,11 @@ export default function LoginButtons() {
       const redirectPath = next.startsWith('/') ? next : `/${next}`;
       const localizedNext = `/${locale}${redirectPath}`;
       
+      const win = (globalThis as any).window;
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${window.location.origin}/api/auth/callback?next=${encodeURIComponent(localizedNext)}`,
+          redirectTo: `${win ? win.location.origin : ''}/api/auth/callback?next=${encodeURIComponent(localizedNext)}`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',
@@ -47,7 +48,10 @@ export default function LoginButtons() {
 
       // Frictionless: Redirect to bot with start parameter
       // The bot will then provide a magic login link
-      window.location.href = `https://t.me/${botUsername}?start=auth`;
+      const win = (globalThis as any).window;
+      if (win) {
+        win.location.href = `https://t.me/${botUsername}?start=auth`;
+      }
 
     } catch (error) {
       console.error('Telegram login error:', error);

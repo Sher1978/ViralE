@@ -83,25 +83,29 @@ function DeliveryPageContent() {
     const texts = TEXT_OUTPUTS.map(o => `[${o.platform}]\n${o.text}\n`).join('\n---\n\n');
     const blob = new Blob([texts], { type: 'text/plain' });
     const url = URL.createObjectURL(blob);
-    const a = document.createElement('a');
-    a.href = url;
-    a.download = `ViralEngine_Texts_${projectId}.txt`;
-    a.click();
+    const doc = (globalThis as any).document;
+    if (doc) {
+      const a = doc.createElement('a');
+      a.href = url;
+      a.download = `ViralEngine_Texts_${projectId}.txt`;
+      a.click();
+    }
   };
 
   const handleDownload = async () => {
     if (!job?.output_url) return;
     
     // Try native share first on mobile
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(navigator.userAgent);
-    if (isMobile && navigator.share && job.output_url.startsWith('blob:')) {
+    const nav = (globalThis as any).navigator;
+    const isMobile = /iPhone|iPad|iPod|Android/i.test(nav?.userAgent || '');
+    if (isMobile && nav?.share && job.output_url.startsWith('blob:')) {
       try {
         const res = await fetch(job.output_url);
         const blob = await res.blob();
         const file = new File([blob], `ViralEngine_Final_${projectId}.mp4`, { type: 'video/mp4' });
         
-        if (navigator.canShare && navigator.canShare({ files: [file] })) {
-          await navigator.share({
+        if (nav.canShare && nav.canShare({ files: [file] })) {
+          await nav.share({
             files: [file],
             title: 'Viral Engine Video',
             text: 'Check out my AI-generated video!'
@@ -115,14 +119,19 @@ function DeliveryPageContent() {
 
     // Standard download fallback
     try {
-      const link = document.createElement('a');
-      link.href = job.output_url;
-      link.download = `ViralEngine_Final_${projectId}.mp4`;
-      document.body.appendChild(link);
-      link.click();
-      document.body.removeChild(link);
+      const doc = (globalThis as any).document;
+      if (doc) {
+        const link = doc.createElement('a');
+        link.href = job.output_url;
+        link.download = `ViralEngine_Final_${projectId}.mp4`;
+        doc.body.appendChild(link);
+        link.click();
+        doc.body.removeChild(link);
+      }
     } catch (err) {
-      window.open(job.output_url, '_blank');
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).window.open(job.output_url, '_blank');
+      }
     }
   };
 
@@ -130,15 +139,17 @@ function DeliveryPageContent() {
     setIsExporting(true);
     await new Promise(r => setTimeout(r, 1500));
     if (target === 'telegram') {
-      window.open('https://t.me/ViralEngine_Bot', '_blank');
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).window.open('https://t.me/ViralEngine_Bot', '_blank');
+      }
     } else {
-      alert('Загрузка на Google Drive начата.');
+      (globalThis as any).alert?.('Загрузка на Google Drive начата.');
     }
     setIsExporting(false);
   };
 
   const handleCopy = (text: string) => {
-    (navigator as any).clipboard.writeText(text);
+    ((globalThis as any).navigator)?.clipboard?.writeText(text);
   };
 
   // Phase 7: Automate launching server-side render if jobId is not specified
@@ -316,7 +327,7 @@ function DeliveryPageContent() {
             {locale === 'ru' ? 'В монтажку' : 'Back to Montage'}
           </button>
           <button 
-            onClick={() => window.location.reload()} 
+            onClick={() => (globalThis as any).window?.location?.reload()} 
             className="px-8 py-3.5 rounded-2xl bg-purple-600 text-white text-xs font-black uppercase tracking-widest hover:bg-purple-500 shadow-lg shadow-purple-900/40 active:scale-95 transition-all"
           >
             {locale === 'ru' ? 'Повторить' : 'Retry'}
@@ -432,7 +443,7 @@ function DeliveryPageContent() {
                 onClick={handleDownload}
                 className="flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 text-white text-[11px] font-black uppercase tracking-widest hover:bg-purple-500/20 hover:border-purple-500/50 hover:scale-105 active:scale-95 transition-all shadow-[0_10px_40px_rgba(168,85,247,0.15)]"
               >
-                <Download size={16} /> {/iPhone|iPad|iPod|Android/i.test(navigator.userAgent) ? (locale === 'ru' ? 'СОХРАНИТЬ / ПОДЕЛИТЬСЯ' : 'SAVE / SHARE') : (locale === 'ru' ? 'СКАЧАТЬ ВИДЕО' : 'DOWNLOAD VIDEO')}
+                <Download size={16} /> {/iPhone|iPad|iPod|Android/i.test(((globalThis as any).navigator)?.userAgent || '') ? (locale === 'ru' ? 'СОХРАНИТЬ / ПОДЕЛИТЬСЯ' : 'SAVE / SHARE') : (locale === 'ru' ? 'СКАЧАТЬ ВИДЕО' : 'DOWNLOAD VIDEO')}
               </button>
             )}
           </div>

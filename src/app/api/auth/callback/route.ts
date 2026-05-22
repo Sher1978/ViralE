@@ -17,13 +17,13 @@ export async function GET(request: Request) {
         auth: {
           persistSession: true,
           storage: {
-            getItem: (key) => cookieStore.get(key)?.value ?? null,
-            setItem: (key, value) => {
+            getItem: (key: string) => cookieStore.get(key)?.value ?? null,
+            setItem: (key: string, value: string) => {
               cookieStore.set(key, value, {
                 path: '/',
               });
             },
-            removeItem: (key) => {
+            removeItem: (key: string) => {
               cookieStore.delete(key);
             },
           },

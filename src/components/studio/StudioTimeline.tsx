@@ -44,7 +44,7 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
   onSeek
 }) => {
   const [pxPerSecond, setPxPerSecond] = useState(40); 
-  const containerRef = useRef<HTMLDivElement>(null);
+  const containerRef = useRef<any>(null);
   const [isPinching, setIsPinching] = useState(false);
   const initialDistRef = useRef<number | null>(null);
   
@@ -112,7 +112,7 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
 
     // Setup Long Press for Editor
     longPressTimer.current = setTimeout(() => {
-      if (navigator.vibrate) navigator.vibrate(60);
+      if ((globalThis as any).navigator?.vibrate) (globalThis as any).navigator.vibrate(60);
       onOpenEditor(overlay.type, overlay.id);
       setDragState(null); // Cancel drag if it becomes a long press
     }, 3000); 
@@ -121,7 +121,7 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
   const startLongPress = (type: 'broll' | 'subtitle' | 'empty', clientX: number) => {
      clearLongPress();
      longPressTimer.current = setTimeout(() => {
-        if (navigator.vibrate) navigator.vibrate(60);
+        if ((globalThis as any).navigator?.vibrate) (globalThis as any).navigator.vibrate(60);
         
         if (type === 'empty') {
            const container = containerRef.current;
@@ -151,7 +151,7 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
     
     clearLongPress();
 
-    const clientX = 'touches' in e ? e.touches[0].clientX : (e as MouseEvent).clientX;
+    const clientX = 'touches' in e ? (e as any).touches[0].clientX : (e as any).clientX;
     const deltaX = clientX - dragState.initialX;
     const deltaSeconds = deltaX / pxPerSecond;
 
@@ -198,16 +198,16 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
         setPreviewOverlay(null);
       };
 
-      window.addEventListener('mousemove', handleGlobalMouseMove);
-      window.addEventListener('mouseup', handleUp);
-      window.addEventListener('touchmove', handleGlobalMouseMove, { passive: false });
-      window.addEventListener('touchend', handleUp);
+      (globalThis as any).window?.addEventListener('mousemove', handleGlobalMouseMove);
+      (globalThis as any).window?.addEventListener('mouseup', handleUp);
+      (globalThis as any).window?.addEventListener('touchmove', handleGlobalMouseMove, { passive: false });
+      (globalThis as any).window?.addEventListener('touchend', handleUp);
       
       return () => {
-        window.removeEventListener('mousemove', handleGlobalMouseMove);
-        window.removeEventListener('mouseup', handleUp);
-        window.removeEventListener('touchmove', handleGlobalMouseMove);
-        window.removeEventListener('touchend', handleUp);
+        (globalThis as any).window?.removeEventListener('mousemove', handleGlobalMouseMove);
+        (globalThis as any).window?.removeEventListener('mouseup', handleUp);
+        (globalThis as any).window?.removeEventListener('touchmove', handleGlobalMouseMove);
+        (globalThis as any).window?.removeEventListener('touchend', handleUp);
       };
     }
   }, [dragState, handleGlobalMouseMove, onUpdateOverlay]);
@@ -328,8 +328,8 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
         onMouseUp={clearLongPress}
         onClick={(e) => {
           if (dragState) return;
-          const rect = e.currentTarget.getBoundingClientRect();
-          const x = e.clientX - rect.left + e.currentTarget.scrollLeft - 32; // 32 is paddingLeft
+          const rect = (e.currentTarget as any).getBoundingClientRect();
+          const x = e.clientX - rect.left + (e.currentTarget as any).scrollLeft - 32; // 32 is paddingLeft
           const time = x / pxPerSecond;
           if (onSeek) onSeek(Math.max(0, Math.min(time, totalDuration)));
         }}

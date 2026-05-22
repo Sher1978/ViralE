@@ -85,7 +85,7 @@ export default function KnowledgeLab({ profile, onProfileUpdate, locale = 'en' }
           <div className="relative group">
              <textarea 
                value={trainingData}
-               onChange={(e) => setTrainingData(e.target.value)}
+               onChange={(e) => setTrainingData((e.target as any).value)}
                placeholder="Paste your biography, style examples, philosophies, or raw text here..."
                className="w-full h-64 bg-white/5 border border-white/10 rounded-2xl p-5 text-xs text-white/80 leading-relaxed focus:outline-none focus:border-purple-500/50 resize-none transition-all scrollbar-thin scrollbar-thumb-white/10"
              />

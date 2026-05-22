@@ -22,7 +22,7 @@ const StudioPreview: React.FC<StudioPreviewProps> = ({
   onPrev,
   accentColor = '#FFEA00',
 }) => {
-  const videoRef = useRef<HTMLVideoElement>(null);
+  const videoRef = useRef<any>(null);
   const [currentTime, setCurrentTime] = useState(0);
 
   // Sync play/pause from parent state

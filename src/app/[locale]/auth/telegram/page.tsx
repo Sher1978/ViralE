@@ -25,17 +25,21 @@ export default function TelegramAuthPage() {
   useEffect(() => {
     if (!botConfig) return;
 
+    const doc = (globalThis as any).document;
+    const win = (globalThis as any).window;
+    if (!doc || !win) return;
+
     // 2. Load Telegram Widget Script
-    const script = document.createElement('script');
+    const script = doc.createElement('script');
     script.src = 'https://telegram.org/js/telegram-widget.js?22';
     script.setAttribute('data-telegram-login', botConfig.botUsername);
     script.setAttribute('data-size', 'large');
     script.setAttribute('data-radius', '12');
-    script.setAttribute('data-auth-url', `${window.location.origin}/api/auth/telegram?next=/${locale}/app/projects`);
+    script.setAttribute('data-auth-url', `${win.location.origin}/api/auth/telegram?next=/${locale}/app/projects`);
     script.setAttribute('data-request-access', 'write');
     script.async = true;
 
-    const container = document.getElementById('telegram-widget-container');
+    const container = doc.getElementById('telegram-widget-container');
     if (container) {
       container.appendChild(script);
     }

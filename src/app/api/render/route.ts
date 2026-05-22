@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Invalid version reference' }, { status: 400 });
     }
 
-    const job = await createRenderJob(authorizedSupabase, userId, projectId, versionId, type || 'preview');
+    const job = await createRenderJob(authorizedSupabase as any, userId, projectId, versionId, type || 'preview');
 
     // --- SERVERLESS ASYNC SUBMISSION ---
     // We call the async submission method directly. It submits the cloud payload
@@ -92,7 +92,7 @@ export async function GET(req: Request) {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 });
     }
 
-    const status = await getRenderStatus(authorizedSupabase, projectId);
+    const status = await getRenderStatus(authorizedSupabase as any, projectId);
     return NextResponse.json(status);
 
   } catch (error: any) {

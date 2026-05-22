@@ -5,6 +5,9 @@ import { supabase } from '@/lib/supabase';
 
 export function SessionSync() {
   useEffect(() => {
+    const doc = (globalThis as any).document;
+    if (!doc) return;
+
     // 1. Sync initial session to cookie
     const syncSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
@@ -18,7 +21,7 @@ export function SessionSync() {
       if (session) {
         console.log('[SessionSync] Session found, setting cookie...');
         // Set cookie for 7 days
-        document.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
+        doc.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
       }
     };
 
@@ -36,11 +39,11 @@ export function SessionSync() {
 
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session) {
-          document.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
+          doc.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('[SessionSync] Signing out, clearing cookie...');
-        document.cookie = `${cookieName}=; path=/; max-age=0`;
+        doc.cookie = `${cookieName}=; path=/; max-age=0`;
       }
     });
 

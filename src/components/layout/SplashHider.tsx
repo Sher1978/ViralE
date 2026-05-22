@@ -4,9 +4,12 @@ import { useEffect } from 'react';
 
 export function SplashHider() {
   useEffect(() => {
+    const doc = (globalThis as any).document;
+    if (!doc) return;
+
     // 1. Immediate attempt
     const hide = () => {
-      const splash = document.getElementById('instant-splash');
+      const splash = doc.getElementById('instant-splash');
       if (splash) {
         splash.style.opacity = '0';
         setTimeout(() => {

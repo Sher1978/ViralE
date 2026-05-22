@@ -293,20 +293,20 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
 
         try {
           const p = audioContext.decodeAudioData(arrayBuffer,
-            (buf) => {
+            (buf: any) => {
               clearTimeout(timeoutId);
               resolve(buf);
             },
-            (err) => {
+            (err: any) => {
               clearTimeout(timeoutId);
               reject(err || new Error('decodeAudioData callback error'));
             }
           );
           if (p && typeof p.then === 'function') {
-            p.then((buf) => {
+            p.then((buf: any) => {
               clearTimeout(timeoutId);
               resolve(buf);
-            }).catch((err) => {
+            }).catch((err: any) => {
               clearTimeout(timeoutId);
               reject(err);
             });

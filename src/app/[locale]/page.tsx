@@ -131,8 +131,8 @@ const StoreBadge = ({ type, text, subtext, toastMessage, href = "#" }: { type: '
     if (href === "#") {
       e.preventDefault();
       // Trigger PWA install prompt event
-      if (typeof window !== 'undefined') {
-        window.dispatchEvent(new CustomEvent('trigger-pwa-install'));
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).window.dispatchEvent(new (globalThis as any).CustomEvent('trigger-pwa-install'));
       }
       setShowToast(true);
       setTimeout(() => setShowToast(false), 3000);
@@ -192,7 +192,7 @@ export default function LandingPage() {
     });
   }, [router]);
 
-  const containerVariants = {
+  const containerVariants: any = {
     hidden: { opacity: 0 },
     visible: { 
       opacity: 1,
@@ -203,12 +203,12 @@ export default function LandingPage() {
     }
   };
 
-  const itemVariants = {
+  const itemVariants: any = {
     hidden: { y: 40, opacity: 0 },
     visible: { 
       y: 0, 
       opacity: 1,
-      transition: { duration: 1, ease: [0.16, 1, 0.3, 1] as any }
+      transition: { duration: 1, ease: [0.16, 1, 0.3, 1] }
     }
   };
 
@@ -316,9 +316,10 @@ export default function LandingPage() {
                 >
                   <div className="absolute inset-0 bg-[radial-gradient(circle_at_var(--x,_50%)_var(--y,_50%),rgba(34,211,238,0.15)_0%,transparent_50%)] opacity-0 group-hover:opacity-100 transition-opacity" 
                     onMouseMove={(e) => {
-                      const rect = e.currentTarget.getBoundingClientRect();
-                      e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
-                      e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                      const target = e.currentTarget as any;
+                      const rect = target.getBoundingClientRect();
+                      target.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                      target.style.setProperty('--y', `${e.clientY - rect.top}px`);
                     }}
                   />
                   <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-[200%] animate-scan group-hover:animate-scan-fast" />
@@ -482,9 +483,10 @@ export default function LandingPage() {
                     {/* Lens Flare Overlay */}
                     <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-700 bg-[radial-gradient(circle_at_var(--x,_50%)_var(--y,_50%),rgba(255,255,255,0.15)_0%,transparent_50%)]" 
                        onMouseMove={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        e.currentTarget.style.setProperty('--x', `${e.clientX - rect.left}px`);
-                        e.currentTarget.style.setProperty('--y', `${e.clientY - rect.top}px`);
+                        const target = e.currentTarget as any;
+                        const rect = target.getBoundingClientRect();
+                        target.style.setProperty('--x', `${e.clientX - rect.left}px`);
+                        target.style.setProperty('--y', `${e.clientY - rect.top}px`);
                       }}
                     />
                   </motion.div>

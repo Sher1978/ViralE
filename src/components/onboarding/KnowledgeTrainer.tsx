@@ -71,7 +71,7 @@ export default function KnowledgeTrainer({ onTrainingComplete }: KnowledgeTraine
         
         <textarea
           value={rawData}
-          onChange={(e) => setRawData(e.target.value)}
+          onChange={(e) => setRawData((e.target as any).value)}
           placeholder="Paste transcripts, synthetic notes, or AI analysis here... (Max 100k chars)"
           className="w-full bg-white/[0.03] border border-white/5 rounded-[1.5rem] p-5 text-sm text-white/70 min-h-[160px] focus:outline-none focus:border-purple-500/40 focus:bg-white/[0.05] transition-all leading-relaxed resize-none scrollbar-thin scrollbar-thumb-white/10"
         />

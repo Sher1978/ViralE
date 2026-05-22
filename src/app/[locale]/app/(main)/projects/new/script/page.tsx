@@ -117,8 +117,8 @@ export default function ScriptLabPage() {
         setAllScenarios(fullScript);
         setScriptData(fullScript.evergreen);
         setActiveScenario('evergreen');
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('allScenarios', JSON.stringify(fullScript));
+        if (typeof (globalThis as any).window !== 'undefined') {
+          (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(fullScript));
         }
       } else {
         setScriptData(fullScript);
@@ -132,8 +132,8 @@ export default function ScriptLabPage() {
       setUser(prof);
       
       setIsGenerating(true);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('isGenerating', 'true');
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).sessionStorage?.setItem('isGenerating', 'true');
       }
       
       router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
@@ -149,8 +149,8 @@ export default function ScriptLabPage() {
 
   const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>('evergreen');
   const [allScenarios, setAllScenarios] = useState<any>(() => {
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('allScenarios');
+    if (typeof (globalThis as any).window !== 'undefined') {
+      const saved = (globalThis as any).sessionStorage?.getItem('allScenarios');
       if (saved) {
         try { return JSON.parse(saved); } catch (e) { return null; }
       }
@@ -167,8 +167,8 @@ export default function ScriptLabPage() {
       visual_hook: '',
       social_post: ''
     };
-    if (typeof window !== 'undefined') {
-      const saved = sessionStorage.getItem('allScenarios');
+    if (typeof (globalThis as any).window !== 'undefined') {
+      const saved = (globalThis as any).sessionStorage?.getItem('allScenarios');
       if (saved) {
         try {
           const parsed = JSON.parse(saved);
@@ -227,9 +227,9 @@ export default function ScriptLabPage() {
 
   // Session Recovery for Generation State (Fix for state loss during router transitions)
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      const savedGenerating = sessionStorage.getItem('isGenerating') === 'true';
-      const savedScenarios = sessionStorage.getItem('allScenarios');
+    if (typeof (globalThis as any).window !== 'undefined') {
+      const savedGenerating = (globalThis as any).sessionStorage?.getItem('isGenerating') === 'true';
+      const savedScenarios = (globalThis as any).sessionStorage?.getItem('allScenarios');
       
       if (savedGenerating) {
         setIsGenerating(true);
@@ -301,8 +301,8 @@ export default function ScriptLabPage() {
             setScriptData(data[activeScenario] || data.evergreen);
             
             // Sync with session cache immediately
-            if (typeof window !== 'undefined') {
-              sessionStorage.setItem('allScenarios', JSON.stringify(data));
+            if (typeof (globalThis as any).window !== 'undefined') {
+              (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(data));
             }
           } else {
             setScriptData(data);
@@ -317,8 +317,8 @@ export default function ScriptLabPage() {
         // Stop global loading
         setIsLoading(false);
         setIsGenerating(false);
-        if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('isGenerating');
+        if (typeof (globalThis as any).window !== 'undefined') {
+          (globalThis as any).sessionStorage?.removeItem('isGenerating');
         }
         
       } catch (err) {
@@ -326,8 +326,8 @@ export default function ScriptLabPage() {
         setError('Failed to load project data');
         setIsLoading(false);
         setIsGenerating(false);
-        if (typeof window !== 'undefined') {
-          sessionStorage.removeItem('isGenerating');
+        if (typeof (globalThis as any).window !== 'undefined') {
+          (globalThis as any).sessionStorage?.removeItem('isGenerating');
         }
       }
     }
@@ -376,7 +376,7 @@ export default function ScriptLabPage() {
 
   const handleCopyToClipboard = () => {
     const text = getFinalText();
-    navigator.clipboard.writeText(text);
+    ((globalThis as any).navigator)?.clipboard?.writeText(text);
   };
 
   const handleApplyRefinement = async (instruction: string) => {
@@ -437,8 +437,8 @@ export default function ScriptLabPage() {
       if (allScenarios) {
         const updatedMatrix = { ...allScenarios, [activeScenario]: newScript };
         setAllScenarios(updatedMatrix);
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('allScenarios', JSON.stringify(updatedMatrix));
+        if (typeof (globalThis as any).window !== 'undefined') {
+          (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(updatedMatrix));
         }
       }
 
@@ -486,8 +486,8 @@ export default function ScriptLabPage() {
       
       // Persist generating state to session to survive router replace remount
       setIsGenerating(true);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('isGenerating', 'true');
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).sessionStorage?.setItem('isGenerating', 'true');
       }
       
       router.replace(`/app/projects/new/script?projectId=${project.id}&versionId=${version.id}`);
@@ -495,8 +495,8 @@ export default function ScriptLabPage() {
       console.error('[ScriptLab] Manual start failed:', err);
       setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
       setIsGenerating(false);
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('isGenerating');
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).sessionStorage?.removeItem('isGenerating');
       }
     } finally {
       setIsLoading(false);
@@ -568,8 +568,8 @@ export default function ScriptLabPage() {
         setAllScenarios(fullScript);
         setScriptData(fullScript.evergreen);
         setActiveScenario('evergreen');
-        if (typeof window !== 'undefined') {
-          sessionStorage.setItem('allScenarios', JSON.stringify(fullScript));
+        if (typeof (globalThis as any).window !== 'undefined') {
+          (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(fullScript));
         }
       } else {
         setScriptData(fullScript);
@@ -584,8 +584,8 @@ export default function ScriptLabPage() {
       
       // Crucial: Set generating mode to true and persist it
       setIsGenerating(true);
-      if (typeof window !== 'undefined') {
-        sessionStorage.setItem('isGenerating', 'true');
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).sessionStorage?.setItem('isGenerating', 'true');
       }
       
       router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
@@ -605,9 +605,9 @@ export default function ScriptLabPage() {
       }
       
       setIsGenerating(false);
-      if (typeof window !== 'undefined') {
-        sessionStorage.removeItem('isGenerating');
-        sessionStorage.removeItem('allScenarios');
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).sessionStorage?.removeItem('isGenerating');
+        (globalThis as any).sessionStorage?.removeItem('allScenarios');
       }
     } finally {
       setIsLoading(false);
@@ -952,7 +952,7 @@ export default function ScriptLabPage() {
                 <input
                   type="text"
                   value={youtubeUrl}
-                  onChange={(e) => setYoutubeUrl(e.target.value)}
+                  onChange={(e) => setYoutubeUrl((e.target as any).value)}
                   placeholder={locale === 'ru' ? 'Вставьте https://www.youtube.com/watch?v=...' : 'Paste https://www.youtube.com/watch?v=...'}
                   className="w-full bg-[#0d0d1a] border border-white/10 rounded-[2rem] px-8 py-6 text-lg font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-red-500/50 transition-all shadow-2xl relative z-10"
                 />
@@ -996,8 +996,8 @@ export default function ScriptLabPage() {
                   id="topic-textarea"
                   value={topicInput}
                   onChange={(e) => {
-                    console.log('Topic change:', e.target.value);
-                    setTopicInput(e.target.value);
+                    console.log('Topic change:', (e.target as any).value);
+                    setTopicInput((e.target as any).value);
                   }}
                   placeholder={locale === 'ru' ? 'Напр: 5 секретов как выбрать лучшее авто...' : 'E.g.: 5 secrets to picking the best car...'}
                   className="w-full h-48 bg-[#0d0d1a] border border-white/10 rounded-[2rem] p-8 text-xl font-medium text-white placeholder:text-white/10 focus:outline-none focus:border-purple-500/50 transition-all resize-none shadow-2xl relative z-10"
@@ -1269,8 +1269,8 @@ export default function ScriptLabPage() {
           if (matrix.evergreen || matrix.trend) {
              setAllScenarios(matrix);
              setScriptData(matrix[activeScenario] || matrix.evergreen);
-             if (typeof window !== 'undefined') {
-                sessionStorage.setItem('allScenarios', JSON.stringify(matrix));
+             if (typeof (globalThis as any).window !== 'undefined') {
+                (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(matrix));
              }
           } else if (matrix.styles && Array.isArray(matrix.styles)) {
              // Map styles array to the 5-scenario format if possible, or just use styles[0]
@@ -1286,8 +1286,8 @@ export default function ScriptLabPage() {
              });
              setAllScenarios(mapped);
              setScriptData(mapped.evergreen);
-             if (typeof window !== 'undefined') {
-                sessionStorage.setItem('allScenarios', JSON.stringify(mapped));
+             if (typeof (globalThis as any).window !== 'undefined') {
+                (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(mapped));
              }
           }
         }}

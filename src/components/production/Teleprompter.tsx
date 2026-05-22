@@ -70,7 +70,7 @@ export default function Teleprompter({
       if (activeSegment) {
         // Calculate offset to bring the active segment to the focus line
         // Focus line is at 50% of parent height (pt-[50%])
-        const targetOffset = activeSegment.offsetTop;
+        const targetOffset = (activeSegment as any).offsetTop;
         setOffset(targetOffset);
       }
     }

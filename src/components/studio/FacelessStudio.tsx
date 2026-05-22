@@ -65,7 +65,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   const [generatingVoice, setGeneratingVoice] = useState(false);
   const [voiceError, setVoiceError] = useState<string | null>(null);
   const [isPlayingAudio, setIsPlayingAudio] = useState(false);
-  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const audioRef = useRef<any | null>(null);
 
   // Editor State
   const [scenes, setScenes] = useState<Scene[]>([]);
@@ -91,11 +91,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   const [selectedEffects, setSelectedEffects] = useState<PostEffect[]>(['kenburns', 'zoom_punch']);
 
 
-  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const canvasRef = useRef<any>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
   const renderingRef = useRef(false);
-  const audioContextRef = useRef<AudioContext | null>(null);
-  const audioSourceRef = useRef<MediaElementAudioSourceNode | null>(null);
+  const audioContextRef = useRef<any | null>(null);
+  const audioSourceRef = useRef<any | null>(null);
 
 
   // ── Extract script from manifest ──
@@ -153,9 +153,9 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       });
       
       // Save voice selection to local storage as fallback
-      if (typeof window !== 'undefined') {
-        localStorage.setItem(`faceless_voice_${projectId}`, selectedVoice);
-        localStorage.setItem(`faceless_default_voice_${projectId}`, defaultVoiceId);
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).localStorage?.setItem(`faceless_voice_${projectId}`, selectedVoice);
+        (globalThis as any).localStorage?.setItem(`faceless_default_voice_${projectId}`, defaultVoiceId);
       }
     };
     const timer = setTimeout(saveFacelessData, 1000);
@@ -214,7 +214,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     const startStart = scene.start;
     const startEnd = scene.end;
 
-    const onMouseMove = (moveEvent: MouseEvent) => {
+    const onMouseMove = (moveEvent: any) => {
       const deltaX = moveEvent.clientX - startX;
       const deltaSeconds = deltaX / 15;
       
@@ -233,12 +233,12 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     };
 
     const onMouseUp = () => {
-      document.removeEventListener('mousemove', onMouseMove);
-      document.removeEventListener('mouseup', onMouseUp);
+      (globalThis as any).document?.removeEventListener('mousemove', onMouseMove);
+      (globalThis as any).document?.removeEventListener('mouseup', onMouseUp);
     };
 
-    document.addEventListener('mousemove', onMouseMove);
-    document.addEventListener('mouseup', onMouseUp);
+    (globalThis as any).document?.addEventListener('mousemove', onMouseMove);
+    (globalThis as any).document?.addEventListener('mouseup', onMouseUp);
   };
 
   // ── Stage 1: Generate Voice ──
@@ -525,7 +525,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       sceneMotionStyles[scene.id] = motionTypes[Math.floor(Math.random() * motionTypes.length)];
       if (scene.imageUrl) {
 
-        const img = new window.Image();
+        const img = new (globalThis as any).window.Image();
         img.crossOrigin = 'anonymous';
         await new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); img.src = scene.imageUrl!; });
         imgCache[scene.id] = img;
@@ -537,7 +537,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     if (audioRef.current) {
       try {
         if (!audioContextRef.current) {
-          audioContextRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+          audioContextRef.current = new ((globalThis as any).window.AudioContext || (globalThis as any).window.webkitAudioContext)();
         }
         
         const ctx = audioContextRef.current;
@@ -560,24 +560,26 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
 
     const chunks: Blob[] = [];
     let selectedMime = '';
-    if (typeof MediaRecorder !== 'undefined') {
+    const MediaRecorderClass = (globalThis as any).MediaRecorder;
+    if (typeof MediaRecorderClass !== 'undefined') {
       const candidates = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/quicktime'];
       for (const m of candidates) {
-        if (MediaRecorder.isTypeSupported(m)) {
+        if (MediaRecorderClass.isTypeSupported(m)) {
           selectedMime = m;
           break;
         }
       }
     }
 
-    const options: MediaRecorderOptions = {};
+    const options: any = {};
     if (selectedMime) options.mimeType = selectedMime;
-    const mr = new MediaRecorder(stream, options);
-    mr.ondataavailable = (e) => { if (e.data.size > 0) chunks.push(e.data); };
+    const mr = MediaRecorderClass ? new MediaRecorderClass(stream, options) : null;
+    if (mr) mr.ondataavailable = (e: any) => { if (e.data.size > 0) chunks.push(e.data); };
     
     await new Promise<void>(async (resolve) => {
-      mr.onstop = () => resolve();
-      mr.start();
+      if (mr) mr.onstop = () => resolve();
+      else resolve();
+      if (mr) mr.start();
       
       if (audioRef.current) { 
         audioRef.current.currentTime = 0; 
@@ -590,7 +592,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         
         const currentTime = audioRef.current?.currentTime || 0;
         if (currentTime >= duration) {
-          mr.stop();
+          if (mr) mr.stop();
+          else resolve();
           return;
         }
 
@@ -599,7 +602,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         const img = imgCache[scene.id];
         
         ctx.clearRect(0, 0, 720, 1280);
-        if (img?.complete) {
+        if ((img as any)?.complete) {
           const motion = sceneMotionStyles[scene.id];
           let scale = 1.05;
           let tx = 0;
@@ -616,7 +619,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
           ctx.translate(360 + tx, 640 + ty); 
           ctx.scale(scale, scale);
           
-          const aspect = img.naturalWidth / img.naturalHeight;
+          const aspect = (img as any).naturalWidth / (img as any).naturalHeight;
           let dw, dh;
           if (aspect < 720 / 1280) { dw = 720; dh = 720 / aspect; } else { dh = 1280; dw = 1280 * aspect; }
           ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
@@ -828,7 +831,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                       audioRef.current.pause();
                       setIsPlayingAudio(false);
                     } else {
-                      audioRef.current.play().catch(e => console.error('Play error:', e));
+                      audioRef.current.play().catch((e: any) => console.error('Play error:', e));
                       setIsPlayingAudio(true);
                     }
                   }}
@@ -953,7 +956,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
               {/* Mini Timeline below strip */}
               <div ref={timelineRef} className="mt-2 h-1 rounded-full bg-white/5 overflow-hidden cursor-pointer"
                 onClick={(e) => {
-                  const rect = e.currentTarget.getBoundingClientRect();
+                  const rect = (e.currentTarget as any).getBoundingClientRect();
                   const x = e.clientX - rect.left;
                   const time = (x / rect.width) * duration;
                   setCurrentTime(Math.max(0, Math.min(time, duration)));
@@ -977,7 +980,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                   <label className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-2 block">Сценарий Видео</label>
                   <textarea
                     value={editableScript}
-                    onChange={e => setEditableScript(e.target.value)}
+                    onChange={e => setEditableScript((e.target as any).value)}
                     rows={5}
                     className="w-full bg-white/[0.04] border border-white/8 rounded-2xl p-4 text-[12px] text-white/70 focus:border-purple-500/50 transition-all resize-none outline-none leading-relaxed placeholder:text-white/20"
                     placeholder="Вставьте или отредактируйте ваш сценарий..."
@@ -1145,7 +1148,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                       onClick={() => {
                         if (duration >= 60) return;
                         const defaultPos = scenes.length + 1;
-                        const posStr = window.prompt(`Введите номер новой сцены (от 1 до ${defaultPos}):`, defaultPos.toString());
+                        const posStr = (globalThis as any).window?.prompt(`Введите номер новой сцены (от 1 до ${defaultPos}):`, defaultPos.toString());
                         if (posStr === null) return;
                         
                         let pos = parseInt(posStr, 10);
@@ -1219,7 +1222,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                       </label>
                       <textarea
                         value={selectedScene.imagePrompt}
-                        onChange={e => setScenes(prev => prev.map(s => s.id === selectedScene.id ? { ...s, imagePrompt: e.target.value } : s))}
+                        onChange={e => setScenes(prev => prev.map(s => s.id === selectedScene.id ? { ...s, imagePrompt: (e.target as any).value } : s))}
                         rows={3}
                         className="w-full bg-white/[0.04] border border-white/8 rounded-2xl p-4 text-[11px] text-white/60 focus:border-purple-500/40 outline-none leading-relaxed resize-none placeholder:text-white/20"
                         placeholder="Опишите кадр..."
@@ -1244,7 +1247,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                           accept="image/*" 
                           className="hidden" 
                           onChange={async (e) => {
-                            const file = e.target.files?.[0];
+                            const file = (e.target as any).files?.[0];
                             if (file && projectId) {
                               try {
                                 setScenes(prev => prev.map(s => s.id === selectedScene.id ? { ...s, generating: true } : s));
