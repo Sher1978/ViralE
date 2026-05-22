@@ -187,7 +187,7 @@ export default function AvatarStudioPage() {
 
   const handleCopy = () => {
     if (!generatedPrompt) return;
-    navigator.clipboard.writeText(generatedPrompt);
+    (navigator as any).clipboard.writeText(generatedPrompt);
     setCopied(true);
     setTimeout(() => setCopied(false), 2000);
   };
