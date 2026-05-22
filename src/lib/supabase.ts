@@ -9,10 +9,19 @@ if (!supabaseUrl || !supabaseAnonKey) {
 
 // Create the client, but guard against empty values if the library allows it, 
 // or export a proxied version that handles missing keys gracefully.
+const schema = process.env.NEXT_PUBLIC_SUPABASE_SCHEMA || 'public';
+
+if (schema !== 'public') {
+  console.log(`🔌 [Supabase] Routing all database operations to schema: "${schema}"`);
+}
+
 export const supabase = (supabaseUrl && supabaseAnonKey) 
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         lock: (name, acquireTimeout, fn) => fn()
+      },
+      db: {
+        schema
       }
     })
   : new Proxy({} as any, {
@@ -28,6 +37,9 @@ export const supabaseAdmin = (supabaseUrl && serviceRoleKey)
       auth: {
         autoRefreshToken: false,
         persistSession: false
+      },
+      db: {
+        schema
       }
     })
   : new Proxy({} as any, {
