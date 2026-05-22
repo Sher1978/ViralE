@@ -312,7 +312,7 @@ function KeySection({
           <input
             type="password"
             value={value}
-            onChange={(e) => onChange(e.target.value)}
+            onChange={(e) => onChange((e.target as any).value)}
             placeholder={status.hasKey ? status.maskedKey || placeholder : placeholder}
             className="w-full bg-white/[0.03] border border-white/5 rounded-2xl p-5 text-[12px] text-white focus:outline-none focus:ring-2 focus:bg-white/[0.05] transition-all placeholder:text-white/10 outline-none pr-12 font-mono tracking-widest"
             style={{ 
