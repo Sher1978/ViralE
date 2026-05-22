@@ -217,6 +217,9 @@ export default function DnaManagementPage() {
   }
 
   async function handleForceRegenerateAll() {
+    const msg = locale === 'ru' 
+      ? 'Вы уверены, что хотите полностью стереть текущую матрицу и запустить новую генерацию идей на основе вашего ДНК?' 
+      : 'Are you sure you want to completely erase the current matrix and start a new idea generation based on your DNA?';
     const glob = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
     if (glob && glob.confirm && !glob.confirm(msg)) return;
 
@@ -443,7 +446,7 @@ export default function DnaManagementPage() {
                 </label>
                 <textarea
                   value={answers[q.id] || ''}
-                  onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.target.value }))}
+                  onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: e.currentTarget.value }))}
                   placeholder={q.placeholder}
                   className="w-full h-20 bg-white/[0.03] border border-white/[0.08] rounded-xl p-3 text-xs text-white/80 focus:outline-none focus:border-purple-500/50 transition-all resize-none placeholder:text-white/10 outline-none leading-relaxed font-medium"
                 />
