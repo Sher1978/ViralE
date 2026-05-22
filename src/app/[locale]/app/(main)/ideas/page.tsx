@@ -125,7 +125,9 @@ export default function IdeasPage() {
 
   useEffect(() => {
     if (!sentinelRef.current) return;
-    const observer = new IntersectionObserver((entries) => {
+    const Obs = typeof globalThis !== 'undefined' ? (globalThis as any).IntersectionObserver : null;
+    if (!Obs) return;
+    const observer = new Obs((entries: any[]) => {
       if (entries[0].isIntersecting) {
         synthesizeNextCategory();
       }
