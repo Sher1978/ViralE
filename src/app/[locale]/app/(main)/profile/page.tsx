@@ -194,14 +194,14 @@ export default function ProfilePage() {
 
   return (
     <motion.div 
-      variants={containerVariants}
+      variants={containerVariants as any}
       initial="hidden"
       animate="visible"
       className="space-y-6 pb-24"
     >
       {/* Profile Header - Dynamic & Fully Interactive */}
       <motion.div
-        variants={itemVariants}
+        variants={itemVariants as any}
         className="relative overflow-hidden pt-4 pb-8 pl-16 pr-4 border-b border-white/10 bg-black/50"
       >
         <div className="absolute top-0 right-0 p-4 opacity-10 blur-sm">
@@ -221,7 +221,7 @@ export default function ProfilePage() {
                 accept="image/*" 
               />
               <div 
-                onClick={() => !uploading && fileInputRef.current?.click()}
+                onClick={() => !uploading && (fileInputRef.current as any)?.click()}
                 className="w-20 h-20 rounded-[2rem] bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center overflow-hidden cursor-pointer shadow-xl relative transition-all group-hover:scale-105 group-hover:border-cyan-500/50"
               >
                 {uploading ? (
@@ -368,7 +368,7 @@ export default function ProfilePage() {
         {SETTINGS_SECTIONS.map((section, sIdx) => (
           <motion.div 
             key={section.title} 
-            variants={itemVariants}
+            variants={section as any ? (itemVariants as any) : undefined}
             className="space-y-3"
           >
             <div className="flex items-center gap-2 px-2">
@@ -425,7 +425,7 @@ export default function ProfilePage() {
       </div>
 
       {/* Logout & Footer */}
-      <motion.div variants={itemVariants} className="px-1 space-y-6">
+      <motion.div variants={itemVariants as any} className="px-1 space-y-6">
         <button
           onClick={handleLogout}
           className="w-full flex items-center justify-center gap-3 py-5 rounded-[2rem] text-sm font-black transition-all hover:bg-[#FF4D6D]/10 active:scale-95 group"
