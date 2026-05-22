@@ -426,7 +426,7 @@ export default function AvatarStudioPage() {
                        <input 
                           type="password"
                           value={heygenKey}
-                          onChange={(e) => setHeygenKey(e.target.value)}
+                          onChange={(e) => setHeygenKey((e.target as any).value)}
                           placeholder={t('heygenKeyPlaceholder')}
                           className="w-full bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all font-mono"
                        />
