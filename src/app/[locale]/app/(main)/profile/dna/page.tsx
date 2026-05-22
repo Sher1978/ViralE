@@ -200,7 +200,7 @@ export default function DnaManagementPage() {
   }
 
   async function handleReset() {
-    if (!confirm(t('resetWarning'))) return;
+    if (typeof window !== 'undefined' && !window.confirm(t('resetWarning'))) return;
     setResetting(true);
     setError(null);
     try {
