@@ -417,14 +417,22 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         
         if (!sourceBlob && aRollUrl) {
           try {
-            console.log('[Studio LOG] No rawFile. Fetching source video blob from aRollUrl:', aRollUrl);
-            const resp = await fetch(aRollUrl);
+            console.log('[Studio LOG] No rawFile. Fetching source video blob from aRollUrl with 15s timeout:', aRollUrl);
+            const controller = new AbortController();
+            const timeoutId = setTimeout(() => {
+              console.warn('[Studio LOG] Fetch from aRollUrl timed out after 15s. Aborting...');
+              controller.abort();
+            }, 15000);
+
+            const resp = await fetch(aRollUrl, { signal: controller.signal });
+            clearTimeout(timeoutId);
+
             if (resp.ok) {
               sourceBlob = await resp.blob();
               console.log('[Studio LOG] Fetch from aRollUrl successful. Size:', (sourceBlob.size / (1024 * 1024)).toFixed(2), 'MB');
             }
           } catch (e: any) {
-             console.warn('[Studio LOG] Fetch from aRollUrl failed. Error:', e?.message || e, '. Trying recovery from IndexedDB...');
+             console.warn('[Studio LOG] Fetch from aRollUrl failed or timed out. Error:', e?.message || e, '. Trying recovery from IndexedDB...');
              const recovered = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
              if (recovered instanceof Blob) {
                sourceBlob = recovered;
@@ -548,11 +556,11 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   }, [aRollUrl, rawFile, manifest, projectId, transcriptionError]);
 
   useEffect(() => {
-    if (stage === 'transcribing' && aRollUrl && !transcriptionStartedRef.current) {
+    if (persistenceLoaded && stage === 'transcribing' && aRollUrl && !transcriptionStartedRef.current) {
       transcriptionStartedRef.current = true;
       runTranscriptionAndPhrases();
     }
-  }, [stage, aRollUrl, runTranscriptionAndPhrases]);
+  }, [persistenceLoaded, stage, aRollUrl, runTranscriptionAndPhrases]);
 
   // Duration sync
   useEffect(() => {
