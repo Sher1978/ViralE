@@ -287,7 +287,7 @@ export default function AvatarStudioPage() {
                          <input 
                             type="text"
                             value={promptInput}
-                            onChange={(e) => setPromptInput(e.target.value)}
+                            onChange={(e) => setPromptInput((e.target as any).value)}
                             placeholder={t('promptHelperPlaceholder')}
                             className="flex-1 bg-white/5 border border-white/10 rounded-2xl px-6 py-4 text-sm text-white placeholder:text-white/20 focus:outline-none focus:border-cyan-500/50 transition-all"
                          />
