@@ -74,9 +74,9 @@ export default function PhotoGalleryPage() {
   }, []);
 
   const handleUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = (e.target as any).files?.[0];
     if (!file) return;
-    e.target.value = '';
+    (e.target as any).value = '';
 
     setUploading(true);
     try {
