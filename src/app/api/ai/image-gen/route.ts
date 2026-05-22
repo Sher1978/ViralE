@@ -101,11 +101,7 @@ export async function POST(req: Request) {
               const imgRes = await fetch(imageUrl);
               if (imgRes.ok) {
                 const blob = await imgRes.blob();
-                const { createClient } = await import('@supabase/supabase-js');
-                const supabaseAdmin = createClient(
-                  process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                  process.env.SUPABASE_SERVICE_ROLE_KEY!
-                );
+                const { supabaseAdmin } = await import('@/lib/supabase');
                 
                 const fileName = `generated/${uuidv4()}.webp`;
                 const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
@@ -159,11 +155,7 @@ export async function POST(req: Request) {
             const imgRes = await fetch(imageUrl);
             if (imgRes.ok) {
               const blob = await imgRes.blob();
-              const { createClient } = await import('@supabase/supabase-js');
-              const supabaseAdmin = createClient(
-                process.env.NEXT_PUBLIC_SUPABASE_URL!,
-                process.env.SUPABASE_SERVICE_ROLE_KEY!
-              );
+              const { supabaseAdmin } = await import('@/lib/supabase');
               
               const fileName = `generated/${uuidv4()}.png`;
               const { data: uploadData, error: uploadError } = await supabaseAdmin.storage

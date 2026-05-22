@@ -1,21 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { createClient } from '@supabase/supabase-js';
-
-// Lazy load admin client to prevent Vercel build evaluation crashes when keys are missing
-function getSupabaseAdmin() {
-  const url = process.env.NEXT_PUBLIC_SUPABASE_URL;
-  const key = process.env.SUPABASE_SERVICE_ROLE_KEY;
-  if (!url || !key) {
-    throw new Error('Supabase environment variables are missing.');
-  }
-  return createClient(url, key);
-}
+import { supabase, supabaseAdmin } from '@/lib/supabase';
 
 // GET /api/profile/photos — list all user photos
 export async function GET(req: NextRequest) {
   try {
-    const supabaseAdmin = getSupabaseAdmin();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
@@ -49,7 +37,6 @@ export async function GET(req: NextRequest) {
 // DELETE /api/profile/photos — delete a specific photo by path
 export async function DELETE(req: NextRequest) {
   try {
-    const supabaseAdmin = getSupabaseAdmin();
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
 
