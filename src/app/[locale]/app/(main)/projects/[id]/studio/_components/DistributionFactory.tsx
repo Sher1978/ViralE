@@ -1760,7 +1760,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                   <input
                                     type="text"
                                     value={customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || '')}
-                                    onChange={(e) => setCustomSlideTexts(prev => ({ ...prev, [num]: e.target.value }))}
+                                    onChange={(e) => setCustomSlideTexts(prev => ({ ...prev, [num]: (e.target as any).value }))}
                                     placeholder={locale === 'ru' ? 'Введите текст...' : 'Enter text...'}
                                     className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/5 text-[11px] font-bold text-white focus:outline-none focus:border-purple-500/50 transition-all"
                                   />
@@ -1772,7 +1772,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                   </label>
                                   <textarea
                                     value={customImagePrompts[num] !== undefined ? customImagePrompts[num] : (slideData?.image_prompt || '')}
-                                    onChange={(e) => setCustomImagePrompts(prev => ({ ...prev, [num]: e.target.value }))}
+                                    onChange={(e) => setCustomImagePrompts(prev => ({ ...prev, [num]: (e.target as any).value }))}
                                     placeholder={locale === 'ru' ? 'Опишите фоновый образ...' : 'Describe visual...'}
                                     rows={2}
                                     className="w-full px-4 py-3 rounded-2xl bg-white/[0.02] border border-white/5 text-[10px] text-white/70 focus:outline-none focus:border-purple-500/50 transition-all resize-none custom-scrollbar"
@@ -1827,7 +1827,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                               </p>
                               <button
                                 onClick={() => {
-                                  navigator.clipboard.writeText(customPostDescription);
+                                  (navigator as any).clipboard.writeText(customPostDescription);
                                   setCopying('caption');
                                   setTimeout(() => setCopying(null), 2000);
                                 }}
@@ -1839,7 +1839,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             </div>
                             <textarea
                               value={customPostDescription}
-                              onChange={(e) => setCustomPostDescription(e.target.value)}
+                              onChange={(e) => setCustomPostDescription((e.target as any).value)}
                               rows={5}
                               className="w-full px-5 py-4 rounded-[1.5rem] bg-white/[0.02] border border-white/5 text-[12px] md:text-[13px] text-white/80 focus:outline-none focus:border-purple-500/50 transition-all resize-none custom-scrollbar"
                             />
