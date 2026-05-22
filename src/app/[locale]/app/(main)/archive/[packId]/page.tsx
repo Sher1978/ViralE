@@ -413,9 +413,12 @@ export default function ContentPackPage() {
                     </button>
                     <button
                       onClick={() => {
+                        const doc = typeof globalThis !== 'undefined' ? (globalThis as any).document : null;
+                        const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+                        if (!doc || !win) return;
                         const blob = new Blob([pack.caption!], { type: 'text/plain' });
-                        const a = document.createElement('a');
-                        a.href = URL.createObjectURL(blob);
+                        const a = doc.createElement('a');
+                        a.href = win.URL.createObjectURL(blob);
                         a.download = `${pack.title}-caption.txt`;
                         a.click();
                       }}
@@ -461,9 +464,12 @@ export default function ContentPackPage() {
                 </button>
                 <button
                   onClick={() => {
+                    const doc = typeof globalThis !== 'undefined' ? (globalThis as any).document : null;
+                    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+                    if (!doc || !win) return;
                     const blob = new Blob([pack.article!], { type: 'text/plain' });
-                    const a = document.createElement('a');
-                    a.href = URL.createObjectURL(blob);
+                    const a = doc.createElement('a');
+                    a.href = win.URL.createObjectURL(blob);
                     a.download = `${pack.title}-article.txt`;
                     a.click();
                   }}
