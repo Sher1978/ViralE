@@ -63,7 +63,7 @@ export const VideoEditor = React.memo(({
   const [activeBrollPrompt, setActiveBrollPrompt] = useState('');
   const [activeBrollPhraseId, setActiveBrollPhraseId] = useState<string | null>(null);
   const [isRecording, setIsRecording] = useState(false);
-  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const mediaRecorderRef = useRef<any>(null);
   const audioChunksRef = useRef<Blob[]>([]);
 
   // Auto-Broll States
@@ -100,7 +100,7 @@ export const VideoEditor = React.memo(({
       const brolls = data.brolls || [];
 
       if (brolls.length === 0) {
-        alert('ИИ не нашёл подходящих моментов. Попробуйте записать более динамичное видео.');
+        (globalThis as any).alert('ИИ не нашёл подходящих моментов. Попробуйте записать более динамичное видео.');
         setIsAutoGeneratingBroll(false);
         return;
       }
@@ -149,14 +149,14 @@ export const VideoEditor = React.memo(({
       setStage('editing');
     } catch (err: any) {
       console.error('[Auto-Broll] Failed:', err);
-      alert(`Ошибка автогенерации B-roll: ${err.message || err}`);
+      (globalThis as any).alert(`Ошибка автогенерации B-roll: ${err.message || err}`);
       setIsAutoGeneratingBroll(false);
     }
   };
 
 
   const togglePlay = useCallback(() => {
-    const v = videoRef.current;
+    const v = videoRef.current as any;
     if (!v || !aRollUrl) return;
     if (isPlaying) v.pause(); else v.play();
     setIsPlaying(p => !p);
@@ -164,13 +164,14 @@ export const VideoEditor = React.memo(({
 
   const onSeek = useCallback((time: number) => {
     setCurrentTime(time);
-    if (videoRef.current) {
-        videoRef.current.currentTime = time;
+    const v = videoRef.current as any;
+    if (v) {
+        v.currentTime = time;
     }
   }, [setCurrentTime]);
 
   const handleFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
+    const file = (e.target as any).files?.[0];
     if (file) {
       const url = URL.createObjectURL(file);
       setARollUrl(url);
@@ -235,10 +236,12 @@ export const VideoEditor = React.memo(({
 
   const startRecording = async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      const mr = new MediaRecorder(stream);
+      const nav = globalThis.navigator as any;
+      if (!nav || !nav.mediaDevices) return;
+      const stream = await nav.mediaDevices.getUserMedia({ audio: true });
+      const mr = new (globalThis as any).MediaRecorder(stream);
       audioChunksRef.current = [];
-      mr.ondataavailable = (e) => {
+      mr.ondataavailable = (e: any) => {
         if (e.data.size > 0) audioChunksRef.current.push(e.data);
       };
       mr.onstop = () => {
@@ -299,7 +302,7 @@ export const VideoEditor = React.memo(({
             <div className="w-full max-w-md space-y-8 text-center">
               <h2 className="text-3xl font-black uppercase tracking-tighter">Choose Foundation</h2>
               <div className="grid gap-4">
-                <button onClick={() => fileInputRef.current?.click()} className="p-8 rounded-[2rem] bg-white/5 border border-white/10 hover:border-purple-500 transition-all flex flex-col items-center gap-4">
+                <button onClick={() => (fileInputRef.current as any)?.click()} className="p-8 rounded-[2rem] bg-white/5 border border-white/10 hover:border-purple-500 transition-all flex flex-col items-center gap-4">
                   <Upload size={32} />
                   <span className="block font-black uppercase">Upload A-Roll</span>
                 </button>
@@ -335,7 +338,7 @@ export const VideoEditor = React.memo(({
         videoRef={videoRef} aRollUrl={aRollUrl} isMuted={isMuted} isPlaying={isPlaying} currentTime={currentTime} togglePlay={togglePlay}
         setCurrentTime={setCurrentTime} setARollDuration={setARollDuration}
         brollClips={brollClips} setBrollClips={setBrollClips} subtitleClips={subtitleClips} subtitlePos={subtitlePos} setSubtitlePos={setSubtitlePos} subtitleSize={subtitleSize} setSubtitleSize={setSubtitleSize}
-        onUploadClick={() => fileInputRef.current?.click()}
+        onUploadClick={() => (fileInputRef.current as any)?.click()}
         stage={stage} stageMessage={stageMessage} transcriptionError={transcriptionError} heartbeat={0}
         runTranscriptionAndPhrases={runTranscriptionAndPhrases} setStage={setStage} setTranscriptionError={setTranscriptionError} setStageMessage={setStageMessage}
         subtitleStyle={subtitleStyle}
@@ -603,7 +606,7 @@ export const VideoEditor = React.memo(({
                                         {/* Delete button */}
                                         <button
                                             onClick={() => {
-                                                if (confirm('Вы уверены, что хотите удалить этот Б-ролл?')) {
+                                                if ((globalThis as any).confirm?.('Вы уверены, что хотите удалить этот Б-ролл?')) {
                                                     deleteBroll(clip.id);
                                                 }
                                             }}

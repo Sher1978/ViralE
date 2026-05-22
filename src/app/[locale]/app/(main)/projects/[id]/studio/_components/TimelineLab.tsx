@@ -72,34 +72,38 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
   // Fallback: some browsers (especially iOS) fire onDurationChange but not onLoadedMetadata.
   // Reading directly from videoRef at interaction time is the safest approach.
   const togglePlay = () => {
-    if (videoRef.current) {
-      if (isPlaying) videoRef.current.pause();
-      else videoRef.current.play();
+    const v = videoRef.current as any;
+    if (v) {
+      if (isPlaying) v.pause();
+      else v.play();
       setIsPlaying(!isPlaying);
     }
   };
 
   const handleTimeUpdate = () => {
-    if (videoRef.current) {
-      setCurrentTime(videoRef.current.currentTime);
+    const v = videoRef.current as any;
+    if (v) {
+      setCurrentTime(v.currentTime);
     }
   };
 
   const handleLoadedMetadata = () => {
-    const d = videoRef.current?.duration;
-    console.log('[TimelineLab] onLoadedMetadata fired. duration =', d, '| videoRef.src =', videoRef.current?.src?.slice(0, 80));
-    if (videoRef.current && d && isFinite(d) && d > 0) {
+    const v = videoRef.current as any;
+    const d = v?.duration;
+    console.log('[TimelineLab] onLoadedMetadata fired. duration =', d, '| videoRef.src =', v?.src?.slice(0, 80));
+    if (v && d && isFinite(d) && d > 0) {
       setDuration(d);
     }
   };
 
   const handleVideoError = (e: React.SyntheticEvent<HTMLVideoElement>) => {
-    const v = videoRef.current;
+    const v = videoRef.current as any;
     console.error('[TimelineLab] VIDEO ERROR:', (v as any)?.error?.message, '| code:', (v as any)?.error?.code, '| src:', v?.src?.slice(0, 120));
   };
 
   const handleDurationChange = () => {
-    const d = videoRef.current?.duration;
+    const v = videoRef.current as any;
+    const d = v?.duration;
     console.log('[TimelineLab] onDurationChange fired. duration =', d);
     if (d && isFinite(d) && d > 0) {
       setDuration(d);
@@ -111,7 +115,8 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
   };
 
   const handleCanPlay = () => {
-    const d = videoRef.current?.duration;
+    const v = videoRef.current as any;
+    const d = v?.duration;
     console.log('[TimelineLab] onCanPlay — duration =', d);
     if (d && isFinite(d) && d > 0 && duration === 0) {
       setDuration(d);
@@ -164,13 +169,13 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
   const handleGenerate = () => {
     const mainTrack = tracks[0];
     if (!mainTrack.avatarUrl) {
-      alert("Please assign a Master Persona first.");
+      (globalThis as any).alert("Please assign a Master Persona first.");
       return;
     }
 
-    const activeDuration = duration || (videoRef.current ? videoRef.current.duration : 0);
+    const activeDuration = duration || (videoRef.current ? (videoRef.current as any).duration : 0);
     if (!activeDuration || isNaN(activeDuration)) {
-      alert("Video duration is not fully loaded. Please play the video for a split second or wait for it to load.");
+      (globalThis as any).alert("Video duration is not fully loaded. Please play the video for a split second or wait for it to load.");
       return;
     }
 
@@ -222,7 +227,7 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
      }
 
      if (finalMapping.length === 0) {
-       alert("Synthesis timeline is empty. Please play the video or reload to ensure metadata is loaded.");
+       (globalThis as any).alert("Synthesis timeline is empty. Please play the video or reload to ensure metadata is loaded.");
        return;
      }
 
@@ -249,9 +254,9 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
 
         <button 
           onClick={() => {
-            const activeDuration = videoRef.current?.duration || duration;
+            const activeDuration = (videoRef.current as any)?.duration || duration;
             if (!activeDuration || isNaN(activeDuration) || activeDuration <= 0) {
-              alert("Видео ещё не загружено. Попробуйте нажать Play для запуска воспроизведения и подождите секунду.");
+              (globalThis as any).alert("Видео ещё не загружено. Попробуйте нажать Play для запуска воспроизведения и подождите секунду.");
               return;
             }
             setShowConfirmModal(true);
@@ -480,12 +485,15 @@ export const TimelineLab: React.FC<TimelineLabProps> = ({
                       if (onDownload) {
                         onDownload();
                       } else {
-                        const a = document.createElement('a');
-                        a.href = videoUrl;
-                        a.download = 'recording.mp4';
-                        document.body.appendChild(a);
-                        a.click();
-                        document.body.removeChild(a);
+                        const doc = (globalThis as any).document;
+                        if (doc) {
+                          const a = doc.createElement('a');
+                          a.href = videoUrl;
+                          a.download = 'recording.mp4';
+                          doc.body.appendChild(a);
+                          a.click();
+                          doc.body.removeChild(a);
+                        }
                       }
                     }}
                     className="w-full py-3.5 rounded-2xl bg-blue-500/10 border border-blue-500/20 text-blue-300 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-2 active:scale-95 transition-all hover:bg-blue-500/20"

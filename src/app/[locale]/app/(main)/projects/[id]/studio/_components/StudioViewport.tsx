@@ -133,7 +133,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
   const vRef = useRef<HTMLVideoElement>(null);
 
   useEffect(() => {
-    const v = vRef.current;
+    const v = vRef.current as any;
     if (!v) return;
 
     // Handle play/pause
@@ -166,7 +166,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
       crossOrigin="anonymous"
       className="w-full h-full object-cover relative z-10" 
       onLoadedData={(e) => {
-        const target = e.target as HTMLVideoElement;
+        const target = e.target as any;
         target.style.opacity = "1";
         target.currentTime = Math.max(0.001, currentTime - startTime);
         if (isPlaying) target.play().catch(() => {});
@@ -187,8 +187,8 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
   const voiceoverRef = useRef<HTMLAudioElement>(null);
 
   useEffect(() => {
-    const v = videoRef.current;
-    const a = voiceoverRef.current;
+    const v = videoRef.current as any;
+    const a = voiceoverRef.current as any;
     if (!v) return;
 
     if (voiceoverUrl) {
@@ -206,7 +206,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
   }, [isPlaying, voiceoverUrl, isMuted, currentTime, videoRef]);
 
   const getScaleFactor = () => {
-    const rect = viewportRef.current?.getBoundingClientRect();
+    const rect = (viewportRef.current as any)?.getBoundingClientRect();
     if (!rect) return 1;
     return 1080 / rect.width;
   };
@@ -215,7 +215,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
     let frameId: number;
     const sync = () => {
       if (videoRef.current && isPlaying) {
-        setCurrentTime(videoRef.current.currentTime);
+        setCurrentTime((videoRef.current as any).currentTime);
         frameId = requestAnimationFrame(sync);
       }
     };
@@ -243,14 +243,14 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               preload="auto"
               crossOrigin="anonymous"
               onLoadedData={(e) => {
-                const target = e.currentTarget;
+                const target = e.currentTarget as any;
                 if (target.currentTime === 0) {
                   console.log('[Studio LOG] Forcing video to seek to 0.001s to render poster frame');
                   target.currentTime = 0.001;
                 }
               }}
               onLoadedMetadata={(e) => {
-                const dur = e.currentTarget.duration;
+                const dur = (e.currentTarget as any).duration;
                 if (typeof dur === 'number' && isFinite(dur) && dur > 0) {
                   console.log('[Studio LOG] Video metadata loaded. safe duration:', dur);
                   setARollDuration(dur);
@@ -260,7 +260,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                 }
               }}
               onDurationChange={(e) => {
-                const dur = e.currentTarget.duration;
+                const dur = (e.currentTarget as any).duration;
                 if (typeof dur === 'number' && isFinite(dur) && dur > 0) {
                   console.log('[Studio LOG] Video duration updated. safe duration:', dur);
                   setARollDuration(dur);
@@ -320,19 +320,19 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                           const startX = e.clientX;
                           const startScale = activeBR.scale || 1;
                           
-                          const onPointerMove = (moveEvent: PointerEvent) => {
+                          const onPointerMove = (moveEvent: any) => {
                             const delta = moveEvent.clientX - startX;
                             const newScale = Math.max(0.1, Math.min(5, startScale + delta * 0.005));
                             setBrollClips(prev => prev.map(c => c.id === activeBR.id ? { ...c, scale: newScale } : c));
                           };
                           
                           const onPointerUp = () => {
-                            window.removeEventListener('pointermove', onPointerMove);
-                            window.removeEventListener('pointerup', onPointerUp);
+                            globalThis.removeEventListener('pointermove', onPointerMove);
+                            globalThis.removeEventListener('pointerup', onPointerUp);
                           };
                           
-                          window.addEventListener('pointermove', onPointerMove);
-                          window.addEventListener('pointerup', onPointerUp);
+                          globalThis.addEventListener('pointermove', onPointerMove);
+                          globalThis.addEventListener('pointerup', onPointerUp);
                         }}
                       >
                         <Wand2 size={14} className="text-white" />
@@ -392,18 +392,18 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                               const startX = e.clientX;
                               const startSize = subtitleSize;
                               
-                              const onPointerMove = (moveEvent: PointerEvent) => {
+                              const onPointerMove = (moveEvent: any) => {
                                 const delta = moveEvent.clientX - startX;
                                 setSubtitleSize(Math.max(10, Math.min(200, startSize + delta * 0.5)));
                               };
                               
                               const onPointerUp = () => {
-                                window.removeEventListener('pointermove', onPointerMove);
-                                window.removeEventListener('pointerup', onPointerUp);
+                                globalThis.removeEventListener('pointermove', onPointerMove);
+                                globalThis.removeEventListener('pointerup', onPointerUp);
                               };
                               
-                              window.addEventListener('pointermove', onPointerMove);
-                              window.addEventListener('pointerup', onPointerUp);
+                              globalThis.addEventListener('pointermove', onPointerMove);
+                              globalThis.addEventListener('pointerup', onPointerUp);
                             }}
                           >
                             <div className="w-2 h-2 bg-black rounded-full" />

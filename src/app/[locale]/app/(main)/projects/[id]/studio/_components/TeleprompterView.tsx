@@ -85,7 +85,7 @@ export const TeleprompterView = React.memo(({
   // 📹 Critical: Bind camera stream to video element
   React.useEffect(() => {
     if (cameraStream && videoPreviewRef.current) {
-      videoPreviewRef.current.srcObject = cameraStream;
+      (videoPreviewRef.current as any).srcObject = cameraStream;
     }
   }, [cameraStream, videoPreviewRef]);
 
@@ -98,21 +98,22 @@ export const TeleprompterView = React.memo(({
   // Auto-scroll logic with precision frequency for smoothness
   React.useEffect(() => {
     let interval: NodeJS.Timeout;
-    if (isReading && prompterRef.current && !isEditing) {
+    const el = prompterRef.current as any;
+    if (isReading && el && !isEditing) {
         interval = setInterval(() => {
-            if (prompterRef.current) {
+            if (el) {
                 // Smoother formula: base 0.08px per 8ms (approx 10px/sec at speed 1)
                 // Use an accumulator to handle sub-pixel rounding in browser scrollTop
                 scrollAccRef.current += (scrollSpeed * 0.25); 
                 
                 if (scrollAccRef.current >= 1) {
                   const pixels = Math.floor(scrollAccRef.current);
-                  prompterRef.current.scrollTop += pixels;
+                  el.scrollTop += pixels;
                   scrollAccRef.current -= pixels;
                 }
 
                 // Keep scrollPosRef synced to avoid jumps
-                if (prompterRef.current.scrollTop >= prompterRef.current.scrollHeight - prompterRef.current.clientHeight) {
+                if (el.scrollTop >= el.scrollHeight - el.clientHeight) {
                   // End of script reached - auto stop or loop
                    // onFinish?.(); 
                 }
@@ -286,7 +287,7 @@ export const TeleprompterView = React.memo(({
                    {cameraError}
                  </p>
                  <button 
-                   onClick={() => window.location.reload()}
+                   onClick={() => (globalThis as any).location.reload()}
                    className="mt-2 px-6 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all"
                  >
                    Reload Page
@@ -500,7 +501,7 @@ export const TeleprompterView = React.memo(({
                   autoFocus
                   value={editedText}
                   onChange={(e) => {
-                    setEditedText(e.target.value);
+                    setEditedText((e.target as any).value);
                     if (suggestion) setSuggestion(null);
                   }}
                   className="w-full h-full bg-transparent border border-white/5 rounded-[2rem] p-8 text-2xl font-bold text-white focus:outline-none focus:border-purple-500/30 transition-all resize-none shadow-inner leading-relaxed"

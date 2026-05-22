@@ -66,7 +66,7 @@ export const StudioModals: React.FC<StudioModalsProps> = ({
 
               <textarea
                 value={subtitleEditText}
-                onChange={(e) => setSubtitleEditText(e.target.value)}
+                onChange={(e) => setSubtitleEditText((e.target as any).value)}
                 className="w-full h-32 bg-white/5 border border-white/10 rounded-2xl p-4 text-white text-sm focus:outline-none focus:border-purple-500 transition-all resize-none"
                 placeholder="Enter text..."
               />

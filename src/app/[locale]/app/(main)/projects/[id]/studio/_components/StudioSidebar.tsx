@@ -16,8 +16,8 @@ interface StudioSidebarProps {
   recordingTime: number;
   facingMode: 'user' | 'environment';
   videoResolution: string;
-  videoDevices: MediaDeviceInfo[];
-  audioDevices: MediaDeviceInfo[];
+  videoDevices: any[];
+  audioDevices: any[];
   selectedVideoDeviceId: string;
   selectedAudioDeviceId: string;
   initCamera: () => Promise<MediaStream | null>;
@@ -191,7 +191,7 @@ export const StudioSidebar = React.memo(({
                        <label className="text-[7px] font-black uppercase text-white/20 tracking-widest ml-1">Video Source</label>
                        <select 
                          value={selectedVideoDeviceId}
-                         onChange={(e) => { setSelectedVideoDeviceId(e.target.value); setTimeout(initCamera, 100); }}
+                         onChange={(e) => { setSelectedVideoDeviceId((e.target as any).value); setTimeout(initCamera, 100); }}
                          className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-2 text-[9px] text-white/80 focus:outline-none focus:border-purple-500/50"
                        >
                          {videoDevices.map(d => (
@@ -205,7 +205,7 @@ export const StudioSidebar = React.memo(({
                        <label className="text-[7px] font-black uppercase text-white/20 tracking-widest ml-1">Audio Source</label>
                        <select 
                          value={selectedAudioDeviceId}
-                         onChange={(e) => { setSelectedAudioDeviceId(e.target.value); setTimeout(initCamera, 100); }}
+                         onChange={(e) => { setSelectedAudioDeviceId((e.target as any).value); setTimeout(initCamera, 100); }}
                          className="w-full bg-white/5 border border-white/10 rounded-lg py-2 px-2 text-[9px] text-white/80 focus:outline-none focus:border-purple-500/50"
                        >
                          {audioDevices.map(d => (
@@ -263,7 +263,7 @@ export const StudioSidebar = React.memo(({
                   <input 
                     type="range" min="0" max="20" step="0.5"
                     value={scrollSpeed}
-                    onChange={(e) => setScrollSpeed(Number(e.target.value))}
+                    onChange={(e) => setScrollSpeed(Number((e.target as any).value))}
                     className="w-full accent-purple-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer" 
                   />
                 </div>
@@ -273,7 +273,7 @@ export const StudioSidebar = React.memo(({
                   <input 
                     type="range" min="400" max="1200" step="10"
                     value={prompterWidth}
-                    onChange={(e) => setPrompterWidth(Number(e.target.value))}
+                    onChange={(e) => setPrompterWidth(Number((e.target as any).value))}
                     className="w-full accent-blue-500 h-1 bg-white/5 rounded-lg appearance-none cursor-pointer" 
                   />
                 </div>

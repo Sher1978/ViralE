@@ -278,13 +278,14 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       console.log('[Studio LOG] Video blob loaded into ArrayBuffer in', (performance.now() - t0).toFixed(0), 'ms. Size:', arrayBuffer.byteLength, 'bytes');
       
       setStageMessage('Декодирование: запуск декодера (2/5)...');
-      const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext);
+      const win = globalThis as any;
+      const AudioCtx = win.AudioContext || win.webkitAudioContext;
       const audioContext = new AudioCtx();
       console.log('[Studio LOG] AudioContext created. State:', audioContext.state, 'Sample rate:', audioContext.sampleRate);
       
       console.log('[Studio LOG] Calling decodeAudioData (Warning: this might use substantial memory)...');
       const tDecode = performance.now();
-      const audioBuffer = await new Promise<AudioBuffer>((resolve, reject) => {
+      const audioBuffer = await new Promise<any>((resolve, reject) => {
         const timeoutId = setTimeout(() => {
           console.warn('[Studio LOG] decodeAudioData timed out after 12 seconds. Falling back to FFmpeg WASM.');
           reject(new Error('decodeAudioData timed out'));
@@ -320,7 +321,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       setStageMessage('Декодирование: рендеринг дорожки (3/5)...');
       const targetSampleRate = 16000;
       console.log('[Studio LOG] Starting OfflineAudioContext rendering at 16000Hz...');
-      const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetSampleRate), targetSampleRate);
+      const offlineCtx = new win.OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetSampleRate), targetSampleRate);
       const source = offlineCtx.createBufferSource();
       source.buffer = audioBuffer;
       source.connect(offlineCtx.destination);
@@ -407,7 +408,10 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     setStageMessage('Анализ аудио...');
 
     console.log('[Studio LOG] Starting runTranscriptionAndPhrases. Force fresh:', forceFresh);
-    console.log('[Studio LOG] Client Info: UserAgent =', navigator.userAgent, 'Platform =', navigator.platform, 'maxTouchPoints =', navigator.maxTouchPoints);
+    const nav = globalThis.navigator as any;
+    if (nav) {
+      console.log('[Studio LOG] Client Info: UserAgent =', nav.userAgent, 'Platform =', nav.platform, 'maxTouchPoints =', nav.maxTouchPoints);
+    }
 
     let words: TranscriptWord[] = [];
     let transcriptionOk = false;

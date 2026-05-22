@@ -140,7 +140,7 @@ export const StoryboardGrid: React.FC<StoryboardGridProps> = ({
                 
                 <textarea 
                   value={s.scriptText}
-                  onChange={(e) => updateSegmentField(s.id, 'scriptText', e.target.value)}
+                  onChange={(e) => updateSegmentField(s.id, 'scriptText', (e.target as any).value)}
                   className="w-full bg-transparent border-none p-0 text-[13px] font-medium leading-relaxed italic text-white/70 focus:text-white focus:ring-0 resize-none h-20 transition-colors scrollbar-none"
                   placeholder="Tell your story here..."
                 />
