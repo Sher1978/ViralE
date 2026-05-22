@@ -61,14 +61,14 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
     const targetX = currentTime * PX_PER_SECOND;
     
     if (containerRef.current && !isScrolling) {
-      if (Math.abs(containerRef.current.scrollLeft - targetX) > 0.1) {
+      if (Math.abs((containerRef.current as any).scrollLeft - targetX) > 0.1) {
         isProgrammaticScrollRef.current = true;
-        containerRef.current.scrollLeft = targetX;
+        (containerRef.current as any).scrollLeft = targetX;
       }
     }
     
     if (trackRef.current) {
-        trackRef.current.scrollLeft = targetX;
+        (trackRef.current as any).scrollLeft = targetX;
     }
   }, [currentTime, isScrolling, PX_PER_SECOND]);
 
@@ -79,7 +79,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
     }
 
     if (containerRef.current) {
-      const scrollLeft = containerRef.current.scrollLeft;
+      const scrollLeft = (containerRef.current as any).scrollLeft;
       const newTime = scrollLeft / PX_PER_SECOND;
       if (Math.abs(newTime - currentTime) > 0.01) {
         onSeek(Math.max(0, Math.min(newTime, totalDuration)));
@@ -173,7 +173,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                         if ((e.target as HTMLElement).closest('.broll-clip-box')) return;
                         const rect = e.currentTarget.getBoundingClientRect();
                         const x = e.clientX - rect.left;
-                        const time = (x - rect.width / 2 + containerRef.current!.scrollLeft) / PX_PER_SECOND;
+                        const time = (x - rect.width / 2 + (containerRef.current as any).scrollLeft) / PX_PER_SECOND;
                         setPlaceholderTime(time);
                     }}
                 >
