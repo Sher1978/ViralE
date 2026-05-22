@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import dynamic from 'next/dynamic';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { idb } from '@/lib/idb';
+import { supabase } from '@/lib/supabase';
 import DistributionFactory from '../../[id]/studio/_components/DistributionFactory';
 import { getFFmpeg, resetFFmpeg, getFetchFile } from '@/lib/ffmpeg-delivery';
 import { browserCapabilities } from '@/lib/browser-capabilities';
@@ -1064,6 +1065,12 @@ function DeliveryPageContent() {
             setPreviewUrl(verData.script_data.aRollUrl);
           }
 
+          if (jobId) {
+            // Serverless rendering is handled via Supabase Realtime, skip cache recovery & local rendering
+            if (verData) setVersion(verData);
+            return;
+          }
+
           const cachedRender = verData ? await idb.get(`final_render_v3_${projectId}_${verData.id}`, 'MediaBuffer') : null;
           if (cachedRender instanceof Blob) {
             console.log('[Delivery] Restored from IDB cache');
@@ -1099,7 +1106,73 @@ function DeliveryPageContent() {
       setIsLoading(false);
     }
     loadResults();
-  }, [projectId]);
+  }, [projectId, jobId]);
+
+  // Phase 6: Realtime Postgres subscription for background serverless rendering
+  useEffect(() => {
+    if (!jobId) return;
+
+    console.log('[Realtime] Subscribing to render job status updates for:', jobId);
+    setIsLoading(true);
+
+    // 1. Fetch initial job state
+    renderService.getJobStatus(jobId).then((initialJob) => {
+      if (initialJob) {
+        setJob(initialJob);
+        setRenderProgress(initialJob.progress || 0);
+        setRenderStatus(
+          initialJob.status === 'completed'
+            ? 'Готово!'
+            : initialJob.status === 'failed'
+            ? 'Ошибка сборки'
+            : 'Сборка проекта на сервере...'
+        );
+        if (initialJob.status === 'failed') {
+          setError(initialJob.error_log || 'Ошибка сборки видео на сервере');
+        }
+      }
+      setIsLoading(false);
+    }).catch(err => {
+      console.error('[Realtime] Failed to load initial job status:', err);
+      setIsLoading(false);
+    });
+
+    const schema = process.env.NEXT_PUBLIC_SUPABASE_SCHEMA || 'public';
+
+    // 2. Subscribe to realtime Postgres changes for this job in the active schema
+    const channel = supabase
+      .channel(`render_job_updates_${jobId}`)
+      .on(
+        'postgres_changes',
+        {
+          event: 'UPDATE',
+          schema: schema,
+          table: 'render_jobs',
+          filter: `id=eq.${jobId}`
+        },
+        (payload: any) => {
+          const updatedJob = payload.new as RenderJob;
+          console.log('[Realtime] Job updated:', updatedJob);
+          setJob(updatedJob);
+          if (typeof updatedJob.progress === 'number') {
+            setRenderProgress(updatedJob.progress);
+          }
+          if (updatedJob.status === 'completed') {
+            setRenderStatus('Готово!');
+          } else if (updatedJob.status === 'failed') {
+            setError(updatedJob.error_log || 'Ошибка сборки видео на сервере');
+          } else {
+            setRenderStatus('Сборка проекта на сервере...');
+          }
+        }
+      )
+      .subscribe();
+
+    return () => {
+      console.log('[Realtime] Unsubscribing from render job updates for:', jobId);
+      supabase.removeChannel(channel);
+    };
+  }, [jobId]);
 
   if (isLoading) {
     return (
