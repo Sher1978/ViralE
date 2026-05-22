@@ -105,7 +105,7 @@ export default function DashboardPage() {
           <div className="bg-white/[0.02] p-8 space-y-6 relative">
             <textarea
               value={prompt}
-              onChange={(e) => setPrompt(e.target.value)}
+              onChange={(e) => setPrompt((e.target as any).value)}
               className="w-full bg-transparent border-none p-0 text-xl font-bold text-white placeholder:text-white/10 focus:outline-none resize-none min-h-[160px]"
               placeholder="Inject your content idea..."
             />
