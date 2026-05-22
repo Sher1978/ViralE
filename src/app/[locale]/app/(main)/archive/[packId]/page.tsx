@@ -67,7 +67,9 @@ Start with Layer 1 today. Define your transformation in one sentence. That singl
 
 // ── Share helpers ─────────────────────────────────────────────────────────
 function openShare(url: string) {
-  window.open(url, '_blank', 'noopener,noreferrer');
+  if (typeof globalThis !== 'undefined' && (globalThis as any).window) {
+    (globalThis as any).window.open(url, '_blank', 'noopener,noreferrer');
+  }
 }
 
 async function downloadAsset(url: string, filename: string) {
@@ -80,7 +82,9 @@ async function downloadAsset(url: string, filename: string) {
     a.click();
   } catch {
     // Fallback: open in new tab
-    window.open(url, '_blank');
+    if (typeof globalThis !== 'undefined' && (globalThis as any).window) {
+      (globalThis as any).window.open(url, '_blank');
+    }
   }
 }
 

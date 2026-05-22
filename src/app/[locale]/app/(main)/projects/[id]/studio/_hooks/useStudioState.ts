@@ -271,11 +271,13 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       }
 
       console.log('[Studio LOG] Attempt 1: Starting Web Audio API (AudioContext) extraction...');
+      setStageMessage('Декодирование: чтение файла (1/5)...');
       
       const t0 = performance.now();
       const arrayBuffer = await videoBlob.arrayBuffer();
       console.log('[Studio LOG] Video blob loaded into ArrayBuffer in', (performance.now() - t0).toFixed(0), 'ms. Size:', arrayBuffer.byteLength, 'bytes');
       
+      setStageMessage('Декодирование: запуск декодера (2/5)...');
       const AudioCtx = (window.AudioContext || (window as any).webkitAudioContext);
       const audioContext = new AudioCtx();
       console.log('[Studio LOG] AudioContext created. State:', audioContext.state, 'Sample rate:', audioContext.sampleRate);
@@ -315,6 +317,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       });
       console.log('[Studio LOG] decodeAudioData completed in', (performance.now() - tDecode).toFixed(0), 'ms. Buffer duration:', audioBuffer.duration.toFixed(2), 'seconds, Channels:', audioBuffer.numberOfChannels, 'Sample rate:', audioBuffer.sampleRate);
       
+      setStageMessage('Декодирование: рендеринг дорожки (3/5)...');
       const targetSampleRate = 16000;
       console.log('[Studio LOG] Starting OfflineAudioContext rendering at 16000Hz...');
       const offlineCtx = new OfflineAudioContext(1, Math.ceil(audioBuffer.duration * targetSampleRate), targetSampleRate);
@@ -327,6 +330,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       const resampledBuffer = await offlineCtx.startRendering();
       console.log('[Studio LOG] Offline rendering completed in', (performance.now() - tRender).toFixed(0), 'ms');
       
+      setStageMessage('Декодирование: сохранение WAV (4/5)...');
       console.log('[Studio LOG] Formating to WAV...');
       const length = resampledBuffer.length * 2 + 44;
       const buffer = new ArrayBuffer(length);
@@ -364,6 +368,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       
       // Attempt 2: FFmpeg WASM (Most Reliable)
       try {
+        setStageMessage('FFmpeg: инициализация ядра...');
         const tFfLoad = performance.now();
         const ffmpeg = await getFFmpeg();
         console.log('[Studio LOG] FFmpeg WASM instance loaded in', (performance.now() - tFfLoad).toFixed(0), 'ms');
@@ -371,10 +376,12 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         const inputName = 'input.mp4';
         const outputName = 'output.wav';
         
+        setStageMessage('FFmpeg: загрузка файла в память...');
         console.log('[Studio LOG] Writing video file to virtual filesystem...');
         const fetchFile = await getFetchFile();
         await ffmpeg.writeFile(inputName, await fetchFile(videoBlob));
         
+        setStageMessage('FFmpeg: конвертация дорожки...');
         console.log('[Studio LOG] Executing FFmpeg command to extract 16kHz WAV...');
         const tFfExec = performance.now();
         await ffmpeg.exec(['-i', inputName, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', outputName]);

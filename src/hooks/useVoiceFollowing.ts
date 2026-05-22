@@ -24,9 +24,10 @@ export function useVoiceFollowing({ script, isActive }: UseVoiceFollowingProps) 
   }, []);
 
   const startListening = useCallback(() => {
-    if (typeof window === 'undefined') return;
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+    if (!win) return;
 
-    const SpeechRecognition = (window as any).webkitSpeechRecognition || (window as any).SpeechRecognition;
+    const SpeechRecognition = win.webkitSpeechRecognition || win.SpeechRecognition;
     if (!SpeechRecognition) {
       console.warn('Speech Recognition API not supported in this browser.');
       return;

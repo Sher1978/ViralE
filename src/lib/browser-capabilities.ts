@@ -9,7 +9,8 @@ export const browserCapabilities = {
    * Required for multi-threaded WASM.
    */
   hasSharedArrayBuffer(): boolean {
-    return typeof window !== 'undefined' && !!window.SharedArrayBuffer;
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+    return !!win && typeof win.SharedArrayBuffer !== 'undefined';
   },
 
   /**
