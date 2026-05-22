@@ -240,6 +240,15 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               muted={isMuted} 
               className="w-full h-full object-cover" 
               playsInline 
+              preload="auto"
+              crossOrigin="anonymous"
+              onLoadedData={(e) => {
+                const target = e.currentTarget;
+                if (target.currentTime === 0) {
+                  console.log('[Studio LOG] Forcing video to seek to 0.001s to render poster frame');
+                  target.currentTime = 0.001;
+                }
+              }}
               onLoadedMetadata={(e) => {
                 const dur = e.currentTarget.duration;
                 if (typeof dur === 'number' && isFinite(dur) && dur > 0) {

@@ -1643,11 +1643,6 @@ export default function StudioPage() {
 
                   if (fusedVideoUrl && lastRecordingUrl === fusedVideoUrl) {
                     handleTabChange('fusion_preview');
-                  } else if (lastRecordingUrl || manifest?.videoUrl) {
-                    if (!lastRecordingUrl && manifest?.videoUrl) {
-                      setLastRecordingUrl(manifest.videoUrl);
-                    }
-                    handleTabChange('post_record_branch');
                   } else {
                     handleTabChange('branch');
                   }

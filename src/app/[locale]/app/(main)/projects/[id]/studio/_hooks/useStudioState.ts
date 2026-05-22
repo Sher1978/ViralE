@@ -486,7 +486,11 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         }
       } catch (err: any) { 
         console.error('[Studio LOG] Transcription flow failed. Error details:', err);
-        setTranscriptionError(err.message || 'Ошибка обработки'); 
+        let errMsg = err.message || 'Ошибка обработки';
+        if (errMsg.toUpperCase().includes('MAXIMUM ALLOWED SIZE') || errMsg.toUpperCase().includes('PAYLOAD_TOO_LARGE') || errMsg.toUpperCase().includes('TOO LARGE')) {
+          errMsg = 'Файл слишком большой! Ограничение загрузки видео — до 50 МБ. Пожалуйста, сожмите видео или запишите более короткий дубль.';
+        }
+        setTranscriptionError(errMsg); 
         setStageMessage('');
         setStage('transcribing');
         return;
