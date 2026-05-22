@@ -69,7 +69,7 @@ export default function AvatarStudioPage() {
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
 
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  const fileInputRef = useRef<any>(null);
 
   useEffect(() => {
     profileService.getOrCreateProfile().then(p => {
