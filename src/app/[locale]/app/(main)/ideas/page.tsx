@@ -254,7 +254,7 @@ export default function IdeasPage() {
                         src="/splash_bg.png" 
                         className="w-full h-full object-cover opacity-60 animate-ken-burns" 
                         alt="Splash Background" 
-                        onError={(e) => (e.currentTarget.style.display = 'none')}
+                        onError={(e) => ((e.currentTarget as any).style.display = 'none')}
                       />
                       <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" />
                     </div>
