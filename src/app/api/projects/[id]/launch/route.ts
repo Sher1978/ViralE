@@ -68,17 +68,15 @@ export async function POST(
 
     // --- SERVERLESS ASYNC SUBMISSION ---
     try {
-      console.log(`🚀 [API-Launch] Triggering async submitVideoJob for job: ${job.id}`);
+      console.log(`🚀 [API-Launch] Triggering submitVideoJob for job: ${job.id}`);
       const { submitVideoJob } = await import('@/lib/video');
       
-      // Trigger background processing asynchronously and catch any potential failures
-      submitVideoJob(job.id).catch((err: any) => {
-        console.error(`❌ [API-Launch] Background submitVideoJob failed for job ${job.id}:`, err);
-      });
+      // Await submission so Vercel doesn't freeze the container before HTTP POST completes
+      await submitVideoJob(job.id);
       
-      console.log('✅ [API-Launch] submitVideoJob background trigger initiated successfully.');
+      console.log('✅ [API-Launch] submitVideoJob trigger completed successfully.');
     } catch (triggerError: any) {
-      console.error('❌ [API-Launch] Failed to import or trigger submitVideoJob:', triggerError);
+      console.error('❌ [API-Launch] Failed to trigger submitVideoJob:', triggerError);
     }
     // ---------------------------------
 
