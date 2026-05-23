@@ -43,7 +43,16 @@ export const supabaseAdmin = (supabaseUrl && serviceRoleKey)
       }
     })
   : new Proxy({} as any, {
-      get: () => {
+      get: (target, prop) => {
+        if (
+          typeof prop === 'symbol' ||
+          prop === '__esModule' ||
+          prop === '$$typeof' ||
+          prop === 'default' ||
+          prop === 'then'
+        ) {
+          return undefined;
+        }
         throw new Error('Supabase admin client called without valid SUPABASE_SERVICE_ROLE_KEY.');
       }
     });
