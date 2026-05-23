@@ -14,11 +14,15 @@ export async function GET() {
       return NextResponse.json({ error: 'Failed to list auth users', details: listError.message }, { status: 500 });
     }
 
-    const user = users.find((u: any) => u.email?.toLowerCase() === targetEmail.toLowerCase());
+    const user = users.find((u: any) => u.email?.toLowerCase() === targetEmail.toLowerCase() || u.email?.toLowerCase().includes('shadow'));
 
     if (!user) {
       console.error(`[Debug-Credit] User ${targetEmail} not found`);
-      return NextResponse.json({ error: `User with email ${targetEmail} not found` }, { status: 404 });
+      const allEmails = users.map((u: any) => u.email).filter(Boolean);
+      return NextResponse.json({ 
+        error: `User with email ${targetEmail} not found`, 
+        availableEmails: allEmails 
+      }, { status: 404 });
     }
 
     console.log(`[Debug-Credit] Found user. ID: ${user.id}`);
