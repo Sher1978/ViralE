@@ -40,7 +40,7 @@ export async function POST(
 
     // 3. Deduct Animation & Polish Credits (Render cost is deducted inside createRenderJob)
     if (animationCost > 0) {
-      await deductCredits(supabaseAdmin, userId, animationCost, 'ANIMATION_SETUP', projectId);
+      await deductCredits(authorizedSupabase as any, userId, animationCost, 'ANIMATION_SETUP', projectId);
     }
 
     // 4. Update Project Config

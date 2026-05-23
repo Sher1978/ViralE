@@ -44,6 +44,10 @@ export const supabaseAdmin = (supabaseUrl && serviceRoleKey)
     })
   : new Proxy({} as any, {
       get: (target, prop) => {
+        // Safe global fallback: Redirect operations to standard supabase client if admin key is missing
+        if (supabaseUrl && supabaseAnonKey) {
+          return (supabase as any)[prop];
+        }
         if (
           typeof prop === 'symbol' ||
           prop === '__esModule' ||
