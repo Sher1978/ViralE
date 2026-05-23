@@ -34,6 +34,40 @@ function DeliveryPageContent() {
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderStatus, setRenderStatus] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
+
+  // Sync state once version/manifest loads
+  useEffect(() => {
+    if (version?.script_data) {
+      const manifest = version.script_data as any;
+      if (manifest.showSubtitles !== undefined) {
+        setShowSubtitles(manifest.showSubtitles);
+      }
+    }
+  }, [version]);
+
+  const handleToggleSubtitles = async (checked: boolean) => {
+    setShowSubtitles(checked);
+    addSystemLog(checked ? 'Субтитры включены' : 'Субтитры выключены');
+    
+    if (version && projectId) {
+      const updatedManifest = {
+        ...version.script_data as any,
+        showSubtitles: checked
+      };
+      
+      // Update local state optimistically
+      setVersion(prev => prev ? { ...prev, script_data: updatedManifest } : null);
+      
+      try {
+        await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+        addSystemLog('Настройки субтитров успешно сохранены в БД.');
+      } catch (err: any) {
+        console.error('Failed to update subtitles flag:', err);
+        addSystemLog(`Ошибка сохранения настроек субтитров: ${err.message}`);
+      }
+    }
+  };
 
   const [showLogConsole, setShowLogConsole] = useState(false);
   const [systemLogs, setSystemLogs] = useState<string[]>([]);
@@ -369,7 +403,15 @@ function DeliveryPageContent() {
       <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'render'} />
 
       {/* 2. Central Status Card with built-in navigation button */}
-      <div className="rounded-3xl p-6 text-center space-y-4 bg-white/[0.02] border border-white/5">
+      <div className="rounded-3xl p-6 text-center space-y-4 bg-white/[0.02] border border-white/5 relative pt-12">
+        {/* Back to Studio button elegantly placed in top-left corner */}
+        <button 
+          onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
+          className="absolute top-4 left-4 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 text-[9px] font-black uppercase tracking-widest hover:text-white hover:bg-[#8b5cf6]/20 hover:border-[#8b5cf6]/30 active:scale-95 transition-all shadow-lg"
+        >
+          <ArrowLeft size={12} /> {locale === 'ru' ? 'В МОНТАЖКУ' : 'BACK TO STUDIO'}
+        </button>
+
         <div className="text-4xl">{job?.status === 'completed' ? '🎬' : '⚡'}</div>
         <div>
           <h1 className="text-2xl font-black tracking-tighter uppercase text-white">
@@ -378,16 +420,6 @@ function DeliveryPageContent() {
           <p className="text-[11px] text-white/40 mt-1 font-bold uppercase tracking-widest">
             {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${Math.round(renderProgress)}%`}
           </p>
-        </div>
-
-        {/* Back to Studio button elegantly integrated inside the block */}
-        <div className="pt-2 flex justify-center">
-          <button 
-            onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
-            className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest hover:text-white hover:bg-[#8b5cf6]/20 hover:border-[#8b5cf6]/30 active:scale-95 transition-all shadow-lg"
-          >
-            <ArrowLeft size={14} /> {locale === 'ru' ? 'В МОНТАЖКУ' : 'BACK TO STUDIO'}
-          </button>
         </div>
 
         {job?.status !== 'completed' && (
@@ -497,6 +529,31 @@ function DeliveryPageContent() {
             )}
           </div>
         </div>
+      </div>
+
+      {/* Subtitles Toggle Switch Card under video preview */}
+      <div className="max-w-[500px] mx-auto rounded-3xl p-5 bg-white/[0.02] border border-white/5 flex items-center justify-between shadow-lg">
+        <div className="flex flex-col text-left">
+          <span className="text-xs font-black text-white/80 uppercase tracking-wider">
+            {locale === 'ru' ? 'Показывать субтитры' : 'Show Subtitles'}
+          </span>
+          <span className="text-[9px] text-white/40 uppercase tracking-widest font-bold mt-1">
+            {locale === 'ru' ? 'Генерировать финальное видео с текстовыми субтитрами' : 'Generate final video with subtitles overlay'}
+          </span>
+        </div>
+        <button
+          onClick={() => handleToggleSubtitles(!showSubtitles)}
+          className={`w-12 h-7 rounded-full p-1 transition-all duration-300 relative flex items-center shrink-0 ${
+            showSubtitles ? 'bg-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-white/10'
+          }`}
+        >
+          <motion.div
+            layout
+            className="w-5 h-5 rounded-full bg-white shadow-md cursor-pointer"
+            animate={{ x: showSubtitles ? 20 : 0 }}
+            transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+          />
+        </button>
       </div>
 
       {/* Distribution Factory - Main Area */}

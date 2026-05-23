@@ -89,7 +89,7 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
 
     try {
       const { script, settings } = job.config;
-      const { brollClips = [], subtitleClips = [], aRollUrl } = script || {};
+      const { brollClips = [], subtitleClips = [], aRollUrl, showSubtitles = true } = script || {};
 
       if (!aRollUrl) throw new Error('A-Roll URL is missing in manifest');
 
@@ -116,7 +116,7 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
         tracks: [
           // Track 1: Subtitles (Text)
           {
-            clips: subtitleClips.map((s: any) => ({
+            clips: showSubtitles ? subtitleClips.map((s: any) => ({
               asset: {
                 type: "html",
                 html: `<p data-alignment="center">${s.text}</p>`,
@@ -128,7 +128,7 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
               length: Math.max(0.1, s.endTime - s.startTime),
               position: "center",
               offset: { y: -0.2 } // Lower third
-            }))
+            })) : []
           },
           // Track 2: B-Roll (Overlays)
           {
@@ -550,8 +550,8 @@ export async function submitVideoJob(jobId: string) {
       const isStage = shotstackApiKey.startsWith('v1-stage-') || process.env.NODE_ENV === 'development';
       const endpoint = isStage ? 'https://api.shotstack.io/stage/render' : 'https://api.shotstack.io/v1/render';
       
-      const { script, settings } = config;
-      const { brollClips = [], subtitleClips = [], aRollUrl } = script || {};
+       const { script, settings } = config;
+      const { brollClips = [], subtitleClips = [], aRollUrl, showSubtitles = true } = script || {};
 
       if (!aRollUrl) throw new Error('A-Roll URL is missing in manifest');
 
@@ -575,7 +575,7 @@ export async function submitVideoJob(jobId: string) {
         ],
         tracks: [
           {
-            clips: subtitleClips.map((s: any) => ({
+            clips: showSubtitles ? subtitleClips.map((s: any) => ({
               asset: {
                 type: "html",
                 html: `<p data-alignment="center">${s.text}</p>`,
@@ -587,7 +587,7 @@ export async function submitVideoJob(jobId: string) {
               length: Math.max(0.1, s.endTime - s.startTime),
               position: "center",
               offset: { y: -0.2 }
-            }))
+            })) : []
           },
           {
             clips: signedBrollClips.filter((b: any) => b.url).map((b: any) => ({

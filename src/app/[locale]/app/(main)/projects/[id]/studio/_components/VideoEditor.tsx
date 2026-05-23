@@ -362,7 +362,7 @@ export const VideoEditor = React.memo(({
         currentTime={currentTime}
         onSeek={onSeek}
         aRollUrl={aRollUrl}
-        brollClips={brollClips.map(c => ({ id: c.id, type: 'broll', startTime: c.startTime, duration: c.endTime - c.startTime }))}
+        brollClips={brollClips.map(c => ({ id: c.id, type: 'broll', startTime: c.startTime, duration: c.endTime - c.startTime, content: c.url }))}
         subtitleClips={subtitleClips.map(c => ({ id: c.id, type: 'subtitle', startTime: c.startTime, duration: (c.endTime - c.startTime) || 0.5, content: c.text }))}
         onCreateBroll={(time) => {
             const id = `br_${Date.now()}`;
@@ -459,8 +459,6 @@ export const VideoEditor = React.memo(({
                 onSelect={(idx) => {
                     setSubtitleStyle(idx);
                 }}
-                showSubtitles={showSubtitles}
-                onToggleSubtitles={setShowSubtitles}
                 onClose={() => setActiveTool(null)}
             />
         )}
