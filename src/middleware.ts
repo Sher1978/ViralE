@@ -10,19 +10,18 @@ const intlMiddleware = createMiddleware(routing);
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  // 1. Run i18n middleware first to handle locales
-  const response = intlMiddleware(request);
-
-  // 2. Inject pathname for server components layout logic
-  response.headers.set('x-pathname', pathname);
-
-  // 3. Fast Auth Redirect Optimization
-  if (
-    pathname.includes('.') || 
+  const isBypass = pathname.includes('.') || 
     pathname.startsWith('/api') || 
     pathname.startsWith('/_next') ||
-    pathname.startsWith('/auth')
-  ) {
+    pathname.startsWith('/auth');
+
+  // Run i18n middleware first to handle locales
+  const response = isBypass ? NextResponse.next() : intlMiddleware(request);
+
+  // Inject pathname for server components layout logic
+  response.headers.set('x-pathname', pathname);
+
+  if (isBypass) {
     return response;
   }
 

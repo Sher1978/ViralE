@@ -1,0 +1,74 @@
+﻿node.exe : Retrieving projectтАж
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Retrieving projectтАж:String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Fetching deployments in shers-projects-97eb3851
+> Deployments for shers-projects-97eb3851/viralengine [352ms]
+
+  Age     Project                                 Deployment                                                           
+Status      Environment     Duration     Username     
+  5m      shers-projects-97eb3851/viralengine     https://viralengine-i889cst0m-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      54s          sher1978     
+  8m      shers-projects-97eb3851/viralengine     https://viralengine-q4371s9nw-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      55s          sher1978     
+  22m     shers-projects-97eb3851/viralengine     https://viralengine-9fcrzqgwa-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      50s          sher1978     
+  22m     shers-projects-97eb3851/viralengine     https://viralengine-jiuj2lygg-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+https://viralengine-i889cst0m-shers-projects-97eb3851.vercel.app
+https://viralengine-q4371s9nw-shers-projects-97eb3851.vercel.app
+https://viralengine-9fcrzqgwa-shers-projects-97eb3851.vercel.app
+https://viralengine-jiuj2lygg-shers-projects-97eb3851.vercel.app
+https://viralengine-erd0j6opd-shers-projects-97eb3851.vercel.app
+https://viralengine-qzasb917f-shers-projects-97eb3851.vercel.app
+https://viralengine-ncd06zwzz-shers-projects-97eb3851.vercel.app
+https://viralengine-r9czk3a5w-shers-projects-97eb3851.vercel.app
+https://viralengine-oh847kbux-shers-projects-97eb3851.vercel.app
+https://viralengine-a4zsfrssb-shers-projects-97eb3851.vercel.app
+https://viralengine-9kxik0j2d-shers-projects-97eb3851.vercel.app
+https://viralengine-erro6lmc7-shers-projects-97eb3851.vercel.app
+https://viralengine-353ttmljs-shers-projects-97eb3851.vercel.app
+https://viralengine-9869ic1a0-shers-projects-97eb3851.vercel.app
+https://viralengine-j29so2p0d-shers-projects-97eb3851.vercel.app
+https://viralengine-7qx6qzdrg-shers-projects-97eb3851.vercel.app
+https://viralengine-dvw2kjt7m-shers-projects-97eb3851.vercel.app
+https://viralengine-qev77bjyo-shers-projects-97eb3851.vercel.app
+https://viralengine-fqjo3tzrs-shers-projects-97eb3851.vercel.app
+https://viralengine-4hh5ofvjh-shers-projects-97eb3851.vercel.app
+  59m     shers-projects-97eb3851/viralengine     https://viralengine-erd0j6opd-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  3h      shers-projects-97eb3851/viralengine     https://viralengine-qzasb917f-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  3h      shers-projects-97eb3851/viralengine     https://viralengine-ncd06zwzz-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  5h      shers-projects-97eb3851/viralengine     https://viralengine-r9czk3a5w-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      54s          sher1978     
+  5h      shers-projects-97eb3851/viralengine     https://viralengine-oh847kbux-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      2m           sher1978     
+  5h      shers-projects-97eb3851/viralengine     https://viralengine-a4zsfrssb-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  5h      shers-projects-97eb3851/viralengine     https://viralengine-9kxik0j2d-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  5h      shers-projects-97eb3851/viralengine     https://viralengine-erro6lmc7-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  5h      shers-projects-97eb3851/viralengine     https://viralengine-353ttmljs-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  7h      shers-projects-97eb3851/viralengine     https://viralengine-9869ic1a0-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  8h      shers-projects-97eb3851/viralengine     https://viralengine-j29so2p0d-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  8h      shers-projects-97eb3851/viralengine     https://viralengine-7qx6qzdrg-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  14h     shers-projects-97eb3851/viralengine     https://viralengine-dvw2kjt7m-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  14h     shers-projects-97eb3851/viralengine     https://viralengine-qev77bjyo-shers-projects-97eb3851.vercel.app     
+тЧП Error     Preview         48s          sher1978     
+  14h     shers-projects-97eb3851/viralengine     https://viralengine-fqjo3tzrs-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Production      1m           sher1978     
+  14h     shers-projects-97eb3851/viralengine     https://viralengine-4hh5ofvjh-shers-projects-97eb3851.vercel.app     
+тЧП Ready     Preview         1m           sher1978     
+
+> To display the next page, run `vercel ls --next 1779508019977`
