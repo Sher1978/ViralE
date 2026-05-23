@@ -365,24 +365,10 @@ function DeliveryPageContent() {
 
   return (
     <div className="space-y-5 animate-fade-in pb-10">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 py-4 px-4 rounded-[2rem] bg-white/[0.02] border border-white/5 backdrop-blur-md">
-        {/* Left: Back to Montage */}
-        <button 
-          onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
-          className="flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest hover:text-white hover:bg-white/10 active:scale-95 transition-all w-full md:w-auto"
-        >
-          <ArrowLeft size={14} /> {locale === 'ru' ? 'В МОНТАЖКУ' : 'BACK TO STUDIO'}
-        </button>
+      {/* 1. Stepper line indicator placed at the very top */}
+      <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'render'} />
 
-        {/* Center: Title / Logo */}
-        <div className="hidden md:flex flex-col items-center pr-4">
-          <span className="text-[11px] font-black text-white/40 tracking-[0.3em] uppercase">Delivery Lab</span>
-          <span className="text-[8px] font-bold text-purple-400/60 uppercase tracking-widest mt-0.5">Finalizing Project</span>
-        </div>
-      </div>
-
-      <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'processing'} />
-
+      {/* 2. Central Status Card with built-in navigation button */}
       <div className="rounded-3xl p-6 text-center space-y-4 bg-white/[0.02] border border-white/5">
         <div className="text-4xl">{job?.status === 'completed' ? '🎬' : '⚡'}</div>
         <div>
@@ -393,8 +379,19 @@ function DeliveryPageContent() {
             {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${Math.round(renderProgress)}%`}
           </p>
         </div>
+
+        {/* Back to Studio button elegantly integrated inside the block */}
+        <div className="pt-2 flex justify-center">
+          <button 
+            onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
+            className="flex items-center justify-center gap-2 px-6 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-widest hover:text-white hover:bg-[#8b5cf6]/20 hover:border-[#8b5cf6]/30 active:scale-95 transition-all shadow-lg"
+          >
+            <ArrowLeft size={14} /> {locale === 'ru' ? 'В МОНТАЖКУ' : 'BACK TO STUDIO'}
+          </button>
+        </div>
+
         {job?.status !== 'completed' && (
-          <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner">
+          <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner mt-2">
             <motion.div 
                 className="h-full bg-gradient-to-r from-purple-600 to-blue-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]" 
                 initial={{ width: 0 }} 
