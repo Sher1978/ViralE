@@ -142,7 +142,7 @@ export default function AvatarStudioPage() {
       setError(err.message);
     } finally {
       setUploading(false);
-      if (fileInputRef.current) fileInputRef.current.value = '';
+      if (fileInputRef.current) (fileInputRef.current as any).value = '';
     }
   };
 
