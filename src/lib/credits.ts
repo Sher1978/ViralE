@@ -52,14 +52,21 @@ export async function deductCredits(
   type: string,
   projectId?: string
 ) {
-  // 1. Fetch current balance
+  // 1. Fetch current balance & tier
   const { data: profile, error: fetchError } = await supabase
     .from('profiles')
-    .select('credits_balance')
+    .select('credits_balance, tier')
     .eq('id', userId)
     .single();
 
   if (fetchError) throw fetchError;
+
+  // Bypass credit deduction entirely for free tier users (renders with watermark)
+  if (profile?.tier === 'free') {
+    console.log(`[Credits] User ${userId} is on FREE tier, bypassing credit deduction of ${amount} credits.`);
+    return true;
+  }
+
   const currentBalance = profile?.credits_balance || 0;
 
   if (currentBalance < amount) {
