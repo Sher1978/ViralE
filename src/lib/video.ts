@@ -329,13 +329,19 @@ export async function processVideoJob(jobId: string) {
     // 1. Fetch Job
     const { data: job, error: fetchError } = await supabase
       .from('render_jobs')
-      .select('*, profiles(tier, heygen_api_key)')
+      .select('*')
       .eq('id', jobId)
       .single();
 
-    if (fetchError || !job) throw new Error('Job not found');
+    if (fetchError || !job) throw new Error(`Job not found: ${fetchError?.message || ''}`);
 
-    const profile = (job as any).profiles;
+    // Fetch profile separately to avoid PostgREST relationship join issues
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('tier, heygen_api_key')
+      .eq('id', job.user_id)
+      .single();
+
     const tier = profile?.tier || 'free';
     const userHeyGenKey = profile?.heygen_api_key;
 
@@ -425,11 +431,21 @@ export async function submitVideoJob(jobId: string) {
     }
     const { data: job, error: fetchError } = await dbClient
       .from('render_jobs')
-      .select('*, profiles(tier, heygen_api_key)')
+      .select('*')
       .eq('id', jobId)
       .single();
 
-    if (fetchError || !job) throw new Error('Job not found');
+    if (fetchError || !job) throw new Error(`Job not found: ${fetchError?.message || ''}`);
+
+    // Fetch profile separately to avoid PostgREST relationship join issues
+    const { data: profile } = await dbClient
+      .from('profiles')
+      .select('tier, heygen_api_key')
+      .eq('id', job.user_id)
+      .single();
+
+    // Attach profile details to match expected structure
+    (job as any).profiles = profile || { tier: 'free', heygen_api_key: null };
 
     const config = job.config_json || {};
     const engine = config.engine || 'shotstack';

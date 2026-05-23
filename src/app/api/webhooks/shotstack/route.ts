@@ -24,7 +24,7 @@ export async function POST(req: Request) {
     // 1. Fetch the Job metadata using supabaseAdmin (bypass RLS)
     const { data: job, error: jobError } = await supabaseAdmin
       .from('render_jobs')
-      .select('*, profiles(telegram_chat_id)')
+      .select('*')
       .eq('id', jobId)
       .single();
 
@@ -33,7 +33,14 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Job not found' }, { status: 404 });
     }
 
-    const telegramChatId = (job as any).profiles?.telegram_chat_id;
+    // Fetch profile separately to avoid PostgREST relationship join issues
+    const { data: profile } = await supabaseAdmin
+      .from('profiles')
+      .select('telegram_chat_id')
+      .eq('id', job.user_id)
+      .single();
+
+    const telegramChatId = profile?.telegram_chat_id;
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
 
     if (body.status === 'done') {
