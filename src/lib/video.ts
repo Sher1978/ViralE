@@ -420,6 +420,7 @@ export async function processVideoJob(jobId: string) {
  * setting a dynamic webhook callback to receive the finished file.
  */
 export async function submitVideoJob(jobId: string) {
+  let job: any = null;
   try {
     const { supabase: defaultSupabase, supabaseAdmin } = await import('./supabase');
     let dbClient: any = defaultSupabase;
@@ -429,13 +430,14 @@ export async function submitVideoJob(jobId: string) {
     } catch (e: any) {
       console.warn('[submitVideoJob] supabaseAdmin is not available, falling back to default supabase client:', e.message);
     }
-    const { data: job, error: fetchError } = await dbClient
+    const { data, error: fetchError } = await dbClient
       .from('render_jobs')
       .select('*')
       .eq('id', jobId)
       .single();
 
-    if (fetchError || !job) throw new Error(`Job not found: ${fetchError?.message || ''}`);
+    if (fetchError || !data) throw new Error(`Job not found: ${fetchError?.message || ''}`);
+    job = data;
 
     // Fetch profile separately to avoid PostgREST relationship join issues
     const { data: profile } = await dbClient
@@ -641,7 +643,8 @@ export async function submitVideoJob(jobId: string) {
 
       const webhookUrl = `${baseUrl}/api/webhooks/shotstack?jobId=${jobId}`;
 
-      const response = await fetch(endpoint, {
+      let activeEndpoint = endpoint;
+      let response = await fetch(activeEndpoint, {
         method: 'POST',
         headers: {
           'x-api-key': shotstackApiKey,
@@ -654,16 +657,39 @@ export async function submitVideoJob(jobId: string) {
         })
       });
 
-      const data = await response.json();
+      let data = await response.json();
+
+      // AUTO-FALLBACK TO SANDBOX (STAGE) ENDPOINT IF KEY IS A SANDBOX KEY
+      if (response.status === 403 && activeEndpoint !== 'https://api.shotstack.io/stage/render') {
+        const errorDetail = data.errors?.[0]?.detail || '';
+        if (errorDetail.includes('Sandbox') || errorDetail.includes('sandbox')) {
+          console.warn('⚠️ [Shotstack] Key is Sandbox key but hit Production. Retrying automatically on Stage endpoint...');
+          activeEndpoint = 'https://api.shotstack.io/stage/render';
+          response = await fetch(activeEndpoint, {
+            method: 'POST',
+            headers: {
+              'x-api-key': shotstackApiKey,
+              'Content-Type': 'application/json'
+            },
+            body: JSON.stringify({ 
+              timeline, 
+              output: outputConfig,
+              webhook: webhookUrl
+            })
+          });
+          data = await response.json();
+        }
+      }
+
       if (!response.ok) {
         console.error('[Shotstack] Request payload failed:', JSON.stringify(timeline, null, 2));
         console.error('[Shotstack] Response error:', JSON.stringify(data, null, 2));
-        const errMsg = data.message || data.error || (data.response && data.response.error) || `HTTP ${response.status}`;
+        const errMsg = data.message || data.error || (data.response && data.response.error) || data.errors?.[0]?.detail || `HTTP ${response.status}`;
         throw new Error(`Shotstack error: ${errMsg}`);
       }
 
       const shotstackJobId = data.response?.id;
-      console.log(`[Shotstack] Async render submitted successfully: ${shotstackJobId}`);
+      console.log(`[Shotstack] Async render submitted successfully on ${activeEndpoint}: ${shotstackJobId}`);
 
       await dbClient
         .from('render_jobs')
@@ -673,7 +699,8 @@ export async function submitVideoJob(jobId: string) {
           status_message: 'Rendering video in Shotstack Cloud...',
           config_json: {
             ...config,
-            shotstack_render_id: shotstackJobId
+            shotstack_render_id: shotstackJobId,
+            shotstack_environment: activeEndpoint.includes('stage') ? 'stage' : 'production'
           }
         })
         .eq('id', jobId);
@@ -700,6 +727,6 @@ export async function submitVideoJob(jobId: string) {
     await dbClient
       .from('projects')
       .update({ status: 'error' })
-      .eq('id', jobId); // fallback project ID
+      .eq('id', job?.project_id || jobId);
   }
 }
