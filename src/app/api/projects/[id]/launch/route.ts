@@ -58,7 +58,7 @@ export async function POST(
     if (updateError) throw updateError;
 
     // 5. Create Render Job (Deducts CREDIT_COSTS.PRO_RENDER and stores metadata)
-    const job = await createRenderJob(supabaseAdmin, userId, projectId, versionId, 'pro', {
+    const job = await createRenderJob(authorizedSupabase as any, userId, projectId, versionId, 'pro', {
       mode,
       tier,
       assetId,

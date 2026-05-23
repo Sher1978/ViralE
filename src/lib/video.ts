@@ -415,8 +415,15 @@ export async function processVideoJob(jobId: string) {
  */
 export async function submitVideoJob(jobId: string) {
   try {
-    const { supabaseAdmin } = await import('./supabase');
-    const { data: job, error: fetchError } = await supabaseAdmin
+    const { supabase: defaultSupabase, supabaseAdmin } = await import('./supabase');
+    let dbClient: any = defaultSupabase;
+    try {
+      const _ = supabaseAdmin.from;
+      dbClient = supabaseAdmin;
+    } catch (e: any) {
+      console.warn('[submitVideoJob] supabaseAdmin is not available, falling back to default supabase client:', e.message);
+    }
+    const { data: job, error: fetchError } = await dbClient
       .from('render_jobs')
       .select('*, profiles(tier, heygen_api_key)')
       .eq('id', jobId)
@@ -428,7 +435,7 @@ export async function submitVideoJob(jobId: string) {
     const engine = config.engine || 'shotstack';
 
     // 1. Mark as Queued
-    await supabaseAdmin
+    await dbClient
       .from('render_jobs')
       .update({ 
         status: 'queued', 
@@ -477,7 +484,7 @@ export async function submitVideoJob(jobId: string) {
 
       const videoId = data.data?.video_id;
       
-      await supabaseAdmin
+      await dbClient
         .from('render_jobs')
         .update({
           progress: 30,
@@ -505,7 +512,7 @@ export async function submitVideoJob(jobId: string) {
 
             for (const step of steps) {
               await new Promise(resolve => setTimeout(resolve, 1500));
-              await supabaseAdmin
+              await dbClient
                 .from('render_jobs')
                 .update({ progress: step.p, status_message: step.msg })
                 .eq('id', jobId);
@@ -513,7 +520,7 @@ export async function submitVideoJob(jobId: string) {
 
             const videoUrl = 'https://cdn.pixabay.com/video/2023/10/22/186105-877322960_tiny.mp4';
             
-            await supabaseAdmin
+            await dbClient
               .from('render_jobs')
               .update({ 
                 status: 'completed', 
@@ -523,14 +530,14 @@ export async function submitVideoJob(jobId: string) {
               })
               .eq('id', jobId);
 
-            await supabaseAdmin
+            await dbClient
               .from('projects')
               .update({ status: 'completed', final_video_url: videoUrl })
               .eq('id', job.project_id);
 
           } catch (e: any) {
             console.error('Mock rendering failed:', e);
-            await supabaseAdmin
+            await dbClient
               .from('render_jobs')
               .update({ status: 'failed', error_log: e.message })
               .eq('id', jobId);
@@ -637,7 +644,7 @@ export async function submitVideoJob(jobId: string) {
       const shotstackJobId = data.response?.id;
       console.log(`[Shotstack] Async render submitted successfully: ${shotstackJobId}`);
 
-      await supabaseAdmin
+      await dbClient
         .from('render_jobs')
         .update({
           status: 'processing',
@@ -654,8 +661,13 @@ export async function submitVideoJob(jobId: string) {
   } catch (error: any) {
     console.error(`[submitVideoJob] Failure for job ${jobId}:`, error);
     
-    const { supabaseAdmin } = await import('./supabase');
-    await supabaseAdmin
+    const { supabase: defaultSupabase, supabaseAdmin } = await import('./supabase');
+    let dbClient: any = defaultSupabase;
+    try {
+      const _ = supabaseAdmin.from;
+      dbClient = supabaseAdmin;
+    } catch (e: any) {}
+    await dbClient
       .from('render_jobs')
       .update({ 
         status: 'failed', 
@@ -664,7 +676,7 @@ export async function submitVideoJob(jobId: string) {
       })
       .eq('id', jobId);
       
-    await supabaseAdmin
+    await dbClient
       .from('projects')
       .update({ status: 'error' })
       .eq('id', jobId); // fallback project ID

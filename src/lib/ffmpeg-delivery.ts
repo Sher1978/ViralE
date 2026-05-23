@@ -30,15 +30,15 @@ export async function getFFmpeg(): Promise<any> {
     try {
       const base = typeof globalThis !== 'undefined' && (globalThis as any).window ? (globalThis as any).window.location.origin : '';
       const localFFmpeg = `${base}/ffmpeg/ffmpeg-esm/index.js`;
-      const localCore = `${base}/ffmpeg/ffmpeg-core.js`;
-      const localWasm = `${base}/ffmpeg/ffmpeg-core.wasm`;
+      const localUtil = `${base}/ffmpeg/util-esm/index.js`;
 
       const { FFmpeg } = await runtimeImport(localFFmpeg);
+      const { toBlobURL } = await runtimeImport(localUtil);
       const instance = new FFmpeg();
 
-      const cdnBase = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/esm';
-      const cdnCore = `${cdnBase}/ffmpeg-core.js`;
-      const cdnWasm = `${cdnBase}/ffmpeg-core.wasm`;
+      const coreURL = await toBlobURL(`${base}/ffmpeg/ffmpeg-core.js`, 'text/javascript');
+      const wasmURL = await toBlobURL(`${base}/ffmpeg/ffmpeg-core.wasm`, 'application/wasm');
+      const localWorker = `${base}/ffmpeg/ffmpeg-esm/worker.js`;
 
       // Helper function to race loading against a timeout to prevent hanging on mobile/slow networks
       const loadWithTimeout = (inst: any, config: any, ms: number) => {
@@ -50,42 +50,16 @@ export async function getFFmpeg(): Promise<any> {
         ]);
       };
 
-      const localWorker = `${base}/ffmpeg/ffmpeg-esm/worker.js`;
-      try {
-        console.log('[FFmpeg] Attempting to load from local assets with 45s timeout...');
-        await loadWithTimeout(instance, { 
-          coreURL: localCore, 
-          wasmURL: localWasm,
-          classWorkerURL: localWorker
-        }, 45000);
-        console.log('[FFmpeg] Loaded successfully from local assets');
-        ffmpeg = instance;
-        return instance;
-      } catch (e) {
-        console.warn('[FFmpeg] Local load failed or timed out, falling back to CDN. Error:', e);
-        try {
-          instance.terminate();
-        } catch (err) {}
- 
-        const cdnInstance = new FFmpeg();
-        try {
-          console.log('[FFmpeg] Attempting to load from CDN with 90s timeout...');
-          await loadWithTimeout(cdnInstance, { 
-            coreURL: cdnCore, 
-            wasmURL: cdnWasm,
-            classWorkerURL: localWorker
-          }, 90000);
-          console.log('[FFmpeg] Loaded successfully from CDN');
-          ffmpeg = cdnInstance;
-          return cdnInstance;
-        } catch (cdnErr) {
-          console.error('[FFmpeg] CDN load also failed or timed out. Error:', cdnErr);
-          try {
-            cdnInstance.terminate();
-          } catch (err) {}
-          throw cdnErr;
-        }
-      }
+      console.log('[FFmpeg] Attempting to load from local assets via safe Blob URLs with 45s timeout...');
+      await loadWithTimeout(instance, { 
+        coreURL, 
+        wasmURL,
+        classWorkerURL: localWorker
+      }, 45000);
+      
+      console.log('[FFmpeg] Loaded successfully from local assets via Blob URLs');
+      ffmpeg = instance;
+      return instance;
     } catch (err) {
       console.error('[FFmpeg] Critical initialization failure, resetting singleton:', err);
       loadPromise = null;
