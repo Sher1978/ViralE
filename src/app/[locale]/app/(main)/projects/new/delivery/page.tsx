@@ -400,6 +400,53 @@ function DeliveryPageContent() {
         )}
       </div>
 
+      {job?.output_url && (
+        <div className="rounded-[2.5rem] p-6 bg-gradient-to-r from-purple-600/10 to-blue-600/10 border border-purple-500/20 space-y-4 text-center shadow-xl">
+          <div className="space-y-1">
+            <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest block">ГОТОВЫЙ ФАЙЛ ДОСТУПЕН</span>
+            <h2 className="text-lg font-black text-white uppercase tracking-tighter">Ваше видео успешно экспортировано!</h2>
+          </div>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3 w-full">
+            {/* Direct Download Button */}
+            <button 
+              onClick={handleDownload}
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-8 py-4 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase tracking-widest active:scale-95 transition-all shadow-lg shadow-purple-900/40"
+            >
+              <Download size={16} />
+              {locale === 'ru' ? 'СКАЧАТЬ MP4' : 'DOWNLOAD MP4'}
+            </button>
+
+            {/* Direct Link / Copy Link Button */}
+            <button 
+              onClick={() => {
+                if (job?.output_url) {
+                  (globalThis.navigator as any)?.clipboard?.writeText(job.output_url);
+                  (globalThis as any).alert?.(locale === 'ru' ? 'Прямая ссылка скопирована в буфер обмена!' : 'Direct link copied to clipboard!');
+                }
+              }}
+              className="w-full sm:w-auto flex items-center justify-center gap-3 px-6 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-xs font-black uppercase tracking-widest active:scale-95 transition-all"
+            >
+              <Copy size={16} className="text-purple-400" />
+              {locale === 'ru' ? 'СКОПИРОВАТЬ ССЫЛКУ' : 'COPY DIRECT LINK'}
+            </button>
+          </div>
+
+          {/* Direct link preview */}
+          <div className="pt-2 border-t border-white/5">
+            <p className="text-[8px] text-white/30 uppercase tracking-wider">Прямая ссылка на сервере:</p>
+            <a 
+              href={job.output_url} 
+              target="_blank" 
+              rel="noopener noreferrer" 
+              className="text-[9px] text-blue-400 hover:text-blue-300 font-mono break-all underline block mt-1"
+            >
+              {job.output_url}
+            </a>
+          </div>
+        </div>
+      )}
+
       <div className="rounded-[2.5rem] overflow-hidden bg-[#050508] border border-white/10 aspect-[9/16] max-h-[500px] mx-auto relative shadow-2xl group">
         {job?.output_url ? (
           <video src={job.output_url} controls className="w-full h-full object-cover" />

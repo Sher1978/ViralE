@@ -143,6 +143,32 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
                 )}
               </motion.button>
             </div>
+
+            {mp4Url && (
+              <div className="w-full mt-1 p-4 rounded-3xl bg-white/[0.02] border border-white/5 text-center space-y-2">
+                <span className="text-[8px] font-black uppercase tracking-widest text-purple-400 block">Прямая ссылка на MP4:</span>
+                <a 
+                  href={mp4Url} 
+                  target="_blank" 
+                  rel="noopener noreferrer" 
+                  className="text-[9px] text-blue-400 hover:text-blue-300 font-mono break-all underline block"
+                >
+                  {mp4Url}
+                </a>
+                <button
+                  onClick={() => {
+                    (globalThis.navigator as any)?.clipboard?.writeText(mp4Url);
+                    (globalThis as any).alert?.('Прямая ссылка скопирована!');
+                  }}
+                  className="mx-auto flex items-center justify-center gap-1 text-[8px] font-black text-white/50 hover:text-white uppercase tracking-widest pt-1"
+                >
+                  <svg className="w-2.5 h-2.5 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M8 5H6a2 2 0 00-2 2v12a2 2 0 002 2h10a2 2 0 002-2v-1M8 5a2 2 0 002 2h2a2 2 0 002-2M8 5a2 2 0 012-2h2a2 2 0 012 2m0 0h2a2 2 0 012 2v3m2 4H10m0 0l3-3m-3 3l3 3"></path>
+                  </svg>
+                  Копировать ссылку
+                </button>
+              </div>
+            )}
           </div>
 
           {/* SECONDARY ACTIONS */}
