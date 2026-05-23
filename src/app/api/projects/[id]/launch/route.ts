@@ -66,6 +66,22 @@ export async function POST(
       recordedAssetId
     });
 
+    // --- SERVERLESS ASYNC SUBMISSION ---
+    try {
+      console.log(`🚀 [API-Launch] Triggering async submitVideoJob for job: ${job.id}`);
+      const { submitVideoJob } = await import('@/lib/video');
+      
+      // Trigger background processing asynchronously and catch any potential failures
+      submitVideoJob(job.id).catch((err: any) => {
+        console.error(`❌ [API-Launch] Background submitVideoJob failed for job ${job.id}:`, err);
+      });
+      
+      console.log('✅ [API-Launch] submitVideoJob background trigger initiated successfully.');
+    } catch (triggerError: any) {
+      console.error('❌ [API-Launch] Failed to import or trigger submitVideoJob:', triggerError);
+    }
+    // ---------------------------------
+
     return NextResponse.json({
       success: true,
       jobId: job.id,
@@ -73,10 +89,11 @@ export async function POST(
     });
 
   } catch (error: any) {
-    console.error('Project launch failed:', error);
+    console.error('❌ [API-Launch] Project launch failed with error:', error);
     if (error.message === 'INSUFFICIENT_CREDITS') {
       return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
     }
     return NextResponse.json({ error: error.message }, { status: 500 });
   }
 }
+

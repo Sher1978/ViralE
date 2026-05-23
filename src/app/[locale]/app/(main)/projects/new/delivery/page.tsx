@@ -35,6 +35,14 @@ function DeliveryPageContent() {
   const [renderStatus, setRenderStatus] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
 
+  const [showLogConsole, setShowLogConsole] = useState(false);
+  const [systemLogs, setSystemLogs] = useState<string[]>([]);
+
+  const addSystemLog = (msg: string) => {
+    const timestamp = new Date().toLocaleTimeString();
+    setSystemLogs(prev => [`[${timestamp}] ${msg}`, ...prev]);
+  };
+
   const manifest = version?.script_data as any;
   const distributionAssets = manifest?.distributionAssets as any;
   const distributionImages = manifest?.distributionImages as Record<string, string> || {};
@@ -162,6 +170,7 @@ function DeliveryPageContent() {
       }
 
       try {
+        addSystemLog('Загрузка последней версии проекта...');
         const verData = await projectService.getLatestVersion(projectId);
         if (!verData) {
           throw new Error('Последняя версия проекта не найдена');
@@ -173,11 +182,12 @@ function DeliveryPageContent() {
         }
 
         if (jobId) {
-          // If we already have a jobId in the query params, let the Realtime effect track it
+          addSystemLog(`Режим отслеживания существующей задачи ID: ${jobId}`);
           return;
         }
 
         // Auto-launch the serverless API
+        addSystemLog('Запуск авто-рендеринга на сервере...');
         setRenderStatus('Инициализация серверной сборки...');
         setIsLoading(true);
 
@@ -202,6 +212,7 @@ function DeliveryPageContent() {
         const launchData = await response.json();
         if (launchData.success && launchData.jobId) {
           console.log('[Delivery] Serverless render launched. Job ID:', launchData.jobId);
+          addSystemLog(`Задача успешно запущена. ID: ${launchData.jobId}`);
           // Redirect the browser dynamically, which triggers the realtime channel subscription automatically
           router.replace(`/app/projects/new/delivery?projectId=${projectId}&jobId=${launchData.jobId}`);
         } else {
@@ -210,6 +221,7 @@ function DeliveryPageContent() {
 
       } catch (err: any) {
         console.error('[Delivery] Auto-launch failed:', err);
+        addSystemLog(`Ошибка автозапуска: ${err.message || err}`);
         setError(err.message || 'Ошибка запуска серверного рендеринга');
         setIsLoading(false);
       }
@@ -223,6 +235,7 @@ function DeliveryPageContent() {
     if (!jobId) return;
 
     console.log('[Realtime] Subscribing to render job status updates for:', jobId);
+    addSystemLog(`Подключение к каналу отслеживания реального времени для задачи: ${jobId}`);
     setIsLoading(true);
 
     // 1. Fetch initial job state
@@ -237,13 +250,19 @@ function DeliveryPageContent() {
             ? 'Ошибка сборки'
             : 'Сборка проекта на сервере...'
         );
+        addSystemLog(`Состояние загружено. Статус: "${initialJob.status}", Прогресс: ${initialJob.progress}%`);
+        if (initialJob.status_message) {
+          addSystemLog(`Сообщение: ${initialJob.status_message}`);
+        }
         if (initialJob.status === 'failed') {
+          addSystemLog(`Сбой сборки: ${initialJob.error_log}`);
           setError(initialJob.error_log || 'Ошибка сборки видео на сервере');
         }
       }
       setIsLoading(false);
     }).catch(err => {
       console.error('[Realtime] Failed to load initial job status:', err);
+      addSystemLog(`Ошибка загрузки статуса задачи: ${err.message || err}`);
       setIsLoading(false);
     });
 
@@ -267,9 +286,15 @@ function DeliveryPageContent() {
           if (typeof updatedJob.progress === 'number') {
             setRenderProgress(updatedJob.progress);
           }
+          addSystemLog(`Обновление из БД: Прогресс ${updatedJob.progress}%`);
+          if (updatedJob.status_message) {
+            addSystemLog(`Событие: ${updatedJob.status_message}`);
+          }
           if (updatedJob.status === 'completed') {
+            addSystemLog('🎉 Рендеринг полностью завершен! Файл готов к публикации.');
             setRenderStatus('Готово!');
           } else if (updatedJob.status === 'failed') {
+            addSystemLog(`❌ Критическая ошибка: ${updatedJob.error_log}`);
             setError(updatedJob.error_log || 'Ошибка сборки видео на сервере');
           } else {
             setRenderStatus('Сборка проекта на сервере...');
@@ -280,6 +305,7 @@ function DeliveryPageContent() {
 
     return () => {
       console.log('[Realtime] Unsubscribing from render job updates for:', jobId);
+      addSystemLog('Отключение от канала отслеживания.');
       supabase.removeChannel(channel);
     };
   }, [jobId]);
@@ -349,30 +375,9 @@ function DeliveryPageContent() {
         </button>
 
         {/* Center: Title / Logo */}
-        <div className="hidden md:flex flex-col items-center">
+        <div className="hidden md:flex flex-col items-center pr-4">
           <span className="text-[11px] font-black text-white/40 tracking-[0.3em] uppercase">Delivery Lab</span>
           <span className="text-[8px] font-bold text-purple-400/60 uppercase tracking-widest mt-0.5">Finalizing Project</span>
-        </div>
-
-        {/* Right: Quick actions for Library & New Script */}
-        <div className="flex items-center gap-2 w-full md:w-auto">
-          {/* Library Link */}
-          <button 
-            onClick={() => router.push('/app/projects')}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-blue-600/10 to-blue-500/10 border border-blue-500/20 text-blue-300 text-[10px] font-black uppercase tracking-widest hover:from-blue-600/20 hover:to-blue-500/20 active:scale-95 transition-all"
-          >
-            <Folder size={14} className="text-blue-400" />
-            {locale === 'ru' ? 'БИБЛИОТЕКА' : 'LIBRARY'}
-          </button>
-
-          {/* New Project Link */}
-          <button 
-            onClick={() => router.push('/app/projects/new/script')}
-            className="flex-1 md:flex-none flex items-center justify-center gap-2 px-5 py-3 rounded-2xl bg-gradient-to-r from-purple-600/15 to-purple-500/15 border border-purple-500/25 text-purple-300 text-[10px] font-black uppercase tracking-widest hover:from-purple-600/25 hover:to-purple-500/25 active:scale-95 transition-all shadow-lg shadow-purple-950/20"
-          >
-            <Plus size={14} className="text-purple-400" />
-            {locale === 'ru' ? 'НОВЫЙ ПРОЕКТ' : 'NEW PROJECT'}
-          </button>
         </div>
       </div>
 
@@ -514,6 +519,53 @@ function DeliveryPageContent() {
           />
         </div>
       </section>
+
+      {/* Realtime Floating system logs console panel */}
+      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2">
+        <button
+          onClick={() => setShowLogConsole(prev => !prev)}
+          className="px-4 py-2.5 rounded-full bg-[#8b5cf6]/90 hover:bg-[#7c3aed] text-white font-black uppercase tracking-widest text-[9px] border border-white/10 backdrop-blur-md shadow-2xl flex items-center gap-1.5 active:scale-95 transition-all"
+        >
+          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
+          {locale === 'ru' ? `ЛОГИ СБОРКИ (${systemLogs.length})` : `RENDER LOGS (${systemLogs.length})`}
+        </button>
+
+        <AnimatePresence>
+          {showLogConsole && (
+            <motion.div
+              initial={{ opacity: 0, y: 50, scale: 0.95 }}
+              animate={{ opacity: 1, y: 0, scale: 1 }}
+              exit={{ opacity: 0, y: 50, scale: 0.95 }}
+              className="w-[calc(100vw-2rem)] sm:w-[400px] h-[300px] bg-black/95 border border-white/10 rounded-3xl backdrop-blur-2xl shadow-2xl p-4 flex flex-col"
+            >
+              <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
+                <span className="text-[10px] font-black uppercase tracking-widest text-white/50">
+                  {locale === 'ru' ? 'Системный Лог Рендера' : 'Render System Log'}
+                </span>
+                <button
+                  onClick={() => setSystemLogs([])}
+                  className="text-[8px] font-black uppercase tracking-widest text-red-400 hover:text-red-300"
+                >
+                  {locale === 'ru' ? 'Очистить' : 'Clear'}
+                </button>
+              </div>
+              <div className="flex-1 overflow-y-auto space-y-2 font-mono text-[9px] text-white/70 select-text custom-scrollbar">
+                {systemLogs.length === 0 ? (
+                  <p className="text-white/20 italic text-center pt-24">
+                    {locale === 'ru' ? 'Лента логов пуста.' : 'Log is empty.'}
+                  </p>
+                ) : (
+                  systemLogs.map((log, idx) => (
+                    <div key={idx} className="border-l-2 border-purple-500 pl-2 leading-relaxed text-left">
+                      {log}
+                    </div>
+                  ))
+                )}
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
+      </div>
     </div>
   );
 }

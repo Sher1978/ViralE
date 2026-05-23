@@ -11,6 +11,7 @@ export interface RenderJob {
   progress: number;
   output_url?: string;
   error_log?: string;
+  status_message?: string;
   config_json: any;
   created_at: string;
   updated_at: string;
