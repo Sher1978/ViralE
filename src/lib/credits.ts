@@ -63,6 +63,13 @@ export async function deductCredits(
   const currentBalance = profile?.credits_balance || 0;
 
   if (currentBalance < amount) {
+    const shotstackApiKey = process.env.SHOTSTACK_API_KEY || '';
+    const isStage = shotstackApiKey.startsWith('v1-stage-') || process.env.NODE_ENV === 'development' || !shotstackApiKey;
+    
+    if (isStage) {
+      console.warn(`[Credits] Insufficient credits (${currentBalance} < ${amount}) but allowing render in Sandbox/Stage environment!`);
+      return true;
+    }
     throw new Error('INSUFFICIENT_CREDITS');
   }
 
