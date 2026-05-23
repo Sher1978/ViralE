@@ -44,8 +44,13 @@ async function getFFmpeg(): Promise<any> {
           ]);
         };
 
+        const localWorker = `${base}/ffmpeg/ffmpeg-esm/worker.js`;
         console.log('[FFmpeg Audio] Loading FFmpeg WASM with 45s timeout...');
-        await loadWithTimeout(ff, { coreURL, wasmURL }, 45000);
+        await loadWithTimeout(ff, { 
+          coreURL, 
+          wasmURL,
+          classWorkerURL: localWorker
+        }, 45000);
         console.log('[FFmpeg Audio] Loaded successfully');
         ffmpegInstance = ff;
         return true;
