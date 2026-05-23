@@ -1,0 +1,112 @@
+﻿node.exe : Resolving deployment "viralengine-r9czk3a5w-shers-projects-97eb3851.vercel.app"
+At line:1 char:1
++ & "C:\Program Files\nodejs/node.exe" "C:\Program Files\nodejs/node_mo ...
++ ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+    + CategoryInfo          : NotSpecified: (Resolving deplo...851.vercel.app":String) [], RemoteException
+    + FullyQualifiedErrorId : NativeCommandError
+ 
+Fetching project "prj_QimkC6wssvqP01ioPEuXGv0MeoMO"
+Fetching logs...
+TIME         HOST                                                      LEVEL                                           
+                              STATUS  MESSAGE   
+22:17:31.89  www.virale.uno                                            info   тЧЗ GET 
+/ru/app/projects/6f920daf-dc1e-4c8d-9059-db9115a8fcdd/studio     ---     [app] /stтАж
+22:17:12.55  www.virale.uno                                            info   ╬╡ GET /ru/app/projects/new/script       
+                               200     [app] /scтАж
+22:16:41.35  www.virale.uno                                            info   ╬╗ POST /api/script/generate             
+                               200     [TRIZ] GeтАж
+22:16:41.35  www.virale.uno                                            info   ╬╗ GET 
+/cyberpunk_alley_integrated_text_banner_1777280603399.png        404     (no messaтАж
+22:16:34.57  www.virale.uno                                            info   ╬╗ GET /api/ideas                        
+                               200     тЬУ [Auth] тАж
+22:16:33.34  www.virale.uno                                            info   ╬╗ GET /ru/app/projects/new/script       
+                               200     [app] /scтАж
+22:16:31.20  www.virale.uno                                            info   ╬╗ PATCH /api/ideas                      
+                               200     тЬУ [Auth] тАж
+22:16:15.22  www.virale.uno                                            info   ╬╗ GET /ru/app/ideas                     
+                               200     (no messaтАж
+22:16:14.08  www.virale.uno                                            info   ╬╡ GET /ru/app/ideas                     
+                               200     (no messaтАж
+22:16:13.88  www.virale.uno                                            info   ╬╗ GET /api/ideas                        
+                               200     тЬУ [Auth] тАж
+22:16:13.86  www.virale.uno                                            info   ╬╗ GET /api/ideas                        
+                               200     тЬУ [Auth] тАж
+22:16:13.86  www.virale.uno                                            info   ╬╗ GET /api/ideas                        
+                               200     тЬУ [Auth] тАж
+22:16:12.90  www.virale.uno                                            info   ╬╗ GET /ru/app/archive                   
+                               200     (no messaтАж
+22:16:12.84  www.virale.uno                                            info   ╬╡ GET /ru/app/profile                   
+                               200     (no messaтАж
+22:16:12.83  www.virale.uno                                            info   ╬╡ GET /ru/app/ideas                     
+                               200     (no messaтАж
+22:16:12.44  www.virale.uno                                            info   ╬╡ GET /ru/app/projects                  
+                               200     (no messaтАж
+22:16:12.44  www.virale.uno                                            info   ╬╡ GET /ru/app/profile                   
+                               200     (no messaтАж
+22:16:12.44  www.virale.uno                                            info   ╬╡ GET /ru/app/ideas                     
+                               200     (no messaтАж
+22:16:12.44  www.virale.uno                                            info   ╬╡ GET /ru/app/archive                   
+                               200     (no messaтАж
+22:16:11.11  www.virale.uno                                            info   ╬╡ GET /ru/app/projects                  
+                               200     тЬУ [Auth] тАж
+22:16:10.98  www.virale.uno                                            info   ╬╡ GET /                                 
+                               307     (no messaтАж
+22:10:00.54  www.virale.uno                                            info   ╬╗ GET /ru/auth                          
+                               200     (no messaтАж
+22:09:58.58  www.virale.uno                                            error  ╬╗ GET /ru/app/projects/new/delivery     
+                               200     [Auth] CoтАж
+22:09:02.40  viralengine-r9czk3a5w-shers-projects-97eb3851.vercel.app  info   ╬╡ GET /                                 
+                               200     (no messaтАж
+22:09:02.30  viralengine-r9czk3a5w-shers-projects-97eb3851.vercel.app  info   ╬╡ GET /                                 
+                               200     (no messaтАж
+22:07:49.78  www.virale.uno                                            info   ╬╗ POST /api/ai/distribution-assets      
+                               200     тЬУ [Auth] тАж
+22:07:49.05  www.virale.uno                                            info   ╬╗ GET /ru/app/projects/new/delivery     
+                               200     [app] /deтАж
+22:07:42.05  www.virale.uno                                            error  ╬╗ POST 
+/api/projects/68d99c97-2fb3-452e-b861-b31d0e06f34f/launch       200     [submitViтАж
+22:07:40.57  www.virale.uno                                            info   ╬╡ GET /ru/app/projects/new/delivery     
+                               200     [app] /deтАж
+22:07:40.08  www.virale.uno                                            error  ╬╗ POST /api/ai/distribution-assets      
+                               500     [DistribuтАж
+22:07:32.46  www.virale.uno                                            info   ╬╗ POST /api/ai/transcribe               
+                               200     [TranscriтАж
+22:07:15.87  www.virale.uno                                            info   ╬╗ GET 
+/ru/app/projects/68d99c97-2fb3-452e-b861-b31d0e06f34f/studio     200     [app] /stтАж
+22:07:14.42  www.virale.uno                                            info   ╬╗ GET /ru/app/projects/new/production   
+                               200     [app] /prтАж
+22:07:11.95  www.virale.uno                                            info   ╬╗ GET /api/ideas                        
+                               200     тЬУ [Auth] тАж
+22:07:11.92  www.virale.uno                                            info   ╬╗ GET /api/ideas                        
+                               200     тЬУ [Auth] тАж
+22:07:11.92  www.virale.uno                                            info   ╬╗ GET /api/ideas                        
+                               200     тЬУ [Auth] тАж
+22:07:11.10  www.virale.uno                                            info   ╬╗ GET /ru/app/profile                   
+                               200     (no messaтАж
+22:07:11.06  www.virale.uno                                            info   ╬╗ GET /ru/app/archive                   
+                               200     (no messaтАж
+22:07:11.06  www.virale.uno                                            info   ╬╗ GET /ru/app/ideas                     
+                               200     (no messaтАж
+22:07:10.71  www.virale.uno                                            info   ╬╡ GET /ru/app/profile                   
+                               200     (no messaтАж
+22:07:10.70  www.virale.uno                                            info   ╬╡ GET /ru/app/ideas                     
+                               200     (no messaтАж
+22:07:10.70  www.virale.uno                                            info   ╬╡ GET /ru/app/archive                   
+                               200     (no messaтАж
+22:07:10.28  www.virale.uno                                            info   ╬╗ GET /ru/app/projects                  
+                               200     тЬУ [Auth] тАж
+22:07:08.29  www.virale.uno                                            info   ╬╡ GET /ru/auth                          
+                               200     (no messaтАж
+22:07:07.84  www.virale.uno                                            info   ╬╗ GET /ru/app/archive                   
+                               200     (no messaтАж
+22:07:07.81  www.virale.uno                                            info   ╬╗ GET /ru/app/profile                   
+                               200     (no messaтАж
+22:07:07.27  www.virale.uno                                            info   ╬╗ GET /ru/auth                          
+                               200     (no messaтАж
+22:07:07.27  www.virale.uno                                            info   ╬╗ GET /ru/app/projects                  
+                               200     (no messaтАж
+22:07:07.27  www.virale.uno                                            info   ╬╡ GET /ru/app/ideas                     
+                               200     (no messaтАж
+22:07:07.11  www.virale.uno                                            info   ╬╗ GET /ru/app/profile                   
+                               200     (no messaтАж
+Fetched 50 logs for shers-projects-97eb3851/viralengine

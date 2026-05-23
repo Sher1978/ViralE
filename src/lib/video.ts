@@ -655,7 +655,12 @@ export async function submitVideoJob(jobId: string) {
       });
 
       const data = await response.json();
-      if (!response.ok) throw new Error(data.message || 'Shotstack API Error');
+      if (!response.ok) {
+        console.error('[Shotstack] Request payload failed:', JSON.stringify(timeline, null, 2));
+        console.error('[Shotstack] Response error:', JSON.stringify(data, null, 2));
+        const errMsg = data.message || data.error || (data.response && data.response.error) || `HTTP ${response.status}`;
+        throw new Error(`Shotstack error: ${errMsg}`);
+      }
 
       const shotstackJobId = data.response?.id;
       console.log(`[Shotstack] Async render submitted successfully: ${shotstackJobId}`);
