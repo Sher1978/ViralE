@@ -648,57 +648,13 @@ function DeliveryPageContent() {
         </div>
 
         {job?.status !== 'completed' && (
-          <div className="space-y-4 mt-2">
-            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner">
-              <motion.div 
-                  className="h-full bg-gradient-to-r from-purple-600 to-blue-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]" 
-                  initial={{ width: 0 }} 
-                  animate={{ width: `${Math.max(0, Math.min(100, displayProgress))}%` }} 
-                  transition={{ type: 'spring', damping: 25, stiffness: 50 }}
-              />
-            </div>
-            
-            {/* Real-time Shotstack Sync Button */}
-            <div className="flex justify-center">
-              <button
-                onClick={async () => {
-                  try {
-                    addSystemLog('Запрос проверки статуса на сервере Shotstack...');
-                    const syncRes = await fetch(`/api/debug-db?jobId=${jobId}&projectId=${projectId}`);
-                    const syncData = await syncRes.json();
-                    
-                    if (syncData.success) {
-                      const shotstackStatus = syncData.shotstack?.status || 'unknown';
-                      addSystemLog(`Результат проверки: Shotstack статус - "${shotstackStatus}".`);
-                      
-                      if (shotstackStatus === 'done' && syncData.shotstack?.videoUrl) {
-                        addSystemLog('Видео готово! Перезагрузка страницы для обновления плеера...');
-                        (globalThis as any).window?.location?.reload();
-                      } else {
-                        (globalThis as any).alert?.(
-                          locale === 'ru' 
-                            ? `Видео еще рендерится. Статус в Shotstack: "${shotstackStatus}". Пожалуйста, подождите немного.`
-                            : `Video is still rendering. Status in Shotstack: "${shotstackStatus}". Please wait a bit.`
-                        );
-                      }
-                    } else {
-                      throw new Error(syncData.error || 'Unknown error');
-                    }
-                  } catch (err: any) {
-                    addSystemLog(`Ошибка проверки статуса: ${err.message}`);
-                    (globalThis as any).alert?.(
-                      locale === 'ru' 
-                        ? `Не удалось проверить статус: ${err.message}`
-                        : `Failed to check status: ${err.message}`
-                    );
-                  }
-                }}
-                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600/20 border border-purple-500/30 text-purple-300 text-[10px] font-black uppercase tracking-widest hover:bg-purple-600/30 hover:text-white active:scale-95 transition-all shadow-md"
-              >
-                <RefreshCw size={12} className="animate-spin-slow" />
-                {locale === 'ru' ? 'Проверить готовность видео' : 'Check Video Readiness'}
-              </button>
-            </div>
+          <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner mt-2">
+            <motion.div 
+                className="h-full bg-gradient-to-r from-purple-600 to-blue-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]" 
+                initial={{ width: 0 }} 
+                animate={{ width: `${Math.max(0, Math.min(100, displayProgress))}%` }} 
+                transition={{ type: 'spring', damping: 25, stiffness: 50 }}
+            />
           </div>
         )}
       </div>
