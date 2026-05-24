@@ -53,7 +53,10 @@ export async function POST(req: Request) {
           status: 'completed',
           progress: 100,
           output_url: videoUrl,
-          status_message: 'Ready to share!'
+          config_json: {
+            ...(job.config_json || {}),
+            status_message: 'Ready to share!'
+          }
         })
         .eq('id', jobId);
 
@@ -100,8 +103,11 @@ export async function POST(req: Request) {
         .from('render_jobs')
         .update({
           status: 'failed',
-          status_message: 'Rendering failed',
-          error_log: errorLog
+          error_log: errorLog,
+          config_json: {
+            ...(job.config_json || {}),
+            status_message: 'Rendering failed'
+          }
         })
         .eq('id', jobId);
 

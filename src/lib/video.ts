@@ -421,6 +421,7 @@ export async function processVideoJob(jobId: string) {
  */
 export async function submitVideoJob(jobId: string) {
   let job: any = null;
+  let config: any = {};
   console.log(`[Trace 1] starting submitVideoJob for jobId: ${jobId}`);
   try {
     const { supabase: defaultSupabase, supabaseAdmin } = await import('./supabase');
@@ -458,7 +459,7 @@ export async function submitVideoJob(jobId: string) {
     (job as any).profiles = profile || { tier: 'free', heygen_api_key: null };
     console.log(`[Trace 6] user profile attached. Tier: ${job.profiles?.tier}`);
 
-    const config = job.config_json || {};
+    config = job.config_json || {};
     const engine = config.engine || 'shotstack';
 
     console.log(`[Trace 7] updating render_jobs status to queued`);
@@ -468,7 +469,10 @@ export async function submitVideoJob(jobId: string) {
       .update({ 
         status: 'queued', 
         progress: 10, 
-        status_message: 'Submitting to cloud render queue...' 
+        config_json: {
+          ...config,
+          status_message: 'Submitting to cloud render queue...' 
+        }
       })
       .eq('id', jobId);
 
@@ -526,9 +530,9 @@ export async function submitVideoJob(jobId: string) {
         .from('render_jobs')
         .update({
           progress: 30,
-          status_message: 'Generating AI avatar head...',
           config_json: {
             ...config,
+            status_message: 'Generating AI avatar head...',
             heygen_video_id: videoId
           }
         })
@@ -558,7 +562,13 @@ export async function submitVideoJob(jobId: string) {
               await new Promise(resolve => setTimeout(resolve, 1500));
               await dbClient
                 .from('render_jobs')
-                .update({ progress: step.p, status_message: step.msg })
+                .update({ 
+                  progress: step.p, 
+                  config_json: {
+                    ...config,
+                    status_message: step.msg
+                  }
+                })
                 .eq('id', jobId);
             }
 
@@ -570,7 +580,10 @@ export async function submitVideoJob(jobId: string) {
                 status: 'completed', 
                 progress: 100, 
                 output_url: videoUrl,
-                status_message: 'Ready to share!'
+                config_json: {
+                  ...config,
+                  status_message: 'Ready to share!'
+                }
               })
               .eq('id', jobId);
 
@@ -734,9 +747,9 @@ export async function submitVideoJob(jobId: string) {
         .update({
           status: 'processing',
           progress: 30,
-          status_message: 'Rendering video in Shotstack Cloud...',
           config_json: {
             ...config,
+            status_message: 'Rendering video in Shotstack Cloud...',
             shotstack_render_id: shotstackJobId,
             shotstack_environment: activeEndpoint.includes('stage') ? 'stage' : 'production'
           }
@@ -763,7 +776,10 @@ export async function submitVideoJob(jobId: string) {
         .update({ 
           status: 'failed', 
           error_log: error.message,
-          status_message: `Error: ${error.message}`
+          config_json: {
+            ...config,
+            status_message: `Error: ${error.message}`
+          }
         })
         .eq('id', jobId);
         

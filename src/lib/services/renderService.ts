@@ -64,6 +64,9 @@ export const renderService = {
       console.error('Error fetching job status:', error);
       return null;
     }
+    if (data) {
+      data.status_message = data.status_message || data.config_json?.status_message;
+    }
     return data;
   },
 

@@ -29,8 +29,10 @@ export async function POST(req: Request) {
         .from('render_jobs')
         .update({
           status: 'failed',
-          status_message: 'AI asset generation failed',
-          error_log: JSON.stringify(body)
+          error_log: JSON.stringify(body),
+          config_json: {
+            status_message: 'AI asset generation failed'
+          }
         })
         .eq('id', jobId);
 
@@ -70,8 +72,10 @@ export async function POST(req: Request) {
       .from('render_jobs')
       .update({
         progress: 50,
-        status_message: 'AI avatar compiled! Initializing cloud video render...',
-        config_json: updatedConfig
+        config_json: {
+          ...updatedConfig,
+          status_message: 'AI avatar compiled! Initializing cloud video render...'
+        }
       })
       .eq('id', jobId);
 
