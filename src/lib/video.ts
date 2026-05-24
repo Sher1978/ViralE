@@ -177,7 +177,8 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
 
       const output = {
         format: "mp4",
-        resolution: settings?.resolution === '1080x1920' ? "hd1080" : "hd720",
+        resolution: settings?.resolution === '1080x1920' ? "1080" : "hd",
+        aspectRatio: "9:16",
         fps: settings?.fps || 24
       };
 
