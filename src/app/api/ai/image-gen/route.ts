@@ -108,12 +108,17 @@ export async function POST(req: Request) {
                   .from('temp-assets')
                   .upload(fileName, blob, { contentType: 'image/webp' });
 
-                if (!uploadError) {
+                if (!uploadError && uploadData) {
                   const { data: { publicUrl } } = supabaseAdmin.storage
                     .from('temp-assets')
                     .getPublicUrl(uploadData.path);
                   
                   return NextResponse.json({ url: publicUrl, id: inferenceResult.taskUUID });
+                } else {
+                  const arrayBuffer = await blob.arrayBuffer();
+                  const buffer = Buffer.from(arrayBuffer);
+                  const base64 = `data:image/webp;base64,${buffer.toString('base64')}`;
+                  return NextResponse.json({ url: base64, id: inferenceResult.taskUUID });
                 }
               }
             } catch (persistErr) {
@@ -162,12 +167,18 @@ export async function POST(req: Request) {
                 .from('temp-assets')
                 .upload(fileName, blob, { contentType: 'image/png' });
 
-              if (!uploadError) {
+              if (!uploadError && uploadData) {
                 const { data: { publicUrl } } = supabaseAdmin.storage
                   .from('temp-assets')
                   .getPublicUrl(uploadData.path);
                 
                 return NextResponse.json({ url: publicUrl });
+              } else {
+                // If upload fails (e.g. no service role key), return as base64 to bypass CORS
+                const arrayBuffer = await blob.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                const base64 = `data:image/png;base64,${buffer.toString('base64')}`;
+                return NextResponse.json({ url: base64 });
               }
             }
           } catch (persistErr) {

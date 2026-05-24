@@ -572,6 +572,7 @@ function DeliveryPageContent() {
           const overlayFilter = `[1:v]scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
           await ffmpeg.exec([
             '-i', currentInput,
+            '-itsoffset', broll.clip.startTime.toString(),
             '-i', broll.name,
             '-filter_complex', overlayFilter,
             '-map', '[out]',

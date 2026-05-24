@@ -546,8 +546,12 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         }
         
         const destination = ctx.createMediaStreamDestination();
+        
+        // Clear any previous connections
+        audioSourceRef.current.disconnect();
+        
+        // Connect ONLY to the stream destination for recording, NOT to ctx.destination (speakers)
         audioSourceRef.current.connect(destination);
-        audioSourceRef.current.connect(ctx.destination); // For real-time monitoring if not muted
 
         const audioTrack = destination.stream.getAudioTracks()[0];
         if (audioTrack) stream.addTrack(audioTrack);
@@ -562,7 +566,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     let selectedMime = '';
     const MediaRecorderClass = (globalThis as any).MediaRecorder;
     if (typeof MediaRecorderClass !== 'undefined') {
-      const candidates = ['video/mp4', 'video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/quicktime'];
+      const candidates = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4', 'video/quicktime'];
       for (const m of candidates) {
         if (MediaRecorderClass.isTypeSupported(m)) {
           selectedMime = m;
@@ -583,7 +587,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       
       if (audioRef.current) { 
         audioRef.current.currentTime = 0; 
-        audioRef.current.muted = true; 
+        audioRef.current.muted = false; // MUST be false for WebAudio to capture!
         await audioRef.current.play(); 
       }
 
@@ -642,7 +646,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     setRendering(false);
     setRenderProgress(100);
     setRendered(true);
-    if (audioRef.current) audioRef.current.muted = false; // Restore audio for preview
+    if (audioRef.current && audioContextRef.current && audioSourceRef.current) {
+      // Reconnect to speakers for preview
+      audioSourceRef.current.disconnect();
+      audioSourceRef.current.connect(audioContextRef.current.destination);
+    }
   };
 
 
@@ -793,13 +801,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             {/* Phone frame */}
             <div className="relative h-full max-h-full aspect-[9/16] rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.9)] bg-[#0a0a0f] group">
               {activeScene?.imageUrl ? (
-                <motion.img
+                <img
                   key={activeScene.id}
-                  initial={{ scale: 1.08, opacity: 0 }}
-                  animate={{ scale: 1.02, opacity: 1 }}
-                  transition={{ duration: 0.6 }}
                   src={activeScene.imageUrl}
-                  className="w-full h-full object-cover"
+                  className="w-full h-full object-cover animate-in fade-in duration-700"
+                  alt="Scene Preview"
                 />
               ) : (
                 <div className="w-full h-full flex flex-col items-center justify-center gap-3">

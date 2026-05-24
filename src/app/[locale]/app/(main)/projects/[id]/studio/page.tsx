@@ -1382,10 +1382,10 @@ export default function StudioPage() {
         console.log('[Studio] Local draft synced for delivery session');
       } catch (e) { console.warn('[Studio] Local draft sync failed:', e); }
 
-      // тЬЕ Invalidate render cache so delivery always re-renders with fresh subtitles
+      // Invalidate render cache so delivery always re-renders with fresh subtitles
       try {
         if (savedVersion?.id) {
-          await idb.delete(`final_render_v3_${projectId}_${savedVersion.id}`, 'MediaBuffer');
+          await idb.delete(`final_render_${projectId}_${savedVersion.id}`, 'MediaBuffer');
         }
         await idb.delete(`final_render_${projectId}`, 'MediaBuffer');
         console.log('[Studio] Render cache invalidated — delivery will re-render with subtitles');

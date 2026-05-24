@@ -185,7 +185,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
         target.currentTime = Math.max(0.001, currentTime - startTime);
         if (isPlaying) target.play().catch(() => {});
       }}
-      style={{ opacity: 0, transition: 'opacity 0.2s ease' }}
+      style={{ opacity: 0, transition: 'opacity 0.2s ease', transform: 'scale(1.02)' }}
     />
   );
 });
