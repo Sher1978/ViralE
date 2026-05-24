@@ -463,11 +463,11 @@ export async function submitVideoJob(jobId: string) {
     const engine = config.engine || 'shotstack';
 
     console.log(`[Trace 7] updating render_jobs status to queued`);
-    // 1. Mark as Queued
+    // 1. Mark as Queued (keep status as 'pending' to satisfy production check constraints)
     const { error: queueUpdateError } = await dbClient
       .from('render_jobs')
       .update({ 
-        status: 'queued', 
+        status: 'pending', 
         progress: 10, 
         config_json: {
           ...config,
