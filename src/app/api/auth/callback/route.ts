@@ -30,7 +30,6 @@ export async function GET(request: Request) {
 
       const cookieName = projectRef ? `sb-${projectRef}-auth-token` : '';
       if (cookieName) {
-        // Manually set the cookie as raw access_token to match SessionSync and getAuthContext expectations
         await cookieStore.set(cookieName, data.session.access_token, {
           path: '/',
           maxAge: 604800,
@@ -46,5 +45,79 @@ export async function GET(request: Request) {
     }
   }
 
-  return NextResponse.redirect(`${origin}/auth?error=auth-failure`);
+  // If code is missing, it is likely an Implicit Flow redirect (hash parameters like #access_token=...)
+  // due to Supabase enforcing Implicit Flow for wildcard preview domains (*.vercel.app).
+  // We return a client-side bridge HTML page to extract the hash and set the cookie before redirecting.
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+  const html = `
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Authenticating...</title>
+      <style>
+        body {
+          background: #050505;
+          color: #fff;
+          font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          min-height: 100vh;
+          margin: 0;
+        }
+        .spinner {
+          border: 3px solid rgba(255,255,255,0.1);
+          border-top: 3px solid #06b6d4;
+          border-radius: 50%;
+          width: 40px;
+          height: 40px;
+          animation: spin 1s linear infinite;
+          margin-bottom: 20px;
+        }
+        @keyframes spin {
+          0% { transform: rotate(0deg); }
+          100% { transform: rotate(360deg); }
+        }
+        .container {
+          text-align: center;
+        }
+      </style>
+    </head>
+    <body>
+      <div class="container">
+        <div class="spinner"></div>
+        <div style="font-weight: 600; font-size: 14px; letter-spacing: 0.1em; text-transform: uppercase; color: #06b6d4;">Вход в Систему</div>
+        <div style="color: #666; font-size: 12px; margin-top: 8px; letter-spacing: 0.05em;">Синхронизация сессии...</div>
+      </div>
+      <script>
+        (function() {
+          const hash = window.location.hash;
+          const params = new URLSearchParams(hash.replace('#', '?'));
+          const accessToken = params.get('access_token');
+          const next = new URLSearchParams(window.location.search).get('next') || '/app/projects';
+          
+          if (accessToken) {
+            const supabaseUrl = "${supabaseUrl}";
+            const match = supabaseUrl.match(/(?:https?:\\/\\/)?([^.]+)/);
+            const projectRef = match ? match[1] : '';
+            if (projectRef) {
+              const cookieName = "sb-" + projectRef + "-auth-token";
+              document.cookie = cookieName + "=" + accessToken + "; path=/; max-age=604800; SameSite=Lax; Secure";
+            }
+            // Redirect to destination, appending the hash so supabase-js client can also sync it
+            window.location.href = window.location.origin + next + hash;
+          } else {
+            window.location.href = window.location.origin + "/auth?error=auth-failure";
+          }
+        })();
+      </script>
+    </body>
+    </html>
+  `;
+
+  return new NextResponse(html, {
+    headers: {
+      'Content-Type': 'text/html; charset=utf-8',
+    },
+  });
 }
