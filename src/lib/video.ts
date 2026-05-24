@@ -421,39 +421,49 @@ export async function processVideoJob(jobId: string) {
  */
 export async function submitVideoJob(jobId: string) {
   let job: any = null;
+  console.log(`[Trace 1] starting submitVideoJob for jobId: ${jobId}`);
   try {
     const { supabase: defaultSupabase, supabaseAdmin } = await import('./supabase');
-    let dbClient: any = defaultSupabase;
-    try {
-      const _ = supabaseAdmin.from;
-      dbClient = supabaseAdmin;
-    } catch (e: any) {
-      console.warn('[submitVideoJob] supabaseAdmin is not available, falling back to default supabase client:', e.message);
-    }
+    const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+    const dbClient = hasServiceKey ? supabaseAdmin : defaultSupabase;
+    console.log(`[Trace 2] dbClient selected. hasServiceKey: ${hasServiceKey}`);
+
+    console.log(`[Trace 3] querying render_jobs for jobId: ${jobId}`);
     const { data, error: fetchError } = await dbClient
       .from('render_jobs')
       .select('*')
       .eq('id', jobId)
       .single();
 
-    if (fetchError || !data) throw new Error(`Job not found: ${fetchError?.message || ''}`);
+    if (fetchError || !data) {
+      console.error(`[Trace 3 Error] Job fetch failed: ${fetchError?.message || 'No data'}`);
+      throw new Error(`Job not found: ${fetchError?.message || ''}`);
+    }
     job = data;
+    console.log(`[Trace 4] job data fetched successfully. User ID: ${job.user_id}`);
 
+    console.log(`[Trace 5] querying profiles for user: ${job.user_id}`);
     // Fetch profile separately to avoid PostgREST relationship join issues
-    const { data: profile } = await dbClient
+    const { data: profile, error: profileError } = await dbClient
       .from('profiles')
       .select('tier, heygen_api_key')
       .eq('id', job.user_id)
       .single();
 
+    if (profileError) {
+      console.warn(`[Trace 5 Warning] Profile query failed/returned error: ${profileError.message}`);
+    }
+
     // Attach profile details to match expected structure
     (job as any).profiles = profile || { tier: 'free', heygen_api_key: null };
+    console.log(`[Trace 6] user profile attached. Tier: ${job.profiles?.tier}`);
 
     const config = job.config_json || {};
     const engine = config.engine || 'shotstack';
 
+    console.log(`[Trace 7] updating render_jobs status to queued`);
     // 1. Mark as Queued
-    await dbClient
+    const { error: queueUpdateError } = await dbClient
       .from('render_jobs')
       .update({ 
         status: 'queued', 
@@ -462,14 +472,22 @@ export async function submitVideoJob(jobId: string) {
       })
       .eq('id', jobId);
 
+    if (queueUpdateError) {
+      console.error(`[Trace 7 Error] Queued status update failed: ${queueUpdateError.message}`);
+      throw queueUpdateError;
+    }
+    console.log(`[Trace 8] status updated to queued successfully. Engine: ${engine}`);
+
     const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://virale.uno';
 
     if (engine === 'heygen') {
+      console.log(`[Trace 9-HeyGen] Preparing HeyGen submission`);
       // --- HEYGEN ASYNC SUBMISSION ---
       const heygenApiKey = job.profiles?.heygen_api_key || process.env.HEYGEN_API_KEY;
       if (!heygenApiKey) throw new Error('HeyGen API Key is missing');
       
       const webhookUrl = `${baseUrl}/api/webhooks/heygen?jobId=${jobId}`;
+      console.log(`[Trace 10-HeyGen] Submitting fetch to HeyGen API. Webhook: ${webhookUrl}`);
       
       const response = await fetch('https://api.heygen.com/v2/video/generate', {
         method: 'POST',
@@ -497,12 +515,14 @@ export async function submitVideoJob(jobId: string) {
         })
       });
 
+      console.log(`[Trace 11-HeyGen] HeyGen API call completed. Status: ${response.status}`);
       const data = await response.json();
       if (!response.ok) throw new Error(data.error?.message || 'HeyGen API Error');
 
       const videoId = data.data?.video_id;
+      console.log(`[Trace 12-HeyGen] HeyGen video_id received: ${videoId}. Updating db...`);
       
-      await dbClient
+      const { error: heygenUpdateError } = await dbClient
         .from('render_jobs')
         .update({
           progress: 30,
@@ -513,12 +533,18 @@ export async function submitVideoJob(jobId: string) {
           }
         })
         .eq('id', jobId);
+
+      if (heygenUpdateError) {
+        console.error(`[Trace 12-HeyGen Error] Failed to update video_id in db: ${heygenUpdateError.message}`);
+        throw heygenUpdateError;
+      }
+      console.log(`[Trace 13-HeyGen] HeyGen setup finished successfully.`);
         
     } else {
       // --- SHOTSTACK ASYNC SUBMISSION (DEFAULT) ---
       const shotstackApiKey = process.env.SHOTSTACK_API_KEY || '';
       if (!shotstackApiKey) {
-        console.warn('[Orchestrator] No Shotstack key found, falling back to mock...');
+        console.warn('⚠️ [Trace 9-Shotstack Warning] No Shotstack key found, falling back to mock...');
         
         setTimeout(async () => {
           try {
@@ -565,24 +591,31 @@ export async function submitVideoJob(jobId: string) {
         return;
       }
 
+      console.log(`[Trace 9-Shotstack] Shotstack Key exists. Checking environment...`);
       const isStage = shotstackApiKey.startsWith('v1-stage-') || process.env.NODE_ENV === 'development';
       const endpoint = isStage ? 'https://api.shotstack.io/stage/render' : 'https://api.shotstack.io/v1/render';
       
-       const { script, settings } = config;
+      const { script, settings } = config;
       const { brollClips = [], subtitleClips = [], aRollUrl, showSubtitles = true } = script || {};
 
       if (!aRollUrl) throw new Error('A-Roll URL is missing in manifest');
 
+      console.log(`[Trace 10-Shotstack] Loading storageService...`);
       const { storageService } = await import('./services/storageService');
+      
+      console.log(`[Trace 11-Shotstack] Signing A-Roll URL: ${aRollUrl}`);
       const signedARollUrl = await storageService.getSignedUrlIfNeeded(aRollUrl);
       
+      console.log(`[Trace 12-Shotstack] Signing B-Roll URLs (total clips: ${brollClips.length})`);
       const signedBrollClips = await Promise.all(
-        brollClips.map(async (b: any) => {
+        brollClips.map(async (b: any, index: number) => {
           if (!b.url) return b;
+          console.log(`[Trace 12-Shotstack-Clip-${index}] Signing B-Roll URL: ${b.url}`);
           const signedUrl = await storageService.getSignedUrlIfNeeded(b.url);
           return { ...b, url: signedUrl };
         })
       );
+      console.log(`[Trace 13-Shotstack] All asset URLs signed.`);
 
       const timeline = {
         background: "#000000",
@@ -642,8 +675,9 @@ export async function submitVideoJob(jobId: string) {
       };
 
       const webhookUrl = `${baseUrl}/api/webhooks/shotstack?jobId=${jobId}`;
-
       let activeEndpoint = endpoint;
+      console.log(`[Trace 14-Shotstack] Submitting POST to activeEndpoint: ${activeEndpoint}. Webhook: ${webhookUrl}`);
+
       let response = await fetch(activeEndpoint, {
         method: 'POST',
         headers: {
@@ -657,14 +691,16 @@ export async function submitVideoJob(jobId: string) {
         })
       });
 
+      console.log(`[Trace 15-Shotstack] POST to Shotstack completed. Status: ${response.status}`);
       let data = await response.json();
 
       // AUTO-FALLBACK TO SANDBOX (STAGE) ENDPOINT IF KEY IS A SANDBOX KEY
       if (response.status === 403 && activeEndpoint !== 'https://api.shotstack.io/stage/render') {
         const errorDetail = data.errors?.[0]?.detail || '';
         if (errorDetail.includes('Sandbox') || errorDetail.includes('sandbox')) {
-          console.warn('⚠️ [Shotstack] Key is Sandbox key but hit Production. Retrying automatically on Stage endpoint...');
+          console.warn('⚠️ [Trace 15-Shotstack Warning] Key is Sandbox key but hit Production. Retrying automatically on Stage endpoint...');
           activeEndpoint = 'https://api.shotstack.io/stage/render';
+          console.log(`[Trace 15-Shotstack-Retry] Submitting POST to activeEndpoint: ${activeEndpoint}`);
           response = await fetch(activeEndpoint, {
             method: 'POST',
             headers: {
@@ -678,6 +714,7 @@ export async function submitVideoJob(jobId: string) {
             })
           });
           data = await response.json();
+          console.log(`[Trace 15-Shotstack-Retry] Retry POST completed. Status: ${response.status}`);
         }
       }
 
@@ -689,9 +726,10 @@ export async function submitVideoJob(jobId: string) {
       }
 
       const shotstackJobId = data.response?.id;
-      console.log(`[Shotstack] Async render submitted successfully on ${activeEndpoint}: ${shotstackJobId}`);
+      console.log(`[Trace 16-Shotstack] Async render submitted successfully on ${activeEndpoint}: ${shotstackJobId}`);
 
-      await dbClient
+      console.log(`[Trace 17-Shotstack] Updating database to processing and progress 30...`);
+      const { error: processingUpdateError } = await dbClient
         .from('render_jobs')
         .update({
           status: 'processing',
@@ -704,29 +742,39 @@ export async function submitVideoJob(jobId: string) {
           }
         })
         .eq('id', jobId);
+
+      if (processingUpdateError) {
+        console.error(`[Trace 17-Shotstack Error] Failed to update progress to processing: ${processingUpdateError.message}`);
+        throw processingUpdateError;
+      }
+      console.log(`[Trace 18-Shotstack] Database updated successfully. Shotstack orchestration completed.`);
     }
 
   } catch (error: any) {
-    console.error(`[submitVideoJob] Failure for job ${jobId}:`, error);
+    console.error(`[Trace Catch Error] [submitVideoJob] Failure for job ${jobId}:`, error);
     
-    const { supabase: defaultSupabase, supabaseAdmin } = await import('./supabase');
-    let dbClient: any = defaultSupabase;
     try {
-      const _ = supabaseAdmin.from;
-      dbClient = supabaseAdmin;
-    } catch (e: any) {}
-    await dbClient
-      .from('render_jobs')
-      .update({ 
-        status: 'failed', 
-        error_log: error.message,
-        status_message: `Error: ${error.message}`
-      })
-      .eq('id', jobId);
+      const { supabase: defaultSupabase, supabaseAdmin } = await import('./supabase');
+      const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
+      const dbClient = hasServiceKey ? supabaseAdmin : defaultSupabase;
       
-    await dbClient
-      .from('projects')
-      .update({ status: 'error' })
-      .eq('id', job?.project_id || jobId);
+      await dbClient
+        .from('render_jobs')
+        .update({ 
+          status: 'failed', 
+          error_log: error.message,
+          status_message: `Error: ${error.message}`
+        })
+        .eq('id', jobId);
+        
+      await dbClient
+        .from('projects')
+        .update({ status: 'error' })
+        .eq('id', job?.project_id || jobId);
+      
+      console.log(`[Trace Catch Error] Database status successfully updated to failed.`);
+    } catch (saveError: any) {
+      console.error(`[Trace Catch Error] Failed to write failure status to database:`, saveError);
+    }
   }
 }
