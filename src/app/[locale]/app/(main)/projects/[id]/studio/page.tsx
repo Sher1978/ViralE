@@ -1287,12 +1287,68 @@ export default function StudioPage() {
 
       // 🚀 Merge editor state into manifest
       const manifestAny = manifest as any;
-      const resolvedARollUrl = 
+      let resolvedARollUrl = 
         explicitARollUrl ||
+        manifestAny.videoUrl ||
         manifestAny.aRollUrl ||
         manifestAny.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
         manifestAny.segments?.[0]?.assetUrl ||
         null;
+
+      // --- CRITICAL FIX: Upload blob URL to Supabase before final export ---
+      if (resolvedARollUrl && resolvedARollUrl.startsWith('blob:')) {
+        if (backgroundMp4Url && !backgroundMp4Url.startsWith('blob:')) {
+          resolvedARollUrl = backgroundMp4Url;
+          addSystemLog(`Export: Found pre-normalized cloud MP4. Using: ${resolvedARollUrl}`);
+        } else {
+          addSystemLog('Export: aRollUrl is a local blob URL. Uploading to Supabase Storage first...');
+          let videoBlob = recordedBlobRef.current;
+          if (!videoBlob) {
+            addSystemLog('Export: Fetching video blob from IndexedDB...');
+            const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+            if (cached instanceof Blob) {
+              videoBlob = cached;
+              recordedBlobRef.current = cached;
+            }
+          }
+
+          if (videoBlob) {
+            addSystemLog(`Export: Starting upload of video blob (${(videoBlob.size / (1024 * 1024)).toFixed(2)} MB)...`);
+            const uploadResult = await renderService.uploadMedia(projectId, videoBlob, 'video');
+            if (uploadResult && uploadResult.publicUrl) {
+              resolvedARollUrl = uploadResult.publicUrl;
+              addSystemLog(`Export: Video uploaded successfully. URL: ${resolvedARollUrl}`);
+            } else {
+              throw new Error('Не удалось загрузить исходное видео на сервер. Проверьте интернет-соединение.');
+            }
+          } else {
+            throw new Error('Исходное видео-запись не найдена в кэше браузера. Пожалуйста, сделайте запись заново.');
+          }
+        }
+      }
+
+      // Also check B-Rolls for local blob URLs
+      let resolvedBroll = broll || [];
+      if (resolvedBroll.length > 0) {
+        addSystemLog('Export: Checking B-Roll clips for local blob URLs...');
+        resolvedBroll = await Promise.all(
+          resolvedBroll.map(async (b: any) => {
+            if (b.url && b.url.startsWith('blob:')) {
+              addSystemLog(`Export: B-Roll clip ${b.id} is a local blob URL. Uploading...`);
+              // Try to find the blob in IndexedDB if cached
+              const cachedBlob = await idb.get(`broll_file_${b.id}`, 'MediaBuffer').catch(() => null);
+              if (cachedBlob instanceof Blob) {
+                const res = await renderService.uploadMedia(projectId, cachedBlob, 'video');
+                if (res && res.publicUrl) {
+                  addSystemLog(`Export: B-Roll uploaded: ${res.publicUrl}`);
+                  return { ...b, url: res.publicUrl };
+                }
+              }
+            }
+            return b;
+          })
+        );
+      }
 
       // Derivce final script text from montage subtitles (requested by user)
       const finalScriptText = subs?.map(s => s.text).join('\n\n') || 
@@ -1302,7 +1358,7 @@ export default function StudioPage() {
         ...manifest,
         aRollUrl: resolvedARollUrl,
         scriptText: finalScriptText, // Save for distribution
-        brollClips: broll || [],
+        brollClips: resolvedBroll,
         subtitleClips: subs || [],
         subtitlePos: subPos || (manifest as any).subtitlePos || { x: 0, y: 0 },
         subtitleSize: subSize || (manifest as any).subtitleSize || 25,
@@ -1311,7 +1367,7 @@ export default function StudioPage() {
         _log_subs_count: subs?.length || 0,
         segments: manifest.segments.map((s: any, i: number) => i === 0 ? { 
           ...s, 
-          brollClips: broll || [], 
+          brollClips: resolvedBroll, 
           subtitleClips: subs || [],
           subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
           subtitleSize: subSize || (manifest as any).subtitleSize || 25,

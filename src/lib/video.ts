@@ -463,18 +463,28 @@ export async function submitVideoJob(jobId: string) {
     const engine = config.engine || 'shotstack';
 
     console.log(`[Trace 7] updating render_jobs status to queued`);
+    
+    // Helper for resilient updates
+    const safeJobUpdate = async (client: any, id: string, updatePayload: any) => {
+      const res = await client.from('render_jobs').update(updatePayload).eq('id', id);
+      if (res.error && (res.error.code === 'PGRST204' || res.error.message?.includes('schema cache'))) {
+        console.warn(`[SafeJobUpdate] Schema cache error detected. Retrying minimalist update...`);
+        const minimal = { status: updatePayload.status, progress: updatePayload.progress, error_log: updatePayload.error_log };
+        Object.keys(minimal).forEach(k => (minimal as any)[k] === undefined && delete (minimal as any)[k]);
+        return await client.from('render_jobs').update(minimal).eq('id', id);
+      }
+      return res;
+    };
+
     // 1. Mark as Queued (keep status as 'pending' to satisfy production check constraints)
-    const { error: queueUpdateError } = await dbClient
-      .from('render_jobs')
-      .update({ 
-        status: 'pending', 
-        progress: 10, 
-        config_json: {
-          ...config,
-          status_message: 'Submitting to cloud render queue...' 
-        }
-      })
-      .eq('id', jobId);
+    const { error: queueUpdateError } = await safeJobUpdate(dbClient, jobId, { 
+      status: 'pending', 
+      progress: 10, 
+      config_json: {
+        ...config,
+        status_message: 'Submitting to cloud render queue...' 
+      }
+    });
 
     if (queueUpdateError) {
       console.error(`[Trace 7 Error] Queued status update failed: ${queueUpdateError.message}`);
@@ -742,19 +752,16 @@ export async function submitVideoJob(jobId: string) {
       console.log(`[Trace 16-Shotstack] Async render submitted successfully on ${activeEndpoint}: ${shotstackJobId}`);
 
       console.log(`[Trace 17-Shotstack] Updating database to processing and progress 30...`);
-      const { error: processingUpdateError } = await dbClient
-        .from('render_jobs')
-        .update({
-          status: 'processing',
-          progress: 30,
-          config_json: {
-            ...config,
-            status_message: 'Rendering video in Shotstack Cloud...',
-            shotstack_render_id: shotstackJobId,
-            shotstack_environment: activeEndpoint.includes('stage') ? 'stage' : 'production'
-          }
-        })
-        .eq('id', jobId);
+      const { error: processingUpdateError } = await safeJobUpdate(dbClient, jobId, {
+        status: 'processing',
+        progress: 30,
+        config_json: {
+          ...config,
+          status_message: 'Rendering video in Shotstack Cloud...',
+          shotstack_render_id: shotstackJobId,
+          shotstack_environment: activeEndpoint.includes('stage') ? 'stage' : 'production'
+        }
+      });
 
       if (processingUpdateError) {
         console.error(`[Trace 17-Shotstack Error] Failed to update progress to processing: ${processingUpdateError.message}`);
@@ -771,17 +778,24 @@ export async function submitVideoJob(jobId: string) {
       const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
       const dbClient = hasServiceKey ? supabaseAdmin : defaultSupabase;
       
-      await dbClient
-        .from('render_jobs')
-        .update({ 
-          status: 'failed', 
-          error_log: error.message,
-          config_json: {
-            ...config,
-            status_message: `Error: ${error.message}`
-          }
-        })
-        .eq('id', jobId);
+      const safeJobUpdateCatch = async (client: any, id: string, updatePayload: any) => {
+        const res = await client.from('render_jobs').update(updatePayload).eq('id', id);
+        if (res.error && (res.error.code === 'PGRST204' || res.error.message?.includes('schema cache'))) {
+          const minimal = { status: updatePayload.status, progress: updatePayload.progress, error_log: updatePayload.error_log };
+          Object.keys(minimal).forEach(k => (minimal as any)[k] === undefined && delete (minimal as any)[k]);
+          return await client.from('render_jobs').update(minimal).eq('id', id);
+        }
+        return res;
+      };
+
+      await safeJobUpdateCatch(dbClient, jobId, { 
+        status: 'failed', 
+        error_log: error.message,
+        config_json: {
+          ...config,
+          status_message: `Error: ${error.message}`
+        }
+      });
         
       await dbClient
         .from('projects')
