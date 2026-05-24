@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getAuthContext } from '@/lib/auth';
+import { safeJsonParse } from '@/lib/utils';
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -91,13 +92,11 @@ export async function POST(req: Request) {
     const text = response.text();
     
     try {
-      const assets = JSON.parse(text);
+      const assets = safeJsonParse(text);
       return NextResponse.json(assets);
-    } catch (parseErr) {
-       // Fallback for markdown-wrapped JSON
-       const jsonMatch = text.match(/\{[\s\S]*\}/);
-       if (!jsonMatch) throw new Error('Failed to generate structured assets');
-       return NextResponse.json(JSON.parse(jsonMatch[0]));
+    } catch (parseErr: any) {
+      console.error('[Distribution Assets API JSON Parse Error]:', parseErr.message);
+      throw parseErr;
     }
 
   } catch (err: any) {

@@ -3,6 +3,7 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getAuthContext } from '@/lib/auth';
 import { withRetry } from '@/lib/ai/retry';
 import { IgCarouselSchema } from '@/lib/schemas/ig-carousel';
+import { safeJsonParse } from '@/lib/utils';
 import { extractSignaturePhrases } from '@/lib/ai/dna-extractor';
 import { polishCriticalSlides } from '@/lib/ai/slide-polisher';
 import { preprocessSubtitles } from '@/lib/utils/subtitle-preprocessor';
@@ -284,12 +285,10 @@ export async function POST(req: Request) {
 
     let parsedCarousel: any;
     try {
-      parsedCarousel = JSON.parse(cleanJson);
-    } catch (parseErr) {
-      console.warn('[ig-carousel API] Standard JSON parse failed, attempting regex fallback...');
-      const match = cleanJson.match(/\{[\s\S]*\}/);
-      if (!match) throw new Error('AI returned non-JSON structured format');
-      parsedCarousel = JSON.parse(match[0]);
+      parsedCarousel = safeJsonParse(cleanJson);
+    } catch (parseErr: any) {
+      console.error('[ig-carousel API JSON Parse Error]:', parseErr.message);
+      throw parseErr;
     }
 
     // 7. Enforce Schema via Zod with automatic repair/fallback
