@@ -208,25 +208,30 @@ function DeliveryPageContent() {
   const handleDownload = async () => {
     if (!job?.output_url) return;
     
-    // Try native share first on mobile
     const nav = (globalThis as any).navigator;
-    const isMobile = /iPhone|iPad|iPod|Android/i.test(nav?.userAgent || '');
-    if (isMobile && nav?.share && job.output_url.startsWith('blob:')) {
+    
+    // Check if Web Share API is available for file sharing
+    if (nav?.share) {
       try {
+        addSystemLog('Скачивание файла для отправки в системное меню...');
         const res = await fetch(job.output_url);
+        if (!res.ok) throw new Error('Network response was not ok');
         const blob = await res.blob();
-        const file = new File([blob], `ViralEngine_Final_${projectId}.mp4`, { type: 'video/mp4' });
+        const file = new File([blob], `ViralEngine_${projectId}.mp4`, { type: 'video/mp4' });
         
         if (nav.canShare && nav.canShare({ files: [file] })) {
+          addSystemLog('Открытие системного меню отправки...');
           await nav.share({
             files: [file],
-            title: 'Viral Engine Video',
-            text: 'Check out my AI-generated video!'
+            title: 'ViralEngine Video',
+            text: 'AI Generated Content'
           });
+          addSystemLog('Системное меню успешно открыто.');
           return;
         }
-      } catch (e) {
-        console.warn('[Delivery] Native share failed:', e);
+      } catch (e: any) {
+        console.warn('[Delivery] Native share failed, falling back to download:', e);
+        addSystemLog(`Системная отправка не удалась: ${e.message || e}. Скачиваем файл...`);
       }
     }
 
@@ -240,8 +245,10 @@ function DeliveryPageContent() {
         doc.body.appendChild(link);
         link.click();
         doc.body.removeChild(link);
+        addSystemLog('Запущено скачивание файла по ссылке.');
       }
-    } catch (err) {
+    } catch (err: any) {
+      addSystemLog(`Ошибка скачивания: ${err.message}. Открытие в новой вкладке...`);
       if (typeof (globalThis as any).window !== 'undefined') {
         (globalThis as any).window.open(job.output_url, '_blank');
       }
@@ -264,6 +271,18 @@ function DeliveryPageContent() {
   const handleCopy = (text: string) => {
     ((globalThis as any).navigator)?.clipboard?.writeText(text);
   };
+
+  // Premium auto-play trigger when job output url becomes available
+  useEffect(() => {
+    const video = videoRef.current as any;
+    if (video && job?.output_url) {
+      console.log('[Delivery] Forcing video load and play for:', job.output_url);
+      video.load();
+      video.play().catch((err: any) => {
+        console.warn('[Delivery] Play failed:', err);
+      });
+    }
+  }, [job?.output_url]);
 
   // Phase 7: Automate launching server-side render if jobId is not specified
   useEffect(() => {
@@ -612,6 +631,7 @@ function DeliveryPageContent() {
               loop 
               muted={isMuted}
               playsInline 
+              crossOrigin="anonymous"
               onClick={() => {
                 const video = videoRef.current as any;
                 if (video) {
