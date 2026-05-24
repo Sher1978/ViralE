@@ -5,7 +5,6 @@ import { cookies } from 'next/headers';
 export async function GET(request: Request) {
   const { searchParams, origin } = new URL(request.url);
   const code = searchParams.get('code');
-  // if "next" is in param, use it as the redirect address
   const next = searchParams.get('next') ?? '/app/projects';
 
   if (code) {
@@ -15,28 +14,37 @@ export async function GET(request: Request) {
       process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!,
       {
         auth: {
-          persistSession: true,
-          storage: {
-            getItem: (key: string) => cookieStore.get(key)?.value ?? null,
-            setItem: (key: string, value: string) => {
-              cookieStore.set(key, value, {
-                path: '/',
-              });
-            },
-            removeItem: (key: string) => {
-              cookieStore.delete(key);
-            },
-          },
+          persistSession: false,
         },
       }
     );
 
-    const { error } = await supabase.auth.exchangeCodeForSession(code);
-    if (!error) {
+    const { data, error } = await supabase.auth.exchangeCodeForSession(code);
+    if (!error && data?.session) {
+      const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+      let projectRef = '';
+      const match = supabaseUrl.match(/(?:https?:\/\/)?([^.]+)/);
+      if (match && match[1]) {
+        projectRef = match[1];
+      }
+
+      const cookieName = projectRef ? `sb-${projectRef}-auth-token` : '';
+      if (cookieName) {
+        // Manually set the cookie as raw access_token to match SessionSync and getAuthContext expectations
+        await cookieStore.set(cookieName, data.session.access_token, {
+          path: '/',
+          maxAge: 604800,
+          sameSite: 'lax',
+          secure: true,
+        });
+        console.log('[AuthCallback] Successfully set raw access token cookie:', cookieName);
+      }
+
       return NextResponse.redirect(`${origin}${next}`);
+    } else {
+      console.error('[AuthCallback] Exchange code error:', error);
     }
   }
 
-  // Return the user to an error page with instructions
   return NextResponse.redirect(`${origin}/auth?error=auth-failure`);
 }
