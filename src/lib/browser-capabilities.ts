@@ -24,9 +24,16 @@ export const browserCapabilities = {
   /**
    * Suggests the best render mode based on capabilities.
    */
-  suggestRenderMode(): 'canvas' | 'ffmpeg' {
-    if (this.isMobile()) {
-      return 'canvas';
+  suggestRenderMode(): 'shotstack' | 'ffmpeg' {
+    if (typeof navigator === 'undefined') return 'ffmpeg';
+
+    const memory = (navigator as any).deviceMemory || 8; // Fallback if API not available
+    const cores = navigator.hardwareConcurrency || 4;
+
+    const isWeakDevice = memory < 8 || cores <= 2;
+
+    if (isWeakDevice) {
+      return 'shotstack';
     }
     return 'ffmpeg';
   }
