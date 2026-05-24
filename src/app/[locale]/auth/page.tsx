@@ -26,7 +26,7 @@ export default function AuthPage() {
     checkUser();
 
     // Listen for hash-based auth resolution (implicit flow)
-    const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
+    const { data: { subscription } } = supabase.auth.onAuthStateChange((event: any, session: any) => {
       if (event === 'SIGNED_IN' && session) {
         console.log('[AuthPage] Caught SIGNED_IN event, redirecting to projects');
         router.push(`/app/projects`);
