@@ -77,7 +77,7 @@ export default function StudioPage() {
   
   // Teleprompter States
   const [isReading, setIsReading] = useState(false);
-  const [scrollSpeed, setScrollSpeed] = useState(2);
+  const [scrollSpeed, setScrollSpeed] = useState(1);
   const [textSize, setTextSize] = useState<'sm' | 'md' | 'lg'>('sm');
   const [isMirrored, setIsMirrored] = useState(false);
   const [countdown, setCountdown] = useState<number | null>(null);
@@ -1527,6 +1527,13 @@ export default function StudioPage() {
                   textSize={textSize}
                   scriptOpacity={scriptOpacity}
                   scriptColor={scriptColor}
+                  audioDevices={audioDevices}
+                  selectedAudioDeviceId={selectedAudioDeviceId}
+                  onAudioDeviceChange={(id) => {
+                    setSelectedAudioDeviceId(id);
+                    stopCamera();
+                    setTimeout(() => initCamera(), 100);
+                  }}
                   onScriptUpdate={async (text) => {
                     // 1. Update local states immediately
                     setCustomScript(text);

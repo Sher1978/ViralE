@@ -37,6 +37,9 @@ interface TeleprompterViewProps {
   isVoiceOnly?: boolean;
   onFinish?: () => void;
   recordingTime?: number;
+  audioDevices?: any[];
+  selectedAudioDeviceId?: string;
+  onAudioDeviceChange?: (id: string) => void;
   t: (key: string, data?: any) => string;
 }
 
@@ -69,6 +72,9 @@ export const TeleprompterView = React.memo(({
   scriptColor,
   onColorChange,
   recordingTime = 0,
+  audioDevices = [],
+  selectedAudioDeviceId = '',
+  onAudioDeviceChange,
   t,
 }: TeleprompterViewProps) => {
   const router = useRouter();
@@ -323,10 +329,19 @@ export const TeleprompterView = React.memo(({
       </AnimatePresence>
       
       {/* 🔮 Top HUD - Reading Zone Marker */}
-      <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black via-black/85 to-transparent z-40" />
+      <div className="absolute top-0 left-0 right-0 h-40 bg-gradient-to-b from-black via-black/85 to-transparent z-40 pointer-events-none" />
 
-      {/* 🔮 Bottom Fade Gradient - masks text from overlapping bottom record controls */}
-      <div className="absolute bottom-0 left-0 right-0 h-60 bg-gradient-to-t from-black via-black/90 to-transparent z-30 pointer-events-none" />
+      {/* 🔮 Bottom Fade Gradient & Blur Mask - text fades out and blurs as it reaches bottom */}
+      <div 
+        className="absolute bottom-0 left-0 right-0 h-[45vh] z-30 pointer-events-none"
+        style={{
+          backdropFilter: 'blur(6px)',
+          WebkitBackdropFilter: 'blur(6px)',
+          maskImage: 'linear-gradient(to top, black 0%, black 20%, transparent 100%)',
+          WebkitMaskImage: 'linear-gradient(to top, black 0%, black 20%, transparent 100%)'
+        }}
+      />
+      <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black via-black/95 to-transparent z-[35] pointer-events-none" />
       
       <div className="absolute top-8 left-0 right-0 px-6 flex items-center justify-between z-[45]">
         <button 
@@ -385,85 +400,83 @@ export const TeleprompterView = React.memo(({
         </div>
       </div>
 
-      {/* 🛠️ Side Control Bar - Restored and Optimized */}
-      <div className="absolute right-6 top-1/2 -translate-y-1/2 flex flex-col gap-3 z-40">
+      {/* 🛠️ Bottom Navigation Bar - Glassmorphic */}
+      <div className="absolute bottom-6 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto flex flex-col items-center gap-4 z-50">
         
-        {/* Speed Controller: [ - ] SPEED [ + ] */}
-        <div className="flex flex-col items-center bg-black/40 backdrop-blur-xl border border-white/10 rounded-full py-3 px-1 gap-4 mb-4">
-           <button 
-             onClick={() => onSpeedChange(Math.max(1, scrollSpeed - 1))}
-             className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-75 transition-all"
-           >
-              <span className="text-xl font-bold leading-none">-</span>
-           </button>
-           <div className="flex flex-col items-center">
-              <span className="text-[10px] font-black text-purple-400 leading-none">{scrollSpeed}</span>
-              <span className="text-[6px] font-black uppercase text-white/30 tracking-tighter mt-1">SPD</span>
-           </div>
-           <button 
-             onClick={() => onSpeedChange(Math.min(20, scrollSpeed + 1))}
-             className="w-10 h-10 rounded-full bg-white/10 flex items-center justify-center text-white active:scale-75 transition-all"
-           >
-              <span className="text-xl font-bold leading-none">+</span>
-           </button>
-        </div>
-
-        <button 
-          onClick={rotateTextSize}
-          className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
-        >
-          <Type size={18} />
-          <span className="text-[6px] font-black uppercase mt-0.5">{textSize}</span>
-        </button>
-
-        <button 
-          onClick={rotateColor}
-          className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
-        >
-          <Palette size={18} style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }} />
-          <span className="text-[6px] font-black uppercase mt-0.5" style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }}>COLOR</span>
-        </button>
-
-        <button 
-          onClick={rotateOpacity}
-          className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
-        >
-          <div className="w-4 h-4 rounded-full border border-white/40 overflow-hidden flex flex-col">
-             <div className="flex-1 bg-white" style={{ opacity: scriptOpacity }} />
-          </div>
-          <span className="text-[7px] font-black uppercase mt-0.5">{Math.round(scriptOpacity * 100)}%</span>
-        </button>
-        {!isVoiceOnly && (
-          <button 
-            onClick={onFlipCamera}
-            className="w-14 h-14 rounded-full bg-black/40 backdrop-blur-xl border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-90"
-          >
-            <RotateCw size={18} />
-            <span className="text-[7px] font-black uppercase mt-0.5">Flip</span>
-          </button>
-        )}
-      </div>
-
-      {/* Recording Button - Center Bottom Fixed */}
-      <div className="absolute bottom-24 left-0 right-0 flex justify-center z-50">
+        {/* Record Button (above the control bar or inside it) */}
         <motion.button 
           whileTap={{ scale: 0.9 }}
           onClick={onToggleRecording}
-          className="w-24 h-24 rounded-full border-4 border-white flex items-center justify-center relative bg-black/20 backdrop-blur-md shadow-2xl"
+          className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center relative bg-black/20 backdrop-blur-md shadow-2xl"
         >
           <div className={`transition-all duration-300 ${
             isRecordingVideo 
-              ? 'w-10 h-10 bg-red-600 rounded-xl animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.8)]' 
-              : 'w-20 h-20 bg-red-600 rounded-full shadow-[0_0_30px_rgba(239,68,68,0.5)]'
+              ? 'w-8 h-8 bg-red-600 rounded-xl animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.8)]' 
+              : 'w-16 h-16 bg-red-600 rounded-full shadow-[0_0_30px_rgba(239,68,68,0.5)]'
           }`} />
           
           {isRecordingVideo && (
-            <div className="absolute -top-12 px-4 py-1.5 rounded-full bg-red-600 border border-red-400 text-white text-[9px] font-black tracking-widest uppercase flex items-center gap-2 shadow-[0_0_30px_rgba(220,38,38,0.5)]">
+            <div className="absolute -top-10 px-3 py-1 rounded-full bg-red-600 border border-red-400 text-white text-[9px] font-black tracking-widest uppercase flex items-center gap-2 shadow-[0_0_30px_rgba(220,38,38,0.5)]">
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span>REC {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
             </div>
           )}
         </motion.button>
+
+        {/* Control Buttons */}
+        <div className="flex items-center justify-center gap-1.5 bg-white/10 backdrop-blur-2xl border border-white/20 p-2 rounded-[2rem] shadow-2xl w-full max-w-[95vw] sm:max-w-none overflow-x-auto scrollbar-none">
+          {/* Audio Source Selector */}
+          <div className="relative w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 active:scale-95 transition-all flex-shrink-0">
+            <Mic2 size={16} />
+            <span className="text-[5px] font-black uppercase mt-0.5">Mic</span>
+            <select
+              className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
+              value={selectedAudioDeviceId || ''}
+              onChange={(e) => onAudioDeviceChange?.(e.target.value)}
+            >
+              {audioDevices.length === 0 && <option value="">Default Mic</option>}
+              {audioDevices.map((d: any) => (
+                <option key={d.deviceId} value={d.deviceId}>
+                  {d.label || `Mic ${d.deviceId.slice(0, 5)}...`}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <button onClick={rotateTextSize} className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
+            <Type size={16} />
+            <span className="text-[5px] font-black uppercase mt-0.5">{textSize}</span>
+          </button>
+
+          <button onClick={rotateColor} className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
+            <Palette size={16} style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }} />
+            <span className="text-[5px] font-black uppercase mt-0.5" style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }}>COLOR</span>
+          </button>
+
+          {/* Speed Controller */}
+          <div className="flex items-center bg-black/40 rounded-[2rem] px-1 border border-white/10 h-12 flex-shrink-0">
+            <button onClick={() => onSpeedChange(Math.max(1, scrollSpeed - 1))} className="w-10 h-full flex items-center justify-center text-white/80 hover:text-white active:scale-75 transition-all text-lg font-bold">-</button>
+            <div className="flex flex-col items-center justify-center w-6">
+              <span className="text-[10px] font-black text-purple-400 leading-none">{scrollSpeed}</span>
+              <span className="text-[4px] font-black uppercase text-white/30 tracking-tighter mt-0.5">SPD</span>
+            </div>
+            <button onClick={() => onSpeedChange(Math.min(20, scrollSpeed + 1))} className="w-10 h-full flex items-center justify-center text-white/80 hover:text-white active:scale-75 transition-all text-lg font-bold">+</button>
+          </div>
+
+          <button onClick={rotateOpacity} className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
+            <div className="w-3 h-3 rounded-full border border-white/40 overflow-hidden flex flex-col">
+              <div className="flex-1 bg-white" style={{ opacity: scriptOpacity }} />
+            </div>
+            <span className="text-[5px] font-black uppercase mt-0.5">{Math.round(scriptOpacity * 100)}%</span>
+          </button>
+
+          {!isVoiceOnly && (
+            <button onClick={onFlipCamera} className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
+              <RotateCw size={16} />
+              <span className="text-[5px] font-black uppercase mt-0.5">Flip</span>
+            </button>
+          )}
+        </div>
       </div>
 
       {/* Control elements removed per request */}
