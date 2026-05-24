@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter, Link } from '@/navigation';
-import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, ArrowLeft, Loader2, AlertCircle, HardDrive, Image as ImageIcon, Folder, Plus } from 'lucide-react';
+import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, ArrowLeft, Loader2, AlertCircle, HardDrive, Image as ImageIcon, Folder, Plus, Volume2, VolumeX } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { renderService, RenderJob } from '@/lib/services/renderService';
 import { socialService } from '@/lib/services/socialService';
@@ -35,6 +35,8 @@ function DeliveryPageContent() {
   const [renderStatus, setRenderStatus] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
+  const [isMuted, setIsMuted] = useState(true);
+  const videoRef = useRef<HTMLVideoElement>(null);
 
   const [displayProgress, setDisplayProgress] = useState(0);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
@@ -602,7 +604,38 @@ function DeliveryPageContent() {
 
       <div className="rounded-[2.5rem] overflow-hidden bg-[#050508] border border-white/10 aspect-[9/16] max-h-[500px] mx-auto relative shadow-2xl group">
         {job?.output_url ? (
-          <video src={job.output_url} controls className="w-full h-full object-cover" />
+          <div className="relative w-full h-full">
+            <video 
+              ref={videoRef}
+              src={job.output_url} 
+              autoPlay 
+              loop 
+              muted={isMuted}
+              playsInline 
+              onClick={() => {
+                const video = videoRef.current as any;
+                if (video) {
+                  if (video.paused) {
+                    video.play().catch((err: any) => console.log('Play blocked:', err));
+                  } else {
+                    video.pause();
+                  }
+                }
+              }}
+              className="w-full h-full object-cover cursor-pointer" 
+            />
+            {/* Premium Floating Mute Control */}
+            <button 
+              onClick={(e) => {
+                e.stopPropagation();
+                setIsMuted(!isMuted);
+              }}
+              className="absolute top-4 right-4 z-20 p-3 rounded-full bg-black/50 backdrop-blur-md border border-white/10 text-white/90 hover:text-white hover:bg-black/70 hover:scale-105 active:scale-95 transition-all shadow-lg"
+              title={isMuted ? "Включить звук" : "Выключить звук"}
+            >
+              {isMuted ? <VolumeX size={18} /> : <Volume2 size={18} />}
+            </button>
+          </div>
         ) : (
           <div className="relative w-full h-full">
             {previewUrl && (
