@@ -29,6 +29,43 @@ export const safeJobUpdate = async (client: any, id: string, updatePayload: any)
 };
 
 /**
+ * Maps subtitleStyle index to CSS styles for Shotstack HTML rendering.
+ */
+export function getSubtitleCss(styleIndex: number): string {
+  // Base font style and alignments ensuring optimal premium rendering
+  let baseCss = "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-size: 42px; text-transform: uppercase; text-align: center; margin: 0; padding: 0; ";
+
+  switch (styleIndex) {
+    case 0: // Yellow Italic
+      return baseCss + "color: #facc15; font-style: italic; font-weight: 900; text-shadow: 1px 1px 0px #000, 0px 0px 10px rgba(0,0,0,0.5); }";
+    case 1: // White Bold
+      return baseCss + "color: #ffffff; font-weight: 900; text-shadow: 0 4px 10px rgba(0,0,0,0.6), 0px 0px 20px rgba(0,0,0,0.3); }";
+    case 2: // Red Outline
+      return baseCss + "color: #ef4444; font-weight: 900; -webkit-text-stroke: 1.5px white; text-shadow: 2px 2px 0px rgba(0,0,0,0.8); }";
+    case 3: // Cyber Neon
+      return baseCss + "color: #22d3ee; font-weight: 700; font-style: italic; text-shadow: 0 0 12px #22d3ee, 0px 0px 4px rgba(0,0,0,0.8); }";
+    case 4: // Minimalist
+      return "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-size: 32px; text-transform: uppercase; text-align: center; margin: 0; color: #ffffff; background-color: rgba(0,0,0,0.65); padding: 8px 16px; border-radius: 8px; font-weight: 500; display: inline-block; }";
+    case 5: // Boxy Yellow
+      return "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-size: 32px; text-transform: uppercase; text-align: center; margin: 0; color: #000000; background-color: #facc15; padding: 6px 16px; font-weight: 900; border-radius: 4px; display: inline-block; }";
+    case 6: // Gradient
+      return baseCss + "color: #ffffff; font-weight: 900; text-shadow: 0 2px 0px #888888, 0 4px 10px rgba(0,0,0,0.6); }";
+    case 7: // Soft Pink
+      return baseCss + "color: #f472b6; font-weight: 600; text-shadow: 0 0 15px rgba(244,114,182,0.6), 0px 0px 4px rgba(0,0,0,0.8); }";
+    case 8: // Ghostly
+      return baseCss + "color: rgba(255,255,255,0.55); font-weight: 300; letter-spacing: 0.08em; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }";
+    case 9: // Impact
+      return baseCss + "color: #ffffff; font-weight: 900; text-shadow: 0 0 20px #ffffff, 0 0 5px rgba(0,0,0,0.8); }";
+    case 10: // Hacker
+      return "p { font-family: 'Courier New', 'Courier', monospace; font-size: 38px; color: #10b981; text-shadow: 0 0 8px #10b981, 0 0 2px rgba(0,0,0,0.8); font-weight: bold; text-align: center; margin: 0; padding: 0; text-transform: uppercase; }";
+    case 11: // Royal Gold
+      return baseCss + "color: #fbbf24; font-weight: 800; font-style: italic; text-shadow: 0 4px 8px rgba(0,0,0,0.7), 0 2px 0px #000; }";
+    default:
+      return baseCss + "color: #ffffff; font-weight: 900; text-shadow: 0 0 20px rgba(0,0,0,0.8); }";
+  }
+}
+
+/**
  * Universal Interface for Video Generation
  * Can be implemented by Replicate, HeyGen, or Mock services
  */
@@ -605,7 +642,7 @@ export async function submitVideoJob(jobId: string) {
       const endpoint = isStage ? 'https://api.shotstack.io/stage/render' : 'https://api.shotstack.io/v1/render';
       
       const { script, settings } = config;
-      const { brollClips = [], subtitleClips = [], aRollUrl, showSubtitles = true } = script || {};
+      const { brollClips = [], subtitleClips = [], aRollUrl, showSubtitles = true, subtitleStyle = 0 } = script || {};
 
       if (!aRollUrl) throw new Error('A-Roll URL is missing in manifest');
 
@@ -626,13 +663,26 @@ export async function submitVideoJob(jobId: string) {
       );
       console.log(`[Trace 13-Shotstack] All asset URLs signed.`);
 
+      // Calculate realistic A-Roll duration from clips to avoid hardcoded 60s lengths
+      let aRollLength = 20; // safe fallback
+      if (subtitleClips && subtitleClips.length > 0) {
+        aRollLength = Math.max(...subtitleClips.map((s: any) => s.endTime || 0));
+      }
+      if (brollClips && brollClips.length > 0) {
+        const maxBroll = Math.max(...brollClips.map((b: any) => b.endTime || 0));
+        aRollLength = Math.max(aRollLength, maxBroll);
+      }
+      // Add a tiny safety padding so the speaker's final word is never truncated, keeping it within sensible limits
+      aRollLength = Math.max(1, Math.min(300, aRollLength + 0.5));
+      console.log(`[Trace 13-Shotstack-Duration] Calculated A-Roll rendering duration: ${aRollLength}s (from clips)`);
+
       const formattedSubtitleClips = showSubtitles ? subtitleClips.map((s: any) => ({
         asset: {
           type: "html",
           html: `<p data-alignment="center">${s.text}</p>`,
-          css: "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-weight: normal; color: #ffffff; font-size: 42px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,0,0,0.8); }",
+          css: getSubtitleCss(subtitleStyle),
           width: 800,
-          height: 200
+          height: 250
         },
         start: s.startTime,
         length: Math.max(0.1, s.endTime - s.startTime),
@@ -669,7 +719,7 @@ export async function submitVideoJob(jobId: string) {
                   src: signedARollUrl
                 },
                 start: 0,
-                length: 60,
+                length: aRollLength,
                 fit: "cover"
               }
             ]
