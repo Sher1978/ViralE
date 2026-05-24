@@ -215,6 +215,9 @@ function DeliveryPageContent() {
           setPreviewUrl(verData.script_data.aRollUrl);
         }
 
+        // Disable full-screen loading as we now have the required version artifacts to render the layout
+        setIsLoading(false);
+
         if (jobId) {
           addSystemLog(`Режим отслеживания существующей задачи ID: ${jobId}`);
           return;
@@ -223,7 +226,6 @@ function DeliveryPageContent() {
         // Auto-launch the serverless API
         addSystemLog('Запуск авто-рендеринга на сервере...');
         setRenderStatus('Инициализация серверной сборки...');
-        setIsLoading(true);
 
         const response = await fetch(`/api/projects/${projectId}/launch`, {
           method: 'POST',
@@ -270,7 +272,6 @@ function DeliveryPageContent() {
 
     console.log('[Realtime] Subscribing to render job status updates for:', jobId);
     addSystemLog(`Подключение к каналу отслеживания реального времени для задачи: ${jobId}`);
-    setIsLoading(true);
 
     // 1. Fetch initial job state
     renderService.getJobStatus(jobId).then((initialJob) => {

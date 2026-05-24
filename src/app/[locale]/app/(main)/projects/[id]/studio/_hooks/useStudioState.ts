@@ -85,6 +85,13 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   useEffect(() => {
     if (initialManifest) setManifest(initialManifest);
   }, [initialManifest]);
+
+  // Synchronize local A-Roll state when parent updates prop (e.g. background normalization completes upload)
+  useEffect(() => {
+    if (propARollUrl) {
+      setARollUrl(propARollUrl);
+    }
+  }, [propARollUrl]);
   
   // Stage machine
   const initialUrl = propARollUrl || initialManifest?.videoUrl || initialManifest?.segments?.[0]?.assetUrl || null;

@@ -1288,6 +1288,8 @@ export default function StudioPage() {
       // 🚀 Merge editor state into manifest
       const manifestAny = manifest as any;
       let resolvedARollUrl = 
+        (explicitARollUrl && !explicitARollUrl.startsWith('blob:') ? explicitARollUrl : null) ||
+        (manifestAny.videoUrl && !manifestAny.videoUrl.startsWith('blob:') ? manifestAny.videoUrl : null) ||
         explicitARollUrl ||
         manifestAny.videoUrl ||
         manifestAny.aRollUrl ||
