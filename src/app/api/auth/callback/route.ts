@@ -104,10 +104,12 @@ export async function GET(request: Request) {
               const cookieName = "sb-" + projectRef + "-auth-token";
               document.cookie = cookieName + "=" + accessToken + "; path=/; max-age=604800; SameSite=Lax; Secure";
             }
-            // Redirect to destination, appending the hash so supabase-js client can also sync it
-            window.location.href = window.location.origin + next + hash;
+            // Delay redirect slightly to ensure iOS Safari persists the cookie before context unload
+            setTimeout(function() {
+              window.location.replace(window.location.origin + next + hash);
+            }, 100);
           } else {
-            window.location.href = window.location.origin + "/auth?error=auth-failure";
+            window.location.replace(window.location.origin + "/auth?error=auth-failure");
           }
         })();
       </script>
