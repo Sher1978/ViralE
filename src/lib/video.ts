@@ -120,6 +120,31 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
         })
       );
 
+      const formattedSubtitleClips = showSubtitles ? subtitleClips.map((s: any) => ({
+        asset: {
+          type: "html",
+          html: `<p data-alignment="center">${s.text}</p>`,
+          css: "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-weight: normal; color: #ffffff; font-size: 42px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,0,0,0.8); }",
+          width: 800,
+          height: 200
+        },
+        start: s.startTime,
+        length: Math.max(0.1, s.endTime - s.startTime),
+        position: "center",
+        offset: { y: -0.2 } // Lower third
+      })) : [];
+
+      const formattedBrollClips = signedBrollClips.filter((b: any) => b.url).map((b: any) => ({
+        asset: {
+          type: "video",
+          src: b.url,
+          volume: 0 // Mute B-roll
+        },
+        start: b.startTime,
+        length: Math.max(0.1, b.endTime - b.startTime),
+        fit: "cover"
+      }));
+
       // 1. Construct Shotstack Edit JSON
       const timeline = {
         background: "#000000",
@@ -129,36 +154,8 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
           }
         ],
         tracks: [
-          // Track 1: Subtitles (Text)
-          {
-            clips: showSubtitles ? subtitleClips.map((s: any) => ({
-              asset: {
-                type: "html",
-                html: `<p data-alignment="center">${s.text}</p>`,
-                css: "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-weight: normal; color: #ffffff; font-size: 42px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,0,0,0.8); }",
-                width: 800,
-                height: 200
-              },
-              start: s.startTime,
-              length: Math.max(0.1, s.endTime - s.startTime),
-              position: "center",
-              offset: { y: -0.2 } // Lower third
-            })) : []
-          },
-          // Track 2: B-Roll (Overlays)
-          {
-            clips: signedBrollClips.filter((b: any) => b.url).map((b: any) => ({
-              asset: {
-                type: "video",
-                src: b.url,
-                volume: 0 // Mute B-roll
-              },
-              start: b.startTime,
-              length: Math.max(0.1, b.endTime - b.startTime),
-              fit: "cover"
-            }))
-          },
-          // Track 3: A-Roll (Background)
+          ...(formattedSubtitleClips.length > 0 ? [{ clips: formattedSubtitleClips }] : []),
+          ...(formattedBrollClips.length > 0 ? [{ clips: formattedBrollClips }] : []),
           {
             clips: [
               {
