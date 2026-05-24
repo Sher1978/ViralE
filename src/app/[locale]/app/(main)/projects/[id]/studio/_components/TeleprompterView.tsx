@@ -432,7 +432,7 @@ export const TeleprompterView = React.memo(({
             <select
               className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
               value={selectedAudioDeviceId || ''}
-              onChange={(e) => onAudioDeviceChange?.(e.target.value)}
+              onChange={(e) => onAudioDeviceChange?.((e.target as any).value)}
             >
               {audioDevices.length === 0 && <option value="">Default Mic</option>}
               {audioDevices.map((d: any) => (
