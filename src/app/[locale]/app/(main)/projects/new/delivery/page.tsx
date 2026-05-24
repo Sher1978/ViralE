@@ -245,7 +245,7 @@ function DeliveryPageContent() {
       .replace(/\]/g, '\\\\]');
 
     const subStyleIdx = manifest?.subtitleStyle || 0;
-    const subSizeRaw = manifest?.subtitleSize || 25; // Default matches StudioViewport.tsx
+    const subSizeRaw = manifest?.subtitleSize || 18; // Default matches StudioViewport.tsx
     const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
     
     // Scale subtitle size to match 1080p canvas proportions

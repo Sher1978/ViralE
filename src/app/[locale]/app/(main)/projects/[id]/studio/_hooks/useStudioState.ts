@@ -118,7 +118,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   const [transcriptionError, setTranscriptionError] = useState<string | null>(null);
   const [isAnalyzingBroll, setIsAnalyzingBroll] = useState(false);
   const [subtitlePos, setSubtitlePos] = useState({ x: 0, y: 0 });
-  const [subtitleSize, setSubtitleSize] = useState(25); // Reduced default size 3x (was 80)
+  const [subtitleSize, setSubtitleSize] = useState(18); // Reduced default size 30% further (was 25, originally 80)
   const [subtitleStyle, setSubtitleStyle] = useState<number>(0);
   const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
   const [pxPerSecond, setPxPerSecond] = useState(100);
@@ -162,7 +162,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
             setStage(data.stage);
           }
           if (data.subtitlePos) setSubtitlePos(data.subtitlePos);
-          if (data.subtitleSize) setSubtitleSize(data.subtitleSize || 25);
+          if (data.subtitleSize) setSubtitleSize(data.subtitleSize || 18);
           if (data.subtitleStyle !== undefined) setSubtitleStyle(data.subtitleStyle);
           if (data.showSubtitles !== undefined) setShowSubtitles(data.showSubtitles);
           if (data.pxPerSecond) setPxPerSecond(data.pxPerSecond);
