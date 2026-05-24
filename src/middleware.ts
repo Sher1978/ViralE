@@ -10,18 +10,19 @@ const intlMiddleware = createMiddleware(routing);
 export function middleware(request: NextRequest) {
   const { pathname } = request.nextUrl;
 
-  const isBypass = pathname.includes('.') || 
+  const isI18nBypass = pathname.includes('.') || 
     pathname.startsWith('/api') || 
-    pathname.startsWith('/_next') ||
-    pathname.startsWith('/auth');
+    pathname.startsWith('/_next');
 
   // Run i18n middleware first to handle locales
-  const response = isBypass ? NextResponse.next() : intlMiddleware(request);
+  const response = isI18nBypass ? NextResponse.next() : intlMiddleware(request);
 
   // Inject pathname for server components layout logic
   response.headers.set('x-pathname', pathname);
 
-  if (isBypass) {
+  // Bypass Supabase auth checks for static assets, APIs, and auth pages
+  const isAuthBypass = isI18nBypass || pathname.includes('/auth');
+  if (isAuthBypass) {
     return response;
   }
 
