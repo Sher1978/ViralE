@@ -4,7 +4,7 @@ import { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter, Link } from '@/navigation';
-import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, ArrowLeft, Loader2, AlertCircle, HardDrive, Image as ImageIcon, Folder, Plus, Volume2, VolumeX } from 'lucide-react';
+import { CheckCircle, Copy, Download, Share2, Send, Play, ArrowRight, ArrowLeft, Loader2, AlertCircle, HardDrive, Image as ImageIcon, Folder, Plus, Volume2, VolumeX, RefreshCw } from 'lucide-react';
 import { StatusStepper } from '@/components/ui/StatusStepper';
 import { renderService, RenderJob } from '@/lib/services/renderService';
 import { socialService } from '@/lib/services/socialService';
@@ -37,6 +37,7 @@ function DeliveryPageContent() {
   const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
+  const previewVideoRef = useRef<HTMLVideoElement>(null);
 
   const [displayProgress, setDisplayProgress] = useState(0);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
@@ -283,6 +284,18 @@ function DeliveryPageContent() {
       });
     }
   }, [job?.output_url]);
+
+  // Premium auto-play trigger for background preview video during rendering
+  useEffect(() => {
+    const video = previewVideoRef.current as any;
+    if (video && previewUrl) {
+      console.log('[Delivery] Forcing background preview load and play for:', previewUrl);
+      video.load();
+      video.play().catch((err: any) => {
+        console.warn('[Delivery] Background play failed:', err);
+      });
+    }
+  }, [previewUrl]);
 
   // Phase 7: Automate launching server-side render if jobId is not specified
   useEffect(() => {
@@ -563,13 +576,57 @@ function DeliveryPageContent() {
         </div>
 
         {job?.status !== 'completed' && (
-          <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner mt-2">
-            <motion.div 
-                className="h-full bg-gradient-to-r from-purple-600 to-blue-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]" 
-                initial={{ width: 0 }} 
-                animate={{ width: `${Math.max(0, Math.min(100, displayProgress))}%` }} 
-                transition={{ type: 'spring', damping: 25, stiffness: 50 }}
-            />
+          <div className="space-y-4 mt-2">
+            <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner">
+              <motion.div 
+                  className="h-full bg-gradient-to-r from-purple-600 to-blue-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]" 
+                  initial={{ width: 0 }} 
+                  animate={{ width: `${Math.max(0, Math.min(100, displayProgress))}%` }} 
+                  transition={{ type: 'spring', damping: 25, stiffness: 50 }}
+              />
+            </div>
+            
+            {/* Real-time Shotstack Sync Button */}
+            <div className="flex justify-center">
+              <button
+                onClick={async () => {
+                  try {
+                    addSystemLog('Запрос проверки статуса на сервере Shotstack...');
+                    const syncRes = await fetch(`/api/debug-db?jobId=${jobId}&projectId=${projectId}`);
+                    const syncData = await syncRes.json();
+                    
+                    if (syncData.success) {
+                      const shotstackStatus = syncData.shotstack?.status || 'unknown';
+                      addSystemLog(`Результат проверки: Shotstack статус - "${shotstackStatus}".`);
+                      
+                      if (shotstackStatus === 'done' && syncData.shotstack?.videoUrl) {
+                        addSystemLog('Видео готово! Перезагрузка страницы для обновления плеера...');
+                        (globalThis as any).window?.location?.reload();
+                      } else {
+                        (globalThis as any).alert?.(
+                          locale === 'ru' 
+                            ? `Видео еще рендерится. Статус в Shotstack: "${shotstackStatus}". Пожалуйста, подождите немного.`
+                            : `Video is still rendering. Status in Shotstack: "${shotstackStatus}". Please wait a bit.`
+                        );
+                      }
+                    } else {
+                      throw new Error(syncData.error || 'Unknown error');
+                    }
+                  } catch (err: any) {
+                    addSystemLog(`Ошибка проверки статуса: ${err.message}`);
+                    (globalThis as any).alert?.(
+                      locale === 'ru' 
+                        ? `Не удалось проверить статус: ${err.message}`
+                        : `Failed to check status: ${err.message}`
+                    );
+                  }
+                }}
+                className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600/20 border border-purple-500/30 text-purple-300 text-[10px] font-black uppercase tracking-widest hover:bg-purple-600/30 hover:text-white active:scale-95 transition-all shadow-md"
+              >
+                <RefreshCw size={12} className="animate-spin-slow" />
+                {locale === 'ru' ? 'Проверить готовность видео' : 'Check Video Readiness'}
+              </button>
+            </div>
           </div>
         )}
       </div>
@@ -660,11 +717,13 @@ function DeliveryPageContent() {
           <div className="relative w-full h-full">
             {previewUrl && (
               <video 
+                ref={previewVideoRef}
                 src={previewUrl} 
                 autoPlay 
                 muted 
                 loop 
                 playsInline 
+                crossOrigin="anonymous"
                 className="absolute inset-0 w-full h-full object-cover transition-all duration-1000" 
                 style={{ 
                     filter: `blur(${Math.max(0, 12 - (renderProgress / 100) * 12)}px) brightness(${0.4 + (renderProgress / 100) * 0.6})`,
