@@ -41,6 +41,7 @@ function DeliveryPageContent() {
 
   const [displayProgress, setDisplayProgress] = useState(0);
   const [statusMessageIndex, setStatusMessageIndex] = useState(0);
+  const [shotstackRealStatus, setShotstackRealStatus] = useState<string | null>(null);
 
   const statusStepsRu = [
     'Собираем проект в облаке Shotstack...',
@@ -100,12 +101,42 @@ function DeliveryPageContent() {
     return () => clearInterval(interval);
   }, [job?.status]);
 
+  // Build real-time explanatory status message based on actual Shotstack state
+  const getShotstackStatusText = () => {
+    if (!shotstackRealStatus) return null;
+    
+    switch (shotstackRealStatus.toLowerCase()) {
+      case 'queued':
+        return locale === 'ru' 
+          ? 'В очереди Shotstack (Сервер ждет запуска)...' 
+          : 'Queued in Shotstack (Waiting to start)...';
+      case 'rendering':
+      case 'processing':
+        return locale === 'ru' 
+          ? 'Рендерим видео (Сервер обрабатывает кадры)...' 
+          : 'Rendering video (Server is processing frames)...';
+      case 'done':
+      case 'completed':
+        return locale === 'ru' 
+          ? 'Рендер окончен! Загружаем финальную версию...' 
+          : 'Render completed! Fetching final cut...';
+      case 'failed':
+        return locale === 'ru' 
+          ? 'Ошибка: Рендеринг в Shotstack завершился сбоем' 
+          : 'Error: Shotstack rendering failed';
+      default:
+        return locale === 'ru'
+          ? `Рендеринг в процессе (Ответ сервера: "${shotstackRealStatus}")...`
+          : `Rendering in progress (Server response: "${shotstackRealStatus}")...`;
+    }
+  };
+
   const currentStatusMsg = job?.status === 'completed'
     ? 'Готово!'
     : job?.status === 'failed'
     ? 'Ошибка сборки'
     : job?.status === 'processing' || job?.status === 'queued'
-    ? (locale === 'ru' ? statusStepsRu[statusMessageIndex] : statusStepsEn[statusMessageIndex])
+    ? (getShotstackStatusText() || (locale === 'ru' ? statusStepsRu[statusMessageIndex] : statusStepsEn[statusMessageIndex]))
     : (renderStatus || 'Сборка проекта...');
 
   // Sync state once version/manifest loads
@@ -296,6 +327,47 @@ function DeliveryPageContent() {
       });
     }
   }, [previewUrl]);
+
+  // Automated background polling for real-time Shotstack status updates
+  useEffect(() => {
+    if (job?.status !== 'processing' && job?.status !== 'queued') {
+      return;
+    }
+
+    let isSubscribed = true;
+    
+    async function pollShotstackStatus() {
+      try {
+        const syncRes = await fetch(`/api/debug-db?jobId=${jobId}&projectId=${projectId}`);
+        const syncData = await syncRes.json();
+        
+        if (isSubscribed && syncData.success) {
+          const rawStatus = syncData.shotstack?.status || null;
+          setShotstackRealStatus(rawStatus);
+          
+          // Auto reload if completed
+          if (rawStatus === 'done' && syncData.shotstack?.videoUrl) {
+            addSystemLog('Видео готово! Перезагрузка страницы для обновления плеера...');
+            isSubscribed = false;
+            (globalThis as any).window?.location?.reload();
+          }
+        }
+      } catch (err) {
+        console.warn('[Delivery] Background status check failed:', err);
+      }
+    }
+
+    // Initial check
+    pollShotstackStatus();
+
+    // Poll every 3500ms
+    const interval = setInterval(pollShotstackStatus, 3500);
+
+    return () => {
+      isSubscribed = false;
+      clearInterval(interval);
+    };
+  }, [job?.status, jobId, projectId]);
 
   // Phase 7: Automate launching server-side render if jobId is not specified
   useEffect(() => {
