@@ -14,6 +14,21 @@ export interface VideoGenerationResult {
 }
 
 /**
+ * Universal Resilient Update Helper
+ * Bypasses Supabase PostgREST PGRST204 schema cache errors by falling back to core columns.
+ */
+export const safeJobUpdate = async (client: any, id: string, updatePayload: any) => {
+  const res = await client.from('render_jobs').update(updatePayload).eq('id', id);
+  if (res.error && (res.error.code === 'PGRST204' || res.error.message?.includes('schema cache'))) {
+    console.warn('[SafeJobUpdate] Schema cache error detected. Retrying minimalist update...');
+    const minimal = { status: updatePayload.status, progress: updatePayload.progress, error_log: updatePayload.error_log };
+    Object.keys(minimal).forEach(k => (minimal as any)[k] === undefined && delete (minimal as any)[k]);
+    return await client.from('render_jobs').update(minimal).eq('id', id);
+  }
+  return res;
+};
+
+/**
  * Universal Interface for Video Generation
  * Can be implemented by Replicate, HeyGen, or Mock services
  */
@@ -208,10 +223,7 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
 
         // Update progress in DB during polling
         const progress = 10 + (attempts * 3);
-        await supabase
-          .from('render_jobs')
-          .update({ progress: Math.min(95, progress), status_message: `Rendering 1080p (${status})...` })
-          .eq('id', job.id);
+        await safeJobUpdate(supabase, job.id, { progress: Math.min(95, progress), status_message: `Rendering 1080p (${status})...` });
       }
 
       if (!videoUrl) throw new Error('Rendering timed out or failed');
@@ -305,10 +317,7 @@ export class MockVideoGenerator implements IVideoGenerator {
 
     for (const step of steps) {
       await new Promise(resolve => setTimeout(resolve, 1500));
-      await supabase
-        .from('render_jobs')
-        .update({ progress: step.p, status_message: step.msg })
-        .eq('id', job.id);
+      await safeJobUpdate(supabase, job.id, { progress: step.p, status_message: step.msg });
     }
 
     await new Promise(resolve => setTimeout(resolve, 1000));
@@ -357,10 +366,7 @@ export async function processVideoJob(jobId: string) {
     }
 
     // 2. Mark as Processing
-    await supabase
-      .from('render_jobs')
-      .update({ status: 'processing', progress: 5, status_message: 'Initializing Engine...' })
-      .eq('id', jobId);
+    await safeJobUpdate(supabase, jobId, { status: 'processing', progress: 5, status_message: 'Initializing Engine...' });
 
     // 3. Trigger Generation
     const result = await generator.generate({
@@ -372,15 +378,12 @@ export async function processVideoJob(jobId: string) {
 
     if (result.success && result.videoUrl) {
       // 4. Update Job as Completed
-      await supabase
-        .from('render_jobs')
-        .update({ 
+      await safeJobUpdate(supabase, jobId, { 
           status: 'completed', 
           progress: 100, 
           output_url: result.videoUrl,
           status_message: 'Ready to share!'
-        })
-        .eq('id', jobId);
+        });
 
       // 5. Update Project status
       await supabase
@@ -399,13 +402,10 @@ export async function processVideoJob(jobId: string) {
   } catch (error: any) {
     console.error(`[Orchestrator] Error processing job ${jobId}:`, error);
     
-    await supabase
-      .from('render_jobs')
-      .update({ 
+    await safeJobUpdate(supabase, jobId, { 
         status: 'failed', 
         error_log: error.message 
-      })
-      .eq('id', jobId);
+      });
       
     await supabase
       .from('projects')
@@ -463,18 +463,6 @@ export async function submitVideoJob(jobId: string) {
     const engine = config.engine || 'shotstack';
 
     console.log(`[Trace 7] updating render_jobs status to queued`);
-    
-    // Helper for resilient updates
-    const safeJobUpdate = async (client: any, id: string, updatePayload: any) => {
-      const res = await client.from('render_jobs').update(updatePayload).eq('id', id);
-      if (res.error && (res.error.code === 'PGRST204' || res.error.message?.includes('schema cache'))) {
-        console.warn(`[SafeJobUpdate] Schema cache error detected. Retrying minimalist update...`);
-        const minimal = { status: updatePayload.status, progress: updatePayload.progress, error_log: updatePayload.error_log };
-        Object.keys(minimal).forEach(k => (minimal as any)[k] === undefined && delete (minimal as any)[k]);
-        return await client.from('render_jobs').update(minimal).eq('id', id);
-      }
-      return res;
-    };
 
     // 1. Mark as Queued (keep status as 'pending' to satisfy production check constraints)
     const { error: queueUpdateError } = await safeJobUpdate(dbClient, jobId, { 
@@ -777,18 +765,8 @@ export async function submitVideoJob(jobId: string) {
       const { supabase: defaultSupabase, supabaseAdmin } = await import('./supabase');
       const hasServiceKey = !!process.env.SUPABASE_SERVICE_ROLE_KEY;
       const dbClient = hasServiceKey ? supabaseAdmin : defaultSupabase;
-      
-      const safeJobUpdateCatch = async (client: any, id: string, updatePayload: any) => {
-        const res = await client.from('render_jobs').update(updatePayload).eq('id', id);
-        if (res.error && (res.error.code === 'PGRST204' || res.error.message?.includes('schema cache'))) {
-          const minimal = { status: updatePayload.status, progress: updatePayload.progress, error_log: updatePayload.error_log };
-          Object.keys(minimal).forEach(k => (minimal as any)[k] === undefined && delete (minimal as any)[k]);
-          return await client.from('render_jobs').update(minimal).eq('id', id);
-        }
-        return res;
-      };
 
-      await safeJobUpdateCatch(dbClient, jobId, { 
+      await safeJobUpdate(dbClient, jobId, { 
         status: 'failed', 
         error_log: error.message,
         config_json: {
