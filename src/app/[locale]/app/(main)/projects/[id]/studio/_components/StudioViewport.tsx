@@ -45,7 +45,7 @@ const SUBTITLE_STYLES: Record<number, any> = {
     fontWeight: '900',
     fontFamily: "'Roboto-Bold', sans-serif",
     textTransform: 'uppercase' as const,
-    animation: { initial: { opacity: 0, y: 10, scale: 0.9 }, animate: { opacity: 1, y: 0, scale: 1 }, exit: { opacity: 0, scale: 1.1 } }
+    animation: { initial: { opacity: 0, y: 20, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -10, x: 0 }, transition: { duration: 0.15 } }
   },
   1: { // White Bold
     color: '#ffffff',
@@ -53,7 +53,7 @@ const SUBTITLE_STYLES: Record<number, any> = {
     fontWeight: '900',
     fontFamily: "'Roboto-Bold', sans-serif",
     textTransform: 'uppercase' as const,
-    animation: { initial: { opacity: 0, scale: 0.5 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 1.5 } }
+    animation: { initial: { opacity: 0, y: -20, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: 20, x: 0 }, transition: { duration: 0.15 } }
   },
   2: { // Red Outline
     color: '#ef4444',
@@ -61,14 +61,14 @@ const SUBTITLE_STYLES: Record<number, any> = {
     textShadow: '4px 4px 0px rgba(0,0,0,0.5)',
     fontWeight: '900',
     fontFamily: "'Roboto-Bold', sans-serif",
-    animation: { initial: { x: -50, opacity: 0 }, animate: { x: 0, opacity: 1 }, exit: { x: 50, opacity: 0 } }
+    animation: { initial: { opacity: 0, x: -50, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 50, y: 0 }, transition: { duration: 0.15 } }
   },
   3: { // Cyber Neon
     color: '#22d3ee',
     textShadow: '0 0 10px #22d3ee, 0 0 20px #22d3ee',
     fontWeight: '700',
     fontStyle: 'italic',
-    animation: { initial: { opacity: 0, filter: 'blur(10px)' }, animate: { opacity: 1, filter: 'blur(0px)' }, exit: { opacity: 0, filter: 'blur(5px)' } }
+    animation: { initial: { opacity: 0, x: -20, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 20, y: 0 }, transition: { duration: 0.15 } }
   },
   4: { // Minimalist
     color: '#ffffff',
@@ -77,7 +77,7 @@ const SUBTITLE_STYLES: Record<number, any> = {
     borderRadius: '8px',
     fontWeight: '500',
     fontSize: '0.8em',
-    animation: { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    animation: { initial: { opacity: 0, x: 0, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 0, y: 0 }, transition: { duration: 0.15 } }
   },
   5: { // Boxy Yellow
     color: '#000000',
@@ -85,45 +85,59 @@ const SUBTITLE_STYLES: Record<number, any> = {
     padding: '2px 10px',
     fontWeight: '900',
     textTransform: 'uppercase' as const,
-    animation: { initial: { rotateX: 90 }, animate: { rotateX: 0 }, exit: { rotateX: -90 } }
+    animation: { initial: { opacity: 0, y: 30, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -30, x: 0 }, transition: { duration: 0.15 } }
   },
   6: { // Gradient Text
     background: 'linear-gradient(to bottom, #fff, #999)',
     WebkitBackgroundClip: 'text',
     WebkitTextFillColor: 'transparent',
     fontWeight: '800',
-    animation: { initial: { y: 20 }, animate: { y: 0 }, exit: { y: -20 } }
+    animation: { initial: { opacity: 0, y: 20, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -20, x: 0 }, transition: { duration: 0.15 } }
   },
   7: { // Soft Pink
     color: '#f472b6',
     textShadow: '0 2px 10px rgba(244,114,182,0.4)',
     fontWeight: '600',
-    animation: { initial: { scale: 0.8 }, animate: { scale: 1 }, exit: { opacity: 0 } }
+    animation: { initial: { opacity: 0, y: 10, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -10, x: 0 }, transition: { duration: 0.15 } }
   },
   8: { // Ghostly
     color: 'rgba(255,255,255,0.3)',
     letterSpacing: '0.2em',
     fontWeight: '300',
-    animation: { initial: { letterSpacing: '0.5em', opacity: 0 }, animate: { letterSpacing: '0.2em', opacity: 1 }, exit: { opacity: 0 } }
+    animation: { initial: { opacity: 0, x: 0, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 0, y: 0 }, transition: { duration: 0.15 } }
   },
   9: { // Impact
     color: '#ffffff',
     textShadow: '0 0 20px #fff',
     fontWeight: '900',
-    animation: { initial: { scale: 2, opacity: 0 }, animate: { scale: 1, opacity: 1 }, exit: { scale: 0.5, opacity: 0 } }
+    animation: { initial: { opacity: 0, y: -40, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: 40, x: 0 }, transition: { duration: 0.15 } }
   },
   10: { // Green Hacker
     color: '#10b981',
     fontFamily: 'monospace',
     textShadow: '0 0 5px #10b981',
-    animation: { initial: { opacity: 0 }, animate: { opacity: 1 }, exit: { opacity: 0 } }
+    animation: { initial: { opacity: 0, x: 0, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 0, y: 0 }, transition: { duration: 0.15 } }
   },
   11: { // Royal Gold
     color: '#fbbf24',
     textShadow: '0 2px 4px rgba(0,0,0,0.5)',
     fontWeight: '800',
     fontStyle: 'italic',
-    animation: { initial: { opacity: 0, y: -10 }, animate: { opacity: 1, y: 0 }, exit: { opacity: 0, y: 10 } }
+    animation: { initial: { opacity: 0, y: -15, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: 15, x: 0 }, transition: { duration: 0.15 } }
+  },
+  12: { // Elegant Italic
+    color: '#ffffff',
+    fontStyle: 'italic',
+    textShadow: '0 2px 10px rgba(255,255,255,0.3)',
+    fontWeight: '400',
+    animation: { initial: { opacity: 0, y: 15, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -15, x: 0 }, transition: { duration: 0.15 } }
+  },
+  13: { // Gentle Pastel
+    color: '#fef3c7',
+    textShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    fontWeight: '300',
+    letterSpacing: '0.05em',
+    animation: { initial: { opacity: 0, x: -10, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 10, y: 0 }, transition: { duration: 0.15 } }
   }
 };
 

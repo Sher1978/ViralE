@@ -299,17 +299,55 @@ function DeliveryPageContent() {
         fontcolor = '0x10B981'; shadowx = 0; shadowy = 0;
       } else if (subStyleIdx === 11) { // Royal Gold
         fontcolor = '0xFBBF24'; useItalic = true; shadowy = Math.round(2 * baseScale);
+      } else if (subStyleIdx === 12) { // Elegant Italic
+        fontcolor = 'white'; shadowy = Math.round(2 * baseScale); shadowcolor = 'white@0.3'; useItalic = true;
+      } else if (subStyleIdx === 13) { // Gentle Pastel
+        fontcolor = '0xFEF3C7'; shadowy = Math.round(1 * baseScale); shadowcolor = 'black@0.1';
       }
 
       // Map Y coordinates exactly to canvas editor: bottom 15% + framer-motion translation
       const baseBottom = videoHeight * 0.15; 
       const translatedY = subPos.y * (isMobile ? (720/1080) : 1);
       const finalY = Math.round(videoHeight - baseBottom - subSize + translatedY);
+      const translatedX = subPos.x * (isMobile ? (720/1080) : 1);
+      const finalX = `(w-text_w)/2 + ${Math.round(translatedX)}`;
 
       const subStart = typeof c.startTime === 'number' && !isNaN(c.startTime) ? c.startTime : 0;
       const subEnd = typeof c.endTime === 'number' && !isNaN(c.endTime) ? c.endTime : subStart + 3;
       const font = useItalic ? 'font_italic.ttf' : 'font.ttf';
-      const alphaExpr = `clip((t-${subStart})/0.15\\,0\\,1)*clip((${subEnd}-t)/0.15\\,0\\,1)`;
+
+      // Advanced Dynamics: Math-based slide expressions matching Framer Motion config
+      const FADE_DUR = 0.15;
+      const animMap: Record<number, {dxIn: number, dyIn: number, dxOut: number, dyOut: number}> = {
+        0: { dxIn: 0, dyIn: 20, dxOut: 0, dyOut: -10 },
+        1: { dxIn: 0, dyIn: -20, dxOut: 0, dyOut: 20 },
+        2: { dxIn: -50, dyIn: 0, dxOut: 50, dyOut: 0 },
+        3: { dxIn: -20, dyIn: 0, dxOut: 20, dyOut: 0 },
+        4: { dxIn: 0, dyIn: 0, dxOut: 0, dyOut: 0 },
+        5: { dxIn: 0, dyIn: 30, dxOut: 0, dyOut: -30 },
+        6: { dxIn: 0, dyIn: 20, dxOut: 0, dyOut: -20 },
+        7: { dxIn: 0, dyIn: 10, dxOut: 0, dyOut: -10 },
+        8: { dxIn: 0, dyIn: 0, dxOut: 0, dyOut: 0 },
+        9: { dxIn: 0, dyIn: -40, dxOut: 0, dyOut: 40 },
+        10: { dxIn: 0, dyIn: 0, dxOut: 0, dyOut: 0 },
+        11: { dxIn: 0, dyIn: -15, dxOut: 0, dyOut: 15 },
+        12: { dxIn: 0, dyIn: 15, dxOut: 0, dyOut: -15 },
+        13: { dxIn: -10, dyIn: 0, dxOut: 10, dyOut: 0 },
+      };
+      
+      const anim = animMap[subStyleIdx] || animMap[0];
+      const dxIn = Math.round(anim.dxIn * baseScale);
+      const dyIn = Math.round(anim.dyIn * baseScale);
+      const dxOut = Math.round(anim.dxOut * baseScale);
+      const dyOut = Math.round(anim.dyOut * baseScale);
+
+      const progIn = `clip((t-${subStart})/${FADE_DUR}\\,0\\,1)`;
+      const progOut = `clip((t-(${subEnd}-${FADE_DUR}))/${FADE_DUR}\\,0\\,1)`;
+
+      const alphaExpr = `clip((t-${subStart})/${FADE_DUR}\\,0\\,1)*clip((${subEnd}-t)/${FADE_DUR}\\,0\\,1)`;
+      const xExpr = `${finalX} + ${dxIn}*(1-${progIn}) + ${dxOut}*${progOut}`;
+      const yExpr1 = `${finalY} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
+      const yExpr2 = `${finalY + subSize + 15} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
 
       const lineFilters = [];
 
@@ -324,8 +362,8 @@ function DeliveryPageContent() {
         `shadowx=${shadowx}`,
         `shadowy=${shadowy}`,
         box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
-        `x=(w-text_w)/2 + ${Math.round(subPos.x * (isMobile ? (720/1080) : 1))}`,
-        `y=${finalY}`,
+        `x='${xExpr}'`,
+        `y='${yExpr1}'`,
         `alpha='${alphaExpr}'`,
         `enable='between(t,${subStart},${subEnd})'`,
       ].filter(Boolean).join(':'));
@@ -342,8 +380,8 @@ function DeliveryPageContent() {
           `shadowx=${shadowx}`,
           `shadowy=${shadowy}`,
           box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
-          `x=(w-text_w)/2 + ${Math.round(subPos.x * (isMobile ? (720/1080) : 1))}`,
-          `y=${finalY + subSize + 15}`,
+          `x='${xExpr}'`,
+          `y='${yExpr2}'`,
           `alpha='${alphaExpr}'`,
           `enable='between(t,${subStart},${subEnd})'`,
         ].filter(Boolean).join(':'));
