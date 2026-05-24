@@ -492,7 +492,7 @@ function DeliveryPageContent() {
       }
 
       try {
-        const italicFontData = await fetchFile('https://fonts.gstatic.com/s/roboto/v30/KFOkCnqEu92Fr1Mu51xIIzc.ttf');
+        const italicFontData = await fetchFile('/fonts/Roboto-BoldItalic.ttf');
         await ffmpeg.writeFile('font_italic.ttf', italicFontData);
       } catch (e) {
         console.warn('[Delivery] Failed to load italic font, falling back to standard font copy:', e);
