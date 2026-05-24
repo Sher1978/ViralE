@@ -12,26 +12,34 @@ export async function GET() {
     }
 
     console.log('[DEBUG-DB] Fetching job status from Shotstack for ID:', jobId);
-    const isStage = shotstackApiKey.startsWith('v1-stage-') || process.env.NODE_ENV === 'development';
-    const endpoint = isStage 
-      ? `https://api.shotstack.io/stage/render/${jobId}` 
-      : `https://api.shotstack.io/v1/render/${jobId}`;
-
-    const res = await fetch(endpoint, {
-      headers: {
-        'x-api-key': shotstackApiKey
-      }
+    
+    // 1. Try stage endpoint first since media is rendering on stage
+    let endpoint = `https://api.shotstack.io/stage/render/${jobId}`;
+    let res = await fetch(endpoint, {
+      headers: { 'x-api-key': shotstackApiKey }
     });
 
-    if (!res.ok) {
-      throw new Error(`Shotstack API returned error status: ${res.status}`);
+    let shotstackData: any = null;
+    if (res.ok) {
+      shotstackData = await res.json();
+    } else {
+      console.warn('[DEBUG-DB] Stage endpoint failed, trying Production...');
+      // 2. Try production endpoint fallback
+      endpoint = `https://api.shotstack.io/v1/render/${jobId}`;
+      res = await fetch(endpoint, {
+        headers: { 'x-api-key': shotstackApiKey }
+      });
+      if (res.ok) {
+        shotstackData = await res.json();
+      } else {
+        throw new Error(`Both Shotstack Stage and Production APIs failed with status: ${res.status}`);
+      }
     }
 
-    const shotstackData = await res.json();
     const status = shotstackData.response?.status;
     const url = shotstackData.response?.url;
 
-    console.log('[DEBUG-DB] Shotstack response status:', status, 'url:', url);
+    console.log('[DEBUG-DB] Shotstack final response status:', status, 'url:', url);
 
     if (status === 'done' && url) {
       console.log('[DEBUG-DB] Job is completed in Shotstack! Syncing to Supabase...');
