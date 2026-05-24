@@ -626,6 +626,31 @@ export async function submitVideoJob(jobId: string) {
       );
       console.log(`[Trace 13-Shotstack] All asset URLs signed.`);
 
+      const formattedSubtitleClips = showSubtitles ? subtitleClips.map((s: any) => ({
+        asset: {
+          type: "html",
+          html: `<p data-alignment="center">${s.text}</p>`,
+          css: "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-weight: normal; color: #ffffff; font-size: 42px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,0,0,0.8); }",
+          width: 800,
+          height: 200
+        },
+        start: s.startTime,
+        length: Math.max(0.1, s.endTime - s.startTime),
+        position: "center",
+        offset: { y: -0.2 }
+      })) : [];
+
+      const formattedBrollClips = signedBrollClips.filter((b: any) => b.url).map((b: any) => ({
+        asset: {
+          type: "video",
+          src: b.url,
+          volume: 0
+        },
+        start: b.startTime,
+        length: Math.max(0.1, b.endTime - b.startTime),
+        fit: "cover"
+      }));
+
       const timeline = {
         background: "#000000",
         fonts: [
@@ -634,33 +659,8 @@ export async function submitVideoJob(jobId: string) {
           }
         ],
         tracks: [
-          {
-            clips: showSubtitles ? subtitleClips.map((s: any) => ({
-              asset: {
-                type: "html",
-                html: `<p data-alignment="center">${s.text}</p>`,
-                css: "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-weight: normal; color: #ffffff; font-size: 42px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,0,0,0.8); }",
-                width: 800,
-                height: 200
-              },
-              start: s.startTime,
-              length: Math.max(0.1, s.endTime - s.startTime),
-              position: "center",
-              offset: { y: -0.2 }
-            })) : []
-          },
-          {
-            clips: signedBrollClips.filter((b: any) => b.url).map((b: any) => ({
-              asset: {
-                type: "video",
-                src: b.url,
-                volume: 0
-              },
-              start: b.startTime,
-              length: Math.max(0.1, b.endTime - b.startTime),
-              fit: "cover"
-            }))
-          },
+          ...(formattedSubtitleClips.length > 0 ? [{ clips: formattedSubtitleClips }] : []),
+          ...(formattedBrollClips.length > 0 ? [{ clips: formattedBrollClips }] : []),
           {
             clips: [
               {
@@ -679,7 +679,8 @@ export async function submitVideoJob(jobId: string) {
 
       const outputConfig = {
         format: "mp4",
-        resolution: settings?.resolution === '1080x1920' ? "hd1080" : "hd720",
+        resolution: settings?.resolution === '1080x1920' ? "1080" : "hd",
+        aspectRatio: "9:16",
         fps: settings?.fps || 24
       };
 
@@ -696,7 +697,7 @@ export async function submitVideoJob(jobId: string) {
         body: JSON.stringify({ 
           timeline, 
           output: outputConfig,
-          webhook: webhookUrl
+          callback: webhookUrl
         })
       });
 
@@ -719,7 +720,7 @@ export async function submitVideoJob(jobId: string) {
             body: JSON.stringify({ 
               timeline, 
               output: outputConfig,
-              webhook: webhookUrl
+              callback: webhookUrl
             })
           });
           data = await response.json();
