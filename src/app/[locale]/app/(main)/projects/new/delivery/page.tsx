@@ -36,6 +36,75 @@ function DeliveryPageContent() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
 
+  const [displayProgress, setDisplayProgress] = useState(0);
+  const [statusMessageIndex, setStatusMessageIndex] = useState(0);
+
+  const statusStepsRu = [
+    'Собираем проект в облаке Shotstack...',
+    'Обрабатываем оригинальный голос...',
+    'Применяем умную обрезку под формат 9:16...',
+    'Генерируем стильные анимированные субтитры...',
+    'Синхронизируем текст с голосом спикера...',
+    'Накатываем цветокоррекцию и склейки...',
+    'Кодируем видео в формат H.264 для Telegram...',
+    'Сохраняем готовый ролик на высокоскоростной CDN...'
+  ];
+
+  const statusStepsEn = [
+    'Assembling project in Shotstack Cloud...',
+    'Processing original voice track...',
+    'Applying smart 9:16 portrait crop...',
+    'Generating stylish animated subtitles...',
+    'Syncing script timestamps with voice...',
+    'Applying cinematic color grade and cuts...',
+    'Encoding final video in H.264 MP4 format...',
+    'Saving final cut to global CDN storage...'
+  ];
+
+  // Sync displayProgress with actual DB progress
+  useEffect(() => {
+    setDisplayProgress(renderProgress);
+  }, [renderProgress]);
+
+  // Smoothly increment visible progress between 30% and 92% to show the pipeline is alive
+  useEffect(() => {
+    if (job?.status !== 'processing' && job?.status !== 'queued') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setDisplayProgress(prev => {
+        if (prev >= 30 && prev < 92) {
+          return prev + 1; // Increment by 1%
+        }
+        return prev;
+      });
+    }, 1500);
+
+    return () => clearInterval(interval);
+  }, [job?.status, renderProgress]);
+
+  // Periodically cycle through explanatory steps
+  useEffect(() => {
+    if (job?.status !== 'processing' && job?.status !== 'queued') {
+      return;
+    }
+
+    const interval = setInterval(() => {
+      setStatusMessageIndex(prev => (prev + 1) % statusStepsRu.length);
+    }, 4500);
+
+    return () => clearInterval(interval);
+  }, [job?.status]);
+
+  const currentStatusMsg = job?.status === 'completed'
+    ? 'Готово!'
+    : job?.status === 'failed'
+    ? 'Ошибка сборки'
+    : job?.status === 'processing' || job?.status === 'queued'
+    ? (locale === 'ru' ? statusStepsRu[statusMessageIndex] : statusStepsEn[statusMessageIndex])
+    : (renderStatus || 'Сборка проекта...');
+
   // Sync state once version/manifest loads
   useEffect(() => {
     if (version?.script_data) {
@@ -464,11 +533,11 @@ function DeliveryPageContent() {
 
         <div className="text-4xl">{job?.status === 'completed' ? '🎬' : '⚡'}</div>
         <div>
-          <h1 className="text-2xl font-black tracking-tighter uppercase text-white">
-            {job?.status === 'completed' ? t('badge') : (renderStatus || 'Сборка проекта...')}
+          <h1 className="text-2xl font-black tracking-tighter uppercase text-white min-h-[2rem]">
+            {job?.status === 'completed' ? t('badge') : currentStatusMsg}
           </h1>
           <p className="text-[11px] text-white/40 mt-1 font-bold uppercase tracking-widest">
-            {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${Math.round(renderProgress)}%`}
+            {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${Math.round(displayProgress)}%`}
           </p>
         </div>
 
@@ -477,7 +546,7 @@ function DeliveryPageContent() {
             <motion.div 
                 className="h-full bg-gradient-to-r from-purple-600 to-blue-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]" 
                 initial={{ width: 0 }} 
-                animate={{ width: `${Math.max(0, Math.min(100, renderProgress))}%` }} 
+                animate={{ width: `${Math.max(0, Math.min(100, displayProgress))}%` }} 
                 transition={{ type: 'spring', damping: 25, stiffness: 50 }}
             />
           </div>

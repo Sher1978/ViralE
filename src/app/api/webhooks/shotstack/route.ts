@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
+import { safeJobUpdate } from '@/lib/video';
 
 /**
  * SHOTSTACK WEBHOOK CALLBACK ENDPOINT
@@ -46,19 +47,16 @@ export async function POST(req: Request) {
     if (body.status === 'done') {
       const videoUrl = body.url;
 
-      // 2. Mark Render Job as Completed in DB
-      await supabaseAdmin
-        .from('render_jobs')
-        .update({
-          status: 'completed',
-          progress: 100,
-          output_url: videoUrl,
-          config_json: {
-            ...(job.config_json || {}),
-            status_message: 'Ready to share!'
-          }
-        })
-        .eq('id', jobId);
+      // 2. Mark Render Job as Completed in DB using resilient safeJobUpdate helper
+      await safeJobUpdate(supabaseAdmin, jobId, {
+        status: 'completed',
+        progress: 100,
+        output_url: videoUrl,
+        config_json: {
+          ...(job.config_json || {}),
+          status_message: 'Ready to share!'
+        }
+      });
 
       // 3. Mark Project as Completed
       await supabaseAdmin
@@ -98,18 +96,15 @@ export async function POST(req: Request) {
     } else if (body.status === 'failed') {
       const errorLog = body.error || 'Shotstack rendering engine failed internally';
 
-      // Mark Render Job as Failed
-      await supabaseAdmin
-        .from('render_jobs')
-        .update({
-          status: 'failed',
-          error_log: errorLog,
-          config_json: {
-            ...(job.config_json || {}),
-            status_message: 'Rendering failed'
-          }
-        })
-        .eq('id', jobId);
+      // Mark Render Job as Failed using resilient safeJobUpdate helper
+      await safeJobUpdate(supabaseAdmin, jobId, {
+        status: 'failed',
+        error_log: errorLog,
+        config_json: {
+          ...(job.config_json || {}),
+          status_message: 'Rendering failed'
+        }
+      });
 
       // Mark Project as Error
       await supabaseAdmin
