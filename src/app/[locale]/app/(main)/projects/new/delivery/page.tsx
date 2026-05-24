@@ -245,8 +245,14 @@ function DeliveryPageContent() {
       .replace(/\]/g, '\\\\]');
 
     const subStyleIdx = manifest?.subtitleStyle || 0;
-    const subSize = manifest?.subtitleSize || 82;
+    const subSizeRaw = manifest?.subtitleSize || 82;
     const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
+    
+    // Scale subtitle size to match 1080p canvas proportions
+    // 82px in the ~360px studio viewport equals ~246px in 1080p
+    const isMobile = videoHeight === 1280;
+    const baseScale = isMobile ? 2.0 : 3.0;
+    const subSize = Math.round(subSizeRaw * baseScale);
 
     const drawtextChain = clips.flatMap(c => {
       // Split words into two balanced lines exactly like Canvas editor does
@@ -270,11 +276,11 @@ function DeliveryPageContent() {
       let useItalic = false;
 
       if (subStyleIdx === 0) { // Classic Yellow Italic
-        fontcolor = '0xFACC15'; borderw = 4; shadowx = 2; shadowy = 2; useItalic = true;
+        fontcolor = '0xFACC15'; borderw = Math.round(2 * baseScale); shadowx = Math.round(2 * baseScale); shadowy = Math.round(2 * baseScale); useItalic = true;
       } else if (subStyleIdx === 1) { // White Bold
-        fontcolor = 'white'; borderw = 2; shadowy = 4;
+        fontcolor = 'white'; borderw = 0; shadowy = Math.round(4 * baseScale);
       } else if (subStyleIdx === 2) { // Red Outline
-        fontcolor = '0xEF4444'; borderw = 6; bordercolor = 'white';
+        fontcolor = '0xEF4444'; borderw = Math.round(2 * baseScale); bordercolor = 'white'; shadowx = Math.round(4 * baseScale); shadowy = Math.round(4 * baseScale);
       } else if (subStyleIdx === 3) { // Cyber Neon
         fontcolor = '0x22D3EE'; shadowx = 0; shadowy = 0; useItalic = true; borderw = 0;
       } else if (subStyleIdx === 4) { // Minimalist
@@ -282,26 +288,28 @@ function DeliveryPageContent() {
       } else if (subStyleIdx === 5) { // Boxy Yellow
         fontcolor = 'black'; box = 1; boxcolor = '0xFACC15';
       } else if (subStyleIdx === 6) { // Gradient (Approx)
-        fontcolor = 'white'; shadowy = 2; shadowcolor = 'black@0.5';
+        fontcolor = 'white'; shadowy = Math.round(2 * baseScale); shadowcolor = 'black@0.5';
       } else if (subStyleIdx === 7) { // Soft Pink
-        fontcolor = '0xF472B6'; shadowy = 2;
+        fontcolor = '0xF472B6'; shadowy = Math.round(2 * baseScale);
       } else if (subStyleIdx === 8) { // Ghostly
         fontcolor = 'white@0.4';
       } else if (subStyleIdx === 9) { // Impact
-        fontcolor = 'white'; shadowx = 0; shadowy = 0; borderw = 8; bordercolor = 'white@0.5';
+        fontcolor = 'white'; shadowx = 0; shadowy = 0; borderw = Math.round(4 * baseScale); bordercolor = 'white@0.5';
       } else if (subStyleIdx === 10) { // Green Hacker
         fontcolor = '0x10B981'; shadowx = 0; shadowy = 0;
       } else if (subStyleIdx === 11) { // Royal Gold
-        fontcolor = '0xFBBF24'; useItalic = true; shadowy = 2;
+        fontcolor = '0xFBBF24'; useItalic = true; shadowy = Math.round(2 * baseScale);
       }
 
-      // Map Y coordinates exactly to canvas editor: 1920 - 450 - subPos.y
-      const baseVerticalPos = videoHeight - 450; 
-      const finalY = baseVerticalPos - subPos.y;
+      // Map Y coordinates exactly to canvas editor: bottom 15% + framer-motion translation
+      const baseBottom = videoHeight * 0.15; 
+      const translatedY = subPos.y * (isMobile ? (720/1080) : 1);
+      const finalY = Math.round(videoHeight - baseBottom - subSize + translatedY);
 
       const subStart = typeof c.startTime === 'number' && !isNaN(c.startTime) ? c.startTime : 0;
       const subEnd = typeof c.endTime === 'number' && !isNaN(c.endTime) ? c.endTime : subStart + 3;
       const font = useItalic ? 'font_italic.ttf' : 'font.ttf';
+      const alphaExpr = `clip((t-${subStart})/0.15\\,0\\,1)*clip((${subEnd}-t)/0.15\\,0\\,1)`;
 
       const lineFilters = [];
 
@@ -316,8 +324,9 @@ function DeliveryPageContent() {
         `shadowx=${shadowx}`,
         `shadowy=${shadowy}`,
         box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
-        `x=(w-text_w)/2 + ${subPos.x}`,
+        `x=(w-text_w)/2 + ${Math.round(subPos.x * (isMobile ? (720/1080) : 1))}`,
         `y=${finalY}`,
+        `alpha='${alphaExpr}'`,
         `enable='between(t,${subStart},${subEnd})'`,
       ].filter(Boolean).join(':'));
 
@@ -333,8 +342,9 @@ function DeliveryPageContent() {
           `shadowx=${shadowx}`,
           `shadowy=${shadowy}`,
           box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
-          `x=(w-text_w)/2 + ${subPos.x}`,
+          `x=(w-text_w)/2 + ${Math.round(subPos.x * (isMobile ? (720/1080) : 1))}`,
           `y=${finalY + subSize + 15}`,
+          `alpha='${alphaExpr}'`,
           `enable='between(t,${subStart},${subEnd})'`,
         ].filter(Boolean).join(':'));
       }
@@ -469,8 +479,9 @@ function DeliveryPageContent() {
         try { await ffmpeg.deleteFile(name); } catch(e) {}
       }
 
-      const subs = manifest.subtitleClips || manifest.segments?.[0]?.subtitleClips || [];
-      console.log('[Delivery] Subtitle clips found:', subs.length);
+      const shouldShowSubtitles = manifest.showSubtitles !== false;
+      const subs = shouldShowSubtitles ? (manifest.subtitleClips || manifest.segments?.[0]?.subtitleClips || []) : [];
+      console.log('[Delivery] Subtitle clips found:', subs.length, 'Enabled:', shouldShowSubtitles);
 
       setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
       setRenderProgress(60);
