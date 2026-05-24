@@ -1297,59 +1297,23 @@ export default function StudioPage() {
         manifestAny.segments?.[0]?.assetUrl ||
         null;
 
-      // --- CRITICAL FIX: Upload blob URL to Supabase before final export ---
+      // --- UX FIX: Removed blocking blob URL upload before export ---
+      // Local FFmpeg engine reads directly from IndexedDB anyway.
+      // Cloud rendering assets (if needed) will be prepared by the delivery page or background sync.
       if (resolvedARollUrl && resolvedARollUrl.startsWith('blob:')) {
         if (backgroundMp4Url && !backgroundMp4Url.startsWith('blob:')) {
           resolvedARollUrl = backgroundMp4Url;
           addSystemLog(`Export: Found pre-normalized cloud MP4. Using: ${resolvedARollUrl}`);
         } else {
-          addSystemLog('Export: aRollUrl is a local blob URL. Uploading to Supabase Storage first...');
-          let videoBlob = recordedBlobRef.current;
-          if (!videoBlob) {
-            addSystemLog('Export: Fetching video blob from IndexedDB...');
-            const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-            if (cached instanceof Blob) {
-              videoBlob = cached;
-              recordedBlobRef.current = cached;
-            }
-          }
-
-          if (videoBlob) {
-            addSystemLog(`Export: Starting upload of video blob (${(videoBlob.size / (1024 * 1024)).toFixed(2)} MB)...`);
-            const uploadResult = await renderService.uploadMedia(projectId, videoBlob, 'video');
-            if (uploadResult && uploadResult.publicUrl) {
-              resolvedARollUrl = uploadResult.publicUrl;
-              addSystemLog(`Export: Video uploaded successfully. URL: ${resolvedARollUrl}`);
-            } else {
-              throw new Error('Не удалось загрузить исходное видео на сервер. Проверьте интернет-соединение.');
-            }
-          } else {
-            throw new Error('Исходное видео-запись не найдена в кэше браузера. Пожалуйста, сделайте запись заново.');
-          }
+          addSystemLog('Export: aRollUrl is a local blob URL. Using local IDB pipeline for export.');
+          // We intentionally do NOT upload the 30MB+ blob here to prevent 15+ second UI hangs.
         }
       }
 
-      // Also check B-Rolls for local blob URLs
+      // Also skip blocking B-Roll uploads for the same reason
       let resolvedBroll = broll || [];
       if (resolvedBroll.length > 0) {
-        addSystemLog('Export: Checking B-Roll clips for local blob URLs...');
-        resolvedBroll = await Promise.all(
-          resolvedBroll.map(async (b: any) => {
-            if (b.url && b.url.startsWith('blob:')) {
-              addSystemLog(`Export: B-Roll clip ${b.id} is a local blob URL. Uploading...`);
-              // Try to find the blob in IndexedDB if cached
-              const cachedBlob = await idb.get(`broll_file_${b.id}`, 'MediaBuffer').catch(() => null);
-              if (cachedBlob instanceof Blob) {
-                const res = await renderService.uploadMedia(projectId, cachedBlob, 'video');
-                if (res && res.publicUrl) {
-                  addSystemLog(`Export: B-Roll uploaded: ${res.publicUrl}`);
-                  return { ...b, url: res.publicUrl };
-                }
-              }
-            }
-            return b;
-          })
-        );
+        addSystemLog('Export: B-Roll clips detected. Local IDB pipeline will be used.');
       }
 
       // Derivce final script text from montage subtitles (requested by user)
