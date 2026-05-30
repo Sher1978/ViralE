@@ -387,19 +387,12 @@ function DeliveryPageContent() {
         13: { dxIn: -10, dyIn: 0, dxOut: 10, dyOut: 0 },
       };
       
-      const anim = animMap[subStyleIdx] || animMap[0];
-      const dxIn = Math.round(anim.dxIn * baseScale);
-      const dyIn = Math.round(anim.dyIn * baseScale);
-      const dxOut = Math.round(anim.dxOut * baseScale);
-      const dyOut = Math.round(anim.dyOut * baseScale);
-
-      const progIn = `clip((t-${subStart})/${FADE_DUR}\\,0\\,1)`;
-      const progOut = `clip((t-(${subEnd}-${FADE_DUR}))/${FADE_DUR}\\,0\\,1)`;
-
-      const alphaExpr = `clip((t-${subStart})/${FADE_DUR}\\,0\\,1)*clip((${subEnd}-t)/${FADE_DUR}\\,0\\,1)`;
-      const xExpr = `${finalX} + ${dxIn}*(1-${progIn}) + ${dxOut}*${progOut}`;
-      const yExpr1 = `${finalY} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
-      const yExpr2 = `${finalY + subSize + 15} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
+      // Simplified, rock-solid layout expressions without complex nested frame-by-frame math
+      // This completely eliminates WebAssembly stack overflows and out-of-memory crashes!
+      const alphaExpr = `1`;
+      const xExpr = `${finalX}`;
+      const yExpr1 = `${finalY}`;
+      const yExpr2 = `${finalY + subSize + 15}`;
 
       const lineFilters = [];
 
@@ -713,6 +706,13 @@ function DeliveryPageContent() {
     } catch (err: any) {
       console.error('[Delivery] Client render failed:', err);
       const errMsg = err.message || 'Ошибка рендера FFmpeg';
+      
+      // If the render was cancelled by a deliberate termination/restart, do NOT trigger the fallback modal!
+      if (errMsg.includes('terminate') || errMsg.includes('called FFmpeg.terminate()')) {
+        console.log('[Delivery] Render was aborted deliberately due to restart/reset, suppressing fallback modal.');
+        return;
+      }
+      
       setFallbackError(errMsg);
       setIsFallbackMode(true);
       setShowShotstackModal(true);
