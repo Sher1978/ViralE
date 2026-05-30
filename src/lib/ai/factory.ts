@@ -29,6 +29,7 @@ async function generateTrizMatrix(
   anthropicApiKey?: string,
   groqApiKey?: string
 ): Promise<string> {
+  const languageName = locale === 'ru' ? 'Russian' : 'English';
   try {
     const trizPath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', 'TRIZ.md');
     if (!fs.existsSync(trizPath)) {
@@ -53,7 +54,7 @@ async function generateTrizMatrix(
       * Object (Theme): ${coreIdea}
       
       TASK: Generate a high-fidelity marketing matrix of 9 ideas following the TRIZ screens methodology. 
-      Output EXCLUSIVELY in the same language as the input theme: "${coreIdea}" (Russian or English).
+      Output EXCLUSIVELY in ${languageName}. Translate the input theme and Brand DNA context on the fly to ${languageName} if necessary.
       Be detailed, strategic, and professional.
     `;
  

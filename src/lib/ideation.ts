@@ -135,7 +135,7 @@ export async function generateDailyIdeas(
     Each category matches a stage in the awareness ladder. 
     Focus this specific generation on: "${targetCategory}".
     
-    CRITICAL: All generated text content MUST BE IN THE SAME LANGUAGE as the user's input/brand DNA context. If context is in Russian, output Russian. If Ukrainian, output Ukrainian. Default to ${languageName} only if language is ambiguous.
+    CRITICAL: All generated text content MUST BE STRICTLY IN ${languageName}! The user has chosen this interface language for their content. Even if the brand DNA or strategic context is in a different language (e.g. Russian), you MUST translate the context on the fly and generate the topic titles, rationales, and categories strictly in ${languageName}.
  
     FOR CATEGORY "${targetCategory}":
     - If "Hooks": Generate ONLY the first 5 seconds of a script. These should be viral eye-catchers. 
