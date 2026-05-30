@@ -7,8 +7,9 @@ export async function generateTrizText(prompt: string, apiKey?: string): Promise
   if (!authKey) throw new Error("Anthropic API key not configured");
   
   const anthropic = new Anthropic({ apiKey: authKey });
+  const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
   const response = await anthropic.messages.create({
-    model: DEFAULT_MODEL,
+    model: modelName,
     max_tokens: 1024,
     system: "You are a professional neuromarketer and creative strategist.",
     messages: [
