@@ -156,6 +156,18 @@ function DeliveryPageContent() {
     }
   }, [version]);
 
+  // Clean up FFmpeg engine when leaving the page to prevent memory leaks and orphaned background threads
+  useEffect(() => {
+    return () => {
+      console.log('[Delivery] Component unmounting, resetting FFmpeg...');
+      try {
+        resetFFmpeg();
+      } catch (err) {
+        console.warn('[Delivery] Error resetting FFmpeg on unmount:', err);
+      }
+    };
+  }, []);
+
   const handleToggleSubtitles = async (checked: boolean) => {
     if (!version || !projectId) return;
 
@@ -436,6 +448,15 @@ function DeliveryPageContent() {
   const handleClientRender = async (ver: ProjectVersion) => {
     if (isLaunchingRenderRef.current) return;
     isLaunchingRenderRef.current = true;
+
+    // Terminate any previous orphaned FFmpeg WebAssembly worker to release the lock and free RAM!
+    console.log('[Delivery] Resetting FFmpeg engine before new render...');
+    try {
+      resetFFmpeg();
+    } catch (err) {
+      console.warn('[Delivery] Error resetting FFmpeg:', err);
+    }
+    ffmpegRef.current = null;
     
     // 0. CHECK CACHE FIRST
     try {
