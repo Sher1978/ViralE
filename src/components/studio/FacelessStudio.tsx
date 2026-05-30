@@ -37,6 +37,7 @@ interface FacelessStudioProps {
   onComplete: (videoBlob: Blob, transcript?: any[]) => void;
   onJumpToConcept?: () => void;
   projectId?: string;
+  visualStyle?: string;
 }
 
 
@@ -45,7 +46,7 @@ type BottomTab = 'setup' | 'scenes' | 'inspector';
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
-export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToConcept, projectId }: FacelessStudioProps) {
+export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToConcept, projectId, visualStyle }: FacelessStudioProps) {
 
   const locale = useLocale();
   const [editableScript, setEditableScript] = useState('');
@@ -72,7 +73,6 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   const [selectedSceneId, setSelectedSceneId] = useState<string | null>(null);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(30);
-  const [stylePrompt] = useState('cinematic, high quality, dramatic lighting, 4K, consistent visual style');
 
   const [transcript, setTranscript] = useState<any[]>([]);
   const [generatingImages, setGeneratingImages] = useState(false);
@@ -383,7 +383,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
           const resImg = await fetch('/api/ai/image-gen', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ prompt: updated[i].imagePrompt, style_prefix: stylePrompt, aspect_ratio: '9:16' }),
+            body: JSON.stringify({ 
+              prompt: updated[i].imagePrompt, 
+              visual_style: visualStyle || 'startup_valley', 
+              aspect_ratio: '9:16' 
+            }),
           });
           const dataImg = await resImg.json();
           if (!resImg.ok) throw new Error(dataImg.error || dataImg.detail || `API Error ${resImg.status}`);
@@ -425,7 +429,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         const res = await fetch('/api/ai/image-gen', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ prompt: updated[i].imagePrompt, style_prefix: stylePrompt, aspect_ratio: '9:16' }),
+          body: JSON.stringify({ 
+            prompt: updated[i].imagePrompt, 
+            visual_style: visualStyle || 'startup_valley', 
+            aspect_ratio: '9:16' 
+          }),
         });
         const data = await res.json();
         
@@ -460,7 +468,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       const res = await fetch('/api/ai/image-gen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ prompt: updated[idx].imagePrompt, style_prefix: stylePrompt, aspect_ratio: '9:16' }),
+        body: JSON.stringify({ 
+          prompt: updated[idx].imagePrompt, 
+          visual_style: visualStyle || 'startup_valley', 
+          aspect_ratio: '9:16' 
+        }),
       });
       const data = await res.json();
       

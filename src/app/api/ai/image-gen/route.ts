@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { fal } from "@fal-ai/client";
+import { VISUAL_STYLES, GlobalStyleAnchor } from '@/lib/ai/visual-generator';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -11,14 +12,41 @@ const XAI_API_KEY = process.env.XAI_API_KEY;
 
 export async function POST(req: Request) {
   try {
-    const { prompt, style_prefix = '', aspect_ratio = '9:16', provider = 'flux', seed } = await req.json();
+    const { prompt, style_prefix = '', visual_style, aspect_ratio = '9:16', provider = 'flux', seed } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
 
     const isGrokRequested = provider === 'grok' || provider === 'flux';
-    const fullPrompt = style_prefix ? `${style_prefix}, ${prompt}` : prompt;
+    
+    // Dynamically resolve visual style (request body -> user profile -> default startup_valley)
+    let styleKey = (visual_style || '').toLowerCase();
+    
+    if (!styleKey) {
+      try {
+        const { profileService } = await import('@/lib/services/profileService');
+        const profile = await profileService.getOrCreateProfile();
+        if (profile?.visual_style) {
+          styleKey = profile.visual_style.toLowerCase();
+        }
+      } catch (e) {
+        console.warn('[Image Gen] Failed to fetch user profile for style:', e);
+      }
+    }
+    
+    if (!styleKey) {
+      styleKey = 'startup_valley';
+    }
+
+    let finalSuffix = '';
+    if (VISUAL_STYLES[styleKey as GlobalStyleAnchor]) {
+      finalSuffix = VISUAL_STYLES[styleKey as GlobalStyleAnchor].prompt;
+    } else if (style_prefix) {
+      finalSuffix = `, ${style_prefix}`;
+    }
+
+    const fullPrompt = `${prompt}${finalSuffix}`;
 
     // Map aspect ratios to pixels
     let width = 768;

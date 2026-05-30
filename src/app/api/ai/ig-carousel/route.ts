@@ -200,7 +200,9 @@ export async function POST(req: Request) {
 
       ИНСТРУКЦИИ ДЛЯ СЛАЙДОВ (Ровно 6 слайдов, AR 4:5):
       1. Выбери ОДНУ центральную смысловую метафору для визуализации ("central_metaphor", например: "развилка дорог", "строительство здания", "шахматный эндшпиль"). Она должна объединить всю серию фонов.
-      2. Сформируй промпты для фонов. Каждый промпт должен начинаться со стиля: "${stylePrefix}" и содержать элемент выбранной метафоры. Промпты должны быть без текста!
+      2. Сформируй промпты для фонов (image_prompt). Каждый промпт должен содержать элемент выбранной метафоры. Промпты должны быть без текста!
+         ВНИМАНИЕ: Каждое описание (image_prompt) должно содержать ТОЛЬКО смысловую часть (действие, объект, окружение, эмоцию) на английском языке, БЕЗ каких-либо технических деталей стиля, упоминаний разрешения, фотореалистичности или качественных прилагательных вроде 'ultra-realistic'. Это чистая смысловая пуля.
+         Пример: 'A hand holding a tiny lit lightbulb in a completely dark room'
       3. Напиши лаконичный текст оверлея на слайдах ("text_on_slide") строго на языке: ${activeLanguage} (макс. 10-15 слов на слайд для моментального считывания). Интегрируй signature_phrases там, где уместно.
 
       ИНСТРУКЦИИ ДЛЯ КАПШЕНА (post_description):
@@ -318,7 +320,7 @@ export async function POST(req: Request) {
         
         let imgPrompt = rawSlide.image_prompt || rawSlide.prompt || '';
         if (typeof imgPrompt !== 'string' || imgPrompt.length < 20) {
-          imgPrompt = `${stylePrefix}, conceptual visualization of slide ${i + 1}, highly detailed digital art, 8k`;
+          imgPrompt = `conceptual visualization of scene representing ${role}`;
         }
         
         repairedSlides.push({

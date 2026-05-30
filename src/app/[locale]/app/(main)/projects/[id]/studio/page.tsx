@@ -796,6 +796,7 @@ export default function StudioPage() {
               <FacelessStudio
                 projectId={projectId}
                 manifest={manifest}
+                visualStyle={currentProfile?.visual_style || 'startup_valley'}
                 onBack={() => setShowFaceless(false)}
 
                 onJumpToConcept={() => {

@@ -11,32 +11,32 @@ export type GlobalStyleAnchor =
 export const VISUAL_STYLES: Record<GlobalStyleAnchor, { label: string, prompt: string, negative: string }> = {
   dubai_platinum: {
     label: 'Dubai Platinum',
-    prompt: 'High-end commercial photography, luxury penthouse interior, sunset lighting, blurred Burj Khalifa in background, sharp focus on premium textures, shot on Sony A7R IV, 8k resolution, cinematic lighting.',
+    prompt: ', ultra-realistic, luxury aesthetic, sleek and modern, warm golden hour lighting mixed with high-end studio illumination, opulent atmosphere, rich gold and black tones, shot on Hasselblad, 8k resolution, masterpiece.',
     negative: 'fantasy, noir, cheap, plastic, blurry, anime, illustration, saturated colors.'
   },
   tech_catalyst: {
     label: 'Tech Catalyst',
-    prompt: 'Minimalist tech aesthetic, clean white laboratory, soft neon blue accents, macro shot of futuristic interface, depth of field, Apple-style design, hyper-realistic, volumetric lighting.',
+    prompt: ', ultra-realistic, futuristic high-tech environment, clean aesthetic, cinematic cyberpunk lighting, subtle neon blue and cyan accents, shallow depth of field, photorealistic, 8k resolution.',
     negative: 'dirty, dark, noir, vintage, rustic, chaotic, low-res.'
   },
   turbo_dynamics: {
     label: 'Turbo Dynamics',
-    prompt: 'High-speed automotive photography, metallic car reflections, city street lights at night, long exposure streaks, carbon fiber textures, low angle shot, gritty but polished, shot on RED camera.',
+    prompt: ', ultra-realistic, high-speed motion aesthetic, dramatic cinematic lighting, aggressive angles, automotive commercial photography style, motion blur background, sharp focus on subject, 8k resolution.',
     negative: 'static, boring, fantasy, landscape, soft, pastel, cartoon.'
   },
   human_os: {
-    label: 'Human OS / Mindfulness',
-    prompt: 'Natural organic aesthetic, soft sunlight through leaves, cozy modern studio, authentic human emotions, linen textures, bokeh background, warm earthy tones, shot on Leica, 35mm lens.',
+    label: 'Human OS',
+    prompt: ', ultra-realistic, calm and serene aesthetic, natural soft ambient lighting, zen-like atmosphere, organic textures, muted earthy tones, shot on 35mm lens, f/1.8, photorealistic, 8k resolution.',
     negative: 'artificial, neon, plastic, cyber, intense, dramatic shadows, futuristic.'
   },
   shadow_audit: {
     label: 'Shadow Audit',
-    prompt: 'Architectural minimalism, dramatic light and shadow, high contrast, structural geometry, professional business environment, sharp edges, monochrome aesthetic with red accents, 8k, photorealistic.',
+    prompt: ', ultra-realistic, dramatic film noir aesthetic, high contrast chiaroscuro lighting, deep shadows, professional and intense atmosphere, cinematic color grading, moody, 8k resolution.',
     negative: 'cluttered, messy, colorful, fantasy, soft, blurred, emotional.'
   },
   startup_valley: {
-    label: 'Silicon Valley Startup',
-    prompt: 'Vibrant modern office loft, brainstorming boards, creative chaos, bright daylight, wide angle shot, energetic atmosphere, GoPro style, high saturation but realistic, 4k.',
+    label: 'Startup Valley',
+    prompt: ', ultra-realistic, vibrant and energetic aesthetic, modern creative loft environment, bright dynamic lighting, colorful accents, contemporary lifestyle photography, 8k resolution.',
     negative: 'dark, moody, formal, luxury, boring, dull, gray.'
   }
 };
@@ -70,21 +70,20 @@ export async function generateVisualScript(
     3. Выбранный Визуальный Стиль (Global Style Anchor).
 
     Задача модуля:
-    Разбить текст на смысловые сегменты (по 3–5 секунд) и для каждого сегмента создать визуальную метафору и промпт.
+    Разбить текст на смысловые сегменты (по 3–5 секунд) и для каждого сегмента создать визуальную метафору (действие и объект, смысловую пулю) на английском языке.
 
     Алгоритм "Сверхпроводник":
     Картинка должна быть визуальным мостом между сложной мыслью эксперта и простым, понятным образом. 
     Запрещено генерировать картинку буквально по словам. Используй семантический анализ.
     Пример: Если речь об 'упущенной выгоде' — покажи песочные часы, в которых вместо песка золотые монеты.
 
-    Шаг 1: Применение Глобального стиля (Global Style Anchor).
-    ${styleContext}
-
-    Шаг 2: Семантический анализ фразы (Semantic Metaphor).
+    Шаг 1: Семантический анализ фразы (Semantic Metaphor).
     Логика: [Контекст ДНК] + [Смысл фразы] = [Визуальная метафора].
 
-    Шаг 3: Сборка финального промпта.
-    Структура: (Global Style Anchor Technical Prompt), (Action/Object representing the metaphor), (Environment context), (Mood/Emotion), --no (Style Negative Prompt).
+    Шаг 2: Генерация смысловой пули (Action and Object in English).
+    Сформулируй лаконичное, но выразительное описание действия и объекта метафоры на английском языке.
+    ВНИМАНИЕ: Описание должно содержать ТОЛЬКО смысловую часть (действие, объект, окружение, эмоция), БЕЗ каких-либо технических деталей стиля, упоминаний камер, разрешения или качественных прилагательных вроде 'ultra-realistic'. Это чистая смысловая пуля.
+    Пример: 'A close up of a focused businessman analyzing complex laser light patterns.' or 'An hourglass with golden coins falling through instead of sand.'
 
     Технические требования к выводу:
     - Выдавай результат СТРОГО в формате JSON.
@@ -99,7 +98,7 @@ export async function generateVisualScript(
         {
           "text": "Фраза из сценария",
           "visual_metaphor": "Обоснование метафоры",
-          "ai_prompt": "Final prompt for Flux/Midjourney (STRICTLY ENGLISH, highly detailed)",
+          "ai_prompt": "Clean action and object representing the metaphor (STRICTLY ENGLISH, e.g. 'A person sitting on the floor of an empty room, looking at a dying plant')",
           "pexels_query": "3-5 keywords for Pexels search (STRICTLY ENGLISH)"
         }
       ]
