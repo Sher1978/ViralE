@@ -267,8 +267,9 @@ export function useHardwareRecorder({
           const isMobile = /iPhone|iPad|iPod|Android/i.test(nav ? nav.userAgent : '');
           
           let recorder: any;
+          const MR = (globalThis as any).MediaRecorder;
+
           if (isVoiceOnly) {
-            const MR = (globalThis as any).MediaRecorder;
             const aMime = MR?.isTypeSupported?.('audio/webm') ? 'audio/webm' : 'audio/mp4';
             recorder = new MR(activeStream, { mimeType: aMime });
           } else {
@@ -281,7 +282,6 @@ export function useHardwareRecorder({
               'video/mp4',
               'video/quicktime'
             ];
-            const MR = (globalThis as any).MediaRecorder;
             for (const mime of candidateMimes) {
               if (MR && MR.isTypeSupported(mime)) {
                 selectedMime = mime;
@@ -299,86 +299,94 @@ export function useHardwareRecorder({
               console.warn('[useHardwareRecorder] No standard video mimeType supported. Letting browser choose default.');
             }
 
-            recorder = new MR(activeStream, options);
+            try {
+              recorder = new MR(activeStream, options);
+            } catch (err: any) {
+              console.warn('[useHardwareRecorder] Advanced MediaRecorder creation failed, falling back to default:', err.message);
+              recorder = new MR(activeStream);
+            }
           }
 
-          recorder.ondataavailable = (e: any) => { if (e.data.size > 0) localChunks.push(e.data); };
-          recorder.onstop = async () => {
-            addSystemLog('Запись камеры остановлена. Объединение чанков...');
-            const blob = new Blob(localChunks, { type: recorder.mimeType });
-            localChunks.length = 0; // Clear chunks to free RAM
-            
-            addSystemLog(`Файл RAW создан. Размер: ${(blob.size / (1024 * 1024)).toFixed(2)} MB (${blob.size} байт). MIME-тип: ${recorder.mimeType}`);
-
-            // Defensive validation against empty or corrupted recorded blobs
-            if (blob.size < 50000 && !isVoiceOnly) {
-              addSystemLog(`КРИТИЧЕСКАЯ ОШИБКА: Видео пустое/повреждено (размер ${blob.size} байт). Порог: 50 KB.`);
-              (globalThis as any).alert?.("Ошибка: записанное видео пустое или повреждено (размер меньше 50 KB). Пожалуйста, попробуйте сделать запись заново.");
-              return;
-            }
-            if (blob.size < 3000 && isVoiceOnly) {
-              addSystemLog(`КРИТИЧЕСКАЯ ОШИБКА: Аудио слишком короткое (размер ${blob.size} байт). Порог: 3 KB.`);
-              (globalThis as any).alert?.("Ошибка: записанный звук слишком короткий или поврежден. Пожалуйста, попробуйте записать аудио заново.");
-              return;
-            }
-
-            recordedBlobRef.current = blob;
-            setRecordedSize(blob.size);
-
-            const timestamp = Date.now();
-            const recordingId = (isVoiceOnly ? 'raw_audio_' : 'raw_rec_') + projectId + '_' + timestamp;
-            
-            try {
-              addSystemLog(`Сохранение RAW файла в IndexedDB (${recordingId})...`);
-              await idb.set(recordingId, blob, 'MediaBuffer');
-              if (isVoiceOnly) {
-                await idb.set(`pending_audio_${projectId}`, recordingId, 'ProjectDrafts');
-              } else {
-                await idb.set(`pending_upload_${projectId}`, recordingId, 'ProjectDrafts');
-                await idb.set(`video_file_${projectId}`, blob, 'MediaBuffer');
-              }
-              addSystemLog('Сохранение в IndexedDB выполнено успешно.');
+          const bindRecorderHandlers = (recInstance: any) => {
+            recInstance.ondataavailable = (e: any) => { if (e.data.size > 0) localChunks.push(e.data); };
+            recInstance.onstop = async () => {
+              addSystemLog('Запись камеры остановлена. Объединение чанков...');
+              const blob = new Blob(localChunks, { type: recInstance.mimeType });
+              localChunks.length = 0; // Clear chunks to free RAM
               
-              if (!isVoiceOnly && audioChunks.length > 0) {
-                const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
-                audioChunks.length = 0; // Clear audio chunks to free RAM
-                const audioRecId = `raw_rec_audio_${projectId}_${timestamp}`;
-                addSystemLog('Сохранение резервной аудиодорожки в IndexedDB...');
-                await idb.set(audioRecId, audioBlob, 'MediaBuffer');
-                await idb.set(`pending_audio_${projectId}`, audioRecId, 'ProjectDrafts');
+              addSystemLog(`Файл RAW создан. Размер: ${(blob.size / (1024 * 1024)).toFixed(2)} MB (${blob.size} байт). MIME-тип: ${recInstance.mimeType}`);
+
+              // Defensive validation against empty or corrupted recorded blobs
+              if (blob.size < 50000 && !isVoiceOnly) {
+                addSystemLog(`КРИТИЧЕСКАЯ ОШИБКА: Видео пустое/повреждено (размер ${blob.size} байт). Порог: 50 KB.`);
+                (globalThis as any).alert?.("Ошибка: записанное видео пустое или повреждено (размер меньше 50 KB). Пожалуйста, попробуйте сделать запись заново.");
+                return;
               }
-            } catch (e: any) { 
-              addSystemLog(`Ошибка сохранения в IndexedDB: ${e.message || e}`);
-              console.error('[useHardwareRecorder] IDB Storage error:', e); 
-            }
-
-            // Revoke any previous recording URL to prevent double-blob memory leak
-            setLastRecordingUrl(prev => {
-              if (prev && prev.startsWith('blob:')) {
-                addSystemLog(`Отзыв старого Blob URL: ${prev}`);
-                URL.revokeObjectURL(prev);
+              if (blob.size < 3000 && isVoiceOnly) {
+                addSystemLog(`КРИТИЧЕСКАЯ ОШИБКА: Аудио слишком короткое (размер ${blob.size} байт). Порог: 3 KB.`);
+                (globalThis as any).alert?.("Ошибка: записанный звук слишком короткий или поврежден. Пожалуйста, попробуйте записать аудио заново.");
+                return;
               }
-              return null;
-            });
 
-            // Create new preview URL
-            const url = URL.createObjectURL(blob);
-            setLastRecordingUrl(url);
-            addSystemLog(`Создана новая Blob-ссылка превью: ${url}`);
-            
-            // Start background conversion immediately
-            addSystemLog('Запуск фоновой MP4 нормализации видео...');
-            startBackgroundMp4Conversion(blob);
+              recordedBlobRef.current = blob;
+              setRecordedSize(blob.size);
 
-            // Explicitly transition to branch screen
-            setActiveTab('post_record_branch');
+              const timestamp = Date.now();
+              const recordingId = (isVoiceOnly ? 'raw_audio_' : 'raw_rec_') + projectId + '_' + timestamp;
+              
+              try {
+                addSystemLog(`Сохранение RAW файла в IndexedDB (${recordingId})...`);
+                await idb.set(recordingId, blob, 'MediaBuffer');
+                if (isVoiceOnly) {
+                  await idb.set(`pending_audio_${projectId}`, recordingId, 'ProjectDrafts');
+                } else {
+                  await idb.set(`pending_upload_${projectId}`, recordingId, 'ProjectDrafts');
+                  await idb.set(`video_file_${projectId}`, blob, 'MediaBuffer');
+                }
+                addSystemLog('Сохранение в IndexedDB выполнено успешно.');
+                
+                if (!isVoiceOnly && audioChunks.length > 0) {
+                  const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                  audioChunks.length = 0; // Clear audio chunks to free RAM
+                  const audioRecId = `raw_rec_audio_${projectId}_${timestamp}`;
+                  addSystemLog('Сохранение резервной аудиодорожки в IndexedDB...');
+                  await idb.set(audioRecId, audioBlob, 'MediaBuffer');
+                  await idb.set(`pending_audio_${projectId}`, audioRecId, 'ProjectDrafts');
+                }
+              } catch (e: any) { 
+                addSystemLog(`Ошибка сохранения в IndexedDB: ${e.message || e}`);
+                console.error('[useHardwareRecorder] IDB Storage error:', e); 
+              }
+
+              // Revoke any previous recording URL to prevent double-blob memory leak
+              setLastRecordingUrl(prev => {
+                if (prev && prev.startsWith('blob:')) {
+                  addSystemLog(`Отзыв старого Blob URL: ${prev}`);
+                  URL.revokeObjectURL(prev);
+                }
+                return null;
+              });
+
+              // Create new preview URL
+              const url = URL.createObjectURL(blob);
+              setLastRecordingUrl(url);
+              addSystemLog(`Создана новая Blob-ссылка превью: ${url}`);
+              
+              // Start background conversion immediately
+              addSystemLog('Запуск фоновой MP4 нормализации видео...');
+              startBackgroundMp4Conversion(blob);
+
+              // Explicitly transition to branch screen
+              setActiveTab('post_record_branch');
+            };
           };
+
+          bindRecorderHandlers(recorder);
 
           // Secondary audio-only recorder for OOM bypass on mobile (only for video mode)
           if (!isVoiceOnly) {
             try {
               let aMime = '';
-              const MR = (globalThis as any).MediaRecorder;
               if (MR) {
                 if (MR.isTypeSupported('audio/webm')) aMime = 'audio/webm';
                 else if (MR.isTypeSupported('audio/mp4')) aMime = 'audio/mp4';
@@ -397,7 +405,22 @@ export function useHardwareRecorder({
             }
           }
 
-          recorder.start(1000);
+          try {
+            console.log('[useHardwareRecorder] Starting MediaRecorder. State:', recorder.state);
+            recorder.start(1000);
+          } catch (startErr: any) {
+            console.warn('[useHardwareRecorder] Failed to start advanced MediaRecorder, trying default fallback:', startErr.message);
+            try {
+              recorder = new MR(activeStream);
+              bindRecorderHandlers(recorder);
+              recorder.start(1000);
+              console.log('[useHardwareRecorder] Default fallback MediaRecorder started successfully.');
+            } catch (fallbackErr: any) {
+              console.error('[useHardwareRecorder] All recorder start attempts failed:', fallbackErr);
+              throw new Error(`Не удалось запустить запись: ${fallbackErr.message || fallbackErr}`);
+            }
+          }
+
           mediaRecorderRef.current = recorder;
           setIsRecordingVideo(true);
           setRecordingTime(0);
