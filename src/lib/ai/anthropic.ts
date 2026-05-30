@@ -23,11 +23,11 @@ export async function generateTrizText(prompt: string, apiKey?: string): Promise
     if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
     return content.text;
   } catch (error: any) {
-    // If the account doesn't have access to Claude 3.5 Haiku, fallback to Claude 3 Haiku
-    if ((error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found")) && modelName === "claude-3-5-haiku-20241022") {
-      console.warn(`[Anthropic] Model ${modelName} not found or accessible. Falling back to claude-3-haiku-20240307...`);
+    // If the account doesn't have access to Claude 3.5 Haiku, fallback to Claude 3.5 Sonnet
+    if (error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found") || error.message?.includes("access")) {
+      console.warn(`[Anthropic] Model ${modelName} not found or accessible. Falling back to claude-3-5-sonnet-20241022...`);
       const response = await anthropic.messages.create({
-        model: "claude-3-haiku-20240307",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 1024,
         system: "You are a professional neuromarketer and creative strategist.",
         messages: [
@@ -154,10 +154,10 @@ export async function generateScript(
     const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
     return JSON.parse(jsonStr);
   } catch (error: any) {
-    if ((error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found")) && modelName === "claude-3-5-haiku-20241022") {
-      console.warn(`[Anthropic] Model ${modelName} not found or accessible in generateScript. Falling back to claude-3-haiku-20240307...`);
+    if (error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found") || error.message?.includes("access")) {
+      console.warn(`[Anthropic] Model ${modelName} not found or accessible in generateScript. Falling back to claude-3-5-sonnet-20241022...`);
       const response = await anthropic.messages.create({
-        model: "claude-3-haiku-20240307",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 2048,
         system: systemPrompt,
         messages: [
@@ -221,10 +221,10 @@ export async function refineScript(
     const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
     return JSON.parse(jsonStr);
   } catch (error: any) {
-    if ((error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found")) && modelName === "claude-3-5-haiku-20241022") {
-      console.warn(`[Anthropic] Model ${modelName} not found or accessible in refineScript. Falling back to claude-3-haiku-20240307...`);
+    if (error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found") || error.message?.includes("access")) {
+      console.warn(`[Anthropic] Model ${modelName} not found or accessible in refineScript. Falling back to claude-3-5-sonnet-20241022...`);
       const response = await anthropic.messages.create({
-        model: "claude-3-haiku-20240307",
+        model: "claude-3-5-sonnet-20241022",
         max_tokens: 1024,
         system: systemPrompt,
         messages: [
