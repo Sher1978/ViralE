@@ -157,25 +157,64 @@ function DeliveryPageContent() {
   }, [version]);
 
   const handleToggleSubtitles = async (checked: boolean) => {
+    if (!version || !projectId) return;
+
+    const confirmMsg = checked 
+      ? (locale === 'ru' 
+          ? 'Вы действительно хотите пересобрать видео с субтитрами? Это перезапустит процесс рендеринга.' 
+          : 'Do you really want to re-render the video with subtitles? This will restart the rendering process.')
+      : (locale === 'ru' 
+          ? 'Вы действительно хотите пересобрать видео без субтитров? Это перезапустит процесс рендеринга.' 
+          : 'Do you really want to re-render the video without subtitles? This will restart the rendering process.');
+
+    const confirmed = (globalThis as any).confirm?.(confirmMsg);
+    if (!confirmed) {
+      return;
+    }
+
     setShowSubtitles(checked);
     addSystemLog(checked ? 'Субтитры включены' : 'Субтитры выключены');
     
-    if (version && projectId) {
-      const updatedManifest = {
-        ...version.script_data as any,
-        showSubtitles: checked
-      };
+    const updatedManifest = {
+      ...version.script_data as any,
+      showSubtitles: checked
+    };
+    
+    const updatedVersion = {
+      ...version,
+      script_data: updatedManifest
+    };
+
+    // Update local state
+    setVersion(updatedVersion);
+    
+    try {
+      await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+      addSystemLog('Настройки субтитров успешно сохранены в БД.');
       
-      // Update local state optimistically
-      setVersion(prev => prev ? { ...prev, script_data: updatedManifest } : null);
-      
+      // 1. Delete IndexedDB cache
+      addSystemLog('Очистка локального кэша рендеринга...');
       try {
-        await projectService.updateLatestVersionManifest(projectId, updatedManifest);
-        addSystemLog('Настройки субтитров успешно сохранены в БД.');
-      } catch (err: any) {
-        console.error('Failed to update subtitles flag:', err);
-        addSystemLog(`Ошибка сохранения настроек субтитров: ${err.message}`);
+        await idb.delete(`final_render_${projectId}_${version.id}`, 'MediaBuffer');
+      } catch (e) {
+        console.warn('[Delivery] Cache delete failed:', e);
       }
+
+      // 2. Reset progress and status states
+      setRenderProgress(0);
+      setRenderStatus('Запуск повторного рендеринга...');
+      addSystemLog('Запуск повторного локального рендеринга...');
+
+      // 3. Reset launching reference and job state to show progress loader
+      isLaunchingRenderRef.current = false;
+      setJob(null);
+      
+      // 4. Trigger re-rendering
+      handleClientRender(updatedVersion);
+      
+    } catch (err: any) {
+      console.error('Failed to update subtitles flag:', err);
+      addSystemLog(`Ошибка сохранения настроек субтитров: ${err.message}`);
     }
   };
 
