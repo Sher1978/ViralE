@@ -141,7 +141,8 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
 
     try {
       const { script, settings } = job.config;
-      const { brollClips = [], subtitleClips = [], aRollUrl, showSubtitles = true } = script || {};
+      const { brollClips = [], subtitleClips = [], aRollUrl: manifestARollUrl, showSubtitles = true } = script || {};
+      const aRollUrl = manifestARollUrl || script?.videoUrl || script?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl;
 
       if (!aRollUrl) throw new Error('A-Roll URL is missing in manifest');
 
@@ -642,7 +643,8 @@ export async function submitVideoJob(jobId: string) {
       const endpoint = isStage ? 'https://api.shotstack.io/stage/render' : 'https://api.shotstack.io/v1/render';
       
       const { script, settings } = config;
-      const { brollClips = [], subtitleClips = [], aRollUrl, showSubtitles = true, subtitleStyle = 0 } = script || {};
+      const { brollClips = [], subtitleClips = [], aRollUrl: manifestARollUrl, showSubtitles = true, subtitleStyle = 0 } = script || {};
+      const aRollUrl = manifestARollUrl || script?.videoUrl || script?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl;
 
       if (!aRollUrl) throw new Error('A-Roll URL is missing in manifest');
 

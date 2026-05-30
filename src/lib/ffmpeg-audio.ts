@@ -44,14 +44,33 @@ async function getFFmpeg(): Promise<any> {
           ]);
         };
 
-        const localWorker = `${base}/ffmpeg/ffmpeg-esm/worker.js`;
-        console.log('[FFmpeg Audio] Loading FFmpeg WASM with 45s timeout...');
-        await loadWithTimeout(ff, { 
-          coreURL, 
-          wasmURL,
-          classWorkerURL: localWorker
-        }, 45000);
-        console.log('[FFmpeg Audio] Loaded successfully');
+        try {
+          console.log('[FFmpeg Audio] Attempting to load from local assets via safe Blob URLs...');
+          const coreURL = await toBlobURL(`${base}${CORE_BASE}/ffmpeg-core.js`, 'text/javascript');
+          const wasmURL = await toBlobURL(`${base}${CORE_BASE}/ffmpeg-core.wasm`, 'application/wasm');
+          const workerURL = await toBlobURL(`${base}/ffmpeg/ffmpeg-esm/worker.js`, 'text/javascript');
+          
+          await loadWithTimeout(ff, { 
+            coreURL, 
+            wasmURL,
+            classWorkerURL: workerURL
+          }, 45000);
+          console.log('[FFmpeg Audio] Loaded successfully from local assets via Blob URLs');
+        } catch (localErr) {
+          console.warn('[FFmpeg Audio] Local load failed, attempting resilient CDN fallback...', localErr);
+          // Fallback to resilient UMD core CDN URLs
+          const cdnCore = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.js';
+          const cdnWasm = 'https://unpkg.com/@ffmpeg/core@0.12.6/dist/umd/ffmpeg-core.wasm';
+          
+          const cdnCoreURL = await toBlobURL(cdnCore, 'text/javascript');
+          const cdnWasmURL = await toBlobURL(cdnWasm, 'application/wasm');
+          
+          await loadWithTimeout(ff, { 
+            coreURL: cdnCoreURL, 
+            wasmURL: cdnWasmURL,
+          }, 45000);
+          console.log('[FFmpeg Audio] Loaded successfully from CDN fallback');
+        }
         ffmpegInstance = ff;
         return true;
       } catch (err) {

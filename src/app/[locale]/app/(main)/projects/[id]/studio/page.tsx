@@ -921,6 +921,14 @@ export default function StudioPage() {
                   }}
                   onComplete={(videoBlob, transcriptData) => {
                     const localUrl = URL.createObjectURL(videoBlob);
+                    
+                    // Persist generated faceless video to IndexedDB so it's loaded in the montage editor
+                    idb.set(`video_file_${projectId}`, videoBlob, 'MediaBuffer').catch(e => {
+                      console.error('[Studio] Failed to save faceless video to IndexedDB:', e);
+                    });
+                    
+                    setLastRecordingUrl(localUrl);
+                    
                     setManifest(prev => prev ? {
                       ...prev,
                       videoUrl: localUrl,
@@ -932,16 +940,16 @@ export default function StudioPage() {
                     setShowFaceless(false);
                     renderService.uploadMedia(projectId, videoBlob, 'video').then(res => {
                       if (res.publicUrl) {
-                    setManifest(prev => {
-                      if (!prev) return prev;
-                      const next = {
-                        ...prev,
-                        videoUrl: res.publicUrl,
-                        segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
-                      };
-                      projectService.updateLatestVersionManifest(projectId, next);
-                      return next;
-                    });
+                        setManifest(prev => {
+                          if (!prev) return prev;
+                          const next = {
+                            ...prev,
+                            videoUrl: res.publicUrl,
+                            segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
+                          };
+                          projectService.updateLatestVersionManifest(projectId, next);
+                          return next;
+                        });
                       }
                     });
                   }}
