@@ -518,6 +518,19 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     else { audioRef.current.pause(); }
   }, [isPlayingAudio]);
 
+  const handleTimelineClick = (e: React.MouseEvent<HTMLDivElement>) => {
+    if (duration <= 0) return;
+    const rect = (e.currentTarget as any).getBoundingClientRect();
+    const clickX = e.clientX - rect.left;
+    const percentage = clickX / rect.width;
+    const newTime = percentage * duration;
+    
+    setCurrentTime(newTime);
+    if (audioRef.current) {
+      audioRef.current.currentTime = newTime;
+    }
+  };
+
   const activeScene = useMemo(() => {
     return scenes.find(s => currentTime >= s.start && currentTime < s.end) || scenes[0] || null;
   }, [scenes, currentTime]);
@@ -624,7 +637,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         }
 
         const scene = scenes.find(s => currentTime >= s.start && currentTime < s.end) || scenes[scenes.length - 1];
-        const prog = (currentTime - scene.start) / (scene.end - scene.start);
+        const denom = (scene.end - scene.start) || 1;
+        const prog = Math.max(0, Math.min(1, (currentTime - scene.start) / denom));
         const img = imgCache[scene.id];
         
         ctx.clearRect(0, 0, 720, 1280);
@@ -636,12 +650,12 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
           let tx = 0;
           let ty = 0;
 
-          if (motion === 'zoom_in') scale = 1.05 + prog * 0.40;
-          else if (motion === 'zoom_out') scale = 1.45 - prog * 0.40;
-          else if (motion === 'pan_right') tx = -100 + prog * 200;
-          else if (motion === 'pan_left') tx = 100 - prog * 200;
-          else if (motion === 'diagonal_br') { tx = -80 + prog * 160; ty = -80 + prog * 160; scale = 1.25; }
-          else if (motion === 'diagonal_tr') { tx = -80 + prog * 160; ty = 80 - prog * 160; scale = 1.25; }
+          if (motion === 'zoom_in') scale = 1.05 + prog * 0.35;
+          else if (motion === 'zoom_out') scale = 1.40 - prog * 0.35;
+          else if (motion === 'pan_right') { tx = -75 + prog * 150; scale = 1.28; }
+          else if (motion === 'pan_left') { tx = 75 - prog * 150; scale = 1.28; }
+          else if (motion === 'diagonal_br') { tx = -70 + prog * 140; ty = -70 + prog * 140; scale = 1.28; }
+          else if (motion === 'diagonal_tr') { tx = -70 + prog * 140; ty = 70 - prog * 140; scale = 1.28; }
 
           // ⚡ ZOOM PUNCH Transition (First 15% of scene gets dramatic extra zoom that decays)
           if (selectedEffects.includes('zoom_punch') && prog < 0.15) {
@@ -653,7 +667,9 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
           ctx.translate(360 + tx, 640 + ty); 
           ctx.scale(scale, scale);
           
-          const aspect = (img as any).naturalWidth / (img as any).naturalHeight;
+          let aspect = (img as any).naturalWidth / (img as any).naturalHeight;
+          if (!aspect || isNaN(aspect)) aspect = 9 / 16;
+          
           let dw, dh;
           if (aspect < 720 / 1280) { dw = 720; dh = 720 / aspect; } else { dh = 1280; dw = 1280 * aspect; }
           ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
@@ -899,133 +915,142 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
               )}
             </div>
 
-            {/* Tracks Stack */}
-            <div className="flex flex-col gap-2.5">
-              {/* Track 1: SUBTITLES / TEXT */}
-              <div className="flex items-center gap-3">
-                <div className="w-16 text-right pr-2 text-[7px] font-black text-white/30 uppercase tracking-widest">
-                  Сюжет
-                </div>
-                <div className="flex-1 overflow-x-auto flex gap-1.5 py-0.5 hide-scrollbar">
-                  {!audioUrl ? (
-                    <div className="w-full h-8 rounded-lg bg-white/[0.01] border border-dashed border-white/5 flex items-center justify-center">
-                      <span className="text-[7px] font-black uppercase tracking-wider text-white/10">Ожидание выбора голоса...</span>
-                    </div>
-                  ) : (
-                    scenes.map((s, i) => (
-                      <div
-                        key={`timeline_text_${s.id}`}
-                        onClick={() => { setSelectedSceneId(s.id); setActiveTab('inspector'); setSheetExpanded(true); }}
-                        className={`h-8 rounded-lg border px-2.5 flex items-center justify-center cursor-pointer transition-all shrink-0 relative ${
-                          selectedSceneId === s.id
-                            ? 'border-purple-500/50 bg-purple-500/10'
-                            : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
-                        }`}
-                        style={{ width: `${Math.max(90, (s.end - s.start) * 12)}px` }}
-                      >
-                        <span className="text-[8px] font-bold text-white/50 truncate max-w-full">{s.text}</span>
-                        <span className="absolute bottom-0.5 right-1.5 text-[6px] font-black text-purple-400/30">#{i + 1}</span>
-                      </div>
-                    ))
-                  )}
-                </div>
+            {/* Tracks Sidebar & Scrollable Timeline Panel */}
+            <div className="flex bg-[#020205] border border-white/5 rounded-2xl overflow-hidden relative min-h-[140px]">
+              {/* Left column: fixed track labels */}
+              <div className="w-20 shrink-0 flex flex-col bg-[#0a0a0f] border-r border-white/5 z-20">
+                <div className="h-10 flex items-center justify-center border-b border-white/[0.03] text-[7px] font-black text-white/40 uppercase tracking-widest">Сюжет</div>
+                <div className="h-12 flex items-center justify-center border-b border-white/[0.03] text-[7px] font-black text-white/40 uppercase tracking-widest">Голос</div>
+                <div className="h-14 flex items-center justify-center text-[7px] font-black text-white/40 uppercase tracking-widest">Кадры</div>
               </div>
 
-              {/* Track 2: VOICE */}
-              <div className="flex items-center gap-3">
-                <div className="w-16 text-right pr-2 text-[7px] font-black text-white/30 uppercase tracking-widest">
-                  Голос
-                </div>
-                <div className="flex-1 overflow-x-auto flex gap-2 py-0.5 hide-scrollbar">
-                  {generatingVoice ? (
-                    <div className="w-full h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center gap-1.5 animate-pulse">
-                      <Loader2 size={12} className="animate-spin text-emerald-400" />
-                      <span className="text-[7.5px] font-black uppercase tracking-widest text-emerald-400">Идет синтез аудиодорожки...</span>
-                    </div>
-                  ) : !audioUrl ? (
-                    /* Horizontal Voice Scroller directly in the track space! */
-                    <div className="flex gap-2 min-w-max pb-0.5">
-                      {PREMIUM_VOICES.map(v => (
-                        <button
-                          key={v.voice_id}
-                          onClick={() => setConfirmVoiceId(v.voice_id)}
-                          className="px-3.5 py-1.5 rounded-xl border text-left transition-all active:scale-95 flex items-center gap-2 bg-white/[0.03] border-white/8 hover:bg-purple-500/10 hover:border-purple-500/30"
+              {/* Right column: scrollable tracks area */}
+              <div className="flex-1 overflow-x-auto relative scrollbar-none py-1.5" ref={timelineRef}>
+                <div 
+                  className="h-full relative select-none cursor-pointer" 
+                  style={{ width: `${Math.max(280, duration * 10)}px` }}
+                  onClick={handleTimelineClick}
+                >
+                  {/* Track 1: Сюжет */}
+                  <div className="h-9 flex items-center gap-1.5 border-b border-white/[0.03] w-full pr-4 select-none">
+                    {!audioUrl ? (
+                      <div className="w-full h-7 rounded-lg bg-white/[0.01] border border-dashed border-white/5 flex items-center justify-center">
+                        <span className="text-[6px] font-black uppercase tracking-wider text-white/10">Ожидание выбора голоса...</span>
+                      </div>
+                    ) : (
+                      scenes.map((s, i) => (
+                        <div
+                          key={`timeline_text_${s.id}`}
+                          onClick={(e) => { e.stopPropagation(); setSelectedSceneId(s.id); setActiveTab('inspector'); setSheetExpanded(true); }}
+                          className={`h-7 rounded-lg border px-2 flex items-center justify-center cursor-pointer transition-all shrink-0 relative ${
+                            selectedSceneId === s.id
+                              ? 'border-purple-500/50 bg-purple-500/10'
+                              : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
+                          }`}
+                          style={{ width: `${Math.max(70, (s.end - s.start) * 10)}px` }}
                         >
-                          <span className="text-[12px]">{v.gender === 'F' ? '👩' : '👨'}</span>
-                          <div>
-                            <p className="text-[8.5px] font-black text-white leading-none">{v.name}</p>
-                            <p className="text-[6px] text-white/30 uppercase font-black mt-0.5">{v.accent}</p>
-                          </div>
-                        </button>
-                      ))}
-                    </div>
-                  ) : (
-                    /* Audio track loaded (solid blue) */
-                    <div
-                      className="h-9 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 border border-blue-500/30 flex items-center justify-between px-3 w-full shrink-0"
-                      style={{ width: `${Math.max(280, duration * 10)}px` }}
-                    >
-                      <div className="flex items-center gap-1.5">
-                        <Mic size={11} className="text-white animate-pulse" />
-                        <span className="text-[8.5px] font-black uppercase tracking-widest text-white">
-                          Озвучка: {PREMIUM_VOICES.find(v => v.voice_id === selectedVoice)?.name || 'Sarah'}
-                        </span>
-                      </div>
-                      <span className="text-[7px] font-black text-white/40 uppercase tracking-widest">{duration.toFixed(1)}s</span>
-                    </div>
-                  )}
-                </div>
-              </div>
-
-              {/* Track 3: IMAGES */}
-              <div className="flex items-center gap-3">
-                <div className="w-16 text-right pr-2 text-[7px] font-black text-white/30 uppercase tracking-widest">
-                  Кадры
-                </div>
-                <div className="flex-1 overflow-x-auto flex gap-1.5 py-0.5 hide-scrollbar">
-                  {!audioUrl ? (
-                    <div className="w-full h-11 rounded-xl bg-white/[0.01] border border-white/5 flex items-center justify-center">
-                      <span className="text-[7px] font-black uppercase tracking-wider text-white/10">Ожидание аудиодорожки...</span>
-                    </div>
-                  ) : scenes.every(s => !s.imageUrl) && !generatingImages ? (
-                    /* Big, styled button-prompt */
-                    <button
-                      onClick={() => setShowConfirmImages(true)}
-                      className="h-11 w-full rounded-xl bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 flex items-center justify-center gap-1.5 active:scale-95 transition-all text-white font-black uppercase tracking-widest text-[8px] shadow-lg shadow-purple-500/20"
-                    >
-                      <Wand2 size={11} className="animate-bounce text-yellow-300" />
-                      ✨ Сгенерировать изображения (Сразу все)
-                    </button>
-                  ) : (
-                    /* Multi-slot scene list with loading states/previews */
-                    scenes.map((s, i) => (
-                      <div
-                        key={`timeline_img_${s.id}`}
-                        onClick={() => { setSelectedSceneId(s.id); setActiveTab('inspector'); setSheetExpanded(true); }}
-                        className={`h-11 rounded-lg border overflow-hidden cursor-pointer relative transition-all shrink-0 ${
-                          selectedSceneId === s.id
-                            ? 'border-purple-500 ring-1 ring-purple-500/40 bg-purple-500/5'
-                            : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
-                        }`}
-                        style={{ width: `${Math.max(90, (s.end - s.start) * 12)}px` }}
-                      >
-                        {s.imageUrl ? (
-                          <img src={s.imageUrl} className="w-full h-full object-cover" alt="" />
-                        ) : s.generating ? (
-                          <div className="w-full h-full flex flex-col items-center justify-center bg-purple-500/5 animate-pulse">
-                            <Loader2 size={10} className="animate-spin text-purple-400" />
-                          </div>
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-white/10 gap-0.5 hover:text-purple-400 transition-colors">
-                            <ImageIcon size={10} />
-                            <span className="text-[5px] font-black uppercase">Создать</span>
-                          </div>
-                        )}
-                        <div className="absolute top-0.5 left-1 px-1 rounded bg-black/70 border border-white/5 text-[5.5px] font-black text-white/60">
-                          #{i + 1}
+                          <span className="text-[7.5px] font-bold text-white/50 truncate max-w-full">{s.text}</span>
+                          <span className="absolute bottom-0.5 right-1 text-[5px] font-black text-purple-400/30">#{i + 1}</span>
                         </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Track 2: Голос */}
+                  <div className="h-11 flex items-center gap-2 border-b border-white/[0.03] w-full select-none">
+                    {generatingVoice ? (
+                      <div className="w-full h-8 rounded-lg bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center gap-1 animate-pulse">
+                        <Loader2 size={10} className="animate-spin text-emerald-400" />
+                        <span className="text-[6.5px] font-black uppercase tracking-widest text-emerald-400">Идет синтез аудио...</span>
                       </div>
-                    ))
+                    ) : !audioUrl ? (
+                      <div className="flex gap-2 min-w-max pr-4">
+                        {PREMIUM_VOICES.map(v => (
+                          <button
+                            key={v.voice_id}
+                            onClick={(e) => { e.stopPropagation(); setConfirmVoiceId(v.voice_id); }}
+                            className="px-2.5 py-1 rounded-lg border text-left transition-all active:scale-95 flex items-center gap-1 bg-white/[0.03] border-white/8 hover:bg-purple-500/10 hover:border-purple-500/30"
+                          >
+                            <span className="text-[10px]">{v.gender === 'F' ? '👩' : '👨'}</span>
+                            <div>
+                              <p className="text-[7px] font-black text-white leading-none">{v.name}</p>
+                              <p className="text-[5px] text-white/30 uppercase font-black mt-0.5">{v.accent}</p>
+                            </div>
+                          </button>
+                        ))}
+                      </div>
+                    ) : (
+                      <div
+                        className="h-8 rounded-lg bg-gradient-to-r from-blue-600 to-indigo-600 border border-blue-500/30 flex items-center justify-between px-2.5"
+                        style={{ width: `${Math.max(280, duration * 10)}px` }}
+                      >
+                        <div className="flex items-center gap-1">
+                          <Mic size={9} className="text-white animate-pulse" />
+                          <span className="text-[7.5px] font-black uppercase tracking-widest text-white">
+                            Озвучка: {PREMIUM_VOICES.find(v => v.voice_id === selectedVoice)?.name || 'Sarah'}
+                          </span>
+                        </div>
+                        <span className="text-[6px] font-black text-white/40 uppercase tracking-widest">{duration.toFixed(1)}s</span>
+                      </div>
+                    )}
+                  </div>
+
+                  {/* Track 3: Кадры */}
+                  <div className="h-13 flex items-center gap-1.5 w-full pr-4 select-none">
+                    {!audioUrl ? (
+                      <div className="w-full h-9 rounded-lg bg-white/[0.01] border border-white/5 flex items-center justify-center">
+                        <span className="text-[6px] font-black uppercase tracking-wider text-white/10">Ожидание аудио...</span>
+                      </div>
+                    ) : scenes.every(s => !s.imageUrl) && !generatingImages ? (
+                      <button
+                        onClick={(e) => { e.stopPropagation(); setShowConfirmImages(true); }}
+                        className="h-9 w-full rounded-lg bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 flex items-center justify-center gap-1 active:scale-95 transition-all text-white font-black uppercase tracking-widest text-[7px] shadow-lg shadow-purple-500/20"
+                      >
+                        <Wand2 size={9} className="animate-bounce text-yellow-300" />
+                        ✨ Сгенерировать изображения (Сразу все)
+                      </button>
+                    ) : (
+                      scenes.map((s, i) => (
+                        <div
+                          key={`timeline_img_${s.id}`}
+                          onClick={(e) => { e.stopPropagation(); setSelectedSceneId(s.id); setActiveTab('inspector'); setSheetExpanded(true); }}
+                          className={`h-9 rounded-lg border overflow-hidden cursor-pointer relative transition-all shrink-0 ${
+                            selectedSceneId === s.id
+                              ? 'border-purple-500 ring-1 ring-purple-500/40 bg-purple-500/5'
+                              : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
+                          }`}
+                          style={{ width: `${Math.max(70, (s.end - s.start) * 10)}px` }}
+                        >
+                          {s.imageUrl ? (
+                            <img src={s.imageUrl} className="w-full h-full object-cover animate-in fade-in duration-300" alt="" />
+                          ) : s.generating ? (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-purple-500/5 animate-pulse">
+                              <Loader2 size={8} className="animate-spin text-purple-400" />
+                            </div>
+                          ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center text-white/10 gap-0.5 hover:text-purple-400 transition-colors">
+                              <ImageIcon size={9} />
+                              <span className="text-[5px] font-black uppercase">Создать</span>
+                            </div>
+                          )}
+                          <div className="absolute top-0.5 left-1 px-1 rounded bg-black/70 border border-white/5 text-[5px] font-black text-white/60">
+                            #{i + 1}
+                          </div>
+                        </div>
+                      ))
+                    )}
+                  </div>
+
+                  {/* Pro Playhead line overlay */}
+                  {audioUrl && duration > 0 && (
+                    <motion.div 
+                      className="absolute top-0 bottom-0 w-0.5 bg-red-500 z-30 shadow-[0_0_10px_rgba(239,68,68,0.8)] pointer-events-none"
+                      style={{ left: `${(currentTime / duration) * 100}%` }}
+                    >
+                      <div className="absolute top-0 -translate-x-1/2 w-3.5 h-5 bg-red-500 rounded-b-md flex items-center justify-center shadow-lg">
+                        <div className="w-px h-2.5 bg-white/30 rounded-full" />
+                      </div>
+                    </motion.div>
                   )}
                 </div>
               </div>
