@@ -14,8 +14,7 @@ import { idb } from '@/lib/idb';
 import { supabase } from '@/lib/supabase';
 import DistributionFactory from '../../[id]/studio/_components/DistributionFactory';
 import { Suspense } from 'react';
-import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
-import { fetchFile } from '@ffmpeg/util';
+import { getFFmpeg, getFetchFile, resetFFmpeg } from '@/lib/ffmpeg-delivery';
 
 function DeliveryPageContent() {
   const t = useTranslations('delivery');
@@ -46,6 +45,8 @@ function DeliveryPageContent() {
   const [shotstackRealStatus, setShotstackRealStatus] = useState<string | null>(null);
   const [showShotstackModal, setShowShotstackModal] = useState(false);
   const [renderMode, setRenderMode] = useState<'shotstack' | 'ffmpeg'>('ffmpeg');
+  const [isFallbackMode, setIsFallbackMode] = useState(false);
+  const [fallbackError, setFallbackError] = useState<string | null>(null);
   const isLaunchingRenderRef = useRef(false);
   const ffmpegRef = useRef<any>(null);
 
@@ -457,6 +458,7 @@ function DeliveryPageContent() {
       setPreviewUrl(aRollUrl);
 
       setRenderStatus('Скачивание основного видео...');
+      const fetchFile = await getFetchFile();
       const aRollData = await fetchFile(aRollUrl);
       await ffmpeg.writeFile('input_aroll.mp4', aRollData);
 
@@ -633,7 +635,10 @@ function DeliveryPageContent() {
 
     } catch (err: any) {
       console.error('[Delivery] Client render failed:', err);
-      setError(err.message || 'Ошибка рендера FFmpeg');
+      const errMsg = err.message || 'Ошибка рендера FFmpeg';
+      setFallbackError(errMsg);
+      setIsFallbackMode(true);
+      setShowShotstackModal(true);
     } finally {
       setIsLoading(false);
       isLaunchingRenderRef.current = false;
@@ -853,20 +858,10 @@ function DeliveryPageContent() {
           return;
         }
 
-        // --- HYBRID RENDER LOGIC ---
-        const { browserCapabilities } = require('@/lib/browser-capabilities');
-        const recommendedMode = browserCapabilities.suggestRenderMode();
-        
-        if (recommendedMode === 'ffmpeg') {
-           addSystemLog('Устройство определено как мощное. Запуск локального FFmpeg сборщика...');
-           setRenderMode('ffmpeg');
-           handleClientRender(verData);
-        } else {
-           addSystemLog('Устройство слабое. Предлагаем облачный рендеринг Shotstack.');
-           setRenderMode('shotstack');
-           setShowShotstackModal(true);
-           setIsLoading(false);
-        }
+        // --- ALWAYS TRY LOCAL FFmpeg FIRST BY DEFAULT ---
+        addSystemLog('Запуск локального FFmpeg сборщика (основной движок)...');
+        setRenderMode('ffmpeg');
+        handleClientRender(verData);
 
       } catch (err: any) {
         console.error('[Delivery] Auto-launch failed:', err);
@@ -1076,17 +1071,25 @@ function DeliveryPageContent() {
                   <AlertCircle className="w-8 h-8 text-blue-400" />
                 </div>
                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                  {locale === 'ru' ? 'Облачный рендеринг' : 'Cloud Rendering Recommended'}
+                  {isFallbackMode 
+                    ? (locale === 'ru' ? 'Резервный рендеринг' : 'Render Fallback')
+                    : (locale === 'ru' ? 'Облачный рендеринг' : 'Cloud Rendering Recommended')}
                 </h2>
                 <p className="text-sm text-white/60 font-medium">
-                  {locale === 'ru' 
-                    ? 'Ваше устройство может не справиться с тяжелым локальным монтажом. Рекомендуем выполнить сборку на наших мощных серверах (Shotstack).' 
-                    : 'Your device might struggle with heavy local rendering. We recommend using our powerful cloud servers (Shotstack).'}
+                  {isFallbackMode 
+                    ? (locale === 'ru' 
+                        ? `Локальный монтаж на устройстве завершился ошибкой: ${fallbackError}. Желаете переключиться на наши мощные серверы в облаке (Shotstack)?`
+                        : `Local rendering failed: ${fallbackError}. Would you like to switch to our powerful cloud servers (Shotstack) instead?`)
+                    : (locale === 'ru' 
+                        ? 'Ваше устройство может не справиться с тяжелым локальным монтажом. Рекомендуем выполнить сборку на наших мощных серверах (Shotstack).' 
+                        : 'Your device might struggle with heavy local rendering. We recommend using our powerful cloud servers (Shotstack).')}
                 </p>
                 <div className="flex flex-col gap-3 mt-6">
                   <button
                     onClick={() => {
                       setShowShotstackModal(false);
+                      setIsFallbackMode(false);
+                      setFallbackError(null);
                       setIsLoading(true);
                       executeShotstackRender(version);
                     }}
@@ -1094,17 +1097,30 @@ function DeliveryPageContent() {
                   >
                     {locale === 'ru' ? 'Продолжить в облаке (Быстро)' : 'Continue in Cloud (Fast)'}
                   </button>
-                  <button
-                    onClick={() => {
-                      setShowShotstackModal(false);
-                      setIsLoading(true);
-                      setRenderMode('ffmpeg');
-                      handleClientRender(version!);
-                    }}
-                    className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white font-black uppercase tracking-widest text-xs transition-all"
-                  >
-                    {locale === 'ru' ? 'Все равно локально (FFmpeg)' : 'Force Local (FFmpeg)'}
-                  </button>
+                  {isFallbackMode ? (
+                    <button
+                      onClick={() => {
+                        setShowShotstackModal(false);
+                        setIsFallbackMode(false);
+                        setError(fallbackError || 'Ошибка рендера FFmpeg');
+                      }}
+                      className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white font-black uppercase tracking-widest text-xs transition-all"
+                    >
+                      {locale === 'ru' ? 'Отмена' : 'Cancel'}
+                    </button>
+                  ) : (
+                    <button
+                      onClick={() => {
+                        setShowShotstackModal(false);
+                        setIsLoading(true);
+                        setRenderMode('ffmpeg');
+                        handleClientRender(version!);
+                      }}
+                      className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white font-black uppercase tracking-widest text-xs transition-all"
+                    >
+                      {locale === 'ru' ? 'Все равно локально (FFmpeg)' : 'Force Local (FFmpeg)'}
+                    </button>
+                  )}
                 </div>
               </div>
             </motion.div>
