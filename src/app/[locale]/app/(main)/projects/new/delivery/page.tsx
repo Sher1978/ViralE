@@ -424,8 +424,25 @@ function DeliveryPageContent() {
       const ffmpeg = await getFFmpeg();
       ffmpegRef.current = ffmpeg;
 
+      const execWithTimeout = async (args: string[], ms: number = 40000) => {
+        let timer: any;
+        const timeoutPromise = new Promise<never>((_, reject) => {
+          timer = setTimeout(() => {
+            reject(new Error(`FFmpeg render timed out after ${Math.round(ms / 1000)}s`));
+          }, ms);
+        });
+        try {
+          return await Promise.race([ffmpeg.exec(args), timeoutPromise]);
+        } finally {
+          clearTimeout(timer);
+        }
+      };
+
       ffmpeg.on('log', ({ message }: any) => {
         console.log('[FFmpeg]', message);
+        if (message && !message.includes('frame=') && !message.includes('fps=')) {
+          addSystemLog(`[FFmpeg] ${message.substring(0, 100)}`);
+        }
       });
       
       ffmpeg.on('progress', ({ progress }: any) => {
@@ -514,7 +531,7 @@ function DeliveryPageContent() {
         const clipEnd = typeof clip.endTime === 'number' && !isNaN(clip.endTime) ? clip.endTime : clipStart + 5;
         const duration = Math.max(0.1, clipEnd - clipStart);
 
-        await ffmpeg.exec(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', duration.toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
+        await execWithTimeout(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', duration.toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
         processedBrolls.push({ name: optName, clip: { ...clip, startTime: clipStart, endTime: clipEnd } });
         try { await ffmpeg.deleteFile(name); } catch(e) {}
       }
@@ -539,7 +556,7 @@ function DeliveryPageContent() {
           vfFilter = buildDrawtextFilter(subs, scale, isMobile ? 1280 : 1920);
         }
 
-        await ffmpeg.exec([
+        await execWithTimeout([
           '-i', currentInput,
           '-vf', vfFilter,
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
@@ -552,7 +569,7 @@ function DeliveryPageContent() {
       } else {
         setRenderStatus(`Масштабирование исходника...`);
         const scaledOutput = `temp_A.mp4`;
-        await ffmpeg.exec([
+        await execWithTimeout([
           '-i', currentInput,
           '-vf', scale,
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
@@ -572,7 +589,7 @@ function DeliveryPageContent() {
           setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
           
           const overlayFilter = `[1:v]scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
-          await ffmpeg.exec([
+          await execWithTimeout([
             '-i', currentInput,
             '-itsoffset', broll.clip.startTime.toString(),
             '-i', broll.name,
@@ -591,7 +608,7 @@ function DeliveryPageContent() {
           const subOutput = currentInput === 'temp_A.mp4' ? `temp_B.mp4` : `temp_A.mp4`;
           const vfFilter = buildDrawtextFilter(subs, '', isMobile ? 1280 : 1920);
           
-          const exitCodeSub = await ffmpeg.exec([
+          const exitCodeSub = await execWithTimeout([
             '-i', currentInput,
             '-vf', vfFilter,
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',

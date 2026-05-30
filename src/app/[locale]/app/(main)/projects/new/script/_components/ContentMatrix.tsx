@@ -104,23 +104,6 @@ function ScenarioCard({
           className="w-full bg-transparent text-sm sm:text-[15px] leading-relaxed text-white/90 font-medium focus:outline-none focus:ring-0 border-none p-0 transition-all resize-none flex-1 no-scrollbar placeholder:text-white/10 italic"
           placeholder="[Empty Node... Edit required]"
         />
-        
-        {/* Visual Prompts Panel */}
-        {(content as any)?.visual && (
-          <div className={`mt-4 p-4 rounded-2xl border backdrop-blur-sm transition-all duration-500 ${
-            isSelected 
-              ? 'bg-purple-950/20 border-purple-500/20' 
-              : 'bg-black/40 border-white/5 group-hover:border-white/10'
-          }`}>
-             <p className="text-[9px] font-black uppercase text-purple-400/80 mb-1.5 tracking-[0.15em] flex items-center gap-1">
-               <Wand2 className="w-3 h-3" />
-               Visual Prompt Reference
-             </p>
-             <p className="text-[11px] text-white/50 leading-relaxed italic tracking-wide">
-               {(content as any).visual}
-             </p>
-          </div>
-        )}
       </div>
 
       {/* Background scanner beam effect for selected */}

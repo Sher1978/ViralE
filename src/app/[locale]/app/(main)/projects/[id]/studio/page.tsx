@@ -518,9 +518,16 @@ export default function StudioPage() {
 
   // 📹 Auto-init camera when entering teleprompter
   useEffect(() => {
+    let active = true;
+
     if (activeTab === 'teleprompter' && !cameraStream && !isLoading) {
       console.log('[Studio] Auto-initializing camera for teleprompter...');
-      initCamera();
+      initCamera().then((stream) => {
+        if (!active && stream) {
+          console.log('[Studio] Component unmounted during camera init, stopping tracks immediately...');
+          (stream as any).getTracks().forEach((track: any) => track.stop());
+        }
+      });
     }
     
     // 🛑 Explicitly stop camera hardware when leaving prompter
@@ -528,6 +535,12 @@ export default function StudioPage() {
       console.log('[Studio] Stopping camera hardware (Leaving prompter)...');
       stopCamera();
     }
+
+    return () => {
+      active = false;
+      console.log('[Studio] Cleanup: stopping camera hardware...');
+      stopCamera();
+    };
   }, [activeTab, cameraStream, isLoading]);
 
   const initCamera = async (): Promise<MediaStream | null> => {
@@ -595,6 +608,18 @@ export default function StudioPage() {
         console.log(`[Studio] Stopped track: ${track.kind}`);
       });
       setCameraStream(null);
+    }
+    
+    // Safety: check video preview element's srcObject directly to stop any active tracks
+    if (videoPreviewRef.current && (videoPreviewRef.current as any).srcObject) {
+      const activeSrcStream = (videoPreviewRef.current as any).srcObject;
+      if (activeSrcStream && typeof activeSrcStream.getTracks === 'function') {
+        activeSrcStream.getTracks().forEach((track: any) => {
+          track.stop();
+          console.log(`[Studio] Stopped track from srcObject: ${track.kind}`);
+        });
+      }
+      (videoPreviewRef.current as any).srcObject = null;
     }
     
     // Safety: scan for any other active streams/tracks and stop them
