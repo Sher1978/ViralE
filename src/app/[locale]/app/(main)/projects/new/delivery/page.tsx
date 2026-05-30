@@ -463,7 +463,7 @@ function DeliveryPageContent() {
       const ffmpeg = await getFFmpeg();
       ffmpegRef.current = ffmpeg;
 
-      const execWithTimeout = async (args: string[], ms: number = 40000) => {
+      const execWithTimeout = async (args: string[], ms: number = 180000) => {
         let timer: any;
         const timeoutPromise = new Promise<never>((_, reject) => {
           timer = setTimeout(() => {
