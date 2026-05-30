@@ -849,6 +849,7 @@ export default function StudioPage() {
             {activeTab === 'avatar_hub' && (
               <AvatarHub 
                 projectId={projectId}
+                currentProfile={currentProfile}
                 onSelect={(config) => {
                   setSelectedAvatarPhoto(config.photoUrl);
                   handleTabChange('timeline_lab');

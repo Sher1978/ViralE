@@ -26,7 +26,8 @@ import {
   X,
   ChevronLeft,
   Zap,
-  Globe
+  Globe,
+  Lock
 } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '@/lib/supabase';
@@ -202,6 +203,63 @@ export default function AvatarStudioPage() {
     { id: 'stock_7', name: 'Lucas', url: 'https://images.unsplash.com/photo-1566492031773-4f4e44671857?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' },
     { id: 'stock_8', name: 'Sofia', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' }
   ];
+
+  if (profile !== null && profile.tier !== 'creator' && profile.tier !== 'pro') {
+    return (
+      <div className="min-h-screen bg-[#050508] text-white flex flex-col">
+        {/* Header */}
+        <div className="sticky top-0 z-50 glass-premium border-b border-white/5 py-4 px-6 flex items-center justify-between">
+          <div className="flex items-center gap-4">
+            <button 
+              onClick={() => router.back()}
+              className="w-10 h-10 rounded-full bg-white/5 border border-white/10 flex items-center justify-center hover:bg-white/10 transition-all"
+            >
+              <ChevronLeft size={20} />
+            </button>
+            <div className="space-y-0.5">
+              <h1 className="text-xs font-black uppercase tracking-[0.3em] text-white/40 flex items-center gap-2">
+                <Cpu size={12} className="text-cyan-500" />
+                Production Hub
+              </h1>
+              <h2 className="text-xl font-black uppercase italic tracking-tighter">
+                Avatar <span className="gradient-text-purple">Studio</span>
+              </h2>
+            </div>
+          </div>
+        </div>
+
+        {/* Lock Screen Centered Content */}
+        <div className="flex-1 flex items-center justify-center p-6 md:p-12">
+          <div className="max-w-xl w-full p-10 rounded-[3rem] bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-transparent border border-yellow-500/20 shadow-2xl relative overflow-hidden group text-center">
+            <div className="absolute top-0 right-0 p-8 opacity-5">
+              <Lock size={80} className="text-yellow-500" />
+            </div>
+            
+            <div className="w-16 h-16 rounded-3xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500 mx-auto mb-6 shadow-[0_0_30px_rgba(234,179,8,0.1)]">
+              <Lock size={28} className="animate-pulse" />
+            </div>
+
+            <h3 className="text-2xl font-black italic uppercase tracking-tight text-white mb-2">HeyGen Avatar Studio</h3>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-yellow-500 mb-6">PREMIUM PIPELINE REQUIRED</p>
+
+            <p className="text-xs text-white/60 leading-relaxed font-bold uppercase tracking-widest mb-8">
+              Создание цифровых аватаров и анимация портретов с помощью интеграции HeyGen доступны только для тарифов <span className="text-purple-400">Creator</span> и <span className="text-purple-400">Pro</span>.<br/><br/>
+              Обновите подписку прямо сейчас, чтобы оживлять свои фото, использовать официальные модели и подключать собственные API ключи!
+            </p>
+
+            <button
+              onClick={() => {
+                router.push('/profile/subscription');
+              }}
+              className="w-full py-5 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-black uppercase tracking-[0.2em] text-xs rounded-[2rem] shadow-xl shadow-yellow-500/10 active:scale-[0.98] transition-all"
+            >
+              Активировать Creator / Pro
+            </button>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-black text-white selection:bg-cyan-500/30">

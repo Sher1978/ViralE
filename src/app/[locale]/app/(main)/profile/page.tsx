@@ -22,7 +22,8 @@ import {
   X,
   Edit2,
   Loader2,
-  Images
+  Images,
+  Lock
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
@@ -135,12 +136,14 @@ export default function ProfilePage() {
     }
   };
 
+  const isHeyGenLocked = !profile || (profile.tier !== 'creator' && profile.tier !== 'pro');
+
   const SETTINGS_SECTIONS = [
     {
       title: t('sectionProfile'),
       items: [
         { icon: Fingerprint, label: t('dnaLabel'), sub: t('dnaSub'), href: `/app/profile/dna`, accent: '#D4AF37' },
-        { icon: UserCircle2, label: t('avatarLabel'), sub: t('avatarSub'), href: `/app/profile/avatar`, accent: '#00FFCC' },
+        { icon: UserCircle2, label: t('avatarLabel'), sub: t('avatarSub'), href: `/app/profile/avatar`, accent: '#00FFCC', locked: isHeyGenLocked },
         { icon: Images, label: 'Мои фотографии', sub: 'Управление библиотекой фото для AI-синтеза', href: `/app/profile/photos`, accent: '#A855F7' },
         { icon: Send, label: t('telegramLabel'), sub: t('telegramSub'), href: `/app/profile/telegram`, accent: '#4D9EFF' },
       ],
@@ -148,7 +151,7 @@ export default function ProfilePage() {
     {
       title: t('sectionPro'),
       items: [
-        { icon: Key, label: t('byokLabel'), sub: t('byokSub'), href: `/app/profile/byok`, accent: '#D4AF37' },
+        { icon: Key, label: t('byokLabel'), sub: t('byokSub'), href: `/app/profile/byok`, accent: '#D4AF37', locked: isHeyGenLocked },
         { icon: ShieldCheck, label: t('securityLabel'), sub: t('securitySub'), href: `/app/profile/security`, accent: '#FF4D6D' },
       ],
     },
@@ -394,8 +397,14 @@ export default function ProfilePage() {
                     </div>
                     
                     <div className="flex-1 min-w-0">
-                      <div className="text-sm font-bold text-white/90 mb-0.5 group-hover:text-white transition-colors">
+                      <div className="text-sm font-bold text-white/90 mb-0.5 group-hover:text-white transition-colors flex items-center gap-2">
                         {item.label}
+                        {(item as any).locked && (
+                          <span className="px-2 py-0.5 rounded-full bg-yellow-500/10 border border-yellow-500/20 text-yellow-500 text-[8px] font-black uppercase tracking-wider flex items-center gap-1">
+                            <Lock size={8} className="fill-yellow-500/20" />
+                            PRO
+                          </span>
+                        )}
                       </div>
                       <div className="text-[11px] text-white/30 font-medium group-hover:text-white/50 transition-colors">
                         {item.sub}
@@ -411,7 +420,7 @@ export default function ProfilePage() {
                     {item.href ? (
                       <Link href={item.href}>{content}</Link>
                     ) : (
-                      <div onClick={item.onClick}>{content}</div>
+                      <div onClick={(item as any).onClick}>{content}</div>
                     )}
                     {i < section.items.length - 1 && (
                       <div className="h-px bg-gradient-to-r from-transparent via-white/10 to-transparent mx-5" />

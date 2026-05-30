@@ -3,7 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
-import { User, Key, Image as ImageIcon, Upload, CheckCircle2, Info, Loader2, Trash2, Sparkles, Copy, ExternalLink, AlertCircle, Plus } from 'lucide-react';
+import { User, Key, Image as ImageIcon, Upload, CheckCircle2, Info, Loader2, Trash2, Sparkles, Copy, ExternalLink, AlertCircle, Plus, Lock } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '@/lib/supabase';
 
@@ -19,13 +19,44 @@ interface AvatarHubProps {
   onBack?: () => void;
   projectId: string;
   currentConfig?: any;
+  currentProfile?: any;
 }
 
-export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }: AvatarHubProps) {
+export default function AvatarHub({ onSelect, onBack, projectId, currentConfig, currentProfile }: AvatarHubProps) {
   const t = useTranslations('profile');
   const common = useTranslations('common');
   const [activeTab, setActiveTab] = useState<'stock' | 'byok' | 'photo'>(currentConfig?.mode || 'stock');
   const [selectedAsset, setSelectedAsset] = useState<string | null>(currentConfig?.assetId || null);
+  
+  const [profile, setProfile] = useState<any>(currentProfile || null);
+  const [loadingProfile, setLoadingProfile] = useState(!currentProfile);
+
+  useEffect(() => {
+    if (currentProfile) {
+      setProfile(currentProfile);
+      setLoadingProfile(false);
+    } else {
+      setLoadingProfile(true);
+      supabase.auth.getUser().then(({ data: { user } }: any) => {
+        if (user) {
+          supabase
+            .from('profiles')
+            .select('*')
+            .eq('id', user.id)
+            .single()
+            .then(({ data }: any) => {
+              if (data) setProfile(data);
+              setLoadingProfile(false);
+            })
+            .catch(() => setLoadingProfile(false));
+        } else {
+          setLoadingProfile(false);
+        }
+      }).catch(() => setLoadingProfile(false));
+    }
+  }, [currentProfile]);
+
+  const isHeyGenLocked = !loadingProfile && (!profile || (profile.tier !== 'creator' && profile.tier !== 'pro'));
   
   // Real Assets State
   const [assets, setAssets] = useState<AvatarAsset[]>([]);
@@ -261,7 +292,12 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }
               />
             )}
             <tab.icon className="w-4 h-4 relative z-10" />
-            <span className="text-sm font-medium relative z-10">{tab.title}</span>
+            <span className="text-sm font-medium relative z-10 flex items-center gap-1.5">
+              {tab.title}
+              {tab.id === 'byok' && isHeyGenLocked && (
+                <Lock size={10} className="text-yellow-500 fill-yellow-500/20" />
+              )}
+            </span>
           </button>
         ))}
       </div>
@@ -302,7 +338,7 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }
                 </div>
             )}
 
-            {activeTab === 'byok' && (
+            {activeTab === 'byok' && !isHeyGenLocked && (
               <div className="space-y-6 max-w-xl mx-auto py-10">
                 <div className="p-10 rounded-[3rem] bg-gradient-to-br from-purple-600/10 via-blue-600/5 to-transparent border border-white/10 shadow-2xl relative overflow-hidden group">
                   <div className="absolute top-0 right-0 p-8 opacity-10 group-hover:opacity-20 transition-opacity">
@@ -342,6 +378,41 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig }
                       <span>Cost per render: 0 Credits (Billed via HeyGen)</span>
                     </div>
                   </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'byok' && isHeyGenLocked && (
+              <div className="space-y-6 max-w-xl mx-auto py-10">
+                <div className="p-10 rounded-[3rem] bg-gradient-to-br from-yellow-500/10 via-amber-500/5 to-transparent border border-yellow-500/20 shadow-2xl relative overflow-hidden group text-center">
+                  <div className="absolute top-0 right-0 p-8 opacity-5">
+                    <Lock size={80} className="text-yellow-500" />
+                  </div>
+                  
+                  <div className="w-16 h-16 rounded-3xl bg-yellow-500/10 border border-yellow-500/20 flex items-center justify-center text-yellow-500 mx-auto mb-6 shadow-[0_0_30px_rgba(234,179,8,0.1)]">
+                    <Lock size={28} className="animate-pulse" />
+                  </div>
+
+                  <h3 className="text-2xl font-black italic uppercase tracking-tight text-white mb-2">HeyGen BYOK</h3>
+                  <p className="text-[9px] font-black uppercase tracking-[0.2em] text-yellow-500 mb-6">PREMIUM PIPELINE REQUIRED</p>
+
+                  <p className="text-xs text-white/60 leading-relaxed font-bold uppercase tracking-widest mb-8">
+                    Интеграция HeyGen по вашему собственному API ключу доступна только на тарифах <span className="text-purple-400">Creator</span> и <span className="text-purple-400">Pro</span>.<br/><br/>
+                    Обновите подписку, чтобы получить неограниченные генерации аватаров без траты внутренних кредитов!
+                  </p>
+
+                  <button
+                    onClick={() => {
+                      const win = (globalThis as any).window;
+                      if (win) {
+                        const currentLocale = win.location.pathname.split('/')[1] || 'ru';
+                        win.location.href = `/${currentLocale}/app/profile/subscription`;
+                      }
+                    }}
+                    className="w-full py-5 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-black uppercase tracking-[0.2em] text-xs rounded-[2rem] shadow-xl shadow-yellow-500/10 active:scale-[0.98] transition-all"
+                  >
+                    Активировать Creator / Pro
+                  </button>
                 </div>
               </div>
             )}
