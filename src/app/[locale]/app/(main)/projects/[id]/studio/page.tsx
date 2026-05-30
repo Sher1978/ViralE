@@ -21,6 +21,7 @@ import { idb } from '@/lib/idb';
 import { StudioSidebar } from './_components/StudioSidebar';
 import { useHardwareRecorder } from '@/hooks/useHardwareRecorder';
 import { useStudioExport } from './_hooks/useStudioExport';
+import { useTimelineSynthesis } from './_hooks/useTimelineSynthesis';
 import dynamic from 'next/dynamic';
 
 const Spinner = () => (
@@ -104,19 +105,9 @@ export default function StudioPage() {
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [availableAvatars, setAvailableAvatars] = useState<any[]>([]);
   const [isGeneratingAvatar, setIsGeneratingAvatar] = useState(false);
-  const [isGeneratingFusion, setIsGeneratingFusion] = useState(false);
-  const [fusionStatus, setFusionStatus] = useState<'segmenting' | 'processing' | 'stitching' | 'completed' | 'failed'>('segmenting');
-  const [fusionProgress, setFusionProgress] = useState(0);
   const [isAssemblingAvatar, setIsAssemblingAvatar] = useState(false);
   const [selectedAvatarPhoto, setSelectedAvatarPhoto] = useState<string | null>(null);
   const [avatarPhoto, setAvatarPhoto] = useState<string | null>(null);
-  
-  // Fusion Engine States
-  const [fusionSegments, setFusionSegments] = useState<any[]>([]);
-  const [fusedVideoUrl, setFusedVideoUrl] = useState<string | null>(null);
-  const [fusionSegmentsCount, setFusionSegmentsCount] = useState(0);
-  const [fusionCompletedSegments, setFusionCompletedSegments] = useState(0);
-  const [fusionError, setFusionError] = useState<string | null>(null);
 
   const prompterRef = useRef<HTMLDivElement>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
@@ -186,6 +177,29 @@ export default function StudioPage() {
     setRecordedSize,
     backgroundMp4Url,
     addSystemLog
+  });
+
+  // Timeline Fusion Synthesis Integration
+  const {
+    fusionSegments,
+    setFusionSegments,
+    fusedVideoUrl,
+    setFusedVideoUrl,
+    fusionStatus,
+    setFusionStatus,
+    fusionProgress,
+    setFusionProgress,
+    fusionCompletedSegments,
+    fusionError,
+    setFusionError,
+    handleTimelineGeneration
+  } = useTimelineSynthesis({
+    projectId,
+    manifest,
+    setManifest,
+    lastRecordingUrl,
+    setLastRecordingUrl,
+    handleTabChange
   });
 
   // Auto-load backgroundMp4Url if already present in manifest
@@ -318,108 +332,7 @@ export default function StudioPage() {
     handleTabChange('timeline_lab');
   };
 
-  const handleTimelineGeneration = async (timelineSegments: any[]) => {
-    setFusionSegments(timelineSegments);
-    handleTabChange('fusion');
-    setFusionStatus('segmenting');
-    setFusionProgress(5);
-    
-    try {
-      // CRITICAL FIX: Prefer the Supabase URL from manifest over lastRecordingUrl.
-      // lastRecordingUrl can be a revoked blob URL (revokeObjectURL was called to free RAM
-      // before mounting VideoEditor/FFmpeg), which causes 0-byte uploads to process-timeline.
-      const manifestVideoUrl = (manifest as any)?.videoUrl || (manifest as any)?.aRollUrl;
-      let finalVideoUrl: string | null = null;
 
-      if (manifestVideoUrl && !manifestVideoUrl.startsWith('blob:')) {
-        // ✅ Best case: we already have a persisted Supabase/CDN URL
-        finalVideoUrl = manifestVideoUrl;
-        console.log('[Fusion] Using persisted Supabase URL from manifest:', finalVideoUrl);
-      } else if (lastRecordingUrl && !lastRecordingUrl.startsWith('blob:')) {
-        // ✅ Supabase URL in state
-        finalVideoUrl = lastRecordingUrl;
-        console.log('[Fusion] Using Supabase URL from lastRecordingUrl state:', finalVideoUrl);
-      } else if (lastRecordingUrl && lastRecordingUrl.startsWith('blob:')) {
-        // ⚠️ Blob URL — try to fetch it (only works if not revoked)
-        setFusionStatus('segmenting');
-        setFusionProgress(10);
-        console.log('[Fusion] Attempting to fetch live blob URL for upload...');
-        let videoBlob: Blob;
-        try {
-          const blobRes = await fetch(lastRecordingUrl);
-          videoBlob = await blobRes.blob();
-        } catch (fetchErr) {
-          // Blob was revoked — try to recover from IndexedDB
-          console.warn('[Fusion] Blob URL is dead (revoked). Attempting IDB recovery...');
-          const idbBlob = await idb.get(`video_file_${projectId}`, 'MediaBuffer').catch(() => null);
-          if (!idbBlob || !(idbBlob instanceof Blob)) {
-            throw new Error('Исходное видео не найдено. Blob URL был освобождён из памяти и файл недоступен в кэше. Пожалуйста, запишите видео заново.');
-          }
-          videoBlob = idbBlob;
-          console.log(`[Fusion] IDB recovery successful: ${videoBlob.size} bytes`);
-        }
-
-        if (videoBlob.size < 1000) {
-          throw new Error(`Записанное видео пустое или повреждено (${videoBlob.size} байт). Пожалуйста, запишите видео заново.`);
-        }
-        
-        console.log(`[Fusion] Uploading blob to Supabase. Size: ${videoBlob.size} bytes, type: ${videoBlob.type}`);
-        const uploadResult = await renderService.uploadMedia(projectId, videoBlob, 'video');
-        if (!uploadResult || !uploadResult.publicUrl) {
-          throw new Error('Не удалось загрузить видео в хранилище.');
-        }
-        finalVideoUrl = uploadResult.publicUrl;
-        console.log('[Fusion] Blob uploaded to Supabase:', finalVideoUrl);
-        
-        // Persist the public URL so future calls don't need to re-upload
-        setManifest(prev => {
-          if (!prev) return prev;
-          const next = { ...prev, videoUrl: finalVideoUrl || '' };
-          projectService.updateLatestVersionManifest(projectId, next);
-          return next;
-        });
-        setLastRecordingUrl(finalVideoUrl);
-      }
-
-      if (!finalVideoUrl) {
-        throw new Error('Не удалось определить источник видео. Попробуйте обновить страницу.');
-      }
-      
-      setFusionProgress(35);
-      setFusionStatus('processing');
-
-      const response = await fetch('/api/ai/fal/process-timeline', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId,
-          videoUrl: finalVideoUrl,
-          segments: timelineSegments
-        })
-      });
-
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Synthesis failed');
-      }
-
-      const data = await response.json();
-
-      if (data.status === 'completed' && data.videoUrl) {
-        setFusionStatus('completed');
-        setFusionProgress(100);
-        setFusedVideoUrl(data.videoUrl); 
-        setTimeout(() => handleTabChange('fusion_preview'), 1000);
-      } else {
-        throw new Error('Synthesis failed to return a result');
-      }
-
-    } catch (err: any) {
-      console.error('[Fusion] Failed:', err);
-      setFusionStatus('failed');
-      setFusionError(err.message || 'Unknown error during synthesis');
-    }
-  };
 
   // тЬТ AUTOSAVE & RECOVERY (IndexedDB + Cloud Sync) тЬТ
   useEffect(() => {
