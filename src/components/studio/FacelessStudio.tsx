@@ -748,8 +748,14 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       <div className="flex items-center justify-between px-5 pt-4 pb-3 z-50 shrink-0">
         <button
           onClick={() => {
-            if (activeStage === 'rendering') setActiveStage('editor');
-            else onBack();
+            if (activeStage === 'rendering') {
+              setActiveStage('editor');
+            } else if (selectedSceneId || sheetExpanded) {
+              setSelectedSceneId(null);
+              setSheetExpanded(false);
+            } else {
+              onBack();
+            }
           }}
           className="flex items-center gap-1.5 text-white/40 text-[11px] font-black uppercase tracking-widest active:opacity-60"
         >
