@@ -8,7 +8,7 @@ import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { 
   Plus, CheckCircle2, Lock, Scissors, RefreshCw, Wand2, Brain, Monitor, FileVideo, Download, X, Layout, ChevronRight
 } from 'lucide-react';
-import { motion, AnimatePresence } from 'framer-motion';
+import { motion, AnimatePresence, MotionConfig } from 'framer-motion';
 import { projectService, Project } from '@/lib/services/projectService';
 import { renderService } from '@/lib/services/renderService';
 import { profileService, Profile } from '@/lib/services/profileService';
@@ -479,12 +479,95 @@ export default function StudioPage() {
 
 
   // --- RENDER ---
-  if (isLoading) return <div className="h-screen bg-[#05050a] flex items-center justify-center text-white/20 uppercase tracking-widest text-[10px] animate-pulse">Syncing Studio...</div>;
+  if (isLoading) {
+    return (
+      <div className="h-screen w-screen bg-[#050508] text-white flex overflow-hidden font-sans select-none">
+        {/* Left Sidebar Skeleton */}
+        <div className="w-20 lg:w-64 bg-[#0a0a0f] border-r border-white/5 flex flex-col items-center lg:items-stretch p-4 lg:p-6 space-y-8 shrink-0">
+          {/* Logo/Brand pulsing slot */}
+          <div className="flex items-center gap-3 animate-pulse">
+            <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
+              <Brain size={18} className="text-purple-400/55" />
+            </div>
+            <div className="hidden lg:block space-y-1.5">
+              <div className="h-3 w-24 bg-white/10 rounded-md" />
+              <div className="h-2 w-12 bg-white/5 rounded-md" />
+            </div>
+          </div>
+
+          {/* Navigation Slots */}
+          <div className="flex-1 space-y-4 w-full pt-4">
+            {[...Array(6)].map((_, i) => (
+              <div key={i} className="flex items-center gap-3 p-3 rounded-2xl bg-white/[0.01] border border-white/[0.02] animate-pulse" style={{ animationDelay: `${i * 100}ms` }}>
+                <div className="w-5 h-5 rounded-lg bg-white/5 shrink-0" />
+                <div className="hidden lg:block h-2.5 bg-white/10 rounded-md w-2/3" />
+              </div>
+            ))}
+          </div>
+
+          {/* Bottom Profile Slot */}
+          <div className="w-full flex items-center gap-3 p-3 rounded-2xl bg-white/[0.02] border border-white/5 animate-pulse">
+            <div className="w-8 h-8 rounded-full bg-white/5 shrink-0" />
+            <div className="hidden lg:block space-y-1.5 flex-1">
+              <div className="h-2 w-16 bg-white/10 rounded-md" />
+              <div className="h-1.5 w-10 bg-white/5 rounded-md" />
+            </div>
+          </div>
+        </div>
+
+        {/* Main Content Area Skeleton */}
+        <div className="flex-1 flex flex-col overflow-hidden bg-black relative">
+          {/* Top Header Row */}
+          <div className="h-16 border-b border-white/5 px-6 flex items-center justify-between shrink-0 animate-pulse">
+            <div className="flex items-center gap-3">
+              <div className="h-4 w-32 bg-white/10 rounded-md" />
+              <span className="text-white/10">/</span>
+              <div className="h-3 w-16 bg-white/5 rounded-md" />
+            </div>
+            <div className="w-20 h-8 rounded-xl bg-purple-500/10 border border-purple-500/20" />
+          </div>
+
+          {/* Dynamic Main Workspace Simulation */}
+          <div className="flex-1 flex items-center justify-center p-8 relative overflow-hidden">
+            {/* Sleek Gradient Glowing Backdrop */}
+            <div className="absolute w-[400px] h-[400px] rounded-full bg-gradient-to-tr from-purple-600/10 to-pink-600/10 blur-[100px] animate-pulse" />
+
+            {/* Central Premium Loader */}
+            <div className="relative z-10 flex flex-col items-center gap-4 text-center">
+              <div className="w-16 h-16 rounded-3xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shadow-[0_0_50px_rgba(168,85,247,0.1)] relative">
+                <RefreshCw size={24} className="animate-spin text-purple-400" />
+              </div>
+              <div className="space-y-1.5">
+                <h3 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/50 animate-pulse">Инициализация Студии</h3>
+                <p className="text-[8px] font-black uppercase tracking-[0.2em] text-purple-400/60">Синхронизация данных проекта...</p>
+              </div>
+            </div>
+          </div>
+
+          {/* Simulated Timeline Track Bar */}
+          <div className="h-44 bg-[#0a0a0f]/40 border-t border-white/5 p-6 flex flex-col gap-4 shrink-0">
+            <div className="flex justify-between items-center">
+              <div className="h-3 w-28 bg-white/10 rounded-md animate-pulse" />
+              <div className="h-3 w-16 bg-white/5 rounded-md animate-pulse" />
+            </div>
+            <div className="flex gap-4 overflow-hidden">
+              {[...Array(4)].map((_, i) => (
+                <div key={i} className="h-20 flex-1 rounded-2xl bg-white/[0.01] border border-white/[0.02] flex items-center justify-center animate-pulse" style={{ animationDelay: `${i * 150}ms` }}>
+                  <div className="w-8 h-8 rounded-lg bg-white/5" />
+                </div>
+              ))}
+            </div>
+          </div>
+        </div>
+      </div>
+    );
+  }
 
   const selectedSegment = manifest?.segments.find(s => s.id === selectedSegmentId);
 
   return (
-    <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
+    <MotionConfig reducedMotion="always">
+      <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
       {/* ЁЯЪА Pro Studio Mainframe - Full Screen Immersion */}
       <div className="flex h-full w-full overflow-hidden">
         {(!isMobileRef.current || activeTab !== 'assembly') && (
@@ -946,5 +1029,6 @@ export default function StudioPage() {
         </AnimatePresence>
       </div>
     </div>
+    </MotionConfig>
   );
 }
