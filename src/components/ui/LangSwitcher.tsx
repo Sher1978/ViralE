@@ -13,8 +13,17 @@ export function LangSwitcher() {
   const toggleLocale = () => {
     const nextLocale = locale === 'ru' ? 'en' : 'ru';
     
-    // Persist the selection in cookie (which next-intl middleware reads) and localStorage
+    // Add dynamic bilingual confirmation dialog
     const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+    const confirmMsg = locale === 'ru'
+      ? 'Вы действительно хотите переключить язык интерфейса?'
+      : 'Are you sure you want to switch the interface language?';
+      
+    if (globalObj && globalObj.window && !globalObj.window.confirm(confirmMsg)) {
+      return; // Cancel transition if user clicked Cancel (No)
+    }
+
+    // Persist the selection in cookie (which next-intl middleware reads) and localStorage
     if (globalObj && typeof globalObj.document !== 'undefined') {
       globalObj.document.cookie = `NEXT_LOCALE=${nextLocale}; path=/; max-age=31536000; SameSite=Lax`;
     }

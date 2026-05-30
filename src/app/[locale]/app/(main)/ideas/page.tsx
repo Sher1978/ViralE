@@ -140,6 +140,16 @@ export default function IdeasPage() {
     if (ideaId) {
       await markIdeaAsUsed(ideaId);
     }
+    
+    // Explicitly set the cookie so that the middleware recognizes the current locale during the navigation
+    const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+    if (globalObj && typeof globalObj.document !== 'undefined') {
+      globalObj.document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+    if (globalObj && typeof globalObj.window !== 'undefined') {
+      globalObj.window.localStorage.setItem('NEXT_LOCALE', locale);
+    }
+
     let finalContent = content;
     if (rationale && rationale.length > 3) {
       // Clean up rationale if it's just repeating the category or contains parenthetical noise
