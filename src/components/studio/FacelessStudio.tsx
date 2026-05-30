@@ -6,7 +6,7 @@ import {
   Mic, Image as ImageIcon, Film, ChevronRight, Play, Pause,
   RefreshCw, Check, ArrowLeft, ArrowRight, Loader2,
   Sparkles, X, RotateCw, Edit3, Brain,
-  Clock, Layers, Wand2, Zap, Star, Plus, Upload, Cpu
+  Clock, Layers, Wand2, Zap, Star, Plus, Upload, Cpu, FileText
 } from 'lucide-react';
 
 
@@ -40,9 +40,16 @@ interface FacelessStudioProps {
   visualStyle?: string;
 }
 
+const PREMIUM_VOICES = [
+  { voice_id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', accent: 'US', gender: 'F' },
+  { voice_id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', accent: 'US', gender: 'M' },
+  { voice_id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', accent: 'UK', gender: 'F' },
+  { voice_id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel', accent: 'UK', gender: 'M' },
+  { voice_id: 'IKne3meq5a4f5Ed3mLaP', name: 'Emily', accent: 'AU', gender: 'F' },
+];
 
 type PostEffect = 'kenburns' | 'dust' | 'glitch' | 'negative' | 'zoom_punch' | 'flash';
-type BottomTab = 'setup' | 'scenes' | 'inspector';
+type BottomTab = 'script' | 'inspector' | 'effects';
 
 // ── Main Component ──────────────────────────────────────────────────────────
 
@@ -52,9 +59,13 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   const [editableScript, setEditableScript] = useState('');
 
   // App State
-  const [activeStage, setActiveStage] = useState<'setup' | 'editor' | 'rendering'>('setup');
-  const [activeTab, setActiveTab] = useState<BottomTab>('setup');
+  const [activeStage, setActiveStage] = useState<'setup' | 'editor' | 'rendering'>('editor');
+  const [activeTab, setActiveTab] = useState<BottomTab>('script');
   const [sheetExpanded, setSheetExpanded] = useState(false);
+
+  // Redesign dialog states
+  const [confirmVoiceId, setConfirmVoiceId] = useState<string | null>(null);
+  const [showConfirmImages, setShowConfirmImages] = useState(false);
 
   // Voice state
   const [voices, setVoices] = useState<any[]>([]);
@@ -195,7 +206,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       setScenes(newScenes);
       setTranscript(newScenes.map(s => ({ text: s.text, start: s.start, end: s.end })));
       setActiveStage('editor');
-      setActiveTab('scenes');
+      setActiveTab('script');
       setSheetExpanded(true);
       generateAllImages(); // Auto-start image generation
     } catch (err: any) {
@@ -244,14 +255,15 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   // ── Stage 1: Generate Voice ──
 
 
-  const startProduction = async () => {
+  const startProductionWithVoice = async (voiceId: string) => {
+    setSelectedVoice(voiceId);
     setGeneratingVoice(true);
     setVoiceError(null);
     try {
       const res = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: editableScript, voice_id: selectedVoice }),
+        body: JSON.stringify({ text: editableScript, voice_id: voiceId }),
       });
       if (!res.ok) {
         const err = await res.json();
@@ -295,17 +307,15 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
 
       setScenes(newScenes);
       setTranscript(newScenes.map(s => ({ text: s.text, start: s.start, end: s.end })));
-
-      setActiveStage('editor');
-      setActiveTab('scenes');
-      setSheetExpanded(true);
-      generateAllImages(); // Auto-start image generation
     } catch (err: any) {
-
       setVoiceError(err.message || 'Ошибка генерации голоса.');
     } finally {
       setGeneratingVoice(false);
     }
+  };
+
+  const startProduction = async () => {
+    await startProductionWithVoice(selectedVoice);
   };
 
   const executeFullAutogeneration = async () => {
@@ -363,7 +373,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       setTranscript(newScenes.map(s => ({ text: s.text, start: s.start, end: s.end })));
 
       setActiveStage('editor');
-      setActiveTab('scenes');
+      setActiveTab('script');
       setSheetExpanded(false);
 
       // Stage 2: Images automatically
@@ -722,8 +732,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
 
 
   // ── Bottom Sheet height ──
-  const SHEET_PEEK = 320; // Increased to fit the integrated strip
-  const SHEET_FULL = '85vh';
+  const SHEET_PEEK = 70; // Sleek minimized tab bar
+  const SHEET_FULL = '75vh';
 
 
   // ─────────────────────────────────────────────────────────────────────────
@@ -739,14 +749,12 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         <button
           onClick={() => {
             if (activeStage === 'rendering') setActiveStage('editor');
-            else if (activeStage === 'editor') setActiveStage('setup');
             else onBack();
           }}
           className="flex items-center gap-1.5 text-white/40 text-[11px] font-black uppercase tracking-widest active:opacity-60"
         >
           <ArrowLeft size={14} /> Назад
         </button>
-
 
         <div className="flex items-center gap-2">
           <div className="w-7 h-7 rounded-xl bg-purple-500/20 flex items-center justify-center">
@@ -757,7 +765,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
           </span>
         </div>
 
-        {activeStage === 'editor' && (
+        {audioUrl && scenes.some(s => s.imageUrl) && (
           <button
             onClick={startVideoRender}
             className="px-4 py-2 rounded-2xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1.5 shadow-lg shadow-purple-500/30"
@@ -765,7 +773,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             A-Roll <ChevronRight size={12} />
           </button>
         )}
-        {activeStage === 'setup' && <div className="w-16" />}
+        {(!audioUrl || scenes.every(s => !s.imageUrl)) && <div className="w-16" />}
       </div>
 
       {/* ── MAIN PREVIEW AREA ── */}
@@ -776,97 +784,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         {/* Background glow */}
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,rgba(168,85,247,0.08)_0%,transparent_70%)]" />
 
-        {activeStage === 'setup' ? (
-          /* ── SETUP HERO STATE ── */
-          <motion.div
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            className="flex flex-col items-center justify-center gap-6 px-6 text-center"
-          >
-            <div className="w-24 h-24 rounded-[2.5rem] bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shadow-[0_0_60px_rgba(168,85,247,0.15)]">
-              <Film size={36} className="text-purple-400" />
-            </div>
-            <div className="space-y-2">
-              <h2 className="text-2xl font-black italic uppercase tracking-tighter">Faceless Studio</h2>
-              <p className="text-white/30 text-[12px] font-medium leading-relaxed max-w-xs">
-                Синтез голоса, AI-изображения и A-Roll видео — за несколько минут
-              </p>
-            </div>
-            <div className="grid grid-cols-3 gap-3 w-full max-w-xs">
-              {[
-                { 
-                  icon: <Mic size={16} />, 
-                  label: 'Голос ИИ', 
-                  done: !!audioUrl,
-                  onClick: () => {
-                    setActiveStage('setup');
-                    setActiveTab('setup');
-                    setSheetExpanded(true);
-                  }
-                },
-                { 
-                  icon: <ImageIcon size={16} />, 
-                  label: 'AI Кадры', 
-                  done: scenes.length > 0 && scenes.every(s => !!s.imageUrl),
-                  onClick: () => {
-                    setActiveStage('editor');
-                    setActiveTab('scenes');
-                    setSheetExpanded(true);
-                  }
-                },
-                { 
-                  icon: <Film size={16} />, 
-                  label: 'A-Roll', 
-                  done: selectedEffects.length > 0,
-                  onClick: () => {
-                    setActiveStage('editor');
-                    setActiveTab('setup');
-                    setSheetExpanded(true);
-                  }
-                },
-              ].map((item, i) => (
-                <button 
-                  key={i} 
-                  onClick={item.onClick}
-                  className={`flex flex-col items-center gap-2 p-3 rounded-2xl transition-all active:scale-95 border ${
-                    item.done 
-                      ? 'bg-purple-600/80 border-purple-500 shadow-[0_0_20px_rgba(168,85,247,0.2)]' 
-                      : 'bg-transparent border-white/20 hover:bg-white/5'
-                  }`}
-                >
-                  <div className={item.done ? 'text-white' : 'text-purple-400'}>{item.icon}</div>
-                  <span className={`text-[9px] font-black uppercase tracking-wider ${item.done ? 'text-white' : 'text-white/40'}`}>
-                    {item.label}
-                  </span>
-                </button>
-              ))}
-
-            </div>
-
-
-            <button
-              onClick={executeFullAutogeneration}
-              disabled={generatingVoice || generatingImages || !editableScript.trim()}
-              className="w-full max-w-xs py-4 rounded-full bg-purple-600 text-white text-xs font-black italic uppercase tracking-[0.2em] shadow-[0_15px_40px_rgba(168,85,247,0.3)] hover:shadow-[0_20px_50px_rgba(168,85,247,0.5)] active:scale-95 transition-all flex items-center justify-center gap-2 disabled:opacity-50"
-            >
-              {generatingVoice || generatingImages ? (
-                <>
-                  <Loader2 size={16} className="animate-spin" />
-                  Генерирую ({generatingVoice ? 'Голос' : `${imagesProgress}% Кадры`})...
-                </>
-              ) : (
-                <>
-                  АВТОГЕНЕРАЦИЯ <ChevronRight size={16} />
-                </>
-              )}
-            </button>
-          </motion.div>
-
-        ) : (
-          /* ── EDITOR PREVIEW ── */
-          <div className="relative w-full h-full flex items-center justify-center p-4">
-            {/* Phone frame */}
-            <div className="relative h-full max-h-full aspect-[9/16] rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_0_80px_rgba(0,0,0,0.9)] bg-[#0a0a0f] group">
+        {/* ── EDITOR WORKSPACE ── */}
+        <div className="relative w-full h-full flex flex-col items-center justify-between p-4 overflow-hidden gap-4">
+          {/* Phone frame (takes top space) */}
+          <div className="flex-1 relative w-full flex items-center justify-center min-h-0">
+            <div className="relative h-full max-h-[440px] aspect-[9/16] rounded-[2rem] overflow-hidden border border-white/10 shadow-[0_0_60px_rgba(0,0,0,0.8)] bg-[#0a0a0f] group">
               {activeScene?.imageUrl ? (
                 <img
                   key={activeScene.id}
@@ -875,13 +797,40 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                   alt="Scene Preview"
                 />
               ) : (
-                <div className="w-full h-full flex flex-col items-center justify-center gap-3">
-                  {activeScene?.generating ? (
+                <div className="w-full h-full flex flex-col items-center justify-center gap-3 px-6 text-center">
+                  {/* Animated guiding steps depending on what is generated */}
+                  {generatingVoice ? (
                     <>
-                      <div className="w-12 h-12 rounded-2xl bg-purple-500/20 flex items-center justify-center">
-                        <Loader2 size={24} className="animate-spin text-purple-400" />
+                      <Loader2 className="animate-spin text-purple-400" size={32} />
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Генерация озвучки...</p>
+                    </>
+                  ) : generatingImages ? (
+                    <>
+                      <Loader2 className="animate-spin text-purple-400 animate-bounce" size={32} />
+                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Создание AI-кадров ({imagesProgress}%)...</p>
+                    </>
+                  ) : !audioUrl ? (
+                    <>
+                      <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-xl animate-pulse">
+                        📢
                       </div>
-                      <p className="text-[10px] font-black uppercase tracking-widest text-purple-400/60">Генерирую кадр...</p>
+                      <p className="text-[10px] font-black uppercase tracking-[0.15em] text-white/50 leading-relaxed">
+                        Шаг 1: Выберите голос на таймлайне ниже
+                      </p>
+                    </>
+                  ) : scenes.every(s => !s.imageUrl) ? (
+                      <>
+                        <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-xl animate-bounce">
+                          🖼️
+                        </div>
+                        <p className="text-[10px] font-black uppercase tracking-[0.15em] text-purple-400 leading-relaxed">
+                          Шаг 2: Запустите генерацию изображений на таймлайне
+                        </p>
+                      </>
+                  ) : activeScene?.generating ? (
+                    <>
+                      <Loader2 className="animate-spin text-purple-400" size={24} />
+                      <p className="text-[9px] font-black uppercase tracking-widest text-purple-400/60">Идет создание кадра...</p>
                     </>
                   ) : (
                     <ImageIcon className="text-white/5" size={48} />
@@ -892,60 +841,203 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
               {/* Gradient vignette */}
               <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-black/20 pointer-events-none" />
 
-              {/* Subtitle overlay REMOVED per user request */}
-
-
               {/* Mini player */}
-              <div className="absolute bottom-3 inset-x-3 h-12 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/10 flex items-center px-4 gap-3">
-                <button
-                  onClick={() => {
-                    if (!audioRef.current) return;
-                    if (isPlayingAudio) {
-                      audioRef.current.pause();
-                      setIsPlayingAudio(false);
-                    } else {
-                      audioRef.current.play().catch((e: any) => console.error('Play error:', e));
-                      setIsPlayingAudio(true);
-                    }
-                  }}
-                  className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center shrink-0 active:scale-90 transition-all shadow-lg shadow-purple-500/40"
-                >
-                  {isPlayingAudio ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" className="ml-0.5" />}
-                </button>
+              {audioUrl && (
+                <div className="absolute bottom-3 inset-x-3 h-12 rounded-2xl bg-black/60 backdrop-blur-2xl border border-white/10 flex items-center px-4 gap-3 z-20">
+                  <button
+                    onClick={() => {
+                      if (!audioRef.current) return;
+                      if (isPlayingAudio) {
+                        audioRef.current.pause();
+                        setIsPlayingAudio(false);
+                      } else {
+                        audioRef.current.play().catch((e: any) => console.error('Play error:', e));
+                        setIsPlayingAudio(true);
+                      }
+                    }}
+                    className="w-8 h-8 rounded-full bg-purple-500 flex items-center justify-center shrink-0 active:scale-90 transition-all shadow-lg shadow-purple-500/40"
+                  >
+                    {isPlayingAudio ? <Pause size={14} fill="white" /> : <Play size={14} fill="white" className="ml-0.5" />}
+                  </button>
 
-                <div className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden">
-                  <div className="h-full bg-purple-400 transition-all" style={{ width: `${(currentTime / duration) * 100}%` }} />
+                  <div className="flex-1 h-1 rounded-full bg-white/10 overflow-hidden">
+                    <div className="h-full bg-purple-400 transition-all" style={{ width: `${(currentTime / duration) * 100}%` }} />
+                  </div>
+                  <span className="text-[9px] font-black text-white/30 shrink-0">
+                    {Math.floor(currentTime)}s / {Math.floor(duration)}s
+                  </span>
                 </div>
-                <span className="text-[9px] font-black text-white/30 shrink-0">
-                  {Math.floor(currentTime)}s / {Math.floor(duration)}s
-                </span>
-              </div>
+              )}
 
               {/* Scene counter badge */}
-              <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10">
-                <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
-                  {scenes.filter(s => s.imageUrl).length}/{scenes.length} кадров
+              {scenes.length > 0 && (
+                <div className="absolute top-3 right-3 px-2.5 py-1 rounded-full bg-black/50 backdrop-blur-md border border-white/10 z-20">
+                  <span className="text-[9px] font-black text-white/40 uppercase tracking-widest">
+                    {scenes.filter(s => s.imageUrl).length}/{scenes.length} кадров
+                  </span>
+                </div>
+              )}
+            </div>
+          </div>
+
+          {/* ── PREMIUM MULTI-TRACK TIMELINE (takes bottom space) ── */}
+          <div className="w-full bg-[#0a0a0f]/80 backdrop-blur-md border border-white/5 rounded-3xl p-4 flex flex-col gap-3 select-none shrink-0 z-30 shadow-2xl relative max-w-lg mb-14">
+            <div className="flex items-center justify-between pb-1">
+              <span className="text-[8px] font-black uppercase tracking-[0.25em] text-white/30 flex items-center gap-1">
+                <Layers size={10} className="text-purple-400" /> Студия Монтажа Кадров
+              </span>
+              {audioUrl && (
+                <span className="text-[8px] font-black text-purple-400 bg-purple-500/10 px-2 py-0.5 rounded-full uppercase tracking-wider">
+                  {duration.toFixed(1)}s Видео
                 </span>
+              )}
+            </div>
+
+            {/* Tracks Stack */}
+            <div className="flex flex-col gap-2.5">
+              {/* Track 1: SUBTITLES / TEXT */}
+              <div className="flex items-center gap-3">
+                <div className="w-16 text-right pr-2 text-[7px] font-black text-white/30 uppercase tracking-widest">
+                  Сюжет
+                </div>
+                <div className="flex-1 overflow-x-auto flex gap-1.5 py-0.5 hide-scrollbar">
+                  {!audioUrl ? (
+                    <div className="w-full h-8 rounded-lg bg-white/[0.01] border border-dashed border-white/5 flex items-center justify-center">
+                      <span className="text-[7px] font-black uppercase tracking-wider text-white/10">Ожидание выбора голоса...</span>
+                    </div>
+                  ) : (
+                    scenes.map((s, i) => (
+                      <div
+                        key={`timeline_text_${s.id}`}
+                        onClick={() => { setSelectedSceneId(s.id); setActiveTab('inspector'); setSheetExpanded(true); }}
+                        className={`h-8 rounded-lg border px-2.5 flex items-center justify-center cursor-pointer transition-all shrink-0 relative ${
+                          selectedSceneId === s.id
+                            ? 'border-purple-500/50 bg-purple-500/10'
+                            : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
+                        }`}
+                        style={{ width: `${Math.max(90, (s.end - s.start) * 12)}px` }}
+                      >
+                        <span className="text-[8px] font-bold text-white/50 truncate max-w-full">{s.text}</span>
+                        <span className="absolute bottom-0.5 right-1.5 text-[6px] font-black text-purple-400/30">#{i + 1}</span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </div>
+
+              {/* Track 2: VOICE */}
+              <div className="flex items-center gap-3">
+                <div className="w-16 text-right pr-2 text-[7px] font-black text-white/30 uppercase tracking-widest">
+                  Голос
+                </div>
+                <div className="flex-1 overflow-x-auto flex gap-2 py-0.5 hide-scrollbar">
+                  {generatingVoice ? (
+                    <div className="w-full h-9 rounded-xl bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center gap-1.5 animate-pulse">
+                      <Loader2 size={12} className="animate-spin text-emerald-400" />
+                      <span className="text-[7.5px] font-black uppercase tracking-widest text-emerald-400">Идет синтез аудиодорожки...</span>
+                    </div>
+                  ) : !audioUrl ? (
+                    /* Horizontal Voice Scroller directly in the track space! */
+                    <div className="flex gap-2 min-w-max pb-0.5">
+                      {PREMIUM_VOICES.map(v => (
+                        <button
+                          key={v.voice_id}
+                          onClick={() => setConfirmVoiceId(v.voice_id)}
+                          className="px-3.5 py-1.5 rounded-xl border text-left transition-all active:scale-95 flex items-center gap-2 bg-white/[0.03] border-white/8 hover:bg-purple-500/10 hover:border-purple-500/30"
+                        >
+                          <span className="text-[12px]">{v.gender === 'F' ? '👩' : '👨'}</span>
+                          <div>
+                            <p className="text-[8.5px] font-black text-white leading-none">{v.name}</p>
+                            <p className="text-[6px] text-white/30 uppercase font-black mt-0.5">{v.accent}</p>
+                          </div>
+                        </button>
+                      ))}
+                    </div>
+                  ) : (
+                    /* Audio track loaded (solid blue) */
+                    <div
+                      className="h-9 rounded-xl bg-gradient-to-r from-blue-600 to-indigo-600 border border-blue-500/30 flex items-center justify-between px-3 w-full shrink-0"
+                      style={{ width: `${Math.max(280, duration * 10)}px` }}
+                    >
+                      <div className="flex items-center gap-1.5">
+                        <Mic size={11} className="text-white animate-pulse" />
+                        <span className="text-[8.5px] font-black uppercase tracking-widest text-white">
+                          Озвучка: {PREMIUM_VOICES.find(v => v.voice_id === selectedVoice)?.name || 'Sarah'}
+                        </span>
+                      </div>
+                      <span className="text-[7px] font-black text-white/40 uppercase tracking-widest">{duration.toFixed(1)}s</span>
+                    </div>
+                  )}
+                </div>
+              </div>
+
+              {/* Track 3: IMAGES */}
+              <div className="flex items-center gap-3">
+                <div className="w-16 text-right pr-2 text-[7px] font-black text-white/30 uppercase tracking-widest">
+                  Кадры
+                </div>
+                <div className="flex-1 overflow-x-auto flex gap-1.5 py-0.5 hide-scrollbar">
+                  {!audioUrl ? (
+                    <div className="w-full h-11 rounded-xl bg-white/[0.01] border border-white/5 flex items-center justify-center">
+                      <span className="text-[7px] font-black uppercase tracking-wider text-white/10">Ожидание аудиодорожки...</span>
+                    </div>
+                  ) : scenes.every(s => !s.imageUrl) && !generatingImages ? (
+                    /* Big, styled button-prompt */
+                    <button
+                      onClick={() => setShowConfirmImages(true)}
+                      className="h-11 w-full rounded-xl bg-purple-600/80 hover:bg-purple-600 border border-purple-500/30 flex items-center justify-center gap-1.5 active:scale-95 transition-all text-white font-black uppercase tracking-widest text-[8px] shadow-lg shadow-purple-500/20"
+                    >
+                      <Wand2 size={11} className="animate-bounce text-yellow-300" />
+                      ✨ Сгенерировать изображения (Сразу все)
+                    </button>
+                  ) : (
+                    /* Multi-slot scene list with loading states/previews */
+                    scenes.map((s, i) => (
+                      <div
+                        key={`timeline_img_${s.id}`}
+                        onClick={() => { setSelectedSceneId(s.id); setActiveTab('inspector'); setSheetExpanded(true); }}
+                        className={`h-11 rounded-lg border overflow-hidden cursor-pointer relative transition-all shrink-0 ${
+                          selectedSceneId === s.id
+                            ? 'border-purple-500 ring-1 ring-purple-500/40 bg-purple-500/5'
+                            : 'border-white/5 bg-white/[0.02] hover:bg-white/[0.04]'
+                        }`}
+                        style={{ width: `${Math.max(90, (s.end - s.start) * 12)}px` }}
+                      >
+                        {s.imageUrl ? (
+                          <img src={s.imageUrl} className="w-full h-full object-cover" alt="" />
+                        ) : s.generating ? (
+                          <div className="w-full h-full flex flex-col items-center justify-center bg-purple-500/5 animate-pulse">
+                            <Loader2 size={10} className="animate-spin text-purple-400" />
+                          </div>
+                        ) : (
+                          <div className="w-full h-full flex flex-col items-center justify-center text-white/10 gap-0.5 hover:text-purple-400 transition-colors">
+                            <ImageIcon size={10} />
+                            <span className="text-[5px] font-black uppercase">Создать</span>
+                          </div>
+                        )}
+                        <div className="absolute top-0.5 left-1 px-1 rounded bg-black/70 border border-white/5 text-[5.5px] font-black text-white/60">
+                          #{i + 1}
+                        </div>
+                      </div>
+                    ))
+                  )}
+                </div>
               </div>
             </div>
           </div>
-        )}
+        </div>
       </div>
-
-
 
       {/* ── BOTTOM SHEET ── */}
       <motion.div
         initial={false}
         animate={{ height: sheetExpanded ? SHEET_FULL : `${SHEET_PEEK}px` }}
         transition={{ type: 'spring', damping: 28, stiffness: 300 }}
-        className="absolute bottom-0 left-0 right-0 z-40 bg-[#0e0e14] rounded-t-[2rem] border-t border-white/8 flex flex-col overflow-hidden"
+        className="absolute bottom-0 left-0 right-0 z-40 bg-[#0e0e14]/95 backdrop-blur-2xl rounded-t-[2rem] border-t border-white/8 flex flex-col overflow-hidden"
         style={{ boxShadow: '0 -20px 60px rgba(0,0,0,0.6)' }}
       >
         {/* Drag handle + tab bar */}
-        <div
-          className="shrink-0 px-5 pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none"
-        >
+        <div className="shrink-0 px-5 pt-3 pb-1 cursor-grab active:cursor-grabbing touch-none">
           <motion.div 
             drag="y"
             dragConstraints={{ top: 0, bottom: 0 }}
@@ -957,16 +1049,12 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             className="w-12 h-1.5 rounded-full bg-white/20 mx-auto mb-3 shadow-lg" 
           />
 
-
           <div className="flex gap-1">
-            {(activeStage === 'setup'
-              ? [{ id: 'setup' as BottomTab, label: 'Настройка', icon: <Sparkles size={13} /> }]
-              : [
-                  { id: 'scenes' as BottomTab, label: 'Сцены', icon: <Layers size={13} /> },
-                  { id: 'inspector' as BottomTab, label: 'Инспектор', icon: <Edit3 size={13} /> },
-                  { id: 'setup' as BottomTab, label: 'Эффекты', icon: <Zap size={13} /> },
-                ]
-            ).map(tab => (
+            {[
+              { id: 'script' as BottomTab, label: 'Сценарий', icon: <FileText size={13} /> },
+              { id: 'inspector' as BottomTab, label: 'Инспектор', icon: <Edit3 size={13} /> },
+              { id: 'effects' as BottomTab, label: 'Эффекты', icon: <Zap size={13} /> },
+            ].map(tab => (
               <button
                 key={tab.id}
                 onClick={(e) => { e.stopPropagation(); setActiveTab(tab.id); setSheetExpanded(true); }}
@@ -985,107 +1073,44 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
               </button>
             )}
           </div>
-
-          {/* ── INTEGRATED SCENE STRIP (editor only) ── */}
-          {activeStage === 'editor' && (
-            <div className="px-5 py-3 border-b border-white/5 bg-white/[0.02]">
-              <div className="flex gap-2 overflow-x-auto pb-1 hide-scrollbar">
-                {/* Generate all button */}
-                <button
-                  onClick={generateAllImages}
-                  disabled={generatingImages}
-                  className="shrink-0 w-12 h-16 rounded-xl bg-purple-600/80 border border-purple-500/40 flex flex-col items-center justify-center gap-1 active:scale-90 transition-all disabled:opacity-40"
-                >
-                  {generatingImages
-                    ? <Loader2 size={16} className="animate-spin text-white" />
-                    : <Wand2 size={16} className="text-white" />
-                  }
-                  <span className="text-[6px] font-black uppercase tracking-wider text-white/80">Всё</span>
-                </button>
-
-                {scenes.map((s, i) => (
-                  <button
-                    key={s.id}
-                    onClick={() => { setSelectedSceneId(s.id); setCurrentTime(s.start); setActiveTab('inspector'); }}
-                    className={`shrink-0 w-12 h-16 rounded-xl overflow-hidden border transition-all relative ${selectedSceneId === s.id ? 'border-purple-400 ring-2 ring-purple-500/50' : 'border-white/10'}`}
-                  >
-                    {s.imageUrl ? (
-                      <img src={s.imageUrl} className="w-full h-full object-cover" alt={`Scene ${i + 1}`} />
-                    ) : (
-                      <div className="w-full h-full bg-white/5 flex items-center justify-center">
-                        {s.generating
-                          ? <Loader2 size={12} className="animate-spin text-purple-400" />
-                          : <ImageIcon size={12} className="text-white/20" />
-                        }
-                      </div>
-                    )}
-                    <div className="absolute bottom-0 inset-x-0 bg-black/60 py-0.5 text-center">
-                      <span className="text-[6px] font-black text-white/60">{i + 1}</span>
-                    </div>
-                  </button>
-                ))}
-              </div>
-              
-              {/* Mini Timeline below strip */}
-              <div ref={timelineRef} className="mt-2 h-1 rounded-full bg-white/5 overflow-hidden cursor-pointer"
-                onClick={(e) => {
-                  const rect = (e.currentTarget as any).getBoundingClientRect();
-                  const x = e.clientX - rect.left;
-                  const time = (x / rect.width) * duration;
-                  setCurrentTime(Math.max(0, Math.min(time, duration)));
-                  if (audioRef.current) audioRef.current.currentTime = time;
-                }}
-              >
-                <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500 transition-all" style={{ width: `${(currentTime / duration) * 100}%` }} />
-              </div>
-            </div>
-          )}
         </div>
-
 
         {/* Sheet content */}
         <div className="flex-1 overflow-y-auto px-5 pb-6 pt-2">
           <AnimatePresence mode="wait">
-            {/* SETUP TAB */}
-            {activeTab === 'setup' && activeStage === 'setup' && (
-              <motion.div key="setup" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
+            {/* SCRIPT TAB */}
+            {activeTab === 'script' && (
+              <motion.div key="script" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
                 <div>
                   <label className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-2 block">Сценарий Видео</label>
                   <textarea
                     value={editableScript}
                     onChange={e => setEditableScript((e.target as any).value)}
                     rows={5}
-                    className="w-full bg-white/[0.04] border border-white/8 rounded-2xl p-4 text-[12px] text-white/70 focus:border-purple-500/50 transition-all resize-none outline-none leading-relaxed placeholder:text-white/20"
+                    className="w-full bg-white/[0.04] border border-white/8 rounded-2xl p-4 text-[12px] text-white/70 focus:border-purple-500/50 transition-all resize-none outline-none leading-relaxed placeholder:text-white/20 font-medium"
                     placeholder="Вставьте или отредактируйте ваш сценарий..."
                   />
                 </div>
 
                 <div>
-                  <label className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-3 block">Голос Озвучки</label>
-                  <div className="grid grid-cols-2 gap-2">
-                    {(voices.length > 0 ? voices.slice(0, 4) : [
-                      { voice_id: 'EXAVITQu4vr4xnSDxMaL', name: 'Sarah', labels: { accent: 'American' } },
-                      { voice_id: 'TX3LPaxmHKxFdv7VOQHJ', name: 'Liam', labels: { accent: 'American' } },
-                      { voice_id: 'XB0fDUnXU5powFXDhCwa', name: 'Charlotte', labels: { accent: 'English' } },
-                      { voice_id: 'onwK4e9ZLuTAKqWW03F9', name: 'Daniel', labels: { accent: 'British' } },
-                    ]).map(v => (
-                      <div
-                        key={v.voice_id}
-                        className={`p-3.5 rounded-2xl border text-left transition-all relative flex items-center justify-between ${selectedVoice === v.voice_id ? 'border-purple-500/60 bg-purple-500/10 shadow-lg shadow-purple-500/10' : 'border-white/6 bg-white/[0.03]'}`}
-                      >
-                        <div className="flex-1 cursor-pointer" onClick={() => setSelectedVoice(v.voice_id)}>
-                          <p className="text-[11px] font-black">{v.name}</p>
-                          <p className="text-[9px] text-white/30 uppercase tracking-wider mt-0.5">{v.labels?.accent}</p>
-                        </div>
-                        <button 
-                          onClick={(e) => { e.stopPropagation(); setDefaultVoiceId(v.voice_id); }}
-                          className={`p-1.5 rounded-xl transition-all active:scale-90 flex items-center justify-center ${defaultVoiceId === v.voice_id ? 'text-amber-400 bg-amber-500/10 border border-amber-500/20' : 'text-white/20 hover:text-white/40'}`}
-                        >
-                          <Star size={14} fill={defaultVoiceId === v.voice_id ? 'currentColor' : 'none'} />
-                        </button>
+                  <label className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-3 block">Текущий Голос</label>
+                  <div className="p-4 rounded-2xl border bg-white/[0.03] border-white/8 flex items-center justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 rounded-xl bg-purple-500/20 flex items-center justify-center text-lg">
+                        {PREMIUM_VOICES.find(v => v.voice_id === selectedVoice)?.gender === 'F' ? '👩' : '👨'}
                       </div>
-                    ))}
-
+                      <div>
+                        <p className="text-[12px] font-black text-white">{PREMIUM_VOICES.find(v => v.voice_id === selectedVoice)?.name || 'Sarah'}</p>
+                        <p className="text-[8px] text-white/40 uppercase tracking-widest font-black mt-0.5">
+                          {PREMIUM_VOICES.find(v => v.voice_id === selectedVoice)?.accent || 'US'} · Активный Голос
+                        </p>
+                      </div>
+                    </div>
+                    {audioUrl && (
+                      <span className="px-2.5 py-1 rounded-full bg-emerald-500/10 border border-emerald-500/20 text-[8px] font-black text-emerald-400 uppercase tracking-wider">
+                        Активен
+                      </span>
+                    )}
                   </div>
                 </div>
 
@@ -1094,177 +1119,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                     <p className="text-red-400 text-[11px] font-black">{voiceError}</p>
                   </div>
                 )}
-
-                <button
-                  onClick={startProduction}
-                  disabled={generatingVoice || !editableScript.trim()}
-                  className="w-full py-5 rounded-[1.5rem] bg-gradient-to-br from-purple-600 to-purple-700 text-white font-black italic uppercase tracking-widest shadow-xl shadow-purple-500/25 active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-30"
-                >
-                  {generatingVoice ? (
-                    <><Loader2 size={18} className="animate-spin" /> Генерирую голос...</>
-                  ) : (
-                    <><Mic size={18} /> Начать Генерацию</>
-                  )}
-                </button>
-
-                <button
-                  onClick={skipVoiceGeneration}
-                  disabled={generatingVoice || !editableScript.trim()}
-                  className="w-full py-3 rounded-[1rem] border border-white/10 text-white/40 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all mt-2 disabled:opacity-30 flex items-center justify-center gap-2"
-                >
-                  <Star size={12} className="text-amber-400" fill="currentColor" /> Пропустить и взять голос по умолчанию
-                </button>
-              </motion.div>
-
-            )}
-
-            {/* SCENES TAB */}
-            {activeTab === 'scenes' && activeStage === 'editor' && (
-              <motion.div key="scenes" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-4">
-                {/* Generate all */}
-                <div className="flex items-center justify-between p-4 rounded-2xl bg-purple-500/8 border border-purple-500/15">
-                  <div>
-                    <p className="text-[11px] font-black uppercase">AI Генератор Кадров</p>
-                    <p className="text-[9px] text-white/30 mt-0.5">{scenes.filter(s => s.imageUrl).length} из {scenes.length} сгенерировано</p>
-                    {generatingImages && (
-                      <div className="mt-2 w-32 h-1 bg-white/5 rounded-full overflow-hidden">
-                        <motion.div animate={{ width: `${imagesProgress}%` }} className="h-full bg-purple-500 rounded-full" />
-                      </div>
-                    )}
-                  </div>
-                  <button
-                    onClick={generateAllImages}
-                    disabled={generatingImages}
-                    className="w-11 h-11 rounded-full bg-purple-600 flex items-center justify-center shadow-lg shadow-purple-500/30 active:scale-90 transition-all disabled:opacity-40"
-                  >
-                    {generatingImages ? <Loader2 size={18} className="animate-spin text-white" /> : <RotateCw size={18} className="text-white" />}
-                  </button>
-                </div>
-
-                {imageGenError && (
-                  <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20">
-                    <p className="text-red-400 text-[11px] font-black">{imageGenError}</p>
-                  </div>
-                )}
-
-
-                {/* Scene list */}
-                <div className="flex flex-col bg-white/[0.02] border border-white/5 rounded-2xl p-4 overflow-hidden">
-                  <div className="flex items-center justify-between mb-4">
-                    <span className="text-[9px] font-black uppercase tracking-[0.2em] text-white/30">Многодорожечный таймлайн</span>
-                  </div>
-
-
-                  <div className="relative flex flex-col gap-4 overflow-x-auto pb-3 hide-scrollbar w-full">
-                    {/* Track 1: TEXT */}
-                    <div className="flex gap-2 items-center min-w-max">
-                      <div className="w-20 text-right pr-3 flex items-center justify-end text-[8px] font-black text-white/30 uppercase tracking-[0.2em] border-r border-white/5 h-12">
-                        Субтитры
-                      </div>
-                      {scenes.map((s, i) => (
-                        <div 
-                          key={`txt_${s.id}`}
-                          onClick={() => { setSelectedSceneId(s.id); setActiveTab('inspector'); }}
-                          className={`h-12 rounded-xl border p-2 flex items-center cursor-pointer relative select-none transition-all ${selectedSceneId === s.id ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_20px_rgba(168,85,247,0.15)]' : 'border-white/5 bg-white/[0.03]'}`}
-                          style={{ width: `${Math.max(120, (s.end - s.start) * 18)}px` }}
-                        >
-                          <p className="text-[9px] font-bold text-white/70 leading-snug line-clamp-2">{s.text}</p>
-                          <div className="absolute bottom-1 right-2 text-[7px] font-black text-purple-400/60">{i + 1}</div>
-                        </div>
-                      ))}
-                    </div>
-
-                    {/* Track 2: IMAGES */}
-                    <div className="flex gap-2 items-center min-w-max">
-                      <div className="w-20 text-right pr-3 flex items-center justify-end text-[8px] font-black text-white/30 uppercase tracking-[0.2em] border-r border-white/5 h-16">
-                        Кадры
-                      </div>
-                      {scenes.map((s, i) => (
-                        <div 
-                          key={`img_${s.id}`}
-                          onClick={() => { setSelectedSceneId(s.id); setActiveTab('inspector'); }}
-                          className={`h-16 rounded-xl border overflow-hidden cursor-pointer relative transition-all select-none ${selectedSceneId === s.id ? 'border-purple-500 bg-purple-500/10 shadow-[0_0_20px_rgba(168,85,247,0.15)]' : 'border-white/5 bg-white/[0.03]'}`}
-                          style={{ width: `${Math.max(120, (s.end - s.start) * 18)}px` }}
-                        >
-                          {s.imageUrl ? (
-                            <img src={s.imageUrl} className="w-full h-full object-cover" alt="" />
-                          ) : s.generating ? (
-                            <div className="w-full h-full flex items-center justify-center bg-purple-500/5">
-                              <Loader2 size={16} className="animate-spin text-purple-400" />
-                            </div>
-                          ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-white/[0.01] text-white/20 gap-1 hover:text-purple-400 transition-colors">
-                              <ImageIcon size={14} />
-                              <span className="text-[6px] font-black uppercase tracking-wider">Создать кадр</span>
-                            </div>
-                          )}
-
-                          <div className="absolute top-1 left-2 px-1.5 py-0.5 rounded-lg bg-black/60 backdrop-blur-sm border border-white/10 text-[8px] font-black text-white/80 z-20">
-                            #{i + 1}
-                          </div>
-
-                          <div 
-                            className="absolute left-0 top-0 bottom-0 w-2 bg-purple-500/30 hover:bg-purple-500 cursor-ew-resize opacity-0 hover:opacity-100 transition-all z-20" 
-                            onMouseDown={(e) => handleResize(s.id, 'left', e)}
-                          />
-                          <div 
-                            className="absolute right-0 top-0 bottom-0 w-2 bg-purple-500/30 hover:bg-purple-500 cursor-ew-resize opacity-0 hover:opacity-100 transition-all z-20" 
-                            onMouseDown={(e) => handleResize(s.id, 'right', e)}
-                          />
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                  
-                  <div className="flex justify-end mt-4">
-                    <button
-                      onClick={() => {
-                        if (duration >= 60) return;
-                        const defaultPos = scenes.length + 1;
-                        const posStr = (globalThis as any).window?.prompt(`Введите номер новой сцены (от 1 до ${defaultPos}):`, defaultPos.toString());
-                        if (posStr === null) return;
-                        
-                        let pos = parseInt(posStr, 10);
-                        if (isNaN(pos) || pos < 1) pos = 1;
-                        if (pos > defaultPos) pos = defaultPos;
-                        
-                        const newS = {
-                          id: `scene_${Date.now()}`,
-                          text: 'Новая сцена',
-                          start: 0,
-                          end: 5,
-                          imagePrompt: 'Опишите кадр для генерации...',
-                        };
-                        
-                        const updated = [...scenes];
-                        updated.splice(pos - 1, 0, newS);
-                        
-                        let currentStart = 0;
-                        const finalScenes = updated.map(s => {
-                          const dur = s.end - s.start;
-                          const end = Math.min(60, currentStart + dur);
-                          const res = { ...s, start: currentStart, end };
-                          currentStart = end;
-                          return res;
-                        });
-                        
-                        setDuration(currentStart);
-                        setScenes(finalScenes);
-                      }}
-                      className="px-4 py-2 rounded-2xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center gap-1.5 shadow-lg shadow-purple-500/20 hover:bg-purple-500"
-                    >
-                      <Plus size={14} /> Добавить Сцену
-                    </button>
-                  </div>
-
-
-                </div>
-
               </motion.div>
             )}
 
             {/* INSPECTOR TAB */}
-            {activeTab === 'inspector' && activeStage === 'editor' && (
+            {activeTab === 'inspector' && (
               <motion.div key="inspector" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
                 {selectedScene ? (
                   <>
@@ -1297,7 +1156,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                         value={selectedScene.imagePrompt}
                         onChange={e => setScenes(prev => prev.map(s => s.id === selectedScene.id ? { ...s, imagePrompt: (e.target as any).value } : s))}
                         rows={3}
-                        className="w-full bg-white/[0.04] border border-white/8 rounded-2xl p-4 text-[11px] text-white/60 focus:border-purple-500/40 outline-none leading-relaxed resize-none placeholder:text-white/20"
+                        className="w-full bg-white/[0.04] border border-white/8 rounded-2xl p-4 text-[11px] text-white/60 focus:border-purple-500/40 outline-none leading-relaxed resize-none placeholder:text-white/20 font-medium"
                         placeholder="Опишите кадр..."
                       />
                     </div>
@@ -1312,7 +1171,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                         Сгенерировать
                       </button>
                       
-                      <label className="flex-1 py-4 rounded-2xl bg-white/[0.04] border border-white/8 text-white/70 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer hover:bg-white/[0.06]">
+                      <label className="flex-1 py-4 rounded-2xl bg-white/[0.04] border border-white/8 text-white/70 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2 cursor-pointer hover:bg-white/[0.06] justify-center items-center flex">
                         <Upload size={14} />
                         Своё фото
                         <input 
@@ -1334,12 +1193,9 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                               }
                             }
                           }}
-
                         />
                       </label>
                     </div>
-
-
 
                     {imageGenError && (
                       <div className="p-3 rounded-2xl bg-red-500/10 border border-red-500/20">
@@ -1347,12 +1203,10 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                       </div>
                     )}
 
-
                     {/* Scene text */}
                     <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/6">
-
                       <p className="text-[9px] font-black uppercase tracking-widest text-white/20 mb-2">Текст субтитров</p>
-                      <p className="text-[12px] text-white/50 leading-relaxed">{selectedScene.text}</p>
+                      <p className="text-[12px] text-white/50 leading-relaxed font-medium">{selectedScene.text}</p>
                     </div>
                   </>
                 ) : (
@@ -1361,7 +1215,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                       <Layers size={22} />
                     </div>
                     <p className="text-[10px] font-black uppercase tracking-widest text-center">
-                      Выберите сцену<br />из ленты выше
+                      Выберите сцену<br />из таймлайна выше
                     </p>
                   </div>
                 )}
@@ -1369,7 +1223,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             )}
 
             {/* EFFECTS TAB */}
-            {activeTab === 'setup' && activeStage === 'editor' && (
+            {activeTab === 'effects' && (
               <motion.div key="effects" initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0 }} className="space-y-5">
                 <div>
                   <label className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-3 block">Пост-эффекты TikTok</label>
@@ -1384,7 +1238,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                           <p className="text-[11px] font-black uppercase tracking-wide">
                             {fx === 'kenburns' ? '🎬 Ken Burns' : fx === 'zoom_punch' ? '⚡ Zoom Punch' : fx === 'glitch' ? '📺 Glitch' : fx === 'dust' ? '🎞️ Retro Dust' : '✨ Flash Cut'}
                           </p>
-                          <p className="text-[9px] mt-0.5 opacity-60">
+                          <p className="text-[9px] mt-0.5 opacity-60 font-medium">
                             {fx === 'kenburns' ? 'Медленное кинематографичное движение' : fx === 'zoom_punch' ? 'Резкий зум при смене сцены' : fx === 'glitch' ? 'Цифровые артефакты' : fx === 'dust' ? 'Кинематографическая пыль и царапины' : 'Световая вспышка на стыках сцен'}
                           </p>
                         </div>
@@ -1396,7 +1250,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
 
                 <button
                   onClick={startVideoRender}
-                  className="w-full py-5 rounded-[1.5rem] bg-white text-black font-black italic uppercase tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3"
+                  disabled={!audioUrl || scenes.every(s => !s.imageUrl)}
+                  className="w-full py-5 rounded-[1.5rem] bg-white text-black font-black italic uppercase tracking-widest shadow-2xl active:scale-95 transition-all flex items-center justify-center gap-3 disabled:opacity-30"
                 >
                   <Film size={18} /> Собрать A-Roll
                 </button>
@@ -1405,6 +1260,96 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
           </AnimatePresence>
         </div>
       </motion.div>
+
+      {/* ── REDESIGN CONFIRMATION DIALOGUES ── */}
+      <AnimatePresence>
+        {confirmVoiceId && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] bg-black/75 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#0f0f15] border border-white/10 rounded-[2rem] p-6 max-w-sm w-full text-center space-y-6 shadow-2xl relative z-[160]"
+            >
+              <div className="w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-2xl">
+                🎙️
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-black uppercase text-white">Выбрать голос?</h3>
+                <p className="text-[11px] text-white/40 uppercase tracking-widest leading-relaxed">
+                  Использовать голос {PREMIUM_VOICES.find(v => v.voice_id === confirmVoiceId)?.name} для озвучки этого ролика?
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setConfirmVoiceId(null)}
+                  className="flex-1 py-3.5 rounded-xl border border-white/10 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/60 active:scale-95 transition-all"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => {
+                    const vid = confirmVoiceId;
+                    setConfirmVoiceId(null);
+                    startProductionWithVoice(vid);
+                  }}
+                  className="flex-1 py-3.5 rounded-xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
+                >
+                  Да, озвучить
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+
+        {showConfirmImages && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[150] bg-black/75 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="bg-[#0f0f15] border border-white/10 rounded-[2rem] p-6 max-w-sm w-full text-center space-y-6 shadow-2xl relative z-[160]"
+            >
+              <div className="w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center mx-auto text-2xl">
+                🖼️
+              </div>
+              <div className="space-y-2">
+                <h3 className="text-lg font-black uppercase text-white">Генерировать кадры?</h3>
+                <p className="text-[11px] text-white/40 uppercase tracking-widest leading-relaxed">
+                  Запустить пакетную генерацию изображений для всех сцен видео?
+                </p>
+              </div>
+              <div className="flex gap-3">
+                <button
+                  onClick={() => setShowConfirmImages(false)}
+                  className="flex-1 py-3.5 rounded-xl border border-white/10 hover:bg-white/5 text-[10px] font-black uppercase tracking-widest text-white/60 active:scale-95 transition-all"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={() => {
+                    setShowConfirmImages(false);
+                    generateAllImages();
+                  }}
+                  className="flex-1 py-3.5 rounded-xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all"
+                >
+                  Да, запустить
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       {/* ── RENDER OVERLAY ── */}
       <AnimatePresence>
