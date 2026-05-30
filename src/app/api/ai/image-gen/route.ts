@@ -126,34 +126,7 @@ export async function POST(req: Request) {
           if (inferenceResult && inferenceResult.imageURL) {
             const imageUrl = inferenceResult.imageURL;
             
-            try {
-              const imgRes = await fetch(imageUrl);
-              if (imgRes.ok) {
-                const blob = await imgRes.blob();
-                const { supabaseAdmin } = await import('@/lib/supabase');
-                
-                const fileName = `generated/${uuidv4()}.webp`;
-                const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-                  .from('temp-assets')
-                  .upload(fileName, blob, { contentType: 'image/webp' });
-
-                if (!uploadError && uploadData) {
-                  const { data: { publicUrl } } = supabaseAdmin.storage
-                    .from('temp-assets')
-                    .getPublicUrl(uploadData.path);
-                  
-                  return NextResponse.json({ url: publicUrl, id: inferenceResult.taskUUID });
-                } else {
-                  const arrayBuffer = await blob.arrayBuffer();
-                  const buffer = Buffer.from(arrayBuffer);
-                  const base64 = `data:image/webp;base64,${buffer.toString('base64')}`;
-                  return NextResponse.json({ url: base64, id: inferenceResult.taskUUID });
-                }
-              }
-            } catch (persistErr) {
-              console.warn('[Image Gen] Persistence failed:', persistErr);
-            }
-
+            console.log(`[Image Gen] Runware success → ${imageUrl}`);
             return NextResponse.json({ url: imageUrl, id: inferenceResult.taskUUID });
           }
         }
@@ -179,36 +152,7 @@ export async function POST(req: Request) {
 
         const imageUrl = (result.data as any).images?.[0]?.url;
         if (imageUrl) {
-          console.log(`[Image Gen] Fal.ai succeeded → ${imageUrl}`);
-          
-          try {
-            const imgRes = await fetch(imageUrl);
-            if (imgRes.ok) {
-              const blob = await imgRes.blob();
-              const { supabaseAdmin } = await import('@/lib/supabase');
-              
-              const fileName = `generated/${uuidv4()}.webp`;
-              const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-                .from('temp-assets')
-                .upload(fileName, blob, { contentType: 'image/webp' });
-
-              if (!uploadError && uploadData) {
-                const { data: { publicUrl } } = supabaseAdmin.storage
-                  .from('temp-assets')
-                  .getPublicUrl(uploadData.path);
-                
-                return NextResponse.json({ url: publicUrl, provider: 'fal-flux' });
-              } else {
-                const arrayBuffer = await blob.arrayBuffer();
-                const buffer = Buffer.from(arrayBuffer);
-                const base64 = `data:image/webp;base64,${buffer.toString('base64')}`;
-                return NextResponse.json({ url: base64, provider: 'fal-flux' });
-              }
-            }
-          } catch (persistErr) {
-            console.warn('[Image Gen] Fal.ai persistence failed, using raw url:', persistErr);
-          }
-
+          console.log(`[Image Gen] Fal.ai success → ${imageUrl}`);
           return NextResponse.json({ url: imageUrl, provider: 'fal-flux' });
         }
       } catch (e: any) {
@@ -238,36 +182,7 @@ export async function POST(req: Request) {
         const data = await response.json();
         if (response.ok && data.data?.[0]?.url) {
           const imageUrl = data.data[0].url;
-          
-          try {
-            const imgRes = await fetch(imageUrl);
-            if (imgRes.ok) {
-              const blob = await imgRes.blob();
-              const { supabaseAdmin } = await import('@/lib/supabase');
-              
-              const fileName = `generated/${uuidv4()}.png`;
-              const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
-                .from('temp-assets')
-                .upload(fileName, blob, { contentType: 'image/png' });
-
-              if (!uploadError && uploadData) {
-                const { data: { publicUrl } } = supabaseAdmin.storage
-                  .from('temp-assets')
-                  .getPublicUrl(uploadData.path);
-                
-                return NextResponse.json({ url: publicUrl });
-              } else {
-                // If upload fails (e.g. no service role key), return as base64 to bypass CORS
-                const arrayBuffer = await blob.arrayBuffer();
-                const buffer = Buffer.from(arrayBuffer);
-                const base64 = `data:image/png;base64,${buffer.toString('base64')}`;
-                return NextResponse.json({ url: base64 });
-              }
-            }
-          } catch (persistErr) {
-            console.warn('[Image Gen] OpenAI Persistence failed:', persistErr);
-          }
-
+          console.log(`[Image Gen] OpenAI success → ${imageUrl}`);
           return NextResponse.json({ url: imageUrl });
         }
       } catch (e) {
