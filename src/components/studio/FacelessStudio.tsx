@@ -40,7 +40,7 @@ interface FacelessStudioProps {
 }
 
 
-type PostEffect = 'kenburns' | 'dust' | 'glitch' | 'negative' | 'zoom_punch';
+type PostEffect = 'kenburns' | 'dust' | 'glitch' | 'negative' | 'zoom_punch' | 'flash';
 type BottomTab = 'setup' | 'scenes' | 'inspector';
 
 // ── Main Component ──────────────────────────────────────────────────────────
@@ -88,7 +88,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   const [renderDone, setRendered] = useState(false);
   const [renderBackgroundUrl, setRenderBackgroundUrl] = useState<string | null>(null);
   const [finalVideoBlob, setFinalVideoBlob] = useState<Blob | null>(null);
-  const [selectedEffects, setSelectedEffects] = useState<PostEffect[]>(['kenburns', 'zoom_punch']);
+  const [selectedEffects, setSelectedEffects] = useState<PostEffect[]>(['kenburns', 'zoom_punch', 'glitch', 'dust', 'flash']);
 
 
   const canvasRef = useRef<any>(null);
@@ -608,16 +608,24 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         ctx.clearRect(0, 0, 720, 1280);
         if ((img as any)?.complete) {
           const motion = sceneMotionStyles[scene.id];
+          
+          // DRAMATICALLY ENHANCED KEN BURNS (2.5x to 3x more dynamic scale and pans)
           let scale = 1.05;
           let tx = 0;
           let ty = 0;
 
-          if (motion === 'zoom_in') scale = 1.05 + prog * 0.15;
-          else if (motion === 'zoom_out') scale = 1.2 - prog * 0.15;
-          else if (motion === 'pan_right') tx = -40 + prog * 80;
-          else if (motion === 'pan_left') tx = 40 - prog * 80;
-          else if (motion === 'diagonal_br') { tx = -30 + prog * 60; ty = -30 + prog * 60; scale = 1.1; }
-          else if (motion === 'diagonal_tr') { tx = -30 + prog * 60; ty = 30 - prog * 60; scale = 1.1; }
+          if (motion === 'zoom_in') scale = 1.05 + prog * 0.40;
+          else if (motion === 'zoom_out') scale = 1.45 - prog * 0.40;
+          else if (motion === 'pan_right') tx = -100 + prog * 200;
+          else if (motion === 'pan_left') tx = 100 - prog * 200;
+          else if (motion === 'diagonal_br') { tx = -80 + prog * 160; ty = -80 + prog * 160; scale = 1.25; }
+          else if (motion === 'diagonal_tr') { tx = -80 + prog * 160; ty = 80 - prog * 160; scale = 1.25; }
+
+          // ⚡ ZOOM PUNCH Transition (First 15% of scene gets dramatic extra zoom that decays)
+          if (selectedEffects.includes('zoom_punch') && prog < 0.15) {
+            const punchFactor = (0.15 - prog) / 0.15; // 1 to 0
+            scale += punchFactor * 0.35; // Extra 35% scale decay
+          }
 
           ctx.save(); 
           ctx.translate(360 + tx, 640 + ty); 
@@ -628,6 +636,53 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
           if (aspect < 720 / 1280) { dw = 720; dh = 720 / aspect; } else { dh = 1280; dw = 1280 * aspect; }
           ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
           ctx.restore();
+
+          // 📺 GLITCH Effect (Chromatic splits and displace strips at random frames)
+          if (selectedEffects.includes('glitch') && Math.random() < 0.08) {
+            ctx.save();
+            const shiftX = (Math.random() - 0.5) * 35;
+            ctx.translate(shiftX, 0);
+            
+            // Draw colorful digital artifacts
+            ctx.fillStyle = 'rgba(255, 0, 80, 0.4)';
+            ctx.fillRect(Math.random() * 720, Math.random() * 1280, Math.random() * 200 + 100, Math.random() * 15 + 5);
+            ctx.fillStyle = 'rgba(0, 243, 255, 0.4)';
+            ctx.fillRect(Math.random() * 720, Math.random() * 1280, Math.random() * 200 + 100, Math.random() * 15 + 5);
+            ctx.restore();
+          }
+
+          // 🎞️ RETRO DUST & Scratches Effect
+          if (selectedEffects.includes('dust')) {
+            ctx.save();
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+            // Random specks of white dust
+            for (let d = 0; d < 8; d++) {
+              ctx.beginPath();
+              ctx.arc(Math.random() * 720, Math.random() * 1280, Math.random() * 2 + 1, 0, 2 * Math.PI);
+              ctx.fill();
+            }
+            // Random dark dust and scratch lines
+            ctx.strokeStyle = 'rgba(0, 0, 0, 0.35)';
+            ctx.lineWidth = Math.random() * 1.5 + 0.5;
+            for (let s = 0; s < 2; s++) {
+              ctx.beginPath();
+              const sx = Math.random() * 720;
+              const sy = Math.random() * 1280;
+              ctx.moveTo(sx, sy);
+              ctx.lineTo(sx + (Math.random() - 0.5) * 40, sy + (Math.random() - 0.5) * 40);
+              ctx.stroke();
+            }
+            ctx.restore();
+          }
+
+          // ✨ FLASH CUT Transition (Cinematic white overlay at scene junctions fading quickly)
+          if (selectedEffects.includes('flash') && prog < 0.20) {
+            ctx.save();
+            const flashAlpha = ((0.20 - prog) / 0.20) * 0.75; // Starts at 0.75 opacity decay
+            ctx.fillStyle = `rgba(255, 255, 255, ${flashAlpha})`;
+            ctx.fillRect(0, 0, 720, 1280);
+            ctx.restore();
+          }
         } else {
           ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, 720, 1280);
         }
@@ -1307,7 +1362,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                 <div>
                   <label className="text-[9px] font-black uppercase tracking-widest text-white/30 mb-3 block">Пост-эффекты TikTok</label>
                   <div className="space-y-2">
-                    {(['kenburns', 'zoom_punch', 'glitch'] as PostEffect[]).map(fx => (
+                    {(['kenburns', 'zoom_punch', 'glitch', 'dust', 'flash'] as PostEffect[]).map(fx => (
                       <button
                         key={fx}
                         onClick={() => setSelectedEffects(p => p.includes(fx) ? p.filter(f => f !== fx) : [...p, fx])}
@@ -1315,10 +1370,10 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                       >
                         <div>
                           <p className="text-[11px] font-black uppercase tracking-wide">
-                            {fx === 'kenburns' ? '🎬 Ken Burns' : fx === 'zoom_punch' ? '⚡ Zoom Punch' : '📺 Glitch'}
+                            {fx === 'kenburns' ? '🎬 Ken Burns' : fx === 'zoom_punch' ? '⚡ Zoom Punch' : fx === 'glitch' ? '📺 Glitch' : fx === 'dust' ? '🎞️ Retro Dust' : '✨ Flash Cut'}
                           </p>
                           <p className="text-[9px] mt-0.5 opacity-60">
-                            {fx === 'kenburns' ? 'Медленное кинематографичное движение' : fx === 'zoom_punch' ? 'Резкий зум при смене сцены' : 'Цифровые артефакты'}
+                            {fx === 'kenburns' ? 'Медленное кинематографичное движение' : fx === 'zoom_punch' ? 'Резкий зум при смене сцены' : fx === 'glitch' ? 'Цифровые артефакты' : fx === 'dust' ? 'Кинематографическая пыль и царапины' : 'Световая вспышка на стыках сцен'}
                           </p>
                         </div>
                         {selectedEffects.includes(fx) && <Check size={16} className="shrink-0" />}
