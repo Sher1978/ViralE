@@ -115,8 +115,9 @@ export async function generateScript(
     }
   `;
 
+  const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
   const response = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
+    model: modelName,
     max_tokens: 2048,
     system: systemPrompt,
     messages: [
@@ -163,8 +164,9 @@ export async function refineScript(
     - Output ONLY valid JSON in the same structure as the existing script.
   `;
 
+  const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
   const response = await anthropic.messages.create({
-    model: process.env.ANTHROPIC_MODEL || DEFAULT_MODEL,
+    model: modelName,
     max_tokens: 1024,
     system: systemPrompt,
     messages: [
