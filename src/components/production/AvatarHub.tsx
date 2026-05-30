@@ -3,6 +3,7 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useTranslations } from 'next-intl';
 import { motion, AnimatePresence } from 'framer-motion';
+import Image from 'next/image';
 import { User, Key, Image as ImageIcon, Upload, CheckCircle2, Info, Loader2, Trash2, Sparkles, Copy, ExternalLink, AlertCircle, Plus, Lock } from 'lucide-react';
 import { clsx } from 'clsx';
 import { supabase } from '@/lib/supabase';
@@ -324,7 +325,7 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig, 
                         selectedAsset === item.id ? "border-purple-500 scale-[1.02] shadow-2xl shadow-purple-500/20" : "border-white/5 grayscale-[0.3] hover:grayscale-0 hover:border-white/20"
                       )}
                     >
-                      <img src={item.url} alt={item.name} className="w-full h-full object-cover" />
+                      <Image src={item.url} alt={item.name} className="w-full h-full object-cover" fill sizes="(max-width: 768px) 50vw, 25vw" />
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
                         <p className="text-[10px] font-black uppercase tracking-widest text-white/90 italic">{item.name}</p>
                       </div>
@@ -473,7 +474,7 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig, 
                           selectedAsset === asset.id ? "border-purple-500 scale-[1.02] shadow-2xl shadow-purple-500/20" : "border-white/5 grayscale-[0.3] hover:grayscale-0 hover:border-white/20"
                         )}
                       >
-                        <img src={asset.public_url} alt="Library Photo" className="w-full h-full object-cover" />
+                        <Image src={asset.public_url} alt="Library Photo" className="w-full h-full object-cover" fill sizes="(max-width: 768px) 50vw, 25vw" />
                         
                         <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent flex items-end p-4">
                           <p className="text-[9px] font-black uppercase tracking-widest text-white/90 italic">User Photo</p>

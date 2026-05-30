@@ -84,6 +84,11 @@ export default async function LocaleLayout({
 
   return (
     <html lang={locale} suppressHydrationWarning style={{ background: '#050505' }}>
+      <head>
+        <link rel="preconnect" href="https://api.heygen.com" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://api.fal.ai" crossOrigin="anonymous" />
+        <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
+      </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} ${inter.variable} antialiased min-h-screen`}
         style={{ background: '#050505', color: '#F5F0E8' }}

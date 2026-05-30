@@ -63,6 +63,7 @@ export function BottomNav() {
                <li key={item.href} className="flex-1">
                 <Link
                   href={item.href}
+                  prefetch={false}
                   className={cn(
                     "flex flex-col items-center justify-center py-2 transition-all duration-100 relative select-none touch-manipulation",
                     isActive ? "scale-105" : "text-white/20"
