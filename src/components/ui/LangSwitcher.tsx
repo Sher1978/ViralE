@@ -12,8 +12,30 @@ export function LangSwitcher() {
 
   const toggleLocale = () => {
     const nextLocale = locale === 'ru' ? 'en' : 'ru';
-    // Replace current locale prefix in the pathname
-    const newPath = pathname.replace(`/${locale}`, `/${nextLocale}`);
+    
+    // Persist the selection in cookie (which next-intl middleware reads) and localStorage
+    const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+    if (globalObj && typeof globalObj.document !== 'undefined') {
+      globalObj.document.cookie = `NEXT_LOCALE=${nextLocale}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+    if (globalObj && typeof globalObj.window !== 'undefined') {
+      globalObj.window.localStorage.setItem('NEXT_LOCALE', nextLocale);
+    }
+
+    // Mathematically correct path switcher for next-intl's 'as-needed' localePrefix mode
+    let newPath = pathname;
+    if (nextLocale === 'ru') {
+      if (!pathname.startsWith('/ru')) {
+        // Prepend /ru (e.g. /app/ideas -> /ru/app/ideas)
+        newPath = `/ru${pathname}`;
+      }
+    } else {
+      if (pathname.startsWith('/ru')) {
+        // Remove /ru prefix (e.g. /ru/app/ideas -> /app/ideas)
+        newPath = pathname.replace(/^\/ru/, '') || '/';
+      }
+    }
+
     startTransition(() => {
       router.push(newPath);
     });

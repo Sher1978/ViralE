@@ -8,18 +8,38 @@ export async function generateTrizText(prompt: string, apiKey?: string): Promise
   
   const anthropic = new Anthropic({ apiKey: authKey });
   const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
-  const response = await anthropic.messages.create({
-    model: modelName,
-    max_tokens: 1024,
-    system: "You are a professional neuromarketer and creative strategist.",
-    messages: [
-      { role: "user", content: prompt }
-    ],
-  });
+  
+  try {
+    const response = await anthropic.messages.create({
+      model: modelName,
+      max_tokens: 1024,
+      system: "You are a professional neuromarketer and creative strategist.",
+      messages: [
+        { role: "user", content: prompt }
+      ],
+    });
 
-  const content = response.content[0];
-  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
-  return content.text;
+    const content = response.content[0];
+    if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+    return content.text;
+  } catch (error: any) {
+    // If the account doesn't have access to Claude 3.5 Haiku, fallback to Claude 3 Haiku
+    if ((error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found")) && modelName === "claude-3-5-haiku-20241022") {
+      console.warn(`[Anthropic] Model ${modelName} not found or accessible. Falling back to claude-3-haiku-20240307...`);
+      const response = await anthropic.messages.create({
+        model: "claude-3-haiku-20240307",
+        max_tokens: 1024,
+        system: "You are a professional neuromarketer and creative strategist.",
+        messages: [
+          { role: "user", content: prompt }
+        ],
+      });
+      const content = response.content[0];
+      if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+      return content.text;
+    }
+    throw error;
+  }
 }
 
 
@@ -117,23 +137,41 @@ export async function generateScript(
   `;
 
   const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
-  const response = await anthropic.messages.create({
-    model: modelName,
-    max_tokens: 2048,
-    system: systemPrompt,
-    messages: [
-      { role: "user", content: userPrompt }
-    ],
-  });
+  try {
+    const response = await anthropic.messages.create({
+      model: modelName,
+      max_tokens: 2048,
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPrompt }
+      ],
+    });
 
-  const content = response.content[0];
-  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
-  
-  const text = content.text.trim();
-  
-  // Clean potential markdown code blocks
-  const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
-  return JSON.parse(jsonStr);
+    const content = response.content[0];
+    if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+    
+    const text = content.text.trim();
+    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+    return JSON.parse(jsonStr);
+  } catch (error: any) {
+    if ((error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found")) && modelName === "claude-3-5-haiku-20241022") {
+      console.warn(`[Anthropic] Model ${modelName} not found or accessible in generateScript. Falling back to claude-3-haiku-20240307...`);
+      const response = await anthropic.messages.create({
+        model: "claude-3-haiku-20240307",
+        max_tokens: 2048,
+        system: systemPrompt,
+        messages: [
+          { role: "user", content: userPrompt }
+        ],
+      });
+      const content = response.content[0];
+      if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+      const text = content.text.trim();
+      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+      return JSON.parse(jsonStr);
+    }
+    throw error;
+  }
 }
 
 export async function refineScript(
@@ -166,20 +204,39 @@ export async function refineScript(
   `;
 
   const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
-  const response = await anthropic.messages.create({
-    model: modelName,
-    max_tokens: 1024,
-    system: systemPrompt,
-    messages: [
-      { role: "user", content: userPrompt }
-    ],
-  });
+  try {
+    const response = await anthropic.messages.create({
+      model: modelName,
+      max_tokens: 1024,
+      system: systemPrompt,
+      messages: [
+        { role: "user", content: userPrompt }
+      ],
+    });
 
-  const content = response.content[0];
-  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
-  
-  const text = content.text.trim();
-  
-  const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
-  return JSON.parse(jsonStr);
+    const content = response.content[0];
+    if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+    
+    const text = content.text.trim();
+    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+    return JSON.parse(jsonStr);
+  } catch (error: any) {
+    if ((error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found")) && modelName === "claude-3-5-haiku-20241022") {
+      console.warn(`[Anthropic] Model ${modelName} not found or accessible in refineScript. Falling back to claude-3-haiku-20240307...`);
+      const response = await anthropic.messages.create({
+        model: "claude-3-haiku-20240307",
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [
+          { role: "user", content: userPrompt }
+        ],
+      });
+      const content = response.content[0];
+      if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+      const text = content.text.trim();
+      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+      return JSON.parse(jsonStr);
+    }
+    throw error;
+  }
 }
