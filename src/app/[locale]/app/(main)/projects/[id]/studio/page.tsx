@@ -107,6 +107,20 @@ export default function StudioPage() {
   const [selectedAvatarPhoto, setSelectedAvatarPhoto] = useState<string | null>(null);
   const [avatarPhoto, setAvatarPhoto] = useState<string | null>(null);
 
+  const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => {
+    const initialKey = initialTab === 'assembly' 
+      ? (showFaceless ? 'assembly_faceless' : 'assembly_editor')
+      : initialTab;
+    return { [initialKey]: true };
+  });
+
+  useEffect(() => {
+    const key = activeTab === 'assembly'
+      ? (showFaceless ? 'assembly_faceless' : 'assembly_editor')
+      : activeTab;
+    setVisitedTabs(prev => prev[key] ? prev : { ...prev, [key]: true });
+  }, [activeTab, showFaceless]);
+
   const prompterRef = useRef<HTMLDivElement>(null);
   const videoPreviewRef = useRef<HTMLVideoElement>(null);
   const scrollPosRef = useRef(0);
@@ -642,10 +656,10 @@ export default function StudioPage() {
               </div>
             )}
             
-            {activeTab === 'branch' && (
-              <ProductionBranch
-                onSelect={(type) => {
-                  startTransition(() => {
+            {visitedTabs['branch'] && (
+              <div className={activeTab === 'branch' ? 'h-full w-full' : 'hidden'}>
+                <ProductionBranch
+                  onSelect={(type) => {
                     if (type === 'record') {
                       setShowFaceless(false);
                       setIsVoiceOnly(false);
@@ -659,14 +673,15 @@ export default function StudioPage() {
                       setIsVoiceOnly(false);
                       setActiveTab('assembly');
                     }
-                  });
-                }}
-                onBack={() => handleTabChange('concept')}
-              />
+                  }}
+                  onBack={() => handleTabChange('concept')}
+                />
+              </div>
             )}
 
 
-            {activeTab === 'teleprompter' && (
+            {visitedTabs['teleprompter'] && (
+              <div className={activeTab === 'teleprompter' ? 'h-full w-full' : 'hidden'}>
                 <TeleprompterView 
                   cameraStream={cameraStream}
                   cameraError={cameraError}
@@ -728,6 +743,19 @@ export default function StudioPage() {
                   recordingTime={recordingTime}
                   t={t}
                 />
+              </div>
+            )}
+
+            {visitedTabs['fusion'] && (
+              <div className={activeTab === 'fusion' ? 'h-full w-full' : 'hidden'}>
+                <FusionView 
+                  status={fusionStatus}
+                  progress={fusionProgress}
+                  segmentsCount={fusionSegments.length || 1}
+                  completedSegments={fusionCompletedSegments}
+                  error={fusionError || undefined}
+                />
+              </div>
             )}
 
 
@@ -799,159 +827,180 @@ export default function StudioPage() {
               </motion.div>
             )}
 
-            {activeTab === 'post_record_branch' && lastRecordingUrl && (
-              <PostRecordBranch 
-                videoUrl={lastRecordingUrl}
-                recordedSize={recordedSize}
-                onSelect={(option) => {
-                  if (option === 'pure') {
-                    // Save videoUrl to manifest for persistence
+            {visitedTabs['post_record_branch'] && lastRecordingUrl && (
+              <div className={activeTab === 'post_record_branch' ? 'h-full w-full' : 'hidden'}>
+                <PostRecordBranch 
+                  videoUrl={lastRecordingUrl}
+                  recordedSize={recordedSize}
+                  onSelect={(option) => {
+                    if (option === 'pure') {
+                      // Save videoUrl to manifest for persistence
+                      setManifest(prev => {
+                        if (!prev) return prev;
+                        const next = { ...prev, videoUrl: lastRecordingUrl || '' };
+                        projectService.updateLatestVersionManifest(projectId, next);
+                        return next;
+                      });
+                      setShowAssemblyLauncher(true);
+                    }
+                    else if (option === 'animate') handleTabChange('avatar_hub');
+                  }}
+                  onRetake={() => {
+                     handleTabChange('teleprompter');
+                     setTimeout(initCamera, 100);
+                  }}
+                  onDownload={downloadRawVideo}
+                  onDownloadMp4={downloadBackgroundMp4}
+                  isMp4Converting={isBackgroundConverting}
+                  mp4Url={backgroundMp4Url}
+                  onTelegram={sendRawToTelegram}
+                  t={t}
+                />
+              </div>
+            )}
+
+            {visitedTabs['timeline_lab'] && lastRecordingUrl && (
+              <div className={activeTab === 'timeline_lab' ? 'h-full w-full' : 'hidden'}>
+                <TimelineLab 
+                  videoUrl={lastRecordingUrl}
+                  projectId={projectId}
+                  initialMasterAvatar={selectedAvatarPhoto || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2'}
+                  onGenerate={handleTimelineGeneration}
+                  onBack={() => handleTabChange('post_record_branch')}
+                  onDownload={downloadRawVideo}
+                />
+              </div>
+            )}
+
+            {visitedTabs['assembly_editor'] && (
+              <div className={activeTab === 'assembly' && !showFaceless ? 'h-full w-full' : 'hidden'}>
+                <VideoEditor 
+                  projectId={projectId}
+                  aRollUrl={manifest?.videoUrl || lastRecordingUrl || ''}
+                  onBack={async () => {
+                    // 🚀 OOM RECOVERY: If the blob URL was revoked to save memory, 
+                    // we must restore it from IDB before returning to post_record_branch
+                    // to prevent "destroying the source video" (black screen).
+                    if (lastRecordingUrl && lastRecordingUrl.startsWith('blob:')) {
+                      try {
+                        const blob = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+                        if (blob instanceof Blob) {
+                          const restoredUrl = URL.createObjectURL(blob);
+                          setLastRecordingUrl(restoredUrl);
+                        }
+                      } catch (e) {
+                        console.warn('[Studio] Failed to restore blob for back navigation', e);
+                      }
+                    }
+
+                    if (fusedVideoUrl && lastRecordingUrl === fusedVideoUrl) {
+                      handleTabChange('fusion_preview');
+                    } else {
+                      handleTabChange('branch');
+                    }
+                  }}
+                  onNext={handleFinalExport}
+                  manifest={manifest}
+                  onFaceless={() => setShowFaceless(true)}
+                />
+              </div>
+            )}
+
+
+            {visitedTabs['assembly_faceless'] && (
+              <div className={activeTab === 'assembly' && showFaceless ? 'h-full w-full' : 'hidden'}>
+                <FacelessStudio
+                  projectId={projectId}
+                  manifest={manifest}
+                  visualStyle={currentProfile?.visual_style || 'startup_valley'}
+                  onBack={() => setShowFaceless(false)}
+
+                  onJumpToConcept={() => {
+                    setShowFaceless(false);
+                    router.push(`/app/projects/new/script?projectId=${projectId}`);
+                  }}
+                  onComplete={(videoBlob, transcriptData) => {
+                    const localUrl = URL.createObjectURL(videoBlob);
+                    setManifest(prev => prev ? {
+                      ...prev,
+                      videoUrl: localUrl,
+                      transcript: transcriptData, // Use scene-based timings as initial transcript
+                      segments: prev.segments?.map((s, i) =>
+                        i === 0 ? { ...s, assetUrl: localUrl, type: 'user_recording' } : s
+                      ) || prev.segments,
+                    } : prev);
+                    setShowFaceless(false);
+                    renderService.uploadMedia(projectId, videoBlob, 'video').then(res => {
+                      if (res.publicUrl) {
                     setManifest(prev => {
                       if (!prev) return prev;
-                      const next = { ...prev, videoUrl: lastRecordingUrl || '' };
+                      const next = {
+                        ...prev,
+                        videoUrl: res.publicUrl,
+                        segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
+                      };
                       projectService.updateLatestVersionManifest(projectId, next);
                       return next;
                     });
-                    setShowAssemblyLauncher(true);
-                  }
-                  else if (option === 'animate') handleTabChange('avatar_hub');
-                }}
-                onRetake={() => {
-                   handleTabChange('teleprompter');
-                   setTimeout(initCamera, 100);
-                }}
-                onDownload={downloadRawVideo}
-                onDownloadMp4={downloadBackgroundMp4}
-                isMp4Converting={isBackgroundConverting}
-                mp4Url={backgroundMp4Url}
-                onTelegram={sendRawToTelegram}
-                t={t}
-              />
-            )}
-
-            {activeTab === 'timeline_lab' && lastRecordingUrl && (
-              <TimelineLab 
-                videoUrl={lastRecordingUrl}
-                projectId={projectId}
-                initialMasterAvatar={selectedAvatarPhoto || 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2'}
-                onGenerate={handleTimelineGeneration}
-                onBack={() => handleTabChange('post_record_branch')}
-                onDownload={downloadRawVideo}
-              />
-            )}
-
-            {activeTab === 'assembly' && !showFaceless && (
-              <VideoEditor 
-                projectId={projectId}
-                aRollUrl={manifest?.videoUrl || lastRecordingUrl || ''}
-                onBack={async () => {
-                  // 🚀 OOM RECOVERY: If the blob URL was revoked to save memory, 
-                  // we must restore it from IDB before returning to post_record_branch
-                  // to prevent "destroying the source video" (black screen).
-                  if (lastRecordingUrl && lastRecordingUrl.startsWith('blob:')) {
-                    try {
-                      const blob = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-                      if (blob instanceof Blob) {
-                        const restoredUrl = URL.createObjectURL(blob);
-                        setLastRecordingUrl(restoredUrl);
                       }
-                    } catch (e) {
-                      console.warn('[Studio] Failed to restore blob for back navigation', e);
-                    }
-                  }
-
-                  if (fusedVideoUrl && lastRecordingUrl === fusedVideoUrl) {
-                    handleTabChange('fusion_preview');
-                  } else {
-                    handleTabChange('branch');
-                  }
-                }}
-                onNext={handleFinalExport}
-                manifest={manifest}
-                onFaceless={() => setShowFaceless(true)}
-              />
-            )}
-
-            {activeTab === 'assembly' && showFaceless && (
-              <FacelessStudio
-                projectId={projectId}
-                manifest={manifest}
-                visualStyle={currentProfile?.visual_style || 'startup_valley'}
-                onBack={() => setShowFaceless(false)}
-
-                onJumpToConcept={() => {
-                  setShowFaceless(false);
-                  router.push(`/app/projects/new/script?projectId=${projectId}`);
-                }}
-                onComplete={(videoBlob, transcriptData) => {
-                  const localUrl = URL.createObjectURL(videoBlob);
-                  setManifest(prev => prev ? {
-                    ...prev,
-                    videoUrl: localUrl,
-                    transcript: transcriptData, // Use scene-based timings as initial transcript
-                    segments: prev.segments?.map((s, i) =>
-                      i === 0 ? { ...s, assetUrl: localUrl, type: 'user_recording' } : s
-                    ) || prev.segments,
-                  } : prev);
-                  setShowFaceless(false);
-                  renderService.uploadMedia(projectId, videoBlob, 'video').then(res => {
-                    if (res.publicUrl) {
-                  setManifest(prev => {
-                    if (!prev) return prev;
-                    const next = {
-                      ...prev,
-                      videoUrl: res.publicUrl,
-                      segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
-                    };
-                    projectService.updateLatestVersionManifest(projectId, next);
-                    return next;
-                  });
-                    }
-                  });
-                }}
-              />
-            )}
-
-            {activeTab === 'assets' && (
-              <div className="max-w-6xl mx-auto h-full p-10">
-                <DistributionFactory 
-                  manifest={manifest}
-                  scriptText={(manifest as any)?.scriptText || manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
-                  projectId={projectId}
-                  locale={locale}
-                  onUpdateManifest={(newManifest) => {
-                    setManifest(newManifest);
-                    projectService.updateLatestVersionManifest(projectId, newManifest);
+                    });
                   }}
                 />
               </div>
             )}
 
-            {activeTab === 'avatar_hub' && (
-              <AvatarHub 
-                projectId={projectId}
-                currentProfile={currentProfile}
-                onSelect={(config) => {
-                  setSelectedAvatarPhoto(config.photoUrl);
-                  handleTabChange('timeline_lab');
-                }}
-                onBack={() => handleTabChange('post_record_branch')}
-              />
+
+            {visitedTabs['assets'] && (
+              <div className={activeTab === 'assets' ? 'h-full w-full' : 'hidden'}>
+                <div className="max-w-6xl mx-auto h-full p-10">
+                  <DistributionFactory 
+                    manifest={manifest}
+                    scriptText={(manifest as any)?.scriptText || manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
+                    projectId={projectId}
+                    locale={locale}
+                    onUpdateManifest={(newManifest) => {
+                      setManifest(newManifest);
+                      projectService.updateLatestVersionManifest(projectId, newManifest);
+                    }}
+                  />
+                </div>
+              </div>
             )}
 
-            {activeTab === 'fusion_preview' && fusedVideoUrl && (
-              <FusionPreview 
-                videoUrl={fusedVideoUrl}
-                onRegenerate={() => handleTabChange('timeline_lab')}
-                onExportToMontage={() => {
-                  setLastRecordingUrl(fusedVideoUrl);
-                  handleTabChange('assembly');
-                }}
-              />
+
+            {visitedTabs['avatar_hub'] && (
+              <div className={activeTab === 'avatar_hub' ? 'h-full w-full' : 'hidden'}>
+                <AvatarHub 
+                  projectId={projectId}
+                  currentProfile={currentProfile}
+                  onSelect={(config) => {
+                    setSelectedAvatarPhoto(config.photoUrl);
+                    handleTabChange('timeline_lab');
+                  }}
+                  onBack={() => handleTabChange('post_record_branch')}
+                />
+              </div>
             )}
 
-            {activeTab === 'knowledge' && (
-              <KnowledgeLab profile={currentProfile!} onProfileUpdate={setCurrentProfile} />
+
+            {visitedTabs['fusion_preview'] && fusedVideoUrl && (
+              <div className={activeTab === 'fusion_preview' ? 'h-full w-full' : 'hidden'}>
+                <FusionPreview 
+                  videoUrl={fusedVideoUrl}
+                  onRegenerate={() => handleTabChange('timeline_lab')}
+                  onExportToMontage={() => {
+                    setLastRecordingUrl(fusedVideoUrl);
+                    handleTabChange('assembly');
+                  }}
+                />
+              </div>
+            )}
+
+
+            {visitedTabs['knowledge'] && (
+              <div className={activeTab === 'knowledge' ? 'h-full w-full' : 'hidden'}>
+                <KnowledgeLab profile={currentProfile!} onProfileUpdate={setCurrentProfile} />
+              </div>
             )}
           </div>
         </main>
