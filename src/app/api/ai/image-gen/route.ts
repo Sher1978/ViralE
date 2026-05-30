@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
+import { fal } from "@fal-ai/client";
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -130,6 +131,60 @@ export async function POST(req: Request) {
         }
       } catch (e) {
         console.warn('[Image Gen] Runware failed:', e);
+      }
+    }
+
+    // --- OPTION 1.5: Fal.ai (FLUX.1 Schnell) ---
+    if (process.env.FAL_KEY) {
+      try {
+        console.log(`[Image Gen] Trying Fal.ai FLUX.1 [schnell] with AR ${aspect_ratio} and size ${width}x${height}...`);
+        const result = await fal.subscribe("fal-ai/flux/schnell", {
+          input: {
+            prompt: fullPrompt,
+            image_size: { width, height },
+            num_inference_steps: 4,
+            enable_safety_checker: true,
+            sync_mode: true,
+            ...(seed !== undefined && seed !== null && { seed: Number(seed) })
+          }
+        });
+
+        const imageUrl = (result.data as any).images?.[0]?.url;
+        if (imageUrl) {
+          console.log(`[Image Gen] Fal.ai succeeded → ${imageUrl}`);
+          
+          try {
+            const imgRes = await fetch(imageUrl);
+            if (imgRes.ok) {
+              const blob = await imgRes.blob();
+              const { supabaseAdmin } = await import('@/lib/supabase');
+              
+              const fileName = `generated/${uuidv4()}.webp`;
+              const { data: uploadData, error: uploadError } = await supabaseAdmin.storage
+                .from('temp-assets')
+                .upload(fileName, blob, { contentType: 'image/webp' });
+
+              if (!uploadError && uploadData) {
+                const { data: { publicUrl } } = supabaseAdmin.storage
+                  .from('temp-assets')
+                  .getPublicUrl(uploadData.path);
+                
+                return NextResponse.json({ url: publicUrl, provider: 'fal-flux' });
+              } else {
+                const arrayBuffer = await blob.arrayBuffer();
+                const buffer = Buffer.from(arrayBuffer);
+                const base64 = `data:image/webp;base64,${buffer.toString('base64')}`;
+                return NextResponse.json({ url: base64, provider: 'fal-flux' });
+              }
+            }
+          } catch (persistErr) {
+            console.warn('[Image Gen] Fal.ai persistence failed, using raw url:', persistErr);
+          }
+
+          return NextResponse.json({ url: imageUrl, provider: 'fal-flux' });
+        }
+      } catch (e: any) {
+        console.warn('[Image Gen] Fal.ai FLUX failed:', e.message || e);
       }
     }
 
