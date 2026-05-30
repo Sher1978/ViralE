@@ -1,6 +1,6 @@
 import Anthropic from "@anthropic-ai/sdk";
  
-const DEFAULT_MODEL = "claude-3-5-sonnet-20240620";
+const DEFAULT_MODEL = "claude-3-5-haiku-20241022";
 
 export async function generateTrizText(prompt: string, apiKey?: string): Promise<string> {
   const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
