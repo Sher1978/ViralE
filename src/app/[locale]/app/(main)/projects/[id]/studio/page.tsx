@@ -70,9 +70,7 @@ export default function StudioPage() {
   const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion' | 'avatar_hub' | 'fusion_preview'>(initialTab);
   
   const handleTabChange = useCallback((tab: any) => {
-    startTransition(() => {
-      setActiveTab(tab);
-    });
+    setActiveTab(tab);
   }, []);
   const [currentProfile, setCurrentProfile] = useState<Profile | null>(null);
 
@@ -566,8 +564,7 @@ export default function StudioPage() {
   const selectedSegment = manifest?.segments.find(s => s.id === selectedSegmentId);
 
   return (
-    <MotionConfig reducedMotion="always">
-      <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
+    <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
       {/* ЁЯЪА Pro Studio Mainframe - Full Screen Immersion */}
       <div className="flex h-full w-full overflow-hidden">
         {(!isMobileRef.current || activeTab !== 'assembly') && (
@@ -1029,6 +1026,5 @@ export default function StudioPage() {
         </AnimatePresence>
       </div>
     </div>
-    </MotionConfig>
   );
 }
