@@ -932,6 +932,7 @@ export default function StudioPage() {
                     setManifest(prev => prev ? {
                       ...prev,
                       videoUrl: localUrl,
+                      faceless_imported: true,
                       transcript: transcriptData, // Use scene-based timings as initial transcript
                       segments: prev.segments?.map((s, i) =>
                         i === 0 ? { ...s, assetUrl: localUrl, type: 'user_recording' } : s
@@ -945,6 +946,7 @@ export default function StudioPage() {
                           const next = {
                             ...prev,
                             videoUrl: res.publicUrl,
+                            faceless_imported: true,
                             segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
                           };
                           projectService.updateLatestVersionManifest(projectId, next);

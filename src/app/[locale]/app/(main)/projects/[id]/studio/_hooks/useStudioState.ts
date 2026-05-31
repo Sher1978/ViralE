@@ -423,7 +423,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     let words: TranscriptWord[] = [];
     let transcriptionOk = false;
 
-    if (!forceFresh && manifest?.transcript?.length) {
+    if (!forceFresh && manifest?.transcript?.length && !(manifest as any).faceless_imported) {
       console.log('[Studio LOG] Using cached manifest transcript segments. Word count:', manifest.transcript.length);
       words = manifest.transcript.map((t: any) => ({ ...t, accent: t.accent || false }));
       transcriptionOk = true;
@@ -541,6 +541,8 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
            console.log('[Studio LOG] Transcribe successful! Word count:', data.transcript.length);
            words = data.transcript; 
            transcriptionOk = true; 
+           // Clear faceless_imported flag and update database/manifest with Whisper transcript
+           setManifest(prev => prev ? { ...prev, faceless_imported: false, transcript: words } as any : prev);
         } else {
            throw new Error('AI не обнаружил голос в этом видео. Проверьте звук.');
         }
