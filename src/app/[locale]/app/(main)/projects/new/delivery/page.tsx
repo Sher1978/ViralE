@@ -474,7 +474,18 @@ function DeliveryPageContent() {
       }
 
       addSystemLog('[System] Инициализация FFmpeg ядра...');
-      const ffmpeg = await getFFmpeg();
+      
+      // Wrap getFFmpeg() with a strict 10 seconds timeout to prevent freezing at 5% on slow networks
+      const getFFmpegWithTimeout = () => {
+        return Promise.race([
+          getFFmpeg(),
+          new Promise<any>((_, reject) =>
+            setTimeout(() => reject(new Error('FFmpeg initialization timed out (10s limit). Falling back to Shotstack server rendering.')), 10000)
+          )
+        ]);
+      };
+      
+      const ffmpeg = await getFFmpegWithTimeout();
       ffmpegRef.current = ffmpeg;
 
       const execWithTimeout = async (args: string[], ms: number = 180000) => {
@@ -706,6 +717,11 @@ function DeliveryPageContent() {
     } catch (err: any) {
       console.error('[Delivery] Client render failed:', err);
       const errMsg = err.message || 'Ошибка рендера FFmpeg';
+      
+      // Clean up half-initialized state
+      try {
+        resetFFmpeg();
+      } catch (cleanupErr) {}
       
       // If the render was cancelled by a deliberate termination/restart, do NOT trigger the fallback modal!
       if (errMsg.includes('terminate') || errMsg.includes('called FFmpeg.terminate()')) {
