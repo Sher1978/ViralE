@@ -834,7 +834,7 @@
         }
       },
       "urgency": "{count} of 100 spots taken",
-      "trust": ["🔒 Secure payment (Stripe)", "↩ 14-day refund", "✕ Cancel anytime"]
+      "trust": ["🔒 Secure payment (Stripe)", "↩ 14-day refund (if unused)", "✕ Cancel anytime"]
     },
     "faq": {
       "label": "// QUESTIONS",
@@ -870,7 +870,7 @@
         },
         {
           "q": "What if I don't like it?",
-          "a": "14 days — unconditional refund. No questions, no forms. One email — and the money is returned within 24 hours."
+          "a": "We offer a 14-day refund window if you haven't used any AI avatar or video generation credits. Just email billing@virale.uno and we will return your money."
         }
       ]
     },
