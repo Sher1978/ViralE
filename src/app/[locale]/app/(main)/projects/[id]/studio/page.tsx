@@ -493,7 +493,7 @@ export default function StudioPage() {
   // --- RENDER ---
   if (isLoading) {
     return (
-      <div className="h-screen w-screen bg-[#050508] text-white flex overflow-hidden font-sans select-none">
+      <div className="h-[100dvh] w-screen bg-[#050508] text-white flex overflow-hidden font-sans select-none">
         {/* Left Sidebar Skeleton */}
         <div className="w-20 lg:w-64 bg-[#0a0a0f] border-r border-white/5 flex flex-col items-center lg:items-stretch p-4 lg:p-6 space-y-8 shrink-0">
           {/* Logo/Brand pulsing slot */}
@@ -578,7 +578,7 @@ export default function StudioPage() {
   const selectedSegment = manifest?.segments.find(s => s.id === selectedSegmentId);
 
   return (
-    <div className="h-screen w-screen bg-black text-white overflow-hidden font-sans relative">
+    <div className="h-[100dvh] w-screen bg-black text-white overflow-hidden font-sans relative">
       {/* ЁЯЪА Pro Studio Mainframe - Full Screen Immersion */}
       <div className="flex h-full w-full overflow-hidden">
         {(!isMobileRef.current || activeTab !== 'assembly') && (

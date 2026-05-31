@@ -756,7 +756,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   // RENDER
   // ─────────────────────────────────────────────────────────────────────────
   return (
-    <div className="flex flex-col bg-[#050508] text-white h-screen relative overflow-hidden font-sans select-none">
+    <div className="flex flex-col bg-[#050508] text-white h-[100dvh] relative overflow-hidden font-sans select-none">
       <canvas ref={canvasRef} className="hidden" />
       {audioUrl && <audio ref={audioRef} src={audioUrl} className="hidden" />}
 
