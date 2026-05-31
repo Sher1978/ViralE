@@ -28,7 +28,7 @@ export function middleware(request: NextRequest) {
 
   // Extract project ref for cookie naming
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
-  const projectRef = supabaseUrl.match(/(?:https?:\/\/)?([^.]+)/)?.[1];
+  const projectRef = supabaseUrl.split('.')[0].split('//')[1] || '';
   const cookieName = projectRef ? `sb-${projectRef}-auth-token` : '';
   const token = cookieName ? (request.cookies.get(cookieName)?.value || request.cookies.get(`${cookieName}.0`)?.value) : null;
 

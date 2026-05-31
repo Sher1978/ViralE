@@ -475,12 +475,16 @@ function DeliveryPageContent() {
 
       addSystemLog('[System] Инициализация FFmpeg ядра...');
       
-      // Wrap getFFmpeg() with a robust 45 seconds timeout to prevent freezing at 5% on slow networks
+      // Wrap getFFmpeg() with a robust 10 seconds timeout to prevent freezing at 5% on slow networks
       const getFFmpegWithTimeout = () => {
         return Promise.race([
           getFFmpeg(),
           new Promise<any>((_, reject) =>
-            setTimeout(() => reject(new Error('FFmpeg initialization timed out (45s limit). Falling back to Shotstack server rendering.')), 45000)
+            setTimeout(() => reject(new Error(
+              locale === 'ru'
+                ? 'Превышено время ожидания загрузки FFmpeg WASM (лимит 10 сек). Переключаемся на серверный рендеринг.'
+                : 'FFmpeg WASM load timed out (10s limit). Switching to server rendering.'
+            )), 10000)
           )
         ]);
       };

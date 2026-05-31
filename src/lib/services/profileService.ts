@@ -169,7 +169,7 @@ export const profileService = {
 
       const baseDna = profile?.digital_shadow_prompt || "";
 
-      if (projectCount >= 3 && profile?.storybrand_raw_content) {
+      if (profile?.storybrand_raw_content) {
         return {
           brandContext: profile.storybrand_raw_content,
           isStoryBrandActive: true,

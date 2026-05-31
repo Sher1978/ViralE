@@ -2,6 +2,7 @@ import { NextResponse } from 'next/server';
 import { v4 as uuidv4 } from 'uuid';
 import { fal } from "@fal-ai/client";
 import { VISUAL_STYLES, GlobalStyleAnchor } from '@/lib/ai/visual-generator';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -9,6 +10,47 @@ export const maxDuration = 60;
 const RUNWARE_API_KEY = process.env.RUNWARE_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const XAI_API_KEY = process.env.XAI_API_KEY;
+
+async function uploadToSupabase(externalUrl: string): Promise<string> {
+  if (!externalUrl) return externalUrl;
+  try {
+    console.log(`[Image Gen] Downloading external image to store persistently: ${externalUrl}`);
+    const res = await fetch(externalUrl);
+    if (!res.ok) {
+      throw new Error(`Failed to fetch image from CDN: ${res.statusText}`);
+    }
+    const contentType = res.headers.get('content-type') || 'image/webp';
+    const arrayBuffer = await res.arrayBuffer();
+    const buffer = Buffer.from(arrayBuffer);
+
+    // Determine extension from content-type or default to webp
+    let ext = 'webp';
+    if (contentType.includes('png')) ext = 'png';
+    else if (contentType.includes('jpeg') || contentType.includes('jpg')) ext = 'jpg';
+    else if (contentType.includes('gif')) ext = 'gif';
+
+    const fileName = `generated/${uuidv4()}.${ext}`;
+
+    const { data, error } = await supabaseAdmin.storage
+      .from('media')
+      .upload(fileName, buffer, {
+        contentType,
+        cacheControl: '31536000',
+        upsert: true,
+      });
+
+    if (error) {
+      throw error;
+    }
+
+    const { data: { publicUrl } } = supabaseAdmin.storage.from('media').getPublicUrl(fileName);
+    console.log(`[Image Gen] Successfully stored in Supabase: ${publicUrl}`);
+    return publicUrl;
+  } catch (err) {
+    console.warn('[Image Gen] Supabase storage upload failed, falling back to CDN URL:', err);
+    return externalUrl;
+  }
+}
 
 export async function POST(req: Request) {
   try {
@@ -87,7 +129,8 @@ export async function POST(req: Request) {
 
         const data = await response.json();
         if (response.ok && data.data?.[0]?.url) {
-          return NextResponse.json({ url: data.data[0].url, provider: 'grok' });
+          const finalUrl = await uploadToSupabase(data.data[0].url);
+          return NextResponse.json({ url: finalUrl, provider: 'grok' });
         }
         console.warn('[Image Gen] Grok API failed, falling back...', data);
       } catch (e) {
@@ -127,7 +170,8 @@ export async function POST(req: Request) {
             const imageUrl = inferenceResult.imageURL;
             
             console.log(`[Image Gen] Runware success → ${imageUrl}`);
-            return NextResponse.json({ url: imageUrl, id: inferenceResult.taskUUID });
+            const finalUrl = await uploadToSupabase(imageUrl);
+            return NextResponse.json({ url: finalUrl, id: inferenceResult.taskUUID });
           }
         }
       } catch (e) {
@@ -153,7 +197,8 @@ export async function POST(req: Request) {
         const imageUrl = (result.data as any).images?.[0]?.url;
         if (imageUrl) {
           console.log(`[Image Gen] Fal.ai success → ${imageUrl}`);
-          return NextResponse.json({ url: imageUrl, provider: 'fal-flux' });
+          const finalUrl = await uploadToSupabase(imageUrl);
+          return NextResponse.json({ url: finalUrl, provider: 'fal-flux' });
         }
       } catch (e: any) {
         console.warn('[Image Gen] Fal.ai FLUX failed:', e.message || e);
@@ -183,7 +228,8 @@ export async function POST(req: Request) {
         if (response.ok && data.data?.[0]?.url) {
           const imageUrl = data.data[0].url;
           console.log(`[Image Gen] OpenAI success → ${imageUrl}`);
-          return NextResponse.json({ url: imageUrl });
+          const finalUrl = await uploadToSupabase(imageUrl);
+          return NextResponse.json({ url: finalUrl });
         }
       } catch (e) {
         console.error('[Image Gen] OpenAI failed:', e);
