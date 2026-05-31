@@ -97,6 +97,12 @@ export default function ScriptLabPage() {
     setTopicInput(topic);
     setInitialTab('new');
     setIsLoading(true);
+    setAllScenarios(null);
+    setScriptData({ hook: '' as any, context: '' as any, meat: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
+    if (typeof (globalThis as any).window !== 'undefined') {
+      (globalThis as any).sessionStorage?.removeItem('allScenarios');
+      (globalThis as any).sessionStorage?.removeItem('isGenerating');
+    }
     try {
       const response = await fetch('/api/script/generate', {
         method: 'POST',
@@ -553,6 +559,12 @@ export default function ScriptLabPage() {
 
   const executeGeneration = async (overrideIdea?: string) => {
     setIsLoading(true);
+    setAllScenarios(null);
+    setScriptData({ hook: '' as any, context: '' as any, meat: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
+    if (typeof (globalThis as any).window !== 'undefined') {
+      (globalThis as any).sessionStorage?.removeItem('allScenarios');
+      (globalThis as any).sessionStorage?.removeItem('isGenerating');
+    }
     const ideaToUse = overrideIdea || topicInput;
     try {
       const response = await fetch('/api/script/generate', {
