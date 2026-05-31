@@ -9,7 +9,7 @@ const PLANS = [
   {
     id: 'starter',
     name: 'Starter',
-    price: '990',
+    price: '12',
     credits: 200,
     packs: 4,
     icon: '🌱',
@@ -25,7 +25,7 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    price: '2 490',
+    price: '29',
     credits: 840,
     packs: 16,
     icon: '⚡',
@@ -44,7 +44,7 @@ const PLANS = [
   {
     id: 'scale',
     name: 'Scale',
-    price: '6 990',
+    price: '79',
     credits: 3000,
     packs: 60,
     icon: '🚀',
@@ -63,9 +63,9 @@ const PLANS = [
 ];
 
 const TOP_UP_OPTIONS = [
-  { credits: 50, price: '290', packKey: 'pack1Label' },
-  { credits: 200, price: '990', packKey: 'pack4Label' },
-  { credits: 500, price: '2 190', packKey: 'pack10Label' },
+  { credits: 50, price: '4', packKey: 'pack1Label' },
+  { credits: 200, price: '12', packKey: 'pack4Label' },
+  { credits: 500, price: '29', packKey: 'pack10Label' },
 ];
 
 export default function BillingPage() {
@@ -155,7 +155,7 @@ export default function BillingPage() {
                 className="text-[11px] font-bold mt-1"
                 style={{ color: selectedTopUp === i ? '#00FFCC' : 'rgba(255,255,255,0.5)' }}
               >
-                {isEn ? '$' : ''}{opt.price}{!isEn ? ' ₽' : ''}
+                ${opt.price}
               </div>
             </button>
           ))}
@@ -213,7 +213,7 @@ export default function BillingPage() {
                   </div>
                 </div>
                 <div className="text-right">
-                  <div className="font-black text-sm text-white">{isEn ? '$' : ''}{plan.price}{!isEn ? ' ₽' : ''}</div>
+                  <div className="font-black text-sm text-white">${plan.price}</div>
                   <div className="text-[9px] text-white/20">{t('perMonth')}</div>
                 </div>
               </div>

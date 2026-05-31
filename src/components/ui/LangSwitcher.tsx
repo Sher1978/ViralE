@@ -3,6 +3,7 @@
 import { useLocale } from 'next-intl';
 import { useRouter, usePathname } from 'next/navigation';
 import { useTransition } from 'react';
+import { supabase } from '@/lib/supabase';
 
 export function LangSwitcher() {
   const locale = useLocale();
@@ -30,6 +31,14 @@ export function LangSwitcher() {
     if (globalObj && typeof globalObj.window !== 'undefined') {
       globalObj.window.localStorage.setItem('NEXT_LOCALE', nextLocale);
     }
+
+    // Persist to Supabase if logged in
+    supabase.auth.getUser().then((res: any) => {
+      const user = res?.data?.user;
+      if (user) {
+        supabase.from('profiles').update({ preferred_language: nextLocale }).eq('id', user.id).then();
+      }
+    });
 
     // Mathematically correct path switcher for next-intl's 'as-needed' localePrefix mode
     let newPath = pathname;

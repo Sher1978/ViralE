@@ -10,6 +10,7 @@ CREATE TABLE IF NOT EXISTS staging.profiles (
     groq_api_key TEXT,
     telegram_chat_id TEXT,
     synthetic_training_data JSONB DEFAULT '{}'::jsonb,
+    preferred_language TEXT DEFAULT 'en',
     created_at TIMESTAMPTZ DEFAULT now()
 );
 

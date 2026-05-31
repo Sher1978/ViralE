@@ -22,16 +22,16 @@ interface PremiumLimitModalProps {
 }
 
 const TOP_UP_OPTIONS = [
-  { credits: 50, price: '290', packKeyEn: 'Starter Refill', packKeyRu: 'Стартовый пакет' },
-  { credits: 200, price: '990', packKeyEn: 'Popular Refill', packKeyRu: 'Популярный пакет' },
-  { credits: 500, price: '2190', packKeyEn: 'Max Refill', packKeyRu: 'Максимальный пакет' },
+  { credits: 50, price: '4', packKeyEn: 'Starter Refill', packKeyRu: 'Стартовый пакет' },
+  { credits: 200, price: '12', packKeyEn: 'Popular Refill', packKeyRu: 'Популярный пакет' },
+  { credits: 500, price: '29', packKeyEn: 'Max Refill', packKeyRu: 'Максимальный пакет' },
 ];
 
 const PLANS = [
   {
     id: 'starter',
     name: 'Starter',
-    price: '990',
+    price: '12',
     credits: 200,
     icon: '🌱',
     color: '#4D9EFF',
@@ -41,7 +41,7 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    price: '2490',
+    price: '29',
     credits: 840,
     icon: '⚡',
     color: '#00FFCC',
@@ -52,7 +52,7 @@ const PLANS = [
   {
     id: 'scale',
     name: 'Scale',
-    price: '6990',
+    price: '79',
     credits: 3000,
     icon: '🚀',
     color: '#9B5FFF',
@@ -305,7 +305,7 @@ export function PremiumLimitModal({
                               <p className="text-[9px] text-white/30">{locale === 'ru' ? opt.packKeyRu : opt.packKeyEn}</p>
                             </div>
                           </div>
-                          <p className="text-xs font-black text-cyan-400">{opt.price} ₽</p>
+                          <p className="text-xs font-black text-cyan-400">${opt.price}</p>
                         </div>
                       ))}
                     </div>
@@ -334,7 +334,7 @@ export function PremiumLimitModal({
                                 )}
                               </div>
                             </div>
-                            <span className="text-xs font-black text-purple-400">{plan.price} ₽</span>
+                            <span className="text-xs font-black text-purple-400">${plan.price}</span>
                           </div>
                           {selectedPlan === plan.id && (
                             <div className="mt-2.5 pt-2.5 border-t border-white/5 space-y-1 animate-slide-up">
@@ -360,8 +360,8 @@ export function PremiumLimitModal({
                       <CreditCard className="w-4 h-4" />
                       <span className="text-xs font-black uppercase tracking-tighter italic">
                         {locale === 'ru' 
-                          ? `Оплатить ${billingTab === 'topup' ? TOP_UP_OPTIONS[selectedTopUp].price : PLANS.find(p => p.id === selectedPlan)?.price} ₽`
-                          : `Pay ${billingTab === 'topup' ? TOP_UP_OPTIONS[selectedTopUp].price : PLANS.find(p => p.id === selectedPlan)?.price} RUB`}
+                          ? `Оплатить $${billingTab === 'topup' ? TOP_UP_OPTIONS[selectedTopUp].price : PLANS.find(p => p.id === selectedPlan)?.price}`
+                          : `Pay $${billingTab === 'topup' ? TOP_UP_OPTIONS[selectedTopUp].price : PLANS.find(p => p.id === selectedPlan)?.price}`}
                       </span>
                     </button>
                     

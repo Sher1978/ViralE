@@ -332,6 +332,10 @@ export default function ProfilePage() {
               globalObj.window.localStorage.setItem('NEXT_LOCALE', nextLocale);
             }
             
+            if (profile?.id) {
+              supabase.from('profiles').update({ preferred_language: nextLocale }).eq('id', profile.id).then();
+            }
+            
             router.replace(pathname, { locale: nextLocale });
           }, 
           accent: '#00FFCC' 

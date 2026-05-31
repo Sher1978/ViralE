@@ -26,6 +26,7 @@ export interface Profile {
   youtube_linked?: boolean;
   youtube_token?: string | null;
   visual_style?: string | null;
+  preferred_language?: string | null;
 }
 
 
@@ -61,7 +62,8 @@ export const profileService = {
             avatar_url: googleAvatar || null,
             credits_balance: 100, // Starting credits
             tier: 'free',
-            subscription_status: 'active'
+            subscription_status: 'active',
+            preferred_language: 'en'
           }
         ])
         .select()

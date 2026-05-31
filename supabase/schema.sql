@@ -20,6 +20,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     anthropic_api_key TEXT,
     elevenlabs_api_key TEXT,
     groq_api_key TEXT,
+    preferred_language TEXT DEFAULT 'en',
     created_at TIMESTAMP WITH TIME ZONE DEFAULT NOW(),
     updated_at TIMESTAMP WITH TIME ZONE DEFAULT NOW()
 );

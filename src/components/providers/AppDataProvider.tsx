@@ -43,8 +43,40 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       const validAnswersCount = Object.values(answers).filter((v: any) => v && v.toString().length > 2).length;
       const isComplete = validAnswersCount > 0 || (prof.digital_shadow_prompt && prof.digital_shadow_prompt.trim().length > 10);
       setDnaComplete(!!isComplete);
+
+      // Sync user language from database settings & auto-redirect on mismatch
+      const preferredLanguage = prof.preferred_language;
+      if (preferredLanguage) {
+        if (preferredLanguage !== locale) {
+          const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+          if (globalObj && typeof globalObj.document !== 'undefined') {
+            globalObj.document.cookie = `NEXT_LOCALE=${preferredLanguage}; path=/; max-age=31536000; SameSite=Lax`;
+          }
+          if (globalObj && typeof globalObj.window !== 'undefined') {
+            globalObj.window.localStorage.setItem('NEXT_LOCALE', preferredLanguage);
+          }
+
+          const pathname = globalObj && globalObj.window ? globalObj.window.location.pathname : '';
+          let newPath = pathname;
+          if (preferredLanguage === 'ru') {
+            if (!pathname.startsWith('/ru')) {
+              newPath = `/ru${pathname}`;
+            }
+          } else {
+            if (pathname.startsWith('/ru')) {
+              newPath = pathname.replace(/^\/ru/, '') || '/';
+            }
+          }
+          if (globalObj && globalObj.window) {
+            globalObj.window.location.href = newPath;
+          }
+        }
+      } else {
+        // Initialize preferred language in database to match current active UI locale
+        supabase.from('profiles').update({ preferred_language: locale }).eq('id', prof.id).then();
+      }
     }
-  }, []);
+  }, [locale]);
 
   const fetchIdeas = useCallback(async (status: 'new' | 'archived' | 'used', category?: string, force?: boolean) => {
     try {
