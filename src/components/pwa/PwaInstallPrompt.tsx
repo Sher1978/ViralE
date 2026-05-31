@@ -27,13 +27,13 @@ export function PwaInstallPrompt() {
     const storage = globalObj.localStorage;
     const isDismissed = storage ? storage.getItem('pwa_prompt_dismissed') === 'true' : false;
 
-    // Set locale based on URL pathname or browser settings
+    // Set locale based on URL pathname
     const path = win.location?.pathname || '';
-    if (path.startsWith('/en')) {
-      setLocale('en');
-    } else {
-      // Default to Russian if not explicitly English
+    if (path.startsWith('/ru')) {
       setLocale('ru');
+    } else {
+      // Default to English if not explicitly Russian
+      setLocale('en');
     }
 
     // Show prompt only if on iOS, not installed (not standalone), and not previously dismissed
