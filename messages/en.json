@@ -811,25 +811,26 @@
       "toggle": ["Monthly", "Yearly (Save 40%)"],
       "tiers": {
         "free": {
-          "title": "FREE",
-          "price": "$0",
-          "features": ["5 content packs per month", "Teleprompter (unlimited)", "Video downloads", "ViralE watermark"],
-          "cta": "Start for free"
+          "title": "STARTER",
+          "price": "$12",
+          "priceYearly": "$7",
+          "features": ["200 credits per month", "4 full content packs", "Script Lab & Teleprompter", "Standard Storyboard", "Telegram Delivery"],
+          "cta": "Get Starter"
         },
         "creator": {
-          "title": "CREATOR",
+          "title": "PRO",
           "badge": "POPULAR",
           "price": "$29",
           "priceYearly": "$17",
-          "features": ["30 content packs per month", "No watermark", "AI topic generation", "Auto-subtitles", "Carousels", "Text for 5 platforms"],
-          "cta": "Get Creator"
+          "features": ["840 credits per month", "16 full content packs", "Script Lab + AI Editor", "Storyboard + Regeneration", "Texts for 3 platforms", "Instagram Carousel", "Priority Render"],
+          "cta": "Get Pro"
         },
         "pro": {
-          "title": "PRO",
+          "title": "SCALE",
           "price": "$79",
           "priceYearly": "$47",
-          "features": ["Unlimited", "AI faceless video", "Everything in Creator", "Priority support", "White-label"],
-          "cta": "Go Pro"
+          "features": ["3000 credits per month", "60 full content packs", "BYOK (Your own API keys)", "Auto-posting to all socials", "Team Access", "Personal Onboarding & Support"],
+          "cta": "Get Scale"
         }
       },
       "urgency": "{count} of 100 spots taken",
@@ -852,8 +853,24 @@
           "a": "That's exactly why Digital DNA was created. In the first 3 minutes, you tell the system about yourself, your niche, and your communication style. Everything further is generated in your voice, with your meanings and values."
         },
         {
+          "q": "What is included in one 'content pack'?",
+          "a": "One content pack is a complete publication suite for all your channels: 1) A short viral video (Reels/Shorts), 2) A 5-10 slide Instagram carousel, 3) An adapted post for Telegram, 4) A professional LinkedIn article, and 5) Thread/X copy."
+        },
+        {
+          "q": "How does the video generation work? Do I need to be on camera?",
+          "a": "No, you can choose 'Faceless Mode' where the AI completely synthesizes the voiceover and stitches dynamic, relevant B-rolls based on your theme. If you prefer to be in the video, our Studio provides a smart teleprompter for recording on your phone or PC."
+        },
+        {
+          "q": "Can I use my own API keys (BYOK)?",
+          "a": "Yes, on the Scale plan you can connect your private API keys for OpenAI, Anthropic, ElevenLabs, HeyGen, and other engines. In this mode, system credits are not spent, and you pay direct API cost prices to the providers."
+        },
+        {
+          "q": "Is it fully compatible with mobile devices?",
+          "a": "Yes! ViralE is built as a progressive web app (PWA). You can install it on your home screen directly from Safari or Chrome. Mobile front camera recording, voice input, and smart fullscreen teleprompter auto-scrolling are fully supported."
+        },
+        {
           "q": "What if I don't like it?",
-          "a": "14 days — unconditional return. No questions, no forms. One email — and the money is returned within 24 hours."
+          "a": "14 days — unconditional refund. No questions, no forms. One email — and the money is returned within 24 hours."
         }
       ]
     },
