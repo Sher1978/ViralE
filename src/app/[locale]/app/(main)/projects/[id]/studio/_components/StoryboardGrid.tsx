@@ -85,9 +85,13 @@ export const StoryboardGrid: React.FC<StoryboardGridProps> = ({
                       <div className="w-full h-full bg-cover bg-center opacity-80" style={{ backgroundImage: `url('${s.assetUrl}')` }} />
                     )
                   ) : (
-                    <div className="flex flex-col items-center gap-3 opacity-10">
-                      <Monitor size={48} />
-                      <span className="text-[10px] font-black uppercase tracking-widest">No Media</span>
+                    <div className="absolute inset-0 bg-gradient-to-br from-[#0e0a1a] via-[#050505] to-[#1a140a] flex flex-col items-center justify-center p-6 border border-yellow-500/10">
+                      <div className="absolute inset-0 opacity-5 pointer-events-none" style={{ backgroundImage: 'radial-gradient(circle at center, #d4af37 1px, transparent 1px)', backgroundSize: '16px 16px' }} />
+                      <div className="w-16 h-16 rounded-full bg-gradient-to-tr from-purple-500/20 to-yellow-500/20 flex items-center justify-center border border-purple-500/30 shadow-[0_0_20px_rgba(168,85,247,0.2)] mb-4 animate-pulse">
+                        <Video size={24} className="text-yellow-500/80" />
+                      </div>
+                      <span className="text-[10px] font-black uppercase tracking-[0.25em] text-yellow-500/60 bg-yellow-500/5 px-3 py-1 rounded border border-yellow-500/10 mb-2">No Generated Media</span>
+                      <p className="text-[9px] text-white/40 text-center font-medium max-w-[150px] line-clamp-3">Prompt: {s.prompt || 'No prompt specified'}</p>
                     </div>
                   )}
                 </div>
