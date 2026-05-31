@@ -474,17 +474,18 @@ function DeliveryPageContent() {
       }
 
       addSystemLog('[System] Инициализация FFmpeg ядра...');
+      setRenderStatus(locale === 'ru' ? 'Загрузка видеоядра FFmpeg WASM (~30MB)...' : 'Loading FFmpeg WASM core (~30MB)...');
       
-      // Wrap getFFmpeg() with a robust 10 seconds timeout to prevent freezing at 5% on slow networks
+      // Wrap getFFmpeg() with a robust 60 seconds timeout to prevent premature aborts on typical networks
       const getFFmpegWithTimeout = () => {
         return Promise.race([
           getFFmpeg(),
           new Promise<any>((_, reject) =>
             setTimeout(() => reject(new Error(
               locale === 'ru'
-                ? 'Превышено время ожидания загрузки FFmpeg WASM (лимит 10 сек). Переключаемся на серверный рендеринг.'
-                : 'FFmpeg WASM load timed out (10s limit). Switching to server rendering.'
-            )), 10000)
+                ? 'Превышено время ожидания загрузки FFmpeg WASM (лимит 60 сек). Переключаемся на серверный рендеринг.'
+                : 'FFmpeg WASM load timed out (60s limit). Switching to server rendering.'
+            )), 60000)
           )
         ]);
       };
