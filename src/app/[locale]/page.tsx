@@ -1,129 +1,59 @@
 'use client';
 
+import React, { useState, useEffect } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
-import { useSearchParams } from 'next/navigation';
-import { supabase } from '@/lib/supabase';
 import { Link } from '@/navigation';
-import { motion, AnimatePresence } from 'framer-motion';
+import { supabase } from '@/lib/supabase';
 import { InstallPrompt } from '@/components/pwa/InstallPrompt';
 import { 
-  Sparkles, 
+  ChevronRight, 
   Play, 
-  ArrowRight, 
-  Star, 
+  Check, 
+  Dna, 
+  Brain, 
+  Shield, 
+  Timer, 
+  Lightbulb, 
   Cpu, 
-  Video, 
-  MessageSquare, 
-  Layout, 
-  Smartphone,
-  Zap,
+  Camera, 
+  Film, 
+  Rocket, 
+  Plus, 
+  X, 
+  Star,
+  Mail,
   Globe,
-  Lock,
-  ChevronRight,
-  Dna,
-  Layers,
-  Activity
+  Smartphone
 } from 'lucide-react';
-import { useState, useRef, useEffect } from 'react';
 
-// Premium DNA Icon Component
-const PremiumDnaIcon = ({ className = "w-8 h-8" }) => {
-  return (
-    <div className={`relative ${className} group/dna flex items-center justify-center`}>
-      <svg viewBox="0 0 100 100" className="w-full h-full">
-        {/* Animated Double Helix SVG */}
-        <defs>
-          <linearGradient id="dnaGradient" x1="0%" y1="0%" x2="100%" y2="100%">
-            <stop offset="0%" stopColor="#22d3ee" stopOpacity="1" />
-            <stop offset="100%" stopColor="#818cf8" stopOpacity="1" />
-          </linearGradient>
-          <filter id="glow">
-            <feGaussianBlur stdDeviation="2.5" result="coloredBlur"/>
-            <feMerge>
-              <feMergeNode in="coloredBlur"/>
-              <feMergeNode in="SourceGraphic"/>
-            </feMerge>
-          </filter>
-        </defs>
-        
-        {[...Array(12)].map((_, i) => (
-          <motion.g key={i}>
-            <motion.circle
-              cx="50"
-              cy={15 + i * 6}
-              r="2"
-              fill="url(#dnaGradient)"
-              animate={{
-                cx: [35, 65, 35],
-                opacity: [0.4, 1, 0.4],
-                scale: [0.8, 1.2, 0.8]
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                delay: i * 0.1,
-                ease: "easeInOut"
-              }}
-              style={{ filter: 'url(#glow)' }}
-            />
-            <motion.circle
-              cx="50"
-              cy={15 + i * 6}
-              r="2"
-              fill="url(#dnaGradient)"
-              animate={{
-                cx: [65, 35, 65],
-                opacity: [1, 0.4, 1],
-                scale: [1.2, 0.8, 1.2]
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                delay: i * 0.1,
-                ease: "easeInOut"
-              }}
-              style={{ filter: 'url(#glow)' }}
-            />
-            <motion.line
-              x1="35" y1={15 + i * 6}
-              x2="65" y2={15 + i * 6}
-              stroke="url(#dnaGradient)"
-              strokeWidth="0.5"
-              strokeOpacity="0.2"
-              animate={{
-                x1: [35, 65, 35],
-                x2: [65, 35, 65],
-                opacity: [0.1, 0.3, 0.1]
-              }}
-              transition={{
-                duration: 2,
-                repeat: Infinity,
-                delay: i * 0.1,
-                ease: "easeInOut"
-              }}
-            />
-          </motion.g>
-        ))}
-      </svg>
-      
-      {/* Radial Glow */}
-      <div className="absolute inset-0 bg-cyan-500/10 blur-2xl rounded-full scale-150 animate-pulse pointer-events-none" />
-      
-      {/* Particle Orbits */}
-      <motion.div
-        animate={{ rotate: 360 }}
-        transition={{ duration: 15, repeat: Infinity, ease: "linear" }}
-        className="absolute inset-[-50%] pointer-events-none"
-      >
-        <div className="absolute top-0 left-1/2 w-1 h-1 bg-cyan-400 rounded-full shadow-[0_0_8px_#22d3ee]" />
-        <div className="absolute bottom-0 left-1/2 w-1 h-1 bg-purple-400 rounded-full shadow-[0_0_8px_#a855f7]" />
-      </motion.div>
-    </div>
-  );
-};
+// --- Utility Components ---
 
-// Custom Store Badge Component
+const SectionLabel = ({ children }: { children: React.ReactNode }) => (
+  <motion.div 
+    initial={{ opacity: 0, x: -20 }}
+    whileInView={{ opacity: 1, x: 0 }}
+    viewport={{ once: true }}
+    className="font-jetbrains text-[11px] md:text-[13px] text-virale-orange uppercase tracking-[0.15em] mb-4"
+  >
+    {children}
+  </motion.div>
+);
+
+const SectionTitle = ({ children, className = "" }: { children: React.ReactNode, className?: string }) => (
+  <motion.h2 
+    initial={{ opacity: 0, y: 20 }}
+    whileInView={{ opacity: 1, y: 0 }}
+    viewport={{ once: true }}
+    className={`font-bebas text-4xl md:text-6xl text-virale-text leading-tight mb-8 glitch-text ${className}`}
+    data-text={typeof children === 'string' ? children : undefined}
+  >
+    {children}
+  </motion.h2>
+);
+
+// Custom Store Badge Component for PWA Install
 const StoreBadge = ({ type, text, subtext, toastMessage, href = "#" }: { type: 'apple' | 'google', text: string, subtext: string, toastMessage: string, href?: string }) => {
   const [showToast, setShowToast] = useState(false);
 
@@ -140,7 +70,7 @@ const StoreBadge = ({ type, text, subtext, toastMessage, href = "#" }: { type: '
   };
 
   return (
-    <div className="relative group">
+    <div className="relative group flex-1">
       <motion.a 
         href={href}
         onClick={handleClick}
@@ -148,16 +78,16 @@ const StoreBadge = ({ type, text, subtext, toastMessage, href = "#" }: { type: '
         rel={href === "#" ? undefined : "noopener noreferrer"}
         whileHover={{ y: -4, scale: 1.02 }}
         whileTap={{ scale: 0.98 }}
-        className="flex items-center gap-3 px-6 py-4 rounded-2xl bg-white/[0.03] border border-white/10 hover:bg-white/[0.08] hover:border-cyan-500/30 transition-all cursor-pointer backdrop-blur-2xl relative overflow-hidden"
+        className="flex items-center gap-3 px-5 py-3.5 rounded-xl bg-white/[0.03] border border-cyber hover:bg-white/[0.08] hover:border-virale-gold transition-all cursor-pointer backdrop-blur-2xl relative overflow-hidden"
       >
-        <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity" />
+        <div className="absolute inset-0 bg-gradient-to-br from-cyber-cyan/5 to-virale-gold/5 opacity-0 group-hover:opacity-100 transition-opacity" />
         
-        <div className="w-10 h-10 rounded-xl bg-white/5 flex items-center justify-center group-hover:bg-cyan-500/20 transition-colors shadow-inner">
-          <Smartphone className="w-6 h-6 text-white/50 group-hover:text-cyan-400 transition-colors" />
+        <div className="w-8 h-8 rounded-lg bg-white/5 flex items-center justify-center group-hover:bg-virale-gold/20 transition-colors">
+          <Smartphone className="w-5 h-5 text-white/50 group-hover:text-virale-gold transition-colors" />
         </div>
         <div className="text-left relative z-10">
-          <div className="text-[10px] font-black text-white/30 uppercase tracking-[0.2em] leading-none mb-1.5">{subtext}</div>
-          <div className="text-base font-black text-white leading-none tracking-tight">{text}</div>
+          <div className="text-[9px] font-black text-white/30 uppercase tracking-[0.2em] leading-none mb-1">{subtext}</div>
+          <div className="text-sm font-black text-white leading-none tracking-tight">{text}</div>
         </div>
       </motion.a>
 
@@ -167,7 +97,7 @@ const StoreBadge = ({ type, text, subtext, toastMessage, href = "#" }: { type: '
             initial={{ opacity: 0, y: 10, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 10, scale: 0.9 }}
-            className="absolute -top-12 left-1/2 -translate-x-1/2 px-4 py-2 bg-cyan-500 text-black text-[10px] font-black uppercase tracking-widest rounded-full shadow-xl z-50 whitespace-nowrap"
+            className="absolute -top-12 left-1/2 -translate-x-1/2 px-4 py-2 bg-virale-gold text-black text-[9px] font-black uppercase tracking-widest rounded-full shadow-xl z-50 whitespace-nowrap"
           >
             {toastMessage}
           </motion.div>
@@ -177,481 +107,935 @@ const StoreBadge = ({ type, text, subtext, toastMessage, href = "#" }: { type: '
   );
 };
 
-export default function LandingPage() {
-  const t = useTranslations('landing');
+// --- Sections ---
+
+const Navbar = () => {
+  const t = useTranslations('landingVirale.nav');
   const locale = useLocale();
-  const router = useRouter();
-  const searchParams = useSearchParams();
-  // Auth check is now handled by middleware for faster server-side redirects.
-  // We keep a lightweight background check here only as a fallback.
+  const [isScrolled, setIsScrolled] = useState(false);
+
   useEffect(() => {
-    supabase.auth.getSession().then(({ data: { session } }: { data: { session: any } }) => {
-      if (session && !session.user.is_anonymous) {
-        router.push(`/app/projects`);
-      }
-    });
-  }, [router]);
+    const win = (globalThis as any).window;
+    if (!win) return;
+    const handleScroll = () => setIsScrolled(win.scrollY > 50);
+    win.addEventListener('scroll', handleScroll);
+    return () => win.removeEventListener('scroll', handleScroll);
+  }, []);
 
-  const containerVariants: any = {
-    hidden: { opacity: 0 },
-    visible: { 
-      opacity: 1,
-      transition: { 
-        staggerChildren: 0.15,
-        delayChildren: 0.2
-      }
-    }
-  };
+  return (
+    <motion.header
+      initial={{ y: -100 }}
+      animate={{ y: 0 }}
+      className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ${
+        isScrolled ? 'bg-virale-bg/85 backdrop-blur-xl border-b border-white/5 py-3' : 'bg-transparent py-6'
+      }`}
+    >
+      <div className="max-w-[1280px] mx-auto px-5 md:px-10 flex items-center justify-between">
+        <div className="font-bebas text-2xl md:text-3xl text-virale-text flex items-center gap-1">
+          Viral<span className="text-virale-gold">E</span>
+        </div>
 
-  const itemVariants: any = {
-    hidden: { y: 40, opacity: 0 },
-    visible: { 
-      y: 0, 
-      opacity: 1,
-      transition: { duration: 1, ease: [0.16, 1, 0.3, 1] }
-    }
+        <nav className="hidden md:flex items-center gap-10">
+          {['tech', 'how', 'reviews', 'pricing'].map((key) => (
+            <a 
+              key={key}
+              href={`#${key}`}
+              className="font-jetbrains text-[11px] text-virale-text-muted hover:text-virale-gold transition-colors uppercase tracking-wider"
+            >
+              {t(key)}
+            </a>
+          ))}
+          <Link 
+            href="/install"
+            className="font-jetbrains text-[11px] text-virale-gold/90 hover:text-virale-gold transition-colors uppercase tracking-wider flex items-center gap-1.5"
+          >
+            <Smartphone size={13} className="animate-pulse" />
+            <span>App (PWA)</span>
+          </Link>
+        </nav>
+
+        <div className="flex items-center gap-6">
+          <Link href="/" locale={locale === 'ru' ? 'en' : 'ru'} className="group flex items-center gap-1.5">
+            <span className="text-[10px] font-black uppercase tracking-[0.2em] text-white/40 group-hover:text-white transition-colors">
+              {locale === 'ru' ? 'EN' : 'RU'}
+            </span>
+            <Globe className="w-3.5 h-3.5 text-white/20 group-hover:text-virale-gold transition-colors" />
+          </Link>
+          <Link href="/auth">
+            <button className="bg-virale-gold text-virale-bg font-bebas text-lg px-6 py-2.5 rounded-full hover:bg-virale-orange hover:text-white transition-all active:scale-95 shadow-lg shadow-virale-gold/20">
+              {t('cta')}
+            </button>
+          </Link>
+        </div>
+      </div>
+    </motion.header>
+  );
+};
+
+const Hero = () => {
+  const t = useTranslations('landingVirale.hero');
+  const tf = useTranslations('landingVirale.form');
+  const locale = useLocale();
+  const [email, setEmail] = useState('');
+  const [niche, setNiche] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !niche) return;
+    setStatus('loading');
+    setTimeout(() => setStatus('success'), 1500);
   };
 
   return (
-    <div className="min-h-screen bg-[#020408] text-white selection:bg-cyan-500/30 overflow-x-hidden font-sans">
+    <section className="relative min-h-screen pt-32 pb-20 overflow-hidden flex flex-col items-center justify-center">
+      {/* Gradients */}
+      <div className="absolute top-1/4 -right-1/4 w-[60%] h-[60%] bg-virale-orange/10 blur-[120px] rounded-full pointer-events-none" />
+      <div className="absolute bottom-0 -left-1/4 w-[50%] h-[50%] bg-virale-gold/8 blur-[100px] rounded-full pointer-events-none" />
       
-      {/* Background Ambience */}
-      <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-10%] left-[-5%] w-[50%] h-[50%] bg-cyan-500/[0.07] blur-[150px] rounded-full animate-pulse" />
-        <div className="absolute bottom-[-10%] right-[-5%] w-[50%] h-[50%] bg-purple-600/[0.07] blur-[150px] rounded-full animate-pulse" style={{ animationDelay: '3s' }} />
-        <div className="absolute top-[20%] right-[10%] w-[30%] h-[30%] bg-blue-500/[0.03] blur-[120px] rounded-full" />
-        <div className="absolute inset-0 bg-grid opacity-[0.03]" />
+      <div className="max-w-[1280px] mx-auto px-5 md:px-10 relative z-10 w-full grid grid-cols-1 lg:grid-cols-12 gap-10 items-center">
+        <div className="lg:col-span-8 flex flex-col items-start text-left">
+          <motion.div 
+            initial={{ opacity: 0, x: -20 }}
+            animate={{ opacity: 1, x: 0 }}
+            className="flex items-center gap-3 mb-6"
+          >
+            <span className="w-2 h-2 rounded-full bg-virale-orange animate-pulse" />
+            <span className="font-jetbrains text-[11px] md:text-[13px] text-virale-orange tracking-[0.15em]">
+              {t('ticker')}
+            </span>
+          </motion.div>
+
+          <div className="space-y-1 mb-8">
+            <motion.h1 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.2 }}
+              className="font-bebas text-6xl md:text-8xl lg:text-[120px] leading-[0.9] text-virale-text glitch-text"
+              data-text={t('title1')}
+            >
+              {t('title1')}
+            </motion.h1>
+            <motion.h1 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.4 }}
+              className="font-bebas text-6xl md:text-8xl lg:text-[120px] leading-[0.9] text-virale-gold glitch-text"
+              data-text={t('title2')}
+            >
+              {t('title2')}
+            </motion.h1>
+            <motion.h1 
+              initial={{ opacity: 0, y: 30 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ delay: 0.6 }}
+              className="font-bebas text-6xl md:text-8xl lg:text-[120px] leading-[0.9] text-transparent"
+              style={{ WebkitTextStroke: '2px var(--color-cyber-cyan)' }}
+            >
+              {t('title3')}
+            </motion.h1>
+          </div>
+
+          <motion.p 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 0.8 }}
+            className="font-inter text-lg md:text-xl text-virale-text-muted max-w-2xl mb-12 leading-relaxed"
+          >
+            {t('subtitle')}
+          </motion.p>
+
+          <motion.div 
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: 1 }}
+            className="w-full max-w-xl space-y-6"
+          >
+            {status === 'success' ? (
+              <motion.div 
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                className="bg-virale-card border border-virale-gold/30 p-6 rounded-2xl flex items-center gap-4"
+              >
+                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
+                  <Check size={24} />
+                </div>
+                <p className="font-inter text-virale-text">
+                  {tf('success')}
+                </p>
+              </motion.div>
+            ) : (
+              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <input 
+                    type="email" 
+                    required
+                    placeholder={tf('emailPlaceholder')}
+                    value={email}
+                    onChange={(e) => setEmail((e.target as any).value)}
+                    className="bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all"
+                  />
+                  <div className="relative">
+                    <select 
+                      required
+                      value={niche}
+                      onChange={(e) => setNiche((e.target as any).value)}
+                      className="w-full bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all appearance-none cursor-pointer"
+                    >
+                      <option value="" disabled>{tf('nichePlaceholder')}</option>
+                      {tf.raw('niches').map((n: string) => (
+                        <option key={n} value={n}>{n}</option>
+                      ))}
+                    </select>
+                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-virale-text-muted">
+                      <ChevronRight size={16} className="rotate-90" />
+                    </div>
+                  </div>
+                </div>
+                <button 
+                  disabled={status === 'loading'}
+                  className="bg-virale-gold text-virale-bg font-bebas text-xl py-4 rounded-xl hover:bg-virale-orange hover:text-white transition-all shadow-xl shadow-virale-gold/10 flex items-center justify-center gap-3 group"
+                >
+                  {status === 'loading' ? (
+                    <div className="w-6 h-6 border-2 border-virale-bg border-t-transparent rounded-full animate-spin" />
+                  ) : (
+                    <>
+                      {t('ctaPrimary')}
+                      <ChevronRight className="group-hover:translate-x-1 transition-transform" />
+                    </>
+                  )}
+                </button>
+              </form>
+            )}
+
+            {/* PWA App Badges */}
+            <div className="space-y-4">
+              <div className="flex items-center gap-3">
+                <div className="h-px flex-1 bg-white/10" />
+                <span className="font-jetbrains text-[9px] text-white/30 uppercase tracking-[0.25em]">Установить приложение PWA</span>
+                <div className="h-px flex-1 bg-white/10" />
+              </div>
+              <div className="flex gap-4">
+                <StoreBadge 
+                  type="apple" 
+                  text="Install App" 
+                  subtext="Apple iOS" 
+                  toastMessage="Запустите PWA через 'Добавить на экран Домой'"
+                />
+                <StoreBadge 
+                  type="google" 
+                  text="Install App" 
+                  subtext="Google Android" 
+                  toastMessage="Запустите установку PWA через настройки браузера"
+                />
+              </div>
+              <div className="text-center">
+                <Link 
+                  href="/install" 
+                  className="font-jetbrains text-[9px] text-virale-gold hover:text-virale-orange uppercase tracking-wider underline underline-offset-4 transition-colors"
+                >
+                  {locale === 'ru' ? '★ Инструкция по установке (все устройства)' : '★ Step-by-step installation guide (all devices)'}
+                </Link>
+              </div>
+            </div>
+
+            <div className="mt-4 flex flex-wrap gap-6 items-center">
+              {['noCard', 'anytime', 'support'].map((key) => (
+                <div key={key} className="flex items-center gap-2 font-jetbrains text-[11px] text-virale-text-muted/60 uppercase">
+                  {t(`trust.${key}`)}
+                </div>
+              ))}
+            </div>
+          </motion.div>
+        </div>
+
+        <div className="lg:col-span-4 hidden lg:flex flex-col items-center justify-center relative">
+          <motion.div
+            initial={{ opacity: 0, scale: 0.8 }}
+            animate={{ opacity: 1, scale: 1 }}
+            transition={{ delay: 1, duration: 1 }}
+            className="relative w-full aspect-square max-w-sm"
+          >
+            <div className="absolute inset-0 bg-cyber-cyan/20 blur-[100px] rounded-full animate-pulse" />
+            <img 
+              src="/images/cyber/hero.png" 
+              alt="Cyber Hero" 
+              className="w-full h-full object-cover rounded-2xl border-cyber relative z-10"
+            />
+            <div className="absolute -top-4 -right-4 w-24 h-24 border-r-2 border-t-2 border-virale-gold z-20" />
+            <div className="absolute -bottom-4 -left-4 w-24 h-24 border-l-2 border-b-2 border-cyber-cyan z-20" />
+          </motion.div>
+        </div>
       </div>
 
-      <nav className="relative z-50 flex justify-between items-center px-8 py-8 max-w-7xl mx-auto">
-        <motion.div 
-          initial={{ opacity: 0, x: -20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-3"
-        >
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-blue-600 flex items-center justify-center shadow-lg shadow-cyan-500/20 group cursor-pointer">
-            <Zap className="w-6 h-6 text-white fill-current group-hover:scale-110 transition-transform" />
+      <motion.div 
+        animate={{ y: [0, 10, 0] }}
+        transition={{ repeat: Infinity, duration: 2 }}
+        className="absolute bottom-10 left-1/2 -translate-x-1/2 text-virale-text-muted/40"
+      >
+        <Play className="rotate-90" size={24} />
+      </motion.div>
+    </section>
+  );
+};
+
+const Marquee = () => {
+  const t = useTranslations('landingVirale');
+  const items = t.raw('marquee');
+  
+  return (
+    <div className="bg-virale-card border-y border-white/5 py-4 overflow-hidden relative group">
+      <div className="flex animate-marquee group-hover:pause">
+        {[...items, ...items, ...items, ...items].map((item, idx) => (
+          <div key={idx} className="flex items-center mx-8 whitespace-nowrap">
+            <span className={`font-bebas text-xl md:text-2xl uppercase tracking-wider ${
+              idx % 2 === 0 ? 'text-virale-gold' : 'text-virale-text-muted/40'
+            }`}>
+              {item}
+            </span>
           </div>
-          <span className="text-2xl font-black tracking-tighter uppercase italic">
-            Virale<span className="text-cyan-400">.uno</span>
-          </span>
-        </motion.div>
-
-        <motion.div 
-          initial={{ opacity: 0, x: 20 }}
-          animate={{ opacity: 1, x: 0 }}
-          className="flex items-center gap-6"
-        >
-          <div className="flex items-center gap-6 mr-4">
-             <Link href="/" locale={locale === 'ru' ? 'en' : 'ru'} className="group flex items-center gap-2">
-              <span className="text-[11px] font-black uppercase tracking-[0.2em] text-white/40 group-hover:text-white transition-colors">
-                {locale === 'ru' ? 'EN' : 'RU'}
-              </span>
-              <Globe className="w-3.5 h-3.5 text-white/20 group-hover:text-cyan-400 transition-colors" />
-            </Link>
-          </div>
-          <Link href="/auth">
-            <motion.button 
-              whileHover={{ scale: 1.05 }}
-              whileTap={{ scale: 0.95 }}
-              className="px-6 py-2.5 rounded-full bg-white/5 border border-white/10 text-[11px] font-black uppercase tracking-[0.2em] hover:bg-white/10 hover:border-white/20 transition-all backdrop-blur-md"
-            >
-              {t('login')}
-            </motion.button>
-          </Link>
-        </motion.div>
-      </nav>
-
-      <main className="relative z-10 max-w-6xl mx-auto px-6 py-16 lg:py-32 space-y-40">
-        
-        {/* HERO SECTION */}
-        <motion.section 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true }}
-          variants={containerVariants}
-          className="flex flex-col items-center text-center space-y-12"
-        >
-          {/* AI Tech Badge */}
-          <motion.div variants={itemVariants}>
-            <div className="inline-flex items-center gap-3 px-5 py-2.5 rounded-full bg-cyan-500/5 border border-cyan-500/20 text-[11px] font-black uppercase tracking-[0.3em] text-cyan-400 shadow-inner">
-              <Sparkles className="w-4 h-4 animate-pulse" />
-              <span>{t('badge')}</span>
-            </div>
-          </motion.div>
-
-          {/* Headline */}
-          <motion.div variants={itemVariants} className="space-y-8">
-            <h1 className="text-7xl md:text-[8rem] font-black tracking-[calc(-0.06em)] leading-[0.82] uppercase">
-              {t('title')}<br />
-              <span className="gradient-text-cosmic text-glow-mint whitespace-nowrap">
-                {t('titleAccent')}
-              </span>
-            </h1>
-            <p className="text-white/40 text-xl md:text-2xl max-w-2xl mx-auto font-medium leading-relaxed tracking-tight">
-              {t('subtitle')}
-            </p>
-          </motion.div>
-
-          {/* Main CTA */}
-          <motion.div variants={itemVariants} className="flex flex-col items-center gap-10 w-full max-w-xl">
-            <div className="flex flex-col sm:flex-row gap-4 w-full">
-              <Link href="/auth?next=/app/projects" className="flex-[2]">
-                <motion.button 
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full h-20 rounded-3xl bg-white text-black font-black text-2xl uppercase tracking-tighter flex items-center justify-center gap-4 shadow-[0_20px_50px_rgba(255,255,255,0.15)] group"
-                >
-                  <Play className="w-6 h-6 fill-current group-hover:scale-110 transition-transform" />
-                  {t('cta')}
-                  <ChevronRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                </motion.button>
-              </Link>
-              
-              <Link href="/auth?next=/app/onboarding" className="flex-1">
-                <motion.button 
-                  whileHover={{ scale: 1.02, y: -2 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="w-full h-20 rounded-3xl bg-white/5 border border-white/10 text-white font-black text-base uppercase tracking-widest flex items-center justify-center gap-4 hover:bg-white/10 transition-all backdrop-blur-xl relative overflow-hidden group shadow-[0_0_50px_rgba(34,211,238,0.15)]"
-                >
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_var(--x,_50%)_var(--y,_50%),rgba(34,211,238,0.15)_0%,transparent_50%)] opacity-0 group-hover:opacity-100 transition-opacity" 
-                    onMouseMove={(e) => {
-                      const target = e.currentTarget as any;
-                      const rect = target.getBoundingClientRect();
-                      target.style.setProperty('--x', `${e.clientX - rect.left}px`);
-                      target.style.setProperty('--y', `${e.clientY - rect.top}px`);
-                    }}
-                  />
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-[200%] animate-scan group-hover:animate-scan-fast" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/10 via-purple-500/10 to-cyan-500/10 animate-mesh" />
-                  <PremiumDnaIcon className="w-7 h-7 relative z-10" />
-                  <span className="relative z-10">{t('startOnboarding')}</span>
-                </motion.button>
-              </Link>
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
-              <StoreBadge 
-                type="apple" 
-                text={t('appStore')} 
-                subtext={t('comingSoon')} 
-                toastMessage={`${t('comingSoon')} ${t('appStore')}`}
-              />
-              <StoreBadge 
-                type="google" 
-                text={t('googlePlay')} 
-                subtext={t('comingSoon')} 
-                toastMessage={`${t('comingSoon')} ${t('googlePlay')}`}
-              />
-            </div>
-
-            <Link href="/auth?next=/app/projects" className="group flex items-center gap-3 px-6 py-3 rounded-2xl bg-white/[0.02] border border-white/5 hover:bg-white/5 transition-all">
-              <Globe className="w-4 h-4 text-white/30 group-hover:text-cyan-400 transition-colors" />
-              <span className="text-[11px] font-black uppercase tracking-[0.4em] text-white/30 group-hover:text-white transition-colors">
-                {t('webVersion')}
-              </span>
-            </Link>
-          </motion.div>
-
-          {/* Social Proof */}
-          <motion.div variants={itemVariants} className="pt-8 space-y-4">
-            <div className="flex justify-center gap-1.5 text-yellow-500">
-              {[...Array(5)].map((_, i) => <Star key={i} className="w-5 h-5 fill-current shadow-glow-gold" />)}
-            </div>
-            <p className="text-xs text-white/20 uppercase tracking-[0.5em] font-black">{t('socialProof')}</p>
-          </motion.div>
-        </motion.section>
-
-        {/* SINGLE WINDOW HUB VISUAL */}
-        <motion.section 
-          initial={{ opacity: 0, y: 40 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          transition={{ duration: 1.2, ease: [0.16, 1, 0.3, 1] }}
-          viewport={{ once: true, margin: "-100px" }}
-          className="relative"
-        >
-          <div className="absolute inset-0 bg-gradient-to-b from-cyan-500/10 to-purple-600/10 rounded-[5rem] blur-[120px] opacity-40 animate-pulse" />
-          
-          <div className="relative glass rounded-[4rem] p-12 lg:p-24 overflow-hidden border-white/10 shadow-2xl">
-            {/* Background elements */}
-            <div className="absolute top-0 right-0 w-full h-full bg-grid opacity-[0.02] pointer-events-none" />
-            <div className="absolute -top-[20%] -right-[20%] w-[60%] h-[60%] bg-cyan-500/[0.05] blur-[100px] rounded-full" />
-            
-            <div className="flex flex-col lg:flex-row items-center gap-20 relative z-10">
-              
-              {/* Input Side */}
-              <div className="w-full lg:w-2/5 space-y-10">
-                <div className="relative z-10 space-y-4 mb-12 px-6">
-                  <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400">Viral Engine Digital Core</p>
-                  <h2 className="text-xl sm:text-3xl font-black italic uppercase text-white tracking-tighter leading-[0.9] max-w-lg mx-auto">
-                    {t('title')} <span className="gradient-text-purple">{t('titleAccent')}</span>
-                  </h2>
-                  <p className="text-[10px] font-bold text-white/40 uppercase tracking-widest max-w-xs mx-auto">
-                    {t('subtitle')}
-                  </p>
-                </div>
-                
-                <div className="p-8 rounded-3xl bg-white/[0.03] border border-white/10 space-y-6 backdrop-blur-3xl shadow-inner relative group overflow-hidden">
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/[0.02] to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className="w-12 h-12 rounded-2xl bg-cyan-500/20 flex items-center justify-center shadow-lg shadow-cyan-500/10">
-                        <Zap className="w-6 h-6 text-cyan-400 fill-current" />
-                      </div>
-                      <div className="space-y-2">
-                        <div className="h-1.5 w-32 bg-white/10 rounded-full overflow-hidden">
-                           <motion.div 
-                            initial={{ x: '-100%' }}
-                            animate={{ x: '100%' }}
-                            transition={{ duration: 1.5, repeat: Infinity, ease: "easeInOut" }}
-                            className="w-1/2 h-full bg-gradient-to-r from-transparent via-cyan-400 to-transparent" 
-                           />
-                        </div>
-                        <div className="text-[10px] text-cyan-400/60 font-black uppercase tracking-widest tracking-tighter">Processing...</div>
-                      </div>
-                    </div>
-                    <div className="text-white/10 font-bold text-lg tracking-widest">01</div>
-                  </div>
-                  <div className="text-sm text-white/30 font-mono italic flex items-center gap-2 bg-black/20 p-3 rounded-lg border border-white/5">
-                    <span className="text-cyan-500">{'>'}</span>
-                    <span>Analyzing niche trends...</span>
-                  </div>
-                </div>
-              </div>
-
-              {/* Central Engine Visual */}
-              <div className="hidden lg:flex flex-col items-center justify-center relative h-80 w-32 text-white/5">
-                <div className="w-px h-full bg-gradient-to-b from-transparent via-white/20 to-transparent" />
-                <motion.div 
-                  animate={{ rotate: 360 }}
-                  transition={{ duration: 30, repeat: Infinity, ease: "linear" }}
-                  className="absolute inset-0 flex items-center justify-center"
-                >
-                  <div className="w-48 h-48 rounded-full border border-white/[0.03] flex items-center justify-center">
-                    <div className="w-36 h-36 rounded-full border border-white/[0.05] flex items-center justify-center">
-                      <div className="w-24 h-24 rounded-full border border-white/[0.08]" />
-                    </div>
-                  </div>
-                </motion.div>
-                <motion.div 
-                  animate={{ scale: [1, 1.1, 1] }}
-                  transition={{ duration: 4, repeat: Infinity }}
-                  className="absolute w-20 h-20 rounded-2xl bg-white/[0.05] backdrop-blur-2xl border border-white/20 flex items-center justify-center shadow-[0_0_50px_rgba(34,211,238,0.2)] z-10"
-                >
-                  <Zap className="w-10 h-10 text-cyan-400 fill-current drop-shadow-[0_0_10px_rgba(34,211,238,0.5)]" />
-                </motion.div>
-              </div>
-
-              {/* Output Grid */}
-              <div className="w-full lg:w-1/2 grid grid-cols-2 gap-5">
-                {[
-                  { image: '/previews/viral_video.png', label: t('hubVideo'), meta: 'NEURAL RENDER 4K', color: 'from-cyan-900/40' },
-                  { image: '/previews/carousel.png', label: t('hubCarousel'), meta: 'HD VECTOR LAYERS', color: 'from-purple-900/40' },
-                  { image: '/previews/text.png', label: t('hubText'), meta: 'GPT-O1 OPTIMIZED', color: 'from-indigo-900/40' },
-                  { image: '/previews/shorts.png', label: t('hubShorts'), meta: 'VERTICAL VEO 3.1', color: 'from-blue-900/40' }
-                ].map((item, i) => (
-                  <motion.div
-                    key={i}
-                    whileHover={{ scale: 1.05, y: -8 }}
-                    className="group relative h-56 rounded-[2.5rem] overflow-hidden border border-white/10 shadow-2xl flex flex-col items-center justify-end bg-[#0a0c10]"
-                  >
-                    <img 
-                      src={item.image} 
-                      alt={item.label}
-                      className="absolute inset-0 w-full h-full object-cover group-hover:scale-110 transition-transform duration-1000 grayscale-[0.2] group-hover:grayscale-0"
-                    />
-                    <div className={`absolute inset-0 bg-gradient-to-t ${item.color} via-black/20 to-transparent opacity-80 group-hover:opacity-40 transition-opacity duration-500`} />
-                    
-                    {/* Glass Footer */}
-                    <div className="relative w-full p-5 glass-card border-none rounded-none border-t border-white/10 backdrop-blur-3xl translate-y-2 group-hover:translate-y-0 transition-all duration-500">
-                       <div className="flex flex-col gap-1.5">
-                          <div className="flex items-center justify-between">
-                            <span className="text-[10px] font-black uppercase tracking-[0.25em] text-white/90 group-hover:text-cyan-400 transition-colors">{item.label}</span>
-                            <div className="px-2 py-0.5 rounded-full bg-white/5 border border-white/10 text-[7px] font-black uppercase tracking-widest text-cyan-400/80 group-hover:text-cyan-400 group-hover:bg-cyan-500/10 transition-all">{item.meta}</div>
-                          </div>
-                          <div className="flex gap-1 h-0.5 mt-2 bg-white/5 rounded-full overflow-hidden">
-                            <motion.div 
-                              initial={{ width: 0 }}
-                              whileInView={{ width: '100%' }}
-                              transition={{ duration: 1.5, delay: 0.1 * i }}
-                              className="h-full bg-gradient-to-r from-cyan-500 via-purple-500 to-cyan-500 bg-[length:200%_auto] animate-mesh"
-                            />
-                          </div>
-                       </div>
-                    </div>
-
-                    {/* Lens Flare Overlay */}
-                    <div className="absolute inset-0 opacity-0 group-hover:opacity-100 pointer-events-none transition-opacity duration-700 bg-[radial-gradient(circle_at_var(--x,_50%)_var(--y,_50%),rgba(255,255,255,0.15)_0%,transparent_50%)]" 
-                       onMouseMove={(e) => {
-                        const target = e.currentTarget as any;
-                        const rect = target.getBoundingClientRect();
-                        target.style.setProperty('--x', `${e.clientX - rect.left}px`);
-                        target.style.setProperty('--y', `${e.clientY - rect.top}px`);
-                      }}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-            </div>
-          </div>
-        </motion.section>
-
-        {/* KILLER FEATURES GRID */}
-        <motion.section 
-          initial="hidden"
-          whileInView="visible"
-          viewport={{ once: true, margin: "-100px" }}
-          variants={containerVariants}
-          className="space-y-16"
-        >
-          <motion.div variants={itemVariants} className="text-center space-y-6">
-            <h2 className="text-5xl md:text-7xl font-black uppercase tracking-tighter italic">{t('stackTitle').split(' ')[0]} <span className="text-cyan-400 underline decoration-cyan-500/30">{t('stackTitle').split(' ').slice(1).join(' ')}</span></h2>
-            <p className="text-white/30 uppercase text-[11px] font-black tracking-[0.6em]">{t('stackSub')}</p>
-          </motion.div>
-
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-            
-            {/* Feature 1: AI Consultant */}
-            <motion.div 
-              variants={itemVariants}
-              whileHover={{ y: -12 }}
-              className="group glass-card rounded-[3rem] p-10 space-y-12 border-white/5 hover:border-cyan-500/30 transition-all overflow-hidden relative shadow-2xl"
-            >
-              <div className="absolute top-0 right-0 p-24 bg-cyan-500/[0.07] blur-[100px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="w-16 h-16 rounded-2xl bg-cyan-500/10 flex items-center justify-center text-cyan-400 shadow-inner group-hover:scale-110 transition-transform">
-                <Globe className="w-8 h-8" />
-              </div>
-              <div className="space-y-5 relative z-10">
-                <h4 className="text-3xl font-black uppercase tracking-tighter leading-none">{t('featureConsultant')}</h4>
-                <p className="text-white/40 text-base leading-relaxed font-medium">{t('featureConsultantSub')}</p>
-              </div>
-              <div className="pt-4 flex items-center text-[10px] font-black uppercase tracking-[0.3em] text-cyan-400/60 group-hover:text-cyan-400 transition-colors">
-                {t('learnMore')} <ArrowRight className="ml-2 w-3 h-3" />
-              </div>
-            </motion.div>
-
-            {/* Feature 2: Teleprompter */}
-            <motion.div 
-              variants={itemVariants}
-              whileHover={{ y: -12 }}
-              className="group glass-card rounded-[3rem] p-10 space-y-12 border-white/5 hover:border-purple-500/30 transition-all relative overflow-hidden shadow-2xl"
-            >
-              <div className="absolute top-0 right-0 p-24 bg-purple-500/[0.07] blur-[100px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="w-16 h-16 rounded-2xl bg-purple-500/10 flex items-center justify-center text-purple-400 shadow-inner group-hover:scale-110 transition-transform">
-                <Smartphone className="w-8 h-8" />
-              </div>
-              <div className="space-y-5 relative z-10">
-                <h4 className="text-3xl font-black uppercase tracking-tighter leading-none">{t('featurePrompter')}</h4>
-                <p className="text-white/40 text-base leading-relaxed font-medium">{t('featurePrompterSub')}</p>
-              </div>
-              <div className="pt-4 flex items-center text-[10px] font-black uppercase tracking-[0.3em] text-purple-400/60 group-hover:text-purple-400 transition-colors">
-                {t('viewStudio')} <ArrowRight className="ml-2 w-3 h-3" />
-              </div>
-            </motion.div>
-
-            {/* Feature 3: Factory */}
-            <motion.div 
-              variants={itemVariants}
-              whileHover={{ y: -12 }}
-              className="group glass-card rounded-[3rem] p-10 space-y-12 border-white/5 hover:border-white/20 transition-all relative overflow-hidden shadow-2xl"
-            >
-              <div className="absolute top-0 right-0 p-24 bg-white/[0.05] blur-[100px] rounded-full opacity-0 group-hover:opacity-100 transition-opacity" />
-              <div className="w-16 h-16 rounded-2xl bg-white/[0.05] flex items-center justify-center text-white shadow-inner group-hover:scale-110 transition-transform">
-                <Cpu className="w-8 h-8" />
-              </div>
-              <div className="space-y-5 relative z-10">
-                <h4 className="text-3xl font-black uppercase tracking-tighter leading-none">{t('featureFactory')}</h4>
-                <p className="text-white/40 text-base leading-relaxed font-medium">{t('featureFactorySub')}</p>
-              </div>
-              <div className="pt-4 flex items-center text-[10px] font-black uppercase tracking-[0.3em] text-white/30 group-hover:text-white transition-colors">
-                {t('runFactory')} <ArrowRight className="ml-2 w-3 h-3" />
-              </div>
-            </motion.div>
-
-          </div>
-        </motion.section>
-
-        {/* BOTTOM CTA */}
-        <motion.section 
-          initial={{ opacity: 0, y: 30 }}
-          whileInView={{ opacity: 1, y: 0 }}
-          viewport={{ once: true }}
-          className="text-center py-24 border-t border-white/[0.03] space-y-16 relative overflow-hidden"
-        >
-          {/* Subtle bg glow */}
-          <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[120%] h-[120%] bg-cyan-600/[0.03] blur-[160px] rounded-full translate-y-1/2 pointer-events-none" />
-          
-          <div className="space-y-8 relative z-10">
-            <h2 className="text-6xl md:text-[9rem] font-black uppercase tracking-tighter italic leading-none">
-              {t('readyHeadline')} <span className="text-glow-mint text-cyan-400">{t('readyHeadlineAccent')}</span>
-            </h2>
-            <p className="text-white/40 text-xl font-medium max-w-xl mx-auto leading-relaxed">
-              {t('readySubheadline')} <span className="text-white">{t('creditBonus')}</span>
-            </p>
-          </div>
-          
-          <div className="flex flex-col items-center gap-16 relative z-10">
-            <div className="flex flex-col md:flex-row gap-6 w-full max-w-2xl justify-center">
-               <Link href="/auth?next=/app/onboarding" className="flex-1">
-                <motion.button 
-                  whileHover={{ scale: 1.04, y: -4 }}
-                  whileTap={{ scale: 0.96 }}
-                  className="w-full h-24 rounded-[2rem] bg-white text-black font-black text-2xl uppercase tracking-tighter flex items-center justify-center gap-4 transition-transform shadow-[0_25px_60px_rgba(255,255,255,0.15)] group relative overflow-hidden"
-                >
-                  <div className="absolute inset-0 bg-gradient-to-r from-transparent via-cyan-400/20 to-transparent -translate-x-[200%] animate-scan group-hover:animate-scan-fast" />
-                  <div className="absolute inset-0 bg-gradient-to-r from-cyan-500/20 via-purple-500/20 to-cyan-500/20 opacity-0 group-hover:opacity-100 transition-opacity animate-mesh" />
-                  <PremiumDnaIcon className="w-8 h-8 relative z-10" />
-                  <span className="relative z-10">{t('startOnboarding')}</span>
-                </motion.button>
-              </Link>
-              
-              <Link href="/auth?next=/app/projects" className="flex-1">
-                <motion.button 
-                  whileHover={{ scale: 1.04, y: -4 }}
-                  whileTap={{ scale: 0.96 }}
-                  className="w-full h-24 rounded-[2rem] bg-white/[0.03] border border-white/10 text-white font-black text-2xl uppercase tracking-tighter flex items-center justify-center gap-4 hover:bg-white/[0.08] hover:border-white/20 transition-all backdrop-blur-xl group"
-                >
-                  {t('webVersion')}
-                  <ArrowRight className="w-6 h-6 group-hover:translate-x-1 transition-transform" />
-                </motion.button>
-              </Link>
-            </div>
-            
-             <div className="space-y-8 w-full max-w-lg">
-                <div className="flex items-center justify-center gap-4">
-                  <div className="h-px flex-1 bg-gradient-to-r from-transparent to-white/10" />
-                  <p className="text-[11px] font-black uppercase tracking-[0.5em] text-white/20 whitespace-nowrap">{t('downloadTitle')}</p>
-                  <div className="h-px flex-1 bg-gradient-to-l from-transparent to-white/10" />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <StoreBadge type="apple" text={t('appStore')} subtext={t('comingSoon')} toastMessage={`${t('comingSoon')} ${t('appStore')}`} />
-                  <StoreBadge type="google" text={t('googlePlay')} subtext={t('comingSoon')} toastMessage={`${t('comingSoon')} ${t('googlePlay')}`} />
-                </div>
-             </div>
-          </div>
-        </motion.section>
-
-      </main>
-
-      <footer className="relative z-10 py-16 border-t border-white/[0.03] bg-white/[0.01] backdrop-blur-3xl">
-        <div className="max-w-7xl mx-auto px-10 flex flex-col md:flex-row justify-between items-center gap-12">
-          <div className="flex items-center gap-3 grayscale opacity-30 hover:opacity-100 hover:grayscale-0 transition-all cursor-pointer group">
-            <div className="w-8 h-8 rounded-lg bg-cyan-500/20 flex items-center justify-center">
-              <Zap className="w-4 h-4 text-cyan-400 fill-current" />
-            </div>
-            <span className="text-sm font-black uppercase tracking-tighter italic">Virale<span className="text-white/50 group-hover:text-cyan-400 transition-colors">.uno</span></span>
-          </div>
-          <p className="text-[11px] font-black uppercase tracking-[0.6em] text-white/20">{t('footer')}</p>
-          <div className="flex gap-4">
-            <Link href="#" className="p-3 rounded-xl bg-white/[0.03] border border-white/5 text-white/30 hover:text-cyan-400 hover:border-cyan-500/30 transition-all"><Globe className="w-5 h-5" /></Link>
-            <Link href="#" className="p-3 rounded-xl bg-white/[0.03] border border-white/5 text-white/30 hover:text-purple-400 hover:border-purple-500/30 transition-all"><Lock className="w-5 h-5" /></Link>
-          </div>
-        </div>
-        <div className="text-center pt-8 opacity-[0.02] pointer-events-none">
-          <span className="text-[15rem] font-black uppercase tracking-tighter select-none">{t('factoryFooter')}</span>
-        </div>
-      </footer>
-      <InstallPrompt />
+        ))}
+      </div>
+      <style jsx>{`
+        @keyframes marquee {
+          0% { transform: translateX(0); }
+          100% { transform: translateX(-50%); }
+        }
+        .animate-marquee {
+          display: flex;
+          animation: marquee 20s linear infinite;
+        }
+        .pause { animation-play-state: paused; }
+      `}</style>
     </div>
+  );
+};
+
+const Technology = () => {
+  const t = useTranslations('landingVirale.technology');
+  const cards = t.raw('cards');
+  const icons = [Dna, Brain, Shield];
+
+  return (
+    <section id="tech" className="py-24 max-w-[1280px] mx-auto px-5 md:px-10">
+      <SectionLabel>{t('label')}</SectionLabel>
+      <SectionTitle className="max-w-4xl">{t('title')}</SectionTitle>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {cards.map((card: any, idx: number) => {
+          const Icon = icons[idx];
+          return (
+            <motion.div 
+              key={idx}
+              whileHover={{ y: -10, scale: 1.02 }}
+              className="group bg-virale-card border-cyber p-10 rounded-2xl relative overflow-hidden transition-all cyber-corner"
+            >
+              <div className="absolute inset-0 bg-gradient-to-br from-cyber-cyan/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+              
+              <div className={`mb-8 w-12 h-12 flex items-center justify-center rounded-lg ${idx % 2 === 0 ? 'text-cyber-cyan' : 'text-virale-gold'}`}>
+                <Icon size={40} className="drop-shadow-[0_0_8px_currentColor]" />
+              </div>
+              <h3 className="font-bebas text-3xl text-virale-text mb-4 group-hover:text-cyber-cyan transition-colors">{card.title}</h3>
+              <p className="font-inter text-virale-text-muted leading-relaxed mb-6 relative z-10">
+                {card.desc}
+              </p>
+              <div className="font-jetbrains text-[12px] text-cyber-cyan mt-auto pt-6 border-t border-white/5 flex items-center justify-between">
+                <span>{card.proof}</span>
+                <div className="w-2 h-2 bg-cyber-cyan animate-ping rounded-full" />
+              </div>
+            </motion.div>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
+const Workflow = () => {
+  const t = useTranslations('landingVirale.workflow');
+  const steps = t.raw('steps');
+  const icons = [Lightbulb, Cpu, Camera, Film, Rocket];
+
+  return (
+    <section id="how" className="py-24 bg-virale-bg relative overflow-hidden">
+      <div className="max-w-[1280px] mx-auto px-5 md:px-10">
+        <div className="text-center mb-20">
+          <SectionLabel>{t('label')}</SectionLabel>
+          <h2 className="font-bebas text-5xl md:text-8xl text-virale-text leading-tight mb-4">
+            {t('title1')} <span className="text-virale-gold">{t('title2')}</span>
+          </h2>
+          <p className="font-inter text-lg text-virale-text-muted mb-12 max-w-2xl mx-auto">
+            {t('subtitle')}
+          </p>
+        </div>
+
+        <div className="mb-24 flex items-center justify-center">
+          <div className="w-full max-w-4xl aspect-[16/9] bg-virale-card border-cyber rounded-3xl flex flex-col items-center justify-center group relative overflow-hidden">
+            <img 
+              src="/images/cyber/workflow.png" 
+              alt="Workflow" 
+              className="absolute inset-0 w-full h-full object-cover opacity-50 group-hover:opacity-70 group-hover:scale-105 transition-all duration-700" 
+            />
+            <div className="absolute inset-0 bg-gradient-to-t from-virale-bg via-transparent to-transparent" />
+            <div className="relative z-10 flex flex-col items-center">
+              <div className="w-20 h-20 bg-cyber-cyan/20 backdrop-blur-md rounded-full flex items-center justify-center border border-cyber-cyan shadow-[0_0_20px_rgba(0,243,255,0.4)] mb-4">
+                <Play size={40} className="text-cyber-cyan translate-x-1" />
+              </div>
+              <span className="font-bebas text-2xl text-virale-text tracking-widest uppercase">
+                {t('placeholder')}
+              </span>
+            </div>
+            <div className="absolute top-6 left-6 font-jetbrains text-cyber-cyan text-2xl drop-shadow-glow">08:42</div>
+            <div className="absolute bottom-6 right-6 font-jetbrains text-cyber-cyan text-sm opacity-50">REC ● SYSTEM_OK</div>
+          </div>
+        </div>
+
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-8 relative">
+          <div className="absolute top-6 left-0 w-full h-[1px] border-t border-dashed border-virale-gold/30 hidden md:block z-0" />
+          
+          {steps.map((step: any, idx: number) => {
+            const Icon = icons[idx];
+            return (
+              <motion.div 
+                key={idx}
+                initial={{ opacity: 0, y: 20 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="flex flex-col items-center text-center relative z-10"
+              >
+                <div className="w-12 h-12 bg-virale-bg border-2 border-virale-gold/50 rounded-lg flex items-center justify-center text-virale-gold mb-6">
+                  <Icon size={24} />
+                </div>
+                <div className="font-jetbrains text-virale-gold text-2xl mb-2">{step.time}</div>
+                <h4 className={`font-bebas text-xl mb-3 ${idx === 4 ? 'text-virale-gold' : 'text-virale-text'}`}>{step.title}</h4>
+                <p className={`font-inter text-sm text-virale-text-muted leading-relaxed ${idx === 4 ? 'font-bold' : ''}`}>
+                  {step.desc}
+                </p>
+              </motion.div>
+            );
+          })}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const Comparison = () => {
+  const t = useTranslations('landingVirale.comparison');
+  const rows = t.raw('rows');
+  const headers = t.raw('headers');
+
+  return (
+    <section className="py-24 max-w-[1280px] mx-auto px-5 md:px-10">
+      <SectionLabel>{t('label')}</SectionLabel>
+      <SectionTitle>{t('title')}</SectionTitle>
+
+      <div className="overflow-x-auto">
+        <table className="w-full text-left border-collapse min-w-[600px]">
+          <thead>
+            <tr className="border-b border-white/10">
+              <th className="py-6 font-bebas text-2xl text-virale-text-muted/60">{headers[0]}</th>
+              <th className="py-6 font-bebas text-2xl text-virale-gold pl-10">{headers[1]}</th>
+            </tr>
+          </thead>
+          <tbody className="divide-y divide-white/5">
+            {rows.map((row: string[], idx: number) => (
+              <motion.tr 
+                key={idx}
+                initial={{ opacity: 0, y: 10 }}
+                whileInView={{ opacity: 1, y: 0 }}
+                viewport={{ once: true }}
+                transition={{ delay: idx * 0.1 }}
+                className="group"
+              >
+                <td className="py-6 font-inter text-virale-text-muted flex items-start gap-3">
+                  <X size={18} className="text-red-500/60 mt-1 flex-shrink-0" />
+                  {row[0]}
+                </td>
+                <td className="py-6 font-inter text-virale-text pl-10 font-medium relative overflow-hidden">
+                  <div className="flex items-start gap-3 relative z-10">
+                    <Check size={18} className="text-virale-gold mt-1 flex-shrink-0" />
+                    {row[1]}
+                  </div>
+                </td>
+              </motion.tr>
+            ))}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+};
+
+const SocialProof = () => {
+  const t = useTranslations('landingVirale.social');
+  const reviews = t.raw('reviews');
+
+  return (
+    <section id="reviews" className="py-24 max-w-[1280px] mx-auto px-5 md:px-10">
+      <SectionLabel>{t('label')}</SectionLabel>
+      <SectionTitle>
+        {t('title1')} <br />
+        <span className="text-virale-gold">{t('title2')}</span>
+      </SectionTitle>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
+        {reviews.map((review: any, idx: number) => (
+          <motion.div 
+            key={idx}
+            whileHover={{ y: -6 }}
+            className="bg-virale-card border border-white/5 p-10 rounded-2xl relative overflow-hidden group"
+          >
+            <div className="font-bebas text-[120px] absolute top-[-20px] right-5 text-virale-gold opacity-10 pointer-events-none group-hover:opacity-20 transition-opacity">
+              &quot;
+            </div>
+
+            <div className="flex items-center gap-4 mb-8">
+              <div className={`w-14 h-14 rounded-full flex items-center justify-center font-bebas text-2xl text-virale-bg`}
+                style={{ backgroundColor: review.color === 'orange' ? '#FF5C00' : review.color === 'gold' ? '#D4AF37' : '#FF1744' }}
+              >
+                {review.avatar}
+              </div>
+              <div>
+                <div className="font-bebas text-xl text-virale-text">{review.name}</div>
+                <div className="font-jetbrains text-[10px] text-virale-text-muted uppercase">{review.handle}</div>
+              </div>
+            </div>
+
+            <div className="flex gap-1 mb-6">
+              {[...Array(5)].map((_, i) => <Star size={16} fill="#D4AF37" className="text-virale-gold" />)}
+            </div>
+
+            <p className="font-inter italic text-lg text-virale-text leading-relaxed">
+              {review.quote}
+            </p>
+          </motion.div>
+        ))}
+      </div>
+    </section>
+  );
+};
+
+const Pricing = () => {
+  const t = useTranslations('landingVirale.pricing');
+  const [isYearly, setIsYearly] = useState(false);
+  const tiers = ['free', 'creator', 'pro'];
+
+  return (
+    <section id="pricing" className="py-24 max-w-[1280px] mx-auto px-5 md:px-10">
+      <div className="text-center mb-16">
+        <SectionLabel>{t('label')}</SectionLabel>
+        <h2 className="font-bebas text-5xl md:text-8xl text-virale-text leading-tight mb-4">
+          {t('title1')} <br />
+          <span className="text-virale-gold">{t('title2')}</span>
+        </h2>
+        <p className="font-inter text-lg text-virale-text-muted mb-12 max-w-2xl mx-auto">
+          {t('subtitle', { count: 34 })}
+        </p>
+
+        <div className="flex items-center justify-center gap-4 mb-16">
+          <span className={`font-jetbrains text-[12px] uppercase transition-colors ${!isYearly ? 'text-virale-text' : 'text-virale-text-muted'}`}>
+            {t('toggle.0')}
+          </span>
+          <button 
+            type="button"
+            onClick={() => setIsYearly(!isYearly)}
+            className="w-14 h-7 bg-virale-card rounded-full relative p-1 border border-white/10"
+          >
+            <motion.div 
+              animate={{ x: isYearly ? 28 : 0 }}
+              className="w-5 h-5 bg-virale-gold rounded-full"
+            />
+          </button>
+          <span className={`font-jetbrains text-[12px] uppercase transition-colors ${isYearly ? 'text-virale-text' : 'text-virale-text-muted'}`}>
+            {t('toggle.1')}
+          </span>
+        </div>
+      </div>
+
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+        {tiers.map((key) => {
+          const tier = t.raw(`tiers.${key}`);
+          const isFeatured = key === 'creator';
+          const price = isYearly && tier.priceYearly ? tier.priceYearly : tier.price;
+
+          return (
+            <motion.div 
+              key={key}
+              whileHover={{ scale: 1.02 }}
+              className={`rounded-3xl p-10 flex flex-col relative transition-all ${
+                isFeatured 
+                  ? 'bg-virale-gold text-virale-bg lg:-translate-y-6 shadow-2xl shadow-virale-gold/20' 
+                  : 'bg-virale-card text-virale-text border border-white/5'
+              }`}
+            >
+              {isFeatured && (
+                <div className="absolute top-[-14px] left-1/2 -translate-x-1/2 bg-virale-orange text-white font-jetbrains text-[10px] px-4 py-1 rounded-full uppercase tracking-widest">
+                  {tier.badge}
+                </div>
+              )}
+
+              <div className="mb-10">
+                <div className="font-bebas text-2xl uppercase tracking-widest mb-2">{tier.title}</div>
+                <div className="flex items-baseline gap-2">
+                  <span className="font-bebas text-6xl">{price}</span>
+                  <span className="font-inter text-sm opacity-60">/mo</span>
+                </div>
+              </div>
+
+              <ul className="space-y-4 mb-10">
+                {tier.features.map((f: string, i: number) => (
+                  <li key={i} className="flex items-start gap-3 font-inter text-sm leading-tight">
+                    <Check size={16} className="mt-1 flex-shrink-0" />
+                    {f}
+                  </li>
+                ))}
+              </ul>
+
+              <Link href="/auth" className="w-full mt-auto">
+                <button className={`w-full font-bebas text-xl py-4 rounded-xl transition-all active:scale-95 ${
+                  isFeatured 
+                    ? 'bg-virale-bg text-virale-gold hover:bg-black' 
+                    : 'bg-white/5 border border-white/10 text-virale-text hover:border-virale-gold hover:text-virale-gold'
+                }`}>
+                  {tier.cta}
+                </button>
+              </Link>
+            </motion.div>
+          );
+        })}
+      </div>
+
+      <div className="mt-20 text-center">
+        <div className="max-w-md mx-auto mb-10">
+          <div className="flex justify-between font-jetbrains text-[11px] text-virale-text-muted mb-2 uppercase tracking-wider">
+            <span>{t('urgency', { count: 66 })}</span>
+          </div>
+          <div className="h-2 bg-virale-card rounded-full overflow-hidden border border-white/5 p-0.5">
+            <motion.div 
+              initial={{ width: 0 }}
+              whileInView={{ width: '66%' }}
+              className="h-full bg-virale-gold rounded-full"
+            />
+          </div>
+        </div>
+
+        <div className="flex flex-wrap justify-center gap-10">
+          {t.raw('trust').map((item: string, i: number) => (
+            <div key={i} className="font-jetbrains text-[11px] text-virale-text-muted/60 uppercase flex items-center gap-2">
+              {item}
+            </div>
+          ))}
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const FAQ = () => {
+  const t = useTranslations('landingVirale.faq');
+  const items = t.raw('items');
+  const [openIndex, setOpenIndex] = useState<number | null>(0);
+
+  return (
+    <section className="py-24 max-w-4xl mx-auto px-5 md:px-10">
+      <div className="text-center mb-16">
+        <SectionLabel>{t('label')}</SectionLabel>
+        <SectionTitle>{t('title')}</SectionTitle>
+      </div>
+
+      <div className="space-y-4">
+        {items.map((item: any, idx: number) => {
+          const isOpen = openIndex === idx;
+          return (
+            <div key={idx} className={`bg-virale-card border-l-4 transition-all ${isOpen ? 'border-virale-gold' : 'border-transparent'}`}>
+              <button 
+                onClick={() => setOpenIndex(isOpen ? null : idx)}
+                className="w-full flex items-center justify-between p-8 text-left group"
+              >
+                <h4 className={`font-bebas text-2xl transition-colors ${isOpen ? 'text-virale-gold' : 'text-virale-text group-hover:text-virale-gold'}`}>
+                  {item.q}
+                </h4>
+                {isOpen ? <X size={24} className="text-virale-gold" /> : <Plus size={24} className="text-virale-text-muted" />}
+              </button>
+              <AnimatePresence>
+                {isOpen && (
+                  <motion.div 
+                    initial={{ height: 0, opacity: 0 }}
+                    animate={{ height: 'auto', opacity: 1 }}
+                    exit={{ height: 0, opacity: 0 }}
+                    className="overflow-hidden"
+                  >
+                    <div className="px-8 pb-8 font-inter text-virale-text-muted leading-relaxed border-t border-white/5 pt-6">
+                      {item.a}
+                    </div>
+                  </motion.div>
+                )}
+              </AnimatePresence>
+            </div>
+          );
+        })}
+      </div>
+    </section>
+  );
+};
+
+const FinalCTA = () => {
+  const t = useTranslations('landingVirale.finalCta');
+  const tf = useTranslations('landingVirale.form');
+  const [email, setEmail] = useState('');
+  const [niche, setNiche] = useState('');
+  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
+
+  const handleSubmit = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email || !niche) return;
+    setStatus('loading');
+    setTimeout(() => setStatus('success'), 1500);
+  };
+
+  return (
+    <section className="py-32 relative overflow-hidden">
+      <div className="absolute inset-0 bg-radial-cta pointer-events-none" />
+      <style jsx>{`
+        .bg-radial-cta {
+          background: radial-gradient(circle at center, rgba(255, 92, 0, 0.1) 0%, transparent 70%);
+        }
+      `}</style>
+
+      <div className="max-w-[1280px] mx-auto px-5 md:px-10 text-center relative z-10">
+        <h2 className="font-bebas text-6xl md:text-[140px] leading-tight text-virale-text mb-4">
+          {t('title1')} <br />
+          <span className="text-virale-gold">{t('title2')}</span>
+        </h2>
+        <p className="font-inter text-xl text-virale-text-muted mb-16 max-w-2xl mx-auto">
+          {t('subtitle')}
+        </p>
+
+        <div className="w-full max-w-xl mx-auto">
+          {status === 'success' ? (
+            <motion.div 
+              initial={{ opacity: 0, scale: 0.9 }}
+              animate={{ opacity: 1, scale: 1 }}
+              className="bg-virale-card border border-virale-gold/30 p-8 rounded-2xl flex items-center gap-4 text-left"
+            >
+              <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
+                <Check size={24} />
+              </div>
+              <p className="font-inter text-virale-text">
+                {tf('success')}
+              </p>
+            </motion.div>
+          ) : (
+            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <input 
+                  type="email" 
+                  required
+                  placeholder={tf('emailPlaceholder')}
+                  value={email}
+                  onChange={(e) => setEmail((e.target as any).value)}
+                  className="bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all"
+                />
+                <div className="relative">
+                  <select 
+                    required
+                    value={niche}
+                    onChange={(e) => setNiche((e.target as any).value)}
+                    className="w-full bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all appearance-none cursor-pointer"
+                  >
+                    <option value="" disabled>{tf('nichePlaceholder')}</option>
+                    {tf.raw('niches').map((n: string) => (
+                      <option key={n} value={n}>{n}</option>
+                    ))}
+                  </select>
+                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-virale-text-muted">
+                    <ChevronRight size={16} className="rotate-90" />
+                  </div>
+                </div>
+              </div>
+              <button 
+                disabled={status === 'loading'}
+                className="bg-virale-gold text-virale-bg font-bebas text-xl py-5 rounded-xl hover:bg-virale-orange hover:text-white transition-all shadow-xl shadow-virale-gold/20 flex items-center justify-center gap-3 group"
+              >
+                {status === 'loading' ? (
+                  <div className="w-6 h-6 border-2 border-virale-bg border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    {t('ctaPrimary')}
+                    <ChevronRight className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
+              </button>
+            </form>
+          )}
+          
+          <div className="mt-8 font-jetbrains text-virale-gold uppercase tracking-[0.15em] text-[12px]">
+            {t('urgency', { count: 34 })}
+          </div>
+        </div>
+      </div>
+    </section>
+  );
+};
+
+const Footer = () => {
+  const t = useTranslations('landingVirale.footer');
+
+  return (
+    <footer className="py-20 bg-virale-card border-t border-white/5">
+      <div className="max-w-[1280px] mx-auto px-5 md:px-10">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-16 mb-20">
+          <div>
+            <div className="font-bebas text-3xl text-virale-gold mb-4">ViralE</div>
+            <div className="font-jetbrains text-[10px] text-virale-text-muted uppercase mb-4 tracking-widest">Viral Engine by Sherlock</div>
+            <p className="font-inter text-sm text-virale-text-muted/60 leading-relaxed max-w-xs">
+              {t('slogan')}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-4">
+            <Link href="/install" className="font-jetbrains text-[11px] text-virale-gold/90 hover:text-virale-gold transition-colors uppercase tracking-wider">★ Install PWA App</Link>
+            <Link href="/privacy" className="font-jetbrains text-[11px] text-virale-text-muted/60 hover:text-virale-gold transition-colors uppercase tracking-wider">Privacy Policy</Link>
+            <Link href="/terms" className="font-jetbrains text-[11px] text-virale-text-muted/60 hover:text-virale-gold transition-colors uppercase tracking-wider">Terms of Service</Link>
+            <Link href="/refund" className="font-jetbrains text-[11px] text-virale-text-muted/60 hover:text-virale-gold transition-colors uppercase tracking-wider">Refund Policy</Link>
+          </div>
+
+          <div className="flex gap-6 md:justify-end">
+            <a href="#" className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-virale-text-muted/60 hover:text-virale-gold hover:border-virale-gold transition-all">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="2" width="20" height="20" rx="5" ry="5"></rect><path d="M16 11.37A4 4 0 1 1 12.63 8 4 4 0 0 1 16 11.37z"></path><line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line></svg>
+            </a>
+            <a href="#" className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-virale-text-muted/60 hover:text-virale-gold hover:border-virale-gold transition-all">
+              <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M16 8a6 6 0 0 1 6 6v7h-4v-7a2 2 0 0 0-2-2 2 2 0 0 0-2 2v7h-4v-7a6 6 0 0 1 6-6z"></path><rect x="2" y="9" width="4" height="12"></rect><circle cx="4" cy="4" r="2"></circle></svg>
+            </a>
+            <a href="#" className="w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-virale-text-muted/60 hover:text-virale-gold hover:border-virale-gold transition-all">
+              <Mail size={20} />
+            </a>
+          </div>
+        </div>
+
+        <div className="pt-10 border-t border-white/5 text-center">
+          <div className="font-jetbrains text-[11px] text-virale-text-muted/40 uppercase tracking-widest">
+            {t('copyright')}
+          </div>
+        </div>
+      </div>
+    </footer>
+  );
+};
+
+export default function ViralELanding() {
+  return (
+    <main className="bg-virale-bg text-virale-text selection:bg-cyber-cyan/30 min-h-screen relative overflow-hidden">
+      {/* Cyberpunk Background Elements */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute inset-0 bg-[url('https://grainy-gradients.vercel.app/noise.svg')] opacity-[0.15] mix-blend-overlay" />
+        <div className="absolute inset-0 bg-cyber-grid opacity-[0.05]" />
+        <div className="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-transparent via-cyber-cyan to-transparent opacity-50 animate-scanline" />
+      </div>
+
+      <Navbar />
+      <Hero />
+      <Marquee />
+      <Technology />
+      <Workflow />
+      <Comparison />
+      <SocialProof />
+      <Pricing />
+      <FAQ />
+      <FinalCTA />
+      <Footer />
+
+      <style jsx global>{`
+        html { scroll-behavior: smooth; }
+        
+        @keyframes scanline {
+          0% { transform: translateY(-100%); }
+          100% { transform: translateY(100vh); }
+        }
+        
+        .animate-scanline {
+          animation: scanline 8s linear infinite;
+        }
+
+        .bg-cyber-grid {
+          background-image: linear-gradient(to right, #00F3FF 1px, transparent 1px),
+                            linear-gradient(to bottom, #00F3FF 1px, transparent 1px);
+          background-size: 50px 50px;
+        }
+
+        .font-bebas { font-family: var(--font-bebas), sans-serif; }
+        .font-jetbrains { font-family: var(--font-jetbrains), monospace; }
+        .font-inter { font-family: var(--font-inter), sans-serif; }
+        
+        .text-virale-gold { color: var(--color-virale-gold); text-shadow: var(--glow-gold); }
+        .text-virale-orange { color: var(--color-virale-orange); text-shadow: var(--glow-magenta); }
+        .text-cyber-cyan { color: var(--color-cyber-cyan); text-shadow: var(--glow-cyan); }
+        
+        .text-virale-bg { color: var(--color-virale-bg); }
+        .text-virale-text { color: var(--color-virale-text); }
+        .text-virale-text-muted { color: var(--color-virale-text-muted); }
+        
+        .bg-virale-bg { background-color: var(--color-virale-bg); }
+        .bg-virale-card { background-color: var(--color-virale-card); }
+        .bg-virale-gold { background-color: var(--color-virale-gold); }
+        .bg-virale-orange { background-color: var(--color-virale-orange); }
+        
+        .border-cyber {
+          border: 1px solid rgba(0, 243, 255, 0.2);
+          box-shadow: inset 0 0 10px rgba(0, 243, 255, 0.05);
+        }
+        
+        .cyber-corner {
+          position: relative;
+        }
+        .cyber-corner::before {
+          content: '';
+          position: absolute;
+          top: -1px;
+          left: -1px;
+          width: 10px;
+          height: 10px;
+          border-top: 2px solid var(--color-cyber-cyan);
+          border-left: 2px solid var(--color-cyber-cyan);
+        }
+        .cyber-corner::after {
+          content: '';
+          position: absolute;
+          bottom: -1px;
+          right: -1px;
+          width: 10px;
+          height: 10px;
+          border-bottom: 2px solid var(--color-cyber-cyan);
+          border-right: 2px solid var(--color-cyber-cyan);
+        }
+
+        /* Glitch Effect */
+        .glitch-text {
+          position: relative;
+        }
+        .glitch-text:hover::before {
+          content: attr(data-text);
+          position: absolute;
+          top: 0;
+          left: 2px;
+          text-shadow: -1px 0 #FF00FF;
+          background: #050505;
+          overflow: hidden;
+          animation: glitch-anim 2s infinite linear alternate-reverse;
+        }
+        
+        @keyframes glitch-anim {
+          0% { clip: rect(44px, 9999px, 56px, 0); }
+          20% { clip: rect(12px, 9999px, 88px, 0); }
+          40% { clip: rect(67px, 9999px, 12px, 0); }
+          60% { clip: rect(4px, 9999px, 34px, 0); }
+          80% { clip: rect(90px, 9999px, 2px, 0); }
+          100% { clip: rect(23px, 9999px, 95px, 0); }
+        }
+      `}</style>
+      <InstallPrompt />
+    </main>
   );
 }

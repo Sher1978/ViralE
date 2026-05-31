@@ -80,8 +80,8 @@ export default function TermsPage() {
           <section className="space-y-3">
             <h2 className="text-lg font-black uppercase tracking-wide text-white">7. Governing Law & Company Information</h2>
             <p>
-              These Terms of Service shall be governed by and construed in accordance with the laws of Georgia. 
-              The legal provider of services is <strong>Individual Entrepreneur "Sher"</strong>, registered in Tbilisi, Georgia. 
+              These Terms of Service shall be governed by and construed in accordance with the laws of Georgia.
+              The legal provider of services is <strong>Individual Entrepreneur "Sher"</strong>, registered in Tbilisi, Georgia.
               For any legal or compliance issues, please contact us directly at <span className="text-purple-400">billing@virale.uno</span>.
             </p>
           </section>

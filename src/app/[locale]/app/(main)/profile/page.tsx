@@ -23,7 +23,8 @@ import {
   Edit2,
   Loader2,
   Images,
-  Lock
+  Lock,
+  Smartphone
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
@@ -327,6 +328,13 @@ export default function ProfilePage() {
           accent: '#00FFCC' 
         },
         { icon: Moon, label: t('themeLabel'), sub: theme === 'dark' ? 'Dark Mode (Deep Space)' : 'Light Mode (Industrial Gray)', onClick: toggleTheme, accent: '#4D9EFF' },
+        { 
+          icon: Smartphone, 
+          label: locale === 'ru' ? 'Установить PWA Приложение' : 'Install PWA App', 
+          sub: locale === 'ru' ? 'Полноэкранный режим без рамок браузера' : 'Immersive fullscreen application', 
+          href: `/install`, 
+          accent: '#FACC15' 
+        },
       ],
     },
   ];
