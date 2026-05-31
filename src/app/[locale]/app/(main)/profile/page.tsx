@@ -58,6 +58,7 @@ export default function ProfilePage() {
   const [showPasteArea, setShowPasteArea] = useState(false);
   const [storyBrandError, setStoryBrandError] = useState<string | null>(null);
   const [expandedPreview, setExpandedPreview] = useState(false);
+  const [isResettingMatrix, setIsResettingMatrix] = useState(false);
   
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyBrandInputRef = useRef<HTMLInputElement>(null);
@@ -291,6 +292,40 @@ export default function ProfilePage() {
       setStoryBrandError(err.message || 'Ошибка удаления');
     } finally {
       setUploadingStoryBrand(false);
+    }
+  };
+
+  const handleResetMatrix = async () => {
+    const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : {} as any;
+    const confirmed = globalObj.confirm?.(
+      locale === 'ru'
+        ? 'Вы уверены, что хотите полностью стереть всю текущую матрицу идей и запустить генерацию с нуля по новому СториБренду?'
+        : 'Are you sure you want to completely erase the entire current idea matrix and start fresh generation based on your new StoryBrand?'
+    );
+    if (!confirmed) return;
+
+    try {
+      setIsResettingMatrix(true);
+      const res = await fetch('/api/ideas/reset', {
+        method: 'DELETE',
+      });
+      if (!res.ok) {
+        throw new Error(await res.text());
+      }
+      
+      globalObj.localStorage?.removeItem('hideWelcomeIdeas');
+      
+      // Redirect to /app/ideas to see the clean slate generate ideas
+      router.push('/app/ideas');
+    } catch (err: any) {
+      console.error('Failed to reset ideas:', err);
+      globalObj.alert?.(
+        locale === 'ru'
+          ? `Ошибка очистки матрицы: ${err.message || err}`
+          : `Failed to reset content matrix: ${err.message || err}`
+      );
+    } finally {
+      setIsResettingMatrix(false);
     }
   };
 
@@ -696,6 +731,15 @@ export default function ProfilePage() {
                     {locale === 'ru' ? 'Редактировать' : 'Edit Text'}
                   </button>
                 </div>
+
+                <button
+                  onClick={handleResetMatrix}
+                  disabled={isResettingMatrix}
+                  className="w-full mt-2 py-3.5 px-4 rounded-xl bg-red-950/40 border border-red-500/30 hover:bg-red-900/40 hover:border-red-500/50 text-red-400 hover:text-red-300 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-30 shadow-lg shadow-red-950/20"
+                >
+                  {isResettingMatrix ? <Loader2 className="animate-spin" size={12} /> : '⚡'}
+                  {locale === 'ru' ? 'Регенерировать всю матрицу идей' : 'Regenerate Content Matrix'}
+                </button>
               </div>
             ) : (
               // Empty state

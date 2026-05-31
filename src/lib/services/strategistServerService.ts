@@ -1,6 +1,7 @@
 import { supabase } from '../supabase';
 import fs from 'fs';
 import path from 'path';
+import { profileService } from './profileService';
 
 // --- BIBLE_SOT LOADER ---
 function getBibleSOTContent(filename: string): string {
@@ -43,22 +44,31 @@ export const strategistServerService = {
   async getStrategistSystemPrompt(userId: string, locale: string = 'en'): Promise<string> {
     const languageName = locale === 'ru' ? 'Russian' : 'English';
     
-    // 1. Check for user-specific Brand_DNA.md file (Priority 1)
-    const userFilePath = path.join(process.cwd(), 'Bible_SOT', 'users', userId, 'Brand_DNA.md');
     let dnaContext = '';
     let isDnaComplete = false;
 
-    if (fs.existsSync(userFilePath)) {
-      try {
-        dnaContext = fs.readFileSync(userFilePath, 'utf-8');
-        isDnaComplete = true; 
-      } catch (err) {
-        console.error(`[Strategist] Failed to read user DNA file:`, err);
+    // 0. Check active brand context (includes StoryBrand document)
+    const { brandContext, isStoryBrandActive } = await profileService.getActiveBrandContext(userId, supabase);
+    if (brandContext) {
+      dnaContext = isStoryBrandActive ? `🧬 STORYBRAND DNA:\n${brandContext}` : brandContext;
+      isDnaComplete = true;
+    }
+
+    // 1. Check for user-specific Brand_DNA.md file (Priority 1 fallback)
+    if (!isDnaComplete) {
+      const userFilePath = path.join(process.cwd(), 'Bible_SOT', 'users', userId, 'Brand_DNA.md');
+      if (fs.existsSync(userFilePath)) {
+        try {
+          dnaContext = fs.readFileSync(userFilePath, 'utf-8');
+          isDnaComplete = true; 
+        } catch (err) {
+          console.error(`[Strategist] Failed to read user DNA file:`, err);
+        }
       }
     }
 
-    // 2. Fetch from DB if no file (Priority 2)
-    if (!dnaContext) {
+    // 2. Fetch from DB if no file (Priority 2 fallback)
+    if (!isDnaComplete) {
       const { data: profile } = await supabase
         .from('profiles')
         .select('dna_answers')

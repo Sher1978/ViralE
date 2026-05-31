@@ -11,12 +11,11 @@ export async function DELETE() {
 
     const userId = user.id;
 
-    // Delete all existing 'new' ideas for this user
+    // Delete all existing ideas (new, archived, used) for this user to completely clear the matrix
     const { error } = await authorizedSupabase
       .from('ideation_feed')
       .delete()
-      .eq('user_id', userId)
-      .eq('status', 'new');
+      .eq('user_id', userId);
 
     if (error) {
       throw error;

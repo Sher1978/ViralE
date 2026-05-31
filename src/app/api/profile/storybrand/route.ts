@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
+import { GoogleGenerativeAI } from '@google/generative-ai';
 
 const MIGRATION_SQL = `
   ALTER TABLE public.profiles 
@@ -31,13 +32,40 @@ export async function POST(req: Request) {
 
     console.log(`[StoryBrand API] Saving uploaded file "${filename}" (${size} bytes) for user ${userId}...`);
 
+    // Extract high-density Digital Shadow DNA prompt using Gemini
+    let digitalShadowPrompt = '';
+    try {
+      const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
+      if (apiKey) {
+        console.log('[StoryBrand API] Extracting digital shadow persona from StoryBrand document...');
+        const genAI = new GoogleGenerativeAI(apiKey);
+        const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+        const extractPrompt = `
+          You are an expert AI Persona Architect. 
+          Your goal is to distill the following StoryBrand document into a beautiful, high-density, authoritative, and declarative "Digital Shadow DNA" (Master Prompt) in Russian (if the input is primarily Russian) or English.
+          Describe the expert's tone of voice, unique methodology, area of expertise, core worldview, and target audience.
+          Output ONLY the final declarative, cohesive paragraph (max 300 words). No introduction, no markdown blocks, no bullet points.
+          
+          USER STORYBRAND DOCUMENT:
+          ${text}
+        `;
+        const result = await model.generateContent(extractPrompt);
+        const response = await result.response;
+        digitalShadowPrompt = response.text().trim();
+        console.log('[StoryBrand API] Successfully extracted Master Prompt:', digitalShadowPrompt.substring(0, 100) + '...');
+      }
+    } catch (e) {
+      console.warn('[StoryBrand API] Failed to extract Digital Shadow persona from StoryBrand:', e);
+    }
+
     let updateResult = await authorizedSupabase
       .from('profiles')
       .update({
         storybrand_raw_content: text,
         storybrand_filename: filename,
         storybrand_file_size: size,
-        storybrand_updated_at: new Date().toISOString()
+        storybrand_updated_at: new Date().toISOString(),
+        ...(digitalShadowPrompt && { digital_shadow_prompt: digitalShadowPrompt })
       })
       .eq('id', userId);
 
@@ -60,7 +88,8 @@ export async function POST(req: Request) {
             storybrand_raw_content: text,
             storybrand_filename: filename,
             storybrand_file_size: size,
-            storybrand_updated_at: new Date().toISOString()
+            storybrand_updated_at: new Date().toISOString(),
+            ...(digitalShadowPrompt && { digital_shadow_prompt: digitalShadowPrompt })
           })
           .eq('id', userId);
 
