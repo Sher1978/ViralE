@@ -63,7 +63,24 @@ export const profileService = {
             credits_balance: 100, // Starting credits
             tier: 'free',
             subscription_status: 'active',
-            preferred_language: 'en'
+            preferred_language: 'ru',
+            digital_shadow_prompt: null,
+            industry_context: null,
+            onboarding_completed: false,
+            synthetic_training_data: null,
+            knowledge_base_json: null,
+            instagram_linked: false,
+            instagram_token: null,
+            tiktok_linked: false,
+            tiktok_token: null,
+            youtube_linked: false,
+            youtube_token: null,
+            visual_style: null,
+            storybrand_raw_content: null,
+            heygen_api_key: null,
+            anthropic_api_key: null,
+            elevenlabs_api_key: null,
+            groq_api_key: null
           }
         ])
         .select()

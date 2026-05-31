@@ -86,7 +86,27 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
           email: user.email || `anon_${user.id}@viral.engine`,
           full_name: user.user_metadata?.full_name || defaultName,
           avatar_url: user.user_metadata?.avatar_url || null,
-          credits_balance: 100
+          credits_balance: 100,
+          digital_shadow_prompt: null,
+          industry_context: null,
+          onboarding_completed: false,
+          synthetic_training_data: null,
+          knowledge_base_json: null,
+          tier: 'free',
+          subscription_status: 'active',
+          instagram_linked: false,
+          instagram_token: null,
+          tiktok_linked: false,
+          tiktok_token: null,
+          youtube_linked: false,
+          youtube_token: null,
+          visual_style: null,
+          preferred_language: 'ru',
+          storybrand_raw_content: null,
+          heygen_api_key: null,
+          anthropic_api_key: null,
+          elevenlabs_api_key: null,
+          groq_api_key: null
         });
       }
     } catch (err) {

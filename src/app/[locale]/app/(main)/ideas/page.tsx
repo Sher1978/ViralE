@@ -163,7 +163,7 @@ export default function IdeasPage() {
   const handleToggleArchive = async (ideaId: string, currentStatus: string) => {
     try {
       setProcessingId(ideaId);
-      const newStatus = currentStatus === 'new' ? 'archived' : 'new';
+      const newStatus = currentStatus === 'archived' ? 'new' : 'archived';
       moveIdeaLocally(ideaId, currentStatus, newStatus);
       const res = await fetch('/api/ideas', {
         method: 'PATCH',

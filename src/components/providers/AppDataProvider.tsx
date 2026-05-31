@@ -141,38 +141,49 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   };
 
   const moveIdeaLocally = useCallback((ideaId: string, fromStatus: string, toStatus: string) => {
-    if (fromStatus === 'new') {
-      // If we are in 'New' tab, just update the status so the star turns gold
-      // We don't remove it from the list here anymore to allow the user to see the saved state
-      setIdeas(prev => prev.map(i => i.id === ideaId ? { ...i, status: toStatus as any } : i));
-      
-      // Also add to archived list for global state consistency
-      const ideaToMove = ideas.find(i => i.id === ideaId);
-      if (ideaToMove && toStatus === 'archived') {
-        setArchivedIdeas(prev => {
-          if (prev.find(p => p.id === ideaId)) return prev;
-          return [{...ideaToMove, status: 'archived'}, ...prev];
-        });
-      }
-    } else {
-      // If we are in 'Archived' tab, removing it and moving back to 'new' is correct
-      let ideaToMove: Idea | undefined;
-      setArchivedIdeas(prev => {
-        ideaToMove = prev.find(i => i.id === ideaId);
-        return prev.filter(i => i.id !== ideaId);
-      });
-      if (ideaToMove) {
-        setIdeas(prev => {
-          if (prev.find(p => p.id === ideaId)) return prev;
-          return [{...ideaToMove!, status: 'new'}, ...prev];
-        });
-      } else {
-        // Fallback for cases where idea came from outside the local state
-        fetchIdeas('new');
-        fetchIdeas('archived');
-      }
+    let foundIdea: Idea | undefined = 
+      ideas.find(i => i.id === ideaId) || 
+      archivedIdeas.find(i => i.id === ideaId) || 
+      usedIdeas.find(i => i.id === ideaId);
+
+    if (!foundIdea) {
+      fetchIdeas('new');
+      fetchIdeas('archived');
+      fetchIdeas('used');
+      return;
     }
-  }, [ideas, fetchIdeas]);
+
+    const updatedIdea = { ...foundIdea, status: toStatus as any };
+
+    // Remove or update in the source list
+    if (fromStatus === 'new') {
+      setIdeas(prev => prev.map(i => i.id === ideaId ? updatedIdea : i));
+    } else if (fromStatus === 'archived') {
+      setArchivedIdeas(prev => prev.filter(i => i.id !== ideaId));
+    } else if (fromStatus === 'used') {
+      setUsedIdeas(prev => prev.filter(i => i.id !== ideaId));
+    }
+
+    // Add or update in the target list
+    if (toStatus === 'new') {
+      setIdeas(prev => {
+        if (prev.find(p => p.id === ideaId)) {
+          return prev.map(i => i.id === ideaId ? updatedIdea : i);
+        }
+        return [updatedIdea, ...prev];
+      });
+    } else if (toStatus === 'archived') {
+      setArchivedIdeas(prev => {
+        if (prev.find(p => p.id === ideaId)) return prev;
+        return [updatedIdea, ...prev];
+      });
+    } else if (toStatus === 'used') {
+      setUsedIdeas(prev => {
+        if (prev.find(p => p.id === ideaId)) return prev;
+        return [updatedIdea, ...prev];
+      });
+    }
+  }, [ideas, archivedIdeas, usedIdeas, fetchIdeas]);
 
   const markIdeaAsUsed = useCallback(async (ideaId: string) => {
     // 1. Instantly move in local state for zero-latency UX

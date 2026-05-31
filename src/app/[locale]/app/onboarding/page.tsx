@@ -188,7 +188,7 @@ export default function OnboardingPage() {
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ locale })
                   }).then(res => {
-                    if (res.ok) (globalThis as any).window.location.href = `/${locale}/app/dashboard`;
+                    if (res.ok) (globalThis as any).window.location.href = `/${locale}/app/ideas`;
                     else (globalThis as any).alert?.('Error skipping DNA');
                   }).finally(() => setIsSubmitting(false));
                 }
@@ -351,7 +351,7 @@ export default function OnboardingPage() {
                 });
                 
                 if (response.ok) {
-                  (globalThis as any).window.location.href = `/${locale}/app/dashboard`;
+                  (globalThis as any).window.location.href = `/${locale}/app/ideas`;
                 } else {
                   const errorData = await response.json();
                   (globalThis as any).alert?.(`Error: ${errorData.error || 'Failed to finalize onboarding'}`);
