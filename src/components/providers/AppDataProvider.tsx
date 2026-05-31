@@ -5,6 +5,8 @@ import { profileService, Profile } from '@/lib/services/profileService';
 import { supabase } from '@/lib/supabase';
 import { Idea } from '@/components/ideas/IdeaCard';
 
+import { useLocale } from 'next-intl';
+
 interface AppDataContextType {
   profile: Profile | null;
   dnaComplete: boolean;
@@ -23,6 +25,7 @@ interface AppDataContextType {
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
+  const locale = useLocale();
   const [profile, setProfile] = useState<Profile | null>(null);
   const [ideas, setIdeas] = useState<Idea[]>([]);
   const [archivedIdeas, setArchivedIdeas] = useState<Idea[]>([]);
@@ -49,7 +52,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       else if (status === 'archived') setLoadingArchived(true);
       else if (status === 'used') setLoadingUsed(true);
 
-      let url = `/api/ideas?status=${status}`;
+      let url = `/api/ideas?status=${status}&locale=${locale}`;
       if (category) {
         url += `&category=${encodeURIComponent(category)}`;
         if (force) {
@@ -85,7 +88,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       else if (status === 'archived') setLoadingArchived(false);
       else if (status === 'used') setLoadingUsed(false);
     }
-  }, []);
+  }, [locale]);
 
   // 1. Initial Load - Profile & DNA
   useEffect(() => {

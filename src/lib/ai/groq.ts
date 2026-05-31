@@ -54,7 +54,10 @@ export async function generateScript(
     ${trizMatrix}
     ` : ""}
     
-    CRITICAL: ALL text content in these scripts MUST be in the SAME LANGUAGE as the input idea: "${coreIdea}".
+    CRITICAL LANGUAGE RULES:
+    1. Respond EXCLUSIVELY in the active language: ${languageName.toUpperCase()}.
+    2. All generated content, scenarios, hooks, context, meat, cta, broll descriptions, and social posts MUST be strictly in ${languageName.toUpperCase()}!
+    3. Even if the user DNA, Brand DNA, or the input idea "${coreIdea}" contains Russian or another language, you MUST translate it on the fly and output final spoken words EXCLUSIVELY in ${languageName.toUpperCase()}. Decouple the script language from the Brand DNA's language and respect the interface language: ${languageName.toUpperCase()}.
     
     CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". ONLY the final words the actor will dictate.
     

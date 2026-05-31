@@ -3,7 +3,7 @@
 
 
 import { useState, useEffect } from 'react';
-import { useTranslations } from 'next-intl';
+import { useTranslations, useLocale } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from '@/navigation';
 import { 
@@ -48,7 +48,7 @@ export default function ScriptLabPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
   const params = useParams();
-  const locale = params.locale as string;
+  const locale = useLocale();
 
   const projectIdParam = searchParams.get('projectId');
   const versionIdParam = searchParams.get('versionId');

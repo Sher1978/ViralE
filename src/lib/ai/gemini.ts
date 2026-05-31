@@ -210,7 +210,10 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     ${trizMatrix}
     ` : ""}
     
-    CRITICAL: ALL text content in these scripts MUST be in the SAME LANGUAGE as the input idea: "${coreIdea}". If the idea/topic is in Ukrainian, every word of the script must be in Ukrainian. If Russian, then Russian.
+    CRITICAL LANGUAGE RULES:
+    1. Respond EXCLUSIVELY in the active language: ${languageName.toUpperCase()}.
+    2. All generated content, scenarios, hooks, context, meat, cta, broll descriptions, and social posts MUST be strictly in ${languageName.toUpperCase()}!
+    3. Even if the user DNA, Brand DNA, or the input idea "${coreIdea}" contains Russian or another language, you MUST translate it on the fly and output final spoken words EXCLUSIVELY in ${languageName.toUpperCase()}. Decouple the script language from the Brand DNA's language and respect the interface language: ${languageName.toUpperCase()}.
     
     ${hook ? `CRITICAL: Every scenario MUST use this specific starting HOOK: "${hook}"` : ""}
     ${role ? `CRITICAL: Every scenario MUST be written in the ROLE/STANCE of: "${role}"` : ""}
