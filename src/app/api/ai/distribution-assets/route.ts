@@ -3,6 +3,8 @@ import { GoogleGenerativeAI } from '@google/generative-ai';
 import { getAuthContext } from '@/lib/auth';
 import { safeJsonParse } from '@/lib/utils';
 
+import { profileService } from '@/lib/services/profileService';
+
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
 const genAI = new GoogleGenerativeAI(apiKey);
 
@@ -17,14 +19,9 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Script text is required' }, { status: 400 });
     }
 
-    // 1. Fetch User DNA
-    const { data: profile } = await authorizedSupabase
-      .from('profiles')
-      .select('digital_shadow_prompt, visual_style')
-      .eq('id', userId)
-      .single();
-
-    const userDNA = profile?.digital_shadow_prompt || "Niche: General Content Creator. Tone: Professional but engaging. Philosophy: Value-first.";
+    // 1. Fetch Active User DNA (Digital DNA or StoryBrand depending on project count)
+    const { brandContext } = await profileService.getActiveBrandContext(userId, authorizedSupabase);
+    const userDNA = brandContext || "Niche: General Content Creator. Tone: Professional but engaging. Philosophy: Value-first.";
 
     const model = genAI.getGenerativeModel({ 
       model: 'gemini-2.5-flash-lite',

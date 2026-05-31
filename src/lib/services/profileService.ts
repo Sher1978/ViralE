@@ -141,6 +141,68 @@ export const profileService = {
     return true;
   },
   
+  async getActiveBrandContext(userId: string, customClient?: any): Promise<{
+    brandContext: string;
+    isStoryBrandActive: boolean;
+    projectCount: number;
+  }> {
+    const client = customClient || supabase;
+    try {
+      const { count, error } = await client
+        .from('projects')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', userId);
+
+      if (error) throw error;
+      const projectCount = count || 0;
+
+      const { data: profile, error: profError } = await client
+        .from('profiles')
+        .select('digital_shadow_prompt, storybrand_raw_content')
+        .eq('id', userId)
+        .single();
+
+      // Catch error dynamically if storybrand_raw_content doesn't exist yet
+      if (profError) throw profError;
+
+      const baseDna = profile?.digital_shadow_prompt || "";
+
+      if (projectCount >= 3 && profile?.storybrand_raw_content) {
+        return {
+          brandContext: profile.storybrand_raw_content,
+          isStoryBrandActive: true,
+          projectCount
+        };
+      }
+
+      return {
+        brandContext: baseDna,
+        isStoryBrandActive: false,
+        projectCount
+      };
+    } catch (err) {
+      console.warn('[ProfileService] StoryBrand columns missing or query failed, falling back to base DNA:', err);
+      try {
+        const { data: profile } = await client
+          .from('profiles')
+          .select('digital_shadow_prompt')
+          .eq('id', userId)
+          .single();
+        return {
+          brandContext: profile?.digital_shadow_prompt || "",
+          isStoryBrandActive: false,
+          projectCount: 0
+        };
+      } catch (fallbackErr) {
+        return {
+          brandContext: "",
+          isStoryBrandActive: false,
+          projectCount: 0
+        };
+      }
+    }
+  },
+  
   async getMonthlyGenerationCount(userId: string): Promise<{ count: number | null, error: any }> {
     const now = new Date();
     const firstDay = new Date(now.getFullYear(), now.getMonth(), 1).toISOString();

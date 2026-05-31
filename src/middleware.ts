@@ -36,7 +36,12 @@ export function middleware(request: NextRequest) {
   const isRoot = pathname === '/' || pathname === '/ru' || pathname === '/en';
   
   if (isRoot && token) {
-    const locale = pathname.startsWith('/en') ? 'en' : 'ru';
+    const cookieLocale = request.cookies.get('NEXT_LOCALE')?.value;
+    const locale = pathname.startsWith('/ru') 
+      ? 'ru' 
+      : (pathname.startsWith('/en') 
+        ? 'en' 
+        : (cookieLocale === 'ru' ? 'ru' : 'en'));
     const redirectUrl = new URL(`/${locale}/app/projects`, request.url);
     return NextResponse.redirect(redirectUrl);
   }

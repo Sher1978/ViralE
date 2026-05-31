@@ -49,14 +49,45 @@ export default function ProfilePage() {
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
   
+  // StoryBrand and dynamic routing states
+  const [projectCount, setProjectCount] = useState(0);
+  const [loadingCount, setLoadingCount] = useState(true);
+  const [uploadingStoryBrand, setUploadingStoryBrand] = useState(false);
+  const [storyBrandText, setStoryBrandText] = useState('');
+  const [showPasteArea, setShowPasteArea] = useState(false);
+  const [storyBrandError, setStoryBrandError] = useState<string | null>(null);
+  const [expandedPreview, setExpandedPreview] = useState(false);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const storyBrandInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    profileService.getOrCreateProfile().then(p => {
+    profileService.getOrCreateProfile().then(async p => {
       setProfile(p);
       if (p?.full_name) {
         setEditName(p.full_name);
       }
+      
+      // Load user StoryBrand text if exists
+      if (p && (p as any).storybrand_raw_content) {
+        setStoryBrandText((p as any).storybrand_raw_content);
+      }
+      
+      if (p?.id) {
+        try {
+          const { count, error } = await supabase
+            .from('projects')
+            .select('id', { count: 'exact', head: true })
+            .eq('user_id', p.id);
+          
+          if (!error && count !== null) {
+            setProjectCount(count);
+          }
+        } catch (e) {
+          console.warn('[ProfilePage] Failed to fetch project count:', e);
+        }
+      }
+      setLoadingCount(false);
     });
   }, []);
 
@@ -133,6 +164,132 @@ export default function ProfilePage() {
       console.error('Error saving profile:', err);
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handleStoryBrandUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = (e.currentTarget as any).files?.[0];
+    if (!file) return;
+
+    setUploadingStoryBrand(true);
+    setStoryBrandError(null);
+    try {
+      const reader = new FileReader();
+      
+      const fileText = await new Promise<string>((resolve, reject) => {
+        reader.onload = (event) => resolve(event.target?.result as string || '');
+        reader.onerror = (err) => reject(err);
+        reader.readAsText(file);
+      });
+
+      if (fileText.trim().length < 50) {
+        throw new Error(locale === 'ru' 
+          ? 'Текст файла слишком короткий. Минимальный размер СториБренда — 50 символов.' 
+          : 'File text is too short. Minimum StoryBrand length is 50 characters.');
+      }
+
+      const res = await fetch('/api/profile/storybrand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: fileText,
+          filename: file.name,
+          size: file.size
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Upload failed');
+
+      setProfile(prev => prev ? {
+        ...prev,
+        storybrand_raw_content: fileText,
+        storybrand_filename: file.name,
+        storybrand_file_size: file.size,
+        storybrand_updated_at: new Date().toISOString()
+      } as any : null);
+
+      setStoryBrandText(fileText);
+      setSuccessMsg(locale === 'ru' ? 'СториБренд успешно сохранен!' : 'StoryBrand saved successfully!');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err: any) {
+      setStoryBrandError(err.message || 'Ошибка загрузки файла');
+    } finally {
+      setUploadingStoryBrand(false);
+      (e.currentTarget as any).value = '';
+    }
+  };
+
+  const handleSavePastedStoryBrand = async () => {
+    if (!storyBrandText.trim() || storyBrandText.trim().length < 50) {
+      setStoryBrandError(locale === 'ru' 
+        ? 'Текст слишком короткий. Минимальный размер — 50 символов.' 
+        : 'Text is too short. Minimum is 50 characters.');
+      return;
+    }
+
+    setUploadingStoryBrand(true);
+    setStoryBrandError(null);
+    try {
+      const sizeBytes = new Blob([storyBrandText]).size;
+      const res = await fetch('/api/profile/storybrand', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          text: storyBrandText,
+          filename: 'storybrand_manual.txt',
+          size: sizeBytes
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Save failed');
+
+      setProfile(prev => prev ? {
+        ...prev,
+        storybrand_raw_content: storyBrandText,
+        storybrand_filename: 'storybrand_manual.txt',
+        storybrand_file_size: sizeBytes,
+        storybrand_updated_at: new Date().toISOString()
+      } as any : null);
+
+      setSuccessMsg(locale === 'ru' ? 'СториБренд сохранен!' : 'StoryBrand saved!');
+      setTimeout(() => setSuccessMsg(null), 3000);
+      setShowPasteArea(false);
+    } catch (err: any) {
+      setStoryBrandError(err.message || 'Ошибка сохранения текста');
+    } finally {
+      setUploadingStoryBrand(false);
+    }
+  };
+
+  const handleDeleteStoryBrand = async () => {
+    const confirmDelete = (globalThis as any).confirm?.(locale === 'ru' 
+      ? 'Вы уверены, что хотите удалить СториБренд и вернуться к базовой ДНК?' 
+      : 'Are you sure you want to delete the StoryBrand and fallback to base DNA?');
+    
+    if (!confirmDelete) return;
+
+    setUploadingStoryBrand(true);
+    try {
+      const res = await fetch('/api/profile/storybrand', { method: 'DELETE' });
+      if (!res.ok) throw new Error('Deletion failed');
+
+      setProfile(prev => prev ? {
+        ...prev,
+        storybrand_raw_content: null,
+        storybrand_filename: null,
+        storybrand_file_size: null,
+        storybrand_updated_at: null
+      } as any : null);
+
+      setStoryBrandText('');
+      setSuccessMsg(locale === 'ru' ? 'СториБренд удален!' : 'StoryBrand deleted!');
+      setTimeout(() => setSuccessMsg(null), 3000);
+    } catch (err: any) {
+      setStoryBrandError(err.message || 'Ошибка удаления');
+    } finally {
+      setUploadingStoryBrand(false);
     }
   };
 
@@ -364,6 +521,239 @@ export default function ProfilePage() {
           </div>
         )}
 
+      </motion.div>
+
+      {/* --- STORYBRAND WIDGET (Mobile-First / Count Lock) --- */}
+      <motion.div
+        variants={itemVariants as any}
+        className="mx-4 p-6 rounded-[2rem] bg-[#0c0c14]/80 border border-white/5 backdrop-blur-xl relative overflow-hidden"
+      >
+        <div className="flex items-center justify-between mb-4">
+          <div className="flex items-center gap-2">
+            <Cpu className="text-purple-400" size={16} />
+            <h3 className="text-sm font-black uppercase tracking-wider text-white">
+              {locale === 'ru' ? 'СториБренд (Расширенный ДНК)' : 'StoryBrand (Extended DNA)'}
+            </h3>
+          </div>
+          {projectCount >= 3 && (
+            <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[8px] font-black uppercase tracking-wider">
+              {locale === 'ru' ? 'АКТИВЕН (4+ пакет)' : 'ACTIVE (4+ pack)'}
+            </span>
+          )}
+        </div>
+
+        {loadingCount ? (
+          <div className="flex items-center gap-2 py-4">
+            <Loader2 className="animate-spin text-purple-400" size={16} />
+            <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Проверка прогресса...</span>
+          </div>
+        ) : projectCount < 3 ? (
+          // LOCKED / PROGRESS STATE (First 3 packages)
+          <div className="space-y-4">
+            <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+              <div className="flex items-center justify-between">
+                <span className="text-[10px] font-bold text-white/40 uppercase tracking-widest">
+                  {locale === 'ru' ? 'Прогресс пакетов' : 'Package progress'}
+                </span>
+                <span className="text-[10px] font-black text-purple-400">
+                  {projectCount} / 3
+                </span>
+              </div>
+              {/* Progress bar */}
+              <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                <div 
+                  className="h-full bg-gradient-to-r from-purple-500 to-indigo-500 shadow-[0_0_10px_rgba(168,85,247,0.4)] transition-all duration-500" 
+                  style={{ width: `${(projectCount / 3) * 100}%` }}
+                />
+              </div>
+            </div>
+
+            <div className="flex items-start gap-3 p-4 rounded-2xl bg-yellow-500/5 border border-yellow-500/10">
+              <Lock size={16} className="text-yellow-500/80 shrink-0 mt-0.5" />
+              <p className="text-[11px] text-white/50 leading-relaxed font-medium">
+                {locale === 'ru' ? (
+                  <>
+                    Опция загрузки файла <b>СториБренда</b> станет доступна на 4-м пакете контента. 
+                    Сейчас ИИ использует вашу стартовую «Цифровую ДНК» из 10 вопросов для стабилизации Tone of Voice. 
+                    Создайте еще {3 - projectCount} {3 - projectCount === 1 ? 'проект' : 'проекта'}, чтобы разблокировать расширенный режим.
+                  </>
+                ) : (
+                  <>
+                    The <b>StoryBrand</b> upload feature will unlock on your 4th content pack.
+                    The AI currently uses your onboarding 10-question "Digital DNA" to stabilize your Tone of Voice.
+                    Create {3 - projectCount} more {3 - projectCount === 1 ? 'project' : 'projects'} to unlock the extended mode.
+                  </>
+                )}
+              </p>
+            </div>
+          </div>
+        ) : (
+          // UNLOCKED STATE (4th+ Package)
+          <div className="space-y-4">
+            <input 
+              type="file" 
+              ref={storyBrandInputRef} 
+              onChange={handleStoryBrandUpload} 
+              className="hidden" 
+              accept=".txt,.md,.json" 
+            />
+
+            {profile && (profile as any).storybrand_filename ? (
+              // StoryBrand uploaded successfully
+              <div className="space-y-3">
+                <div className="p-4 rounded-2xl bg-purple-500/5 border border-purple-500/10 flex items-center justify-between">
+                  <div className="min-w-0">
+                    <p className="text-[11px] font-black text-white truncate">
+                      📄 {(profile as any).storybrand_filename}
+                    </p>
+                    <p className="text-[9px] text-white/30 uppercase font-black mt-0.5">
+                      {((profile as any).storybrand_file_size / 1024).toFixed(1)} KB · {locale === 'ru' ? 'Обновлен' : 'Updated'}: {new Date((profile as any).storybrand_updated_at).toLocaleDateString()}
+                    </p>
+                  </div>
+                  
+                  <button
+                    onClick={handleDeleteStoryBrand}
+                    disabled={uploadingStoryBrand}
+                    className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 active:scale-95 transition-all disabled:opacity-30"
+                    title={locale === 'ru' ? 'Сбросить' : 'Reset'}
+                  >
+                    <X size={14} />
+                  </button>
+                </div>
+
+                {/* Subtitle / visual note */}
+                <div className="p-3.5 rounded-xl bg-green-500/5 border border-green-500/10 flex gap-2">
+                  <Check size={14} className="text-green-400 shrink-0 mt-0.5" />
+                  <p className="text-[10px] text-white/60 leading-relaxed font-bold">
+                    {locale === 'ru' 
+                      ? 'ИИ автоматически переключился на использование данных из вашего СториБренда для генерации сценариев и постов.' 
+                      : 'AI has automatically switched to using your StoryBrand document for generating scripts and posts.'}
+                  </p>
+                </div>
+
+                {/* Extracted Text Preview block with fadeout */}
+                {storyBrandText && (
+                  <div className="border border-white/5 rounded-2xl bg-black/40 overflow-hidden relative">
+                    <div className="p-3 border-b border-white/5 flex items-center justify-between">
+                      <span className="text-[9px] font-black uppercase tracking-wider text-white/40">
+                        {locale === 'ru' ? 'Содержимое документа' : 'Document content'}
+                      </span>
+                      <button
+                        onClick={() => setExpandedPreview(!expandedPreview)}
+                        className="text-[9px] font-black uppercase text-purple-400 hover:text-purple-300"
+                      >
+                        {expandedPreview ? (locale === 'ru' ? 'Свернуть' : 'Collapse') : (locale === 'ru' ? 'Развернуть' : 'Expand')}
+                      </button>
+                    </div>
+                    <div className={`p-4 text-[10.5px] text-white/50 font-mono leading-relaxed overflow-y-auto ${expandedPreview ? 'max-h-60' : 'max-h-16'}`}>
+                      {storyBrandText}
+                    </div>
+                    {!expandedPreview && (
+                      <div className="absolute bottom-0 inset-x-0 h-8 bg-gradient-to-t from-[#0e0e14] to-transparent pointer-events-none" />
+                    )}
+                  </div>
+                )}
+
+                <div className="flex gap-2">
+                  <button
+                    onClick={() => (storyBrandInputRef.current as any)?.click()}
+                    disabled={uploadingStoryBrand}
+                    className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-30"
+                  >
+                    {uploadingStoryBrand ? <Loader2 className="animate-spin" size={12} /> : '📁'} 
+                    {locale === 'ru' ? 'Заменить файл' : 'Replace file'}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setStoryBrandText((profile as any).storybrand_raw_content || '');
+                      setShowPasteArea(true);
+                      setStoryBrandError(null);
+                    }}
+                    className="py-3.5 px-4 rounded-xl bg-white/5 border border-white/10 hover:bg-white/10 text-white/70 text-[10px] font-black uppercase tracking-wider active:scale-95 transition-all"
+                  >
+                    {locale === 'ru' ? 'Редактировать' : 'Edit Text'}
+                  </button>
+                </div>
+              </div>
+            ) : (
+              // Empty state
+              <div className="space-y-4">
+                <div className="text-center py-5 border border-dashed border-white/10 rounded-2xl bg-white/[0.01]">
+                  <p className="text-[10px] font-black uppercase tracking-widest text-white/30">
+                    {locale === 'ru' ? 'СториБренд не загружен' : 'StoryBrand not loaded'}
+                  </p>
+                  <p className="text-[9px] text-white/20 mt-1 max-w-[200px] mx-auto leading-relaxed">
+                    {locale === 'ru' 
+                      ? 'Загрузите текстовый файл или вставьте описание эксперта вручную' 
+                      : 'Upload a text file or paste your expert description manually'}
+                  </p>
+                </div>
+
+                <div className="flex gap-3">
+                  <button
+                    onClick={() => (storyBrandInputRef.current as any)?.click()}
+                    disabled={uploadingStoryBrand}
+                    className="flex-1 py-4 rounded-2xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-30"
+                  >
+                    {uploadingStoryBrand ? <Loader2 className="animate-spin text-white" size={12} /> : '📁'} 
+                    {locale === 'ru' ? 'Загрузить файл' : 'Upload File'}
+                  </button>
+
+                  <button
+                    onClick={() => {
+                      setStoryBrandText('');
+                      setShowPasteArea(true);
+                      setStoryBrandError(null);
+                    }}
+                    className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                  >
+                    📝 {locale === 'ru' ? 'Вставить текст' : 'Paste Text'}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Paste/Edit Dialog Block */}
+            {showPasteArea && (
+              <div className="mt-3 p-4 rounded-2xl bg-black/40 border border-white/5 space-y-3">
+                <span className="text-[9px] font-black uppercase tracking-wider text-purple-400 block">
+                  {locale === 'ru' ? 'Ручной ввод СториБренда' : 'Manual StoryBrand Input'}
+                </span>
+                <textarea
+                  value={storyBrandText}
+                  onChange={(e) => setStoryBrandText((e.currentTarget as any).value)}
+                  rows={6}
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-xl p-3 text-[11px] text-white/70 focus:border-purple-500/50 transition-all resize-none outline-none leading-relaxed font-medium placeholder:text-white/20"
+                  placeholder={locale === 'ru' 
+                    ? "Вставьте подробную информацию об эксперте, продукте, методологии и аудитории..." 
+                    : "Paste detailed information about the expert, product, methodology, and audience..."}
+                />
+                
+                {storyBrandError && (
+                  <p className="text-red-400 text-[9.5px] font-bold">{storyBrandError}</p>
+                )}
+
+                <div className="flex gap-2 justify-end">
+                  <button
+                    onClick={() => setShowPasteArea(false)}
+                    className="px-3.5 py-2 rounded-lg border border-white/10 text-white/50 hover:bg-white/5 text-[9px] font-black uppercase tracking-wider transition-all"
+                  >
+                    {locale === 'ru' ? 'Отмена' : 'Cancel'}
+                  </button>
+                  <button
+                    onClick={handleSavePastedStoryBrand}
+                    disabled={uploadingStoryBrand}
+                    className="px-3.5 py-2 rounded-lg bg-purple-600 hover:bg-purple-500 text-white text-[9px] font-black uppercase tracking-wider active:scale-95 transition-all flex items-center gap-1 disabled:opacity-30"
+                  >
+                    {uploadingStoryBrand && <Loader2 className="animate-spin" size={10} />}
+                    {locale === 'ru' ? 'Сохранить' : 'Save'}
+                  </button>
+                </div>
+              </div>
+            )}
+          </div>
+        )}
       </motion.div>
 
       {/* Main Settings List */}

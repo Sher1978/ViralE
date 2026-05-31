@@ -8,6 +8,7 @@ import { extractSignaturePhrases } from '@/lib/ai/dna-extractor';
 import { polishCriticalSlides } from '@/lib/ai/slide-polisher';
 import { preprocessSubtitles } from '@/lib/utils/subtitle-preprocessor';
 import { hashText } from '@/lib/utils/hash';
+import { profileService } from '@/lib/services/profileService';
 
 export const maxDuration = 60;
 export const runtime = 'nodejs';
@@ -69,7 +70,8 @@ export async function POST(req: Request) {
       console.warn('[ig-carousel API] Core Profile query failed (using defaults):', e);
     }
 
-    const userDNA = profile?.digital_shadow_prompt || 'Niche: General Content Creator. Tone: Professional but engaging.';
+    const { brandContext } = await profileService.getActiveBrandContext(userId, authorizedSupabase);
+    const userDNA = brandContext || profile?.digital_shadow_prompt || 'Niche: General Content Creator. Tone: Professional but engaging.';
     const visualStyleKey = profile?.visual_style || 'startup_valley';
     
     // Resolve visual stylePrefix prioritizing user custom Visual DNA configuration

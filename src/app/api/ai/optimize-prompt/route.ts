@@ -20,8 +20,11 @@ export async function POST(req: Request) {
     try {
       await getAuthenticatedUser();
       const profile = await profileService.getOrCreateProfile();
-      if (profile?.digital_shadow_prompt) dna = profile.digital_shadow_prompt;
-      if (profile?.visual_style) style = profile.visual_style;
+      if (profile) {
+        const { brandContext } = await profileService.getActiveBrandContext(profile.id);
+        dna = brandContext || profile.digital_shadow_prompt || dna;
+        if (profile.visual_style) style = profile.visual_style;
+      }
     } catch (e) {
       console.warn('Unauthorized or profile error in optimize-prompt:', e);
     }

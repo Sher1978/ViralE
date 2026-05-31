@@ -3,6 +3,8 @@ import * as factory from '@/lib/ai/factory';
 import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
 import { getAuthContext } from '@/lib/auth';
 
+import { profileService } from '@/lib/services/profileService';
+
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
@@ -65,7 +67,8 @@ export async function POST(req: Request) {
       console.warn('[ScriptGen] Profile fetch warning:', profileError);
     }
 
-    const digitalShadow = profile?.digital_shadow_prompt || '';
+    const { brandContext } = await profileService.getActiveBrandContext(userId, authorizedSupabase);
+    const digitalShadow = brandContext || profile?.digital_shadow_prompt || '';
     const anthropicApiKey = profile?.anthropic_api_key || undefined;
     const groqApiKey = profile?.groq_api_key || undefined;
     

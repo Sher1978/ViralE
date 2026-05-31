@@ -3,7 +3,7 @@
 import { useState, useEffect } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { ChevronLeft, RefreshCw, Save, Key, Brain, ExternalLink, Zap, User, Sparkles } from 'lucide-react';
-import Link from 'next/link';
+import { Link } from '@/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 
 export default function ByokSettingsPage() {
@@ -87,7 +87,7 @@ export default function ByokSettingsPage() {
       {/* Header */}
       <div className="flex items-center justify-between">
         <Link 
-          href={`/${locale}/app/profile`}
+          href="/app/profile"
           className="flex items-center gap-2 text-white/40 hover:text-white transition-all group text-[11px] font-black uppercase tracking-[0.2em]"
         >
           <div className="w-8 h-8 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:bg-white/10 group-hover:scale-105 transition-all">

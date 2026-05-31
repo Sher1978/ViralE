@@ -508,7 +508,7 @@ export default function DnaManagementPage() {
             ) : (
               <>
                 <Sparkles size={16} />
-                <span>{locale === 'ru' ? 'РЕГЕНЕРИРОВАТЬ КОНТЕНТ' : 'РЕГЕНЕРИРОВАТЬ КОНТЕНТ'}</span>
+                <span>{locale === 'ru' ? 'РЕГЕНЕРИРОВАТЬ КОНТЕНТ' : 'REGENERATE CONTENT'}</span>
               </>
             )}
           </button>

@@ -3,6 +3,7 @@
 import React, { useEffect, useState, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from '@/navigation';
+import { useLocale } from 'next-intl';
 import { supabase } from '@/lib/supabase';
 import {
   Images,
@@ -27,6 +28,7 @@ interface UserPhoto {
 
 export default function PhotoGalleryPage() {
   const router = useRouter();
+  const locale = useLocale();
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   const [photos, setPhotos] = useState<UserPhoto[]>([]);
@@ -89,10 +91,10 @@ export default function PhotoGalleryPage() {
       const { error } = await supabase.storage.from('media').upload(path, file);
       if (error) throw error;
 
-      showToast('Фото загружено!');
+      showToast(locale === 'ru' ? 'Фото загружено!' : 'Photo uploaded!');
       await loadPhotos();
     } catch (err: any) {
-      showToast(err.message || 'Ошибка загрузки', 'error');
+      showToast(err.message || (locale === 'ru' ? 'Ошибка загрузки' : 'Upload error'), 'error');
     } finally {
       setUploading(false);
     }
@@ -106,12 +108,12 @@ export default function PhotoGalleryPage() {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: photo.path }),
       });
-      if (!res.ok) throw new Error('Ошибка удаления');
+      if (!res.ok) throw new Error(locale === 'ru' ? 'Ошибка удаления' : 'Delete error');
       setPhotos(prev => prev.filter(p => p.path !== photo.path));
       if (selectedPhoto?.path === photo.path) setSelectedPhoto(null);
-      showToast('Фото удалено');
+      showToast(locale === 'ru' ? 'Фото удалено' : 'Photo deleted');
     } catch (err: any) {
-      showToast(err.message || 'Ошибка', 'error');
+      showToast(err.message || (locale === 'ru' ? 'Ошибка' : 'Error'), 'error');
     } finally {
       setDeletingPath(null);
     }
@@ -131,9 +133,9 @@ export default function PhotoGalleryPage() {
 
       setCurrentAvatarUrl(photo.url);
       setSelectedPhoto(null);
-      showToast('Фото профиля обновлено!');
+      showToast(locale === 'ru' ? 'Фото профиля обновлено!' : 'Profile photo updated!');
     } catch (err: any) {
-      showToast(err.message || 'Ошибка', 'error');
+      showToast(err.message || (locale === 'ru' ? 'Ошибка' : 'Error'), 'error');
     } finally {
       setSettingAvatar(false);
     }
@@ -155,7 +157,7 @@ export default function PhotoGalleryPage() {
         <div className="flex items-center gap-2 flex-1">
           <Images size={16} className="text-purple-400" />
           <h1 className="text-sm font-black uppercase tracking-widest text-white/80">
-            Мои фотографии
+            {locale === 'ru' ? 'Мои фотографии' : 'My Photos'}
           </h1>
         </div>
         <button
@@ -168,7 +170,9 @@ export default function PhotoGalleryPage() {
           ) : (
             <Upload size={12} />
           )}
-          {uploading ? 'Загрузка...' : 'Добавить'}
+          {uploading 
+            ? (locale === 'ru' ? 'Загрузка...' : 'Uploading...') 
+            : (locale === 'ru' ? 'Добавить' : 'Add')}
         </button>
         <input
           ref={fileInputRef}
@@ -184,7 +188,9 @@ export default function PhotoGalleryPage() {
         {loading ? (
           <div className="flex flex-col items-center justify-center py-24 gap-4">
             <Loader2 size={32} className="animate-spin text-purple-400/50" />
-            <p className="text-xs text-white/20 uppercase tracking-widest">Загрузка фото...</p>
+            <p className="text-xs text-white/20 uppercase tracking-widest">
+              {locale === 'ru' ? 'Загрузка фото...' : 'Loading photos...'}
+            </p>
           </div>
         ) : photos.length === 0 ? (
           <motion.div
@@ -197,17 +203,19 @@ export default function PhotoGalleryPage() {
             </div>
             <div className="text-center space-y-2">
               <p className="text-sm font-black text-white/40 uppercase tracking-widest">
-                Фотографий пока нет
+                {locale === 'ru' ? 'Фотографий пока нет' : 'No photos yet'}
               </p>
               <p className="text-xs text-white/20">
-                Загрузите фото для аватара и синтеза AI-видео
+                {locale === 'ru' 
+                  ? 'Загрузите фото для аватара и синтеза AI-видео' 
+                  : 'Upload photos for your avatar and AI video synthesis'}
               </p>
             </div>
             <button
               onClick={() => (fileInputRef.current as any)?.click()}
               className="px-8 py-4 rounded-2xl bg-purple-500/20 border border-purple-500/30 text-purple-300 text-sm font-bold uppercase tracking-widest active:scale-95 transition-all"
             >
-              Загрузить первое фото
+              {locale === 'ru' ? 'Загрузить первое фото' : 'Upload first photo'}
             </button>
           </motion.div>
         ) : (
@@ -215,12 +223,14 @@ export default function PhotoGalleryPage() {
             {/* Stats bar */}
             <div className="mb-4 flex items-center justify-between">
               <span className="text-xs text-white/30 font-medium">
-                {photos.length} {photos.length === 1 ? 'фото' : photos.length < 5 ? 'фото' : 'фотографий'}
+                {photos.length} {locale === 'ru' 
+                  ? (photos.length === 1 ? 'фото' : photos.length < 5 ? 'фото' : 'фотографий') 
+                  : (photos.length === 1 ? 'photo' : 'photos')}
               </span>
               {currentAvatarUrl && (
                 <span className="text-xs text-yellow-400/60 font-medium flex items-center gap-1">
                   <Star size={10} className="fill-yellow-400 text-yellow-400" />
-                  Фото профиля выбрано
+                  {locale === 'ru' ? 'Фото профиля выбрано' : 'Profile photo selected'}
                 </span>
               )}
             </div>
@@ -296,7 +306,7 @@ export default function PhotoGalleryPage() {
               <div className="flex items-center gap-2">
                 {isCurrentAvatar(selectedPhoto) && (
                   <span className="text-[10px] font-bold text-yellow-400 uppercase tracking-widest px-3 py-1 rounded-full bg-yellow-400/10 border border-yellow-400/20">
-                    ★ Фото профиля
+                    {locale === 'ru' ? '★ Фото профиля' : '★ Profile Photo'}
                   </span>
                 )}
               </div>
@@ -334,12 +344,14 @@ export default function PhotoGalleryPage() {
                   ) : (
                     <Star size={16} />
                   )}
-                  {settingAvatar ? 'Сохраняем...' : 'Сделать фото профиля'}
+                  {settingAvatar 
+                    ? (locale === 'ru' ? 'Сохраняем...' : 'Saving...') 
+                    : (locale === 'ru' ? 'Сделать фото профиля' : 'Set as Profile Photo')}
                 </button>
               ) : (
                 <div className="w-full py-4 rounded-2xl bg-yellow-400/10 border border-yellow-400/20 text-yellow-400 text-sm font-black uppercase tracking-widest flex items-center justify-center gap-2">
                   <Check size={16} />
-                  Текущее фото профиля
+                  {locale === 'ru' ? 'Текущее фото профиля' : 'Current Profile Photo'}
                 </div>
               )}
               <button
@@ -352,7 +364,7 @@ export default function PhotoGalleryPage() {
                 ) : (
                   <Trash2 size={14} />
                 )}
-                Удалить фото
+                {locale === 'ru' ? 'Удалить фото' : 'Delete Photo'}
               </button>
             </div>
           </motion.div>
