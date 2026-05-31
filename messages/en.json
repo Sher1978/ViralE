@@ -759,7 +759,7 @@
       "placeholder": "COMING SOON: 10-MINUTE CHALLENGE",
       "steps": [
         { "time": "01:00", "title": "IDEA", "desc": "Pick or write your topic. ViralE extracts the core and forms the structure." },
-        { "time": "03:00", "title": "DIGITAL DNA", "desc": "The system generates a script in your style with 2026 virality hooks." },
+        { "time": "03:00", "title": "DIGITAL DNA", "desc": "The system generates 5 different scripts in your style. Choose the best one." },
         { "time": "07:00", "title": "FILMING", "desc": "Adaptive teleprompter manages the pace. You read — the system shoots." },
         { "time": "09:00", "title": "EDITING", "desc": "AI picks Semantic Bullets (B-roll), adds subtitles and post-production effects." },
         { "time": "10:00", "title": "ALL READY", "desc": "Video + cover + carousel (5 images) + text for 5 platforms — simultaneously." }
