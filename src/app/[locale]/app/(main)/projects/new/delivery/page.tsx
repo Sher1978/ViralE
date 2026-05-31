@@ -260,7 +260,7 @@ function DeliveryPageContent() {
       platform: 'Twitter / X',
       icon: '🐦',
       accent: '#1DA1F2',
-      text: distributionAssets?.deep_content?.threads_fb_text || (scriptData ? `${scriptData.hook.substring(0, 200)}... #ViralEngine` : ''),
+      text: distributionAssets?.deep_content?.threads_fb_text || (scriptData ? `${(typeof scriptData.hook === 'string' ? scriptData.hook : scriptData.hook?.words || '').substring(0, 200)}... #ViralEngine` : ''),
     },
     {
       platform: 'Instagram',

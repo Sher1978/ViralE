@@ -2,7 +2,7 @@
 // Build trigger: Ensure TypeScript property name parity (script_data)
 
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useParams, useSearchParams } from 'next/navigation';
 import { useRouter } from '@/navigation';
@@ -247,6 +247,8 @@ export default function ScriptLabPage() {
     }
   }, []); // Run on mount to catch redirected generation state
 
+  const hasTriggeredGen = useRef(false);
+
   useEffect(() => {
     async function loadData() {
       // Load user profile
@@ -284,6 +286,10 @@ export default function ScriptLabPage() {
         const topic = searchParams.get('topic');
         if (topic) {
           setTopicInput(topic);
+          if (!hasTriggeredGen.current) {
+            hasTriggeredGen.current = true;
+            handleRestartGeneration(topic);
+          }
         }
         return;
       }
@@ -651,7 +657,7 @@ export default function ScriptLabPage() {
       if (!pId) {
         const fromProjectId = searchParams.get('fromProjectId');
         const project = await projectService.createProject({
-          title: topicInput || activeScript.hook.substring(0, 30) + '...',
+          title: topicInput || (typeof activeScript.hook === 'string' ? activeScript.hook.substring(0, 30) : (activeScript.hook?.words || '').substring(0, 30)) + '...',
           userId: profile.id,
           parentId: fromProjectId && fromProjectId !== 'null' ? fromProjectId : undefined
         });

@@ -46,7 +46,7 @@ export async function generateTrizText(prompt: string, apiKey?: string): Promise
 /**
  * Orchestrates the "Digital Shadow" prompt construction with locale support
  */
-export function getSystemPrompt(digitalShadow: string, locale: string = 'en', brandDna?: any) {
+export function getSystemPrompt(digitalShadow: string, locale: string = 'en', brandDna?: any, systemPromptBase?: string) {
   const languageName = locale === 'ru' ? 'Russian' : 'English';
   
   const persona = digitalShadow && digitalShadow.trim() !== "" 
@@ -57,6 +57,19 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
 
   const industry = brandDna?.industry || "Marketing & Content Production";
   const knowledgeBase = brandDna?.knowledgeBase ? JSON.stringify(brandDna.knowledgeBase) : "Standard viral patterns";
+
+  if (systemPromptBase && systemPromptBase.trim() !== "") {
+    return `
+      ${systemPromptBase}
+
+      USER BRAND DNA & CONTEXT:
+      - Industry: ${industry}
+      - Brand/User DNA: ${persona}
+      - Deep Knowledge Base: ${knowledgeBase}
+      
+      CRITICAL: Output must be valid JSON in the exact structure requested by the user prompt.
+    `;
+  }
 
   return `
     You are an ELITE AI STRATEGIST, NEUROMARKETER, AND VIRAL CONTENT SCRIPTWRITER. 
@@ -92,12 +105,13 @@ export async function generateScript(
   locale: string = 'en',
   apiKey?: string,
   brandDna?: any,
-  trizMatrix?: string
+  trizMatrix?: string,
+  systemPromptBase?: string
 ) {
   const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
   const anthropic = new Anthropic({ apiKey: authKey });
   
-  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
@@ -180,12 +194,13 @@ export async function refineScript(
   digitalShadow: string, 
   locale: string = 'en',
   apiKey?: string,
-  brandDna?: any
+  brandDna?: any,
+  systemPromptBase?: string
 ) {
   const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
   const anthropic = new Anthropic({ apiKey: authKey });
   
-  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `

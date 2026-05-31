@@ -138,10 +138,7 @@ export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en') {
 // Default export instance for compatibility
 export const model = getModel('fast');
 
-/**
- * Orchestrates the "Digital Shadow" prompt construction with Brand DNA and Content Lego support
- */
-export function getSystemPrompt(digitalShadow: string, locale: string = 'en', brandDna?: any) {
+export function getSystemPrompt(digitalShadow: string, locale: string = 'en', brandDna?: any, systemPromptBase?: string) {
   const languageName = locale === 'ru' ? 'Russian' : 'English';
   
   const persona = digitalShadow && digitalShadow.trim() !== "" 
@@ -152,6 +149,19 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
 
   const industry = brandDna?.industry || "Marketing & Content Production";
   const knowledgeBase = brandDna?.knowledgeBase ? JSON.stringify(brandDna.knowledgeBase) : "Standard viral patterns";
+
+  if (systemPromptBase && systemPromptBase.trim() !== "") {
+    return `
+      ${systemPromptBase}
+
+      USER BRAND DNA & CONTEXT:
+      - Industry: ${industry}
+      - Brand/User DNA: ${persona}
+      - Deep Knowledge Base: ${knowledgeBase}
+      
+      CRITICAL: Output must be valid JSON in the exact structure requested by the user prompt.
+    `;
+  }
 
   return `
     You are an ELITE AI STRATEGIST, NEUROMARKETER, AND VIRAL CONTENT SCRIPTWRITER. 
@@ -186,9 +196,9 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
 }
 
 
-export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string, brandDna?: any, hook?: string, role?: string, trizMatrix?: string) {
+export async function generateScript(coreIdea: string, digitalShadow: string, locale: string = 'en', apiKey?: string, brandDna?: any, hook?: string, role?: string, trizMatrix?: string, systemPromptBase?: string) {
   if (IS_GROQ_OVERRIDE) {
-    return groq.generateScript(coreIdea, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna, trizMatrix);
+    return groq.generateScript(coreIdea, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna, trizMatrix, systemPromptBase);
   }
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
@@ -198,7 +208,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
       }) 
     : model;
 
-  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
@@ -360,10 +370,11 @@ export async function refineScript(
   digitalShadow: string, 
   locale: string = 'en',
   apiKey?: string,
-  brandDna?: any
+  brandDna?: any,
+  systemPromptBase?: string
 ) {
   if (IS_GROQ_OVERRIDE) {
-    return groq.refineScript(currentScript, instruction, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna);
+    return groq.refineScript(currentScript, instruction, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna, systemPromptBase);
   }
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   const targetModel = apiKey 
@@ -373,7 +384,7 @@ export async function refineScript(
       }) 
     : model;
 
-  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
 
   const userPrompt = `
     EXISTING SCRIPT:

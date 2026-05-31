@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { TrendingUp, Bookmark, Loader2, Sparkles, Dna, X, TrendingDown, Target } from 'lucide-react';
+import { TrendingUp, Bookmark, Loader2, Sparkles, Dna, X, TrendingDown, Target, RefreshCw } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
 import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
@@ -176,6 +176,22 @@ export default function IdeasPage() {
     }
   };
 
+  const handleRegenerateMatrix = async () => {
+    const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : {} as any;
+    if (!globalObj.confirm?.(locale === 'ru' ? 'Вы уверены, что хотите полностью очистить текущую матрицу и сгенерировать новые идеи с нуля?' : 'Are you sure you want to clear the current matrix and generate new ideas from scratch?')) return;
+    try {
+      setSynthesisLoading(true);
+      await fetch('/api/ideas/reset', { method: 'DELETE' });
+      const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+      if (win) {
+        win.location.reload();
+      }
+    } catch (err) {
+      console.error('Failed to regenerate matrix:', err);
+      setSynthesisLoading(false);
+    }
+  };
+
   const tabs = [
     { id: 'new', label: t('tabFeed') || 'Discover', icon: <TrendingUp className="w-3 h-3" /> },
     { id: 'archived', label: t('tabSaved') || 'Library', icon: <Bookmark className="w-3 h-3" /> },
@@ -190,19 +206,29 @@ export default function IdeasPage() {
             {activeTab === 'new' 
               ? (locale === 'ru' ? 'ИНСАЙТЫ' : 'INSIGHTS') 
               : activeTab === 'archived'
-              ? (locale === 'ru' ? 'БИБЛИОТЕКА' : 'LIBRARY')
+              ? (locale === 'ru' ? 'СОХРАНЕННЫЕ' : 'SAVED')
               : (locale === 'ru' ? 'ОТРАБОТАННЫЕ' : 'SPENT IDEAS')}
           </h1>
           {isDnaComplete && activeTab === 'new' && (
-            <div className="flex items-center gap-2">
+            <div className="flex flex-col gap-2 items-end">
+              <div className="flex items-center gap-2">
+                <button 
+                  onClick={() => setShowDnaEditor(!showDnaEditor)}
+                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-purple-400 hover:border-purple-500/30 transition-all text-[9px] font-black uppercase tracking-widest"
+                >
+                  <Dna size={14} className={showDnaEditor ? "text-purple-400 animate-pulse" : ""} />
+                  {showDnaEditor ? (locale === 'ru' ? 'Скрыть ДНК' : 'Hide DNA') : (locale === 'ru' ? 'Настроить ДНК' : 'Tune DNA')}
+                </button>
+                <InfoTooltip content={locale === 'ru' ? "Обновите ДНК для точности ИИ" : "Update DNA for AI accuracy"} />
+              </div>
               <button 
-                onClick={() => setShowDnaEditor(!showDnaEditor)}
-                className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-purple-400 hover:border-purple-500/30 transition-all text-[9px] font-black uppercase tracking-widest"
+                onClick={handleRegenerateMatrix}
+                disabled={synthesisLoading}
+                className="flex items-center gap-2 px-4 py-1.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400/80 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
               >
-                <Dna size={14} className={showDnaEditor ? "text-purple-400 animate-pulse" : ""} />
-                {showDnaEditor ? (locale === 'ru' ? 'Скрыть ДНК' : 'Hide DNA') : (locale === 'ru' ? 'Настроить ДНК' : 'Tune DNA')}
+                <RefreshCw size={12} className={synthesisLoading ? "animate-spin" : ""} />
+                {synthesisLoading ? (locale === 'ru' ? 'Очистка...' : 'Clearing...') : (locale === 'ru' ? 'Сгенерировать новый контент' : 'Regenerate all content')}
               </button>
-              <InfoTooltip content={locale === 'ru' ? "Обновите ДНК для точности ИИ" : "Update DNA for AI accuracy"} />
             </div>
           )}
         </div>

@@ -60,6 +60,12 @@ export default function ProfilePage() {
   const [expandedPreview, setExpandedPreview] = useState(false);
   const [isResettingMatrix, setIsResettingMatrix] = useState(false);
   
+  // Promo code states
+  const [promoCode, setPromoCode] = useState('');
+  const [redeemingPromo, setRedeemingPromo] = useState(false);
+  const [promoError, setPromoError] = useState<string | null>(null);
+  const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
+  
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyBrandInputRef = useRef<HTMLInputElement>(null);
 
@@ -100,7 +106,10 @@ export default function ProfilePage() {
   const handleLogout = async () => {
     try {
       await supabase.auth.signOut();
-      router.push('/auth');
+      const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : {} as any;
+      if (globalObj.window) {
+        globalObj.window.location.href = '/auth'; // Force hard reload to clear frontend state/stores
+      }
     } catch (err) {
       console.error('Logout failed:', err);
     }
@@ -326,6 +335,48 @@ export default function ProfilePage() {
       );
     } finally {
       setIsResettingMatrix(false);
+    }
+  };
+
+  const handleRedeemPromo = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!promoCode.trim()) return;
+
+    setRedeemingPromo(true);
+    setPromoError(null);
+    setPromoSuccess(null);
+
+    try {
+      const res = await fetch('/api/billing/promo', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ code: promoCode.trim() })
+      });
+
+      const data = await res.json();
+
+      if (!res.ok) {
+        throw new Error(data.error || (locale === 'ru' ? 'Ошибка активации' : 'Activation failed'));
+      }
+
+      setPromoSuccess(locale === 'ru' 
+        ? `Успешно! Получено +${data.creditsAdded} CR, уровень доступа: ${data.tier.toUpperCase()}`
+        : `Success! Received +${data.creditsAdded} CR, tier: ${data.tier.toUpperCase()}`
+      );
+      setPromoCode('');
+
+      // Update local profile state
+      setProfile(prev => prev ? {
+        ...prev,
+        credits_balance: data.newBalance,
+        tier: data.tier,
+        subscription_status: 'active'
+      } : null);
+
+    } catch (err: any) {
+      setPromoError(err.message || 'Error');
+    } finally {
+      setRedeemingPromo(false);
     }
   };
 
@@ -819,6 +870,62 @@ export default function ProfilePage() {
             )}
           </div>
         )}
+      </motion.div>
+
+      {/* --- PROMO CODE REDEMPTION WIDGET --- */}
+      <motion.div
+        variants={itemVariants as any}
+        className="mx-4 p-6 rounded-[2rem] bg-[#0c0c14]/80 border border-white/5 backdrop-blur-xl relative overflow-hidden"
+      >
+        <div className="absolute top-0 right-0 p-4 opacity-5 pointer-events-none">
+          <Sparkles size={100} className="text-purple-400" />
+        </div>
+
+        <div className="flex items-center gap-2 mb-4">
+          <Sparkles className="text-yellow-400" size={16} />
+          <h3 className="text-sm font-black uppercase tracking-wider text-white">
+            {locale === 'ru' ? 'Активация промокода' : 'Promo Code Activation'}
+          </h3>
+        </div>
+
+        <form onSubmit={handleRedeemPromo} className="space-y-3">
+          <p className="text-[10px] text-white/40 leading-relaxed uppercase tracking-wider font-bold">
+            {locale === 'ru' 
+              ? 'Введите промокод для активации пакета на месяц и начисления дополнительных кредитов.'
+              : 'Enter promo code to activate a monthly package and credit extra balance.'}
+          </p>
+
+          <div className="flex gap-2">
+            <input
+              type="text"
+              value={promoCode}
+              onChange={(e: any) => setPromoCode(e.target.value)}
+              placeholder={locale === 'ru' ? 'НАПРИМЕР: CREATOR100, PRO500' : 'E.G. CREATOR100, PRO500'}
+              disabled={redeemingPromo}
+              className="flex-1 bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-[11px] text-white focus:border-purple-500/50 outline-none transition-all uppercase placeholder:text-white/20 font-mono tracking-widest"
+            />
+            <button
+              type="submit"
+              disabled={redeemingPromo || !promoCode.trim()}
+              className="px-6 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5 disabled:opacity-30"
+            >
+              {redeemingPromo ? <Loader2 className="animate-spin" size={12} /> : '⚡'}
+              {locale === 'ru' ? 'АКТИВИРОВАТЬ' : 'REDEEM'}
+            </button>
+          </div>
+
+          {promoError && (
+            <p className="text-red-400 text-[10px] font-bold mt-1 uppercase tracking-wider">
+              ⚠️ {promoError}
+            </p>
+          )}
+
+          {promoSuccess && (
+            <p className="text-green-400 text-[10px] font-bold mt-1 uppercase tracking-wider">
+              ✅ {promoSuccess}
+            </p>
+          )}
+        </form>
       </motion.div>
 
       {/* Main Settings List */}

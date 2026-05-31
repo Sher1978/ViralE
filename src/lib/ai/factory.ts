@@ -18,6 +18,7 @@ export interface GenerationOptions {
   };
   hook?: string;
   role?: string;
+  systemPromptBase?: string;
 }
 
 // 🧠 Dynamic TRIZ 9-Screen Matrix Generator Step
@@ -108,6 +109,18 @@ export async function generateScript(
   options: GenerationOptions = {}
 ) {
   const { engine = 'groq', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna, hook, role } = options;
+  
+  let systemPromptBase = options.systemPromptBase;
+  if (!systemPromptBase) {
+    try {
+      const promptPath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', 'General_script.md');
+      if (fs.existsSync(promptPath)) {
+        systemPromptBase = fs.readFileSync(promptPath, 'utf-8');
+      }
+    } catch (err) {
+      console.warn('[Factory] Failed to read General_script.md', err);
+    }
+  }
  
   // 1. Execute Step 1: Run TRIZ Marketing Matrix Analysis (with dynamic fallback engines support)
   const trizMatrix = await generateTrizMatrix(coreIdea, digitalShadow, locale, geminiApiKey, anthropicApiKey, groqApiKey);
@@ -116,12 +129,12 @@ export async function generateScript(
   switch (engine) {
     case 'claude':
     case 'claude-byok':
-      return anthropic.generateScript(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, trizMatrix);
+      return anthropic.generateScript(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, trizMatrix, systemPromptBase);
     case 'groq':
-      return groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, trizMatrix);
+      return groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, trizMatrix, systemPromptBase);
     case 'gemini':
     default:
-      return gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role, trizMatrix);
+      return gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role, trizMatrix, systemPromptBase);
   }
 }
 
@@ -133,14 +146,26 @@ export async function refineScript(
 ) {
   const { engine = 'groq', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna } = options;
 
+  let systemPromptBase = options.systemPromptBase;
+  if (!systemPromptBase) {
+    try {
+      const promptPath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', 'General_script.md');
+      if (fs.existsSync(promptPath)) {
+        systemPromptBase = fs.readFileSync(promptPath, 'utf-8');
+      }
+    } catch (err) {
+      console.warn('[Factory] Failed to read General_script.md', err);
+    }
+  }
+
   switch (engine) {
     case 'claude':
     case 'claude-byok':
-      return anthropic.refineScript(currentScript, instruction, digitalShadow, locale, anthropicApiKey, brandDna);
+      return anthropic.refineScript(currentScript, instruction, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
     case 'groq':
-      return groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna);
+      return groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
     case 'gemini':
     default:
-      return gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna);
+      return gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
   }
 }

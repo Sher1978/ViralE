@@ -37,12 +37,13 @@ export async function generateScript(
   locale: string = 'en',
   apiKey?: string,
   brandDna?: any,
-  trizMatrix?: string
+  trizMatrix?: string,
+  systemPromptBase?: string
 ) {
   const authKey = apiKey || process.env.GROQ_API_KEY || "";
   if (!authKey) throw new Error("Groq API key not configured");
 
-  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
@@ -126,12 +127,13 @@ export async function refineScript(
   digitalShadow: string, 
   locale: string = 'en',
   apiKey?: string,
-  brandDna?: any
+  brandDna?: any,
+  systemPromptBase?: string
 ) {
   const authKey = apiKey || process.env.GROQ_API_KEY || "";
   if (!authKey) throw new Error("Groq API key not configured");
 
-  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
