@@ -659,8 +659,9 @@ export default function LandingV2Page() {
             <div className="space-y-6">
                <h5 className="text-[10px] font-black uppercase tracking-[0.4em] text-white/60">LEGAL</h5>
                <ul className="space-y-4">
-                  <li><Link href="#" className="text-sm font-medium text-white/40 hover:text-sherlock-gold transition-colors">Privacy</Link></li>
-                  <li><Link href="#" className="text-sm font-medium text-white/40 hover:text-sherlock-gold transition-colors">Terms</Link></li>
+                  <li><Link href="/privacy" className="text-sm font-medium text-white/40 hover:text-sherlock-gold transition-colors">Privacy Policy</Link></li>
+                  <li><Link href="/terms" className="text-sm font-medium text-white/40 hover:text-sherlock-gold transition-colors">Terms of Service</Link></li>
+                  <li><Link href="/refund" className="text-sm font-medium text-white/40 hover:text-sherlock-gold transition-colors">Refund Policy</Link></li>
                </ul>
             </div>
           </div>
