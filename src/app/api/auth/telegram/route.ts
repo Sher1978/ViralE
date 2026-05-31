@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
+import { cookies } from 'next/headers';
 
 async function handleTelegramAuth(userData: any, hash: string) {
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
@@ -87,6 +88,7 @@ export async function POST(request: Request) {
   }
 }
 
+
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
   const hash = searchParams.get('hash');
@@ -95,9 +97,12 @@ export async function GET(request: Request) {
   // Build the callback URL with all parameters
   const callbackUrl = new URL(request.url);
   
-  // Detect locale from path or default to en
+  // Detect locale from cookie or path, defaulting to en
+  const cookieStore = await cookies();
+  const cookieLocale = cookieStore.get('NEXT_LOCALE')?.value;
   const pathParts = new URL(request.url).pathname.split('/');
-  const locale = pathParts.find(p => p === 'ru' || p === 'en') || 'en';
+  const pathLocale = pathParts.find(p => p === 'ru' || p === 'en');
+  const locale = cookieLocale === 'ru' ? 'ru' : (pathLocale || 'en');
   
   callbackUrl.pathname = `/${locale}/auth/telegram/callback`;
   

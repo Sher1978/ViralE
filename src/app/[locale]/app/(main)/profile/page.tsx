@@ -323,6 +323,15 @@ export default function ProfilePage() {
           sub: locale === 'ru' ? 'Текущий: Русский' : 'Current: English', 
           onClick: () => {
             const nextLocale = locale === 'ru' ? 'en' : 'ru';
+            
+            const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+            if (globalObj && typeof globalObj.document !== 'undefined') {
+              globalObj.document.cookie = `NEXT_LOCALE=${nextLocale}; path=/; max-age=31536000; SameSite=Lax`;
+            }
+            if (globalObj && typeof globalObj.window !== 'undefined') {
+              globalObj.window.localStorage.setItem('NEXT_LOCALE', nextLocale);
+            }
+            
             router.replace(pathname, { locale: nextLocale });
           }, 
           accent: '#00FFCC' 

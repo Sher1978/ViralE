@@ -16,8 +16,17 @@ export default function LoginButtons() {
   const handleGoogleLogin = async () => {
     setIsLoading('google');
     try {
+      const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+      let activeLocale = locale;
+      if (globalObj && globalObj.window) {
+        const storedLocale = globalObj.window.localStorage.getItem('NEXT_LOCALE');
+        if (storedLocale === 'en' || storedLocale === 'ru') {
+          activeLocale = storedLocale;
+        }
+      }
+      
       const redirectPath = next.startsWith('/') ? next : `/${next}`;
-      const localizedNext = `/${locale}${redirectPath}`;
+      const localizedNext = activeLocale === 'ru' ? `/ru${redirectPath}` : redirectPath;
       
       const win = (globalThis as any).window;
       const { error } = await supabase.auth.signInWithOAuth({
