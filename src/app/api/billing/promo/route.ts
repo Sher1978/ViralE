@@ -1,9 +1,18 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { supabase, supabaseAdmin } from '@/lib/supabase';
+import { getAuthContext } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(req: NextRequest) {
   try {
-    const { data: { user } } = await supabase.auth.getUser();
+    let user;
+    try {
+      const authCtx = await getAuthContext();
+      user = authCtx.user;
+    } catch (authErr) {
+      console.warn('[Promo API] Auth context failed:', authErr);
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    }
+
     if (!user) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
@@ -70,7 +79,6 @@ export async function POST(req: NextRequest) {
 
     if (updatePromoErr) {
       console.error('[Promo API] Failed to mark promo code as used:', updatePromoErr);
-      // Note: We don't rollback since SQL is non-transactional here, but logging it is critical.
     }
 
     return NextResponse.json({

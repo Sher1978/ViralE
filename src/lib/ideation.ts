@@ -125,6 +125,7 @@ export async function generateDailyIdeas(
   const brandContextBlock = `--- ФАЙЛ: Brand_DNA.md (УНИКАЛЬНЫЙ ДОКУМЕНТ ПОЛЬЗОВАТЕЛЯ) ---\n${dnaContext}`;
   const strategicContextBlock = `STRATEGIC CONTEXT: ${digitalShadow}`;
 
+  const randomSeed = Math.floor(Math.random() * 1000000);
   const prompt = `
     You are the "Viral Engine" Strategic Consultant.
     
@@ -137,7 +138,11 @@ export async function generateDailyIdeas(
     
     ${strategicContextBlock}
 
+    RANDOM SEED (Force Unique Angles): ${randomSeed}
+    TIMESTAMP: ${new Date().toISOString()}
+
     TASK: Generate 5 high-retention video topic ideas for the category: "${targetCategory}".
+    IMPORTANT: Ensure these ideas are completely fresh, unique, creative, and different from any previous generations. Avoid repeating standard hooks or titles. Change the angles, perspectives, and examples dynamically!
     
     CONTENT STRATEGY (Ben Hunt's Ladder):
     Each category matches a stage in the awareness ladder. 
