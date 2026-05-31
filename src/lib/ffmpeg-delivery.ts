@@ -36,10 +36,6 @@ export async function getFFmpeg(): Promise<any> {
       const { toBlobURL } = await runtimeImport(localUtil);
       const instance = new FFmpeg();
 
-      const coreURL = await toBlobURL(`${base}/ffmpeg/ffmpeg-core.js`, 'text/javascript');
-      const wasmURL = await toBlobURL(`${base}/ffmpeg/ffmpeg-core.wasm`, 'application/wasm');
-      const localWorker = `${base}/ffmpeg/ffmpeg-esm/worker.js`;
-
       // Helper function to race loading against a timeout to prevent hanging on mobile/slow networks
       const loadWithTimeout = (inst: any, config: any, ms: number) => {
         return Promise.race([

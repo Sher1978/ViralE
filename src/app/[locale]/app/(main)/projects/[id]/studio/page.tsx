@@ -919,7 +919,7 @@ export default function StudioPage() {
                     setShowFaceless(false);
                     router.push(`/app/projects/new/script?projectId=${projectId}`);
                   }}
-                  onComplete={(videoBlob, transcriptData) => {
+                  onComplete={(videoBlob, transcriptData, scenesList) => {
                     const localUrl = URL.createObjectURL(videoBlob);
                     
                     // Persist generated faceless video to IndexedDB so it's loaded in the montage editor
@@ -929,25 +929,50 @@ export default function StudioPage() {
                     
                     setLastRecordingUrl(localUrl);
                     
-                    setManifest(prev => prev ? {
-                      ...prev,
-                      videoUrl: localUrl,
-                      faceless_imported: true,
-                      transcript: transcriptData, // Use scene-based timings as initial transcript
-                      segments: prev.segments?.map((s, i) =>
-                        i === 0 ? { ...s, assetUrl: localUrl, type: 'user_recording' } : s
-                      ) || prev.segments,
-                    } : prev);
+                    setManifest(prev => {
+                      if (!prev) return prev;
+                      
+                      const updatedSegments = prev.segments?.map((s, i) => {
+                        const scene = scenesList?.[i];
+                        return {
+                          ...s,
+                          assetUrl: scene?.imageUrl || s.assetUrl,
+                          prompt: scene?.imagePrompt || s.prompt,
+                          scriptText: scene?.text || s.scriptText,
+                          status: (scene?.imageUrl ? 'completed' : s.status) as any,
+                        };
+                      }) || prev.segments;
+
+                      return {
+                        ...prev,
+                        videoUrl: localUrl,
+                        faceless_imported: true,
+                        transcript: transcriptData, // Use scene-based timings as initial transcript
+                        segments: updatedSegments,
+                      };
+                    });
                     setShowFaceless(false);
                     renderService.uploadMedia(projectId, videoBlob, 'video').then(res => {
                       if (res.publicUrl) {
                         setManifest(prev => {
                           if (!prev) return prev;
+                          
+                          const updatedSegments = prev.segments?.map((s, i) => {
+                            const scene = scenesList?.[i];
+                            return {
+                              ...s,
+                              assetUrl: scene?.imageUrl || s.assetUrl,
+                              prompt: scene?.imagePrompt || s.prompt,
+                              scriptText: scene?.text || s.scriptText,
+                              status: (scene?.imageUrl ? 'completed' : s.status) as any,
+                            };
+                          }) || prev.segments;
+
                           const next = {
                             ...prev,
                             videoUrl: res.publicUrl,
                             faceless_imported: true,
-                            segments: prev.segments?.map((s, i) => i === 0 ? { ...s, assetUrl: res.publicUrl } : s) || prev.segments,
+                            segments: updatedSegments,
                           };
                           projectService.updateLatestVersionManifest(projectId, next);
                           return next;

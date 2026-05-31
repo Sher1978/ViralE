@@ -34,7 +34,7 @@ interface Scene {
 interface FacelessStudioProps {
   manifest: ProductionManifest | null;
   onBack: () => void;
-  onComplete: (videoBlob: Blob, transcript?: any[]) => void;
+  onComplete: (videoBlob: Blob, transcript?: any[], scenes?: Scene[]) => void;
   onJumpToConcept?: () => void;
   projectId?: string;
   visualStyle?: string;
@@ -1467,9 +1467,8 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                     >
                       <ArrowLeft size={14} /> Редактор
                     </button>
-
                     <button
-                      onClick={() => onComplete(finalVideoBlob!, scenes.map(s => ({ text: s.text, start: s.start, end: s.end })))}
+                      onClick={() => onComplete(finalVideoBlob!, scenes.map(s => ({ text: s.text, start: s.start, end: s.end })), scenes)}
 
                       className="flex-1 py-4 rounded-2xl bg-purple-600 text-white font-black italic uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
