@@ -31,10 +31,13 @@ const nextConfig: NextConfig = {
       },
       // COOP/COEP headers — required for SharedArrayBuffer (multithreaded FFmpeg)
       {
-        source: '/:path*',
+        source: '/(.*)', // Изменено с /:path* для гарантированного покрытия всего
         headers: [
           { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-          { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
+          { key: 'Cross-Origin-Embedder-Policy', value: 'require-corp' },
+          // Добавляем разрешение на загрузку ресурсов с других доменов, 
+          // иначе Supabase/CDN картинки перестанут грузиться
+          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
         ],
       },
     ];
