@@ -201,6 +201,7 @@ export default function ProjectsPage() {
               <div className="absolute inset-0 z-0">
                 <img 
                   src={hub.image} 
+                  crossOrigin="anonymous"
                   className="w-full h-full object-cover opacity-60 grayscale group-hover:grayscale-0 transition-all duration-1000 group-hover:scale-105" 
                   alt="" 
                 />

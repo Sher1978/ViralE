@@ -258,6 +258,7 @@ const BRollPromptEditorModal: React.FC<BRollPromptEditorModalProps> = ({
                         <img
                           src={item.previewUrl}
                           alt={item.title}
+                          crossOrigin="anonymous"
                           className="absolute inset-0 w-full h-full object-cover"
                           loading="lazy"
                         />

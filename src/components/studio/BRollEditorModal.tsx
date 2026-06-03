@@ -298,7 +298,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
                       style={{ aspectRatio: '9/16' }}
                     >
                       {item.previewUrl && (
-                        <img src={item.previewUrl} alt="" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
+                        <img src={item.previewUrl} alt="" crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover" loading="lazy" />
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 via-transparent to-transparent" />
                       <div className="absolute inset-0 flex items-center justify-center opacity-0 hover:opacity-100 transition-opacity">

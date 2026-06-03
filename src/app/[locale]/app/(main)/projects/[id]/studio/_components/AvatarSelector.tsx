@@ -269,7 +269,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                                  selectedId === avatar.id ? 'border-purple-500 shadow-lg shadow-purple-500/20' : 'border-white/5 hover:border-white/20'
                                }`}
                              >
-                                <img src={avatar.url} className="w-full h-full object-cover" alt={avatar.label} />
+                                <img src={avatar.url} crossOrigin="anonymous" className="w-full h-full object-cover" alt={avatar.label} />
                                 <div className={`absolute inset-0 bg-purple-500/20 transition-opacity ${selectedId === avatar.id ? 'opacity-100' : 'opacity-0'}`} />
                                 {selectedId === avatar.id && (
                                    <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white shadow-lg">
@@ -296,7 +296,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                                         selectedId === asset.id ? 'border-purple-500 shadow-lg shadow-purple-500/20' : 'border-white/5 hover:border-white/20'
                                       }`}
                                     >
-                                       <img src={asset.url} className="w-full h-full object-cover" alt="User asset" />
+                                       <img src={asset.url} crossOrigin="anonymous" className="w-full h-full object-cover" alt="User asset" />
                                        {selectedId === asset.id && (
                                           <div className="absolute top-3 right-3 w-6 h-6 rounded-full bg-purple-500 flex items-center justify-center text-white">
                                              <Check size={14} strokeWidth={4} />

@@ -30,7 +30,7 @@ export const AssemblyProgress: React.FC<AssemblyProgressProps> = ({ photoUrl }) 
               <div className="flex items-center gap-6">
                  {/* Source Photo Preview */}
                  <div className="relative w-32 h-32 rounded-3xl overflow-hidden border-2 border-white/20 shadow-2xl">
-                    <img src={photoUrl} className="w-full h-full object-cover" alt="Source" />
+                    <img src={photoUrl} crossOrigin="anonymous" className="w-full h-full object-cover" alt="Source" />
                     <div className="absolute inset-0 bg-purple-500/10" />
                     <motion.div 
                       animate={{ top: ['0%', '100%', '0%'] }}

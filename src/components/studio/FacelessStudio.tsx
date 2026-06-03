@@ -748,14 +748,17 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
 
   const handleDownload = () => {
     if (!finalVideoBlob) return;
-    const url = URL.createObjectURL(finalVideoBlob);
-    const a = document.createElement('a');
+    const doc = typeof globalThis !== 'undefined' ? (globalThis as any).document : null;
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+    if (!doc || !win) return;
+    const url = win.URL.createObjectURL(finalVideoBlob);
+    const a = doc.createElement('a');
     a.href = url;
     a.download = `faceless_${projectId || 'video'}.webm`;
-    document.body.appendChild(a);
+    doc.body.appendChild(a);
     a.click();
-    document.body.removeChild(a);
-    URL.revokeObjectURL(url);
+    doc.body.removeChild(a);
+    win.URL.revokeObjectURL(url);
   };
 
 

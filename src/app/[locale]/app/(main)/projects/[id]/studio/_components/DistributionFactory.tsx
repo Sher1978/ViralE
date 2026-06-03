@@ -1594,6 +1594,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                             <img 
                                               src={url} 
                                               alt={`Slide ${num}`} 
+                                              crossOrigin="anonymous"
                                               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/canvas:scale-105"
                                               loading="lazy"
                                             />
@@ -1917,7 +1918,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                           >
                             {imageResults['banner'] ? (
                               <>
-                                <img src={imageResults['banner']} className="w-full h-full object-cover" />
+                                <img src={imageResults['banner']} crossOrigin="anonymous" className="w-full h-full object-cover" />
                                 {/* TEXT OVERLAY SIMULATION */}
                                 <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center p-6 text-center">
                                   <div className="relative mt-auto mb-16 max-w-[90%] transform -rotate-3 hover:rotate-0 transition-transform duration-300 select-none pointer-events-none">
@@ -2010,7 +2011,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
               const key = `carousel-${lightboxIndex}`;
               const url = imageResults[key];
               if (url) {
-                return <img src={url} className="absolute inset-0 w-full h-full object-cover" alt="Full Slide" />;
+                return <img src={url} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover" alt="Full Slide" />;
               }
               return (
                 <div className="absolute inset-0 bg-slate-950 flex flex-col items-center justify-center p-8 text-center text-white/20">
@@ -2121,7 +2122,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             {/* Banner Image */}
             {imageResults['banner'] ? (
               <>
-                <img src={imageResults['banner']} className="absolute inset-0 w-full h-full object-cover" alt="Full Cover" />
+                <img src={imageResults['banner']} crossOrigin="anonymous" className="absolute inset-0 w-full h-full object-cover" alt="Full Cover" />
                 <div className="absolute inset-0 bg-black/20 flex flex-col items-center justify-center p-8 text-center">
                   <div className="relative mt-auto mb-20 max-w-[90%] transform -rotate-3 transition-transform duration-300">
                     <div 
