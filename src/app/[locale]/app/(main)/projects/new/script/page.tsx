@@ -722,7 +722,7 @@ export default function ScriptLabPage() {
         {/* Cinematic Backdrop for Loading */}
         <div className="absolute inset-0 z-0">
           <img 
-            src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" 
+            src="/cyberpunk_splash.png" 
             className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110"
             alt="Splash Background"
           />
@@ -776,7 +776,7 @@ export default function ScriptLabPage() {
         {/* Cinematic Backdrop for Loading */}
         <div className="absolute inset-0 z-0">
           <img 
-            src="/cyberpunk_alley_integrated_text_banner_1777280603399.png" 
+            src="/cyberpunk_splash.png" 
             className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110"
             alt="Splash Background"
           />
@@ -1150,7 +1150,6 @@ export default function ScriptLabPage() {
 
       {/* Explanation Block */}
       <div className="p-4 sm:p-5 rounded-2xl bg-gradient-to-r from-purple-500/10 to-cyan-500/5 border border-white/10 flex flex-col gap-2 text-white/80 shadow-lg relative overflow-hidden group">
-        <div className="absolute inset-0 bg-[url('https://www.transparenttextures.com/patterns/carbon-fibre.png')] opacity-[0.03] pointer-events-none" />
         <div className="flex items-start gap-3 relative z-10">
           <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center border border-purple-500/30 shrink-0">
             <Cpu className="w-4 h-4 text-purple-400" />
