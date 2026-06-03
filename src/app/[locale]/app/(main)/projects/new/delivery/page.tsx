@@ -468,6 +468,18 @@ function DeliveryPageContent() {
     setRenderStatus('Подготовка движка FFmpeg...');
     setRenderProgress(5);
 
+    // --- HEARTBEAT: slowly increment from 5% to 58% while heavy async ops run ---
+    // This prevents the UI from looking frozen during WASM load + file downloads.
+    let heartbeatStop = false;
+    let heartbeatValue = 5;
+    const heartbeatInterval = setInterval(() => {
+      if (heartbeatStop) { clearInterval(heartbeatInterval); return; }
+      if (heartbeatValue < 58) {
+        heartbeatValue += 1;
+        setRenderProgress(heartbeatValue);
+      }
+    }, 800);
+
     try {
       if (projectId) {
         await projectService.updateProjectStatus(projectId, 'rendering');
@@ -493,6 +505,11 @@ function DeliveryPageContent() {
       const ffmpeg = await getFFmpegWithTimeout();
       ffmpegRef.current = ffmpeg;
 
+      // Stop heartbeat — FFmpeg is loaded, now we drive progress manually
+      heartbeatStop = true;
+      clearInterval(heartbeatInterval);
+      setRenderProgress(20);
+
       const execWithTimeout = async (args: string[], ms: number = 180000) => {
         let timer: any;
         const timeoutPromise = new Promise<never>((_, reject) => {
@@ -514,9 +531,12 @@ function DeliveryPageContent() {
         }
       });
       
+      // Map FFmpeg internal progress (0.0–1.0) to the 60–98% UI range.
+      // FFmpeg reports progress ONLY during exec() — before that we drive it manually.
       ffmpeg.on('progress', ({ progress }: any) => {
         if (typeof progress !== 'number' || isNaN(progress) || progress < 0) return;
-        const p = Math.max(0, Math.min(98, 50 + Math.round(progress * 48)));
+        // Clamp to 60–98 so the bar never jumps backward or overshoots
+        const p = Math.max(60, Math.min(98, 60 + Math.round(progress * 38)));
         setRenderProgress(p);
       });
 
@@ -544,9 +564,11 @@ function DeliveryPageContent() {
       setPreviewUrl(aRollUrl);
 
       setRenderStatus('Скачивание основного видео...');
+      setRenderProgress(25);
       const fetchFile = await getFetchFile();
       const aRollData = await fetchFile(aRollUrl);
       await ffmpeg.writeFile('input_aroll.mp4', aRollData);
+      setRenderProgress(35);
 
       const brollClipsRaw = manifest?.brollClips || [];
       const brollFiles: Array<{ name: string; clip: any }> = [];
@@ -572,6 +594,7 @@ function DeliveryPageContent() {
       }
 
       setRenderStatus('Подготовка субтитров и шрифтов...');
+      setRenderProgress(40);
       try {
         const fontData = await fetchFile('/fonts/Roboto-Bold.ttf');
         await ffmpeg.writeFile('font.ttf', fontData);
@@ -610,7 +633,7 @@ function DeliveryPageContent() {
       console.log('[Delivery] Subtitle clips found:', subs.length, 'Enabled:', shouldShowSubtitles);
 
       setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
-      setRenderProgress(60);
+      setRenderProgress(59); // FFmpeg progress events will take over from here (60–98%)
 
       const hasBrolls = processedBrolls.length > 0;
       let currentInput = 'input_aroll.mp4';
@@ -723,6 +746,10 @@ function DeliveryPageContent() {
       console.error('[Delivery] Client render failed:', err);
       const errMsg = err.message || 'Ошибка рендера FFmpeg';
       
+      // Ensure heartbeat is stopped on error
+      heartbeatStop = true;
+      clearInterval(heartbeatInterval);
+
       // Clean up half-initialized state
       try {
         resetFFmpeg();
