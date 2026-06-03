@@ -3,7 +3,6 @@
 import { useState, useRef, useEffect, useCallback } from 'react';
 import { ProductionManifest } from '@/lib/types/studio';
 import { idb } from '@/lib/idb';
-import { getFFmpeg, getFetchFile } from '@/lib/ffmpeg-delivery';
 import { renderService } from '@/lib/services/renderService';
 
 // --- TYPES ---
@@ -372,37 +371,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
       return new Blob([buffer], { type: 'audio/wav' });
     } catch (err: any) {
       console.warn('[Studio LOG] Attempt 1 (AudioContext) failed or was bypassed. Error:', err?.message || err);
-      console.log('[Studio LOG] Attempt 2: Starting local FFmpeg WASM extraction fallback...');
-      
-      // Attempt 2: FFmpeg WASM (Most Reliable)
-      try {
-        setStageMessage('FFmpeg: инициализация ядра...');
-        const tFfLoad = performance.now();
-        const ffmpeg = await getFFmpeg();
-        console.log('[Studio LOG] FFmpeg WASM instance loaded in', (performance.now() - tFfLoad).toFixed(0), 'ms');
-        
-        const inputName = 'input.mp4';
-        const outputName = 'output.wav';
-        
-        setStageMessage('FFmpeg: загрузка файла в память...');
-        console.log('[Studio LOG] Writing video file to virtual filesystem...');
-        const fetchFile = await getFetchFile();
-        await ffmpeg.writeFile(inputName, await fetchFile(videoBlob));
-        
-        setStageMessage('FFmpeg: конвертация дорожки...');
-        console.log('[Studio LOG] Executing FFmpeg command to extract 16kHz WAV...');
-        const tFfExec = performance.now();
-        await ffmpeg.exec(['-i', inputName, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', outputName]);
-        console.log('[Studio LOG] FFmpeg execution completed in', (performance.now() - tFfExec).toFixed(0), 'ms');
-        
-        const data = await ffmpeg.readFile(outputName);
-        const resultBlob = new Blob([data as any], { type: 'audio/wav' });
-        console.log('[Studio LOG] Attempt 2 (FFmpeg WASM) successful! Result size:', (resultBlob.size / 1024).toFixed(2), 'KB');
-        return resultBlob;
-      } catch (ffErr: any) {
-        console.error('[Studio LOG] Attempt 2 (FFmpeg WASM) failed. Error:', ffErr?.message || ffErr);
-        throw ffErr;
-      }
+      throw err;
     }
   };
 

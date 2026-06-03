@@ -29,19 +29,6 @@ const nextConfig: NextConfig = {
           { key: 'Cache-Control', value: 'public, max-age=31536000, immutable' },
         ],
       },
-      // COOP/COEP headers — required for SharedArrayBuffer (multithreaded FFmpeg WASM)
-      // IMPORTANT: Use 'credentialless' (NOT 'require-corp') — require-corp breaks Safari/iOS:
-      // it blocks fetch() of blob: URLs that the Studio transcription pipeline uses for
-      // decodeAudioData, causing fallback to FFmpeg WASM and showing 'FFmpeg: init core...' in editor.
-      // 'credentialless' still enables SharedArrayBuffer for Delivery page FFmpeg render.
-      {
-        source: '/(.*)',
-        headers: [
-          { key: 'Cross-Origin-Opener-Policy', value: 'same-origin' },
-          { key: 'Cross-Origin-Embedder-Policy', value: 'credentialless' },
-          { key: 'Cross-Origin-Resource-Policy', value: 'cross-origin' },
-        ],
-      },
     ];
   },
 
