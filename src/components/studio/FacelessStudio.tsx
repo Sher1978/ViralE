@@ -815,6 +815,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                 <img
                   key={activeScene.id}
                   src={activeScene.imageUrl}
+                  crossOrigin="anonymous"
                   className="w-full h-full object-cover animate-in fade-in duration-700"
                   alt="Scene Preview"
                 />
@@ -1022,7 +1023,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                           style={{ width: `${Math.max(70, (s.end - s.start) * 10)}px` }}
                         >
                           {s.imageUrl ? (
-                            <img src={s.imageUrl} className="w-full h-full object-cover animate-in fade-in duration-300" alt="" />
+                            <img src={s.imageUrl} crossOrigin="anonymous" className="w-full h-full object-cover animate-in fade-in duration-300" alt="" />
                           ) : s.generating ? (
                             <div className="w-full h-full flex flex-col items-center justify-center bg-purple-500/5 animate-pulse">
                               <Loader2 size={8} className="animate-spin text-purple-400" />
@@ -1161,7 +1162,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                     {/* Preview of selected scene */}
                     <div className="relative w-full aspect-[9/16] max-h-48 rounded-2xl overflow-hidden bg-[#0a0a0f] border border-white/8">
                       {selectedScene.imageUrl ? (
-                        <img src={selectedScene.imageUrl} className="w-full h-full object-cover" alt="" />
+                        <img src={selectedScene.imageUrl} crossOrigin="anonymous" className="w-full h-full object-cover" alt="" />
                       ) : selectedScene.generating ? (
                         <div className="w-full h-full flex items-center justify-center">
                           <Loader2 size={24} className="animate-spin text-purple-400" />
@@ -1394,7 +1395,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             {/* ── BACKGROUND LAYER ── */}
             {renderBackgroundUrl && (
               <div className="absolute inset-0 z-0">
-                <img src={renderBackgroundUrl} className="w-full h-full object-cover blur-[80px] opacity-40 scale-125" alt="" />
+                <img src={renderBackgroundUrl} crossOrigin="anonymous" className="w-full h-full object-cover blur-[80px] opacity-40 scale-125" alt="" />
                 <div className="absolute inset-0 bg-gradient-to-b from-[#050508]/60 via-[#050508]/90 to-[#050508]" />
               </div>
             )}
