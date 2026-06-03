@@ -6,7 +6,7 @@ import {
   Mic, Image as ImageIcon, Film, ChevronRight, Play, Pause,
   RefreshCw, Check, ArrowLeft, ArrowRight, Loader2,
   Sparkles, X, RotateCw, Edit3, Brain,
-  Clock, Layers, Wand2, Zap, Star, Plus, Upload, Cpu, FileText
+  Clock, Layers, Wand2, Zap, Star, Plus, Upload, Cpu, FileText, Download
 } from 'lucide-react';
 
 
@@ -746,6 +746,18 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     }
   };
 
+  const handleDownload = () => {
+    if (!finalVideoBlob) return;
+    const url = URL.createObjectURL(finalVideoBlob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = `faceless_${projectId || 'video'}.webm`;
+    document.body.appendChild(a);
+    a.click();
+    document.body.removeChild(a);
+    URL.revokeObjectURL(url);
+  };
+
 
   // ── Bottom Sheet height ──
   const SHEET_PEEK = 70; // Sleek minimized tab bar
@@ -1458,22 +1470,30 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
 
                   </div>
                   
-                  <div className="flex gap-3 max-w-[280px] mx-auto">
-                    <button
-                      onClick={() => {
-                        setRendered(false);
-                        setActiveStage('editor');
-                      }}
-                      className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/8 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
-                    >
-                      <ArrowLeft size={14} /> Редактор
-                    </button>
-                    <button
-                      onClick={() => onComplete(finalVideoBlob!, scenes.map(s => ({ text: s.text, start: s.start, end: s.end })), scenes)}
+                  <div className="flex flex-col gap-2.5 max-w-[280px] mx-auto w-full">
+                    <div className="flex gap-2">
+                      <button
+                        onClick={() => {
+                          setRendered(false);
+                          setActiveStage('editor');
+                        }}
+                        className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/8 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                      >
+                        <ArrowLeft size={14} /> Редактор
+                      </button>
+                      <button
+                        onClick={() => onComplete(finalVideoBlob!, scenes.map(s => ({ text: s.text, start: s.start, end: s.end })), scenes)}
 
-                      className="flex-1 py-4 rounded-2xl bg-purple-600 text-white font-black italic uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                        className="flex-1 py-4 rounded-2xl bg-purple-600 text-white font-black italic uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                      >
+                        В Монтажку <ArrowRight size={14} />
+                      </button>
+                    </div>
+                    <button
+                      onClick={handleDownload}
+                      className="w-full py-4 rounded-2xl bg-emerald-600 text-white font-black italic uppercase text-[10px] tracking-widest shadow-lg shadow-emerald-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                     >
-                      В Монтажку <ArrowRight size={14} />
+                      <Download size={14} /> {locale === 'ru' ? 'Скачать видео' : 'Download Video'}
                     </button>
                   </div>
                 </div>

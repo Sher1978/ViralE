@@ -292,10 +292,6 @@ export default function ScriptLabPage() {
         const topic = searchParams.get('topic');
         if (topic) {
           setTopicInput(topic);
-          if (!hasTriggeredGen.current) {
-            hasTriggeredGen.current = true;
-            handleRestartGeneration(topic);
-          }
         }
         return;
       }
