@@ -14,7 +14,8 @@ import { idb } from '@/lib/idb';
 import { supabase } from '@/lib/supabase';
 import DistributionFactory from '../../[id]/studio/_components/DistributionFactory';
 import { Suspense } from 'react';
-import { getFFmpeg, getFetchFile, resetFFmpeg } from '@/lib/ffmpeg-delivery';
+import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
+import { fetchFile } from '@ffmpeg/util';
 
 function DeliveryPageContent() {
   const t = useTranslations('delivery');
@@ -45,8 +46,6 @@ function DeliveryPageContent() {
   const [shotstackRealStatus, setShotstackRealStatus] = useState<string | null>(null);
   const [showShotstackModal, setShowShotstackModal] = useState(false);
   const [renderMode, setRenderMode] = useState<'shotstack' | 'ffmpeg'>('ffmpeg');
-  const [isFallbackMode, setIsFallbackMode] = useState(false);
-  const [fallbackError, setFallbackError] = useState<string | null>(null);
   const isLaunchingRenderRef = useRef(false);
   const ffmpegRef = useRef<any>(null);
 
@@ -156,77 +155,26 @@ function DeliveryPageContent() {
     }
   }, [version]);
 
-  // Clean up FFmpeg engine when leaving the page to prevent memory leaks and orphaned background threads
-  useEffect(() => {
-    return () => {
-      console.log('[Delivery] Component unmounting, resetting FFmpeg...');
-      try {
-        resetFFmpeg();
-      } catch (err) {
-        console.warn('[Delivery] Error resetting FFmpeg on unmount:', err);
-      }
-    };
-  }, []);
-
   const handleToggleSubtitles = async (checked: boolean) => {
-    if (!version || !projectId) return;
-
-    const confirmMsg = checked 
-      ? (locale === 'ru' 
-          ? 'Вы действительно хотите пересобрать видео с субтитрами? Это перезапустит процесс рендеринга.' 
-          : 'Do you really want to re-render the video with subtitles? This will restart the rendering process.')
-      : (locale === 'ru' 
-          ? 'Вы действительно хотите пересобрать видео без субтитров? Это перезапустит процесс рендеринга.' 
-          : 'Do you really want to re-render the video without subtitles? This will restart the rendering process.');
-
-    const confirmed = (globalThis as any).confirm?.(confirmMsg);
-    if (!confirmed) {
-      return;
-    }
-
     setShowSubtitles(checked);
     addSystemLog(checked ? 'Субтитры включены' : 'Субтитры выключены');
     
-    const updatedManifest = {
-      ...version.script_data as any,
-      showSubtitles: checked
-    };
-    
-    const updatedVersion = {
-      ...version,
-      script_data: updatedManifest
-    };
-
-    // Update local state
-    setVersion(updatedVersion);
-    
-    try {
-      await projectService.updateLatestVersionManifest(projectId, updatedManifest);
-      addSystemLog('Настройки субтитров успешно сохранены в БД.');
+    if (version && projectId) {
+      const updatedManifest = {
+        ...version.script_data as any,
+        showSubtitles: checked
+      };
       
-      // 1. Delete IndexedDB cache
-      addSystemLog('Очистка локального кэша рендеринга...');
+      // Update local state optimistically
+      setVersion(prev => prev ? { ...prev, script_data: updatedManifest } : null);
+      
       try {
-        await idb.delete(`final_render_${projectId}_${version.id}`, 'MediaBuffer');
-      } catch (e) {
-        console.warn('[Delivery] Cache delete failed:', e);
+        await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+        addSystemLog('Настройки субтитров успешно сохранены в БД.');
+      } catch (err: any) {
+        console.error('Failed to update subtitles flag:', err);
+        addSystemLog(`Ошибка сохранения настроек субтитров: ${err.message}`);
       }
-
-      // 2. Reset progress and status states
-      setRenderProgress(0);
-      setRenderStatus('Запуск повторного рендеринга...');
-      addSystemLog('Запуск повторного локального рендеринга...');
-
-      // 3. Reset launching reference and job state to show progress loader
-      isLaunchingRenderRef.current = false;
-      setJob(null);
-      
-      // 4. Trigger re-rendering
-      handleClientRender(updatedVersion);
-      
-    } catch (err: any) {
-      console.error('Failed to update subtitles flag:', err);
-      addSystemLog(`Ошибка сохранения настроек субтитров: ${err.message}`);
     }
   };
 
@@ -260,7 +208,7 @@ function DeliveryPageContent() {
       platform: 'Twitter / X',
       icon: '🐦',
       accent: '#1DA1F2',
-      text: distributionAssets?.deep_content?.threads_fb_text || (scriptData ? `${(typeof scriptData.hook === 'string' ? scriptData.hook : scriptData.hook?.words || '').substring(0, 200)}... #ViralEngine` : ''),
+      text: distributionAssets?.deep_content?.threads_fb_text || (scriptData ? `${scriptData.hook.substring(0, 200)}... #ViralEngine` : ''),
     },
     {
       platform: 'Instagram',
@@ -387,12 +335,19 @@ function DeliveryPageContent() {
         13: { dxIn: -10, dyIn: 0, dxOut: 10, dyOut: 0 },
       };
       
-      // Simplified, rock-solid layout expressions without complex nested frame-by-frame math
-      // This completely eliminates WebAssembly stack overflows and out-of-memory crashes!
-      const alphaExpr = `1`;
-      const xExpr = `${finalX}`;
-      const yExpr1 = `${finalY}`;
-      const yExpr2 = `${finalY + subSize + 15}`;
+      const anim = animMap[subStyleIdx] || animMap[0];
+      const dxIn = Math.round(anim.dxIn * baseScale);
+      const dyIn = Math.round(anim.dyIn * baseScale);
+      const dxOut = Math.round(anim.dxOut * baseScale);
+      const dyOut = Math.round(anim.dyOut * baseScale);
+
+      const progIn = `clip((t-${subStart})/${FADE_DUR}\\,0\\,1)`;
+      const progOut = `clip((t-(${subEnd}-${FADE_DUR}))/${FADE_DUR}\\,0\\,1)`;
+
+      const alphaExpr = `clip((t-${subStart})/${FADE_DUR}\\,0\\,1)*clip((${subEnd}-t)/${FADE_DUR}\\,0\\,1)`;
+      const xExpr = `${finalX} + ${dxIn}*(1-${progIn}) + ${dxOut}*${progOut}`;
+      const yExpr1 = `${finalY} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
+      const yExpr2 = `${finalY + subSize + 15} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
 
       const lineFilters = [];
 
@@ -441,15 +396,6 @@ function DeliveryPageContent() {
   const handleClientRender = async (ver: ProjectVersion) => {
     if (isLaunchingRenderRef.current) return;
     isLaunchingRenderRef.current = true;
-
-    // Terminate any previous orphaned FFmpeg WebAssembly worker to release the lock and free RAM!
-    console.log('[Delivery] Resetting FFmpeg engine before new render...');
-    try {
-      resetFFmpeg();
-    } catch (err) {
-      console.warn('[Delivery] Error resetting FFmpeg:', err);
-    }
-    ffmpegRef.current = null;
     
     // 0. CHECK CACHE FIRST
     try {
@@ -468,75 +414,22 @@ function DeliveryPageContent() {
     setRenderStatus('Подготовка движка FFmpeg...');
     setRenderProgress(5);
 
-    // --- HEARTBEAT: slowly increment from 5% to 58% while heavy async ops run ---
-    // This prevents the UI from looking frozen during WASM load + file downloads.
-    let heartbeatStop = false;
-    let heartbeatValue = 5;
-    const heartbeatInterval = setInterval(() => {
-      if (heartbeatStop) { clearInterval(heartbeatInterval); return; }
-      if (heartbeatValue < 58) {
-        heartbeatValue += 1;
-        setRenderProgress(heartbeatValue);
-      }
-    }, 800);
-
     try {
       if (projectId) {
         await projectService.updateProjectStatus(projectId, 'rendering');
       }
 
       addSystemLog('[System] Инициализация FFmpeg ядра...');
-      setRenderStatus(locale === 'ru' ? 'Загрузка видеоядра FFmpeg WASM (~30MB)...' : 'Loading FFmpeg WASM core (~30MB)...');
-      
-      // Wrap getFFmpeg() with a robust 60 seconds timeout to prevent premature aborts on typical networks
-      const getFFmpegWithTimeout = () => {
-        return Promise.race([
-          getFFmpeg(),
-          new Promise<any>((_, reject) =>
-            setTimeout(() => reject(new Error(
-              locale === 'ru'
-                ? 'Превышено время ожидания загрузки FFmpeg WASM (лимит 60 сек). Переключаемся на серверный рендеринг.'
-                : 'FFmpeg WASM load timed out (60s limit). Switching to server rendering.'
-            )), 60000)
-          )
-        ]);
-      };
-      
-      const ffmpeg = await getFFmpegWithTimeout();
+      const ffmpeg = await getFFmpeg();
       ffmpegRef.current = ffmpeg;
-
-      // Stop heartbeat — FFmpeg is loaded, now we drive progress manually
-      heartbeatStop = true;
-      clearInterval(heartbeatInterval);
-      setRenderProgress(20);
-
-      const execWithTimeout = async (args: string[], ms: number = 180000) => {
-        let timer: any;
-        const timeoutPromise = new Promise<never>((_, reject) => {
-          timer = setTimeout(() => {
-            reject(new Error(`FFmpeg render timed out after ${Math.round(ms / 1000)}s`));
-          }, ms);
-        });
-        try {
-          return await Promise.race([ffmpeg.exec(args), timeoutPromise]);
-        } finally {
-          clearTimeout(timer);
-        }
-      };
 
       ffmpeg.on('log', ({ message }: any) => {
         console.log('[FFmpeg]', message);
-        if (message && !message.includes('frame=') && !message.includes('fps=')) {
-          addSystemLog(`[FFmpeg] ${message.substring(0, 100)}`);
-        }
       });
       
-      // Map FFmpeg internal progress (0.0–1.0) to the 60–98% UI range.
-      // FFmpeg reports progress ONLY during exec() — before that we drive it manually.
       ffmpeg.on('progress', ({ progress }: any) => {
         if (typeof progress !== 'number' || isNaN(progress) || progress < 0) return;
-        // Clamp to 60–98 so the bar never jumps backward or overshoots
-        const p = Math.max(60, Math.min(98, 60 + Math.round(progress * 38)));
+        const p = Math.max(0, Math.min(98, 50 + Math.round(progress * 48)));
         setRenderProgress(p);
       });
 
@@ -564,11 +457,8 @@ function DeliveryPageContent() {
       setPreviewUrl(aRollUrl);
 
       setRenderStatus('Скачивание основного видео...');
-      setRenderProgress(25);
-      const fetchFile = await getFetchFile();
       const aRollData = await fetchFile(aRollUrl);
       await ffmpeg.writeFile('input_aroll.mp4', aRollData);
-      setRenderProgress(35);
 
       const brollClipsRaw = manifest?.brollClips || [];
       const brollFiles: Array<{ name: string; clip: any }> = [];
@@ -594,7 +484,6 @@ function DeliveryPageContent() {
       }
 
       setRenderStatus('Подготовка субтитров и шрифтов...');
-      setRenderProgress(40);
       try {
         const fontData = await fetchFile('/fonts/Roboto-Bold.ttf');
         await ffmpeg.writeFile('font.ttf', fontData);
@@ -623,7 +512,7 @@ function DeliveryPageContent() {
         const clipEnd = typeof clip.endTime === 'number' && !isNaN(clip.endTime) ? clip.endTime : clipStart + 5;
         const duration = Math.max(0.1, clipEnd - clipStart);
 
-        await execWithTimeout(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', duration.toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
+        await ffmpeg.exec(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', duration.toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
         processedBrolls.push({ name: optName, clip: { ...clip, startTime: clipStart, endTime: clipEnd } });
         try { await ffmpeg.deleteFile(name); } catch(e) {}
       }
@@ -633,7 +522,7 @@ function DeliveryPageContent() {
       console.log('[Delivery] Subtitle clips found:', subs.length, 'Enabled:', shouldShowSubtitles);
 
       setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
-      setRenderProgress(59); // FFmpeg progress events will take over from here (60–98%)
+      setRenderProgress(60);
 
       const hasBrolls = processedBrolls.length > 0;
       let currentInput = 'input_aroll.mp4';
@@ -648,7 +537,7 @@ function DeliveryPageContent() {
           vfFilter = buildDrawtextFilter(subs, scale, isMobile ? 1280 : 1920);
         }
 
-        await execWithTimeout([
+        await ffmpeg.exec([
           '-i', currentInput,
           '-vf', vfFilter,
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
@@ -661,7 +550,7 @@ function DeliveryPageContent() {
       } else {
         setRenderStatus(`Масштабирование исходника...`);
         const scaledOutput = `temp_A.mp4`;
-        await execWithTimeout([
+        await ffmpeg.exec([
           '-i', currentInput,
           '-vf', scale,
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
@@ -681,7 +570,7 @@ function DeliveryPageContent() {
           setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
           
           const overlayFilter = `[1:v]scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
-          await execWithTimeout([
+          await ffmpeg.exec([
             '-i', currentInput,
             '-itsoffset', broll.clip.startTime.toString(),
             '-i', broll.name,
@@ -700,7 +589,7 @@ function DeliveryPageContent() {
           const subOutput = currentInput === 'temp_A.mp4' ? `temp_B.mp4` : `temp_A.mp4`;
           const vfFilter = buildDrawtextFilter(subs, '', isMobile ? 1280 : 1920);
           
-          const exitCodeSub = await execWithTimeout([
+          const exitCodeSub = await ffmpeg.exec([
             '-i', currentInput,
             '-vf', vfFilter,
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
@@ -744,26 +633,7 @@ function DeliveryPageContent() {
 
     } catch (err: any) {
       console.error('[Delivery] Client render failed:', err);
-      const errMsg = err.message || 'Ошибка рендера FFmpeg';
-      
-      // Ensure heartbeat is stopped on error
-      heartbeatStop = true;
-      clearInterval(heartbeatInterval);
-
-      // Clean up half-initialized state
-      try {
-        resetFFmpeg();
-      } catch (cleanupErr) {}
-      
-      // If the render was cancelled by a deliberate termination/restart, do NOT trigger the fallback modal!
-      if (errMsg.includes('terminate') || errMsg.includes('called FFmpeg.terminate()')) {
-        console.log('[Delivery] Render was aborted deliberately due to restart/reset, suppressing fallback modal.');
-        return;
-      }
-      
-      setFallbackError(errMsg);
-      setIsFallbackMode(true);
-      setShowShotstackModal(true);
+      setError(err.message || 'Ошибка рендера FFmpeg');
     } finally {
       setIsLoading(false);
       isLaunchingRenderRef.current = false;
@@ -1206,25 +1076,17 @@ function DeliveryPageContent() {
                   <AlertCircle className="w-8 h-8 text-blue-400" />
                 </div>
                 <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                  {isFallbackMode 
-                    ? (locale === 'ru' ? 'Резервный рендеринг' : 'Render Fallback')
-                    : (locale === 'ru' ? 'Облачный рендеринг' : 'Cloud Rendering Recommended')}
+                  {locale === 'ru' ? 'Облачный рендеринг' : 'Cloud Rendering Recommended'}
                 </h2>
                 <p className="text-sm text-white/60 font-medium">
-                  {isFallbackMode 
-                    ? (locale === 'ru' 
-                        ? `Локальный монтаж на устройстве завершился ошибкой: ${fallbackError}. Желаете переключиться на наши мощные серверы в облаке (Shotstack)?`
-                        : `Local rendering failed: ${fallbackError}. Would you like to switch to our powerful cloud servers (Shotstack) instead?`)
-                    : (locale === 'ru' 
-                        ? 'Ваше устройство может не справиться с тяжелым локальным монтажом. Рекомендуем выполнить сборку на наших мощных серверах (Shotstack).' 
-                        : 'Your device might struggle with heavy local rendering. We recommend using our powerful cloud servers (Shotstack).')}
+                  {locale === 'ru' 
+                    ? 'Ваше устройство может не справиться с тяжелым локальным монтажом. Рекомендуем выполнить сборку на наших мощных серверах (Shotstack).' 
+                    : 'Your device might struggle with heavy local rendering. We recommend using our powerful cloud servers (Shotstack).'}
                 </p>
                 <div className="flex flex-col gap-3 mt-6">
                   <button
                     onClick={() => {
                       setShowShotstackModal(false);
-                      setIsFallbackMode(false);
-                      setFallbackError(null);
                       setIsLoading(true);
                       executeShotstackRender(version);
                     }}
@@ -1232,30 +1094,17 @@ function DeliveryPageContent() {
                   >
                     {locale === 'ru' ? 'Продолжить в облаке (Быстро)' : 'Continue in Cloud (Fast)'}
                   </button>
-                  {isFallbackMode ? (
-                    <button
-                      onClick={() => {
-                        setShowShotstackModal(false);
-                        setIsFallbackMode(false);
-                        setError(fallbackError || 'Ошибка рендера FFmpeg');
-                      }}
-                      className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white font-black uppercase tracking-widest text-xs transition-all"
-                    >
-                      {locale === 'ru' ? 'Отмена' : 'Cancel'}
-                    </button>
-                  ) : (
-                    <button
-                      onClick={() => {
-                        setShowShotstackModal(false);
-                        setIsLoading(true);
-                        setRenderMode('ffmpeg');
-                        handleClientRender(version!);
-                      }}
-                      className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white font-black uppercase tracking-widest text-xs transition-all"
-                    >
-                      {locale === 'ru' ? 'Все равно локально (FFmpeg)' : 'Force Local (FFmpeg)'}
-                    </button>
-                  )}
+                  <button
+                    onClick={() => {
+                      setShowShotstackModal(false);
+                      setIsLoading(true);
+                      setRenderMode('ffmpeg');
+                      handleClientRender(version!);
+                    }}
+                    className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white font-black uppercase tracking-widest text-xs transition-all"
+                  >
+                    {locale === 'ru' ? 'Все равно локально (FFmpeg)' : 'Force Local (FFmpeg)'}
+                  </button>
                 </div>
               </div>
             </motion.div>
