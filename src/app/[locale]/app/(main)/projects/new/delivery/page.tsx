@@ -983,10 +983,20 @@ function DeliveryPageContent() {
           return;
         }
 
-        // --- ALWAYS TRY LOCAL FFmpeg FIRST BY DEFAULT ---
-        addSystemLog('Запуск локального FFmpeg сборщика (основной движок)...');
-        setRenderMode('ffmpeg');
-        handleClientRender(verData);
+        // --- HYBRID RENDER LOGIC ---
+        const { browserCapabilities } = require('@/lib/browser-capabilities');
+        const recommendedMode = browserCapabilities.suggestRenderMode();
+        
+        if (recommendedMode === 'ffmpeg') {
+           addSystemLog('Устройство определено как мощное. Запуск локального FFmpeg сборщика...');
+           setRenderMode('ffmpeg');
+           handleClientRender(verData);
+        } else {
+           addSystemLog('Устройство слабое. Предлагаем облачный рендеринг Shotstack.');
+           setRenderMode('shotstack');
+           setShowShotstackModal(true);
+           setIsLoading(false);
+        }
 
       } catch (err: any) {
         console.error('[Delivery] Auto-launch failed:', err);

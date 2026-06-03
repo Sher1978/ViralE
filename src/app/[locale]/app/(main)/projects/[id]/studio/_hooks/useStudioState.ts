@@ -392,7 +392,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     let words: TranscriptWord[] = [];
     let transcriptionOk = false;
 
-    if (!forceFresh && manifest?.transcript?.length && !(manifest as any).faceless_imported) {
+    if (!forceFresh && manifest?.transcript?.length) {
       console.log('[Studio LOG] Using cached manifest transcript segments. Word count:', manifest.transcript.length);
       words = manifest.transcript.map((t: any) => ({ ...t, accent: t.accent || false }));
       transcriptionOk = true;
