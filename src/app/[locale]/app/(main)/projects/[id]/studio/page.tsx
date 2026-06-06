@@ -406,10 +406,16 @@ export default function StudioPage() {
         } else if (latestVersion) {
           setCurrentVersionId(latestVersion.id);
           if (latestVersion.script_data) {
-            const loadedManifest = latestVersion.script_data as ProductionManifest;
-            setManifest(loadedManifest);
-            if (loadedManifest.customScript) setCustomScript(loadedManifest.customScript);
-            if (loadedManifest.useCustomScript !== undefined) setUseCustomScript(loadedManifest.useCustomScript);
+            const loadedManifest = latestVersion.script_data as any;
+            if (loadedManifest.segments) {
+              setManifest(loadedManifest);
+              if (loadedManifest.customScript) setCustomScript(loadedManifest.customScript);
+              if (loadedManifest.useCustomScript !== undefined) setUseCustomScript(loadedManifest.useCustomScript);
+            } else {
+              // It is raw script data! Convert it to a manifest on the fly.
+              const activeScript = loadedManifest.evergreen || loadedManifest;
+              setManifest(createInitialManifest(projectId, latestVersion.id, activeScript));
+            }
           } else {
             setManifest(createInitialManifest(projectId, latestVersion.id, { hook: '', context: '', meat: '', cta: '' }));
           }

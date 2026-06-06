@@ -312,8 +312,47 @@ export default function ScriptLabPage() {
             if (typeof (globalThis as any).window !== 'undefined') {
               (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(data));
             }
+          } else if (data.allScenarios) {
+            setAllScenarios(data.allScenarios);
+            setScriptData(data.allScenarios[activeScenario] || data.allScenarios.evergreen);
+            
+            if (typeof (globalThis as any).window !== 'undefined') {
+              (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(data.allScenarios));
+            }
+          } else if (data.segments) {
+            const hookSegment = data.segments.find((s: any) => s.type === 'intro_avatar');
+            const contextSegment = data.segments.find((s: any) => s.type === 'animated_still');
+            const meatSegment = data.segments.find((s: any) => s.type === 'broll');
+            const ctaSegment = data.segments.find((s: any) => s.type === 'outro_avatar');
+
+            const reconstructedScript = {
+              hook: hookSegment?.scriptText || '',
+              context: contextSegment?.scriptText || '',
+              meat: meatSegment?.scriptText || '',
+              cta: ctaSegment?.scriptText || '',
+              visual_hook: '',
+              social_post: ''
+            };
+            setScriptData(reconstructedScript);
+            
+            const dummyAllScenarios = {
+              evergreen: reconstructedScript,
+              trend: reconstructedScript,
+              educational: reconstructedScript,
+              controversial: reconstructedScript,
+              storytelling: reconstructedScript
+            };
+            setAllScenarios(dummyAllScenarios);
           } else {
             setScriptData(data);
+            const dummyAllScenarios = {
+              evergreen: data,
+              trend: data,
+              educational: data,
+              controversial: data,
+              storytelling: data
+            };
+            setAllScenarios(dummyAllScenarios);
           }
           setCurrentVersion(ver);
         }
@@ -679,6 +718,9 @@ export default function ScriptLabPage() {
         
         // Wrap raw script into a Production Manifest for the Studio
         const initialManifest = createInitialManifest(pId, 'temp', activeScript);
+        if (allScenarios) {
+          (initialManifest as any).allScenarios = allScenarios;
+        }
         
         const newVersion = await projectService.createVersion({
           projectId: pId,
@@ -694,6 +736,9 @@ export default function ScriptLabPage() {
         
         // Wrap raw script into a Production Manifest
         const initialManifest = createInitialManifest(pId, vId, activeScript);
+        if (allScenarios) {
+          (initialManifest as any).allScenarios = allScenarios;
+        }
         
         const version = await projectService.updateVersion(vId, {
           script_data: initialManifest
@@ -1258,14 +1303,14 @@ export default function ScriptLabPage() {
         onRefine={handleApplyRefinement}
         onAccept={async () => {
           const sd = scriptData as any;
-          const synthesizedScript = {
+          const synthesizedScript = allScenarios ? {
             hook: allScenarios[selectionSources.hook]?.hook || sd.hook,
             context: allScenarios[selectionSources.context]?.context || sd.context,
             meat: allScenarios[selectionSources.meat]?.meat || sd.meat,
             cta: allScenarios[selectionSources.cta]?.cta || sd.cta,
             visual_hook: allScenarios[selectionSources.hook]?.visual_hook || sd.visual_hook,
             social_post: allScenarios[selectionSources.hook]?.social_post || sd.social_post,
-          };
+          } : sd;
           handleApprove(synthesizedScript);
         }}
         onCopy={handleCopyToClipboard}
