@@ -648,7 +648,12 @@ export default function ScriptLabPage() {
       router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Generation failed:', err);
-      const isCreditError = err.message?.includes('credits') || err.message?.includes('limit');
+      const isCreditError = err.message === 'Insufficient credits' || 
+                            err.message?.includes('limit reached') || 
+                            err.message?.includes('Limit reached') ||
+                            err.message?.includes('limit (3) reached') ||
+                            err.message?.includes('limit (20) reached') ||
+                            err.message?.includes('threshold (50 credits) required');
       
       if (isCreditError) {
         setLimitModalData({
