@@ -94,9 +94,11 @@ export default function ScriptLabPage() {
   }, []);
 
   const handleRestartGeneration = async (topic: string) => {
+    setError(null);
     setTopicInput(topic);
     setInitialTab('new');
     setIsLoading(true);
+
     setAllScenarios(null);
     setScriptData({ hook: '' as any, context: '' as any, meat: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
     if (typeof (globalThis as any).window !== 'undefined') {
@@ -593,8 +595,10 @@ export default function ScriptLabPage() {
   };
 
   const executeGeneration = async (overrideIdea?: string) => {
+    setError(null);
     setIsLoading(true);
     setAllScenarios(null);
+
     setScriptData({ hook: '' as any, context: '' as any, meat: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
     if (typeof (globalThis as any).window !== 'undefined') {
       (globalThis as any).sessionStorage?.removeItem('allScenarios');
