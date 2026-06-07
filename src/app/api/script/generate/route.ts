@@ -5,6 +5,9 @@ import { getAuthContext } from '@/lib/auth';
 
 import { profileService } from '@/lib/services/profileService';
 
+export const maxDuration = 60; // 60 seconds timeout limit for serverless functions (standard Vercel limit)
+
+
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();

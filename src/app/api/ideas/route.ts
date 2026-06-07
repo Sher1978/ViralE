@@ -2,6 +2,9 @@ import { NextResponse } from 'next/server';
 import { generateDailyIdeas } from '@/lib/ideation';
 import { getAuthContext } from '@/lib/auth';
 
+export const maxDuration = 60; // 60 seconds timeout limit for idea generation
+
+
 export async function GET(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();

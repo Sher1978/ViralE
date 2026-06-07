@@ -2,6 +2,15 @@
   "functions": {
     "src/app/api/render/process/route.ts": {
       "maxDuration": 60
+    },
+    "src/app/api/script/generate/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/storyboard/route.ts": {
+      "maxDuration": 60
+    },
+    "src/app/api/ideas/route.ts": {
+      "maxDuration": 60
     }
   }
 }

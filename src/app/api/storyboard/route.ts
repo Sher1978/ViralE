@@ -3,6 +3,9 @@ import { generateStoryboardAI, refineSceneAI } from '@/lib/storyboard';
 import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
 import { getAuthContext } from '@/lib/auth';
 
+export const maxDuration = 60; // 60 seconds timeout limit for storyboard generation
+
+
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
