@@ -174,18 +174,7 @@ const Navbar = () => {
 
 const Hero = () => {
   const t = useTranslations('landingVirale.hero');
-  const tf = useTranslations('landingVirale.form');
   const locale = useLocale();
-  const [email, setEmail] = useState('');
-  const [niche, setNiche] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !niche) return;
-    setStatus('loading');
-    setTimeout(() => setStatus('success'), 1500);
-  };
 
   return (
     <section className="relative min-h-screen pt-32 pb-20 overflow-hidden flex flex-col items-center justify-center">
@@ -251,62 +240,14 @@ const Hero = () => {
             transition={{ delay: 1 }}
             className="w-full max-w-xl space-y-6"
           >
-            {status === 'success' ? (
-              <motion.div 
-                initial={{ opacity: 0, scale: 0.9 }}
-                animate={{ opacity: 1, scale: 1 }}
-                className="bg-virale-card border border-virale-gold/30 p-6 rounded-2xl flex items-center gap-4"
+            <Link href="/auth" className="block w-full">
+              <button 
+                className="w-full bg-virale-gold text-virale-bg font-bebas text-xl py-4 rounded-xl hover:bg-virale-orange hover:text-white transition-all shadow-xl shadow-virale-gold/10 flex items-center justify-center gap-3 group animate-pulse hover:animate-none"
               >
-                <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
-                  <Check size={24} />
-                </div>
-                <p className="font-inter text-virale-text">
-                  {tf('success')}
-                </p>
-              </motion.div>
-            ) : (
-              <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  <input 
-                    type="email" 
-                    required
-                    placeholder={tf('emailPlaceholder')}
-                    value={email}
-                    onChange={(e) => setEmail((e.target as any).value)}
-                    className="bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all"
-                  />
-                  <div className="relative">
-                    <select 
-                      required
-                      value={niche}
-                      onChange={(e) => setNiche((e.target as any).value)}
-                      className="w-full bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all appearance-none cursor-pointer"
-                    >
-                      <option value="" disabled>{tf('nichePlaceholder')}</option>
-                      {tf.raw('niches').map((n: string) => (
-                        <option key={n} value={n}>{n}</option>
-                      ))}
-                    </select>
-                    <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-virale-text-muted">
-                      <ChevronRight size={16} className="rotate-90" />
-                    </div>
-                  </div>
-                </div>
-                <button 
-                  disabled={status === 'loading'}
-                  className="bg-virale-gold text-virale-bg font-bebas text-xl py-4 rounded-xl hover:bg-virale-orange hover:text-white transition-all shadow-xl shadow-virale-gold/10 flex items-center justify-center gap-3 group"
-                >
-                  {status === 'loading' ? (
-                    <div className="w-6 h-6 border-2 border-virale-bg border-t-transparent rounded-full animate-spin" />
-                  ) : (
-                    <>
-                      {t('ctaPrimary')}
-                      <ChevronRight className="group-hover:translate-x-1 transition-transform" />
-                    </>
-                  )}
-                </button>
-              </form>
-            )}
+                {t('ctaPrimary')}
+                <ChevronRight className="group-hover:translate-x-1 transition-transform" />
+              </button>
+            </Link>
 
             {/* PWA App Badges */}
             <div className="space-y-4">
@@ -620,7 +561,7 @@ const SocialProof = () => {
 const Pricing = () => {
   const t = useTranslations('landingVirale.pricing');
   const [isYearly, setIsYearly] = useState(false);
-  const tiers = ['free', 'creator', 'pro'];
+  const tiers = ['free', 'starter', 'creator', 'pro'];
 
   return (
     <section id="pricing" className="py-24 max-w-[1280px] mx-auto px-5 md:px-10">
@@ -654,7 +595,7 @@ const Pricing = () => {
         </div>
       </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8 items-stretch">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
         {tiers.map((key) => {
           const tier = t.raw(`tiers.${key}`);
           const isFeatured = key === 'creator';
@@ -783,17 +724,6 @@ const FAQ = () => {
 
 const FinalCTA = () => {
   const t = useTranslations('landingVirale.finalCta');
-  const tf = useTranslations('landingVirale.form');
-  const [email, setEmail] = useState('');
-  const [niche, setNiche] = useState('');
-  const [status, setStatus] = useState<'idle' | 'loading' | 'success'>('idle');
-
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!email || !niche) return;
-    setStatus('loading');
-    setTimeout(() => setStatus('success'), 1500);
-  };
 
   return (
     <section className="py-32 relative overflow-hidden">
@@ -814,62 +744,14 @@ const FinalCTA = () => {
         </p>
 
         <div className="w-full max-w-xl mx-auto">
-          {status === 'success' ? (
-            <motion.div 
-              initial={{ opacity: 0, scale: 0.9 }}
-              animate={{ opacity: 1, scale: 1 }}
-              className="bg-virale-card border border-virale-gold/30 p-8 rounded-2xl flex items-center gap-4 text-left"
+          <Link href="/auth" className="block w-full">
+            <button 
+              className="w-full bg-virale-gold text-virale-bg font-bebas text-xl py-5 rounded-xl hover:bg-virale-orange hover:text-white transition-all shadow-xl shadow-virale-gold/20 flex items-center justify-center gap-3 group animate-pulse hover:animate-none"
             >
-              <div className="w-12 h-12 rounded-full bg-green-500/20 flex items-center justify-center text-green-500">
-                <Check size={24} />
-              </div>
-              <p className="font-inter text-virale-text">
-                {tf('success')}
-              </p>
-            </motion.div>
-          ) : (
-            <form onSubmit={handleSubmit} className="flex flex-col gap-4">
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <input 
-                  type="email" 
-                  required
-                  placeholder={tf('emailPlaceholder')}
-                  value={email}
-                  onChange={(e) => setEmail((e.target as any).value)}
-                  className="bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all"
-                />
-                <div className="relative">
-                  <select 
-                    required
-                    value={niche}
-                    onChange={(e) => setNiche((e.target as any).value)}
-                    className="w-full bg-virale-card border border-white/10 rounded-xl px-5 py-4 text-virale-text focus:border-virale-gold outline-none transition-all appearance-none cursor-pointer"
-                  >
-                    <option value="" disabled>{tf('nichePlaceholder')}</option>
-                    {tf.raw('niches').map((n: string) => (
-                      <option key={n} value={n}>{n}</option>
-                    ))}
-                  </select>
-                  <div className="absolute right-4 top-1/2 -translate-y-1/2 pointer-events-none text-virale-text-muted">
-                    <ChevronRight size={16} className="rotate-90" />
-                  </div>
-                </div>
-              </div>
-              <button 
-                disabled={status === 'loading'}
-                className="bg-virale-gold text-virale-bg font-bebas text-xl py-5 rounded-xl hover:bg-virale-orange hover:text-white transition-all shadow-xl shadow-virale-gold/20 flex items-center justify-center gap-3 group"
-              >
-                {status === 'loading' ? (
-                  <div className="w-6 h-6 border-2 border-virale-bg border-t-transparent rounded-full animate-spin" />
-                ) : (
-                  <>
-                    {t('ctaPrimary')}
-                    <ChevronRight className="group-hover:translate-x-1 transition-transform" />
-                  </>
-                )}
-              </button>
-            </form>
-          )}
+              {t('ctaPrimary')}
+              <ChevronRight className="group-hover:translate-x-1 transition-transform" />
+            </button>
+          </Link>
           
           <div className="mt-8 font-jetbrains text-virale-gold uppercase tracking-[0.15em] text-[12px]">
             {t('urgency', { count: 34 })}

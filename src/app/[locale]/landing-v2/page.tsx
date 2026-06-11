@@ -499,73 +499,55 @@ export default function LandingV2Page() {
               <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter">{t('pricing.title')}</h2>
            </div>
 
-           <div className="grid grid-cols-1 md:grid-cols-3 gap-8 max-w-6xl mx-auto">
-              {/* Free Plan */}
-              <div className="glass p-12 rounded-[3.5rem] border-white/5 flex flex-col space-y-8 relative overflow-hidden group">
-                 <div className="space-y-2">
-                    <h3 className="text-2xl font-black uppercase tracking-tight text-white/40">{t('pricing.free.title')}</h3>
-                    <div className="flex items-baseline gap-2">
-                       <span className="text-5xl font-black tracking-tighter">{t('pricing.free.price')}</span>
-                       <span className="text-white/20 text-xs font-bold uppercase tracking-widest">{t('pricing.free.period')}</span>
-                    </div>
-                 </div>
-                 <ul className="space-y-4 flex-1">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                       <li key={i} className="flex items-center gap-3 text-sm text-white/40 font-medium">
-                          <CheckCircle2 className="w-4 h-4 text-white/10" />
-                          {t(`pricing.free.feature${i}`)}
-                       </li>
-                    ))}
-                 </ul>
-                 <Link href="/auth">
-                    <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all">{t('pricing.free.cta')}</button>
-                 </Link>
-              </div>
-
-              {/* Creator Plan */}
-              <div className="glass-gold p-12 rounded-[3.5rem] border-sherlock-gold/30 flex flex-col space-y-8 relative overflow-hidden scale-105 shadow-glow-gold z-10">
-                 <div className="absolute top-6 right-8 px-4 py-1 bg-sherlock-gold text-black text-[10px] font-black uppercase tracking-widest rounded-full">{t('pricing.creator.badge')}</div>
-                 <div className="space-y-2">
-                    <h3 className="text-2xl font-black uppercase tracking-tight text-sherlock-gold">{t('pricing.creator.title')}</h3>
-                    <div className="flex items-baseline gap-2">
-                       <span className="text-5xl font-black tracking-tighter">{t('pricing.creator.price')}</span>
-                       <span className="text-black/40 text-xs font-bold uppercase tracking-widest">{t('pricing.creator.period')}</span>
-                    </div>
-                 </div>
-                 <ul className="space-y-4 flex-1">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                       <li key={i} className="flex items-center gap-3 text-sm text-black font-bold">
-                          <CheckCircle2 className="w-4 h-4 text-black/20" />
-                          {t(`pricing.creator.feature${i}`)}
-                       </li>
-                    ))}
-                 </ul>
-                 <Link href="/auth">
-                    <button className="w-full py-6 rounded-2xl bg-black text-sherlock-gold font-black text-sm uppercase tracking-widest shadow-lg hover:scale-105 transition-all">{t('pricing.creator.cta')}</button>
-                 </Link>
-              </div>
-
-              {/* Pro Plan */}
-              <div className="glass p-12 rounded-[3.5rem] border-white/5 flex flex-col space-y-8 relative overflow-hidden group">
-                 <div className="space-y-2">
-                    <h3 className="text-2xl font-black uppercase tracking-tight text-white/40">{t('pricing.pro.title')}</h3>
-                    <div className="flex items-baseline gap-2">
-                       <span className="text-5xl font-black tracking-tighter">{t('pricing.pro.price')}</span>
-                       <span className="text-white/20 text-xs font-bold uppercase tracking-widest">/ month</span>
-                    </div>
-                 </div>
-                 <ul className="space-y-4 flex-1">
-                    {[1, 2, 3, 4, 5].map((i) => (
-                       <li key={i} className="flex items-center gap-3 text-sm text-white/40 font-medium">
-                          <CheckCircle2 className="w-4 h-4 text-white/10" />
-                          {t(`pricing.pro.feature${i}`)}
-                       </li>
-                    ))}
-                 </ul>
-                 <Link href="/auth">
-                    <button className="w-full py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all">{t('pricing.pro.cta')}</button>
-                 </Link>
-              </div>
+           <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
+              {(() => {
+                 const tiers = ['free', 'starter', 'creator', 'pro'];
+                 return tiers.map((key) => {
+                    const isFeatured = key === 'creator';
+                    return (
+                       <div 
+                          key={key}
+                          className={isFeatured 
+                             ? "glass-gold p-12 rounded-[3.5rem] border-sherlock-gold/30 flex flex-col space-y-8 relative overflow-hidden scale-105 shadow-glow-gold z-10"
+                             : "glass p-12 rounded-[3.5rem] border-white/5 flex flex-col space-y-8 relative overflow-hidden group"
+                          }
+                       >
+                          {isFeatured && (
+                             <div className="absolute top-6 right-8 px-4 py-1 bg-sherlock-gold text-black text-[10px] font-black uppercase tracking-widest rounded-full">
+                                {t('pricing.creator.badge')}
+                             </div>
+                          )}
+                          <div className="space-y-2">
+                             <h3 className={`text-2xl font-black uppercase tracking-tight ${isFeatured ? 'text-sherlock-gold' : 'text-white/40'}`}>
+                                {t(`pricing.${key}.title`)}
+                             </h3>
+                             <div className="flex items-baseline gap-2">
+                                <span className="text-5xl font-black tracking-tighter">{t(`pricing.${key}.price`)}</span>
+                                <span className={`${isFeatured ? 'text-black/40' : 'text-white/20'} text-xs font-bold uppercase tracking-widest`}>
+                                   {t(`pricing.${key}.period`)}
+                                </span>
+                             </div>
+                          </div>
+                          <ul className="space-y-4 flex-1">
+                             {[1, 2, 3, 4, 5].map((i) => (
+                                <li key={i} className={`flex items-center gap-3 text-sm font-medium ${isFeatured ? 'text-black font-bold' : 'text-white/40'}`}>
+                                   <CheckCircle2 className={`w-4 h-4 ${isFeatured ? 'text-black/20' : 'text-white/10'}`} />
+                                   {t(`pricing.${key}.feature${i}`)}
+                                </li>
+                             ))}
+                          </ul>
+                          <Link href="/auth">
+                             <button className={isFeatured
+                                ? "w-full py-6 rounded-2xl bg-black text-sherlock-gold font-black text-sm uppercase tracking-widest shadow-lg hover:scale-105 transition-all"
+                                : "w-full py-5 rounded-2xl bg-white/5 border border-white/10 text-white font-black text-xs uppercase tracking-widest hover:bg-white/10 transition-all"
+                             }>
+                                {t(`pricing.${key}.cta`)}
+                             </button>
+                          </Link>
+                       </div>
+                    );
+                 });
+              })()}
            </div>
         </section>
 
