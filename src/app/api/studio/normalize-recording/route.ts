@@ -62,6 +62,26 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing parameters: videoUrl, projectId' }, { status: 400 });
     }
 
+    // iOS/PWA bypass: check if URL refers to an already compatible MP4/MOV video
+    try {
+      const parsedUrl = new URL(videoUrl);
+      const pathname = parsedUrl.pathname.toLowerCase();
+      const isAlreadyCompatible = pathname.endsWith('.mp4') || pathname.endsWith('.mov');
+      
+      if (isAlreadyCompatible) {
+        console.log(`[Normalize] Video is already in compatible MP4/MOV format: ${videoUrl}. Skipping transcoding.`);
+        return NextResponse.json({ success: true, publicUrl: videoUrl });
+      }
+    } catch (urlErr) {
+      console.warn('[Normalize] Failed to parse videoUrl as URL object:', videoUrl, urlErr);
+      // Fallback check on raw string
+      const urlLower = videoUrl.toLowerCase();
+      if (urlLower.endsWith('.mp4') || urlLower.includes('.mp4?') || urlLower.endsWith('.mov') || urlLower.includes('.mov?')) {
+        console.log(`[Normalize] Video string match suggests MP4/MOV format. Skipping transcoding.`);
+        return NextResponse.json({ success: true, publicUrl: videoUrl });
+      }
+    }
+
     console.log(`[Normalize] Downloading original video: ${videoUrl}`);
     const tempDir = os.tmpdir();
     const inputPath = path.join(tempDir, `input_${Date.now()}.webm`);
@@ -85,13 +105,14 @@ export async function POST(req: NextRequest) {
     // 2. Perform lightning-fast, high-compatibility transcoding
     // Transcodes Audio to standard AAC (fully supported with sound in Telegram & mobile OS decoders)
     // Transcodes Video to H.264 (universal playback compatibility)
-    // Runs superfast preset for sub-second/multi-second response times
+    // Runs veryfast preset for sub-second/multi-second response times, preserving quality
     console.log('[Normalize] Starting FFmpeg transcoding to H.264 MP4 with AAC...');
     await runFFmpeg([
       '-i', inputPath,
       '-c:v', 'libx264',
-      '-preset', 'superfast',
-      '-crf', '26',
+      '-preset', 'veryfast',
+      '-crf', '20',
+      '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-b:a', '128k',
       '-y', outputPath

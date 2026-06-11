@@ -147,41 +147,71 @@ export function useHardwareRecorder({
         '4k': { width: { ideal: 3840 }, height: { ideal: 2160 } }
       };
 
-      const constraints: any = {
-        video: isVoiceOnly ? false : {
-          deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
-          facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
-          ...resMap[videoResolution as keyof typeof resMap]
-        },
-        audio: {
-          deviceId: selectedAudioDeviceId ? { ideal: selectedAudioDeviceId } : undefined,
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true
-        }
-      };
+      const resolutionsToTry: ('360p' | '720p' | '1080p' | '4k')[] = [];
+      const allResolutions: ('360p' | '720p' | '1080p' | '4k')[] = ['360p', '720p', '1080p', '4k'];
+      const currentIndex = allResolutions.indexOf(videoResolution);
+      
+      // We try the selected resolution first, then progressively lower ones
+      for (let i = currentIndex; i >= 0; i--) {
+        resolutionsToTry.push(allResolutions[i]);
+      }
 
-      try {
-        const stream = await nav.mediaDevices.getUserMedia(constraints);
+      let stream: MediaStream | null = null;
+      let lastErr: any = null;
+
+      for (const res of resolutionsToTry) {
+        const constraints: any = {
+          video: isVoiceOnly ? false : {
+            deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
+            facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
+            ...resMap[res]
+          },
+          audio: {
+            deviceId: selectedAudioDeviceId ? { ideal: selectedAudioDeviceId } : undefined,
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true
+          }
+        };
+
+        try {
+          console.log(`[useHardwareRecorder] initCamera trying resolution: ${res}`);
+          stream = await nav.mediaDevices.getUserMedia(constraints);
+          if (stream) {
+            if (res !== videoResolution) {
+              console.warn(`[useHardwareRecorder] Fell back from requested ${videoResolution} to ${res}`);
+              addSystemLog(`Предупреждение: не удалось запустить камеру в ${videoResolution}. Автоматически выбрано разрешение ${res}.`);
+              setVideoResolution(res);
+            }
+            break;
+          }
+        } catch (e: any) {
+          console.warn(`[useHardwareRecorder] Resolution ${res} failed:`, e.name || e.message || e);
+          lastErr = e;
+        }
+      }
+
+      if (stream) {
         setCameraStream(stream);
         if (videoPreviewRef.current && !isVoiceOnly) {
           (videoPreviewRef.current as any).srcObject = stream;
         }
         return stream;
-      } catch (firstErr: any) {
-        console.warn('[useHardwareRecorder] High-res camera init failed, trying basic fallback...', firstErr.name, firstErr.message);
-        try {
-          const stream = await nav.mediaDevices.getUserMedia({ video: !isVoiceOnly, audio: true });
-          setCameraStream(stream);
-          if (videoPreviewRef.current && !isVoiceOnly) {
-            (videoPreviewRef.current as any).srcObject = stream;
-          }
-          return stream;
-        } catch (secondErr: any) {
-          console.error('[useHardwareRecorder] All camera paths failed:', secondErr.name);
-          setCameraError(`Camera Error: ${secondErr.name}. Try another browser or close other apps.`);
-          return null;
+      }
+
+      // If all progressive resolution attempts failed, try a basic fallback
+      console.warn('[useHardwareRecorder] All progressive camera resolutions failed, trying basic fallback...');
+      try {
+        const fallbackStream = await nav.mediaDevices.getUserMedia({ video: !isVoiceOnly, audio: true });
+        setCameraStream(fallbackStream);
+        if (videoPreviewRef.current && !isVoiceOnly) {
+          (videoPreviewRef.current as any).srcObject = fallbackStream;
         }
+        return fallbackStream;
+      } catch (fallbackErr: any) {
+        console.error('[useHardwareRecorder] All camera paths failed:', fallbackErr.name);
+        setCameraError(`Camera Error: ${fallbackErr.name}. Try another browser or close other apps.`);
+        return null;
       }
     } catch (err: any) {
       console.error('[useHardwareRecorder] Critical camera init error:', err);
@@ -289,8 +319,20 @@ export function useHardwareRecorder({
               }
             }
 
+            const bitrateMap = {
+              '360p': 1200000,   // 1.2 Mbps
+              '720p': 4000000,   // 4 Mbps
+              '1080p': 8000000,  // 8 Mbps
+              '4k': 20000000     // 20 Mbps
+            };
+            let targetBitrate = bitrateMap[videoResolution as keyof typeof bitrateMap] || 4000000;
+            if (isMobile) {
+              // Scale down slightly on mobile to save memory and avoid heating and save battery, but keep it high quality
+              targetBitrate = Math.round(targetBitrate * 0.75);
+            }
+
             const options: any = {
-              videoBitsPerSecond: isMobile ? 1200000 : 2500000
+              videoBitsPerSecond: targetBitrate
             };
             if (selectedMime) {
               options.mimeType = selectedMime;
