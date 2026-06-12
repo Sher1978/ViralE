@@ -621,6 +621,173 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     }
   };
 
+  const exportBannerToCanvas = (): Promise<string> => {
+    return new Promise((resolve, reject) => {
+      const canvas = safeDocument ? safeDocument.createElement('canvas') : null;
+      if (!canvas) {
+        reject(new Error('Document not available'));
+        return;
+      }
+      canvas.width = 1080;
+      canvas.height = 1920;
+      const ctx = canvas.getContext('2d');
+      if (!ctx) {
+        reject(new Error('Canvas context could not be created'));
+        return;
+      }
+
+      const drawContent = (img: any) => {
+        // 1. Draw Background (Image or Gradient)
+        if (img) {
+          const imgRatio = img.width / img.height;
+          const canvasRatio = 1080 / 1920;
+          let sx = 0, sy = 0, sw = img.width, sh = img.height;
+          if (imgRatio > canvasRatio) {
+            sw = img.height * canvasRatio;
+            sx = (img.width - sw) / 2;
+          } else {
+            sh = img.width / canvasRatio;
+            sy = (img.height - sh) / 2;
+          }
+          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1080, 1920);
+        } else {
+          const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1920);
+          bgGrad.addColorStop(0, '#0a0a16');
+          bgGrad.addColorStop(0.5, '#05050b');
+          bgGrad.addColorStop(1, '#0e0e24');
+          ctx.fillStyle = bgGrad;
+          ctx.fillRect(0, 0, 1080, 1920);
+        }
+
+        // 2. Overlay bg-black/20
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.2)';
+        ctx.fillRect(0, 0, 1080, 1920);
+
+        // 3. Draw Text Banner/Ribbon Overlay
+        const textToDraw = assets?.video_banner?.text_on_banner || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook');
+        
+        ctx.save();
+        
+        // Measure text and wrap it
+        ctx.font = 'italic 900 50px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        
+        const paddingX = 84;
+        const paddingY = 54;
+        const maxTextWidth = 800; // 972 - 168 = 804, so 800 is perfect
+        
+        const lines = wrapCanvasText(ctx, textToDraw.toUpperCase(), maxTextWidth);
+        const lineHeight = 68;
+        const textBlockHeight = lines.length * lineHeight;
+        
+        let maxLineWidth = 0;
+        lines.forEach(line => {
+          const metrics = ctx.measureText(line);
+          if (metrics.width > maxLineWidth) {
+            maxLineWidth = metrics.width;
+          }
+        });
+        
+        const ribbonWidth = Math.max(300, maxLineWidth + paddingX * 2);
+        const ribbonHeight = textBlockHeight + paddingY * 2;
+        
+        const centerY = 1920 - 340 - ribbonHeight / 2;
+        const centerX = 1080 / 2;
+        
+        ctx.translate(centerX, centerY);
+        ctx.rotate(-3 * Math.PI / 180);
+        
+        const shadowOffset = 8;
+        const notch = 30; // scaled notch depth
+
+        const drawRibbonPath = (c: any, w: number, h: number, notchDepth: number) => {
+          const halfW = w / 2;
+          const halfH = h / 2;
+          c.beginPath();
+          c.moveTo(-halfW, -halfH);
+          c.lineTo(halfW, -halfH);
+          // Right notch
+          c.lineTo(halfW, -notchDepth);
+          c.lineTo(halfW - notchDepth, 0);
+          c.lineTo(halfW, notchDepth);
+          c.lineTo(halfW, halfH);
+          c.lineTo(-halfW, halfH);
+          // Left notch
+          c.lineTo(-halfW, notchDepth);
+          c.lineTo(-halfW + notchDepth, 0);
+          c.lineTo(-halfW, -notchDepth);
+          c.closePath();
+        };
+
+        // Draw Shadow Ribbon (black)
+        ctx.fillStyle = '#000000';
+        ctx.save();
+        ctx.translate(shadowOffset, shadowOffset);
+        drawRibbonPath(ctx, ribbonWidth, ribbonHeight, notch);
+        ctx.fill();
+        ctx.restore();
+        
+        // Draw Foreground Ribbon (yellow #FFE600)
+        ctx.fillStyle = '#FFE600';
+        drawRibbonPath(ctx, ribbonWidth, ribbonHeight, notch);
+        ctx.fill();
+        
+        // Draw black border around foreground ribbon
+        ctx.strokeStyle = '#000000';
+        ctx.lineWidth = 9;
+        drawRibbonPath(ctx, ribbonWidth, ribbonHeight, notch);
+        ctx.stroke();
+        
+        // Draw the text (black)
+        ctx.fillStyle = '#000000';
+        const startY = -textBlockHeight / 2 + lineHeight / 2;
+        lines.forEach((line, idx) => {
+          ctx.fillText(line, 0, startY + idx * lineHeight);
+        });
+        
+        ctx.restore();
+
+        try {
+          const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
+          resolve(dataUrl);
+        } catch (e) {
+          reject(e);
+        }
+      };
+
+      const bgUrl = imageResults['banner'];
+      if (bgUrl) {
+        const img = safeImage ? new safeImage() : null;
+        if (img) {
+          img.crossOrigin = 'anonymous';
+          img.onload = () => drawContent(img);
+          img.onerror = () => drawContent(null);
+          img.src = bgUrl;
+        } else {
+          drawContent(null);
+        }
+      } else {
+        drawContent(null);
+      }
+    });
+  };
+
+  const downloadRenderedBanner = async () => {
+    try {
+      const dataUrl = await exportBannerToCanvas();
+      const link = safeDocument ? safeDocument.createElement('a') : null;
+      if (link) {
+        link.href = dataUrl;
+        link.download = `video_banner_rendered.jpg`;
+        link.click();
+      }
+    } catch (e) {
+      console.error('[Banner Render Error]:', e);
+      safeAlert(locale === 'ru' ? 'Ошибка рендеринга обложки. Попробуйте еще раз.' : 'Error rendering cover. Please try again.');
+    }
+  };
+
   // Sync with manifest if pre-generated
   useEffect(() => {
     if (manifest?.distributionAssets) {
@@ -1892,7 +2059,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             {imageResults['banner'] && (
                               <div className="flex gap-3">
                                 <button 
-                                  onClick={() => handleDownload(imageResults['banner'], 'thumbnail.webp')}
+                                  onClick={downloadRenderedBanner}
                                   className="flex-1 flex items-center justify-center gap-3 py-4 rounded-2xl bg-white/10 border border-white/20 text-white text-[11px] font-black uppercase tracking-[0.2em] hover:bg-white/20 transition-all shadow-xl active:scale-95"
                                 >
                                   <Download size={18} /> {locale === 'ru' ? 'СОХРАНИТЬ' : 'SAVE THUMB'}
@@ -1948,7 +2115,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                 </div>
                                 
                                 <button 
-                                  onClick={() => handleDownload(imageResults['banner'], 'video_banner.webp')}
+                                  onClick={downloadRenderedBanner}
                                   className="absolute top-4 right-4 w-10 h-10 rounded-full bg-white text-black flex items-center justify-center shadow-2xl hover:scale-110 transition-transform active:scale-90"
                                  >
                                   <Download size={16} />
