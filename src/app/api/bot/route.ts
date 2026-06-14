@@ -11,7 +11,79 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+
+    // 1. Handle pre_checkout_query (Telegram Stars Pre-checkout Check)
+    if (body.pre_checkout_query) {
+      const queryId = body.pre_checkout_query.id;
+      const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerPreCheckoutQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          pre_checkout_query_id: queryId,
+          ok: true,
+        }),
+      });
+      const data = await tgRes.json();
+      console.log('[Telegram Stars Webhook] answerPreCheckoutQuery response:', data);
+      return NextResponse.json({ ok: true });
+    }
+
     const { message } = body;
+
+    // 2. Handle successful_payment (Telegram Stars payment successful)
+    if (message && message.successful_payment) {
+      const payment = message.successful_payment;
+      const payload = payment.invoice_payload;
+      console.log('[Telegram Stars Webhook] Successful payment received:', payment);
+
+      try {
+        const parts = payload.split(':');
+        if (parts.length >= 4) {
+          const [userId, creditsStr, itemId, type] = parts;
+          const credits = parseInt(creditsStr, 10) || 0;
+
+          if (userId && credits > 0) {
+            const { supabaseAdmin } = await import('@/lib/supabase');
+            const { addCredits } = await import('@/lib/credits');
+
+            // Credit balance
+            await addCredits(supabaseAdmin, userId, credits, 'top_up');
+
+            // If it is a plan subscription, also update the tier
+            if (type === 'plan') {
+              await supabaseAdmin
+                .from('profiles')
+                .update({
+                  tier: itemId, // 'starter', 'pro', 'scale'
+                  subscription_status: 'active'
+                })
+                .eq('id', userId);
+            }
+
+            // Notify the user in the Telegram chat
+            const locale = (message.from?.language_code === 'ru') ? 'ru' : 'en';
+            const successText = locale === 'ru'
+              ? `⭐️ *Оплата успешно получена!*\n\nНа ваш баланс в Студии зачислено *${credits}* кредитов. Спасибо за поддержку! 🚀`
+              : `⭐️ *Payment successfully received!*\n\nYour Studio balance has been credited with *${credits}* credits. Thank you for your support! 🚀`;
+
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: message.chat.id,
+                text: successText,
+                parse_mode: 'Markdown',
+              }),
+            });
+            console.log(`[Telegram Stars Webhook] Successfully credited User ${userId} with ${credits} credits.`);
+          }
+        }
+      } catch (err) {
+        console.error('[Telegram Stars Webhook] Failed to process successful payment:', err);
+      }
+
+      return NextResponse.json({ ok: true });
+    }
 
     if (!message || !message.text || !message.from) {
       return NextResponse.json({ ok: true });

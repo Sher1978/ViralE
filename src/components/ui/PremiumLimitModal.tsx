@@ -83,6 +83,17 @@ export function PremiumLimitModal({
   const [userProfile, setUserProfile] = React.useState<any>(null);
   const [liveBalance, setLiveBalance] = React.useState<number | undefined>(balance);
 
+  const pollingRef = React.useRef<any>(null);
+
+  // Clear polling interval on unmount
+  React.useEffect(() => {
+    return () => {
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+      }
+    };
+  }, []);
+
   // Fetch current live profile on mount to handle updates correctly
   React.useEffect(() => {
     async function fetchUser() {
@@ -101,6 +112,12 @@ export function PremiumLimitModal({
       // Reset state when opening modal
       setShowCheckout(false);
       setPaymentStatus('idle');
+    } else {
+      // Clear polling when modal is closed
+      if (pollingRef.current) {
+        clearInterval(pollingRef.current);
+        pollingRef.current = null;
+      }
     }
   }, [isOpen]);
 
@@ -121,50 +138,108 @@ export function PremiumLimitModal({
   const theme = getTheme();
   const Icon = theme.icon;
 
-  // Handle Mock Payment & Balance Top Up
+  // Handle Telegram Stars Payment Checkout
   const handlePayment = async () => {
     setPaymentStatus('processing');
     
-    // Simulate connection delay
-    await new Promise((resolve) => setTimeout(resolve, 2000));
+    // Clear any active polling first
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
 
     try {
-      const currentProf = userProfile || await profileService.getOrCreateProfile();
-      if (!currentProf) throw new Error('No user profile found');
-
-      let updatedCredits = currentProf.credits_balance || 0;
-      let updatedTier = currentProf.tier || 'free';
-
-      if (billingTab === 'topup') {
-        const addedCredits = TOP_UP_OPTIONS[selectedTopUp].credits;
-        updatedCredits += addedCredits;
-      } else {
-        const plan = PLANS.find(p => p.id === selectedPlan);
-        if (plan) {
-          updatedCredits += plan.credits;
-          updatedTier = plan.id as any;
-        }
-      }
-
-      // Update in Supabase public.profiles database using client service role / public profile update
-      const success = await profileService.updateProfile(currentProf.id, {
-        credits_balance: updatedCredits,
-        tier: updatedTier as any
+      // 1. Call API to create Telegram Stars Invoice Link
+      const res = await fetch('/api/billing/telegram-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: billingTab, // 'topup' or 'plan'
+          id: billingTab === 'topup' ? selectedTopUp : selectedPlan,
+          locale,
+        }),
       });
 
-      if (success) {
-        setLiveBalance(updatedCredits);
-        // Refresh local memory profile
-        setUserProfile({ ...currentProf, credits_balance: updatedCredits, tier: updatedTier });
-        setPaymentStatus('success');
-      } else {
-        throw new Error('Database profile update failed');
+      const data = await res.json();
+      if (!res.ok || !data.success) {
+        throw new Error(data.error || 'Failed to generate payment link');
       }
-    } catch (err) {
-      console.error('Payment handler failed:', err);
+
+      const invoiceLink = data.invoiceLink;
+
+      // 2. Open invoice link according to the active platform context
+      const tg = (globalThis as any).window?.Telegram?.WebApp;
+      
+      if (tg && typeof tg.openInvoice === 'function') {
+        // native Mini App context
+        tg.openInvoice(invoiceLink, async (status: string) => {
+          if (status === 'paid') {
+            setPaymentStatus('processing');
+            // Allow background webhook propagation delay, then fetch profile
+            await new Promise((resolve) => setTimeout(resolve, 1500));
+            const u = await profileService.getOrCreateProfile();
+            if (u) {
+              setLiveBalance(u.credits_balance);
+              setUserProfile(u);
+              setPaymentStatus('success');
+            } else {
+              setPaymentStatus('idle');
+            }
+          } else {
+            setPaymentStatus('idle');
+          }
+        });
+      } else {
+        // Standard Web Browser Context
+        const payWindow = (globalThis as any).window?.open(invoiceLink, '_blank');
+        if (!payWindow) {
+          // Fallback if popup blocker block is triggered
+          (globalThis as any).window.location.href = invoiceLink;
+          return;
+        }
+
+        // Poll for profile credit updates since payment is completed asynchronously on Telegram
+        const initialBalance = liveBalance || 0;
+        let attempts = 0;
+        const maxAttempts = 60; // 3 minutes limit
+
+        pollingRef.current = setInterval(async () => {
+          attempts++;
+          if (attempts > maxAttempts) {
+            if (pollingRef.current) {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+            }
+            setPaymentStatus('idle');
+            return;
+          }
+
+          try {
+            const u = await profileService.getOrCreateProfile();
+            if (u && u.credits_balance > initialBalance) {
+              setLiveBalance(u.credits_balance);
+              setUserProfile(u);
+              setPaymentStatus('success');
+              
+              if (pollingRef.current) {
+                clearInterval(pollingRef.current);
+                pollingRef.current = null;
+              }
+            }
+          } catch (pollErr) {
+            console.error('[Telegram Stars Polling] Fetch profile error:', pollErr);
+          }
+        }, 3000);
+      }
+    } catch (err: any) {
+      console.error('[Telegram Stars Payment] Initiation failed:', err);
       setPaymentStatus('idle');
       if (typeof (globalThis as any).window !== 'undefined') {
-        (globalThis as any).window.alert(locale === 'ru' ? 'Сбой транзакции. Попробуйте еще раз.' : 'Transaction failed. Please try again.');
+        (globalThis as any).window.alert(
+          locale === 'ru' 
+            ? `Не удалось запустить платеж: ${err.message || 'попробуйте позже'}` 
+            : `Failed to initiate payment: ${err.message || 'please try again'}`
+        );
       }
     }
   };

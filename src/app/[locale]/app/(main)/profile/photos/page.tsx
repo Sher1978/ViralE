@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useRouter } from '@/navigation';
 import { useLocale } from 'next-intl';
 import { supabase } from '@/lib/supabase';
+import { useAppData } from '@/components/providers/AppDataProvider';
 import {
   Images,
   Trash2,
@@ -30,6 +31,7 @@ export default function PhotoGalleryPage() {
   const router = useRouter();
   const locale = useLocale();
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const { updateProfile } = useAppData();
 
   const [photos, setPhotos] = useState<UserPhoto[]>([]);
   const [loading, setLoading] = useState(true);
@@ -132,6 +134,7 @@ export default function PhotoGalleryPage() {
       if (error) throw error;
 
       setCurrentAvatarUrl(photo.url);
+      updateProfile({ avatar_url: photo.url });
       setSelectedPhoto(null);
       showToast(locale === 'ru' ? 'Фото профиля обновлено!' : 'Profile photo updated!');
     } catch (err: any) {

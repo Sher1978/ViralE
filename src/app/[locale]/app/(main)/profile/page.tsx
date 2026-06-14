@@ -29,6 +29,7 @@ import {
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
 import React, { useEffect, useState, useRef } from 'react';
+import { useAppData } from '@/components/providers/AppDataProvider';
 import { profileService } from '@/lib/services/profileService';
 import { Profile } from '@/lib/services/profileService';
 import { supabase } from '@/lib/supabase';
@@ -42,6 +43,7 @@ export default function ProfilePage() {
   const router = useRouter();
   const pathname = usePathname();
   const { theme, setTheme } = useTheme();
+  const { updateProfile: updateGlobalProfile } = useAppData();
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isEditing, setIsEditing] = useState(false);
@@ -147,6 +149,7 @@ export default function ProfilePage() {
 
       if (success) {
         setProfile(prev => prev ? { ...prev, avatar_url: publicUrl } : null);
+        updateGlobalProfile({ avatar_url: publicUrl });
         setSuccessMsg(t('uploadSuccess'));
         setTimeout(() => setSuccessMsg(null), 3000);
       }
@@ -167,6 +170,7 @@ export default function ProfilePage() {
       });
       if (success) {
         setProfile(prev => prev ? { ...prev, full_name: editName } : null);
+        updateGlobalProfile({ full_name: editName });
         setIsEditing(false);
         setSuccessMsg(t('updateSuccess'));
         setTimeout(() => setSuccessMsg(null), 3000);
@@ -212,13 +216,20 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Upload failed');
 
+      const nowStr = new Date().toISOString();
       setProfile(prev => prev ? {
         ...prev,
         storybrand_raw_content: fileText,
         storybrand_filename: file.name,
         storybrand_file_size: file.size,
-        storybrand_updated_at: new Date().toISOString()
+        storybrand_updated_at: nowStr
       } as any : null);
+      updateGlobalProfile({
+        storybrand_raw_content: fileText,
+        storybrand_filename: file.name,
+        storybrand_file_size: file.size,
+        storybrand_updated_at: nowStr
+      } as any);
 
       setStoryBrandText(fileText);
       setSuccessMsg(locale === 'ru' ? 'СториБренд успешно сохранен!' : 'StoryBrand saved successfully!');
@@ -256,13 +267,20 @@ export default function ProfilePage() {
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Save failed');
 
+      const nowStr = new Date().toISOString();
       setProfile(prev => prev ? {
         ...prev,
         storybrand_raw_content: storyBrandText,
         storybrand_filename: 'storybrand_manual.txt',
         storybrand_file_size: sizeBytes,
-        storybrand_updated_at: new Date().toISOString()
+        storybrand_updated_at: nowStr
       } as any : null);
+      updateGlobalProfile({
+        storybrand_raw_content: storyBrandText,
+        storybrand_filename: 'storybrand_manual.txt',
+        storybrand_file_size: sizeBytes,
+        storybrand_updated_at: nowStr
+      } as any);
 
       setSuccessMsg(locale === 'ru' ? 'СториБренд сохранен!' : 'StoryBrand saved!');
       setTimeout(() => setSuccessMsg(null), 3000);
@@ -293,6 +311,12 @@ export default function ProfilePage() {
         storybrand_file_size: null,
         storybrand_updated_at: null
       } as any : null);
+      updateGlobalProfile({
+        storybrand_raw_content: null,
+        storybrand_filename: null,
+        storybrand_file_size: null,
+        storybrand_updated_at: null
+      } as any);
 
       setStoryBrandText('');
       setSuccessMsg(locale === 'ru' ? 'СториБренд удален!' : 'StoryBrand deleted!');
@@ -372,6 +396,11 @@ export default function ProfilePage() {
         tier: data.tier,
         subscription_status: 'active'
       } : null);
+      updateGlobalProfile({
+        credits_balance: data.newBalance,
+        tier: data.tier,
+        subscription_status: 'active'
+      });
 
     } catch (err: any) {
       setPromoError(err.message || 'Error');

@@ -64,12 +64,21 @@ async function handleTelegramAuth(userData: any, hash: string) {
     throw signInError || new Error('Failed to create session');
   }
 
-  // 5. Update Profile with telegram_id
+  // 5. Update Profile with telegram_id (preserve user custom updates)
+  const { data: existingProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('full_name, avatar_url')
+    .eq('id', targetUser!.id)
+    .single();
+
+  const fullName = existingProfile?.full_name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
+  const avatarUrl = existingProfile?.avatar_url || userData.photo_url;
+
   await supabaseAdmin.from('profiles').upsert({
     id: targetUser!.id,
     telegram_id: parseInt(telegramId),
-    full_name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
-    avatar_url: userData.photo_url,
+    full_name: fullName,
+    avatar_url: avatarUrl,
     username: userData.username
   }, { onConflict: 'id' });
 
