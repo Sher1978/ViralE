@@ -111,7 +111,7 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               onClick={() => onSelect('animate')}
               className="w-full py-4 rounded-[2rem] bg-white/5 border border-white/10 text-white font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2"
             >
-              АВАТАР СТУДИЯ <Sparkles size={14} className="text-purple-400" />
+              FACE SWAP <Sparkles size={14} className="text-purple-400" />
             </motion.button>
 
             <div className="grid grid-cols-2 gap-3">

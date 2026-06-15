@@ -160,11 +160,11 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
              <div className="p-6 md:p-8 border-b border-white/5 flex items-center justify-between">
                 <div>
                    <h2 className="text-2xl md:text-3xl font-black italic uppercase text-white tracking-tighter leading-none">
-                      Выберите <span className="text-purple-500">Облик</span>
-                   </h2>
-                   <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-1">
-                      Это фото будет "оживлено" под ваш голос
-                   </p>
+                       <span className="text-purple-500">Face Swap</span> — выберите фото
+                    </h2>
+                    <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest mt-1">
+                       Ваше фото будет наложено на записанное видео (Face Swap)
+                    </p>
                 </div>
                 <button 
                   onClick={onClose}
@@ -208,8 +208,8 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                             </div>
                             
                             <div className="space-y-2">
-                               <h3 className="text-xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none">Склейка <span className="text-purple-400">А-Ролла</span></h3>
-                               <p className="text-[8px] md:text-[10px] font-bold text-white/30 uppercase tracking-[0.4em] animate-pulse">Mastering Audio + Visual Identity</p>
+                               <h3 className="text-xl md:text-2xl font-black italic uppercase text-white tracking-tighter leading-none">Запуск <span className="text-purple-400">Face Swap</span></h3>
+                                <p className="text-[8px] md:text-[10px] font-bold text-white/30 uppercase tracking-[0.4em] animate-pulse">AI Face Synthesis in Progress...</p>
                             </div>
 
                             <div className="w-48 md:w-64 h-1.5 md:h-2 bg-white/5 rounded-full overflow-hidden">
@@ -344,7 +344,7 @@ export const AvatarSelector: React.FC<AvatarSelectorProps> = ({
                           : 'bg-white/5 text-white/10 cursor-not-allowed'
                      }`}
                    >
-                      Оживить Фото <ChevronRight size={16} className="inline ml-1" />
+                       Запустить Face Swap <ChevronRight size={16} className="inline ml-1" />
                    </button>
                 </div>
              )}

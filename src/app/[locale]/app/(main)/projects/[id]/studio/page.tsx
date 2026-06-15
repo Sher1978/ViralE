@@ -48,6 +48,7 @@ const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat'
 const FacelessStudio = dynamic(() => import('@/components/studio/FacelessStudio'), { ssr: false, loading: Spinner });
 const AvatarHub = dynamic(() => import('@/components/production/AvatarHub'), { ssr: false, loading: Spinner });
 const FusionPreview = dynamic(() => import('./_components/FusionPreview').then(m => m.FusionPreview), { ssr: false, loading: Spinner });
+const HeyGenAvatarFlow = dynamic(() => import('@/components/studio/HeyGenAvatarFlow'), { ssr: false, loading: Spinner });
 
 import { BottomNav } from '@/components/layout/BottomNav';
 
@@ -67,7 +68,7 @@ export default function StudioPage() {
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion' | 'avatar_hub' | 'fusion_preview'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion' | 'avatar_hub' | 'fusion_preview' | 'heygen_avatar'>(initialTab);
   
   const handleTabChange = useCallback((tab: any) => {
     setActiveTab(tab);
@@ -678,6 +679,10 @@ export default function StudioPage() {
                       setShowFaceless(true);
                       setIsVoiceOnly(false);
                       setActiveTab('assembly');
+                    } else if (type === 'heygen-avatar') {
+                      setShowFaceless(false);
+                      setIsVoiceOnly(false);
+                      handleTabChange('heygen_avatar');
                     }
                   }}
                   onBack={() => handleTabChange('concept')}
@@ -685,6 +690,24 @@ export default function StudioPage() {
               </div>
             )}
 
+            {/* HeyGen Avatar Flow */}
+            {visitedTabs['heygen_avatar'] && (
+              <div className={activeTab === 'heygen_avatar' ? 'h-full w-full' : 'hidden'}>
+                <HeyGenAvatarFlow
+                  manifest={manifest}
+                  projectId={projectId}
+                  onBack={() => handleTabChange('branch')}
+                  onSendToMontage={(videoUrl) => {
+                    // Save as A-Roll in manifest
+                    setManifest(prev => prev ? { ...prev, aRollUrl: videoUrl, videoUrl } : prev);
+                    setLastRecordingUrl(videoUrl);
+                    addSystemLog(`[HeyGen] A-Roll сохранён: ${videoUrl}`);
+                    // Go to video editor
+                    handleTabChange('assembly');
+                  }}
+                />
+              </div>
+            )}
 
             {visitedTabs['teleprompter'] && (
               <div className={activeTab === 'teleprompter' ? 'h-full w-full' : 'hidden'}>
