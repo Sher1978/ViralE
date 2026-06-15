@@ -35,6 +35,7 @@ export async function POST(req: Request) {
         digital_shadow_prompt: masterPrompt || null,
         synthetic_training_data: masterPrompt || null, // New column
         raw_onboarding_data: answers || null,
+        dna_answers: answers || null,
         onboarding_completed: true,
         credits_balance: 100,
         tier: 'free',
