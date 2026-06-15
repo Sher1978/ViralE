@@ -74,13 +74,34 @@ async function handleTelegramAuth(userData: any, hash: string) {
   const fullName = existingProfile?.full_name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
   const avatarUrl = existingProfile?.avatar_url || userData.photo_url;
 
-  await supabaseAdmin.from('profiles').upsert({
-    id: targetUser!.id,
-    telegram_id: parseInt(telegramId),
-    full_name: fullName,
-    avatar_url: avatarUrl,
-    username: userData.username
-  }, { onConflict: 'id' });
+  if (existingProfile) {
+    const { error: updateError } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        telegram_id: parseInt(telegramId),
+        full_name: fullName,
+        avatar_url: avatarUrl,
+        username: userData.username
+      })
+      .eq('id', targetUser!.id);
+    if (updateError) throw updateError;
+  } else {
+    const { error: insertError } = await supabaseAdmin
+      .from('profiles')
+      .insert({
+        id: targetUser!.id,
+        email,
+        telegram_id: parseInt(telegramId),
+        full_name: fullName,
+        avatar_url: avatarUrl,
+        username: userData.username,
+        credits_balance: 100,
+        tier: 'free',
+        subscription_status: 'active',
+        preferred_language: 'ru'
+      });
+    if (insertError) throw insertError;
+  }
 
   return { session: sessionData.session, user: targetUser };
 }

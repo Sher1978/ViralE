@@ -514,6 +514,7 @@ export default function HeyGenAvatarFlow({
                       <div className="relative">
                         <input
                           type="password"
+                          autoComplete="new-password"
                           placeholder="NjY3..."
                           value={heygenKey}
                           onChange={e => setHeygenKey((e.target as any).value)}

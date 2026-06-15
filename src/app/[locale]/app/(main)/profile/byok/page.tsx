@@ -311,6 +311,7 @@ function KeySection({
         <div className="relative group/input">
           <input
             type="password"
+            autoComplete="new-password"
             value={value}
             onChange={(e) => onChange((e.target as any).value)}
             placeholder={status.hasKey ? status.maskedKey || placeholder : placeholder}

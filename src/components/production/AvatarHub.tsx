@@ -367,6 +367,7 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig, 
                     <div className="relative">
                       <input 
                         type="password"
+                        autoComplete="new-password"
                         placeholder="sk_..."
                         className="w-full bg-black/40 border border-white/5 rounded-2xl p-5 text-white placeholder:text-white/10 focus:outline-none focus:ring-1 focus:ring-purple-500/50 transition-all font-mono text-sm shadow-inner"
                       />

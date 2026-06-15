@@ -483,6 +483,7 @@ export default function AvatarStudioPage() {
                        <label className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 pl-1">{t('heygenKeyLabel')}</label>
                        <input 
                           type="password"
+                          autoComplete="new-password"
                           value={heygenKey}
                           onChange={(e) => setHeygenKey((e.target as any).value)}
                           placeholder={t('heygenKeyPlaceholder')}
