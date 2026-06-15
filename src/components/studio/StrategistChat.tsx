@@ -8,6 +8,7 @@ import {
   Mic, MicOff, Copy, Volume2, VolumeX, Terminal
 } from 'lucide-react';
 import { strategistService, AccessStatus } from '@/lib/services/strategistService';
+import { profileService, Profile } from '@/lib/services/profileService';
 import { ProductionManifest, SceneSegment } from '@/lib/types/studio';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
@@ -75,6 +76,8 @@ export function StrategistChat({
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [scriptMatrix, setScriptMatrix] = useState<any | null>(null);
+  const [profile, setProfile] = useState<Profile | null>(null);
+  const [showUpgradeModal, setShowUpgradeModal] = useState(false);
 
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -89,16 +92,14 @@ export function StrategistChat({
     const checkAccess = async () => {
       if (!userId) return;
       try {
-        const status = await strategistService.getAccessStatus(userId);
+        const [status, prof] = await Promise.all([
+          strategistService.getAccessStatus(userId),
+          profileService.getProfile(userId)
+        ]);
         setAccess(status);
+        setProfile(prof);
       } catch (err: any) {
-        console.error('[StrategistChat] Access Check Failed:', {
-          userId,
-          error: err,
-          message: err?.message,
-          code: err?.code,
-          status: err?.status || err?.response?.status
-        });
+        console.error('[StrategistChat] Access & Profile Check Failed:', err);
       }
     };
     checkAccess();
@@ -347,46 +348,78 @@ export function StrategistChat({
     }
   };
 
+  const handleToggleClick = () => {
+    if (isOpen) {
+      setIsOpen(false);
+      return;
+    }
+    if (profile?.tier === 'pro' || access?.hasAccess) {
+      setIsOpen(true);
+    } else {
+      setShowUpgradeModal(true);
+    }
+  };
+
   return (
-    <div className={containerClassName || "fixed top-6 right-6 z-[100] flex flex-col items-end"}>
-      {/* Floating Toggle Button */}
-      <motion.button
-        whileHover={{ scale: 1.05 }}
-        whileTap={{ scale: 0.95 }}
-        onClick={() => setIsOpen(!isOpen)}
-        className={cn(
-          "relative h-12 w-12 rounded-xl shadow-2xl flex items-center justify-center transition-all duration-500 overflow-hidden border-2",
-          isOpen 
-            ? "bg-red-500/80 backdrop-blur-md border-red-400/50" 
-            : "bg-black/80 backdrop-blur-md border-white/20"
-        )}
+    <>
+      {/* Floating Toggle Button Container */}
+      <div 
+        className={containerClassName || "fixed right-6 z-[100] flex flex-col items-end"}
+        style={{
+          top: 'calc(env(safe-area-inset-top, 0px) + 24px)'
+        }}
       >
-        {isOpen ? (
-          <X className="text-white h-6 w-6" />
-        ) : (
-          <img 
-            src="/icon-512x512.png" 
-            alt="Advisor" 
-            className="w-full h-full object-cover scale-110"
+        <motion.button
+          whileHover={{ scale: 1.05 }}
+          whileTap={{ scale: 0.95 }}
+          onClick={handleToggleClick}
+          className={cn(
+            "relative h-12 w-12 rounded-xl shadow-2xl flex items-center justify-center transition-all duration-500 overflow-hidden border-2",
+            isOpen 
+              ? "bg-red-500/80 backdrop-blur-md border-red-400/50" 
+              : "bg-black/80 backdrop-blur-md border-white/20"
+          )}
+        >
+          {isOpen ? (
+            <X className="text-white h-6 w-6" />
+          ) : (
+            <img 
+              src="/icon-512x512.png" 
+              alt="Advisor" 
+              className="w-full h-full object-cover scale-110"
+            />
+          )}
+          {!isOpen && (
+            <motion.div
+              animate={{ scale: [1, 1.2, 1] }}
+              transition={{ repeat: Infinity, duration: 2 }}
+              className="absolute -top-1 -right-1 h-4 w-4 bg-yellow-400 rounded-full border-2 border-slate-900"
+            />
+          )}
+        </motion.button>
+      </div>
+
+      {/* Backdrop */}
+      <AnimatePresence>
+        {isOpen && (
+          <motion.div 
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[150]" 
+            onClick={() => setIsOpen(false)} 
           />
         )}
-        {!isOpen && (
-          <motion.div
-            animate={{ scale: [1, 1.2, 1] }}
-            transition={{ repeat: Infinity, duration: 2 }}
-            className="absolute -top-1 -right-1 h-4 w-4 bg-yellow-400 rounded-full border-2 border-slate-900"
-          />
-        )}
-      </motion.button>
+      </AnimatePresence>
 
       {/* Chat Window */}
       <AnimatePresence>
         {isOpen && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="mt-4 w-[380px] h-[600px] bg-black/80 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden relative"
+            exit={{ opacity: 0, y: 20, scale: 0.95 }}
+            className="fixed inset-x-4 top-[calc(env(safe-area-inset-top,0px)+80px)] bottom-[calc(env(safe-area-inset-bottom,0px)+100px)] md:inset-auto md:top-24 md:right-6 md:w-[450px] md:h-[70vh] bg-black/90 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden z-[160]"
           >
             {/* Background Visualizer */}
             <div className={cn(
@@ -642,9 +675,12 @@ export function StrategistChat({
                 {isVoiceMode ? "Press and Hold Mic to speak • Voice Mode: ON" : "Hold Space for voice shorthand • Context: Digital Shadow"}
               </p>
             </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
 
       <PremiumLimitModal 
-        isOpen={showLimitModal || access?.hasAccess === false}
+        isOpen={showLimitModal}
         onClose={() => setShowLimitModal(false)}
         title={locale === 'ru' ? 'Доступ ограничен' : 'Access Restricted'}
         description={locale === 'ru' 
@@ -653,9 +689,17 @@ export function StrategistChat({
         type="trial"
         locale={locale}
       />
-          </motion.div>
-        )}
-      </AnimatePresence>
+
+      <PremiumLimitModal 
+        isOpen={showUpgradeModal}
+        onClose={() => setShowUpgradeModal(false)}
+        title={locale === 'ru' ? 'ИИ Стратег заблокирован' : 'AI Strategist Locked'}
+        description={locale === 'ru' 
+          ? 'Функция "ИИ Стратег" доступна только для пользователей с Pro-пакетом. Обновите ваш пакет для продолжения.' 
+          : 'The AI Strategist feature is only available for users with the Pro package. Upgrade your package to continue.'}
+        type="tier_upgrade"
+        locale={locale}
+      />
 
       {/* Structured Rotor View */}
       <AnimatePresence>
@@ -752,6 +796,6 @@ export function StrategistChat({
           />
         )}
       </AnimatePresence>
-    </div>
+    </>
   );
 }

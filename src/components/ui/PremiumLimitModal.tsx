@@ -15,7 +15,7 @@ interface PremiumLimitModalProps {
   title: string;
   description: string;
   advice?: string;
-  type?: 'trial' | 'credits' | 'tier' | 'success' | 'info' | 'error' | 'warning' | 'confirm';
+  type?: 'trial' | 'credits' | 'tier' | 'success' | 'info' | 'error' | 'warning' | 'confirm' | 'tier_upgrade';
   locale?: string;
   balance?: number;
   onConfirm?: () => void;
@@ -129,6 +129,7 @@ export function PremiumLimitModal({
       case 'credits': return { icon: Zap, color: 'text-amber-400', bg: 'bg-amber-500/20', accent: 'border-amber-500/20' };
       case 'info': return { icon: Info, color: 'text-cyan-400', bg: 'bg-cyan-500/20', accent: 'border-cyan-500/20' };
       case 'tier': return { icon: Sparkles, color: 'text-purple-400', bg: 'bg-purple-500/20', accent: 'border-purple-500/20' };
+      case 'tier_upgrade': return { icon: Sparkles, color: 'text-yellow-400', bg: 'bg-yellow-500/20', accent: 'border-yellow-500/20' };
       case 'error': return { icon: AlertCircle, color: 'text-red-400', bg: 'bg-red-500/20', accent: 'border-red-500/30' };
       case 'warning': return { icon: AlertCircle, color: 'text-orange-400', bg: 'bg-orange-500/20', accent: 'border-orange-500/20' };
       default: return { icon: Lock, color: 'text-purple-400', bg: 'bg-purple-500/20', accent: 'border-purple-500/20' };
@@ -517,19 +518,19 @@ export function PremiumLimitModal({
                       {locale === 'ru' ? 'Дальше' : 'Proceed'}
                     </button>
                   </div>
-                ) : (type === 'trial' || type === 'credits' || type === 'tier') ? (
+                                ) : type === 'tier_upgrade' ? (
                   <button
                     onClick={() => {
-                      // Switch inline Checkout state to true instead of redirecting the user!
-                      setShowCheckout(true);
+                      router.push('/app/profile/subscription');
+                      onClose();
                     }}
-                    className="group relative w-full overflow-hidden bg-white p-5 text-black transition-all hover:bg-purple-500 hover:text-white active:scale-95 shadow-[0_10px_30px_rgba(255,255,255,0.1)] font-mono"
+                    className="group relative w-full overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 p-5 text-white transition-all hover:brightness-110 active:scale-95 shadow-[0_10px_30px_rgba(147,51,234,0.3)] font-mono"
                   >
                     <div className="relative z-10 flex items-center justify-center gap-3">
-                      <span className="text-sm font-black uppercase tracking-tighter italic">
-                        {locale === 'ru' ? 'Пополнить баланс' : 'Refill Balance'}
+                      <span className="text-sm font-black uppercase tracking-tighter italic text-white">
+                        {locale === 'ru' ? 'Перейти к тарифам' : 'Go to Plans'}
                       </span>
-                      <ArrowRight className="h-5 w-5 transition-transform group-hover:translate-x-1" />
+                      <ArrowRight className="h-5 w-5 text-white transition-transform group-hover:translate-x-1" />
                     </div>
                   </button>
                 ) : (
@@ -545,7 +546,7 @@ export function PremiumLimitModal({
                   </button>
                 )}
                 
-                {(type === 'trial' || type === 'credits' || type === 'tier') && (
+                {(type === 'trial' || type === 'credits' || type === 'tier' || type === 'tier_upgrade') && (
                   <button
                     onClick={onClose}
                     className="w-full flex items-center justify-center py-2 text-[8px] font-black uppercase tracking-[0.3em] text-white/20 hover:text-white/40 transition-all font-mono"
