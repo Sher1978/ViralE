@@ -348,15 +348,41 @@ export function StrategistChat({
     }
   };
 
-  const handleToggleClick = () => {
+  const handleToggleClick = async () => {
     if (isOpen) {
       setIsOpen(false);
       return;
     }
-    if (profile?.tier === 'pro' || access?.hasAccess) {
-      setIsOpen(true);
+    // Refresh access and profile dynamically on click to catch plan upgrades immediately!
+    if (userId) {
+      try {
+        const [status, prof] = await Promise.all([
+          strategistService.getAccessStatus(userId),
+          profileService.getProfile(userId)
+        ]);
+        setAccess(status);
+        setProfile(prof);
+        
+        if (prof?.tier === 'pro' || status?.hasAccess) {
+          setIsOpen(true);
+        } else {
+          setShowUpgradeModal(true);
+        }
+      } catch (err) {
+        console.error('[StrategistChat] Failed to refresh access on toggle click:', err);
+        // fallback to existing loaded state
+        if (profile?.tier === 'pro' || access?.hasAccess) {
+          setIsOpen(true);
+        } else {
+          setShowUpgradeModal(true);
+        }
+      }
     } else {
-      setShowUpgradeModal(true);
+      if (profile?.tier === 'pro' || access?.hasAccess) {
+        setIsOpen(true);
+      } else {
+        setShowUpgradeModal(true);
+      }
     }
   };
 

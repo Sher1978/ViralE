@@ -39,9 +39,17 @@ export async function POST(req: Request) {
     }
 
     // 2. Check access
+    const { data: profile } = await supabase
+      .from('profiles')
+      .select('tier')
+      .eq('id', user.id)
+      .single();
+
+    const isPro = profile?.tier === 'pro';
+
     let access = await strategistService.getAccessStatus(user.id);
     
-    if (access.status === 'no_access') {
+    if (!isPro && access.status === 'no_access') {
       const activated = await strategistService.activateTrial(user.id);
       if (!activated) {
         return new Response(JSON.stringify({ error: 'Failed to activate trial' }), { status: 500 });
@@ -49,7 +57,7 @@ export async function POST(req: Request) {
       access = await strategistService.getAccessStatus(user.id);
     }
 
-    if (!access.hasAccess) {
+    if (!isPro && !access.hasAccess) {
       return new Response(JSON.stringify({ 
         error: 'TRIAL_EXPIRED', 
         message: 'Your 24h trial has ended.' 
