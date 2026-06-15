@@ -49,6 +49,7 @@ const FacelessStudio = dynamic(() => import('@/components/studio/FacelessStudio'
 const AvatarHub = dynamic(() => import('@/components/production/AvatarHub'), { ssr: false, loading: Spinner });
 const FusionPreview = dynamic(() => import('./_components/FusionPreview').then(m => m.FusionPreview), { ssr: false, loading: Spinner });
 const HeyGenAvatarFlow = dynamic(() => import('@/components/studio/HeyGenAvatarFlow'), { ssr: false, loading: Spinner });
+const ScriptEditorView = dynamic(() => import('./_components/ScriptEditorView').then(m => m.ScriptEditorView), { ssr: false, loading: Spinner });
 
 import { BottomNav } from '@/components/layout/BottomNav';
 
@@ -68,7 +69,7 @@ export default function StudioPage() {
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch'| 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion' | 'avatar_hub' | 'fusion_preview' | 'heygen_avatar'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch' | 'script_editor' | 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion' | 'avatar_hub' | 'fusion_preview' | 'heygen_avatar'>(initialTab);
   
   const handleTabChange = useCallback((tab: any) => {
     setActiveTab(tab);
@@ -663,6 +664,33 @@ export default function StudioPage() {
               </div>
             )}
             
+            {visitedTabs['script_editor'] && (
+              <div className={activeTab === 'script_editor' ? 'h-full w-full' : 'hidden'}>
+                <ScriptEditorView
+                  scriptText={customScript || manifest?.customScript || manifest?.segments?.map((s: any) => s.scriptText || s.text || '').filter(Boolean).join('\n\n') || ''}
+                  onSave={async (text) => {
+                    setCustomScript(text);
+                    setUseCustomScript(true);
+                    setManifest(prev => {
+                      if (!prev) return prev;
+                      const next = {
+                        ...prev,
+                        customScript: text,
+                        useCustomScript: true
+                      };
+                      if (projectId) {
+                        projectService.updateLatestVersionManifest(projectId, next);
+                      }
+                      return next;
+                    });
+                  }}
+                  onNext={() => handleTabChange('branch')}
+                  onBack={() => handleTabChange('concept')}
+                  locale={locale}
+                />
+              </div>
+            )}
+
             {visitedTabs['branch'] && (
               <div className={activeTab === 'branch' ? 'h-full w-full' : 'hidden'}>
                 <ProductionBranch
@@ -1138,6 +1166,26 @@ export default function StudioPage() {
           )}
         </AnimatePresence>
       </div>
+
+      <StrategistChat 
+        projectId={projectId}
+        userId={currentProfile?.id || ''}
+        manifest={manifest || undefined}
+        setManifest={setManifest}
+        context="studio"
+        locale={locale}
+        onUseScript={(text) => {
+          setCustomScript(text);
+          setUseCustomScript(true);
+          setManifest(prev => {
+            if (!prev) return prev;
+            const next = { ...prev, customScript: text, useCustomScript: true };
+            if (projectId) projectService.updateLatestVersionManifest(projectId, next);
+            return next;
+          });
+          handleTabChange('script_editor');
+        }}
+      />
     </div>
   );
 }

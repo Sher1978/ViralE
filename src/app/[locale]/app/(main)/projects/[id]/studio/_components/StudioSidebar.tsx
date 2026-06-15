@@ -9,7 +9,7 @@ import {
 import { useRouter } from '@/navigation';
 
 interface StudioSidebarProps {
-  activeTab: 'concept' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'branch';
+  activeTab: 'concept' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'branch' | 'script_editor';
   setActiveTab: (tab: any) => void;
   cameraStream: MediaStream | null;
   isRecordingVideo: boolean;
@@ -117,14 +117,14 @@ export const StudioSidebar = React.memo(({
                   if (tab.id === 'concept') {
                     router.push(`/app/projects/new/script?projectId=${projectId}`);
                   } else if (tab.id === 'branch') {
-                    setActiveTab('branch');
+                    setActiveTab('script_editor');
                   } else {
                     setActiveTab(tab.id);
                   }
                 }}
                 className={`flex items-center gap-4 p-4 rounded-xl border transition-colors text-left ${
                   activeTab === tab.id || 
-                  (tab.id === 'branch' && activeTab === 'teleprompter')
+                  (tab.id === 'branch' && ['branch', 'script_editor', 'teleprompter', 'heygen_avatar'].includes(activeTab))
                     ? 'bg-purple-600 border-purple-500 text-white' 
                     : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'
                 }`}

@@ -22,6 +22,17 @@ interface Message {
   content: string;
 }
 
+const parseMessageContent = (content: string) => {
+  const scriptRegex = /<FINAL_SCRIPT>([\s\S]*?)(?:<\/FINAL_SCRIPT>|$)/i;
+  const match = content.match(scriptRegex);
+  if (match) {
+    const textBefore = content.split(/<FINAL_SCRIPT>/i)[0].trim();
+    const scriptText = match[1].replace(/<\/FINAL_SCRIPT>/i, '').trim();
+    return { textBefore, scriptText };
+  }
+  return { textBefore: content, scriptText: null };
+};
+
 interface StrategistChatProps {
   projectId: string;
   manifest?: ProductionManifest;
@@ -32,6 +43,7 @@ interface StrategistChatProps {
   context?: 'script' | 'storyboard' | 'studio' | 'production';
   onApplySuggestion?: (text: string) => void;
   onMatrixUpdate?: (matrix: any) => void;
+  onUseScript?: (text: string) => void;
 }
 
 export function StrategistChat({
@@ -44,6 +56,7 @@ export function StrategistChat({
   context = 'studio',
   onApplySuggestion,
   onMatrixUpdate,
+  onUseScript,
   containerClassName
 }: StrategistChatProps & { containerClassName?: string }) {
   const t = useTranslations('Strategist');
@@ -437,12 +450,30 @@ export function StrategistChat({
                       ? "bg-purple-600/40 text-white rounded-tr-none border border-purple-500/30" 
                       : "bg-white/5 text-slate-200 rounded-tl-none border border-white/5 hover:bg-white/10"
                   )}>
-                    {m.content}
+                    {(() => {
+                      const { textBefore, scriptText } = parseMessageContent(m.content);
+                      return (
+                        <div className="space-y-3">
+                          {textBefore && <p className="leading-relaxed whitespace-pre-wrap">{textBefore}</p>}
+                          {scriptText && (
+                            <div className="mt-2 p-3 bg-black/50 border border-purple-500/30 rounded-xl font-mono text-xs text-purple-200 select-text relative overflow-hidden shadow-inner leading-relaxed">
+                              <div className="absolute top-0 right-0 bg-purple-500/20 px-2 py-0.5 text-[8px] font-black uppercase text-purple-300 border-l border-b border-purple-500/20">
+                                Сценарий
+                              </div>
+                              <p className="whitespace-pre-wrap">{scriptText}</p>
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })()}
                     
                     {/* Copy to Clipboard - More visible on hover */}
                     {m.role === 'assistant' && !isStreaming && (
                       <button 
-                        onClick={() => copyToClipboard(m.content, i)}
+                        onClick={() => {
+                          const { scriptText } = parseMessageContent(m.content);
+                          copyToClipboard(scriptText || m.content, i);
+                        }}
                         className="absolute -right-10 top-0 p-2 opacity-0 group-hover/message:opacity-100 text-slate-500 hover:text-white transition-all bg-white/5 rounded-xl border border-white/10"
                         title="Copy to Clipboard"
                       >
@@ -450,16 +481,44 @@ export function StrategistChat({
                       </button>
                     )}
                   </div>
-                  {/* Action suggesting for assistant messages that look like advice */}
-                  {m.role === 'assistant' && i === messages.length - 1 && !isStreaming && m.content.length > 20 && (
+                  {/* Action suggesting for assistant messages */}
+                  {m.role === 'assistant' && i === messages.length - 1 && !isStreaming && (
                     <div className="mt-2 flex flex-wrap gap-2">
-                      <button 
-                         onClick={() => applySuggestion(m.content)}
-                         className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/40 hover:to-blue-600/40 border border-purple-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-lg active:scale-95 group/apply"
-                      >
-                        <Zap className="h-3 w-3 text-yellow-400 group-hover/apply:animate-pulse" /> 
-                        {t('applyToScript')}
-                      </button>
+                      {(() => {
+                        const { scriptText } = parseMessageContent(m.content);
+                        if (scriptText) {
+                          return (
+                            <button 
+                               onClick={() => {
+                                 // 1. Copy scriptText to clipboard
+                                 const nav = (globalThis as any).navigator; if (nav && nav.clipboard) nav.clipboard.writeText(scriptText);
+                                 setCopiedId(i);
+                                 setTimeout(() => setCopiedId(null), 2000);
+                                 // 2. Close panel
+                                 setIsOpen(false);
+                                 // 3. Callback
+                                 if (onUseScript) onUseScript(scriptText);
+                                 else applySuggestion(scriptText);
+                               }}
+                               className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] active:scale-95 group/use"
+                            >
+                              <Zap className="h-3.5 w-3.5 text-yellow-300 group-hover/use:animate-pulse" /> 
+                              Использовать
+                            </button>
+                          );
+                        } else if (m.content.length > 20) {
+                          return (
+                            <button 
+                               onClick={() => applySuggestion(m.content)}
+                               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/40 hover:to-blue-600/40 border border-purple-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-lg active:scale-95 group/apply"
+                            >
+                              <Zap className="h-3 w-3 text-yellow-400 group-hover/apply:animate-pulse" /> 
+                              {t('applyToScript')}
+                            </button>
+                          );
+                        }
+                        return null;
+                      })()}
                     </div>
                   )}
                 </div>

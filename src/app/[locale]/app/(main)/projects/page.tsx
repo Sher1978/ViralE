@@ -141,7 +141,7 @@ export default function ProjectsPage() {
       id: 'recording',
       title: locale === 'ru' ? 'RECORDING HUB' : 'RECORDING HUB',
       desc: locale === 'ru' ? 'RECORD TELEPROMPTER OR GENERATE AI VIDEO' : 'RECORD TELEPROMPTER OR GENERATE AI VIDEO',
-      href: '/app/projects/new/production?tab=branch',
+      href: '/app/projects/new/production?tab=script_editor',
       image: 'https://images.unsplash.com/photo-1590179068383-b9c69aacebd3?q=80&w=1974&auto=format&fit=crop',
     },
     {

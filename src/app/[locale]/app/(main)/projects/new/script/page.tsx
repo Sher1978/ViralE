@@ -699,6 +699,10 @@ export default function ScriptLabPage() {
     setError(null);
 
     const activeScript = manualScriptData || scriptData;
+    const isRawString = typeof activeScript === 'string';
+    const scriptPayload = isRawString 
+      ? { hook: activeScript, context: '', meat: '', cta: '' } 
+      : activeScript;
 
     try {
       const profile = await profileService.getOrCreateProfile();
@@ -713,7 +717,7 @@ export default function ScriptLabPage() {
       if (!pId) {
         const fromProjectId = searchParams.get('fromProjectId');
         const project = await projectService.createProject({
-          title: topicInput || (typeof activeScript.hook === 'string' ? activeScript.hook.substring(0, 30) : (activeScript.hook?.words || '').substring(0, 30)) + '...',
+          title: topicInput || (isRawString ? activeScript.substring(0, 30) : (activeScript.hook?.words || activeScript.hook || '').substring(0, 30)) + '...',
           userId: profile.id,
           parentId: fromProjectId && fromProjectId !== 'null' ? fromProjectId : undefined
         });
@@ -726,7 +730,11 @@ export default function ScriptLabPage() {
         console.log('[ScriptLab] No valid versionId, creating new version...');
         
         // Wrap raw script into a Production Manifest for the Studio
-        const initialManifest = createInitialManifest(pId, 'temp', activeScript);
+        const initialManifest = createInitialManifest(pId, 'temp', scriptPayload);
+        if (isRawString) {
+          initialManifest.customScript = activeScript;
+          initialManifest.useCustomScript = true;
+        }
         if (allScenarios) {
           (initialManifest as any).allScenarios = allScenarios;
         }
@@ -744,7 +752,11 @@ export default function ScriptLabPage() {
         console.log('[ScriptLab] Updating existing version:', vId);
         
         // Wrap raw script into a Production Manifest
-        const initialManifest = createInitialManifest(pId, vId, activeScript);
+        const initialManifest = createInitialManifest(pId, vId, scriptPayload);
+        if (isRawString) {
+          initialManifest.customScript = activeScript;
+          initialManifest.useCustomScript = true;
+        }
         if (allScenarios) {
           (initialManifest as any).allScenarios = allScenarios;
         }
@@ -755,8 +767,8 @@ export default function ScriptLabPage() {
         if (!version) throw new Error(locale === 'ru' ? 'Ошибка при обновлении версии' : 'Version update failed');
       }
 
-      // Redirect to Studio (Branch Selection)
-      router.push(`/app/projects/${pId}/studio?tab=branch`);
+      // Redirect to Studio (Universal Script Screen)
+      router.push(`/app/projects/${pId}/studio?tab=script_editor`);
     } catch (err: any) {
       console.error('[ScriptLab] Save failed:', err);
       setError(err.message || (locale === 'ru' ? 'Не удалось сохранить проект' : 'Failed to save project'));
@@ -1331,6 +1343,7 @@ export default function ScriptLabPage() {
         userId={user?.id || ''}
         context="script"
         onApplySuggestion={(text) => handleApplyRefinement(text)}
+        onUseScript={(text) => handleApprove(text)}
         onMatrixUpdate={(matrix) => {
           console.log('[ScriptLab] Matrix sync from Chat:', matrix);
           if (matrix.evergreen || matrix.trend) {
