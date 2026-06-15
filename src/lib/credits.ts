@@ -12,6 +12,8 @@ export const CREDIT_COSTS = {
   AVATAR_HEYGEN: 50,
   AVATAR_HIGGSFIELD: 15,
   REGENERATE_BLOCK: 10,
+  HEYGEN_AVATAR_4_PER_MIN: 50,
+  HEYGEN_AVATAR_VIDEO_PER_MIN: 20,
 };
 
 export const REGENERATE_THRESHOLD = 50;
@@ -50,7 +52,9 @@ export async function deductCredits(
   userId: string,
   amount: number,
   type: string,
-  projectId?: string
+  projectId?: string,
+  forceDeduct: boolean = false,
+  metadata?: any
 ) {
   // 1. Fetch current balance & tier
   const { data: profile, error: fetchError } = await supabase
@@ -61,8 +65,8 @@ export async function deductCredits(
 
   if (fetchError) throw fetchError;
 
-  // Bypass credit deduction entirely for free tier users (renders with watermark)
-  if (profile?.tier === 'free') {
+  // Bypass credit deduction entirely for free tier users (renders with watermark) unless forceDeduct is true
+  if (profile?.tier === 'free' && !forceDeduct) {
     console.log(`[Credits] User ${userId} is on FREE tier, bypassing credit deduction of ${amount} credits.`);
     return true;
   }
@@ -97,7 +101,7 @@ export async function deductCredits(
   if (!data || data.length === 0) {
     // Retry once or throw error
     console.warn(`[Credits] Optimistic lock failed for ${userId}. Retrying...`);
-    return deductCredits(supabase, userId, amount, type, projectId);
+    return deductCredits(supabase, userId, amount, type, projectId, forceDeduct, metadata);
   }
 
   // 3. Log transaction
@@ -108,6 +112,7 @@ export async function deductCredits(
       amount: -amount,
       transaction_type: type,
       project_id: projectId,
+      metadata: metadata || {},
     });
 
   if (logError) {
@@ -121,7 +126,8 @@ export async function addCredits(
   supabase: SupabaseClient,
   userId: string,
   amount: number,
-  type: 'top_up' | 'bonus' = 'top_up'
+  type: string = 'top_up',
+  metadata?: any
 ) {
   const balance = await checkBalance(supabase, userId);
   
@@ -140,6 +146,7 @@ export async function addCredits(
       user_id: userId,
       amount: amount,
       transaction_type: type,
+      metadata: metadata || {},
     });
 
   if (logError) throw logError;

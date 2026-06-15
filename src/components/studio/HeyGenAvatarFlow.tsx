@@ -57,6 +57,9 @@ export default function HeyGenAvatarFlow({
   onBack,
 }: HeyGenAvatarFlowProps) {
   const [step, setStep] = useState(1);
+  const [userBalance, setUserBalance] = useState<number>(0);
+  const [actualDeductedCredits, setActualDeductedCredits] = useState<number | null>(null);
+  const [finalDuration, setFinalDuration] = useState<number | null>(null);
 
   // Step 1 — BYOK
   const [heygenKey, setHeygenKey] = useState('');
@@ -110,6 +113,9 @@ export default function HeyGenAvatarFlow({
         if (data.heygen?.hasKey) {
           setHasKey(true);
           setMaskedKey(data.heygen.maskedKey);
+        }
+        if (data.credits_balance !== undefined) {
+          setUserBalance(data.credits_balance);
         }
       } catch (e) {
         console.warn('[HeyGenFlow] Could not check BYOK status');
@@ -301,6 +307,28 @@ export default function HeyGenAvatarFlow({
           clearInterval(pollIntervalRef.current);
           setIsGenerating(false);
           setResultVideoUrl(data.videoUrl);
+          setFinalDuration(data.duration || null);
+          
+          if (!hasKey) {
+            const actualDuration = data.duration || 0;
+            const costRate = selectedAvatar?.type === 'avatar' ? (20 / 60) : (50 / 60);
+            const actualCost = Math.round(actualDuration * costRate);
+            setActualDeductedCredits(actualCost);
+            
+            // Refresh balance
+            try {
+              const balanceRes = await fetch('/api/profile/byok');
+              const balanceData = await balanceRes.json();
+              if (balanceData.credits_balance !== undefined) {
+                setUserBalance(balanceData.credits_balance);
+              }
+            } catch (e) {
+              console.warn('[HeyGenFlow] Failed to refresh balance after completion');
+            }
+          } else {
+            setActualDeductedCredits(0);
+          }
+          
           setStep(5);
         } else if (data.status === 'failed') {
           clearInterval(pollIntervalRef.current);
@@ -338,9 +366,16 @@ export default function HeyGenAvatarFlow({
 
   // ─── Render Helpers ─────────────────────────────────────────────────────────
 
+  const wordCount = editedScript.trim().split(/\s+/).filter(Boolean).length;
+  const estDuration = Math.max(5, Math.ceil(wordCount / 2.3));
+  const costRate = selectedAvatar?.type === 'avatar' ? (20 / 60) : (50 / 60);
+  const estCost = Math.round(estDuration * costRate);
+  const estimatedCost = hasKey ? 0 : estCost;
+  const hasInsufficientBalance = !hasKey && userBalance < estimatedCost;
+
   const canProceedStep1 = hasKey;
   const canProceedStep2 = !!selectedAvatar;
-  const canProceedStep3 = !!selectedVoice && editedScript.trim().length > 5;
+  const canProceedStep3 = !!selectedVoice && editedScript.trim().length > 5 && !hasInsufficientBalance;
 
   return (
     <div className="h-full w-full flex flex-col bg-[#020205] text-white overflow-hidden">
@@ -740,6 +775,52 @@ export default function HeyGenAvatarFlow({
                 </p>
               </div>
 
+              {/* Cost display */}
+              <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                  <span className="text-white/40">Оценка длительности:</span>
+                  <span className="text-white font-mono">{estDuration} сек</span>
+                </div>
+                <div className="flex justify-between items-center text-[10px] font-black uppercase tracking-wider">
+                  <span className="text-white/40">Расход баланса:</span>
+                  {hasKey ? (
+                    <span className="text-green-400">0 Кредитов (HeyGen BYOK)</span>
+                  ) : (
+                    <span className={userBalance < estCost ? 'text-red-400' : 'text-purple-400'}>
+                      {estCost} Кредитов
+                    </span>
+                  )}
+                </div>
+                {!hasKey && (
+                  <div className="flex justify-between items-center text-[8px] font-black uppercase tracking-wider border-t border-white/5 pt-2.5 mt-1.5">
+                    <span className="text-white/20">Ваш текущий баланс:</span>
+                    <span className="text-white/40 font-mono">{userBalance} Кредитов</span>
+                  </div>
+                )}
+              </div>
+
+              {/* Insufficient balance warning */}
+              {hasInsufficientBalance && (
+                <div className="p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-xs font-bold flex flex-col gap-2">
+                  <div className="flex items-center gap-2">
+                    <AlertCircle size={14} className="shrink-0" />
+                    <span>Недостаточно кредитов на балансе для генерации этого видео.</span>
+                  </div>
+                  <button
+                    onClick={() => {
+                      const win = (globalThis as any).window;
+                      if (win) {
+                        const currentLocale = win.location.pathname.split('/')[1] || 'ru';
+                        win.open(`/${currentLocale}/app/profile`, '_blank');
+                      }
+                    }}
+                    className="self-start text-[8px] font-black uppercase tracking-widest text-white hover:underline bg-white/10 px-3 py-1.5 rounded-xl border border-white/10 hover:bg-white/20 transition-all"
+                  >
+                    Пополнить баланс →
+                  </button>
+                </div>
+              )}
+
               {/* Footer */}
               <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-[#020205] to-transparent flex gap-3">
                 <button
@@ -933,6 +1014,20 @@ export default function HeyGenAvatarFlow({
                     <RefreshCw size={12} />
                     Новый аватар
                   </button>
+                </div>
+              </div>
+
+              {/* Cost reference */}
+              <div className="w-full max-w-md p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-center space-y-1.5">
+                <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider text-white/40">
+                  <span>Фактическая длительность:</span>
+                  <span className="text-white font-mono">{finalDuration !== null ? `${finalDuration} сек` : '...'}</span>
+                </div>
+                <div className="flex justify-between items-center text-[9px] font-black uppercase tracking-wider text-white/40">
+                  <span>Списано кредитов:</span>
+                  <span className={actualDeductedCredits === 0 ? 'text-green-400' : 'text-purple-400 font-mono'}>
+                    {actualDeductedCredits !== null ? `${actualDeductedCredits} CC` : '...'}
+                  </span>
                 </div>
               </div>
 

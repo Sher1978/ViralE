@@ -12,7 +12,7 @@ export async function GET() {
     
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('heygen_api_key, anthropic_api_key, groq_api_key, elevenlabs_api_key, synthetic_training_data')
+      .select('heygen_api_key, anthropic_api_key, groq_api_key, elevenlabs_api_key, synthetic_training_data, credits_balance')
       .eq('id', user.id)
       .single();
  
@@ -23,8 +23,9 @@ export async function GET() {
  
     const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
     const geminiKey = syntheticData.gemini_api_key || null;
-
+ 
     return NextResponse.json({ 
+      credits_balance: profile?.credits_balance || 0,
       heygen: {
         hasKey: !!profile?.heygen_api_key,
         maskedKey: mask(profile?.heygen_api_key)
