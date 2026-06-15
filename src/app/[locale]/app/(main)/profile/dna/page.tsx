@@ -128,7 +128,7 @@ export default function DnaManagementPage() {
       const res = await fetch('/api/profile/dna/answers');
       if (res.ok) {
         const data = await res.json();
-        if (data && data.answers) {
+        if (data && data.answers && typeof data.answers === 'object') {
           setAnswers(prev => ({ ...prev, ...data.answers }));
         }
       }
@@ -437,41 +437,32 @@ export default function DnaManagementPage() {
             </div>
           </div>
 
-          <div className="space-y-5 mb-6">
-            {questions.map((q) => (
-              <div key={q.id} className="space-y-1.5">
-                <label className="text-[10px] font-black uppercase text-purple-400 tracking-wider flex items-center gap-1.5">
-                  <span>{q.label}</span>
-                  <span className="text-[9px] font-bold text-white/20 normal-case">({q.hint})</span>
-                </label>
-                <textarea
-                  value={answers[q.id] || ''}
-                  onChange={(e) => setAnswers(prev => ({ ...prev, [q.id]: (e.currentTarget as any).value }))}
-                  placeholder={q.placeholder}
-                  className="w-full h-20 bg-white/[0.03] border border-white/[0.08] rounded-xl p-3 text-xs text-white/80 focus:outline-none focus:border-purple-500/50 transition-all resize-none placeholder:text-white/10 outline-none leading-relaxed font-medium"
-                />
-              </div>
-            ))}
+          {/* Lock notice */}
+          <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-[#D4AF37] text-xs font-bold flex items-center gap-2 mb-6">
+            <AlertTriangle size={14} className="shrink-0" />
+            <span>
+              {locale === 'ru'
+                ? 'Редактирование ДНК заблокировано. Чтобы изменить ответы, сбросьте профиль креатора внизу страницы.'
+                : 'DNA editing is locked. To change answers, reset your creator profile at the bottom of the page.'}
+            </span>
           </div>
 
-          <button
-            onClick={handleUpdate}
-            disabled={updating || Object.values(answers).every(v => !v || !v.trim())}
-            className="w-full h-14 flex items-center justify-center gap-3 rounded-2xl transition-all font-black uppercase text-xs tracking-[0.2em] disabled:opacity-20 disabled:grayscale disabled:cursor-not-allowed group relative overflow-hidden text-white shadow-[0_10px_30px_rgba(168,85,247,0.2)]"
-            style={{
-              background: 'linear-gradient(135deg, #A855F7, #7C3AED)'
-            }}
-          >
-            <div className="absolute inset-0 bg-white/20 opacity-0 group-hover:opacity-100 transition-opacity" />
-            {updating ? (
-              <RefreshCw className="w-5 h-5 animate-spin" />
-            ) : (
-              <>
-                <Sparkles size={18} className="group-hover:rotate-12 transition-transform" />
-                <span>{locale === 'ru' ? 'СОХРАНИТЬ И РЕГЕНЕРИРОВАТЬ МАТРИЦУ' : 'SAVE & REGENERATE MATRIX'}</span>
-              </>
-            )}
-          </button>
+          <div className="space-y-5 mb-6">
+             {questions.map((q) => (
+               <div key={q.id} className="space-y-1.5">
+                 <label className="text-[10px] font-black uppercase text-purple-400/50 tracking-wider flex items-center gap-1.5">
+                   <span>{q.label}</span>
+                   <span className="text-[9px] font-bold text-white/20 normal-case">({q.hint})</span>
+                 </label>
+                 <textarea
+                   value={answers[q.id] || ''}
+                   readOnly
+                   placeholder={q.placeholder}
+                   className="w-full h-20 bg-white/[0.01] border border-white/[0.04] rounded-xl p-3 text-xs text-white/40 resize-none placeholder:text-white/5 outline-none leading-relaxed font-medium cursor-not-allowed"
+                 />
+               </div>
+             ))}
+          </div>
 
           {error && (
             <div className="mt-4 p-4 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 text-[10px] font-black uppercase tracking-widest text-center animate-shake">

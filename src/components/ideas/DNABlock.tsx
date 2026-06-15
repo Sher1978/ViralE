@@ -93,8 +93,8 @@ export default function DNABlock({ onComplete }: DNABlockProps) {
         const res = await fetch('/api/profile/dna/answers');
         if (res.ok) {
           const data = await res.json();
-          if (data && data.answers) {
-             setAnswers(data.answers);
+          if (data && data.answers && typeof data.answers === 'object') {
+             setAnswers(prev => ({ ...prev, ...data.answers }));
           }
         }
       } catch (e) {

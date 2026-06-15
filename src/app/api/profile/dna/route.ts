@@ -88,6 +88,8 @@ export async function DELETE() {
       .from('profiles')
       .update({
         digital_shadow_prompt: null,
+        dna_answers: {},
+        raw_onboarding_data: {},
         onboarding_completed: false,
         updated_at: new Date().toISOString()
       })
