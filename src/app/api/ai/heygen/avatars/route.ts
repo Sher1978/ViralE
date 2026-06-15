@@ -11,6 +11,7 @@ const CACHE_TTL = 3600000; // 1 hour
 export async function GET(req: NextRequest) {
   try {
     let apiKey = process.env.HEYGEN_API_KEY;
+    let isByok = false;
 
     try {
       const user = await getAuthenticatedUser();
@@ -22,6 +23,7 @@ export async function GET(req: NextRequest) {
           .single();
         if (profile?.heygen_api_key && profile.heygen_api_key.trim() !== '') {
           apiKey = profile.heygen_api_key.trim();
+          isByok = true;
         }
       }
     } catch (e) {
@@ -31,7 +33,7 @@ export async function GET(req: NextRequest) {
     if (!apiKey) throw new Error('HEYGEN_API_KEY missing');
 
     const now = Date.now();
-    if (cachedAvatars && (now - lastFetch < CACHE_TTL)) {
+    if (!isByok && cachedAvatars && (now - lastFetch < CACHE_TTL)) {
       console.log('[HeyGen Avatars] Returning cached list');
       return NextResponse.json({ avatars: cachedAvatars });
     }
@@ -49,16 +51,27 @@ export async function GET(req: NextRequest) {
     const data = await res.json();
     const allAvatars = data.data?.avatars || [];
     
-    // Transform to a clean format for the UI, including avatar_type
-    const avatars = allAvatars.map((tp: any) => ({
-      id: tp.avatar_id,
-      url: tp.preview_image_url || tp.preview_video_url,
-      label: tp.avatar_name || 'Avatar',
-      type: tp.avatar_type // 'talking_photo' or 'avatar' (for instant avatars)
-    }));
+    // Deduplicate by avatar_id and transform to a clean format for the UI
+    const seenIds = new Set<string>();
+    const avatars: any[] = [];
+    
+    for (const tp of allAvatars) {
+      const id = tp.avatar_id || tp.talking_photo_id || tp.id;
+      if (id && !seenIds.has(id)) {
+        seenIds.add(id);
+        avatars.push({
+          id,
+          url: tp.preview_image_url || tp.preview_video_url,
+          label: tp.avatar_name || 'Avatar',
+          type: tp.avatar_type // 'talking_photo' or 'avatar' (for instant avatars)
+        });
+      }
+    }
 
-    cachedAvatars = avatars;
-    lastFetch = now;
+    if (!isByok) {
+      cachedAvatars = avatars;
+      lastFetch = now;
+    }
 
     return NextResponse.json({ avatars });
   } catch (e: any) {
@@ -68,3 +81,4 @@ export async function GET(req: NextRequest) {
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
+

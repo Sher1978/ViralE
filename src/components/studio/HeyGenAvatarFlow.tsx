@@ -155,12 +155,20 @@ export default function HeyGenAvatarFlow({
       const res = await fetch('/api/ai/heygen/avatars');
       const data = await res.json();
       if (data.avatars) {
-        setAvatars(data.avatars.map((a: any) => ({
-          id: a.id,
-          url: a.url,
-          label: a.label || 'Avatar',
-          type: a.type || 'talking_photo',
-        })));
+        const seenIds = new Set<string>();
+        const uniqueAvatars: HeyGenAvatar[] = [];
+        for (const a of data.avatars) {
+          if (a.id && !seenIds.has(a.id)) {
+            seenIds.add(a.id);
+            uniqueAvatars.push({
+              id: a.id,
+              url: a.url,
+              label: a.label || 'Avatar',
+              type: a.type || 'talking_photo',
+            });
+          }
+        }
+        setAvatars(uniqueAvatars);
       }
     } catch (e) {
       console.error('[HeyGenFlow] Failed to load avatars:', e);
