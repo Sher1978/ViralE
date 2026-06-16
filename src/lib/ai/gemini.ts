@@ -10,7 +10,7 @@ const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 export const FAST_MODEL = "gemini-2.5-flash-lite";
 export const PRO_MODEL = "gemini-1.5-pro";
 
-export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en', mimeType: 'json' | 'text' = 'json') {
+export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en', mimeType: 'json' | 'text' = 'json', apiKey?: string) {
   if (IS_GROQ_OVERRIDE) {
     const language = locale === 'ru' ? 'Russian' : 'English';
     // Return a proxy that mimics the Gemini model interface but calls Groq
@@ -34,7 +34,7 @@ export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en', m
                     
                     CRITICAL LANGUAGE RULES:
                     1. Respond EXCLUSIVELY in ${language.toUpperCase()}.
-                    2. NEVER use English introductory phrases like "The thing is...", "Notice this...", "That's why...", "However...".
+                    2. NEVER use English introductory phrases like "The thing is...", "Notice this...", "That's why...", "Однако...".
                     3. Instead, use natural ${language.toUpperCase()} equivalents (e.g. for Russian: "Дело в том, что...", "Заметьте...", "Именно поэтому...", "Но самое интересное...").
                     4. Start directly with the text. No conversational filler.
                     5. Keep the output descriptive, engaging, and professional. Avoid dry or overly robotic phrasing.`
@@ -127,7 +127,8 @@ export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en', m
   }
 
   const modelName = tier === 'fast' ? FAST_MODEL : PRO_MODEL;
-  return genAI.getGenerativeModel({ 
+  const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
+  return client.getGenerativeModel({ 
     model: modelName,
     generationConfig: {
       responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",

@@ -299,7 +299,7 @@ export default function ProjectsPage() {
         )}
       </AnimatePresence>
 
-      <StrategistChat projectId="" userId={profile?.id || ''} context="studio" />
+      <StrategistChat projectId="" userId={profile?.id || ''} context="studio" locale={locale} />
 
       {/* Decorative Blur Assets */}
       <div className="fixed top-1/4 -right-64 w-[800px] h-[800px] bg-purple-600/10 blur-[200px] pointer-events-none -z-10 animate-pulse" />

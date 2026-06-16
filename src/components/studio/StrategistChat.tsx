@@ -62,9 +62,7 @@ export function StrategistChat({
 }: StrategistChatProps & { containerClassName?: string }) {
   const t = useTranslations('Strategist');
   const [isOpen, setIsOpen] = useState(false);
-  const [messages, setMessages] = useState<Message[]>([
-    { role: 'assistant', content: "I'm your Viral Strategist. How can I help you dominate the algorithm today?" }
-  ]);
+  const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [access, setAccess] = useState<AccessStatus | null>(null);
@@ -77,6 +75,19 @@ export function StrategistChat({
   const [scriptMatrix, setScriptMatrix] = useState<any | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+
+  useEffect(() => {
+    if (messages.length === 0) {
+      setMessages([
+        { 
+          role: 'assistant', 
+          content: locale === 'ru' 
+            ? "Привет! Я твой ИИ-Стратег. Давай поработаем над сценарием твоего следующего вирусного ролика! О чем будет видео?" 
+            : "Hi! I'm your Viral Strategist. Let's work on the script of your next viral video! What is the video going to be about?" 
+        }
+      ]);
+    }
+  }, [locale, messages.length]);
 
   
   const messagesEndRef = useRef<HTMLDivElement>(null);
@@ -131,12 +142,17 @@ export function StrategistChat({
   const startRecording = async () => {
     initAudio();
     try {
-      const nav = (globalThis as any).navigator; const stream = nav ? await nav.mediaDevices.getUserMedia({ audio: true }) : null;
+      const nav = (globalThis as any).navigator; 
+      const stream = nav ? await nav.mediaDevices.getUserMedia({ audio: true }) : null;
+      if (!stream) return;
+
       const source = audioContextRef.current!.createMediaStreamSource(stream);
       source.connect(analyserRef.current!);
 
-      const mr_class = (globalThis as any).MediaRecorder; const recorder = stream && mr_class ? new mr_class(stream) : null;
-      if (!stream || !recorder) return;
+      const mr_class = (globalThis as any).MediaRecorder; 
+      const recorder = mr_class ? new mr_class(stream) : null;
+      if (!recorder) return;
+      
       mediaRecorderRef.current = recorder;
       audioChunksRef.current = [];
 
@@ -155,13 +171,26 @@ export function StrategistChat({
       setIsVoiceMode(true);
     } catch (err) {
       console.error('Failed to start recording:', err);
+      setIsRecording(false);
     }
   };
 
   const stopRecording = () => {
-    if (mediaRecorderRef.current && isRecording) {
-      mediaRecorderRef.current.stop();
-      setIsRecording(false);
+    if (mediaRecorderRef.current && mediaRecorderRef.current.state !== 'inactive') {
+      try {
+        mediaRecorderRef.current.stop();
+      } catch (err) {
+        console.error('Error stopping recorder:', err);
+      }
+    }
+    setIsRecording(false);
+  };
+
+  const handleMicClick = () => {
+    if (isRecording) {
+      stopRecording();
+    } else {
+      startRecording();
     }
   };
 
@@ -241,7 +270,10 @@ export function StrategistChat({
 
     } catch (error) {
       console.error('Chat error:', error);
-      setMessages(prev => [...prev, { role: 'assistant', content: "Sorry, I lost my train of thought. Please try again." }]);
+      const errorMsg = locale === 'ru'
+        ? "Извини, произошла техническая ошибка. Пожалуйста, попробуй еще раз."
+        : "Sorry, I lost my train of thought. Please try again.";
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg }]);
     } finally {
       setIsStreaming(false);
     }
@@ -556,16 +588,6 @@ export function StrategistChat({
                               Использовать
                             </button>
                           );
-                        } else if (m.content.length > 20) {
-                          return (
-                            <button 
-                               onClick={() => applySuggestion(m.content)}
-                               className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600/20 to-blue-600/20 hover:from-purple-600/40 hover:to-blue-600/40 border border-purple-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-lg active:scale-95 group/apply"
-                            >
-                              <Zap className="h-3 w-3 text-yellow-400 group-hover/apply:animate-pulse" /> 
-                              {t('applyToScript')}
-                            </button>
-                          );
                         }
                         return null;
                       })()}
@@ -647,22 +669,22 @@ export function StrategistChat({
                 
                 {/* Voice Control Button */}
                 <button
-                  onMouseDown={startRecording}
-                  onMouseUp={stopRecording}
-                  onMouseLeave={stopRecording}
+                  onClick={handleMicClick}
                   className={cn(
                     "h-12 w-12 flex items-center justify-center rounded-xl transition-all duration-300",
                     isRecording 
                       ? "bg-red-500 shadow-[0_0_20px_rgba(239,68,68,0.5)] scale-110" 
                       : "bg-white/5 hover:bg-white/10 border border-white/10 text-slate-400 hover:text-white"
                   )}
-                  title="Push to Talk"
+                  title={locale === 'ru' ? (isRecording ? "Остановить и отправить" : "Записать сообщение") : (isRecording ? "Stop and Send" : "Record Voice Message")}
                 >
                   {isRecording ? <MicOff className="h-5 w-5" /> : <Mic className="h-5 w-5" />}
                 </button>
               </div>
               <p className="mt-2 text-[10px] text-slate-500 text-center">
-                {isVoiceMode ? "Press and Hold Mic to speak • Voice Mode: ON" : "Hold Space for voice shorthand • Context: Digital Shadow"}
+                {locale === 'ru' 
+                  ? (isRecording ? "Идет запись... Нажмите на микрофон повторно для отправки" : "Нажмите микрофон для записи • Удерживайте Пробел для быстрой надиктовки")
+                  : (isRecording ? "Recording... Click microphone again to stop and send" : "Click mic to record • Hold Space for voice shorthand")}
               </p>
             </div>
           </motion.div>

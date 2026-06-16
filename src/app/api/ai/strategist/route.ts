@@ -2,8 +2,7 @@ import { getModel } from '@/lib/ai/gemini';
 import { SchemaType, FunctionCallingMode } from '@google/generative-ai';
 import { strategistService } from '@/lib/services/strategistService';
 import { strategistServerService } from '@/lib/services/strategistServerService';
-import { supabase } from '@/lib/supabase';
-import { getAuthenticatedUser } from '@/lib/auth';
+import { getAuthContext } from '@/lib/auth';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -31,21 +30,25 @@ export async function POST(req: Request) {
     }
 
     // 1. Authenticate user
-    let user;
+    let user, authorizedSupabase;
     try {
-      user = await getAuthenticatedUser();
+      const auth = await getAuthContext();
+      user = auth.user;
+      authorizedSupabase = auth.supabase;
     } catch (e) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
     // 2. Check access
-    const { data: profile } = await supabase
+    const { data: profile } = await authorizedSupabase
       .from('profiles')
-      .select('tier')
+      .select('tier, synthetic_training_data')
       .eq('id', user.id)
       .single();
 
     const isPro = profile?.tier === 'pro';
+    const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
+    const geminiApiKey = syntheticData.gemini_api_key || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || undefined;
 
     let access = await strategistService.getAccessStatus(user.id);
     
@@ -69,7 +72,7 @@ export async function POST(req: Request) {
     
     let projectContext = "";
     if (projectId) {
-      const { data: project } = await supabase
+      const { data: project } = await authorizedSupabase
         .from('projects')
         .select('title, status')
         .eq('id', projectId)
@@ -84,10 +87,72 @@ export async function POST(req: Request) {
       parts: [{ text: m.content }]
     }));
 
-    const currentMessage = messages[messages.length - 1].content;
+    let currentMessage = messages[messages.length - 1].content;
+    let transcribed = false;
+
+    if (audioFile) {
+      console.log(`[Strategist Agent] Transcribing voice input of size: ${audioFile.size} bytes...`);
+      
+      // 1. OpenAI Whisper Transcription (Primary path, fast & stable)
+      try {
+        const openaiKey = process.env.OPENAI_API_KEY;
+        if (openaiKey) {
+          const whisperForm = new FormData();
+          const arrayBuffer = await audioFile.arrayBuffer();
+          const audioBlob = new Blob([arrayBuffer], { type: audioFile.type || 'audio/webm' });
+          const fileName = audioFile.type?.includes('webm') ? 'audio.webm' : 'audio.mp4';
+          
+          whisperForm.append('file', new File([audioBlob], fileName, { type: audioBlob.type }));
+          whisperForm.append('model', 'whisper-1');
+          
+          const whisperRes = await fetch('https://api.openai.com/v1/audio/transcriptions', {
+            method: 'POST',
+            headers: { Authorization: `Bearer ${openaiKey}` },
+            body: whisperForm,
+          });
+          
+          if (whisperRes.ok) {
+            const whisperData = await whisperRes.json();
+            const text = whisperData.text || '';
+            if (text.trim()) {
+              console.log(`[Strategist Agent] Whisper Transcription success: "${text}"`);
+              currentMessage = text;
+              transcribed = true;
+            }
+          } else {
+            console.warn('[Strategist Agent] Whisper failed:', await whisperRes.text());
+          }
+        }
+      } catch (err: any) {
+        console.warn('[Strategist Agent] Whisper error:', err.message || err);
+      }
+      
+      // 2. Gemini Transcription Fallback (If Whisper fails or has no key)
+      if (!transcribed) {
+        try {
+          console.log('[Strategist Agent] Attempting Gemini transcription fallback...');
+          const transModel = getModel('fast', locale, 'text', geminiApiKey);
+          const arrayBuffer = await audioFile.arrayBuffer();
+          const base64 = Buffer.from(arrayBuffer).toString('base64');
+          const result = await transModel.generateContent([
+            { text: "Transcribe the spoken audio precisely. Return ONLY the transcribed text. Do not add any explanation or note." },
+            { inlineData: { mimeType: audioFile.type || 'audio/webm', data: base64 } }
+          ]);
+          const text = result.response.text();
+          if (text && text.trim()) {
+            console.log(`[Strategist Agent] Gemini Transcription success: "${text}"`);
+            currentMessage = text.trim();
+            transcribed = true;
+          }
+        } catch (gemErr: any) {
+          console.error('[Strategist Agent] Gemini transcription failed:', gemErr.message || gemErr);
+        }
+      }
+    }
+
     const currentParts: any[] = [{ text: currentMessage }];
     
-    if (audioFile) {
+    if (audioFile && !transcribed) {
       const arrayBuffer = await audioFile.arrayBuffer();
       const base64Audio = Buffer.from(arrayBuffer).toString('base64');
       currentParts.push({
@@ -99,7 +164,7 @@ export async function POST(req: Request) {
     }
 
     // 4. Stream with AI Engine (Gemini or Groq Override)
-    const engine = getModel('fast', locale, 'text');
+    const engine = getModel('fast', locale, 'text', geminiApiKey);
     const chat = engine.startChat({
       history: chatHistory,
       systemInstruction: systemPrompt + "\n" + projectContext,
@@ -154,11 +219,11 @@ export async function POST(req: Request) {
                 try {
                   // Direct call to enrich script or logic here
                   // For simplicity, we trigger the update directly in Supabase
-                  const currentProfile = await supabase.from('profiles').select('digital_shadow_prompt').eq('id', user.id).single();
+                  const currentProfile = await authorizedSupabase.from('profiles').select('digital_shadow_prompt').eq('id', user.id).single();
                   const oldDna = currentProfile.data?.digital_shadow_prompt || "";
                   
                   // Use the helper we already have in DNA update (or just append for now)
-                  const { error } = await supabase
+                  const { error } = await authorizedSupabase
                     .from('profiles')
                     .update({ 
                       digital_shadow_prompt: oldDna + "\n\n[Strategist Insight]: " + new_info,

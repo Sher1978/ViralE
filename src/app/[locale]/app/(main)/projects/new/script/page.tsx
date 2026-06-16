@@ -1342,6 +1342,7 @@ export default function ScriptLabPage() {
         projectId={projectIdParam || ''}
         userId={user?.id || ''}
         context="script"
+        locale={locale}
         onApplySuggestion={(text) => handleApplyRefinement(text)}
         onUseScript={(text) => handleApprove(text)}
         onMatrixUpdate={(matrix) => {
