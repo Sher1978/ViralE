@@ -84,7 +84,17 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
       // Interaction States
       const isInteraction = isListening || isSpeaking;
       const intensity = isInteraction ? (avgFreq / 140) : 0;
-      const pulseScale = isSpeaking ? (1 + (lowFreq / 200)) : (1 + Math.sin(timeRef.current * 1.5) * 0.03);
+      const pulseScale = isInteraction 
+        ? (1 + (lowFreq / 120)) 
+        : (1 + Math.sin(timeRef.current * 1.5) * 0.03);
+      
+      // Camera shake / shudder effect on voice peaks
+      const shakeAmt = isInteraction ? (avgFreq / 255) * 8 : 0;
+      const shakeX = (Math.random() - 0.5) * shakeAmt;
+      const shakeY = (Math.random() - 0.5) * shakeAmt;
+
+      ctx.save();
+      ctx.translate(shakeX, shakeY);
       
       // Draw Filamentous Connections (Thread-like lattice)
       if (isActive) {
@@ -126,27 +136,25 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
         
         // Behaviors based on state
         if (isActive) {
-          // Center-seeking "Gravity" - stronger when quiet, weaker when speaking
-          const gravityForce = isInteraction ? 0.002 : 0.008;
+          // Center-seeking "Gravity" - stronger when quiet, weaker when speaking/interacting
+          const gravityForce = isInteraction ? 0.001 : 0.008;
           p.vx += dx * gravityForce;
           p.vy += dy * gravityForce;
 
-          // Swirl/Orbit speed
-          const orbitSpeed = isSpeaking ? 0.02 + (midFreq/1000) : 0.005;
+          // Swirl/Orbit speed - reacts to voice/interaction
+          const orbitSpeed = isInteraction ? 0.02 + (midFreq/800) : 0.005;
           p.vx += Math.cos(angle + Math.PI/2) * orbitSpeed * d * 0.1;
           p.vy += Math.sin(angle + Math.PI/2) * orbitSpeed * d * 0.1;
           
-          if (isListening) {
-             // Reactive jitter (like scanning data threads)
-             p.vx += (Math.random() - 0.5) * (1 + intensity);
-             p.vy += (Math.random() - 0.5) * (1 + intensity);
-          }
+          if (isInteraction) {
+             // Reactive jitter (shudder based on intensity)
+             p.vx += (Math.random() - 0.5) * (1 + intensity * 2.5);
+             p.vy += (Math.random() - 0.5) * (1 + intensity * 2.5);
 
-          if (isSpeaking) {
-            // Pulse out from center on beats
-            const beatPush = (lowFreq / 255) * 0.5;
-            p.vx -= dx * beatPush * 0.01;
-            p.vy -= dy * beatPush * 0.01;
+             // Pulse out/in from center on voice frequencies
+             const beatPush = (lowFreq / 255) * 0.8;
+             p.vx -= dx * beatPush * 0.015;
+             p.vy -= dy * beatPush * 0.015;
           }
         }
 
@@ -166,7 +174,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
         ctx.fillRect(p.x - size/2, p.y - size/2, size, size);
 
         // Glow layer for high intensity particles
-        if (isSpeaking && idx % 4 === 0 && intensity > 0.3) {
+        if (isInteraction && idx % 4 === 0 && intensity > 0.3) {
           ctx.shadowBlur = 10 * intensity;
           ctx.shadowColor = `hsla(${p.hue}, 100%, 70%, 0.8)`;
         } else {
@@ -175,6 +183,7 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
       });
 
       ctx.globalCompositeOperation = 'source-over';
+      ctx.restore();
       animationFrameRef.current = requestAnimationFrame(render);
     };
 
