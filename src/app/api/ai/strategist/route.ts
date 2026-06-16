@@ -99,10 +99,13 @@ export async function POST(req: Request) {
     }
 
     // 4. Stream with AI Engine (Gemini or Groq Override)
-    const engine = getModel('fast', locale);
+    const engine = getModel('fast', locale, 'text');
     const chat = engine.startChat({
       history: chatHistory,
       systemInstruction: systemPrompt + "\n" + projectContext,
+      generationConfig: {
+        responseMimeType: "text/plain"
+      },
       tools: [{
         functionDeclarations: [{
           name: "update_brand_dna",

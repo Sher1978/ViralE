@@ -72,7 +72,6 @@ export function StrategistChat({
   const [isRecording, setIsRecording] = useState(false);
   const [isAIPointing, setIsAIPointing] = useState(false);
   const [frequencyData, setFrequencyData] = useState<Uint8Array>(new Uint8Array(0));
-  const [captions, setCaptions] = useState('');
   const [copiedId, setCopiedId] = useState<number | null>(null);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [scriptMatrix, setScriptMatrix] = useState<any | null>(null);
@@ -107,7 +106,7 @@ export function StrategistChat({
 
   useEffect(() => {
     (messagesEndRef.current as any)?.scrollIntoView({ behavior: 'smooth' });
-  }, [messages]);
+  }, [messages, isVoiceMode, isRecording, isStreaming, isAIPointing]);
 
   const initAudio = () => {
     if (!audioContextRef.current) {
@@ -207,7 +206,6 @@ export function StrategistChat({
         
         const chunk = decoder.decode(value);
         assistantMessage += chunk;
-        setCaptions(assistantMessage);
         
         setMessages(prev => {
           const newMessages = [...prev];
@@ -273,7 +271,6 @@ export function StrategistChat({
 
       audio.onended = () => {
         setIsAIPointing(false);
-        setCaptions('');
         URL.revokeObjectURL(url);
       };
 
@@ -448,10 +445,7 @@ export function StrategistChat({
             className="fixed inset-x-4 top-[calc(env(safe-area-inset-top,0px)+80px)] bottom-[calc(env(safe-area-inset-bottom,0px)+100px)] md:inset-auto md:top-24 md:right-6 md:w-[450px] md:h-[70vh] bg-black/90 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden z-[160]"
           >
             {/* Background Visualizer */}
-            <div className={cn(
-              "absolute inset-0 z-0 pointer-events-none overflow-hidden transition-all duration-1000",
-              isVoiceMode ? "h-[60%]" : "h-full"
-            )}>
+            <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
               <VoiceVisualizer 
                 isActive={isVoiceMode} 
                 isListening={isRecording} 
@@ -492,10 +486,7 @@ export function StrategistChat({
             </div>
 
             {/* Messages Area */}
-            <div className={cn(
-              "flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar z-10 relative transition-opacity duration-500",
-              isVoiceMode ? "opacity-0 pointer-events-none" : "opacity-100"
-            )}>
+            <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar z-10 relative">
               {messages.map((m, i) => (
                 <div key={i} className={cn("flex flex-col group", m.role === 'user' ? "items-end" : "items-start")}>
                   {m.role === 'assistant' && (
@@ -582,68 +573,41 @@ export function StrategistChat({
                   )}
                 </div>
               ))}
+              {/* Voice Status Indicator */}
+              {isVoiceMode && (isRecording || isStreaming || isAIPointing) && (
+                <div className="flex justify-center my-2 sticky bottom-0 pointer-events-none z-20">
+                  <div className="bg-black/80 backdrop-blur-md border border-white/10 rounded-full px-4 py-1.5 flex items-center gap-2 shadow-2xl pointer-events-auto">
+                    {isRecording && (
+                      <>
+                        <span className="w-2.5 h-2.5 rounded-full bg-red-500 animate-pulse" />
+                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                          {locale === 'ru' ? 'Слушаю...' : 'Listening...'}
+                        </span>
+                      </>
+                    )}
+                    {!isRecording && isStreaming && (
+                      <>
+                        <RefreshCw className="w-3.5 h-3.5 text-purple-400 animate-spin" />
+                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                          {locale === 'ru' ? 'Думаю...' : 'Strategizing...'}
+                        </span>
+                      </>
+                    )}
+                    {!isRecording && !isStreaming && isAIPointing && (
+                      <>
+                        <Volume2 className="w-3.5 h-3.5 text-green-400 animate-pulse" />
+                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">
+                          {locale === 'ru' ? 'Говорю...' : 'Speaking...'}
+                        </span>
+                      </>
+                    )}
+                  </div>
+                </div>
+              )}
               <div ref={messagesEndRef} />
             </div>
 
-            {/* Voice Mode Teleprompter Overlay */}
-            <AnimatePresence>
-              {isVoiceMode && (
-                <motion.div
-                  initial={{ opacity: 0 }}
-                  animate={{ opacity: 1 }}
-                  exit={{ opacity: 0 }}
-                  className="absolute inset-0 z-20 flex flex-col pointer-events-none"
-                >
-                  {/* Top: Visualizer space */}
-                  <div className="flex-1" />
 
-                  {/* Bottom: Teleprompter */}
-                  <div className="h-[45%] bg-gradient-to-t from-slate-950 via-slate-950/90 to-transparent p-4 flex flex-col justify-end overflow-hidden pb-8">
-                    <div className="relative h-32 overflow-hidden mask-fade-edges">
-                      <motion.div
-                        animate={{ 
-                          y: isAIPointing ? -Math.max(0, captions.split('\n').length - 2) * 22 : 0 
-                        }}
-                        transition={{ type: 'spring', damping: 25, stiffness: 120 }}
-                        className="flex flex-col gap-1 items-center"
-                      >
-                        {isRecording ? (
-                          <motion.div 
-                            animate={{ opacity: [0.4, 1, 0.4] }}
-                            transition={{ repeat: Infinity, duration: 1.5 }}
-                            className="flex flex-col items-center gap-2"
-                          >
-                            <span className="text-[10px] font-black tracking-[0.3em] text-blue-400 uppercase leading-none">Scanning Voice</span>
-                            <div className="h-[1px] w-12 bg-blue-500/50" />
-                          </motion.div>
-                        ) : !isAIPointing && isStreaming ? (
-                          <div className="flex flex-col items-center gap-2">
-                             <RefreshCw className="w-4 h-4 text-purple-400 animate-spin" />
-                             <span className="text-[9px] font-black tracking-widest text-purple-400/60 uppercase">Architecting...</span>
-                          </div>
-                        ) : (
-                          captions.split('\n').map((line, idx) => (
-                            <motion.p 
-                              key={idx}
-                              initial={{ opacity: 0, y: 10 }}
-                              animate={{ opacity: 1, y: 0 }}
-                              className={cn(
-                                "text-[12px] leading-relaxed text-center px-6 transition-all duration-700",
-                                idx === captions.split('\n').length - 1 
-                                  ? "text-white font-bold scale-100" 
-                                  : "text-white/20 font-medium scale-95"
-                              )}
-                            >
-                              {line}
-                            </motion.p>
-                          ))
-                        )}
-                      </motion.div>
-                    </div>
-                  </div>
-                </motion.div>
-              )}
-            </AnimatePresence>
 
             {/* Input Area */}
             <div className="p-4 bg-slate-900/60 border-t border-white/5 z-30 relative">
