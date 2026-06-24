@@ -8,6 +8,7 @@ import Teleprompter from './Teleprompter';
 import { useVoiceFollowing } from '@/hooks/useVoiceFollowing';
 import { supabase } from '@/lib/supabase';
 import { renderService } from '@/lib/services/renderService';
+import { idb } from '@/lib/idb';
 
 interface StudioRecorderProps {
   projectId: string;
