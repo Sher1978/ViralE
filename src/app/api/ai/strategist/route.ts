@@ -183,16 +183,16 @@ export async function POST(req: Request) {
       const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
       engine = client.getGenerativeModel({
         model: 'gemini-1.5-flash',
+        systemInstruction: systemPrompt + "\n" + projectContext,
         generationConfig: {
           responseMimeType: "text/plain"
         }
       });
     } else {
-      engine = getModel('fast', locale, 'text', geminiApiKey);
+      engine = getModel('fast', locale, 'text', geminiApiKey, systemPrompt + "\n" + projectContext);
     }
     const chat = engine.startChat({
       history: chatHistory,
-      systemInstruction: systemPrompt + "\n" + projectContext,
       generationConfig: {
         responseMimeType: "text/plain"
       },

@@ -10,7 +10,13 @@ const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 export const FAST_MODEL = "gemini-2.5-flash-lite";
 export const PRO_MODEL = "gemini-1.5-pro";
 
-export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en', mimeType: 'json' | 'text' = 'json', apiKey?: string) {
+export function getModel(
+  tier: 'fast' | 'pro' = 'fast', 
+  locale: string = 'en', 
+  mimeType: 'json' | 'text' = 'json', 
+  apiKey?: string,
+  systemInstruction?: string
+) {
   if (IS_GROQ_OVERRIDE) {
     const language = locale === 'ru' ? 'Russian' : 'English';
     // Return a proxy that mimics the Gemini model interface but calls Groq
@@ -30,7 +36,7 @@ export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en', m
                 messages: [
                   { 
                     role: "system", 
-                    content: `${config.systemInstruction || ''}
+                    content: `${systemInstruction || config.systemInstruction || ''}
                     
                     CRITICAL LANGUAGE RULES:
                     1. Respond EXCLUSIVELY in ${language.toUpperCase()}.
@@ -130,6 +136,7 @@ export function getModel(tier: 'fast' | 'pro' = 'fast', locale: string = 'en', m
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   return client.getGenerativeModel({ 
     model: modelName,
+    systemInstruction,
     generationConfig: {
       responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
     }
