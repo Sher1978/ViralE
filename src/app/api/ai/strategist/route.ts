@@ -197,20 +197,36 @@ export async function POST(req: Request) {
         responseMimeType: "text/plain"
       },
       tools: [{
-        functionDeclarations: [{
-          name: "update_brand_dna",
-          description: "Updates the user's permanent Brand DNA/Digital Shadow with new information synthesized from the conversation.",
-          parameters: {
-            type: SchemaType.OBJECT,
-            properties: {
-              new_info: {
-                type: SchemaType.STRING,
-                description: "The new facts, style preferences, or audience insights to add to the DNA."
-              }
-            },
-            required: ["new_info"]
+        functionDeclarations: [
+          {
+            name: "update_brand_dna",
+            description: "Updates the user's permanent Brand DNA/Digital Shadow with new information synthesized from the conversation.",
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                new_info: {
+                  type: SchemaType.STRING,
+                  description: "The new facts, style preferences, or audience insights to add to the DNA."
+                }
+              },
+              required: ["new_info"]
+            }
+          },
+          {
+            name: "update_storybrand",
+            description: "Updates the user's structured 7-element StoryBrand framework document in Supabase when new elements are collected during the interview.",
+            parameters: {
+              type: SchemaType.OBJECT,
+              properties: {
+                storybrand_markdown: {
+                  type: SchemaType.STRING,
+                  description: "The full updated Markdown document containing the 7 StoryBrand elements: Hero, Problem, Guide, Plan, Call to Action, Success, Failure."
+                }
+              },
+              required: ["storybrand_markdown"]
+            }
           }
-        }]
+        ]
       }],
       toolConfig: {
         functionCallingConfig: {
@@ -274,6 +290,48 @@ export async function POST(req: Request) {
                     }
                   } catch (e) {
                     console.error('Failed to auto-update DNA:', e);
+                  }
+                } else if (call.name === 'update_storybrand') {
+                  const { storybrand_markdown } = call.args as any;
+                  console.log(`[Strategist Agent] AUTO-UPDATING STORYBRAND: ${storybrand_markdown.substring(0, 100)}...`);
+                  
+                  try {
+                    // Distill StoryBrand markdown into Digital Shadow master prompt using Gemini
+                    let digitalShadowPrompt = "";
+                    try {
+                      const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
+                      const model = client.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+                      const extractPrompt = `
+                        You are an expert AI Persona Architect. 
+                        Your goal is to distill the following StoryBrand document into a beautiful, high-density, authoritative, and declarative "Digital Shadow DNA" (Master Prompt) in Russian (if the input is primarily Russian) or English.
+                        Describe the expert's tone of voice, unique methodology, area of expertise, core worldview, and target audience.
+                        Output ONLY the final declarative, cohesive paragraph (max 300 words). No introduction, no markdown blocks, no bullet points.
+                        
+                        USER STORYBRAND DOCUMENT:
+                        ${storybrand_markdown}
+                      `;
+                      const result = await model.generateContent(extractPrompt);
+                      const response = await result.response;
+                      digitalShadowPrompt = response.text().trim();
+                    } catch (e) {
+                      console.warn('[Strategist Agent] Failed to distill StoryBrand document:', e);
+                    }
+
+                    const { error } = await authorizedSupabase
+                      .from('profiles')
+                      .update({ 
+                        storybrand_raw_content: storybrand_markdown,
+                        storybrand_updated_at: new Date().toISOString(),
+                        ...(digitalShadowPrompt && { digital_shadow_prompt: digitalShadowPrompt }),
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('id', user.id);
+                    
+                    if (!error) {
+                      controller.enqueue(new TextEncoder().encode("\n\n*(System Note: StoryBrand DNA and Digital Shadow successfully updated with new insights)*"));
+                    }
+                  } catch (e) {
+                    console.error('Failed to auto-update StoryBrand:', e);
                   }
                 }
               }
