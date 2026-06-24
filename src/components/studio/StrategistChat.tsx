@@ -76,6 +76,7 @@ export function StrategistChat({
   const [scriptMatrix, setScriptMatrix] = useState<any | null>(null);
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
+  const [isPlayingId, setIsPlayingId] = useState<number | null>(null);
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -320,6 +321,93 @@ export function StrategistChat({
     setTimeout(() => setCopiedId(null), 2000);
   };
 
+  const playVoice = async (text: string, id: number) => {
+    if (audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
+      setIsAIPointing(false);
+      setIsPlayingId(null);
+    }
+    
+    setIsPlayingId(id);
+    try {
+      setIsAIPointing(true);
+      
+      const { textBefore, scriptText } = parseMessageContent(text);
+      const cleanSpeechText = (textBefore + "\n" + (scriptText || "")).replace(/<\/?[A-Z0-9_]+>/g, '').trim();
+
+      const response = await fetch('/api/ai/tts', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ text: cleanSpeechText }),
+      });
+
+      if (!response.ok) throw new Error('TTS failed');
+
+      const audioBlob = await response.blob();
+      const url = URL.createObjectURL(audioBlob);
+      
+      const audio_class = (globalThis as any).Audio;
+      const audio = audio_class ? new audio_class(url) : null;
+      if (!audio) return;
+      audioPlayerRef.current = audio;
+      
+      const AudioContextClass = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
+      if (AudioContextClass && !audioContextRef.current) {
+        audioContextRef.current = new AudioContextClass();
+        analyserRef.current = audioContextRef.current.createAnalyser();
+        analyserRef.current.fftSize = 256;
+      }
+
+      if (audioContextRef.current && analyserRef.current) {
+        const source = audioContextRef.current.createMediaElementSource(audio);
+        source.connect(analyserRef.current);
+        analyserRef.current.connect(audioContextRef.current.destination);
+
+        const updateFrequency = () => {
+          if (!audioPlayerRef.current || audio.paused || audio.ended) {
+            return;
+          }
+          const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
+          analyserRef.current.getByteFrequencyData(dataArray);
+          setFrequencyData(dataArray);
+          animationRef.current = requestAnimationFrame(updateFrequency);
+        };
+        animationRef.current = requestAnimationFrame(updateFrequency);
+      }
+
+      audio.onended = () => {
+        setIsAIPointing(false);
+        setIsPlayingId(null);
+        URL.revokeObjectURL(url);
+      };
+
+      audio.onpause = () => {
+        setIsAIPointing(false);
+        setIsPlayingId(null);
+      };
+
+      await audio.play();
+    } catch (err) {
+      console.error('Playback error:', err);
+      setIsAIPointing(false);
+      setIsPlayingId(null);
+    }
+  };
+
+  const handlePlayVoiceClick = (text: string, id: number) => {
+    if (isPlayingId === id) {
+      if (audioPlayerRef.current) {
+        audioPlayerRef.current.pause();
+        audioPlayerRef.current = null;
+      }
+      setIsPlayingId(null);
+      setIsAIPointing(false);
+    } else {
+      playVoice(text, id);
+    }
+  };
+
   const applySuggestion = (newText: string) => {
     // 1. If custom callback provided, use it
     if (onApplySuggestion) {
@@ -548,18 +636,33 @@ export function StrategistChat({
                       );
                     })()}
                     
-                    {/* Copy to Clipboard - More visible on hover */}
+                    {/* Copy to Clipboard & Play Voice - More visible on hover */}
                     {m.role === 'assistant' && !isStreaming && (
-                      <button 
-                        onClick={() => {
-                          const { scriptText } = parseMessageContent(m.content);
-                          copyToClipboard(scriptText || m.content, i);
-                        }}
-                        className="absolute -right-10 top-0 p-2 opacity-0 group-hover/message:opacity-100 text-slate-500 hover:text-white transition-all bg-white/5 rounded-xl border border-white/10"
-                        title="Copy to Clipboard"
-                      >
-                        {copiedId === i ? <CheckCircle className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-                      </button>
+                      <div className="absolute -right-10 top-0 flex flex-col gap-2 opacity-0 group-hover/message:opacity-100 transition-all z-20">
+                        <button 
+                          onClick={() => {
+                            const { scriptText } = parseMessageContent(m.content);
+                            copyToClipboard(scriptText || m.content, i);
+                          }}
+                          className="p-2 text-slate-500 hover:text-white bg-[#0e0e16]/80 hover:bg-[#181824] backdrop-blur-md rounded-xl border border-white/10 transition-colors"
+                          title="Copy to Clipboard"
+                        >
+                          {copiedId === i ? <CheckCircle className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
+                        </button>
+                        
+                        <button 
+                          onClick={() => handlePlayVoiceClick(m.content, i)}
+                          className={cn(
+                            "p-2 rounded-xl border transition-colors backdrop-blur-md",
+                            isPlayingId === i 
+                              ? "text-red-400 bg-red-500/10 border-red-500/30" 
+                              : "text-slate-500 hover:text-white bg-[#0e0e16]/80 hover:bg-[#181824] border-white/10"
+                          )}
+                          title={isPlayingId === i ? "Stop speaking" : "Listen to answer"}
+                        >
+                          {isPlayingId === i ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                        </button>
+                      </div>
                     )}
                   </div>
                   {/* Action suggesting for assistant messages */}

@@ -30,13 +30,14 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
   const particlesRef = useRef<Particle[]>([]);
   const animationFrameRef = useRef<number | null>(null);
   const timeRef = useRef(0);
+  const pulseScaleRef = useRef(0.5); // Smooth breathing/pulsing state
 
   // Configuration
   const PARTICLE_COUNT = 240; // Increased for "cloud" density
   const CONNECTION_LIMIT_DEFAULT = 2500;
   const CONNECTION_LIMIT_LISTENING = 8000;
 
-  // Initialize particles
+  // Initialize particles with slightly larger base sizes
   useEffect(() => {
     const particles: Particle[] = [];
     for (let i = 0; i < PARTICLE_COUNT; i++) {
@@ -46,8 +47,8 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
         y: Math.random() * 400,
         vx: (Math.random() - 0.5) * 0.1,
         vy: (Math.random() - 0.5) * 0.1,
-        size: Math.random() * 1.5 + 0.5,
-        baseSize: Math.random() * 1.5 + 0.5,
+        size: Math.random() * 1.5 + 2.0, // 2.0 to 3.5px base
+        baseSize: Math.random() * 1.5 + 2.0,
         hue,
         color: `hsla(${hue}, 100%, 50%, `,
       });
@@ -84,7 +85,22 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
       // Interaction States
       const isInteraction = isListening || isSpeaking;
       const intensity = isInteraction ? (avgFreq / 140) : 0;
-      const pulseScale = isSpeaking ? (1 + (lowFreq / 200)) : (1 + Math.sin(timeRef.current * 1.5) * 0.03);
+      
+      // Target pulse scale configuration:
+      // Inactive (not speaking/listening): slow breathing at minimum size (0.5x - 0.6x)
+      // Active (speaking/listening): reactively scales up dynamically between 1.0x and 2.0x (size range limit of 2x)
+      let targetPulseScale = 0.5;
+      if (isInteraction) {
+        const freqFactor = avgFreq / 140; // normalized frequency
+        targetPulseScale = 1.0 + Math.min(freqFactor, 1.0); // range: 1.0 to 2.0 (1x - 2x)
+      } else {
+        // Slow breathing pulse when idle (0.45 to 0.55 scale)
+        targetPulseScale = 0.5 + Math.sin(timeRef.current * 1.5) * 0.05;
+      }
+
+      // Smooth interpolation (lerp) to prevent sudden particle size jumps
+      pulseScaleRef.current += (targetPulseScale - pulseScaleRef.current) * 0.12;
+      const pulseScale = pulseScaleRef.current;
       
       // Draw Filamentous Connections (Thread-like lattice)
       if (isActive) {
@@ -126,32 +142,32 @@ export const VoiceVisualizer: React.FC<VoiceVisualizerProps> = ({
         
         // Behaviors based on state
         if (isActive) {
-          // Center-seeking "Gravity" - stronger when quiet, weaker when speaking
-          const gravityForce = isInteraction ? 0.002 : 0.008;
+          // Center-seeking "Gravity" - stronger when quiet (keeps cloud compact), weaker when active
+          const gravityForce = isInteraction ? 0.001 : 0.005;
           p.vx += dx * gravityForce;
           p.vy += dy * gravityForce;
 
-          // Swirl/Orbit speed
-          const orbitSpeed = isSpeaking ? 0.02 + (midFreq/1000) : 0.005;
+          // Swirl/Orbit speed - moves faster when active, very slowly when idle
+          const orbitSpeed = isInteraction ? (0.015 + (midFreq / 800)) : 0.002;
           p.vx += Math.cos(angle + Math.PI/2) * orbitSpeed * d * 0.1;
           p.vy += Math.sin(angle + Math.PI/2) * orbitSpeed * d * 0.1;
           
           if (isListening) {
-             // Reactive jitter (like scanning data threads)
-             p.vx += (Math.random() - 0.5) * (1 + intensity);
-             p.vy += (Math.random() - 0.5) * (1 + intensity);
+             // Reactive jitter (scanning data threads)
+             p.vx += (Math.random() - 0.5) * (0.2 + intensity * 0.3);
+             p.vy += (Math.random() - 0.5) * (0.2 + intensity * 0.3);
           }
 
           if (isSpeaking) {
             // Pulse out from center on beats
-            const beatPush = (lowFreq / 255) * 0.5;
-            p.vx -= dx * beatPush * 0.01;
-            p.vy -= dy * beatPush * 0.01;
+            const beatPush = (lowFreq / 255) * 0.3;
+            p.vx -= dx * beatPush * 0.003;
+            p.vy -= dy * beatPush * 0.003;
           }
         }
 
         // Apply velocities with state-dependent friction
-        const friction = isInteraction ? 0.94 : 0.97;
+        const friction = isInteraction ? 0.93 : 0.96;
         p.vx *= friction;
         p.vy *= friction;
         p.x += p.vx;
