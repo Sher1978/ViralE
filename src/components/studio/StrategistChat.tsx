@@ -77,6 +77,7 @@ export function StrategistChat({
   const [profile, setProfile] = useState<Profile | null>(null);
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isPlayingId, setIsPlayingId] = useState<number | null>(null);
+  const [isCheckingAccess, setIsCheckingAccess] = useState(false);
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -102,14 +103,23 @@ export function StrategistChat({
 
   useEffect(() => {
     const checkAccess = async () => {
-      if (!userId) return;
+      let currentUserId = userId;
       try {
-        const [status, prof] = await Promise.all([
-          strategistService.getAccessStatus(userId),
-          profileService.getProfile(userId)
-        ]);
-        setAccess(status);
-        setProfile(prof);
+        if (!currentUserId) {
+          const prof = await profileService.getOrCreateProfile();
+          if (prof) {
+            currentUserId = prof.id;
+            setProfile(prof);
+          }
+        } else {
+          const prof = await profileService.getProfile(currentUserId);
+          setProfile(prof);
+        }
+
+        if (currentUserId) {
+          const status = await strategistService.getAccessStatus(currentUserId);
+          setAccess(status);
+        }
       } catch (err: any) {
         console.error('[StrategistChat] Access & Profile Check Failed:', err);
       }
@@ -469,36 +479,49 @@ export function StrategistChat({
       setIsOpen(false);
       return;
     }
-    // Refresh access and profile dynamically on click to catch plan upgrades immediately!
-    if (userId) {
-      try {
+    if (isCheckingAccess) return;
+
+    setIsCheckingAccess(true);
+    try {
+      let activeUserId = userId;
+      let activeProfile = profile;
+      let activeAccess = access;
+
+      if (!activeUserId) {
+        const resolvedProf = await profileService.getOrCreateProfile();
+        if (resolvedProf) {
+          activeUserId = resolvedProf.id;
+          activeProfile = resolvedProf;
+          setProfile(resolvedProf);
+        }
+      }
+
+      if (activeUserId) {
         const [status, prof] = await Promise.all([
-          strategistService.getAccessStatus(userId),
-          profileService.getProfile(userId)
+          strategistService.getAccessStatus(activeUserId),
+          profileService.getProfile(activeUserId)
         ]);
         setAccess(status);
         setProfile(prof);
-        
-        if (prof?.tier === 'pro' || status?.hasAccess) {
-          setIsOpen(true);
-        } else {
-          setShowUpgradeModal(true);
-        }
-      } catch (err) {
-        console.error('[StrategistChat] Failed to refresh access on toggle click:', err);
-        // fallback to existing loaded state
-        if (profile?.tier === 'pro' || access?.hasAccess) {
-          setIsOpen(true);
-        } else {
-          setShowUpgradeModal(true);
-        }
+        activeAccess = status;
+        activeProfile = prof;
       }
-    } else {
+
+      if (activeProfile?.tier === 'pro' || activeAccess?.hasAccess) {
+        setIsOpen(true);
+      } else {
+        setShowUpgradeModal(true);
+      }
+    } catch (err) {
+      console.error('[StrategistChat] Failed to refresh access on toggle click:', err);
+      // fallback to existing loaded state
       if (profile?.tier === 'pro' || access?.hasAccess) {
         setIsOpen(true);
       } else {
         setShowUpgradeModal(true);
       }
+    } finally {
+      setIsCheckingAccess(false);
     }
   };
 
@@ -515,14 +538,18 @@ export function StrategistChat({
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}
           onClick={handleToggleClick}
+          disabled={isCheckingAccess}
           className={cn(
             "relative h-12 w-12 rounded-xl shadow-2xl flex items-center justify-center transition-all duration-500 overflow-hidden border-2",
             isOpen 
               ? "bg-red-500/80 backdrop-blur-md border-red-400/50" 
-              : "bg-black/80 backdrop-blur-md border-white/20"
+              : "bg-black/80 backdrop-blur-md border-white/20",
+            isCheckingAccess && "opacity-80 cursor-wait"
           )}
         >
-          {isOpen ? (
+          {isCheckingAccess ? (
+            <RefreshCw className="text-white h-5 w-5 animate-spin" />
+          ) : isOpen ? (
             <X className="text-white h-6 w-6" />
           ) : (
             <img 
@@ -531,7 +558,7 @@ export function StrategistChat({
               className="w-full h-full object-cover scale-110"
             />
           )}
-          {!isOpen && (
+          {!isOpen && !isCheckingAccess && (
             <motion.div
               animate={{ scale: [1, 1.2, 1] }}
               transition={{ repeat: Infinity, duration: 2 }}
