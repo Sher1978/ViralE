@@ -39,7 +39,7 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { ContentMatrix } from './_components/ContentMatrix';
 import { ScenarioLegend } from './_components/ScenarioLegend';
 import { TrizMatrix } from './_components/TrizMatrix';
-import { createInitialManifest } from '@/lib/studio-utils';
+import { createInitialManifest, parseScriptTextToPayload } from '@/lib/studio-utils';
 
 import { BottomNav } from '@/components/layout/BottomNav';
 
@@ -738,7 +738,7 @@ export default function ScriptLabPage() {
     const activeScript = manualScriptData || scriptData;
     const isRawString = typeof activeScript === 'string';
     const scriptPayload = isRawString 
-      ? { hook: activeScript, body: '', triz_inversion: '', cta: '' } 
+      ? parseScriptTextToPayload(activeScript) 
       : activeScript;
 
     try {

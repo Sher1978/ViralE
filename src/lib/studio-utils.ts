@@ -16,6 +16,54 @@ function splitStoryIntoSegments(text: string): string[] {
   return chunks;
 }
 
+export interface ScriptPayload {
+  hook: string;
+  body: string;
+  triz_inversion: string;
+  cta: string;
+}
+
+/**
+ * Parses raw text containing script blocks into structured segments.
+ * Supports both Russian and English headers.
+ */
+export function parseScriptTextToPayload(text: string): ScriptPayload {
+  const result: ScriptPayload = {
+    hook: '',
+    body: '',
+    triz_inversion: '',
+    cta: ''
+  };
+
+  if (!text) return result;
+
+  const normalizedText = text.replace(/\r\n/g, '\n').trim();
+
+  // Regex patterns to capture block contents up to the next block keyword or end of text.
+  // Case-insensitive, supporting multiple variations in English/Russian.
+  const hookRegex = /(?:hook|intro|хук|интро|зацепка|введение):\s*([\s\S]*?)(?=\n\s*(?:body|context|тело|основная часть|контекст|triz|inversion|триз|перевертыш|cta|outro|призыв|аутро):|$)/i;
+  const bodyRegex = /(?:body|context|тело|основная часть|контекст):\s*([\s\S]*?)(?=\n\s*(?:triz|inversion|триз|перевертыш|cta|outro|призыв|аутро):|$)/i;
+  const trizRegex = /(?:triz[- ]?inversion|inversion|triz|триз[- ]?перевертыш|перевертыш|триз):\s*([\s\S]*?)(?=\n\s*(?:cta|outro|призыв|аутро):|$)/i;
+  const ctaRegex = /(?:cta|outro|call to action|призыв|аутро):\s*([\s\S]*?)$/i;
+
+  const hookMatch = normalizedText.match(hookRegex);
+  const bodyMatch = normalizedText.match(bodyRegex);
+  const trizMatch = normalizedText.match(trizRegex);
+  const ctaMatch = normalizedText.match(ctaRegex);
+
+  if (hookMatch) result.hook = hookMatch[1].trim();
+  if (bodyMatch) result.body = bodyMatch[1].trim();
+  if (trizMatch) result.triz_inversion = trizMatch[1].trim();
+  if (ctaMatch) result.cta = ctaMatch[1].trim();
+
+  // Fallback: If no blocks were extracted, treat the entire text as the hook
+  if (!result.hook && !result.body && !result.triz_inversion && !result.cta) {
+    result.hook = normalizedText;
+  }
+
+  return result;
+}
+
 export function createInitialManifest(projectId: string, versionId: string, scriptData: any): ProductionManifest {
   const segments: SceneSegment[] = [];
 
@@ -25,8 +73,8 @@ export function createInitialManifest(projectId: string, versionId: string, scri
   };
 
   const hookText = extractText(scriptData.hook);
-  const contextText = extractText(scriptData.context);
-  const meatText = extractText(scriptData.meat);
+  const contextText = extractText(scriptData.context || scriptData.body);
+  const meatText = extractText(scriptData.meat || scriptData.triz_inversion);
   const ctaText = extractText(scriptData.cta);
 
   // 1. Hook (Intro Avatar)

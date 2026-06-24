@@ -1,4 +1,4 @@
-import { supabase } from '../supabase';
+import { supabase, supabaseAdmin } from '../supabase';
 import fs from 'fs';
 import path from 'path';
 import { profileService } from './profileService';
@@ -47,11 +47,14 @@ export const strategistServerService = {
     let dnaContext = '';
     let isDnaComplete = false;
 
+    let hasStoryBrandFile = false;
+
     // 0. Check active brand context (includes StoryBrand document)
-    const { brandContext, isStoryBrandActive } = await profileService.getActiveBrandContext(userId, supabase);
+    const { brandContext, isStoryBrandActive } = await profileService.getActiveBrandContext(userId, supabaseAdmin);
     if (brandContext) {
       dnaContext = isStoryBrandActive ? `🧬 STORYBRAND DNA:\n${brandContext}` : brandContext;
       isDnaComplete = true;
+      hasStoryBrandFile = isStoryBrandActive;
     }
 
     // 1. Check for user-specific Brand_DNA.md file (Priority 1 fallback)
@@ -69,7 +72,7 @@ export const strategistServerService = {
 
     // 2. Fetch from DB if no file (Priority 2 fallback)
     if (!isDnaComplete) {
-      const { data: profile } = await supabase
+      const { data: profile } = await supabaseAdmin
         .from('profiles')
         .select('dna_answers')
         .eq('id', userId)
@@ -93,14 +96,19 @@ export const strategistServerService = {
       # ROLE: (ПРЕМИУМ ИИ-СТРАТЕГ VIRALE APP)
       Ты — элитный AI-маркетолог и ведущий контент-стратег, помогающий пользователю создать идеальный вирусный рилс/шортс от первого лица.
       У тебя есть собственная память (активный контекст ДНК бренда). ТВОЙ АЛГОРИТМ ОБЩЕНИЯ МАКСИМАЛЬНО ПРОАКТИВНЫЙ: ты должен сам задавать вектор, первым спрашивать, что мы делаем сегодня, предлагать побрейнштормить идеи, обсуждать стратегические вопросы или предлагать написать сценарий для вирусного рилса. Бери инициативу в свои руки и уверенно веди пользователя к результату.
-
+ 
       --- BRAND DNA CONTEXT ---
       ${dnaContext}
-
+ 
       --- OPERATIONAL ALGORITHM & CONTEXT CHECK ---
       Порядок работы с пользователем (Ты должен быть ведущим в диалоге!):
       
       1. СКАНИРОВАНИЕ И ИНТЕРВЬЮ STORYBRAND:
+         ${hasStoryBrandFile ? `
+         ПОЛЬЗОВАТЕЛЬ УЖЕ ЗАГРУЗИЛ СВОЙ ДОКУМЕНТ STORYBRAND (предоставлен выше в BRAND DNA CONTEXT в блоке STORYBRAND DNA).
+         Вам НЕ НУЖНО проводить интервью и задавать вопросы из Шага 1! Наличие этого документа означает, что Шаг 1 успешно завершен.
+         Сразу же поприветствуйте пользователя, подтвердите, что вы видите его загруженный StoryBrand, очень кратко (в одном-двух предложениях) упомяните ключевую суть этого StoryBrand документа, и сразу же переходите к Шагу 2 — предложите 3 вирусные идеи на выбор на основе ступеней Лестницы Ханта.
+         ` : `
          Проверь наличие и заполненность 7 StoryBrand переменных в предоставленном выше контексте (STORYBRAND DNA / BRAND DNA CONTEXT):
          - Часть 1: Персонаж/Герой (Кто клиент? Чего хочет?)
          - Часть 2: Проблема (Внешняя, Внутренняя, Философская)
@@ -109,7 +117,7 @@ export const strategistServerService = {
          - Часть 5: Призыв к действию (Прямой CTA + Переходный CTA)
          - Часть 6: Избежание неудачи (Что плохого произойдет, если не купит?)
          - Часть 7: Успех (Визуализация результатов + Трансформация До/После)
-
+ 
          Если этот контекст ПУСТ, неполный или не содержит всех 7 элементов, ты должен начать проактивный диалог:
          - Расскажи пользователю, какие элементы у него заполнены, а какие отсутствуют.
          - Задавай по 1-2 целенаправленных вопроса за раз для заполнения отсутствующих элементов.
@@ -118,7 +126,8 @@ export const strategistServerService = {
            b) \`storybrand_answers\`: структурированный JSON-объект, содержащий ответы по каждому разделу.
          - Когда все 7 элементов будут собраны, поздравь пользователя и переходи к шагу 2 (Генерация 3 идей по Лестнице Ханта).
          If контекст полный, переходи к шагу 2.
-         
+         `}
+          
       2. ГЕНЕРАЦИЯ 3 ИДЕЙ (ЛЕСТНИЦА ХАНТА):
          КАК ТОЛЬКО пользователь в свободной форме просит создать сценарий (генерацию сценария), СРАЗУ ЖЕ (если ДНК собрано) сгенерируй ровно 3 идеи для видео, используя Лестницу Ханта (выбери 3 разные ступени осведомленности). 
          Кратко опиши каждую идею и ее цель. Предложи пользователю выбрать одну из них (например, вводом цифры от 1 до 3).

@@ -2,7 +2,6 @@ import { SupabaseClient } from '@supabase/supabase-js';
 import { getModel } from './ai/gemini';
 import fs from 'fs';
 import path from 'path';
-import { profileService } from './services/profileService';
 
 export interface IdeaSuggestion {
   id?: string;
@@ -68,17 +67,11 @@ export async function generateDailyIdeas(
   let dnaContext = "";
   let isDnaComplete = false;
 
-  const { brandContext, isStoryBrandActive } = await profileService.getActiveBrandContext(userId, supabase);
-  if (brandContext) {
-    dnaContext = isStoryBrandActive ? `🧬 STORYBRAND DNA:\n${brandContext}` : brandContext;
-    isDnaComplete = true;
-    console.log(`Using active brand context (StoryBrand: ${isStoryBrandActive}) for user ${userId}.`);
-  }
-
-  if (!isDnaComplete && hasFileStrategy) {
+  if (hasFileStrategy) {
     try {
       dnaContext = fs.readFileSync(userFilePath, 'utf-8');
       isDnaComplete = true;
+      console.log(`Using Brand_DNA.md file for user ${userId}.`);
     } catch (e) {
       console.error('Failed to read DNA file in ideation:', e);
     }

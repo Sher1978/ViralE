@@ -10,6 +10,7 @@ import {
 import { strategistService, AccessStatus } from '@/lib/services/strategistService';
 import { profileService, Profile } from '@/lib/services/profileService';
 import { ProductionManifest, SceneSegment } from '@/lib/types/studio';
+import { parseScriptTextToPayload } from '@/lib/studio-utils';
 import { cn } from '@/lib/utils';
 import { useTranslations } from 'next-intl';
 import { VoiceVisualizer } from './VoiceVisualizer';
@@ -334,20 +335,18 @@ export function StrategistChat({
     if (setManifest && manifest) {
       const newManifest = { ...manifest };
       
-      // Attempt to parse structured script (Hook/Body/CTA)
-      const hasStructure = /hook:|body:|cta:|intro:|outro:/i.test(newText);
+      // Attempt to parse structured script (Hook/Body/CTA/TRIZ)
+      const hasStructure = /hook:|body:|cta:|intro:|outro:|хук:|тело:|призыв:|триз:|перевертыш:/i.test(newText);
       
       if (hasStructure) {
         // Smart distribution
         const segments = [...newManifest.segments];
-        
-        const hookMatch = newText.match(/(?:hook|intro):\s*([\s\S]*?)(?=\n(?:body|cta|outro):|$)/i);
-        const bodyMatch = newText.match(/body:\s*([\s\S]*?)(?=\n(?:cta|outro):|$)/i);
-        const ctaMatch = newText.match(/(?:cta|outro):\s*([\s\S]*?)$/i);
+        const parsed = parseScriptTextToPayload(newText);
 
-        if (hookMatch && segments[0]) segments[0].scriptText = hookMatch[1].trim();
-        if (bodyMatch && segments[1]) segments[1].scriptText = bodyMatch[1].trim();
-        if (ctaMatch && segments[segments.length - 1]) segments[segments.length - 1].scriptText = ctaMatch[1].trim();
+        if (parsed.hook && segments[0]) segments[0].scriptText = parsed.hook;
+        if (parsed.body && segments[1]) segments[1].scriptText = parsed.body;
+        if (parsed.triz_inversion && segments[2]) segments[2].scriptText = parsed.triz_inversion;
+        if (parsed.cta && segments[segments.length - 1]) segments[segments.length - 1].scriptText = parsed.cta;
         
         newManifest.segments = segments;
       } else if (activeSegmentId) {
