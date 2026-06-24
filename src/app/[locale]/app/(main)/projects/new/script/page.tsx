@@ -63,6 +63,9 @@ export default function ScriptLabPage() {
   const [customCommand, setCustomCommand] = useState('');
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
   const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('groq');
+  
+  const [trizIdeas, setTrizIdeas] = useState<any[] | null>(null);
+  const [isGeneratingTriz, setIsGeneratingTriz] = useState(false);
   const [isAiLocked, setIsAiLocked] = useState(false);
   const [showLimitModal, setShowLimitModal] = useState(false);
   const [limitModalData, setLimitModalData] = useState({ title: '', desc: '', type: 'trial' as any });
@@ -100,7 +103,7 @@ export default function ScriptLabPage() {
     setIsLoading(true);
 
     setAllScenarios(null);
-    setScriptData({ hook: '' as any, context: '' as any, meat: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
+    setScriptData({ hook: '' as any, body: '' as any, triz_inversion: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
     if (typeof (globalThis as any).window !== 'undefined') {
       (globalThis as any).sessionStorage?.removeItem('allScenarios');
       (globalThis as any).sessionStorage?.removeItem('isGenerating');
@@ -155,7 +158,7 @@ export default function ScriptLabPage() {
   };
 
 
-  const [activeScenario, setActiveScenario] = useState<'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>('evergreen');
+  const [activeScenario, setActiveScenario] = useState<'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling'>('evergreen');
   const [allScenarios, setAllScenarios] = useState<any>(() => {
     if (typeof (globalThis as any).window !== 'undefined') {
       const saved = (globalThis as any).sessionStorage?.getItem('allScenarios');
@@ -169,8 +172,8 @@ export default function ScriptLabPage() {
   const [scriptData, setScriptData] = useState(() => {
     const defaultData = {
       hook: '' as any,
-      context: '' as any,
-      meat: '' as any,
+      body: '' as any,
+      triz_inversion: '' as any,
       cta: '' as any,
       visual_hook: '',
       social_post: ''
@@ -216,10 +219,10 @@ export default function ScriptLabPage() {
     return () => clearInterval(interval);
   }, [isLoading, isGenerating, loadingSteps.length]);
   
-  const [selectionSources, setSelectionSources] = useState<Record<string, 'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>>({
+  const [selectionSources, setSelectionSources] = useState<Record<string, 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling'>>({
     hook: 'evergreen',
-    context: 'evergreen',
-    meat: 'evergreen',
+    body: 'evergreen',
+    triz_inversion: 'evergreen',
     cta: 'evergreen'
   });
 
@@ -227,7 +230,7 @@ export default function ScriptLabPage() {
   const [copyFeedback, setCopyFeedback] = useState(false);
 
 
-  const scenarios: ('evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling')[] = ['evergreen', 'trend', 'educational', 'controversial', 'storytelling'];
+  const scenarios: ('edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling')[] = ['edutainment', 'evergreen', 'trends', 'controversial', 'storytelling'];
 
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [currentVersion, setCurrentVersion] = useState<ProjectVersion | null>(null);
@@ -329,8 +332,8 @@ export default function ScriptLabPage() {
 
             const reconstructedScript = {
               hook: hookSegment?.scriptText || '',
-              context: contextSegment?.scriptText || '',
-              meat: meatSegment?.scriptText || '',
+              body: contextSegment?.scriptText || '',
+              triz_inversion: meatSegment?.scriptText || '',
               cta: ctaSegment?.scriptText || '',
               visual_hook: '',
               social_post: ''
@@ -339,8 +342,8 @@ export default function ScriptLabPage() {
             
             const dummyAllScenarios = {
               evergreen: reconstructedScript,
-              trend: reconstructedScript,
-              educational: reconstructedScript,
+              trends: reconstructedScript,
+              edutainment: reconstructedScript,
               controversial: reconstructedScript,
               storytelling: reconstructedScript
             };
@@ -349,8 +352,8 @@ export default function ScriptLabPage() {
             setScriptData(data);
             const dummyAllScenarios = {
               evergreen: data,
-              trend: data,
-              educational: data,
+              trends: data,
+              edutainment: data,
               controversial: data,
               storytelling: data
             };
@@ -384,11 +387,11 @@ export default function ScriptLabPage() {
     loadData();
   }, [projectIdParam, versionIdParam, searchParams]);
 
-  const handleScenarioSwitch = (scenario: 'evergreen' | 'trend' | 'educational') => {
+  const handleScenarioSwitch = (scenario: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling') => {
     setActiveScenario(scenario);
   };
 
-  const handleBlockSelect = (type: string, source: 'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling') => {
+  const handleBlockSelect = (type: string, source: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling') => {
     setSelectionSources(prev => ({ ...prev, [type]: source }));
   };
 
@@ -416,8 +419,8 @@ export default function ScriptLabPage() {
     if (!allScenarios) return Object.values(scriptData).filter(v => v).map((v: any) => typeof v === 'string' ? v : v.words).join('\n\n');
     const parts = [
       allScenarios[selectionSources.hook]?.hook?.words || allScenarios[selectionSources.hook]?.hook,
-      allScenarios[selectionSources.context]?.context?.words || allScenarios[selectionSources.context]?.context,
-      allScenarios[selectionSources.meat]?.meat?.words || allScenarios[selectionSources.meat]?.meat,
+      allScenarios[selectionSources.body]?.body?.words || allScenarios[selectionSources.body]?.body,
+      allScenarios[selectionSources.triz_inversion]?.triz_inversion?.words || allScenarios[selectionSources.triz_inversion]?.triz_inversion,
       allScenarios[selectionSources.cta]?.cta?.words || allScenarios[selectionSources.cta]?.cta,
     ];
     return parts.filter(Boolean).map(v => typeof v === 'string' ? v : (v as any)?.words || '').join('\n\n');
@@ -552,6 +555,36 @@ export default function ScriptLabPage() {
     }
   };
 
+  const handleGenerateTriz = async () => {
+    if (!topicInput.trim()) {
+      setError(locale === 'ru' ? 'Введите идею видео' : 'Please enter a video idea');
+      return;
+    }
+    
+    setError(null);
+    setIsGeneratingTriz(true);
+    try {
+      const response = await fetch('/api/script/triz', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          topic: topicInput,
+          locale,
+          engine: selectedEngine
+        })
+      });
+      
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to generate TRIZ ideas');
+      
+      setTrizIdeas(data.ideas);
+    } catch (err: any) {
+      setError(err.message || 'Error generating TRIZ matrix');
+    } finally {
+      setIsGeneratingTriz(false);
+    }
+  };
+
   const handleInitialGenerate = async () => {
     if (isAiLocked) {
       return handleManualStart();
@@ -578,7 +611,7 @@ export default function ScriptLabPage() {
         }
         
         setYoutubeLoading(false);
-        // Execute the AI script generation using the fetched transcript text
+        // Execute the AI script generation using the fetched transcript text directly
         await executeGeneration(data.transcript);
       } catch (err: any) {
         console.error('[YouTubeGen] Error:', err);
@@ -586,11 +619,8 @@ export default function ScriptLabPage() {
         setYoutubeLoading(false);
       }
     } else {
-      if (!topicInput.trim()) {
-        setError(locale === 'ru' ? 'Введите идею видео' : 'Please enter a video idea');
-        return;
-      }
-      await executeGeneration();
+      // First generate TRIZ ideas
+      await handleGenerateTriz();
     }
   };
 
@@ -599,7 +629,7 @@ export default function ScriptLabPage() {
     setIsLoading(true);
     setAllScenarios(null);
 
-    setScriptData({ hook: '' as any, context: '' as any, meat: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
+    setScriptData({ hook: '' as any, body: '' as any, triz_inversion: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
     if (typeof (globalThis as any).window !== 'undefined') {
       (globalThis as any).sessionStorage?.removeItem('allScenarios');
       (globalThis as any).sessionStorage?.removeItem('isGenerating');
@@ -701,7 +731,7 @@ export default function ScriptLabPage() {
     const activeScript = manualScriptData || scriptData;
     const isRawString = typeof activeScript === 'string';
     const scriptPayload = isRawString 
-      ? { hook: activeScript, context: '', meat: '', cta: '' } 
+      ? { hook: activeScript, body: '', triz_inversion: '', cta: '' } 
       : activeScript;
 
     try {
@@ -1172,6 +1202,45 @@ export default function ScriptLabPage() {
                   {locale === 'ru' ? 'Разблокировать ИИ' : 'Unlock AI Engine'}
                 </button>
               </div>
+            ) : trizIdeas ? (
+              <div className="space-y-6 animate-fade-in slide-in-from-bottom-4">
+                <div className="text-center space-y-2">
+                  <h3 className="text-xl font-black uppercase italic tracking-widest text-white">
+                    {locale === 'ru' ? 'Выберите фокус сценария' : 'Choose Your Script Focus'}
+                  </h3>
+                  <p className="text-xs text-white/50 uppercase tracking-widest font-bold">
+                    {locale === 'ru' ? '9-Экранная матрица ТРИЗ' : '9-Screen TRIZ Matrix'}
+                  </p>
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {trizIdeas.map((idea, idx) => (
+                    <button
+                      key={idx}
+                      onClick={() => executeGeneration(`${idea.screen_name}: ${idea.idea_title} - ${idea.rationale}`)}
+                      className="p-5 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all text-left group relative overflow-hidden"
+                    >
+                      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+                      <div className="relative z-10 space-y-3">
+                        <span className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                          {idea.screen_name}
+                        </span>
+                        <h4 className="text-sm font-bold text-white leading-tight">
+                          {idea.idea_title}
+                        </h4>
+                        <p className="text-[10px] text-white/60 font-medium leading-relaxed">
+                          {idea.rationale}
+                        </p>
+                      </div>
+                    </button>
+                  ))}
+                </div>
+                <button
+                   onClick={() => setTrizIdeas(null)}
+                   className="w-full py-4 text-xs text-white/40 uppercase tracking-widest font-black hover:text-white transition-colors"
+                >
+                   {locale === 'ru' ? '← Назад' : '← Back'}
+                </button>
+              </div>
             ) : (
               <button
                 id="generate-script-btn"
@@ -1188,14 +1257,14 @@ export default function ScriptLabPage() {
                 ) : (
                   <>
                     <span className="font-black text-lg uppercase tracking-widest flex items-center gap-3">
-                      {locale === 'ru' ? 'Создать сценарий' : 'Generate Script'}
+                      {isGeneratingTriz ? (locale === 'ru' ? 'Анализ ТРИЗ...' : 'Analyzing TRIZ...') : (locale === 'ru' ? 'Матрица идей (ТРИЗ)' : 'Idea Matrix (TRIZ)')}
                       <InfoTooltip 
-                        content={locale === 'ru' ? "На следующем шаге система выдаст вам целую Матрицу (5 разных сценариев на выбор). Смело жмите!" : "The system will generate a full Content Matrix with 5 scenarios for you to choose from."} 
+                        content={locale === 'ru' ? "Сначала мы сгенерируем 9 уникальных углов подачи через матрицу ТРИЗ." : "We will generate 9 unique angles using the TRIZ matrix first."} 
                         iconClassName="text-white hover:text-white/80"
                         size={18}
                       />
                     </span>
-                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
+                    {isGeneratingTriz ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />}
                   </>
                 )}
               </button>
@@ -1253,9 +1322,9 @@ export default function ScriptLabPage() {
 
         <ScenarioLegend 
           scenarios={[
+            { id: 'edutainment', color: '#3B82F6', label: 'Edutainment' },
             { id: 'evergreen', color: '#00FF9F', label: 'Evergreen' },
-            { id: 'trend', color: '#FF8A00', label: 'Trends' },
-            { id: 'educational', color: '#3B82F6', label: 'Educational' },
+            { id: 'trends', color: '#FF8A00', label: 'Trends' },
             { id: 'controversial', color: '#FF2D55', label: 'Controversial' },
             { id: 'storytelling', color: '#00D2FF', label: 'Storytelling' }
           ]} 
@@ -1306,14 +1375,12 @@ export default function ScriptLabPage() {
       <ContentMatrix 
         isGenerating={isGenerating || isRefining}
         blocks={[
-
-
           { id: 'hook', label: locale === 'ru' ? 'ХУК' : 'HOOK' },
-          { id: 'context', label: locale === 'ru' ? 'КОНТЕКСТ' : 'CONTEXT' },
-          { id: 'meat', label: locale === 'ru' ? 'МЯСО' : 'MEAT' },
-          { id: 'cta', label: locale === 'ru' ? 'CTA' : 'CTA' }
+          { id: 'body', label: locale === 'ru' ? 'КОНТЕКСТ (BODY)' : 'BODY' },
+          { id: 'triz_inversion', label: locale === 'ru' ? 'ТРИЗ-ПЕРЕВЕРТЫШ' : 'TRIZ INVERSION' },
+          { id: 'cta', label: locale === 'ru' ? 'СТА' : 'CTA' }
         ]}
-        scenarios={['evergreen', 'trend', 'educational', 'controversial', 'storytelling']}
+        scenarios={['edutainment', 'evergreen', 'trends', 'controversial', 'storytelling']}
         selectionSources={selectionSources}
         allScenarios={allScenarios}
         scriptData={scriptData}
@@ -1326,8 +1393,8 @@ export default function ScriptLabPage() {
           const sd = scriptData as any;
           const synthesizedScript = allScenarios ? {
             hook: allScenarios[selectionSources.hook]?.hook || sd.hook,
-            context: allScenarios[selectionSources.context]?.context || sd.context,
-            meat: allScenarios[selectionSources.meat]?.meat || sd.meat,
+            body: allScenarios[selectionSources.body]?.body || sd.body,
+            triz_inversion: allScenarios[selectionSources.triz_inversion]?.triz_inversion || sd.triz_inversion,
             cta: allScenarios[selectionSources.cta]?.cta || sd.cta,
             visual_hook: allScenarios[selectionSources.hook]?.visual_hook || sd.visual_hook,
             social_post: allScenarios[selectionSources.hook]?.social_post || sd.social_post,
@@ -1347,7 +1414,7 @@ export default function ScriptLabPage() {
         onUseScript={(text) => handleApprove(text)}
         onMatrixUpdate={(matrix) => {
           console.log('[ScriptLab] Matrix sync from Chat:', matrix);
-          if (matrix.evergreen || matrix.trend) {
+          if (matrix.evergreen || matrix.trends) {
              setAllScenarios(matrix);
              setScriptData(matrix[activeScenario] || matrix.evergreen);
              if (typeof (globalThis as any).window !== 'undefined') {
@@ -1357,11 +1424,11 @@ export default function ScriptLabPage() {
              // Map styles array to the 5-scenario format if possible, or just use styles[0]
              const mapped: any = {};
              matrix.styles.forEach((s: any, i: number) => {
-                const key = i === 0 ? 'evergreen' : i === 1 ? 'trend' : i === 2 ? 'educational' : i === 3 ? 'controversial' : 'storytelling';
+                const key = i === 0 ? 'edutainment' : i === 1 ? 'evergreen' : i === 2 ? 'trends' : i === 3 ? 'controversial' : 'storytelling';
                 mapped[key] = {
                    hook: s.hook,
-                   context: s.context,
-                   meat: s.meat,
+                   body: s.body,
+                   triz_inversion: s.triz_inversion,
                    cta: s.cta,
                 };
              });

@@ -82,8 +82,8 @@ export function StrategistChat({
         { 
           role: 'assistant', 
           content: locale === 'ru' 
-            ? "Привет! Я твой ИИ-Стратег. Давай поработаем над сценарием твоего следующего вирусного ролика! О чем будет видео?" 
-            : "Hi! I'm your Viral Strategist. Let's work on the script of your next viral video! What is the video going to be about?" 
+            ? "Привет! Я твой ИИ-Стратег 🧠 Чем займемся сегодня? Можем побрейнштормить новые идеи, обсудить любые вопросы или сразу написать сценарий для вирусного рилса. Какие мысли?" 
+            : "Hi! I'm your AI Strategist 🧠 What are we doing today? We can brainstorm new ideas, discuss strategy questions, or jump straight into writing a script for a viral reel. What's on your mind?" 
         }
       ]);
     }
@@ -479,7 +479,7 @@ export function StrategistChat({
             {/* Background Visualizer */}
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
               <VoiceVisualizer 
-                isActive={true} 
+                isActive={isVoiceMode} 
                 isListening={isRecording} 
                 isSpeaking={isAIPointing} 
                 frequencyData={frequencyData}
@@ -585,7 +585,7 @@ export function StrategistChat({
                                className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] active:scale-95 group/use"
                             >
                               <Zap className="h-3.5 w-3.5 text-yellow-300 group-hover/use:animate-pulse" /> 
-                              Использовать
+                              {locale === 'ru' ? 'Экспорт в Готовый Рилс' : 'Export to Ready Reel'}
                             </button>
                           );
                         }

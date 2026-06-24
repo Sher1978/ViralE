@@ -115,7 +115,7 @@ export async function generateScript(
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
-    Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) for different content vectors.
+    Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
     
     ${trizMatrix ? `
     --- STRATEGIC TRIZ 9-SCREEN MATRIX BLUEPRINT ---
@@ -123,30 +123,42 @@ export async function generateScript(
     ${trizMatrix}
     ` : ""}
     
-    SCENARIOS TO GENERATE:
-    1. evergreen: Universal expert content, timeless value.
-    2. trend: Optimized for current viral trends, high energy.
-    3. educational: Direct problem-solution teaching.
-    4. controversial: Challenging myths, deep irony, provocative.
-    5. storytelling: Personal narrative, bond building.
-
-    Structure for EACH scenario:
-    - hook: 1-3 words impact
-    - problem: the pain point
-    - good_news: the positive turn
-    - solution: the core value/lesson
-    - cta: punchy call to action
-    - visual_hook: detailed Cover image prompt
-    - social_post: engaging caption
+    CRITICAL LANGUAGE RULES:
+    1. Respond EXCLUSIVELY in the active language: ${languageName.toUpperCase()}.
+    2. All generated content, scenarios, hooks, context, meat, cta, broll descriptions, and social posts MUST be strictly in ${languageName.toUpperCase()}!
     
-    REMEMBER: Output in ${languageName}. 
+    CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". No descriptions of what to say. ONLY the final words the actor will dictate.
+    
+    1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
+    2. body: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration".
+    3. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
+    4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: "That's why..." or "So if you want...". Call to leave a KEYWORD in comments.
+
+    STYLES to generate for the idea:
+    1. controversial (The Contrarian): Attacking popular myths.
+    2. edutainment (Shadow Investigator): Turning viewer weaknesses into superpowers.
+    3. evergreen (Case Study): Desire-based breakdown of results.
+    4. trends (The Listicle): Dynamic value list (weakest to strongest).
+    5. storytelling (Vulnerable Story): Trust-building through past failure.
+
+    Structure for EACH scenario (style):
+    - style_name: controversial | edutainment | evergreen | trends | storytelling
+    - hook: { visual: "...", screen_text: "...", words: "..." }
+    - body: { words: "..." }
+    - triz_inversion: { words: "..." }
+    - cta: { words: "..." }
+    - broll_prompt: Final action-semantic description for a 5s B-roll using Visual_Script_Generator metaphors.
+    - visual_hook: Detailed cinematic prompt for Midjourney cover (following Visual_Script_Generator logic).
+
+    - social_post: Caption with 3 emojis + 3 tags.
+
     Output ONLY valid JSON in format: 
     {
-      "evergreen": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "trend": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "educational": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "controversial": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." },
-      "storytelling": { "hook": "...", "problem": "...", "good_news": "...", "solution": "...", "cta": "...", "visual_hook": "...", "social_post": "..." }
+      "controversial": { ... },
+      "edutainment": { ... },
+      "evergreen": { ... },
+      "trends": { ... },
+      "storytelling": { ... }
     }
   `;
 

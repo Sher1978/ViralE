@@ -381,7 +381,8 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         const ffmpeg = await getFFmpeg();
         console.log('[Studio LOG] FFmpeg WASM instance loaded in', (performance.now() - tFfLoad).toFixed(0), 'ms');
         
-        const inputName = 'input.mp4';
+        const isWebm = videoBlob.type.includes('webm');
+        const inputName = isWebm ? 'input.webm' : 'input.mp4';
         const outputName = 'output.wav';
         
         setStageMessage('FFmpeg: загрузка файла в память...');
@@ -392,8 +393,12 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
         setStageMessage('FFmpeg: конвертация дорожки...');
         console.log('[Studio LOG] Executing FFmpeg command to extract 16kHz WAV...');
         const tFfExec = performance.now();
-        await ffmpeg.exec(['-i', inputName, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', outputName]);
-        console.log('[Studio LOG] FFmpeg execution completed in', (performance.now() - tFfExec).toFixed(0), 'ms');
+        const execCode = await ffmpeg.exec(['-i', inputName, '-ar', '16000', '-ac', '1', '-c:a', 'pcm_s16le', outputName]);
+        console.log('[Studio LOG] FFmpeg execution completed in', (performance.now() - tFfExec).toFixed(0), 'ms with code:', execCode);
+        
+        if (execCode !== 0) {
+          throw new Error(`FFmpeg exited with code ${execCode}`);
+        }
         
         const data = await ffmpeg.readFile(outputName);
         const resultBlob = new Blob([data as any], { type: 'audio/wav' });

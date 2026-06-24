@@ -1,5 +1,5 @@
 import { getModel } from '@/lib/ai/gemini';
-import { SchemaType, FunctionCallingMode } from '@google/generative-ai';
+import { SchemaType, FunctionCallingMode, GoogleGenerativeAI } from '@google/generative-ai';
 import { strategistService } from '@/lib/services/strategistService';
 import { strategistServerService } from '@/lib/services/strategistServerService';
 import { getAuthContext } from '@/lib/auth';
@@ -131,21 +131,34 @@ export async function POST(req: Request) {
       if (!transcribed) {
         try {
           console.log('[Strategist Agent] Attempting Gemini transcription fallback...');
-          const transModel = getModel('fast', locale, 'text', geminiApiKey);
           const arrayBuffer = await audioFile.arrayBuffer();
           const base64 = Buffer.from(arrayBuffer).toString('base64');
-          const result = await transModel.generateContent([
-            { text: "Transcribe the spoken audio precisely. Return ONLY the transcribed text. Do not add any explanation or note." },
-            { inlineData: { mimeType: audioFile.type || 'audio/webm', data: base64 } }
-          ]);
-          const text = result.response.text();
-          if (text && text.trim()) {
-            console.log(`[Strategist Agent] Gemini Transcription success: "${text}"`);
-            currentMessage = text.trim();
-            transcribed = true;
+          
+          const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
+          const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash'];
+          let text = '';
+          
+          for (const modelName of modelsToTry) {
+            try {
+              console.log(`[Strategist Agent] Trying model ${modelName} for transcription...`);
+              const transModel = client.getGenerativeModel({ model: modelName });
+              const result = await transModel.generateContent([
+                { text: "Transcribe the spoken audio precisely. Return ONLY the transcribed text. Do not add any explanation or note." },
+                { inlineData: { mimeType: audioFile.type || 'audio/webm', data: base64 } }
+              ]);
+              text = result.response.text();
+              if (text && text.trim()) {
+                console.log(`[Strategist Agent] Gemini Transcription success with ${modelName}: "${text}"`);
+                currentMessage = text.trim();
+                transcribed = true;
+                break;
+              }
+            } catch (err: any) {
+              console.warn(`[Strategist Agent] Model ${modelName} transcription failed:`, err.message || err);
+            }
           }
         } catch (gemErr: any) {
-          console.error('[Strategist Agent] Gemini transcription failed:', gemErr.message || gemErr);
+          console.error('[Strategist Agent] Gemini transcription fallback outer block failed:', gemErr.message || gemErr);
         }
       }
     }
@@ -164,7 +177,19 @@ export async function POST(req: Request) {
     }
 
     // 4. Stream with AI Engine (Gemini or Groq Override)
-    const engine = getModel('fast', locale, 'text', geminiApiKey);
+    let engine;
+    if (audioFile && !transcribed) {
+      console.log('[Strategist Agent] Whisper & Gemini transcription failed. Using gemini-1.5-flash for audio chat stream.');
+      const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
+      engine = client.getGenerativeModel({
+        model: 'gemini-1.5-flash',
+        generationConfig: {
+          responseMimeType: "text/plain"
+        }
+      });
+    } else {
+      engine = getModel('fast', locale, 'text', geminiApiKey);
+    }
     const chat = engine.startChat({
       history: chatHistory,
       systemInstruction: systemPrompt + "\n" + projectContext,

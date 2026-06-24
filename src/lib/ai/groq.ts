@@ -51,7 +51,7 @@ export async function generateScript(
     
     ${trizMatrix ? `
     --- STRATEGIC TRIZ 9-SCREEN MATRIX BLUEPRINT ---
-    Use the following marketing analysis to enrich your scenarios, hooks, context and details. Align each scenario style with a relevant screen from this TRIZ matrix (e.g. Evergreen with System/Present, Trend with Supersystem/Future, storytelling with System/Past):
+    Use the following marketing analysis to enrich your scenarios, hooks, context and details. Align each scenario style with a relevant screen from this TRIZ matrix:
     ${trizMatrix}
     ` : ""}
     
@@ -63,22 +63,22 @@ export async function generateScript(
     CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". ONLY the final words the actor will dictate.
     
     1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
-    2. context: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...".
-    3. meat: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE: "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
+    2. body: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...".
+    3. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE: "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
     4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: "That's why..." or "So if you want...".
 
-    STYLES to generate:
-    1. evergreen: Universal expert content, attacking myths.
-    2. trend: High-energy, optimized for current viral trends.
-    3. educational: Direct problem-solution teaching.
-    4. controversial: Challenging myths, provocative listicle.
-    5. storytelling: Personal narrative, trust building.
+    STYLES to generate for the idea:
+    1. controversial (The Contrarian): Attacking popular myths.
+    2. edutainment (Shadow Investigator): Turning viewer weaknesses into superpowers.
+    3. evergreen (Case Study): Desire-based breakdown of results.
+    4. trends (The Listicle): Dynamic value list (weakest to strongest).
+    5. storytelling (Vulnerable Story): Trust-building through past failure.
 
     Structure for EACH scenario:
-    - style_name: evergreen | trend | educational | controversial | storytelling
+    - style_name: controversial | edutainment | evergreen | trends | storytelling
     - hook: { "visual": "...", "screen_text": "...", "words": "..." }
-    - context: { "words": "..." }
-    - meat: { "words": "..." }
+    - body: { "words": "..." }
+    - triz_inversion: { "words": "..." }
     - cta: { "words": "..." }
     - broll_prompt: Final action-semantic description for a 5s B-roll using Visual_Script_Generator metaphors.
     - visual_hook: Detailed cinematic prompt for Midjourney cover.
@@ -87,10 +87,10 @@ export async function generateScript(
     REMEMBER: Output in ${languageName}. 
     Output ONLY valid JSON in format: 
     {
-      "evergreen": { ... },
-      "trend": { ... },
-      "educational": { ... },
       "controversial": { ... },
+      "edutainment": { ... },
+      "evergreen": { ... },
+      "trends": { ... },
       "storytelling": { ... }
     }
   `;

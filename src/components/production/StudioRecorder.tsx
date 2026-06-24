@@ -170,6 +170,15 @@ export default function StudioRecorder({ projectId, script, onComplete, onCancel
 
     try {
       console.log(`[StudioRecorder] Starting upload for recorded ${mode}. Blob size: ${recordedBlob.size} bytes, mimeType: ${recordedBlob.type}`);
+      
+      // CACHE LOCALLY FIRST so the Studio can use it instantly without fetching
+      try {
+        await idb.set(`video_file_${projectId}`, recordedBlob, 'MediaBuffer');
+        console.log('[StudioRecorder] Cached recorded video to IndexedDB');
+      } catch (e) {
+        console.warn('[StudioRecorder] Failed to cache video locally:', e);
+      }
+
       const { assetId, publicUrl } = await renderService.uploadMedia(
         projectId, 
         recordedBlob, 

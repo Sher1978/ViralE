@@ -122,10 +122,10 @@ export async function generateScript(
     }
   }
  
-  // 1. Execute Step 1: Run TRIZ Marketing Matrix Analysis (with dynamic fallback engines support)
-  const trizMatrix = await generateTrizMatrix(coreIdea, digitalShadow, locale, geminiApiKey, anthropicApiKey, groqApiKey);
+  // TRIZ step is now handled interactively in the frontend via /api/script/triz
+  const trizMatrix = '';
  
-  // 2. Execute Step 2: Feed TRIZ Matrix into the scriptwriter
+  // 2. Execute Step 2: Feed into the scriptwriter
   switch (engine) {
     case 'claude':
     case 'claude-byok':

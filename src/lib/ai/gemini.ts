@@ -232,22 +232,22 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". No descriptions of what to say. ONLY the final words the actor will dictate.
     
     1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
-    2. context: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration".
-    3. meat: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
+    2. body: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration".
+    3. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
     4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: "That's why..." or "So if you want...". Call to leave a KEYWORD in comments.
 
     STYLES to generate for the idea:
-    1. evergreen (Contrarian): Attacking popular myths.
-    2. trend (Shadow Investigator): Turning viewer weaknesses into superpowers.
-    3. educational (Case Study): Desire-based breakdown of results.
-    4. controversial (The Listicle): Dynamic value list (weakest to strongest).
+    1. controversial (The Contrarian): Attacking popular myths.
+    2. edutainment (Shadow Investigator): Turning viewer weaknesses into superpowers.
+    3. evergreen (Case Study): Desire-based breakdown of results.
+    4. trends (The Listicle): Dynamic value list (weakest to strongest).
     5. storytelling (Vulnerable Story): Trust-building through past failure.
 
     Structure for EACH scenario (style):
-    - style_name: evergreen | trend | educational | controversial | storytelling
+    - style_name: controversial | edutainment | evergreen | trends | storytelling
     - hook: { visual: "...", screen_text: "...", words: "..." }
-    - context: { words: "..." }
-    - meat: { words: "..." }
+    - body: { words: "..." }
+    - triz_inversion: { words: "..." }
     - cta: { words: "..." }
     - broll_prompt: Final action-semantic description for a 5s B-roll using Visual_Script_Generator metaphors.
     - visual_hook: Detailed cinematic prompt for Midjourney cover (following Visual_Script_Generator logic).
@@ -256,10 +256,10 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
 
     Output ONLY valid JSON in format: 
     {
-      "evergreen": { ... },
-      "trend": { ... },
-      "educational": { ... },
       "controversial": { ... },
+      "edutainment": { ... },
+      "evergreen": { ... },
+      "trends": { ... },
       "storytelling": { ... }
     }
   `;

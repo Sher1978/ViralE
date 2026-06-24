@@ -8,11 +8,11 @@ import { useInView } from 'react-intersection-observer';
 
 interface ScenarioCardProps {
   blockId: string;
-  scenarioId: 'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling';
+  scenarioId: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling';
   content: string;
   isSelected: boolean;
   t: (key: string) => string;
-  onSelect: (blockId: string, scenarioId: 'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling') => void;
+  onSelect: (blockId: string, scenarioId: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling') => void;
   onUpdate: (blockId: string, scenarioId: string, newContent: string) => void;
   index: number;
 }
@@ -39,8 +39,8 @@ function ScenarioCard({
 
   const config = {
     evergreen: { color: '#10B981', label: 'Evergreen' },
-    trend: { color: '#F59E0B', label: 'Trend' },
-    educational: { color: '#3B82F6', label: 'Edu' },
+    trends: { color: '#F59E0B', label: 'Trends' },
+    edutainment: { color: '#3B82F6', label: 'Edutainment' },
     controversial: { color: '#EF4444', label: 'Contro' },
     storytelling: { color: '#06B6D4', label: 'Story' }
   }[scenarioId];
@@ -119,13 +119,13 @@ function ScenarioCard({
 
 interface ContentMatrixProps {
   blocks: { id: string; label: string }[];
-  scenarios: ('evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling')[];
-  selectionSources: Record<string, 'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling'>;
+  scenarios: ('edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling')[];
+  selectionSources: Record<string, 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling'>;
   allScenarios: any;
   scriptData: any;
   locale: string;
   t: (key: string) => string;
-  onBlockSelect: (blockId: string, scenarioId: 'evergreen' | 'trend' | 'educational' | 'controversial' | 'storytelling') => void;
+  onBlockSelect: (blockId: string, scenarioId: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling') => void;
   onBlockUpdate: (blockId: string, scenarioId: string, newContent: string) => void;
   onRefine: (instruction: string) => void;
   onAccept: () => void;
