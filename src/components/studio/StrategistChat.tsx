@@ -593,7 +593,7 @@ export function StrategistChat({
             {/* Background Visualizer */}
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
               <VoiceVisualizer 
-                isActive={isVoiceMode} 
+                isActive={true} 
                 isListening={isRecording} 
                 isSpeaking={isAIPointing} 
                 frequencyData={frequencyData}
