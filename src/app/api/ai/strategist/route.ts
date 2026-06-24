@@ -7,6 +7,39 @@ import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
 
+function cleanChatHistory(messages: any[]): any[] {
+  const cleaned: any[] = [];
+  
+  for (const m of messages) {
+    if (!m || !m.content || typeof m.content !== 'string' || !m.content.trim()) {
+      continue; // Skip empty messages or tool calls without text content
+    }
+
+    const role = m.role === 'assistant' ? 'model' : 'user';
+    
+    if (cleaned.length === 0) {
+      if (role === 'user') {
+        cleaned.push({
+          role,
+          parts: [{ text: m.content }]
+        });
+      }
+    } else {
+      const last = cleaned[cleaned.length - 1];
+      if (last.role === role) {
+        last.parts[0].text += "\n" + m.content;
+      } else {
+        cleaned.push({
+          role,
+          parts: [{ text: m.content }]
+        });
+      }
+    }
+  }
+  
+  return cleaned;
+}
+
 export async function POST(req: Request) {
   try {
     const contentType = req.headers.get('content-type') || '';
@@ -82,12 +115,9 @@ export async function POST(req: Request) {
       }
     }
 
-    const chatHistory = messages.slice(0, -1).map((m: any) => ({
-      role: m.role === 'assistant' ? 'model' : 'user',
-      parts: [{ text: m.content }]
-    }));
+    const chatHistory = cleanChatHistory(messages.slice(0, -1));
 
-    let currentMessage = messages[messages.length - 1].content;
+    let currentMessage = messages[messages.length - 1]?.content || "Привет";
     let transcribed = false;
 
     if (audioFile) {
