@@ -38,6 +38,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { ContentMatrix } from './_components/ContentMatrix';
 import { ScenarioLegend } from './_components/ScenarioLegend';
+import { TrizMatrix } from './_components/TrizMatrix';
 import { createInitialManifest } from '@/lib/studio-utils';
 
 import { BottomNav } from '@/components/layout/BottomNav';
@@ -1203,44 +1204,12 @@ export default function ScriptLabPage() {
                 </button>
               </div>
             ) : trizIdeas ? (
-              <div className="space-y-6 animate-fade-in slide-in-from-bottom-4">
-                <div className="text-center space-y-2">
-                  <h3 className="text-xl font-black uppercase italic tracking-widest text-white">
-                    {locale === 'ru' ? 'Выберите фокус сценария' : 'Choose Your Script Focus'}
-                  </h3>
-                  <p className="text-xs text-white/50 uppercase tracking-widest font-bold">
-                    {locale === 'ru' ? '9-Экранная матрица ТРИЗ' : '9-Screen TRIZ Matrix'}
-                  </p>
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                  {trizIdeas.map((idea, idx) => (
-                    <button
-                      key={idx}
-                      onClick={() => executeGeneration(`${idea.screen_name}: ${idea.idea_title} - ${idea.rationale}`)}
-                      className="p-5 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all text-left group relative overflow-hidden"
-                    >
-                      <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
-                      <div className="relative z-10 space-y-3">
-                        <span className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                          {idea.screen_name}
-                        </span>
-                        <h4 className="text-sm font-bold text-white leading-tight">
-                          {idea.idea_title}
-                        </h4>
-                        <p className="text-[10px] text-white/60 font-medium leading-relaxed">
-                          {idea.rationale}
-                        </p>
-                      </div>
-                    </button>
-                  ))}
-                </div>
-                <button
-                   onClick={() => setTrizIdeas(null)}
-                   className="w-full py-4 text-xs text-white/40 uppercase tracking-widest font-black hover:text-white transition-colors"
-                >
-                   {locale === 'ru' ? '← Назад' : '← Back'}
-                </button>
-              </div>
+              <TrizMatrix 
+                ideas={trizIdeas}
+                locale={locale}
+                onSelect={(ideaText) => executeGeneration(ideaText)}
+                onBack={() => setTrizIdeas(null)}
+              />
             ) : (
               <button
                 id="generate-script-btn"
@@ -1376,9 +1345,9 @@ export default function ScriptLabPage() {
         isGenerating={isGenerating || isRefining}
         blocks={[
           { id: 'hook', label: locale === 'ru' ? 'ХУК' : 'HOOK' },
-          { id: 'body', label: locale === 'ru' ? 'КОНТЕКСТ (BODY)' : 'BODY' },
-          { id: 'triz_inversion', label: locale === 'ru' ? 'ТРИЗ-ПЕРЕВЕРТЫШ' : 'TRIZ INVERSION' },
-          { id: 'cta', label: locale === 'ru' ? 'СТА' : 'CTA' }
+          { id: 'body', label: locale === 'ru' ? 'BODY (ТЕЛО)' : 'BODY' },
+          { id: 'triz_inversion', label: locale === 'ru' ? 'ТРИЗ-ПЕРЕВЕРТЫШ' : 'TRIZ-INVERSION' },
+          { id: 'cta', label: locale === 'ru' ? 'CTA (ПРИЗЫВ)' : 'CTA' }
         ]}
         scenarios={['edutainment', 'evergreen', 'trends', 'controversial', 'storytelling']}
         selectionSources={selectionSources}

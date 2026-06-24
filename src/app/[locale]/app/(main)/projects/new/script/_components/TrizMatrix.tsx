@@ -1,0 +1,64 @@
+import React from 'react';
+import { motion } from 'framer-motion';
+
+export interface TrizIdea {
+  screen_name: string;
+  idea_title: string;
+  rationale: string;
+}
+
+interface TrizMatrixProps {
+  ideas: TrizIdea[];
+  locale: string;
+  onSelect: (ideaText: string) => void;
+  onBack: () => void;
+}
+
+export function TrizMatrix({ ideas, locale, onSelect, onBack }: TrizMatrixProps) {
+  return (
+    <div className="space-y-6 animate-fade-in slide-in-from-bottom-4">
+      <div className="text-center space-y-2">
+        <h3 className="text-xl font-black uppercase italic tracking-widest text-white">
+          {locale === 'ru' ? 'Выберите фокус сценария' : 'Choose Your Script Focus'}
+        </h3>
+        <p className="text-xs text-white/50 uppercase tracking-widest font-bold">
+          {locale === 'ru' ? '9-Экранная матрица ТРИЗ' : '9-Screen TRIZ Matrix'}
+        </p>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        {ideas.map((idea, idx) => (
+          <button
+            key={idx}
+            onClick={() => onSelect(`${idea.screen_name}: ${idea.idea_title} - ${idea.rationale}`)}
+            className="p-5 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all text-left group relative overflow-hidden flex flex-col h-full"
+          >
+            <div className="absolute inset-0 bg-gradient-to-br from-purple-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity" />
+            
+            {/* System grid coordinate indicator (1-9) */}
+            <div className="absolute top-4 right-4 w-6 h-6 rounded-full bg-white/5 flex items-center justify-center border border-white/10 group-hover:border-purple-500/30 group-hover:bg-purple-500/20 transition-all">
+              <span className="text-[10px] font-black text-white/30 group-hover:text-purple-400">{idx + 1}</span>
+            </div>
+
+            <div className="relative z-10 space-y-3 flex-1 flex flex-col">
+              <span className="text-[9px] font-black uppercase tracking-widest text-purple-400 border border-purple-500/30 bg-purple-500/10 px-2 py-1 rounded-full w-fit">
+                {idea.screen_name}
+              </span>
+              <h4 className="text-sm font-bold text-white leading-tight mt-2">
+                {idea.idea_title}
+              </h4>
+              <p className="text-[10px] text-white/60 font-medium leading-relaxed flex-1 mt-2 border-t border-white/5 pt-3">
+                {idea.rationale}
+              </p>
+            </div>
+          </button>
+        ))}
+      </div>
+      <button
+         onClick={onBack}
+         className="w-full py-4 text-xs text-white/40 uppercase tracking-widest font-black hover:text-white transition-colors border border-transparent hover:border-white/10 rounded-2xl hover:bg-white/5"
+      >
+         {locale === 'ru' ? '← Назад' : '← Back'}
+      </button>
+    </div>
+  );
+}
