@@ -93,6 +93,25 @@ export async function POST(req: Request) {
         }
       }
 
+      // Immediately cleanup project raw media from storage after Telegram delivery attempt
+      try {
+        const { storageService } = await import('@/lib/services/storageService');
+        const cleanupResult = await storageService.deleteProjectFiles(job.project_id);
+        
+        const updatedConfig = {
+          ...(job.config_json || {}),
+          storage_cleaned: cleanupResult.success,
+          storage_cleaned_at: new Date().toISOString(),
+          storage_cleaned_count: cleanupResult.deletedCount
+        };
+        await supabaseAdmin
+          .from('render_jobs')
+          .update({ config_json: updatedConfig })
+          .eq('id', jobId);
+      } catch (cleanupErr) {
+        console.error('[Shotstack Webhook] Instant cleanup failed:', cleanupErr);
+      }
+
     } else if (body.status === 'failed') {
       const errorLog = body.error || 'Shotstack rendering engine failed internally';
 
@@ -126,6 +145,25 @@ export async function POST(req: Request) {
             text: '⚠️ К сожалению, при генерации вашего видео произошла ошибка на стороне облачного рендерера.'
           })
         }).catch(e => console.error('[Telegram delivery] Failed to send error message:', e));
+      }
+
+      // Cleanup project recordings from storage even if render failed
+      try {
+        const { storageService } = await import('@/lib/services/storageService');
+        const cleanupResult = await storageService.deleteProjectFiles(job.project_id);
+        
+        const updatedConfig = {
+          ...(job.config_json || {}),
+          storage_cleaned: cleanupResult.success,
+          storage_cleaned_at: new Date().toISOString(),
+          storage_cleaned_count: cleanupResult.deletedCount
+        };
+        await supabaseAdmin
+          .from('render_jobs')
+          .update({ config_json: updatedConfig })
+          .eq('id', jobId);
+      } catch (cleanupErr) {
+        console.error('[Shotstack Webhook] Instant failure cleanup failed:', cleanupErr);
       }
     }
 
