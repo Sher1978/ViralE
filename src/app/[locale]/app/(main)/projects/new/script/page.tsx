@@ -578,7 +578,13 @@ export default function ScriptLabPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to generate TRIZ ideas');
       
-      setTrizIdeas(data.ideas);
+      // Map API fields (level, hook, scenario/goal/cta) to TrizMatrix fields (screen_name, idea_title, rationale)
+      const mappedIdeas = (data.ideas || []).map((idea: any) => ({
+        screen_name: idea.screen_name || idea.level || '',
+        idea_title: idea.idea_title || idea.hook || '',
+        rationale: idea.rationale || `${idea.goal ? `[${idea.goal}] ` : ''}${idea.scenario || ''}${idea.cta ? ` \nCTA: ${idea.cta}` : ''}`.trim()
+      }));
+      setTrizIdeas(mappedIdeas);
     } catch (err: any) {
       setError(err.message || 'Error generating TRIZ matrix');
     } finally {

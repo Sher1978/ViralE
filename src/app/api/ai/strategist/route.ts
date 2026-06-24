@@ -226,44 +226,60 @@ export async function POST(req: Request) {
       async start(controller) {
         let fullContent = "";
         for await (const chunk of result.stream) {
-          // Handle text chunks
-          const chunkText = chunk.text();
+          // Handle text chunks safely without throwing when text is not present (e.g. tool calling chunks)
+          let chunkText = "";
+          try {
+            chunkText = chunk.text();
+          } catch (e) {
+            // Safe manual text extraction fallback
+            const candidate = chunk.candidates?.[0];
+            if (candidate?.content?.parts) {
+              chunkText = candidate.content.parts
+                .map((p: any) => p.text || "")
+                .join("");
+            }
+          }
+
           if (chunkText) {
             controller.enqueue(new TextEncoder().encode(chunkText));
             fullContent += chunkText;
           }
 
-          // Handle function calls (DNA Updates)
-          const calls = chunk.functionCalls();
-          if (calls && calls.length > 0) {
-            for (const call of calls) {
-              if (call.name === 'update_brand_dna') {
-                const { new_info } = call.args as any;
-                console.log(`[Strategist Agent] AUTO-UPDATING DNA: ${new_info}`);
-                
-                try {
-                  // Direct call to enrich script or logic here
-                  // For simplicity, we trigger the update directly in Supabase
-                  const currentProfile = await authorizedSupabase.from('profiles').select('digital_shadow_prompt').eq('id', user.id).single();
-                  const oldDna = currentProfile.data?.digital_shadow_prompt || "";
+          // Handle function calls (DNA Updates) safely
+          try {
+            const calls = chunk.functionCalls();
+            if (calls && calls.length > 0) {
+              for (const call of calls) {
+                if (call.name === 'update_brand_dna') {
+                  const { new_info } = call.args as any;
+                  console.log(`[Strategist Agent] AUTO-UPDATING DNA: ${new_info}`);
                   
-                  // Use the helper we already have in DNA update (or just append for now)
-                  const { error } = await authorizedSupabase
-                    .from('profiles')
-                    .update({ 
-                      digital_shadow_prompt: oldDna + "\n\n[Strategist Insight]: " + new_info,
-                      updated_at: new Date().toISOString()
-                    })
-                    .eq('id', user.id);
-                  
-                  if (!error) {
-                    controller.enqueue(new TextEncoder().encode("\n\n*(System Note: Brand DNA updated with new insights)*"));
+                  try {
+                    // Direct call to enrich script or logic here
+                    // For simplicity, we trigger the update directly in Supabase
+                    const currentProfile = await authorizedSupabase.from('profiles').select('digital_shadow_prompt').eq('id', user.id).single();
+                    const oldDna = currentProfile.data?.digital_shadow_prompt || "";
+                    
+                    // Use the helper we already have in DNA update (or just append for now)
+                    const { error } = await authorizedSupabase
+                      .from('profiles')
+                      .update({ 
+                        digital_shadow_prompt: oldDna + "\n\n[Strategist Insight]: " + new_info,
+                        updated_at: new Date().toISOString()
+                      })
+                      .eq('id', user.id);
+                    
+                    if (!error) {
+                      controller.enqueue(new TextEncoder().encode("\n\n*(System Note: Brand DNA updated with new insights)*"));
+                    }
+                  } catch (e) {
+                    console.error('Failed to auto-update DNA:', e);
                   }
-                } catch (e) {
-                  console.error('Failed to auto-update DNA:', e);
                 }
               }
             }
+          } catch (e) {
+            console.error('Error parsing function calls from chunk:', e);
           }
         }
         controller.close();
