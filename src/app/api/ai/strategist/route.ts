@@ -221,6 +221,63 @@ export async function POST(req: Request) {
                 storybrand_markdown: {
                   type: SchemaType.STRING,
                   description: "The full updated Markdown document containing the 7 StoryBrand elements: Hero, Problem, Guide, Plan, Call to Action, Success, Failure."
+                },
+                storybrand_answers: {
+                  type: SchemaType.OBJECT,
+                  description: "The structured JSON object containing the answers for each of the 7 StoryBrand sections.",
+                  properties: {
+                    hero: {
+                      type: SchemaType.OBJECT,
+                      properties: {
+                        description: { type: SchemaType.STRING, description: "Who is the ideal customer?" },
+                        desire: { type: SchemaType.STRING, description: "What do they want?" }
+                      }
+                    },
+                    problem: {
+                      type: SchemaType.OBJECT,
+                      properties: {
+                        external: { type: SchemaType.STRING, description: "Physical/tangible obstacle." },
+                        internal: { type: SchemaType.STRING, description: "How the obstacle makes the customer feel." },
+                        philosophical: { type: SchemaType.STRING, description: "Why it is fundamentally wrong/unfair." }
+                      }
+                    },
+                    guide: {
+                      type: SchemaType.OBJECT,
+                      properties: {
+                        empathy: { type: SchemaType.STRING, description: "Expressing understanding of their pain." },
+                        authority: { type: SchemaType.STRING, description: "Emphasizing competency, testimonials, stats, etc." }
+                      }
+                    },
+                    plan: {
+                      type: SchemaType.OBJECT,
+                      properties: {
+                        steps: { 
+                          type: SchemaType.ARRAY, 
+                          items: { type: SchemaType.STRING },
+                          description: "3-4 step process to work together." 
+                        },
+                        agreement: { type: SchemaType.STRING, description: "Guarantee or risk reduction policy." }
+                      }
+                    },
+                    cta: {
+                      type: SchemaType.OBJECT,
+                      properties: {
+                        direct: { type: SchemaType.STRING, description: "Clear direct action (e.g. Buy Now)." },
+                        transitional: { type: SchemaType.STRING, description: "Nurturing option (e.g. Free checklist)." }
+                      }
+                    },
+                    failure: {
+                      type: SchemaType.STRING,
+                      description: "What negative outcomes are avoided."
+                    },
+                    success: {
+                      type: SchemaType.OBJECT,
+                      properties: {
+                        results: { type: SchemaType.STRING, description: "Tangible positive outcomes." },
+                        transformation: { type: SchemaType.STRING, description: "Before vs After character change." }
+                      }
+                    }
+                  }
                 }
               },
               required: ["storybrand_markdown"]
@@ -292,7 +349,7 @@ export async function POST(req: Request) {
                     console.error('Failed to auto-update DNA:', e);
                   }
                 } else if (call.name === 'update_storybrand') {
-                  const { storybrand_markdown } = call.args as any;
+                  const { storybrand_markdown, storybrand_answers } = call.args as any;
                   console.log(`[Strategist Agent] AUTO-UPDATING STORYBRAND: ${storybrand_markdown.substring(0, 100)}...`);
                   
                   try {
@@ -322,6 +379,7 @@ export async function POST(req: Request) {
                       .update({ 
                         storybrand_raw_content: storybrand_markdown,
                         storybrand_updated_at: new Date().toISOString(),
+                        ...(storybrand_answers && { storybrand_answers }),
                         ...(digitalShadowPrompt && { digital_shadow_prompt: digitalShadowPrompt }),
                         updated_at: new Date().toISOString()
                       })

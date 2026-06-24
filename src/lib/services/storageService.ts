@@ -77,6 +77,50 @@ export const storageService = {
       console.error('[Storage] Failed to sign URL:', err);
       return url;
     }
+  },
+
+  /**
+   * Deletes all files in Supabase Storage associated with a specific project.
+   */
+  async deleteProjectFiles(projectId: string): Promise<{ success: boolean; deletedCount: number; error?: any }> {
+    try {
+      const { supabaseAdmin } = await import('../supabase');
+      const folderPath = `user_recordings/${projectId}`;
+
+      // 1. List files in the folder
+      const { data: files, error: listError } = await supabaseAdmin.storage
+        .from('media')
+        .list(folderPath);
+
+      if (listError) {
+        console.error(`[Storage] Failed to list files in folder ${folderPath}:`, listError);
+        return { success: false, deletedCount: 0, error: listError };
+      }
+
+      if (!files || files.length === 0) {
+        console.log(`[Storage] No files found in folder ${folderPath} to delete.`);
+        return { success: true, deletedCount: 0 };
+      }
+
+      // 2. Map files to their full paths within the bucket
+      const pathsToDelete = files.map((file: any) => `${folderPath}/${file.name}`);
+
+      // 3. Delete files
+      const { data: deleted, error: deleteError } = await supabaseAdmin.storage
+        .from('media')
+        .remove(pathsToDelete);
+
+      if (deleteError) {
+        console.error(`[Storage] Failed to delete files for project ${projectId}:`, deleteError);
+        return { success: false, deletedCount: 0, error: deleteError };
+      }
+
+      console.log(`[Storage] Successfully deleted ${deleted?.length || 0} files for project ${projectId}.`);
+      return { success: true, deletedCount: deleted?.length || 0 };
+    } catch (err) {
+      console.error('[Storage] Unexpected error during project file cleanup:', err);
+      return { success: false, deletedCount: 0, error: err };
+    }
   }
 };
 
