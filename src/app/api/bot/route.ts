@@ -28,6 +28,12 @@ export async function POST(req: NextRequest) {
       const scaleChanId = process.env.TELEGRAM_SCALE_CHANNEL_ID;
       
       const chatIdStr = String(chat.id);
+      
+      // Determine if a single shared channel is used for all tiers
+      const isSharedChannel = !!starterChanId && 
+        (!proChanId || starterChanId === proChanId) && 
+        (!scaleChanId || starterChanId === scaleChanId);
+      
       let eventTier: 'starter' | 'pro' | 'scale' | null = null;
       
       if (starterChanId && chatIdStr === starterChanId) {
@@ -51,27 +57,34 @@ export async function POST(req: NextRequest) {
             .eq('telegram_id', user.id)
             .single();
             
-          if (profile && profile.tier === eventTier && profile.subscription_status === 'active') {
+          // For shared channel, suspend subscription regardless of active tier. Otherwise match eventTier.
+          const tierMatches = isSharedChannel
+            ? (profile && (profile.tier === 'starter' || profile.tier === 'pro' || profile.tier === 'scale'))
+            : (profile && profile.tier === eventTier);
+            
+          if (profile && tierMatches && profile.subscription_status === 'active') {
+            const userTier = profile.tier || 'starter';
+            
             // Update subscription_status to expired
             await supabaseAdmin
               .from('profiles')
               .update({ subscription_status: 'expired' })
               .eq('id', profile.id);
               
-            console.log(`[Telegram Bot Webhook] Subscription suspended for User ${profile.id} (left channel ${eventTier})`);
+            console.log(`[Telegram Bot Webhook] Subscription suspended for User ${profile.id} (left channel ${userTier})`);
             
             // Send warning direct message from bot to user
             const locale = profile.preferred_language === 'ru' ? 'ru' : 'en';
             
-            const subUrl = eventTier === 'starter' 
+            const subUrl = userTier === 'starter' 
               ? process.env.NEXT_PUBLIC_TRIBUTE_SUB_URL_STARTER 
-              : eventTier === 'pro'
+              : userTier === 'pro'
                 ? process.env.NEXT_PUBLIC_TRIBUTE_SUB_URL_PRO
                 : process.env.NEXT_PUBLIC_TRIBUTE_SUB_URL_SCALE;
                 
             const warningText = locale === 'ru'
-              ? `⚠️ *Ваша подписка на канал была отменена или завершена!*\n\nДоступ к функциям тарифа *${eventTier.toUpperCase()}* в Студии приостановлен.\n\nДля возобновления доступа продлите подписку в Tribute.`
-              : `⚠️ *Your channel subscription has expired or was cancelled!*\n\nAccess to the *${eventTier.toUpperCase()}* features in the Studio has been suspended.\n\nTo restore access, please renew your subscription in Tribute.`;
+              ? `⚠️ *Ваша подписка на канал была отменена или завершена!*\n\nДоступ к функциям тарифа *${userTier.toUpperCase()}* в Студии приостановлен.\n\nДля возобновления доступа продлите подписку в Tribute.`
+              : `⚠️ *Your channel subscription has expired or was cancelled!*\n\nAccess to the *${userTier.toUpperCase()}* features in the Studio has been suspended.\n\nTo restore access, please renew your subscription in Tribute.`;
               
             try {
               await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -107,34 +120,39 @@ export async function POST(req: NextRequest) {
             .eq('telegram_id', user.id)
             .single();
             
-          if (profile && (profile.subscription_status !== 'active' || profile.tier !== eventTier)) {
-            await supabaseAdmin
-              .from('profiles')
-              .update({ 
-                tier: eventTier,
-                subscription_status: 'active' 
-              })
-              .eq('id', profile.id);
-              
-            console.log(`[Telegram Bot Webhook] Subscription auto-activated/updated for User ${profile.id} (joined channel ${eventTier})`);
+          if (profile) {
+            // For shared channel, activate keeping their existing tier. Otherwise use eventTier.
+            const targetTier = isSharedChannel ? (profile.tier || 'starter') : eventTier;
             
-            const locale = profile.preferred_language === 'ru' ? 'ru' : 'en';
-            const welcomeText = locale === 'ru'
-              ? `🎉 *Доступ активирован!*\n\nВы вступили в канал подписки. Ваш тариф *${eventTier.toUpperCase()}* успешно активирован в Студии!`
-              : `🎉 *Access Activated!*\n\nYou have joined the subscription channel. Your *${eventTier.toUpperCase()}* plan is now active in the Studio!`;
+            if (profile.subscription_status !== 'active' || profile.tier !== targetTier) {
+              await supabaseAdmin
+                .from('profiles')
+                .update({ 
+                  tier: targetTier,
+                  subscription_status: 'active' 
+                })
+                .eq('id', profile.id);
+                
+              console.log(`[Telegram Bot Webhook] Subscription auto-activated/updated for User ${profile.id} (joined channel ${targetTier})`);
               
-            try {
-              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({
-                  chat_id: user.id,
-                  text: welcomeText,
-                  parse_mode: 'Markdown',
-                }),
-              });
-            } catch (tgErr) {
-              console.error('[Telegram Bot Webhook] Failed to send welcome channel join message:', tgErr);
+              const locale = profile.preferred_language === 'ru' ? 'ru' : 'en';
+              const welcomeText = locale === 'ru'
+                ? `🎉 *Доступ активирован!*\n\nВы вступили в канал подписки. Ваш тариф *${targetTier.toUpperCase()}* успешно активирован в Студии!`
+                : `🎉 *Access Activated!*\n\nYou have joined the subscription channel. Your *${targetTier.toUpperCase()}* plan is now active in the Studio!`;
+                
+              try {
+                await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                  method: 'POST',
+                  headers: { 'Content-Type': 'application/json' },
+                  body: JSON.stringify({
+                    chat_id: user.id,
+                    text: welcomeText,
+                    parse_mode: 'Markdown',
+                  }),
+                });
+              } catch (tgErr) {
+                console.error('[Telegram Bot Webhook] Failed to send welcome channel join message:', tgErr);
+              }
             }
           }
         }
