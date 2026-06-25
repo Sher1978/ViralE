@@ -1,12 +1,9 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getModel } from '@/lib/ai/gemini';
 import { getAuthContext } from '@/lib/auth';
 import { safeJsonParse } from '@/lib/utils';
 
 import { profileService } from '@/lib/services/profileService';
-
-const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(apiKey);
 
 export async function POST(req: Request) {
   try {
@@ -23,10 +20,7 @@ export async function POST(req: Request) {
     const { brandContext } = await profileService.getActiveBrandContext(userId, authorizedSupabase);
     const userDNA = brandContext || "Niche: General Content Creator. Tone: Professional but engaging. Philosophy: Value-first.";
 
-    const model = genAI.getGenerativeModel({ 
-      model: 'gemini-2.5-flash-lite',
-      generationConfig: { responseMimeType: "application/json" }
-    });
+    const model = getModel('fast', locale, 'json');
 
     const systemPrompt = `
       Роль: Ты — ведущий ИИ-стратег по мультиканальному контенту в приложении ViralE.

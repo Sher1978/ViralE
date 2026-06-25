@@ -7,8 +7,8 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // [REVERSIBLE OVERRIDE] Set to true to route all Gemini calls to Groq
 const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
-export const FAST_MODEL = "gemini-2.5-flash-lite";
-export const PRO_MODEL = "gemini-1.5-pro";
+export const FAST_MODEL = "gemini-3.5-flash-lite";
+export const PRO_MODEL = "gemini-3.5-flash";
 
 export function getModel(
   tier: 'fast' | 'pro' = 'fast', 
@@ -132,13 +132,58 @@ export function getModel(
     } as any;
   }
 
-  const modelName = tier === 'fast' ? FAST_MODEL : PRO_MODEL;
+  const baseModelName = tier === 'fast' ? FAST_MODEL : PRO_MODEL;
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
-  return client.getGenerativeModel({ 
-    model: modelName,
+  
+  // List of fallback models to try if the main model experiences 503 or overload
+  const fallbackModels = [
+    baseModelName,
+    "gemini-3.5-flash",
+    "gemini-1.5-flash",
+    "gemini-3.5-flash-lite",
+  ];
+
+  // Return a proxy to intercept calls and inject automatic fallbacks on API errors
+  const baseModel = client.getGenerativeModel({ 
+    model: baseModelName,
     systemInstruction,
     generationConfig: {
       responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
+    }
+  });
+
+  return new Proxy(baseModel, {
+    get(target, prop, receiver) {
+      if (prop === 'generateContent') {
+        return async function(prompt: any, config?: any) {
+          let lastError: any = null;
+          
+          for (const modelCandidate of fallbackModels) {
+            try {
+              console.log(`[Gemini client] Executing query on candidate model: ${modelCandidate}`);
+              const modelInstance = client.getGenerativeModel({
+                model: modelCandidate,
+                systemInstruction,
+                generationConfig: {
+                  responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
+                }
+              });
+              return await modelInstance.generateContent(prompt, config);
+            } catch (err: any) {
+              lastError = err;
+              const errMsg = err.message || '';
+              console.warn(`[Gemini client] Model ${modelCandidate} failed: ${errMsg}. Trying next candidate...`);
+              // If it's a authorization error, stop fallback cycle
+              if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('key is invalid')) {
+                break;
+              }
+            }
+          }
+          
+          throw lastError || new Error("Gemini generation failed on all fallback candidates.");
+        };
+      }
+      return Reflect.get(target, prop, receiver);
     }
   });
 }

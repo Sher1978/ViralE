@@ -1,8 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
-
-const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(apiKey);
+import { getModel } from '@/lib/ai/gemini';
 
 export async function POST(req: Request) {
   try {
@@ -12,7 +9,7 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Missing sceneText' }, { status: 400 });
     }
 
-    const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+    const model = getModel('fast', 'en', 'text');
 
     const systemPrompt = `You are an expert AI Video Director. 
     Your task is to take a scene description and current prompt, and refine it into a highly detailed, cinematic visual prompt for image/video generation (like Midjourney or Stable Diffusion).

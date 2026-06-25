@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getModel } from '@/lib/ai/gemini';
 
 export async function GET(req: NextRequest) {
   const query = req.nextUrl.searchParams.get('query');
@@ -22,8 +22,7 @@ export async function GET(req: NextRequest) {
   // 🧠 Smart Translation & Keyword Extraction via Gemini
   if (geminiKey) {
     try {
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+      const model = getModel('fast', 'en', 'text');
       
       const prompt = `
         You are a cinematic director. Analyze the emotional core and visual metaphor of this phrase.

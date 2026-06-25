@@ -72,13 +72,17 @@ export async function POST(req: Request) {
       // 4. Deliver Final Video via Telegram Bot API if Chat ID exists
       if (telegramChatId && botToken) {
         try {
+          const manifest = job.config_json?.manifest;
+          const scriptText = manifest?.scriptText || manifest?.script?.hook || '';
+          const captionText = scriptText ? scriptText.substring(0, 1000) : '🎬 Ваше вирусное видео готово! Скачивайте и делитесь!';
+
           const telegramRes = await fetch(`https://api.telegram.org/bot${botToken}/sendVideo`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
               chat_id: telegramChatId,
               video: videoUrl,
-              caption: '🎬 Ваше вирусное видео готово! Скачивайте и делитесь!'
+              caption: captionText
             })
           });
 

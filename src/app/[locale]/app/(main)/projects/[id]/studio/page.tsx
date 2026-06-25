@@ -44,7 +44,6 @@ const TimelineLab = dynamic(() => import('./_components/TimelineLab').then(m => 
 const FusionView = dynamic(() => import('./_components/FusionView').then(m => m.FusionView), { ssr: false, loading: Spinner });
 const DistributionFactory = dynamic(() => import('./_components/DistributionFactory'), { ssr: false, loading: Spinner });
 const KnowledgeLab = dynamic(() => import('@/components/studio/KnowledgeLab'), { ssr: false, loading: Spinner });
-const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { ssr: false, loading: Spinner });
 const FacelessStudio = dynamic(() => import('@/components/studio/FacelessStudio'), { ssr: false, loading: Spinner });
 const AvatarHub = dynamic(() => import('@/components/production/AvatarHub'), { ssr: false, loading: Spinner });
 const FusionPreview = dynamic(() => import('./_components/FusionPreview').then(m => m.FusionPreview), { ssr: false, loading: Spinner });
@@ -1166,26 +1165,6 @@ export default function StudioPage() {
           )}
         </AnimatePresence>
       </div>
-
-      <StrategistChat 
-        projectId={projectId}
-        userId={currentProfile?.id || ''}
-        manifest={manifest || undefined}
-        setManifest={setManifest}
-        context="studio"
-        locale={locale}
-        onUseScript={(text) => {
-          setCustomScript(text);
-          setUseCustomScript(true);
-          setManifest(prev => {
-            if (!prev) return prev;
-            const next = { ...prev, customScript: text, useCustomScript: true };
-            if (projectId) projectService.updateLatestVersionManifest(projectId, next);
-            return next;
-          });
-          handleTabChange('script_editor');
-        }}
-      />
     </div>
   );
 }

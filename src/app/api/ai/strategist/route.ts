@@ -165,7 +165,7 @@ export async function POST(req: Request) {
           const base64 = Buffer.from(arrayBuffer).toString('base64');
           
           const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
-          const modelsToTry = ['gemini-1.5-flash', 'gemini-2.0-flash', 'gemini-2.5-flash'];
+          const modelsToTry = ['gemini-3.5-flash-lite', 'gemini-1.5-flash', 'gemini-3.5-flash'];
           let text = '';
           
           for (const modelName of modelsToTry) {
@@ -386,8 +386,7 @@ export async function POST(req: Request) {
                     // Distill StoryBrand markdown into Digital Shadow master prompt using Gemini
                     let digitalShadowPrompt = "";
                     try {
-                      const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
-                      const model = client.getGenerativeModel({ model: 'gemini-2.5-flash-lite' });
+                      const model = getModel('fast', 'ru', 'text', geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
                       const extractPrompt = `
                         You are an expert AI Persona Architect. 
                         Your goal is to distill the following StoryBrand document into a beautiful, high-density, authoritative, and declarative "Digital Shadow DNA" (Master Prompt) in Russian (if the input is primarily Russian) or English.

@@ -1,10 +1,9 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { getModel } from '@/lib/ai/gemini';
 import { v4 as uuidv4 } from 'uuid';
 import { supabase } from '@/lib/supabase';
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
-const genAI = new GoogleGenerativeAI(apiKey);
 
 export async function POST(req: NextRequest) {
   try {
@@ -14,8 +13,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing videoUrl or projectId' }, { status: 400 });
     }
 
-    // 1. Initialize Gemini 2.5 Flash-Lite (optimized for video/audio understanding)
-    const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash-lite" });
+    // 1. Initialize Gemini with fallback proxy (optimized for video/audio understanding)
+    const model = getModel('fast', locale, 'json');
 
     // 2. Construct Analysis Prompt
     // Note: In a production environment, we would use the File Manager API to upload the video to Gemini.

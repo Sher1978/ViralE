@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getModel } from '@/lib/ai/gemini';
 import { getAuthContext } from '@/lib/auth';
 import { withRetry } from '@/lib/ai/retry';
 import { IgCarouselSchema } from '@/lib/schemas/ig-carousel';
@@ -13,8 +13,6 @@ import { profileService } from '@/lib/services/profileService';
 export const maxDuration = 60;
 export const runtime = 'nodejs';
 
-const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(apiKey);
 
 const STYLE_PREFIXES: Record<string, string> = {
   dubai_platinum: 'Ultra-luxury high-end photography, gold and white ambient tones, clean minimal elite background, architectural depth, studio lighting',
@@ -165,10 +163,7 @@ export async function POST(req: Request) {
     const processedSubs = preprocessSubtitles(scriptText);
 
     // 5. Generate Text & Image Prompts via Gemini Flash
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite',
-      generationConfig: { responseMimeType: 'application/json' }
-    });
+    const model = getModel('fast', locale, 'json');
 
     const activeLanguage = locale === 'ru' ? 'Russian' : 'English';
 

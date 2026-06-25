@@ -1,7 +1,6 @@
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { getModel } from './gemini';
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || '';
-const genAI = new GoogleGenerativeAI(apiKey);
 
 export interface PolishedSlides {
   polished_hook: string;
@@ -26,13 +25,7 @@ export async function polishCriticalSlides(
 
   try {
     // Using gemini-2.5-flash-lite for high-fidelity creative copywriting
-    const model = genAI.getGenerativeModel({
-      model: 'gemini-2.5-flash-lite',
-      generationConfig: { 
-        responseMimeType: 'application/json',
-        temperature: 0.85,
-      }
-    });
+    const model = getModel('fast', locale, 'json');
 
     const systemPrompt = `
       You are an elite Instagram Copywriting Specialist. Your absolute mastery is writing punchy, scroll-stopping micro-copy.

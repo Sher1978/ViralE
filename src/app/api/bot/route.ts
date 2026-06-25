@@ -12,8 +12,139 @@ export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
 
+    // 0. Handle chat_member (channel membership updates for VIP channel tracking)
+    if (body.chat_member) {
+      const update = body.chat_member;
+      const chat = update.chat;
+      const user = update.new_chat_member.user;
+      const newStatus = update.new_chat_member.status;
+      const oldStatus = update.old_chat_member.status;
+
+      console.log(`[Telegram Bot Webhook] Member update in Chat ${chat.id}: User ${user.id} status changed from ${oldStatus} to ${newStatus}`);
+
+      // Check if this chat is one of our VIP channels
+      const starterChanId = process.env.TELEGRAM_STARTER_CHANNEL_ID;
+      const proChanId = process.env.TELEGRAM_PRO_CHANNEL_ID;
+      const scaleChanId = process.env.TELEGRAM_SCALE_CHANNEL_ID;
+      
+      const chatIdStr = String(chat.id);
+      let eventTier: 'starter' | 'pro' | 'scale' | null = null;
+      
+      if (starterChanId && chatIdStr === starterChanId) {
+        eventTier = 'starter';
+      } else if (proChanId && chatIdStr === proChanId) {
+        eventTier = 'pro';
+      } else if (scaleChanId && chatIdStr === scaleChanId) {
+        eventTier = 'scale';
+      }
+
+      if (eventTier) {
+        const isLeft = newStatus === 'left' || newStatus === 'kicked';
+        
+        if (isLeft) {
+          const { supabaseAdmin } = await import('@/lib/supabase');
+          
+          // Find profile by telegram_id
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('telegram_id', user.id)
+            .single();
+            
+          if (profile && profile.tier === eventTier && profile.subscription_status === 'active') {
+            // Update subscription_status to expired
+            await supabaseAdmin
+              .from('profiles')
+              .update({ subscription_status: 'expired' })
+              .eq('id', profile.id);
+              
+            console.log(`[Telegram Bot Webhook] Subscription suspended for User ${profile.id} (left channel ${eventTier})`);
+            
+            // Send warning direct message from bot to user
+            const locale = profile.preferred_language === 'ru' ? 'ru' : 'en';
+            
+            const subUrl = eventTier === 'starter' 
+              ? process.env.NEXT_PUBLIC_TRIBUTE_SUB_URL_STARTER 
+              : eventTier === 'pro'
+                ? process.env.NEXT_PUBLIC_TRIBUTE_SUB_URL_PRO
+                : process.env.NEXT_PUBLIC_TRIBUTE_SUB_URL_SCALE;
+                
+            const warningText = locale === 'ru'
+              ? `⚠️ *Ваша подписка на канал была отменена или завершена!*\n\nДоступ к функциям тарифа *${eventTier.toUpperCase()}* в Студии приостановлен.\n\nДля возобновления доступа продлите подписку в Tribute.`
+              : `⚠️ *Your channel subscription has expired or was cancelled!*\n\nAccess to the *${eventTier.toUpperCase()}* features in the Studio has been suspended.\n\nTo restore access, please renew your subscription in Tribute.`;
+              
+            try {
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: user.id,
+                  text: warningText,
+                  parse_mode: 'Markdown',
+                  reply_markup: subUrl ? {
+                    inline_keyboard: [
+                      [
+                        {
+                          text: locale === 'ru' ? '💳 Продлить подписку' : '💳 Renew Subscription',
+                          url: subUrl
+                        }
+                      ]
+                    ]
+                  } : undefined
+                }),
+              });
+            } catch (tgErr) {
+              console.error('[Telegram Bot Webhook] Failed to send cancellation warning DM:', tgErr);
+            }
+          }
+        } else if (newStatus === 'member' || newStatus === 'administrator' || newStatus === 'creator') {
+          // Auto-activate subscription on channel join fallback
+          const { supabaseAdmin } = await import('@/lib/supabase');
+          
+          const { data: profile } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('telegram_id', user.id)
+            .single();
+            
+          if (profile && (profile.subscription_status !== 'active' || profile.tier !== eventTier)) {
+            await supabaseAdmin
+              .from('profiles')
+              .update({ 
+                tier: eventTier,
+                subscription_status: 'active' 
+              })
+              .eq('id', profile.id);
+              
+            console.log(`[Telegram Bot Webhook] Subscription auto-activated/updated for User ${profile.id} (joined channel ${eventTier})`);
+            
+            const locale = profile.preferred_language === 'ru' ? 'ru' : 'en';
+            const welcomeText = locale === 'ru'
+              ? `🎉 *Доступ активирован!*\n\nВы вступили в канал подписки. Ваш тариф *${eventTier.toUpperCase()}* успешно активирован в Студии!`
+              : `🎉 *Access Activated!*\n\nYou have joined the subscription channel. Your *${eventTier.toUpperCase()}* plan is now active in the Studio!`;
+              
+            try {
+              await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: user.id,
+                  text: welcomeText,
+                  parse_mode: 'Markdown',
+                }),
+              });
+            } catch (tgErr) {
+              console.error('[Telegram Bot Webhook] Failed to send welcome channel join message:', tgErr);
+            }
+          }
+        }
+      }
+      return NextResponse.json({ ok: true });
+    }
+
     // 1. Handle pre_checkout_query (Telegram Stars Pre-checkout Check)
     if (body.pre_checkout_query) {
+
       const queryId = body.pre_checkout_query.id;
       const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerPreCheckoutQuery`, {
         method: 'POST',

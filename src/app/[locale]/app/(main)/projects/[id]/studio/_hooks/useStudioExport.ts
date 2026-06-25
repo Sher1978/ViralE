@@ -300,7 +300,9 @@ export function useStudioExport({
       }
     }
 
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent('Мое новое видео из Viral Engine!')}`;
+    const descriptionText = (manifest as any)?.scriptText || manifest?.segments?.map((s: any) => s.scriptText).filter(Boolean).join('\n\n') || '';
+    const shareText = descriptionText ? descriptionText.substring(0, 1000) : 'Мое новое видео из Viral Engine!';
+    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent(shareText)}`;
     addSystemLog(`Открытие ссылки Telegram Share: ${tgUrl}`);
 
     if (typeof (globalThis as any).window !== 'undefined') {
