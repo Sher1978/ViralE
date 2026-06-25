@@ -215,34 +215,34 @@ export default function SubscriptionPage() {
     {
       id: 'starter',
       name: 'Starter',
-      price: '$12',
-      stars: '600 Stars',
+      price: '$19.90',
+      stars: '1000 Stars',
       icon: Zap,
       color: 'from-slate-400 to-slate-600',
       features: {
-        ru: ['200 кредитов /мес', 'Доступ к монтажу', 'Стандартная раскадровка', 'Telegram-оповещения'],
-        en: ['200 credits /mo', 'Studio editing access', 'Standard Storyboard', 'Telegram Alerts']
+        ru: ['400 кредитов /мес', 'Доступ к монтажу', 'Стандартная раскадровка', 'Telegram-оповещения'],
+        en: ['400 credits /mo', 'Studio editing access', 'Standard Storyboard', 'Telegram Alerts']
       },
       popular: false
     },
     {
       id: 'pro',
       name: 'Pro',
-      price: '$29',
-      stars: '1450 Stars',
+      price: '$39.90',
+      stars: '2000 Stars',
       icon: Sparkles,
       color: 'from-purple-500 to-indigo-600',
       features: {
-        ru: ['840 кредитов /мес', 'Полный ИИ монтаж сценариев', 'Регенерация кадров', 'Приоритетный рендер'],
-        en: ['840 credits /mo', 'Full AI script editing', 'Smart Storyboard regeneration', 'Priority Rendering']
+        ru: ['1000 кредитов /мес', 'Полный ИИ монтаж сценариев', 'Регенерация кадров', 'Приоритетный рендер'],
+        en: ['1000 credits /mo', 'Full AI script editing', 'Smart Storyboard regeneration', 'Priority Rendering']
       },
       popular: true
     },
     {
       id: 'scale',
       name: 'Scale',
-      price: '$79',
-      stars: '3950 Stars',
+      price: '$79.90',
+      stars: '4000 Stars',
       icon: Rocket,
       color: 'from-amber-400 to-orange-600',
       features: {

@@ -636,39 +636,39 @@
       },
       "starter": {
         "title": "ViralE Starter",
-        "price": "$24.99",
+        "price": "$19.90",
         "period": "/ mo",
-        "periodDetail": "/ month · or $14.99/mo annual",
+        "periodDetail": "/ month · or $11.90/mo annual",
         "feature1": "Basic AI-idea generation",
         "feature2": "Script writing by proven hooks",
-        "feature3": "5 AI generations per month",
+        "feature3": "400 monthly credits included",
         "feature4": "All Free features included",
         "feature5": "Priority generation",
         "cta": "Get Starter →"
       },
-      "creator": {
+      "pro": {
         "badge": "Most Popular",
-        "title": "ViralE Creator",
-        "price": "$44.99",
+        "title": "ViralE Pro",
+        "price": "$39.90",
         "period": "/ mo",
-        "periodDetail": "/ month · or $29.99/mo annual",
+        "periodDetail": "/ month · or $23.90/mo annual",
         "feature1": "Digital DNA integration",
         "feature2": "Unique Tone of Voice matching",
         "feature3": "AI neuro-editing (Semantic Bullets)",
-        "feature4": "Audience retention boost (+34%)",
+        "feature4": "1000 monthly credits included",
         "feature5": "Priority video rendering",
-        "cta": "Get Creator →"
+        "cta": "Get Pro →"
       },
-      "pro": {
-        "title": "ViralE Pro",
-        "price": "$99.99",
-        "period": "/ month · or $59.99/mo annual",
+      "scale": {
+        "title": "ViralE Scale",
+        "price": "$79.90",
+        "period": "/ month · or $47.90/mo annual",
         "feature1": "Full content-package generation",
         "feature2": "5 social networks from 1 thought",
-        "feature3": "Video + Carousels + Posts + Articles",
+        "feature3": "3000 monthly credits included",
         "feature4": "Audience retention analytics",
         "feature5": "BYOK (use your own API keys)",
-        "cta": "Go Pro →"
+        "cta": "Get Scale →"
       }
     },
     "testimonials": {
@@ -740,7 +740,7 @@
       }
     },
     "marquee": [
-      "VIRAL ENGINE", "DIGITAL DNA", "SEMANTIC BULLETS", "AI VIDEO", "4 VIRALITY FILTERS", "TELEPROMPTER", "$29 PER MONTH"
+      "VIRAL ENGINE", "DIGITAL DNA", "SEMANTIC BULLETS", "AI VIDEO", "4 VIRALITY FILTERS", "TELEPROMPTER", "$19.90 PER MONTH"
     ],
     "technology": {
       "label": "// TECHNOLOGY",
@@ -786,7 +786,7 @@
         ["1 platform at a time", "5 platforms simultaneously"],
         ["Generic AI content", "Your voice, your meanings (Digital DNA)"],
         ["Weekends spent on production", "Weekends are yours again"],
-        ["Need an editor ($500–2000/mo)", "ViralE for $29/mo replaces an editor"],
+        ["Need an editor ($500–2000/mo)", "ViralE for $39.90/mo replaces an editor"],
         ["Content released 1–2 times a week", "Content released every day without burnout"]
       ]
     },
@@ -819,7 +819,7 @@
       "label": "// INVESTMENT",
       "title1": "15 HOURS OF YOUR LIFE",
       "title2": "PER WEEK.",
-      "subtitle": "You invest $1 a day — and get your freedom back. First 100 spots at $29 forever. {count} spots left.",
+      "subtitle": "You invest $1 a day — and get your freedom back. First 100 spots at $19.90 forever. {count} spots left.",
       "toggle": ["Monthly", "Yearly (Save 40%)"],
       "tiers": {
         "free": {
@@ -831,25 +831,25 @@
         },
         "starter": {
           "title": "ViralE Starter",
-          "price": "$24.99",
-          "priceYearly": "$14.99",
-          "features": ["Basic AI-idea generation", "Script writing based on proven hooks", "5 AI generations per month", "All Free tier features included"],
+          "price": "$19.90",
+          "priceYearly": "$11.90",
+          "features": ["Basic AI-idea generation", "Script writing based on proven hooks", "400 credits per month", "All Free tier features included"],
           "cta": "Get Starter"
-        },
-        "creator": {
-          "title": "ViralE Creator",
-          "badge": "POPULAR",
-          "price": "$44.99",
-          "priceYearly": "$29.99",
-          "features": ["Digital DNA integration", "Unique Tone of Voice matching", "AI neuro-editing (Semantic Bullets)", "Audience retention boost (+34%)", "Priority video rendering"],
-          "cta": "Get Creator"
         },
         "pro": {
           "title": "ViralE Pro",
-          "price": "$99.99",
-          "priceYearly": "$59.99",
-          "features": ["Full content-package generation", "5 social networks from 1 thought", "Video + Carousels + Posts + Articles", "Audience retention analytics", "BYOK (use your own API keys)"],
+          "badge": "POPULAR",
+          "price": "$39.90",
+          "priceYearly": "$23.90",
+          "features": ["Digital DNA integration", "Unique Tone of Voice matching", "AI neuro-editing (Semantic Bullets)", "1000 credits per month", "Priority video rendering"],
           "cta": "Get Pro"
+        },
+        "scale": {
+          "title": "ViralE Scale",
+          "price": "$79.90",
+          "priceYearly": "$47.90",
+          "features": ["Full content-package generation", "5 social networks from 1 thought", "3000 credits per month", "Audience retention analytics", "BYOK (use your own API keys)"],
+          "cta": "Get Scale"
         }
       },
       "urgency": "{count} of 100 spots taken",

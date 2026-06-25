@@ -6,8 +6,8 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Map plans to credits
 const PLAN_CREDITS = {
-  starter: 200,
-  pro: 840,
+  starter: 400,
+  pro: 1000,
   scale: 3000,
 };
 

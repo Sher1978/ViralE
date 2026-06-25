@@ -498,12 +498,11 @@ export default function LandingV2Page() {
               <span className="text-sherlock-gold text-[10px] font-black uppercase tracking-[0.4em]">{t('pricing.label')}</span>
               <h2 className="text-6xl md:text-8xl font-black uppercase tracking-tighter">{t('pricing.title')}</h2>
            </div>
-
            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 max-w-7xl mx-auto">
               {(() => {
-                 const tiers = ['free', 'starter', 'creator', 'pro'];
+                 const tiers = ['free', 'starter', 'pro', 'scale'];
                  return tiers.map((key) => {
-                    const isFeatured = key === 'creator';
+                    const isFeatured = key === 'pro';
                     return (
                        <div 
                           key={key}
@@ -514,7 +513,7 @@ export default function LandingV2Page() {
                        >
                           {isFeatured && (
                              <div className="absolute top-6 right-8 px-4 py-1 bg-sherlock-gold text-black text-[10px] font-black uppercase tracking-widest rounded-full">
-                                {t('pricing.creator.badge')}
+                                {t('pricing.pro.badge')}
                              </div>
                           )}
                           <div className="space-y-2">

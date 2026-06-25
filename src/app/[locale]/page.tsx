@@ -561,7 +561,7 @@ const SocialProof = () => {
 const Pricing = () => {
   const t = useTranslations('landingVirale.pricing');
   const [isYearly, setIsYearly] = useState(false);
-  const tiers = ['free', 'starter', 'creator', 'pro'];
+  const tiers = ['free', 'starter', 'pro', 'scale'];
 
   return (
     <section id="pricing" className="py-24 max-w-[1280px] mx-auto px-5 md:px-10">
@@ -598,7 +598,7 @@ const Pricing = () => {
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8 items-stretch">
         {tiers.map((key) => {
           const tier = t.raw(`tiers.${key}`);
-          const isFeatured = key === 'creator';
+          const isFeatured = key === 'pro';
           const price = isYearly && tier.priceYearly ? tier.priceYearly : tier.price;
 
           return (
