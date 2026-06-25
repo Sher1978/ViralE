@@ -2,6 +2,48 @@ import Anthropic from "@anthropic-ai/sdk";
  
 const DEFAULT_MODEL = "claude-3-5-haiku-latest";
 
+async function createAnthropicMessage(
+  anthropic: Anthropic,
+  params: {
+    model: string;
+    max_tokens: number;
+    system: string;
+    messages: any[];
+  }
+) {
+  const modelName = params.model.toLowerCase();
+  const candidates = [
+    modelName,
+    "claude-3-5-haiku-latest",
+    "claude-3-5-haiku-20241022",
+    "claude-3-5-sonnet-latest",
+    "claude-3-5-sonnet-20241022",
+    "claude-3-haiku-20240307"
+  ];
+  
+  const uniqueCandidates = Array.from(new Set(candidates));
+  let lastError: any = null;
+  
+  for (const modelCandidate of uniqueCandidates) {
+    try {
+      console.log(`[Anthropic client] Executing query on candidate model: ${modelCandidate}`);
+      return await anthropic.messages.create({
+        ...params,
+        model: modelCandidate
+      });
+    } catch (err: any) {
+      lastError = err;
+      const errMsg = err.message || '';
+      console.warn(`[Anthropic client] Model ${modelCandidate} failed: ${errMsg}. Trying next candidate...`);
+      if (err.status === 401 || errMsg.includes('API key') || errMsg.includes('invalid_api_key')) {
+        break;
+      }
+    }
+  }
+  
+  throw lastError || new Error("Anthropic generation failed on all fallback candidates.");
+}
+
 export async function generateTrizText(prompt: string, apiKey?: string): Promise<string> {
   const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
   if (!authKey) throw new Error("Anthropic API key not configured");
@@ -9,37 +51,18 @@ export async function generateTrizText(prompt: string, apiKey?: string): Promise
   const anthropic = new Anthropic({ apiKey: authKey });
   const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
   
-  try {
-    const response = await anthropic.messages.create({
-      model: modelName,
-      max_tokens: 1024,
-      system: "You are a professional neuromarketer and creative strategist.",
-      messages: [
-        { role: "user", content: prompt }
-      ],
-    });
+  const response = await createAnthropicMessage(anthropic, {
+    model: modelName,
+    max_tokens: 1024,
+    system: "You are a professional neuromarketer and creative strategist.",
+    messages: [
+      { role: "user", content: prompt }
+    ],
+  });
 
-    const content = response.content[0];
-    if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
-    return content.text;
-  } catch (error: any) {
-    // If the account doesn't have access to the model, fallback to Claude 3.5 Sonnet latest
-    if (error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found") || error.message?.includes("access")) {
-      console.warn(`[Anthropic] Model ${modelName} not found or accessible. Falling back to claude-3-5-sonnet-latest...`);
-      const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-latest",
-        max_tokens: 1024,
-        system: "You are a professional neuromarketer and creative strategist.",
-        messages: [
-          { role: "user", content: prompt }
-        ],
-      });
-      const content = response.content[0];
-      if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
-      return content.text;
-    }
-    throw error;
-  }
+  const content = response.content[0];
+  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  return content.text;
 }
 
 
@@ -163,41 +186,21 @@ export async function generateScript(
   `;
 
   const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
-  try {
-    const response = await anthropic.messages.create({
-      model: modelName,
-      max_tokens: 2048,
-      system: systemPrompt,
-      messages: [
-        { role: "user", content: userPrompt }
-      ],
-    });
+  const response = await createAnthropicMessage(anthropic, {
+    model: modelName,
+    max_tokens: 2048,
+    system: systemPrompt,
+    messages: [
+      { role: "user", content: userPrompt }
+    ],
+  });
 
-    const content = response.content[0];
-    if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
-    
-    const text = content.text.trim();
-    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
-    return JSON.parse(jsonStr);
-  } catch (error: any) {
-    if (error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found") || error.message?.includes("access")) {
-      console.warn(`[Anthropic] Model ${modelName} not found or accessible in generateScript. Falling back to claude-3-5-sonnet-latest...`);
-      const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-latest",
-        max_tokens: 2048,
-        system: systemPrompt,
-        messages: [
-          { role: "user", content: userPrompt }
-        ],
-      });
-      const content = response.content[0];
-      if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
-      const text = content.text.trim();
-      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
-      return JSON.parse(jsonStr);
-    }
-    throw error;
-  }
+  const content = response.content[0];
+  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  
+  const text = content.text.trim();
+  const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+  return JSON.parse(jsonStr);
 }
 
 export async function refineScript(
@@ -231,39 +234,19 @@ export async function refineScript(
   `;
 
   const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
-  try {
-    const response = await anthropic.messages.create({
-      model: modelName,
-      max_tokens: 1024,
-      system: systemPrompt,
-      messages: [
-        { role: "user", content: userPrompt }
-      ],
-    });
+  const response = await createAnthropicMessage(anthropic, {
+    model: modelName,
+    max_tokens: 1024,
+    system: systemPrompt,
+    messages: [
+      { role: "user", content: userPrompt }
+    ],
+  });
 
-    const content = response.content[0];
-    if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
-    
-    const text = content.text.trim();
-    const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
-    return JSON.parse(jsonStr);
-  } catch (error: any) {
-    if (error.status === 404 || error.message?.includes("model") || error.message?.includes("not_found") || error.message?.includes("access")) {
-      console.warn(`[Anthropic] Model ${modelName} not found or accessible in refineScript. Falling back to claude-3-5-sonnet-latest...`);
-      const response = await anthropic.messages.create({
-        model: "claude-3-5-sonnet-latest",
-        max_tokens: 1024,
-        system: systemPrompt,
-        messages: [
-          { role: "user", content: userPrompt }
-        ],
-      });
-      const content = response.content[0];
-      if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
-      const text = content.text.trim();
-      const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
-      return JSON.parse(jsonStr);
-    }
-    throw error;
-  }
+  const content = response.content[0];
+  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  
+  const text = content.text.trim();
+  const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+  return JSON.parse(jsonStr);
 }

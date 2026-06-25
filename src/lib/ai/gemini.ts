@@ -7,8 +7,8 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // [REVERSIBLE OVERRIDE] Set to true to route all Gemini calls to Groq
 const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
-export const FAST_MODEL = "gemini-3.5-flash-lite";
-export const PRO_MODEL = "gemini-3.5-flash";
+export const FAST_MODEL = "gemini-2.5-flash-lite";
+export const PRO_MODEL = "gemini-1.5-pro";
 
 export function getModel(
   tier: 'fast' | 'pro' = 'fast', 
@@ -138,9 +138,10 @@ export function getModel(
   // List of fallback models to try if the main model experiences 503 or overload
   const fallbackModels = [
     baseModelName,
-    "gemini-3.5-flash",
+    "gemini-2.5-flash-lite",
     "gemini-1.5-flash",
-    "gemini-3.5-flash-lite",
+    "gemini-2.5-flash",
+    "gemini-1.5-pro",
   ];
 
   // Return a proxy to intercept calls and inject automatic fallbacks on API errors
@@ -253,13 +254,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
   if (IS_GROQ_OVERRIDE) {
     return groq.generateScript(coreIdea, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna, trizMatrix, systemPromptBase);
   }
-  const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
-  const targetModel = apiKey 
-    ? client.getGenerativeModel({ 
-        model: process.env.GEMINI_MODEL || FAST_MODEL,
-        generationConfig: { responseMimeType: "application/json" }
-      }) 
-    : model;
+  const targetModel = getModel('fast', locale, 'json', apiKey);
 
   const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
@@ -429,13 +424,7 @@ export async function refineScript(
   if (IS_GROQ_OVERRIDE) {
     return groq.refineScript(currentScript, instruction, digitalShadow, locale, apiKey || process.env.GROQ_API_KEY, brandDna, systemPromptBase);
   }
-  const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
-  const targetModel = apiKey 
-    ? client.getGenerativeModel({ 
-        model: process.env.GEMINI_MODEL || FAST_MODEL,
-        generationConfig: { responseMimeType: "application/json" }
-      }) 
-    : model;
+  const targetModel = getModel('fast', locale, 'json', apiKey);
 
   const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
 
@@ -468,8 +457,7 @@ export async function refineScript(
 }
 
 export async function generateText(prompt: string, customApiKey?: string): Promise<string> {
-  const client = customApiKey ? new GoogleGenerativeAI(customApiKey) : genAI;
-  const targetModel = client.getGenerativeModel({ model: FAST_MODEL });
+  const targetModel = getModel('fast', 'en', 'text', customApiKey);
   const result = await targetModel.generateContent(prompt);
   const response = await result.response;
   return response.text().trim();

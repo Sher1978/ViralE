@@ -10,6 +10,7 @@ export const maxDuration = 60;
 const RUNWARE_API_KEY = process.env.RUNWARE_API_KEY;
 const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
 const XAI_API_KEY = process.env.XAI_API_KEY;
+const REPLICATE_API_TOKEN = process.env.REPLICATE_API_TOKEN;
 
 async function uploadToSupabase(externalUrl: string): Promise<string> {
   if (!externalUrl) return externalUrl;
@@ -233,6 +234,36 @@ export async function POST(req: Request) {
         }
       } catch (e) {
         console.error('[Image Gen] OpenAI failed:', e);
+      }
+    }
+    // --- OPTION 3: REPLICATE (Fallback) ---
+    if (REPLICATE_API_TOKEN) {
+      try {
+        console.log(`[Image Gen] Falling back to Replicate (Flux Dev) with AR ${aspect_ratio}...`);
+        const Replicate = (await import('replicate')).default;
+        const replicate = new Replicate({ auth: REPLICATE_API_TOKEN });
+
+        const output: any = await replicate.run(
+          "lucataco/flux-dev:a5739f37ef1108d4b3ff2ba8ef1a7fa2744ef8740c83d6a978f85f36e4be32a5",
+          {
+            input: {
+              prompt: fullPrompt,
+              aspect_ratio: aspect_ratio === '9:16' || aspect_ratio === '16:9' || aspect_ratio === '1:1' ? aspect_ratio : '9:16',
+              output_format: "webp",
+              guidance_scale: 3.5,
+              num_inference_steps: 28
+            }
+          }
+        );
+
+        const imageUrl = Array.isArray(output) ? output[0] : output;
+        if (imageUrl) {
+          console.log(`[Image Gen] Replicate success → ${imageUrl}`);
+          const finalUrl = await uploadToSupabase(imageUrl);
+          return NextResponse.json({ url: finalUrl, provider: 'replicate' });
+        }
+      } catch (e: any) {
+        console.error('[Image Gen] Replicate failed:', e.message || e);
       }
     }
 
