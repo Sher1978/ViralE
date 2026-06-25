@@ -11,6 +11,10 @@ const PLAN_CREDITS = {
   scale: 3000,
 };
 
+export async function GET() {
+  return NextResponse.json({ status: 'ok', service: 'Tribute Webhook' });
+}
+
 export async function POST(req: NextRequest) {
   try {
     const signature = req.headers.get('trbt-signature');
@@ -38,11 +42,22 @@ export async function POST(req: NextRequest) {
       console.warn('[Tribute Webhook] Tribute API Key is not set or using placeholder. Signature verification bypassed.');
     }
 
-    const body = JSON.parse(rawBody);
+    let body;
+    try {
+      body = rawBody ? JSON.parse(rawBody) : null;
+    } catch (e) {
+      console.warn('[Tribute Webhook] Could not parse body as JSON:', rawBody);
+      return NextResponse.json({ ok: true, message: 'Ping/Non-JSON payload received' });
+    }
+
+    if (!body || !body.name) {
+      return NextResponse.json({ ok: true, message: 'Verification ping received' });
+    }
+
     const { name: eventName, payload } = body;
 
-    if (!eventName || !payload) {
-      return NextResponse.json({ error: 'Invalid payload format' }, { status: 400 });
+    if (!payload) {
+      return NextResponse.json({ ok: true, message: 'Event received without payload' });
     }
 
     console.log(`[Tribute Webhook] Processing event: ${eventName}`);
