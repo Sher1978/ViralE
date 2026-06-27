@@ -87,6 +87,197 @@ const parseNumberedList = (content: string) => {
   return { intro, items, outro };
 };
 
+interface ParsedScenario {
+  id: string;
+  label: string;
+  content: string;
+}
+
+const parseScenariosFromText = (text: string) => {
+  if (!text) return null;
+
+  const styles = [
+    { id: 'edutainment', label: 'Edutainment', keywords: ['edutainment', 'польза', 'фан + обучение', 'фан и обучение'] },
+    { id: 'evergreen', label: 'Evergreen', keywords: ['evergreen', 'вечнозеленый', 'вечнозелёный'] },
+    { id: 'trends', label: 'Trends', keywords: ['trends', 'тренды'] },
+    { id: 'controversial', label: 'Controversial', keywords: ['controversial', 'противоречие', 'провокация'] },
+    { id: 'detective', label: 'Detective', keywords: ['detective', 'детектив'] }
+  ];
+  
+  const matches: { id: string; label: string; index: number; keywordUsed: string }[] = [];
+  
+  styles.forEach(style => {
+    style.keywords.forEach(kw => {
+      const escapeRegex = (s: string) => s.replace(/[-\/\\^$*+?.()|[\]{}]/g, '\\$&');
+      const regex = new RegExp(`(?:^|\\n)[\\s*#-]*\\d*\\.?\\s*\\**${escapeRegex(kw)}\\**[\\s:(]*`, 'i');
+      const match = text.match(regex);
+      if (match && match.index !== undefined) {
+        matches.push({
+          id: style.id,
+          label: style.label,
+          index: match.index,
+          keywordUsed: match[0]
+        });
+      }
+    });
+  });
+  
+  matches.sort((a, b) => a.index - b.index);
+  
+  const uniqueMatches: typeof matches = [];
+  const seenIds = new Set<string>();
+  for (const m of matches) {
+    if (!seenIds.has(m.id)) {
+      seenIds.add(m.id);
+      uniqueMatches.push(m);
+    }
+  }
+  
+  if (uniqueMatches.length < 2) {
+    return null;
+  }
+  
+  const intro = text.substring(0, uniqueMatches[0].index).trim();
+  const parsedScenarios: ParsedScenario[] = [];
+  
+  for (let k = 0; k < uniqueMatches.length; k++) {
+    const start = uniqueMatches[k].index + uniqueMatches[k].keywordUsed.length;
+    const end = k < uniqueMatches.length - 1 ? uniqueMatches[k + 1].index : text.length;
+    let rawContent = text.substring(start, end).trim();
+    
+    if (rawContent.startsWith(')') || rawContent.startsWith(':')) {
+      rawContent = rawContent.substring(1).trim();
+    }
+    
+    parsedScenarios.push({
+      id: uniqueMatches[k].id,
+      label: uniqueMatches[k].label,
+      content: rawContent
+    });
+  }
+  
+  return { intro, scenarios: parsedScenarios };
+};
+
+const renderColorizedText = (content: string) => {
+  if (!content) return null;
+  
+  const lines = content.split('\n');
+  return (
+    <div className="space-y-1.5 font-sans select-text">
+      {lines.map((line, idx) => {
+        const trimmed = line.trim();
+        if (!trimmed) return <div key={idx} className="h-2" />;
+
+        // 1. Detect block title markers: e.g. [ХУК] (0-3 сек) or **Блок 1: Хук**
+        const blockHeaderRegex = /^(\s*[\*#-]*\s*)(?:\[?(хук|hook|суть|body|context|тело|value|мясо|триз|triz|cta|call to action|призыв|аутро|intro|зацепка|введение|основная часть|контекст)\]?)(.*)$/i;
+        const blockHeaderMatch = line.match(blockHeaderRegex);
+        if (blockHeaderMatch) {
+          const prefix = blockHeaderMatch[1];
+          const keyword = blockHeaderMatch[2];
+          const rest = blockHeaderMatch[3];
+          return (
+            <div key={idx} className="pt-3 pb-1 text-[11px] font-black uppercase tracking-wider text-slate-500 border-b border-white/5">
+              {prefix}[{keyword.toUpperCase()}]{rest}
+            </div>
+          );
+        }
+
+        // 2. Check for Visual / Storyboard descriptions: e.g. "Визуал: ...", "Кадр: ...", "Visual: ..."
+        const visualRegex = /^(\s*[\*#-]*\s*)(визуал|visual|кадр|описание действия|действие|раскадровка|картинка)(:?)(.*)$/i;
+        const visualMatch = line.match(visualRegex);
+        if (visualMatch) {
+          const prefix = visualMatch[1];
+          const label = visualMatch[2];
+          const colon = visualMatch[3];
+          const rest = visualMatch[4];
+          return (
+            <p key={idx} className="text-xs leading-relaxed text-slate-500 italic">
+              {prefix}<span className="font-extrabold uppercase tracking-wide text-[10px]">{label}{colon}</span>
+              <span> {rest}</span>
+            </p>
+          );
+        }
+
+        // 3. Check for screen text / captions / text on screen: e.g. "Текст на экране: ...", "Screen text: ..."
+        const screenTextRegex = /^(\s*[\*#-]*\s*)(текст на экране|screen text|титры|надпись)(:?)(.*)$/i;
+        const screenTextMatch = line.match(screenTextRegex);
+        if (screenTextMatch) {
+          const prefix = screenTextMatch[1];
+          const label = screenTextMatch[2];
+          const colon = screenTextMatch[3];
+          const rest = screenTextMatch[4];
+          return (
+            <p key={idx} className="text-xs leading-relaxed text-slate-500 font-medium">
+              {prefix}<span className="font-extrabold uppercase tracking-wide text-[10px]">{label}{colon}</span>
+              <span> {rest}</span>
+            </p>
+          );
+        }
+
+        // 4. Check for spoken text/Speech labels: e.g. "Слова:", "Speech:", "Words:", "Текст:", "Голос:"
+        const wordsRegex = /^(\s*[\*#-]*\s*)(слова|speech|words|текст|голос)(:?)(.*)$/i;
+        const wordsMatch = line.match(wordsRegex);
+        if (wordsMatch) {
+          const prefix = wordsMatch[1];
+          const label = wordsMatch[2];
+          const colon = wordsMatch[3];
+          const rest = wordsMatch[4];
+          return (
+            <p key={idx} className="text-sm leading-relaxed text-white">
+              {prefix}<span className="text-slate-400 font-extrabold uppercase tracking-wide text-[10px]">{label}{colon}</span>
+              <span className="font-semibold text-white"> {rest}</span>
+            </p>
+          );
+        }
+
+        // 5. Default line rendering:
+        return (
+          <p key={idx} className="text-sm leading-relaxed text-white font-medium whitespace-pre-wrap">
+            {line}
+          </p>
+        );
+      })}
+    </div>
+  );
+};
+
+const extractSentences = (text: string): string[] => {
+  if (!text) return [];
+  
+  const lines = text.split('\n');
+  const spokenLines: string[] = [];
+  
+  lines.forEach(line => {
+    const trimmed = line.trim();
+    if (!trimmed) return;
+    
+    if (/^(?:визуал|visual|кадр|описание|раскадровка|текст на экране|screen text|титры|надпись|\[.*\]|hook|body|triz|cta|хук|суть|тело|призыв|аутро|intro|outro|value)/i.test(trimmed)) {
+      return;
+    }
+    
+    const wordsMatch = trimmed.match(/^(?:слова|speech|words|текст|голос):\s*([\s\S]+)$/i);
+    if (wordsMatch) {
+      spokenLines.push(wordsMatch[1].trim());
+    } else {
+      spokenLines.push(trimmed);
+    }
+  });
+
+  const cleanText = spokenLines.join(' ')
+    .replace(/<\/?[A-Z0-9_-]+(?:>|\s[^>]*>)/gi, '')
+    .replace(/\*\*|__/g, '')
+    .trim();
+    
+  const sentenceRegex = /[^.!?\n]+(?:[.!?\n]+|$)/g;
+  const matches = cleanText.match(sentenceRegex);
+  if (!matches) return [];
+  
+  return matches
+    .map(s => s.trim())
+    .filter(s => s.length > 1 && !s.startsWith('[') && !s.endsWith(']'));
+};
+
 interface StrategistChatProps {
   projectId: string;
   manifest?: ProductionManifest;
@@ -98,6 +289,7 @@ interface StrategistChatProps {
   onApplySuggestion?: (text: string) => void;
   onMatrixUpdate?: (matrix: any) => void;
   onUseScript?: (text: string) => void;
+  onTransferScenario?: (text: string) => void;
 }
 
 export function StrategistChat({
@@ -111,6 +303,7 @@ export function StrategistChat({
   onApplySuggestion,
   onMatrixUpdate,
   onUseScript,
+  onTransferScenario,
   containerClassName
 }: StrategistChatProps & { containerClassName?: string }) {
   const t = useTranslations('Strategist');
@@ -133,6 +326,16 @@ export function StrategistChat({
   const [isMuted, setIsMuted] = useState(false);
   const [lastRequest, setLastRequest] = useState<{ audioBlob?: Blob; text?: string } | null>(null);
   const [messagePages, setMessagePages] = useState<Record<number, number>>({});
+  const [activeScenarioTabs, setActiveScenarioTabs] = useState<Record<number, string>>({});
+
+  const queueRef = useRef<{ text: string; audioUrl?: string; audio?: any; status: string }[]>([]);
+  const queuedSentencesCountRef = useRef<number>(0);
+  const isProcessingQueueRef = useRef<boolean>(false);
+  const isMutedRef = useRef<boolean>(isMuted);
+
+  useEffect(() => {
+    isMutedRef.current = isMuted;
+  }, [isMuted]);
 
   useEffect(() => {
     if (typeof (globalThis as any).window !== 'undefined') {
@@ -176,6 +379,23 @@ export function StrategistChat({
   const playingMessageIdRef = useRef<number | null>(null);
 
   const stopSpeaking = () => {
+    // Stop and clear queue items
+    queueRef.current.forEach(item => {
+      if (item.audio) {
+        try {
+          item.audio.pause();
+        } catch (e) {}
+      }
+      if (item.audioUrl) {
+        try {
+          URL.revokeObjectURL(item.audioUrl);
+        } catch (e) {}
+      }
+    });
+    queueRef.current = [];
+    queuedSentencesCountRef.current = 0;
+    isProcessingQueueRef.current = false;
+
     if (audioPlayerRef.current) {
       try {
         audioPlayerRef.current.pause();
@@ -187,6 +407,117 @@ export function StrategistChat({
     setIsAIPointing(false);
     setIsPlayingId(null);
     playingMessageIdRef.current = null;
+  };
+
+  const enqueueSentenceForTTS = (text: string) => {
+    if (!text.trim() || isMutedRef.current) return;
+    if (text.replace(/[.!?\s]/g, '').length < 2) return;
+    
+    const alreadyExists = queueRef.current.some(item => item.text === text);
+    if (alreadyExists) return;
+
+    console.log('[TTS Queue] Enqueuing sentence:', text);
+    queueRef.current.push({ text, status: 'pending' });
+    processQueue();
+  };
+
+  const processQueue = async () => {
+    if (isProcessingQueueRef.current || isMutedRef.current) return;
+    isProcessingQueueRef.current = true;
+    
+    try {
+      while (true) {
+        if (isMutedRef.current) {
+          stopSpeaking();
+          break;
+        }
+
+        const nextPlayIdx = queueRef.current.findIndex(item => item.status !== 'played' && item.status !== 'error');
+        if (nextPlayIdx === -1) {
+          break;
+        }
+        
+        const item = queueRef.current[nextPlayIdx];
+        
+        if (item.status === 'pending') {
+          item.status = 'loading';
+          try {
+            const response = await fetch('/api/ai/tts', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                text: item.text,
+                voice_id: 'TX3LPaxmHKxFdv7VOQHJ' // Male voice (Liam)
+              }),
+            });
+            
+            if (!response.ok) throw new Error('TTS failed');
+            
+            const audioBlob = await response.blob();
+            item.audioUrl = URL.createObjectURL(audioBlob);
+            
+            const audio_class = (globalThis as any).Audio;
+            item.audio = audio_class ? new audio_class(item.audioUrl) : undefined;
+            
+            if (item.audio) {
+              item.status = 'ready';
+            } else {
+              item.status = 'error';
+            }
+          } catch (err) {
+            console.error('[TTS Queue] Fetch failed for:', item.text, err);
+            item.status = 'error';
+          }
+        }
+        
+        if (item.status === 'ready' && item.audio) {
+          item.status = 'playing';
+          setIsAIPointing(true);
+          
+          if (audioContextRef.current && analyserRef.current) {
+            try {
+              const source = audioContextRef.current.createMediaElementSource(item.audio);
+              source.connect(analyserRef.current);
+              analyserRef.current.connect(audioContextRef.current.destination);
+            } catch (e) {
+              // Ignore already connected
+            }
+          }
+          
+          await new Promise<void>((resolve) => {
+            if (!item.audio) {
+              resolve();
+              return;
+            }
+            item.audio.onended = () => {
+              resolve();
+            };
+            item.audio.onerror = () => {
+              resolve();
+            };
+            item.audio.play().catch((err: any) => {
+              console.warn('[TTS Queue] Play failed:', err);
+              resolve();
+            });
+          });
+          
+          if (item.audioUrl) {
+            URL.revokeObjectURL(item.audioUrl);
+          }
+          item.status = 'played';
+        }
+        
+        if (item.status === 'error') {
+          item.status = 'played';
+        }
+      }
+    } finally {
+      isProcessingQueueRef.current = false;
+      const activePlaying = queueRef.current.some(item => item.status === 'playing');
+      if (!activePlaying) {
+        setIsAIPointing(false);
+      }
+    }
   };
 
   useEffect(() => {
@@ -324,6 +655,8 @@ export function StrategistChat({
     const textToSubmit = textOverride !== undefined ? textOverride : input;
     if (!textToSubmit.trim() && !audioBlob || isStreaming) return;
 
+    stopSpeaking();
+
     const userMessage = textToSubmit || (audioBlob ? "🎙️ [Voice Message]" : "");
     if (!audioBlob) setInput('');
     
@@ -359,6 +692,8 @@ export function StrategistChat({
       let assistantMessage = '';
 
       setMessages(prev => [...prev, { role: 'assistant', content: '' }]);
+      queuedSentencesCountRef.current = 0;
+      queueRef.current = [];
 
       while (true) {
         const { done, value } = await reader!.read();
@@ -372,6 +707,26 @@ export function StrategistChat({
           newMessages[newMessages.length - 1].content = assistantMessage;
           return newMessages;
         });
+
+        if (!isMutedRef.current) {
+          const sentences = extractSentences(assistantMessage);
+          if (sentences.length > queuedSentencesCountRef.current) {
+            for (let k = queuedSentencesCountRef.current; k < sentences.length; k++) {
+              enqueueSentenceForTTS(sentences[k]);
+            }
+            queuedSentencesCountRef.current = sentences.length;
+          }
+        }
+      }
+
+      if (!isMutedRef.current) {
+        const sentences = extractSentences(assistantMessage);
+        const processedText = sentences.join(' ');
+        const cleanText = assistantMessage.replace(/<\/?[A-Z0-9_-]+(?:>|\s[^>]*>)/gi, '').replace(/\*\*|__/g, '').trim();
+        const remainingText = cleanText.substring(processedText.length).trim();
+        if (remainingText.length > 2 && !remainingText.startsWith('[') && !remainingText.endsWith(']')) {
+          enqueueSentenceForTTS(remainingText);
+        }
       }
 
       // --- JSON DETECTOR ---
@@ -392,11 +747,6 @@ export function StrategistChat({
         }
       } catch (e) {
         // Silently ignore parsing errors for non-matrix messages
-      }
-
-      // If in voice mode, speak the final response
-      if (isVoiceMode && !isMuted) {
-        speakResponse(assistantMessage);
       }
 
     } catch (error) {
@@ -478,73 +828,20 @@ export function StrategistChat({
     
     setIsPlayingId(id);
     playingMessageIdRef.current = id;
-    try {
-      setIsAIPointing(true);
-      
-      const { textBefore, scriptText } = parseMessageContent(text);
-      const cleanSpeechText = (textBefore + "\n" + (scriptText || "")).replace(/<\/?[A-Z0-9_]+>/g, '').trim();
 
-      const response = await fetch('/api/ai/tts', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          text: cleanSpeechText,
-          voice_id: 'TX3LPaxmHKxFdv7VOQHJ' // Male voice (Liam)
-        }),
-      });
-
-      if (!response.ok) throw new Error('TTS failed');
-
-      const audioBlob = await response.blob();
-      const url = URL.createObjectURL(audioBlob);
-      
-      const audio_class = (globalThis as any).Audio;
-      const audio = audio_class ? new audio_class(url) : null;
-      if (!audio) return;
-      audioPlayerRef.current = audio;
-      
-      const AudioContextClass = (globalThis as any).AudioContext || (globalThis as any).webkitAudioContext;
-      if (AudioContextClass && !audioContextRef.current) {
-        audioContextRef.current = new AudioContextClass();
-        analyserRef.current = audioContextRef.current.createAnalyser();
-        analyserRef.current.fftSize = 256;
-      }
-
-      if (audioContextRef.current && analyserRef.current) {
-        const source = audioContextRef.current.createMediaElementSource(audio);
-        source.connect(analyserRef.current);
-        analyserRef.current.connect(audioContextRef.current.destination);
-
-        const updateFrequency = () => {
-          if (!audioPlayerRef.current || audio.paused || audio.ended) {
-            return;
-          }
-          const dataArray = new Uint8Array(analyserRef.current.frequencyBinCount);
-          analyserRef.current.getByteFrequencyData(dataArray);
-          setFrequencyData(dataArray);
-          animationRef.current = requestAnimationFrame(updateFrequency);
-        };
-        animationRef.current = requestAnimationFrame(updateFrequency);
-      }
-
-      audio.onended = () => {
-        setIsAIPointing(false);
-        setIsPlayingId(null);
-        playingMessageIdRef.current = null;
-        URL.revokeObjectURL(url);
-      };
-
-      audio.onpause = () => {
-        setIsAIPointing(false);
-        setIsPlayingId(null);
-      };
-
-      await audio.play();
-    } catch (err) {
-      console.error('Playback error:', err);
-      setIsAIPointing(false);
-      setIsPlayingId(null);
-      playingMessageIdRef.current = null;
+    if (isMuted) {
+      setIsMuted(false);
+      isMutedRef.current = false;
+    }
+    
+    const sentences = extractSentences(text);
+    sentences.forEach(s => enqueueSentenceForTTS(s));
+    
+    const processedText = sentences.join(' ');
+    const cleanText = text.replace(/<\/?[A-Z0-9_-]+(?:>|\s[^>]*>)/gi, '').replace(/\*\*|__/g, '').trim();
+    const remainingText = cleanText.substring(processedText.length).trim();
+    if (remainingText.length > 2 && !remainingText.startsWith('[') && !remainingText.endsWith(']')) {
+      enqueueSentenceForTTS(remainingText);
     }
   };
 
@@ -794,6 +1091,64 @@ export function StrategistChat({
                         : "bg-white/5 text-slate-200 rounded-tl-none border border-white/5 hover:bg-white/10"
                   )}>
                     {(() => {
+                      const scenarioObj = parseScenariosFromText(m.content);
+                      if (scenarioObj) {
+                        const activeTab = activeScenarioTabs[i] || scenarioObj.scenarios[0].id;
+                        const activeScenario = scenarioObj.scenarios.find(s => s.id === activeTab) || scenarioObj.scenarios[0];
+                        
+                        return (
+                          <div className="space-y-4">
+                            {scenarioObj.intro && <p className="leading-relaxed whitespace-pre-wrap text-slate-300 text-xs md:text-sm">{scenarioObj.intro}</p>}
+                            
+                            {/* Tabs Header */}
+                            <div className="flex flex-wrap gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
+                              {scenarioObj.scenarios.map(s => {
+                                const isActive = s.id === activeTab;
+                                return (
+                                  <button
+                                    key={s.id}
+                                    onClick={() => setActiveScenarioTabs(prev => ({ ...prev, [i]: s.id }))}
+                                    className={cn(
+                                      "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                                      isActive 
+                                        ? "bg-purple-600 text-white shadow-md shadow-purple-900/30" 
+                                        : "text-slate-400 hover:text-white hover:bg-white/5"
+                                    )}
+                                  >
+                                    {s.label}
+                                  </button>
+                                );
+                              })}
+                            </div>
+                            
+                            {/* Tab Content (Colorized Scenario) */}
+                            <div className="p-3 bg-black/35 border border-white/5 rounded-xl max-h-[300px] overflow-y-auto custom-scrollbar">
+                              {renderColorizedText(activeScenario.content)}
+                            </div>
+                            
+                            {/* Action Button: Transfer Scenario */}
+                            <div className="pt-1 flex justify-end">
+                              <button
+                                onClick={() => {
+                                  setIsOpen(false);
+                                  if (onTransferScenario) {
+                                    onTransferScenario(activeScenario.content);
+                                  } else if (onUseScript) {
+                                    onUseScript(activeScenario.content);
+                                  } else {
+                                    applySuggestion(activeScenario.content);
+                                  }
+                                }}
+                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border border-purple-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-[0_0_15px_rgba(147,51,234,0.3)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
+                              >
+                                <Zap className="h-3.5 w-3.5 text-yellow-300" />
+                                {locale === 'ru' ? 'Перенести этот сценарий' : 'Transfer this scenario'}
+                              </button>
+                            </div>
+                          </div>
+                        );
+                      }
+
                       const { textBefore, scriptText } = parseMessageContent(m.content);
                       const parsedList = parseNumberedList(textBefore || '');
                       const shouldPaginate = parsedList.items.length > 3;

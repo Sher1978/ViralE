@@ -29,6 +29,13 @@ export interface ScriptPayload {
  */
 function cleanBlockText(text: string): string {
   if (!text) return '';
+
+  // Extract speech/words text if specified inside the block (ignoring visual and screen text guidelines)
+  const speechMatch = text.match(/(?:слова|speech|words|текст|голос):\s*([\s\S]+?)(?=\n\s*(?:визуал|visual|кадр|текст на экране|screen text|титры|на экране):|$)/i);
+  if (speechMatch) {
+    return speechMatch[1].replace(/\[[\s\S]*?\]/g, '').replace(/\s+/g, ' ').trim();
+  }
+
   return text
     .replace(/\[[\s\S]*?\]/g, '') // remove square brackets with contents
     .replace(/^(?:hook|intro|хук|интро|зацепка|введение|body|context|тело|основная часть|контекст|triz[- ]?inversion|inversion|triz|триз[- ]?перевертыш|перевертыш|триз|cta|outro|call to action|призыв|аутро):\s*/i, '') // remove leading block label if any

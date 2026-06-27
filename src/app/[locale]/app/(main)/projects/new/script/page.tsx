@@ -1387,6 +1387,28 @@ export default function ScriptLabPage() {
         locale={locale}
         onApplySuggestion={(text) => handleApplyRefinement(text)}
         onUseScript={(text) => handleApprove(text)}
+        onTransferScenario={(text) => {
+          console.log('[ScriptLab] Transferring scenario from Chat:', text);
+          const parsed = parseScriptTextToPayload(text);
+          setScriptData(parsed);
+          setAllScenarios((prev: any) => {
+            const newAll = prev ? { ...prev } : {
+              evergreen: parsed,
+              trends: parsed,
+              edutainment: parsed,
+              controversial: parsed,
+              detective: parsed
+            };
+            newAll[activeScenario] = parsed;
+            return newAll;
+          });
+          if (typeof (globalThis as any).window !== 'undefined') {
+            (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify({
+              ...(allScenarios || {}),
+              [activeScenario]: parsed
+            }));
+          }
+        }}
         onMatrixUpdate={(matrix) => {
           console.log('[ScriptLab] Matrix sync from Chat:', matrix);
           if (matrix.evergreen || matrix.trends) {
