@@ -22,6 +22,7 @@ import { v4 as uuidv4 } from 'uuid';
 interface Message {
   role: 'user' | 'assistant';
   content: string;
+  isError?: boolean;
 }
 
 const parseMessageContent = (content: string) => {
@@ -46,6 +47,44 @@ const getQuickReplies = (content: string): number[] => {
     return [1, 2, 3];
   }
   return [];
+};
+
+const parseNumberedList = (content: string) => {
+  const regex = /(?:^|\n)\s*(\d+)[.)]\s+/g;
+  const matches = [...content.matchAll(regex)];
+  if (matches.length === 0) {
+    return { intro: content, items: [], outro: '' };
+  }
+
+  const items: string[] = [];
+  const intro = content.substring(0, matches[0].index).trim();
+
+  for (let i = 0; i < matches.length - 1; i++) {
+    const start = matches[i].index + matches[i][0].length;
+    const end = matches[i + 1].index;
+    const num = matches[i][1];
+    const text = content.substring(start, end).trim();
+    items.push(`${num}. ${text}`);
+  }
+
+  // Handle last item and potential outro
+  const lastIndex = matches.length - 1;
+  const start = matches[lastIndex].index + matches[lastIndex][0].length;
+  const fullText = content.substring(start);
+  
+  const outroRegex = /\n\n(?!\s*\d+[.)])([\s\S]+)$/;
+  const outroMatch = fullText.match(outroRegex);
+  
+  let text = fullText;
+  let outro = '';
+  if (outroMatch) {
+    text = fullText.substring(0, outroMatch.index).trim();
+    outro = outroMatch[1].trim();
+  }
+  const num = matches[lastIndex][1];
+  items.push(`${num}. ${text}`);
+
+  return { intro, items, outro };
 };
 
 interface StrategistChatProps {
@@ -92,6 +131,8 @@ export function StrategistChat({
   const [isPlayingId, setIsPlayingId] = useState<number | null>(null);
   const [isCheckingAccess, setIsCheckingAccess] = useState(false);
   const [isMuted, setIsMuted] = useState(false);
+  const [lastRequest, setLastRequest] = useState<{ audioBlob?: Blob; text?: string } | null>(null);
+  const [messagePages, setMessagePages] = useState<Record<number, number>>({});
 
   useEffect(() => {
     if (typeof (globalThis as any).window !== 'undefined') {
@@ -106,11 +147,8 @@ export function StrategistChat({
     if (typeof (globalThis as any).window !== 'undefined') {
       (globalThis as any).localStorage.setItem('strategist_muted', String(isMuted));
     }
-    if (isMuted && audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
-      audioPlayerRef.current = null;
-      setIsAIPointing(false);
-      setIsPlayingId(null);
+    if (isMuted) {
+      stopSpeaking();
     }
   }, [isMuted]);
 
@@ -136,6 +174,20 @@ export function StrategistChat({
   const animationRef = useRef<number | null>(null);
   const audioPlayerRef = useRef<any | null>(null);
   const playingMessageIdRef = useRef<number | null>(null);
+
+  const stopSpeaking = () => {
+    if (audioPlayerRef.current) {
+      try {
+        audioPlayerRef.current.pause();
+      } catch (e) {
+        console.warn('Error pausing audio:', e);
+      }
+      audioPlayerRef.current = null;
+    }
+    setIsAIPointing(false);
+    setIsPlayingId(null);
+    playingMessageIdRef.current = null;
+  };
 
   useEffect(() => {
     if (!isOpen) {
@@ -263,19 +315,28 @@ export function StrategistChat({
     }
   };
 
-  const handleSend = async (audioBlob?: Blob, textOverride?: string) => {
+  const handleSend = async (
+    audioBlob?: Blob, 
+    textOverride?: string, 
+    customMessages?: Message[], 
+    isRetry = false
+  ) => {
     const textToSubmit = textOverride !== undefined ? textOverride : input;
     if (!textToSubmit.trim() && !audioBlob || isStreaming) return;
 
     const userMessage = textToSubmit || (audioBlob ? "🎙️ [Voice Message]" : "");
     if (!audioBlob) setInput('');
     
-    setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+    if (!isRetry) {
+      setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
+      setLastRequest({ audioBlob, text: textToSubmit });
+    }
     setIsStreaming(true);
 
     try {
       const formData = new FormData();
-      formData.append('messages', JSON.stringify([...messages, { role: 'user', content: userMessage }]));
+      const apiMessages = customMessages || [...messages, { role: 'user', content: userMessage }];
+      formData.append('messages', JSON.stringify(apiMessages));
       formData.append('projectId', projectId);
       formData.append('locale', locale);
       if (audioBlob) formData.append('audio', audioBlob);
@@ -343,10 +404,29 @@ export function StrategistChat({
       const errorMsg = locale === 'ru'
         ? "Извини, произошла техническая ошибка. Пожалуйста, попробуй еще раз."
         : "Sorry, I lost my train of thought. Please try again.";
-      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg }]);
+      setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, isError: true }]);
     } finally {
       setIsStreaming(false);
     }
+  };
+
+  const handleRetry = () => {
+    if (!lastRequest || isStreaming) return;
+
+    let lastUserIndex = -1;
+    for (let i = messages.length - 1; i >= 0; i--) {
+      if (messages[i].role === 'user') {
+        lastUserIndex = i;
+        break;
+      }
+    }
+
+    if (lastUserIndex === -1) return;
+
+    const messagesToKeep = messages.slice(0, lastUserIndex + 1);
+    setMessages(messagesToKeep);
+
+    handleSend(lastRequest.audioBlob, lastRequest.text, messagesToKeep, true);
   };
 
   const speakResponse = async (text: string) => {
@@ -394,13 +474,7 @@ export function StrategistChat({
   };
 
   const playVoice = async (text: string, id: number) => {
-    if (audioPlayerRef.current) {
-      audioPlayerRef.current.pause();
-      audioPlayerRef.current = null;
-      setIsAIPointing(false);
-      setIsPlayingId(null);
-      playingMessageIdRef.current = null;
-    }
+    stopSpeaking();
     
     setIsPlayingId(id);
     playingMessageIdRef.current = id;
@@ -476,13 +550,7 @@ export function StrategistChat({
 
   const handlePlayVoiceClick = (text: string, id: number) => {
     if (isPlayingId === id) {
-      if (audioPlayerRef.current) {
-        audioPlayerRef.current.pause();
-        audioPlayerRef.current = null;
-      }
-      setIsPlayingId(null);
-      setIsAIPointing(false);
-      playingMessageIdRef.current = null;
+      stopSpeaking();
     } else {
       playVoice(text, id);
     }
@@ -721,19 +789,92 @@ export function StrategistChat({
                     "max-w-[85%] p-3 rounded-2xl text-sm relative group/message transition-all",
                     m.role === 'user' 
                       ? "bg-purple-600/40 text-white rounded-tr-none border border-purple-500/30" 
-                      : "bg-white/5 text-slate-200 rounded-tl-none border border-white/5 hover:bg-white/10"
+                      : m.isError
+                        ? "bg-red-500/10 text-red-200 rounded-tl-none border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)]"
+                        : "bg-white/5 text-slate-200 rounded-tl-none border border-white/5 hover:bg-white/10"
                   )}>
                     {(() => {
                       const { textBefore, scriptText } = parseMessageContent(m.content);
+                      const parsedList = parseNumberedList(textBefore || '');
+                      const shouldPaginate = parsedList.items.length > 3;
+                      const currentPage = messagePages[i] || 0;
+                      const itemsPerPage = 3;
+                      const totalPages = Math.ceil(parsedList.items.length / itemsPerPage);
+                      const startIndex = currentPage * itemsPerPage;
+                      const visibleItems = shouldPaginate 
+                        ? parsedList.items.slice(startIndex, startIndex + itemsPerPage) 
+                        : parsedList.items;
+
                       return (
                         <div className="space-y-3">
-                          {textBefore && <p className="leading-relaxed whitespace-pre-wrap">{textBefore}</p>}
+                          {!shouldPaginate && textBefore && <p className="leading-relaxed whitespace-pre-wrap">{textBefore}</p>}
+                          
+                          {shouldPaginate && (
+                            <div className="space-y-3">
+                              {parsedList.intro && <p className="leading-relaxed whitespace-pre-wrap">{parsedList.intro}</p>}
+                              
+                              <div className="space-y-2.5 border-l-2 border-purple-500/30 pl-3 my-2">
+                                {visibleItems.map((item, idx) => (
+                                  <div key={idx} className="text-slate-300 leading-relaxed whitespace-pre-wrap text-xs md:text-sm">
+                                    {item}
+                                  </div>
+                                ))}
+                              </div>
+                              
+                              {parsedList.outro && <p className="leading-relaxed whitespace-pre-wrap text-xs text-slate-400 font-medium italic">{parsedList.outro}</p>}
+                              
+                              {/* Inline Pagination controls */}
+                              <div className="pt-2 flex items-center justify-between border-t border-white/5 mt-2">
+                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                  {locale === 'ru' 
+                                    ? `Стр. ${currentPage + 1} из ${totalPages}` 
+                                    : `Page ${currentPage + 1} of ${totalPages}`}
+                                </span>
+                                <div className="flex gap-1.5">
+                                  <button
+                                    onClick={() => {
+                                      const prevPage = (currentPage - 1 + totalPages) % totalPages;
+                                      setMessagePages(prev => ({ ...prev, [i]: prevPage }));
+                                    }}
+                                    className="p-1 hover:bg-white/5 active:bg-white/10 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                    title="Previous Page"
+                                  >
+                                    <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+                                  </button>
+                                  <button
+                                    onClick={() => {
+                                      const nextPage = (currentPage + 1) % totalPages;
+                                      setMessagePages(prev => ({ ...prev, [i]: nextPage }));
+                                    }}
+                                    className="p-1 hover:bg-white/5 active:bg-white/10 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                    title="Next Page"
+                                  >
+                                    <ChevronRight className="h-3.5 w-3.5" />
+                                  </button>
+                                </div>
+                              </div>
+                            </div>
+                          )}
+
                           {scriptText && (
                             <div className="mt-2 p-3 bg-black/50 border border-purple-500/30 rounded-xl font-mono text-xs text-purple-200 select-text relative overflow-hidden shadow-inner leading-relaxed">
                               <div className="absolute top-0 right-0 bg-purple-500/20 px-2 py-0.5 text-[8px] font-black uppercase text-purple-300 border-l border-b border-purple-500/20">
                                 Сценарий
                               </div>
                               <p className="whitespace-pre-wrap">{scriptText}</p>
+                            </div>
+                          )}
+                          {m.isError && (
+                            <div className="pt-1">
+                              <motion.button
+                                whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.25)' }}
+                                whileTap={{ scale: 0.98 }}
+                                onClick={handleRetry}
+                                className="group/retry flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-200 text-xs font-bold transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+                              >
+                                <RefreshCw className="h-3.5 w-3.5 transition-transform duration-500 group-hover/retry:rotate-180" />
+                                {locale === 'ru' ? 'Повторить попытку' : 'Retry Request'}
+                              </motion.button>
                             </div>
                           )}
                         </div>
@@ -799,8 +940,57 @@ export function StrategistChat({
                       })()}
                     </div>
                   )}
-                  {/* Quick Replies (Numbers Only) */}
+                  {/* Quick Replies (Numbers Only) & Pagination Shortcuts */}
                   {m.role === 'assistant' && i === messages.length - 1 && !isStreaming && (() => {
+                    const { textBefore } = parseMessageContent(m.content);
+                    const parsedList = parseNumberedList(textBefore || '');
+                    const shouldPaginate = parsedList.items.length > 3;
+                    
+                    if (shouldPaginate) {
+                      const totalPages = Math.ceil(parsedList.items.length / 3);
+                      const currentPage = messagePages[i] || 0;
+                      
+                      const visibleNums: number[] = [];
+                      const itemsPerPage = 3;
+                      const start = currentPage * itemsPerPage;
+                      const end = Math.min(start + itemsPerPage, parsedList.items.length);
+                      
+                      for (let k = start; k < end; k++) {
+                        const match = parsedList.items[k].match(/^\s*(\d+)/);
+                        if (match) {
+                          visibleNums.push(parseInt(match[1], 10));
+                        }
+                      }
+                      
+                      return (
+                        <div className="mt-2.5 flex items-center gap-2 animate-fade-in pl-1">
+                          {visibleNums.map((num) => (
+                            <button
+                              key={num}
+                              onClick={() => {
+                                handleSend(undefined, String(num));
+                              }}
+                              className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                            >
+                              {num}
+                            </button>
+                          ))}
+                          
+                          <button
+                            onClick={() => {
+                              const nextPage = (currentPage + 1) % totalPages;
+                              setMessagePages(prev => ({ ...prev, [i]: nextPage }));
+                            }}
+                            className="h-8 px-3 rounded-lg bg-purple-600 hover:bg-purple-500 border border-purple-500/30 text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center transition-all active:scale-95 shadow-md shadow-purple-900/20 cursor-pointer"
+                          >
+                            {currentPage === totalPages - 1
+                              ? (locale === 'ru' ? '← В начало' : '← Reset')
+                              : (locale === 'ru' ? 'Больше →' : 'More →')}
+                          </button>
+                        </div>
+                      );
+                    }
+
                     const replies = getQuickReplies(m.content);
                     if (replies.length > 0) {
                       return (
@@ -811,7 +1001,7 @@ export function StrategistChat({
                               onClick={() => {
                                 handleSend(undefined, String(num));
                               }}
-                              className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90"
+                              className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90 cursor-pointer"
                             >
                               {num}
                             </button>
@@ -844,12 +1034,22 @@ export function StrategistChat({
                       </>
                     )}
                     {!isRecording && !isStreaming && isAIPointing && (
-                      <>
-                        <Volume2 className="w-3.5 h-3.5 text-green-400 animate-pulse" />
-                        <span className="text-[10px] font-bold text-white uppercase tracking-wider">
-                          {locale === 'ru' ? 'Говорю...' : 'Speaking...'}
+                      <button
+                        onClick={stopSpeaking}
+                        className="flex items-center gap-2 group/stop transition-all cursor-pointer outline-none"
+                        title={locale === 'ru' ? 'Остановить воспроизведение' : 'Stop speaking'}
+                      >
+                        <Volume2 className="w-3.5 h-3.5 text-green-400 animate-pulse group-hover/stop:hidden" />
+                        <VolumeX className="w-3.5 h-3.5 text-red-400 hidden group-hover/stop:block" />
+                        <span className="text-[10px] font-bold text-white uppercase tracking-wider group-hover/stop:text-red-400 transition-colors">
+                          <span className="group-hover/stop:hidden">
+                            {locale === 'ru' ? 'Говорю...' : 'Speaking...'}
+                          </span>
+                          <span className="hidden group-hover/stop:inline">
+                            {locale === 'ru' ? 'Остановить' : 'Stop'}
+                          </span>
                         </span>
-                      </>
+                      </button>
                     )}
                   </div>
                 </div>
