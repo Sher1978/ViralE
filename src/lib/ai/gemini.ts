@@ -288,7 +288,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     2. edutainment (Shadow Investigator): Turning viewer weaknesses into superpowers.
     3. evergreen (Case Study): Desire-based breakdown of results.
     4. trends (The Listicle): Dynamic value list (weakest to strongest).
-    5. detective (Investigative Detective): Mini-investigation finding an unobvious fact by an empathetic researcher.
+    5. detective (Investigative Detective): Mini-investigation by an empathetic researcher. Structure: 1. Hook by topic, 2. Body: take a real fact from the internet/studies and reference it, 3. TRIZ: contradiction using transitions ("однако выяснилось...", "Однако неочевидная сторона вопроса...", "есть и другой взгляд...", "но это также означает..."), 4. CTA: call to leave a comment to find out more.
 
     Structure for EACH scenario (style):
     - style_name: controversial | edutainment | evergreen | trends | detective
