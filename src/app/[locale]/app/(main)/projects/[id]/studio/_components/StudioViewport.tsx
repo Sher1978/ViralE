@@ -4,6 +4,7 @@ import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Upload, Wand2, RefreshCw } from 'lucide-react';
 import { BRollClip, SubtitleClip } from '../_hooks/useStudioState';
+import { splitCaptionText } from '@/lib/utils';
 
 interface StudioViewportProps {
   videoRef: React.RefObject<HTMLVideoElement | null>;
@@ -367,6 +368,30 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
 
                   const isSelected = selectedCaptionId === activeSub.id;
                   const styleConfig = SUBTITLE_STYLES[subtitleStyle] || SUBTITLE_STYLES[0];
+                  const lines = splitCaptionText(activeSub.text);
+
+                  // Extract container animation & placement, but keep styling on spans
+                  const textStyle = {
+                    fontSize: `${subtitleSize}px`,
+                    lineHeight: '1.2',
+                    WebkitTextStroke: styleConfig.WebkitTextStroke || '1px rgba(0,0,0,0.5)',
+                    fontFamily: styleConfig.fontFamily || "'Roboto-Bold', sans-serif",
+                    fontWeight: styleConfig.fontWeight || '900',
+                    fontStyle: styleConfig.fontStyle || 'normal',
+                    color: styleConfig.color,
+                    textShadow: styleConfig.textShadow,
+                    textTransform: styleConfig.textTransform || 'uppercase',
+                    background: styleConfig.background,
+                    WebkitBackgroundClip: styleConfig.WebkitBackgroundClip,
+                    WebkitTextFillColor: styleConfig.WebkitTextFillColor,
+                    letterSpacing: styleConfig.letterSpacing,
+                  };
+
+                  const lineStyle = {
+                    backgroundColor: styleConfig.backgroundColor,
+                    padding: styleConfig.backgroundColor ? (styleConfig.padding || '2px 10px') : undefined,
+                    borderRadius: styleConfig.backgroundColor ? (styleConfig.borderRadius || '4px') : undefined,
+                  };
 
                   return (
                     <motion.div
@@ -387,14 +412,17 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                       style={{ bottom: '15%', x: subtitlePos.x, y: subtitlePos.y }}
                     >
                       <div className="relative group">
-                        <div className="px-6 py-3 text-center uppercase tracking-tight"
-                             style={{ 
-                               fontSize: `${subtitleSize}px`, 
-                               lineHeight: '1',
-                               WebkitTextStroke: '1px rgba(0,0,0,0.5)',
-                               ...styleConfig
-                            }}>
-                          {activeSub.text}
+                        <div className="px-6 py-3 text-center flex flex-col items-center gap-1.5"
+                             style={textStyle}>
+                          {lines.map((line, lIdx) => (
+                            <span 
+                              key={lIdx} 
+                              style={lineStyle} 
+                              className="inline-block"
+                            >
+                              {line}
+                            </span>
+                          ))}
                         </div>
 
                         {/* Resize Handle */}

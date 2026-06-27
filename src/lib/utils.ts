@@ -120,3 +120,34 @@ export function safeJsonParse<T = any>(text: string): T {
     throw new Error(`Failed to parse repaired JSON: ${err.message}`);
   }
 }
+
+/**
+ * Splits subtitle/caption text into balanced lines for rendering.
+ * Matches logic exactly between preview and FFmpeg/Shotstack encoders.
+ */
+export function splitCaptionText(text: string): string[] {
+  if (!text) return [];
+  
+  // Upper-case standard for premium subtitles
+  const cleanText = text.trim().toUpperCase();
+  
+  // Respect user-defined newlines if they are present
+  if (cleanText.includes('\n')) {
+    return cleanText.split('\n').map(line => line.trim()).filter(Boolean);
+  }
+  
+  const words = cleanText.split(/\s+/);
+  if (words.length <= 1) return [cleanText];
+  
+  // If the total text length is short (<= 22 characters), keep it on a single line
+  if (cleanText.length <= 22) {
+    return [cleanText];
+  }
+  
+  // Otherwise, split into two balanced lines at the midpoint of words
+  const midpoint = Math.ceil(words.length / 2);
+  const line1 = words.slice(0, midpoint).join(' ');
+  const line2 = words.slice(midpoint).join(' ');
+  return [line1, line2];
+}
+

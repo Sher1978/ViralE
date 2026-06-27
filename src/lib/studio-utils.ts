@@ -27,6 +27,15 @@ export interface ScriptPayload {
  * Parses raw text containing script blocks into structured segments.
  * Supports both Russian and English headers.
  */
+function cleanBlockText(text: string): string {
+  if (!text) return '';
+  return text
+    .replace(/\[[\s\S]*?\]/g, '') // remove square brackets with contents
+    .replace(/^(?:hook|intro|хук|интро|зацепка|введение|body|context|тело|основная часть|контекст|triz[- ]?inversion|inversion|triz|триз[- ]?перевертыш|перевертыш|триз|cta|outro|call to action|призыв|аутро):\s*/i, '') // remove leading block label if any
+    .replace(/\s+/g, ' ') // collapse whitespaces
+    .trim();
+}
+
 export function parseScriptTextToPayload(text: string): ScriptPayload {
   const result: ScriptPayload = {
     hook: '',
@@ -51,14 +60,14 @@ export function parseScriptTextToPayload(text: string): ScriptPayload {
   const trizMatch = normalizedText.match(trizRegex);
   const ctaMatch = normalizedText.match(ctaRegex);
 
-  if (hookMatch) result.hook = hookMatch[1].trim();
-  if (bodyMatch) result.body = bodyMatch[1].trim();
-  if (trizMatch) result.triz_inversion = trizMatch[1].trim();
-  if (ctaMatch) result.cta = ctaMatch[1].trim();
+  if (hookMatch) result.hook = cleanBlockText(hookMatch[1]);
+  if (bodyMatch) result.body = cleanBlockText(bodyMatch[1]);
+  if (trizMatch) result.triz_inversion = cleanBlockText(trizMatch[1]);
+  if (ctaMatch) result.cta = cleanBlockText(ctaMatch[1]);
 
   // Fallback: If no blocks were extracted, treat the entire text as the hook
   if (!result.hook && !result.body && !result.triz_inversion && !result.cta) {
-    result.hook = normalizedText;
+    result.hook = cleanBlockText(normalizedText);
   }
 
   return result;

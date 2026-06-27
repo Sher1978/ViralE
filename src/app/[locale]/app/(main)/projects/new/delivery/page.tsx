@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project, ProjectVersion } from '@/lib/services/projectService';
 import { idb } from '@/lib/idb';
 import { supabase } from '@/lib/supabase';
+import { splitCaptionText } from '@/lib/utils';
 import DistributionFactory from '../../[id]/studio/_components/DistributionFactory';
 import { Suspense } from 'react';
 import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
@@ -255,11 +256,9 @@ function DeliveryPageContent() {
     const subSize = Math.round(subSizeRaw * baseScale);
 
     const drawtextChain = clips.flatMap(c => {
-      // Split words into two balanced lines exactly like Canvas editor does
-      const words = (c.text || '').toUpperCase().split(' ');
-      const midpoint = Math.ceil(words.length / 2);
-      const line1 = words.slice(0, midpoint).join(' ');
-      const line2 = words.slice(midpoint).join(' ');
+      const lines = splitCaptionText(c.text || '');
+      const line1 = lines[0] || '';
+      const line2 = lines[1] || '';
 
       const txt1 = esc(line1);
       const txt2 = esc(line2);
@@ -346,27 +345,39 @@ function DeliveryPageContent() {
 
       const alphaExpr = `clip((t-${subStart})/${FADE_DUR}\\,0\\,1)*clip((${subEnd}-t)/${FADE_DUR}\\,0\\,1)`;
       const xExpr = `${finalX} + ${dxIn}*(1-${progIn}) + ${dxOut}*${progOut}`;
-      const yExpr1 = `${finalY} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
-      const yExpr2 = `${finalY + subSize + 15} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
+
+      const lineGap = Math.round(5 * baseScale);
+      const hasTwoLines = !!line2;
+      const finalY1 = hasTwoLines 
+        ? Math.round(finalY - (subSize + lineGap) / 2) 
+        : finalY;
+      const finalY2 = Math.round(finalY + (subSize + lineGap) / 2);
+
+      const yExpr1 = `${finalY1} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
+      const yExpr2 = `${finalY2} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
+
+      const padding = Math.round(6 * baseScale);
 
       const lineFilters = [];
 
       // Add Line 1
-      lineFilters.push([
-        `drawtext=fontfile=${font}:text='${txt1}'`,
-        `fontsize=${subSize}`,
-        `fontcolor=${fontcolor}`,
-        `borderw=${borderw}`,
-        `bordercolor=${bordercolor}`,
-        `shadowcolor=${shadowcolor}`,
-        `shadowx=${shadowx}`,
-        `shadowy=${shadowy}`,
-        box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
-        `x='${xExpr}'`,
-        `y='${yExpr1}'`,
-        `alpha='${alphaExpr}'`,
-        `enable='between(t,${subStart},${subEnd})'`,
-      ].filter(Boolean).join(':'));
+      if (line1) {
+        lineFilters.push([
+          `drawtext=fontfile=${font}:text='${txt1}'`,
+          `fontsize=${subSize}`,
+          `fontcolor=${fontcolor}`,
+          `borderw=${borderw}`,
+          `bordercolor=${bordercolor}`,
+          `shadowcolor=${shadowcolor}`,
+          `shadowx=${shadowx}`,
+          `shadowy=${shadowy}`,
+          box ? `box=1:boxcolor=${boxcolor}:boxborderw=${padding}` : '',
+          `x='${xExpr}'`,
+          `y='${yExpr1}'`,
+          `alpha='${alphaExpr}'`,
+          `enable='between(t,${subStart},${subEnd})'`,
+        ].filter(Boolean).join(':'));
+      }
 
       // Add Line 2 if it exists
       if (line2) {
@@ -379,7 +390,7 @@ function DeliveryPageContent() {
           `shadowcolor=${shadowcolor}`,
           `shadowx=${shadowx}`,
           `shadowy=${shadowy}`,
-          box ? `box=1:boxcolor=${boxcolor}:boxborderw=10` : '',
+          box ? `box=1:boxcolor=${boxcolor}:boxborderw=${padding}` : '',
           `x='${xExpr}'`,
           `y='${yExpr2}'`,
           `alpha='${alphaExpr}'`,

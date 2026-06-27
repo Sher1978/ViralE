@@ -35,6 +35,19 @@ const parseMessageContent = (content: string) => {
   return { textBefore: content, scriptText: null };
 };
 
+const getQuickReplies = (content: string): number[] => {
+  if (!content) return [];
+  const hasItem = (num: number) => new RegExp(`(?:^|\\n)\\s*${num}\\.\\s`, 'i').test(content);
+  if (hasItem(9)) {
+    return [1, 2, 3, 4, 5, 6, 7, 8, 9];
+  } else if (hasItem(5)) {
+    return [1, 2, 3, 4, 5];
+  } else if (hasItem(3)) {
+    return [1, 2, 3];
+  }
+  return [];
+};
+
 interface StrategistChatProps {
   projectId: string;
   manifest?: ProductionManifest;
@@ -78,6 +91,28 @@ export function StrategistChat({
   const [showUpgradeModal, setShowUpgradeModal] = useState(false);
   const [isPlayingId, setIsPlayingId] = useState<number | null>(null);
   const [isCheckingAccess, setIsCheckingAccess] = useState(false);
+  const [isMuted, setIsMuted] = useState(false);
+
+  useEffect(() => {
+    if (typeof (globalThis as any).window !== 'undefined') {
+      const stored = (globalThis as any).localStorage.getItem('strategist_muted');
+      if (stored !== null) {
+        setIsMuted(stored === 'true');
+      }
+    }
+  }, []);
+
+  useEffect(() => {
+    if (typeof (globalThis as any).window !== 'undefined') {
+      (globalThis as any).localStorage.setItem('strategist_muted', String(isMuted));
+    }
+    if (isMuted && audioPlayerRef.current) {
+      audioPlayerRef.current.pause();
+      audioPlayerRef.current = null;
+      setIsAIPointing(false);
+      setIsPlayingId(null);
+    }
+  }, [isMuted]);
 
   useEffect(() => {
     if (messages.length === 0) {
@@ -100,6 +135,28 @@ export function StrategistChat({
   const audioChunksRef = useRef<Blob[]>([]);
   const animationRef = useRef<number | null>(null);
   const audioPlayerRef = useRef<any | null>(null);
+  const playingMessageIdRef = useRef<number | null>(null);
+
+  useEffect(() => {
+    if (!isOpen) {
+      if (audioPlayerRef.current && !audioPlayerRef.current.paused) {
+        audioPlayerRef.current.pause();
+        setIsAIPointing(false);
+      }
+    } else {
+      if (audioPlayerRef.current && audioPlayerRef.current.paused) {
+        const lastId = playingMessageIdRef.current;
+        audioPlayerRef.current.play().then(() => {
+          setIsAIPointing(true);
+          if (lastId !== null) {
+            setIsPlayingId(lastId);
+          }
+        }).catch((err: any) => {
+          console.warn('[StrategistChat] Failed to resume audio on open:', err);
+        });
+      }
+    }
+  }, [isOpen]);
 
   useEffect(() => {
     const checkAccess = async () => {
@@ -206,10 +263,11 @@ export function StrategistChat({
     }
   };
 
-  const handleSend = async (audioBlob?: Blob) => {
-    if (!input.trim() && !audioBlob || isStreaming) return;
+  const handleSend = async (audioBlob?: Blob, textOverride?: string) => {
+    const textToSubmit = textOverride !== undefined ? textOverride : input;
+    if (!textToSubmit.trim() && !audioBlob || isStreaming) return;
 
-    const userMessage = input || (audioBlob ? "🎙️ [Voice Message]" : "");
+    const userMessage = textToSubmit || (audioBlob ? "🎙️ [Voice Message]" : "");
     if (!audioBlob) setInput('');
     
     setMessages(prev => [...prev, { role: 'user', content: userMessage }]);
@@ -276,7 +334,7 @@ export function StrategistChat({
       }
 
       // If in voice mode, speak the final response
-      if (isVoiceMode) {
+      if (isVoiceMode && !isMuted) {
         speakResponse(assistantMessage);
       }
 
@@ -292,12 +350,16 @@ export function StrategistChat({
   };
 
   const speakResponse = async (text: string) => {
+    if (isMuted) return;
     try {
       setIsAIPointing(true);
       const response = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text }),
+        body: JSON.stringify({ 
+          text,
+          voice_id: 'TX3LPaxmHKxFdv7VOQHJ' // Male voice (Liam)
+        }),
       });
 
       if (!response.ok) throw new Error('TTS failed');
@@ -337,9 +399,11 @@ export function StrategistChat({
       audioPlayerRef.current = null;
       setIsAIPointing(false);
       setIsPlayingId(null);
+      playingMessageIdRef.current = null;
     }
     
     setIsPlayingId(id);
+    playingMessageIdRef.current = id;
     try {
       setIsAIPointing(true);
       
@@ -349,7 +413,10 @@ export function StrategistChat({
       const response = await fetch('/api/ai/tts', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ text: cleanSpeechText }),
+        body: JSON.stringify({ 
+          text: cleanSpeechText,
+          voice_id: 'TX3LPaxmHKxFdv7VOQHJ' // Male voice (Liam)
+        }),
       });
 
       if (!response.ok) throw new Error('TTS failed');
@@ -389,6 +456,7 @@ export function StrategistChat({
       audio.onended = () => {
         setIsAIPointing(false);
         setIsPlayingId(null);
+        playingMessageIdRef.current = null;
         URL.revokeObjectURL(url);
       };
 
@@ -402,6 +470,7 @@ export function StrategistChat({
       console.error('Playback error:', err);
       setIsAIPointing(false);
       setIsPlayingId(null);
+      playingMessageIdRef.current = null;
     }
   };
 
@@ -413,6 +482,7 @@ export function StrategistChat({
       }
       setIsPlayingId(null);
       setIsAIPointing(false);
+      playingMessageIdRef.current = null;
     } else {
       playVoice(text, id);
     }
@@ -625,6 +695,13 @@ export function StrategistChat({
                     24H TRIAL
                   </div>
                 )}
+                <button 
+                  onClick={() => setIsMuted(prev => !prev)}
+                  className="p-1.5 hover:bg-white/10 rounded-lg text-slate-400 hover:text-white transition-colors"
+                  title={isMuted ? (locale === 'ru' ? "Включить звук" : "Unmute strategist") : (locale === 'ru' ? "Выключить звук" : "Mute strategist")}
+                >
+                  {isMuted ? <VolumeX className="h-4 w-4 text-red-400 animate-pulse" /> : <Volume2 className="h-4 w-4 text-green-400" />}
+                </button>
                 <button onClick={() => setIsOpen(false)} className="text-slate-400 hover:text-white transition-colors">
                   <X className="h-4 w-4" />
                 </button>
@@ -722,6 +799,28 @@ export function StrategistChat({
                       })()}
                     </div>
                   )}
+                  {/* Quick Replies (Numbers Only) */}
+                  {m.role === 'assistant' && i === messages.length - 1 && !isStreaming && (() => {
+                    const replies = getQuickReplies(m.content);
+                    if (replies.length > 0) {
+                      return (
+                        <div className="mt-2.5 flex flex-wrap gap-2 animate-fade-in pl-1">
+                          {replies.map((num) => (
+                            <button
+                              key={num}
+                              onClick={() => {
+                                handleSend(undefined, String(num));
+                              }}
+                              className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90"
+                            >
+                              {num}
+                            </button>
+                          ))}
+                        </div>
+                      );
+                    }
+                    return null;
+                  })()}
                 </div>
               ))}
               {/* Voice Status Indicator */}

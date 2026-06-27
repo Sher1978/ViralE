@@ -1,4 +1,5 @@
 import { supabase } from './supabase';
+import { splitCaptionText } from './utils';
 
 export interface VideoGenerationJob {
   id: string;
@@ -33,35 +34,36 @@ export const safeJobUpdate = async (client: any, id: string, updatePayload: any)
  */
 export function getSubtitleCss(styleIndex: number): string {
   // Base font style and alignments ensuring optimal premium rendering
-  let baseCss = "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-size: 42px; text-transform: uppercase; text-align: center; margin: 0; padding: 0; ";
+  let baseP = "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-size: 42px; text-transform: uppercase; text-align: center; margin: 0; padding: 0; } ";
+  let baseSpan = "p span { ";
 
   switch (styleIndex) {
     case 0: // Yellow Italic
-      return baseCss + "color: #facc15; font-style: italic; font-weight: 900; text-shadow: 1px 1px 0px #000, 0px 0px 10px rgba(0,0,0,0.5); }";
+      return baseP + baseSpan + "color: #facc15; font-style: italic; font-weight: 900; text-shadow: 1px 1px 0px #000, 0px 0px 10px rgba(0,0,0,0.5); }";
     case 1: // White Bold
-      return baseCss + "color: #ffffff; font-weight: 900; text-shadow: 0 4px 10px rgba(0,0,0,0.6), 0px 0px 20px rgba(0,0,0,0.3); }";
+      return baseP + baseSpan + "color: #ffffff; font-weight: 900; text-shadow: 0 4px 10px rgba(0,0,0,0.6), 0px 0px 20px rgba(0,0,0,0.3); }";
     case 2: // Red Outline
-      return baseCss + "color: #ef4444; font-weight: 900; -webkit-text-stroke: 1.5px white; text-shadow: 2px 2px 0px rgba(0,0,0,0.8); }";
+      return baseP + baseSpan + "color: #ef4444; font-weight: 900; -webkit-text-stroke: 1.5px white; text-shadow: 2px 2px 0px rgba(0,0,0,0.8); }";
     case 3: // Cyber Neon
-      return baseCss + "color: #22d3ee; font-weight: 700; font-style: italic; text-shadow: 0 0 12px #22d3ee, 0px 0px 4px rgba(0,0,0,0.8); }";
+      return baseP + baseSpan + "color: #22d3ee; font-weight: 700; font-style: italic; text-shadow: 0 0 12px #22d3ee, 0px 0px 4px rgba(0,0,0,0.8); }";
     case 4: // Minimalist
-      return "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-size: 32px; text-transform: uppercase; text-align: center; margin: 0; color: #ffffff; background-color: rgba(0,0,0,0.65); padding: 8px 16px; border-radius: 8px; font-weight: 500; display: inline-block; }";
+      return "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-size: 32px; text-transform: uppercase; text-align: center; margin: 0; } p span { color: #ffffff; background-color: rgba(0,0,0,0.65); padding: 8px 16px; border-radius: 8px; font-weight: 500; display: inline-block; margin-bottom: 6px; }";
     case 5: // Boxy Yellow
-      return "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-size: 32px; text-transform: uppercase; text-align: center; margin: 0; color: #000000; background-color: #facc15; padding: 6px 16px; font-weight: 900; border-radius: 4px; display: inline-block; }";
+      return "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-size: 32px; text-transform: uppercase; text-align: center; margin: 0; } p span { color: #000000; background-color: #facc15; padding: 6px 16px; font-weight: 900; border-radius: 4px; display: inline-block; margin-bottom: 6px; }";
     case 6: // Gradient
-      return baseCss + "color: #ffffff; font-weight: 900; text-shadow: 0 2px 0px #888888, 0 4px 10px rgba(0,0,0,0.6); }";
+      return baseP + baseSpan + "color: #ffffff; font-weight: 900; text-shadow: 0 2px 0px #888888, 0 4px 10px rgba(0,0,0,0.6); }";
     case 7: // Soft Pink
-      return baseCss + "color: #f472b6; font-weight: 600; text-shadow: 0 0 15px rgba(244,114,182,0.6), 0px 0px 4px rgba(0,0,0,0.8); }";
+      return baseP + baseSpan + "color: #f472b6; font-weight: 600; text-shadow: 0 0 15px rgba(244,114,182,0.6), 0px 0px 4px rgba(0,0,0,0.8); }";
     case 8: // Ghostly
-      return baseCss + "color: rgba(255,255,255,0.55); font-weight: 300; letter-spacing: 0.08em; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }";
+      return baseP + baseSpan + "color: rgba(255,255,255,0.55); font-weight: 300; letter-spacing: 0.08em; text-shadow: 0 2px 4px rgba(0,0,0,0.4); }";
     case 9: // Impact
-      return baseCss + "color: #ffffff; font-weight: 900; text-shadow: 0 0 20px #ffffff, 0 0 5px rgba(0,0,0,0.8); }";
+      return baseP + baseSpan + "color: #ffffff; font-weight: 900; text-shadow: 0 0 20px #ffffff, 0 0 5px rgba(0,0,0,0.8); }";
     case 10: // Hacker
-      return "p { font-family: 'Courier New', 'Courier', monospace; font-size: 38px; color: #10b981; text-shadow: 0 0 8px #10b981, 0 0 2px rgba(0,0,0,0.8); font-weight: bold; text-align: center; margin: 0; padding: 0; text-transform: uppercase; }";
+      return "p { font-family: 'Courier New', 'Courier', monospace; font-size: 38px; text-align: center; margin: 0; padding: 0; } p span { color: #10b981; text-shadow: 0 0 8px #10b981, 0 0 2px rgba(0,0,0,0.8); font-weight: bold; text-transform: uppercase; }";
     case 11: // Royal Gold
-      return baseCss + "color: #fbbf24; font-weight: 800; font-style: italic; text-shadow: 0 4px 8px rgba(0,0,0,0.7), 0 2px 0px #000; }";
+      return baseP + baseSpan + "color: #fbbf24; font-weight: 800; font-style: italic; text-shadow: 0 4px 8px rgba(0,0,0,0.7), 0 2px 0px #000; }";
     default:
-      return baseCss + "color: #ffffff; font-weight: 900; text-shadow: 0 0 20px rgba(0,0,0,0.8); }";
+      return baseP + baseSpan + "color: #ffffff; font-weight: 900; text-shadow: 0 0 20px rgba(0,0,0,0.8); }";
   }
 }
 
@@ -141,7 +143,7 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
 
     try {
       const { script, settings } = job.config;
-      const { brollClips = [], subtitleClips = [], aRollUrl: manifestARollUrl, showSubtitles = true } = script || {};
+      const { brollClips = [], subtitleClips = [], aRollUrl: manifestARollUrl, showSubtitles = true, subtitleStyle = 0 } = script || {};
       const aRollUrl = manifestARollUrl || script?.videoUrl || script?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl;
 
       if (!aRollUrl) throw new Error('A-Roll URL is missing in manifest');
@@ -158,19 +160,23 @@ export class ShotstackVideoGenerator implements IVideoGenerator {
         })
       );
 
-      const formattedSubtitleClips = showSubtitles ? subtitleClips.map((s: any) => ({
-        asset: {
-          type: "html",
-          html: `<p data-alignment="center">${s.text}</p>`,
-          css: "p { font-family: 'Montserrat-ExtraBold', 'Montserrat ExtraBold', 'Montserrat', sans-serif; font-weight: normal; color: #ffffff; font-size: 42px; text-transform: uppercase; text-shadow: 0 0 20px rgba(0,0,0,0.8); }",
-          width: 800,
-          height: 200
-        },
-        start: s.startTime,
-        length: Math.max(0.1, s.endTime - s.startTime),
-        position: "center",
-        offset: { y: -0.2 } // Lower third
-      })) : [];
+      const formattedSubtitleClips = showSubtitles ? subtitleClips.map((s: any) => {
+        const lines = splitCaptionText(s.text || '');
+        const htmlLines = lines.map(line => `<span>${line}</span>`).join('<br/>');
+        return {
+          asset: {
+            type: "html",
+            html: `<p data-alignment="center">${htmlLines}</p>`,
+            css: getSubtitleCss(subtitleStyle),
+            width: 800,
+            height: 250
+          },
+          start: s.startTime,
+          length: Math.max(0.1, s.endTime - s.startTime),
+          position: "center",
+          offset: { y: -0.2 } // Lower third
+        };
+      }) : [];
 
       const formattedBrollClips = signedBrollClips.filter((b: any) => b.url).map((b: any) => ({
         asset: {
@@ -678,19 +684,23 @@ export async function submitVideoJob(jobId: string) {
       aRollLength = Math.max(1, Math.min(300, aRollLength + 0.5));
       console.log(`[Trace 13-Shotstack-Duration] Calculated A-Roll rendering duration: ${aRollLength}s (from clips)`);
 
-      const formattedSubtitleClips = showSubtitles ? subtitleClips.map((s: any) => ({
-        asset: {
-          type: "html",
-          html: `<p data-alignment="center">${s.text}</p>`,
-          css: getSubtitleCss(subtitleStyle),
-          width: 800,
-          height: 250
-        },
-        start: s.startTime,
-        length: Math.max(0.1, s.endTime - s.startTime),
-        position: "center",
-        offset: { y: -0.2 }
-      })) : [];
+      const formattedSubtitleClips = showSubtitles ? subtitleClips.map((s: any) => {
+        const lines = splitCaptionText(s.text || '');
+        const htmlLines = lines.map(line => `<span>${line}</span>`).join('<br/>');
+        return {
+          asset: {
+            type: "html",
+            html: `<p data-alignment="center">${htmlLines}</p>`,
+            css: getSubtitleCss(subtitleStyle),
+            width: 800,
+            height: 250
+          },
+          start: s.startTime,
+          length: Math.max(0.1, s.endTime - s.startTime),
+          position: "center",
+          offset: { y: -0.2 }
+        };
+      }) : [];
 
       const formattedBrollClips = signedBrollClips.filter((b: any) => b.url).map((b: any) => ({
         asset: {
