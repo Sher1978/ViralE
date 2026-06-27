@@ -159,7 +159,7 @@ export default function ScriptLabPage() {
   };
 
 
-  const [activeScenario, setActiveScenario] = useState<'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling'>('evergreen');
+  const [activeScenario, setActiveScenario] = useState<'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective'>('evergreen');
   const [allScenarios, setAllScenarios] = useState<any>(() => {
     if (typeof (globalThis as any).window !== 'undefined') {
       const saved = (globalThis as any).sessionStorage?.getItem('allScenarios');
@@ -220,7 +220,7 @@ export default function ScriptLabPage() {
     return () => clearInterval(interval);
   }, [isLoading, isGenerating, loadingSteps.length]);
   
-  const [selectionSources, setSelectionSources] = useState<Record<string, 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling'>>({
+  const [selectionSources, setSelectionSources] = useState<Record<string, 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective'>>({
     hook: 'evergreen',
     body: 'evergreen',
     triz_inversion: 'evergreen',
@@ -231,7 +231,7 @@ export default function ScriptLabPage() {
   const [copyFeedback, setCopyFeedback] = useState(false);
 
 
-  const scenarios: ('edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling')[] = ['edutainment', 'evergreen', 'trends', 'controversial', 'storytelling'];
+  const scenarios: ('edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective')[] = ['edutainment', 'evergreen', 'trends', 'controversial', 'detective'];
 
   const [currentProject, setCurrentProject] = useState<Project | null>(null);
   const [currentVersion, setCurrentVersion] = useState<ProjectVersion | null>(null);
@@ -346,7 +346,7 @@ export default function ScriptLabPage() {
               trends: reconstructedScript,
               edutainment: reconstructedScript,
               controversial: reconstructedScript,
-              storytelling: reconstructedScript
+              detective: reconstructedScript
             };
             setAllScenarios(dummyAllScenarios);
           } else {
@@ -356,7 +356,7 @@ export default function ScriptLabPage() {
               trends: data,
               edutainment: data,
               controversial: data,
-              storytelling: data
+              detective: data
             };
             setAllScenarios(dummyAllScenarios);
           }
@@ -388,11 +388,11 @@ export default function ScriptLabPage() {
     loadData();
   }, [projectIdParam, versionIdParam, searchParams]);
 
-  const handleScenarioSwitch = (scenario: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling') => {
+  const handleScenarioSwitch = (scenario: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective') => {
     setActiveScenario(scenario);
   };
 
-  const handleBlockSelect = (type: string, source: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'storytelling') => {
+  const handleBlockSelect = (type: string, source: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective') => {
     setSelectionSources(prev => ({ ...prev, [type]: source }));
   };
 
@@ -1301,7 +1301,7 @@ export default function ScriptLabPage() {
             { id: 'evergreen', color: '#00FF9F', label: 'Evergreen' },
             { id: 'trends', color: '#FF8A00', label: 'Trends' },
             { id: 'controversial', color: '#FF2D55', label: 'Controversial' },
-            { id: 'storytelling', color: '#00D2FF', label: 'Storytelling' }
+            { id: 'detective', color: '#00D2FF', label: locale === 'ru' ? 'Детектив' : 'Detective' }
           ]} 
         />
       </div>
@@ -1355,7 +1355,7 @@ export default function ScriptLabPage() {
           { id: 'triz_inversion', label: locale === 'ru' ? 'ТРИЗ-ПЕРЕВЕРТЫШ' : 'TRIZ-INVERSION' },
           { id: 'cta', label: locale === 'ru' ? 'CTA (ПРИЗЫВ)' : 'CTA' }
         ]}
-        scenarios={['edutainment', 'evergreen', 'trends', 'controversial', 'storytelling']}
+        scenarios={['edutainment', 'evergreen', 'trends', 'controversial', 'detective']}
         selectionSources={selectionSources}
         allScenarios={allScenarios}
         scriptData={scriptData}
@@ -1399,7 +1399,7 @@ export default function ScriptLabPage() {
              // Map styles array to the 5-scenario format if possible, or just use styles[0]
              const mapped: any = {};
              matrix.styles.forEach((s: any, i: number) => {
-                const key = i === 0 ? 'edutainment' : i === 1 ? 'evergreen' : i === 2 ? 'trends' : i === 3 ? 'controversial' : 'storytelling';
+                const key = i === 0 ? 'edutainment' : i === 1 ? 'evergreen' : i === 2 ? 'trends' : i === 3 ? 'controversial' : 'detective';
                 mapped[key] = {
                    hook: s.hook,
                    body: s.body,

@@ -142,7 +142,7 @@ export async function generateScript(
     
     ${trizMatrix ? `
     --- STRATEGIC TRIZ 9-SCREEN MATRIX BLUEPRINT ---
-    Use the following marketing analysis to enrich your scenarios, hooks, context and details. Align each scenario style with a relevant screen from this TRIZ matrix (e.g. Evergreen with System/Present, Trend with Supersystem/Future, Storytelling with System/Past):
+    Use the following marketing analysis to enrich your scenarios, hooks, context and details. Align each scenario style with a relevant screen from this TRIZ matrix (e.g. Evergreen with System/Present, Trend with Supersystem/Future, Detective with System/Past):
     ${trizMatrix}
     ` : ""}
     
@@ -153,8 +153,8 @@ export async function generateScript(
     CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". No descriptions of what to say. ONLY the final words the actor will dictate.
     
     1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
-    2. body: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration".
-    3. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato.
+    2. body: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration". MUST be detailed, rich in specifics (avoid minimalism), and must reference facts, scientific proof, or statistics (e.g., "Scientists proved...", "Recent studies show...", "According to statistics...", "Ученые доказали...", "Последние исследования...").
+    3. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato. STYLE: Empathetic researcher conducting a mini-investigation to find an unobvious fact. MUST be highly detailed, deep, and cite research/data to back up the claim.
     4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: "That's why..." or "So if you want...". Call to leave a KEYWORD in comments.
 
     STYLES to generate for the idea:
@@ -162,10 +162,10 @@ export async function generateScript(
     2. edutainment (Shadow Investigator): Turning viewer weaknesses into superpowers.
     3. evergreen (Case Study): Desire-based breakdown of results.
     4. trends (The Listicle): Dynamic value list (weakest to strongest).
-    5. storytelling (Vulnerable Story): Trust-building through past failure.
+    5. detective (Investigative Detective): Mini-investigation finding an unobvious fact by an empathetic researcher.
 
     Structure for EACH scenario (style):
-    - style_name: controversial | edutainment | evergreen | trends | storytelling
+    - style_name: controversial | edutainment | evergreen | trends | detective
     - hook: { visual: "...", screen_text: "...", words: "..." }
     - body: { words: "..." }
     - triz_inversion: { words: "..." }
@@ -181,7 +181,7 @@ export async function generateScript(
       "edutainment": { ... },
       "evergreen": { ... },
       "trends": { ... },
-      "storytelling": { ... }
+      "detective": { ... }
     }
   `;
 

@@ -146,7 +146,7 @@ export const strategistServerService = {
 
       4. ГЕНЕРАЦИЯ 5 СЦЕНАРИЕВ (КОНТЕНТ-ЛЕГО):
          После того как пользователь выбрал одну из 9 идей (ТРИЗ), сгенерируй 5 вариантов сценариев по методологии Контент-Лего (смотри CONTENT_LEGO_METHODOLOGY).
-         Типы сценариев: EDUTAINMENT, EVERGREEN, TRENDS, CONTROVERSIAL, STORYTELLING.
+         Типы сценариев: EDUTAINMENT, EVERGREEN, TRENDS, CONTROVERSIAL, DETECTIVE.
          Каждый сценарий должен состоять из блоков: Хук (Hook), Тело (Body), ТРИЗ-Перевертыш (TRIZ-Inversion), CTA.
          Дай пользователю выбрать один из 5 вариантов для доработки или утверждения.
 
