@@ -7,6 +7,7 @@ import {
   Monitor, FileVideo, RefreshCw, Type, Trash2 
 } from 'lucide-react';
 import { useRouter } from '@/navigation';
+import { useAppData } from '@/components/providers/AppDataProvider';
 
 interface StudioSidebarProps {
   activeTab: 'concept' | 'teleprompter' | 'assembly' | 'knowledge' | 'assets' | 'branch' | 'script_editor';
@@ -86,11 +87,12 @@ export const StudioSidebar = React.memo(({
 }: StudioSidebarProps) => {
   const router = useRouter();
   const { id: projectId } = useParams() as { id: string };
+  const { hasStrategistAccess } = useAppData();
 
   return (
     <aside className="hidden lg:flex w-80 bg-[#0a0a14] border-r border-white/5 flex-col z-20 shadow-2xl">
       <div className="p-8 border-b border-white/5 flex items-center justify-between">
-        <h1 className="text-sm font-black tracking-[0.2em] uppercase italic text-white flex items-center gap-3">
+        <h1 className={`text-sm font-black tracking-[0.2em] uppercase italic text-white flex items-center gap-3 ${hasStrategistAccess ? 'animate-[pulse_3s_ease-in-out_infinite]' : ''}`}>
            <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
            Viral<span className="text-purple-500">E</span>
         </h1>

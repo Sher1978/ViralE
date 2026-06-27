@@ -12,6 +12,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project } from '@/lib/services/projectService';
 import { profileService } from '@/lib/services/profileService';
 import { useRouter } from '@/navigation';
+import { useAppData } from '@/components/providers/AppDataProvider';
 const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { ssr: false });
 
 // ── Project Card Helper ───────────────────────────────────────────────────
@@ -98,6 +99,7 @@ export default function ProjectsPage() {
   const t = useTranslations('projects');
   const locale = useLocale();
   const router = useRouter();
+  const { hasStrategistAccess } = useAppData();
 
   const [isLoading, setIsLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
@@ -158,7 +160,7 @@ export default function ProjectsPage() {
       {/* Fixed Header */}
       <header className="px-6 pt-[56px] pb-4 flex items-center justify-between shrink-0 z-50">
         <div className="flex flex-col">
-          <h1 className="text-4xl font-black italic tracking-tighter leading-none text-white">
+          <h1 className={`text-4xl font-black italic tracking-tighter leading-none text-white ${hasStrategistAccess ? 'animate-[pulse_3s_ease-in-out_infinite]' : ''}`}>
             VIRAL<span className="text-purple-500">E</span>
           </h1>
           <p className="text-[8px] font-black uppercase tracking-[0.4em] text-white/20 mt-1 leading-none">

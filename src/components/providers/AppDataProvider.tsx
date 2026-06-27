@@ -4,12 +4,14 @@ import React, { createContext, useContext, useEffect, useState, useCallback } fr
 import { profileService, Profile } from '@/lib/services/profileService';
 import { supabase } from '@/lib/supabase';
 import { Idea } from '@/components/ideas/IdeaCard';
+import { strategistService } from '@/lib/services/strategistService';
 
 import { useLocale } from 'next-intl';
 
 interface AppDataContextType {
   profile: Profile | null;
   dnaComplete: boolean;
+  hasStrategistAccess: boolean;
   ideas: Idea[];
   archivedIdeas: Idea[];
   usedIdeas: Idea[];
@@ -34,6 +36,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [loadingArchived, setLoadingArchived] = useState(true);
   const [loadingUsed, setLoadingUsed] = useState(true);
   const [dnaComplete, setDnaComplete] = useState(false);
+  const [hasStrategistAccess, setHasStrategistAccess] = useState(false);
 
   const fetchProfile = useCallback(async () => {
     const prof = await profileService.getOrCreateProfile();
@@ -43,6 +46,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       const validAnswersCount = Object.values(answers).filter((v: any) => v && v.toString().length > 2).length;
       const isComplete = validAnswersCount > 0 || (prof.digital_shadow_prompt && prof.digital_shadow_prompt.trim().length > 10);
       setDnaComplete(!!isComplete);
+
+      // Fetch strategist access status
+      strategistService.getAccessStatus(prof.id).then(status => {
+        setHasStrategistAccess(status.hasAccess);
+      }).catch(err => {
+        console.error('Failed to fetch strategist access status:', err);
+      });
 
       // Sync user language from database settings & auto-redirect on mismatch
       const preferredLanguage = prof.preferred_language;
@@ -223,6 +233,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     <AppDataContext.Provider value={{
       profile,
       dnaComplete,
+      hasStrategistAccess,
       ideas,
       archivedIdeas,
       usedIdeas,
