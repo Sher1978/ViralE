@@ -1,9 +1,10 @@
 import { NextResponse } from 'next/server';
 import { getAuthContext } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function DELETE() {
   try {
-    const { user, supabase: authorizedSupabase } = await getAuthContext();
+    const { user } = await getAuthContext();
 
     if (!user) {
       return new NextResponse('Unauthorized', { status: 401 });
@@ -11,8 +12,8 @@ export async function DELETE() {
 
     const userId = user.id;
 
-    // Delete all existing ideas (new, archived, used) for this user to completely clear the matrix
-    const { error } = await authorizedSupabase
+    // Delete using supabaseAdmin to bypass RLS restrictions
+    const { error } = await supabaseAdmin
       .from('ideation_feed')
       .delete()
       .eq('user_id', userId);

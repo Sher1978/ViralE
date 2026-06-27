@@ -130,6 +130,7 @@ CREATE POLICY "Users can create their own project versions" ON public.project_ve
 CREATE POLICY "Users can view their own ideas" ON public.ideation_feed FOR SELECT USING (auth.uid() = user_id);
 CREATE POLICY "Users can insert their own ideas" ON public.ideation_feed FOR INSERT WITH CHECK (auth.uid() = user_id);
 CREATE POLICY "Users can update their own ideas" ON public.ideation_feed FOR UPDATE USING (auth.uid() = user_id);
+CREATE POLICY "Users can delete their own ideas" ON public.ideation_feed FOR DELETE USING (auth.uid() = user_id);
 
 -- 5. Credits Transactions Policies
 CREATE POLICY "Users can view their own transactions" ON public.credits_transactions FOR SELECT USING (auth.uid() = user_id);

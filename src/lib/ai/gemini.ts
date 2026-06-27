@@ -40,8 +40,8 @@ export function getModel(
                     
                     CRITICAL LANGUAGE RULES:
                     1. Respond EXCLUSIVELY in ${language.toUpperCase()}.
-                    2. NEVER use English introductory phrases like "The thing is...", "Notice this...", "That's why...", "Однако...".
-                    3. Instead, use natural ${language.toUpperCase()} equivalents (e.g. for Russian: "Дело в том, что...", "Заметьте...", "Именно поэтому...", "Но самое интересное...").
+                    2. NEVER use dry, robotic, or overly technical introductory phrases like "Позвольте объяснить", "Дело в том, что...", "Notice this...", "Let me explain...".
+                    3. Instead, use diverse, short, natural conversational transitions (e.g. for Russian: "Смотрите...", "Смысл в том...", "Тут фишка в чём...", "Прикол в том...", "Глядите...", "На самом деле...", "Но самое интересное...").
                     4. Start directly with the text. No conversational filler.
                     5. Keep the output descriptive, engaging, and professional. Avoid dry or overly robotic phrasing.`
                   },
@@ -279,9 +279,9 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". No descriptions of what to say. ONLY the final words the actor will dictate.
     
     1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
-    2. body: Context & Agitation (15-20s dictation). ENTRY PHRASE: "The thing is..." or "Notice this..." or "Let me explain...". Focus on "Thought Narration". MUST be detailed, rich in specifics (avoid minimalism), and must reference facts, scientific proof, or statistics (e.g., "Scientists proved...", "Recent studies show...", "According to statistics...", "Ученые доказали...", "Последние исследования...").
+    2. body: Context & Agitation (15-20s dictation). Focus on "Thought Narration". MUST use a short, diverse, natural conversational transition at the beginning (e.g. "Look...", "Actually...", "Here is the catch...", "Смотрите...", "На самом деле...", "Тут фишка в чём...", "Глядите..."). NEVER use formal, technical or bookish language like "Let me explain" or "Позвольте объяснить". MUST be detailed, rich in specifics (avoid minimalism), and must reference facts, scientific proof, or statistics (e.g., "Scientists proved...", "Recent studies show...", "According to statistics...", "Ученые доказали...", "Последние исследования...").
     3. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato. STYLE: Empathetic researcher conducting a mini-investigation to find an unobvious fact. MUST be highly detailed, deep, and cite research/data to back up the claim.
-    4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: "That's why..." or "So if you want...". Call to leave a KEYWORD in comments.
+    4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: A natural, short conversational call (e.g. "So...", "If you want...", "Поэтому...", "Так что если хотите..."). Call to leave a KEYWORD in comments.
 
     STYLES to generate for the idea:
     1. controversial (The Contrarian): Attacking popular myths.
