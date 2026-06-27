@@ -20,10 +20,12 @@ import { v4 as uuidv4 } from 'uuid';
 
 
 interface Message {
-  role: 'user' | 'assistant';
+  role: 'user' | 'assistant' | 'system';
   content: string;
   isError?: boolean;
+  isHidden?: boolean;
 }
+
 
 const parseMessageContent = (content: string) => {
   const scriptRegex = /<FINAL_SCRIPT>([\s\S]*?)(?:<\/FINAL_SCRIPT>|$)/i;
@@ -48,6 +50,21 @@ const getQuickReplies = (content: string): number[] => {
   }
   return [];
 };
+
+const extractFoundFact = (messages: Message[]): string | null => {
+  for (let i = messages.length - 1; i >= 0; i--) {
+    const m = messages[i];
+    if (m.role === 'assistant') {
+      const regex = /(?:Нашел повод|Нашел новость|Found fact|Found news):\s*([\s\S]*?)(?=\n\s*\d+\.|\n\n\s*\d+\.|\n\n\s*\[|\n\s*\[|$)/i;
+      const match = m.content.match(regex);
+      if (match && match[1].trim()) {
+        return match[1].trim().replace(/^\*\*|\*\*$/g, '').replace(/^«|»$/g, '').trim();
+      }
+    }
+  }
+  return null;
+};
+
 
 const parseNumberedList = (content: string) => {
   const regex = /(?:^|\n)\s*(\d+)[.)]\s+/g;
@@ -311,6 +328,7 @@ export function StrategistChat({
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
+  const [isSearching, setIsSearching] = useState(false);
   const [access, setAccess] = useState<AccessStatus | null>(null);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -749,6 +767,65 @@ export function StrategistChat({
         // Silently ignore parsing errors for non-matrix messages
       }
 
+      // --- SEARCH INTERCEPTOR ---
+      const searchMatch = assistantMessage.match(/\[SEARCH:\s*([^\]]+)\]/i);
+      if (searchMatch) {
+        const searchQuery = searchMatch[1].trim();
+        console.log('[Search Interceptor] Query:', searchQuery);
+        
+        setIsSearching(true);
+        setIsStreaming(true);
+
+        try {
+          const searchRes = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+          if (searchRes.ok) {
+            const searchData = await searchRes.json();
+            const resultsText = (searchData.results || [])
+              .map((r: any) => `Source: ${r.title}\nURL: ${r.url}\nContent: ${r.content}`)
+              .join('\n\n');
+
+            const hiddenMsg: Message = {
+              role: 'user',
+              content: `[SEARCH RESULTS FOR "${searchQuery}"]:\n${resultsText}\n\nNow, execute Step 3 (АКТУАЛИЗАЦИЯ И ПОИСК): output the "Нашел повод..." fact details, then offer 9 TRIZ angles with patterns, and prompt the user to choose.`,
+              isHidden: true
+            };
+
+            const updatedHistory: Message[] = [
+              ...apiMessages,
+              { role: 'assistant', content: assistantMessage },
+              hiddenMsg
+            ];
+
+            setMessages(updatedHistory);
+            setIsStreaming(false);
+            setIsSearching(false);
+            await handleSend(undefined, "", updatedHistory, true);
+            return;
+          } else {
+            throw new Error('Search API returned error response');
+          }
+        } catch (err) {
+          console.error('[Search Interceptor] Failed to fetch:', err);
+          const hiddenMsg: Message = {
+            role: 'user',
+            content: `[SEARCH FAILED]\nProceed to Step 3 (АКТУАЛИЗАЦИЯ И ПОИСК) using a realistic fact/myth from your training data, output the "Нашел повод..." details, then offer 9 TRIZ angles with patterns, and prompt the user to choose.`,
+            isHidden: true
+          };
+
+          const updatedHistory: Message[] = [
+            ...apiMessages,
+            { role: 'assistant', content: assistantMessage },
+            hiddenMsg
+          ];
+
+          setMessages(updatedHistory);
+          setIsStreaming(false);
+          setIsSearching(false);
+          await handleSend(undefined, "", updatedHistory, true);
+          return;
+        }
+      }
+
     } catch (error) {
       console.error('Chat error:', error);
       const errorMsg = locale === 'ru'
@@ -1075,299 +1152,339 @@ export function StrategistChat({
 
             {/* Messages Area */}
             <div className="flex-1 overflow-y-auto p-4 space-y-4 custom-scrollbar z-10 relative">
-              {messages.map((m, i) => (
-                <div key={i} className={cn("flex flex-col group", m.role === 'user' ? "items-end" : "items-start")}>
-                  {m.role === 'assistant' && (
-                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-400/60 mb-1 ml-1 flex items-center gap-1.5">
-                      <Terminal className="w-2.5 h-2.5" /> {t('strategistIntelligence')}
-                    </span>
-                  )}
-                  <div className={cn(
-                    "max-w-[85%] p-3 rounded-2xl text-sm relative group/message transition-all",
-                    m.role === 'user' 
-                      ? "bg-purple-600/40 text-white rounded-tr-none border border-purple-500/30" 
-                      : m.isError
-                        ? "bg-red-500/10 text-red-200 rounded-tl-none border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)]"
-                        : "bg-white/5 text-slate-200 rounded-tl-none border border-white/5 hover:bg-white/10"
-                  )}>
-                    {(() => {
-                      const scenarioObj = parseScenariosFromText(m.content);
-                      if (scenarioObj) {
-                        const activeTab = activeScenarioTabs[i] || scenarioObj.scenarios[0].id;
-                        const activeScenario = scenarioObj.scenarios.find(s => s.id === activeTab) || scenarioObj.scenarios[0];
-                        
-                        return (
-                          <div className="space-y-4">
-                            {scenarioObj.intro && <p className="leading-relaxed whitespace-pre-wrap text-slate-300 text-xs md:text-sm">{scenarioObj.intro}</p>}
+              {(() => {
+                const visibleMessages = messages.filter(m => !m.isHidden);
+                return visibleMessages.map((m, i) => {
+                  const displayContent = m.content.replace(/\[SEARCH:\s*[^\]]+\]/gi, '').trim();
+                  
+                  return (
+                    <div key={i} className={cn("flex flex-col group", m.role === 'user' ? "items-end" : "items-start")}>
+                      {m.role === 'assistant' && (
+                        <span className="text-[9px] font-black uppercase tracking-widest text-purple-400/60 mb-1 ml-1 flex items-center gap-1.5">
+                          <Terminal className="w-2.5 h-2.5" /> {t('strategistIntelligence')}
+                        </span>
+                      )}
+                      <div className={cn(
+                        "max-w-[85%] p-3 rounded-2xl text-sm relative group/message transition-all",
+                        m.role === 'user' 
+                          ? "bg-purple-600/40 text-white rounded-tr-none border border-purple-500/30" 
+                          : m.isError
+                            ? "bg-red-500/10 text-red-200 rounded-tl-none border border-red-500/20 shadow-[0_0_15px_rgba(239,68,68,0.05)]"
+                            : "bg-white/5 text-slate-200 rounded-tl-none border border-white/5 hover:bg-white/10"
+                      )}>
+                        {(() => {
+                          const scenarioObj = parseScenariosFromText(displayContent);
+                          if (scenarioObj) {
+                            const activeTab = activeScenarioTabs[i] || scenarioObj.scenarios[0].id;
+                            const activeScenario = scenarioObj.scenarios.find(s => s.id === activeTab) || scenarioObj.scenarios[0];
                             
-                            {/* Tabs Header */}
-                            <div className="flex flex-wrap gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
-                              {scenarioObj.scenarios.map(s => {
-                                const isActive = s.id === activeTab;
-                                return (
-                                  <button
-                                    key={s.id}
-                                    onClick={() => setActiveScenarioTabs(prev => ({ ...prev, [i]: s.id }))}
-                                    className={cn(
-                                      "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
-                                      isActive 
-                                        ? "bg-purple-600 text-white shadow-md shadow-purple-900/30" 
-                                        : "text-slate-400 hover:text-white hover:bg-white/5"
-                                    )}
-                                  >
-                                    {s.label}
-                                  </button>
-                                );
-                              })}
-                            </div>
-                            
-                            {/* Tab Content (Colorized Scenario) */}
-                            <div className="p-3 bg-black/35 border border-white/5 rounded-xl max-h-[300px] overflow-y-auto custom-scrollbar">
-                              {renderColorizedText(activeScenario.content)}
-                            </div>
-                            
-                            {/* Action Button: Transfer Scenario */}
-                            <div className="pt-1 flex justify-end">
-                              <button
-                                onClick={() => {
-                                  setIsOpen(false);
-                                  if (onTransferScenario) {
-                                    onTransferScenario(activeScenario.content);
-                                  } else if (onUseScript) {
-                                    onUseScript(activeScenario.content);
-                                  } else {
-                                    applySuggestion(activeScenario.content);
-                                  }
-                                }}
-                                className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border border-purple-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-[0_0_15px_rgba(147,51,234,0.3)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
-                              >
-                                <Zap className="h-3.5 w-3.5 text-yellow-300" />
-                                {locale === 'ru' ? 'Перенести этот сценарий' : 'Transfer this scenario'}
-                              </button>
-                            </div>
-                          </div>
-                        );
-                      }
-
-                      const { textBefore, scriptText } = parseMessageContent(m.content);
-                      const parsedList = parseNumberedList(textBefore || '');
-                      const shouldPaginate = parsedList.items.length > 3;
-                      const currentPage = messagePages[i] || 0;
-                      const itemsPerPage = 3;
-                      const totalPages = Math.ceil(parsedList.items.length / itemsPerPage);
-                      const startIndex = currentPage * itemsPerPage;
-                      const visibleItems = shouldPaginate 
-                        ? parsedList.items.slice(startIndex, startIndex + itemsPerPage) 
-                        : parsedList.items;
-
-                      return (
-                        <div className="space-y-3">
-                          {!shouldPaginate && textBefore && <p className="leading-relaxed whitespace-pre-wrap">{textBefore}</p>}
-                          
-                          {shouldPaginate && (
-                            <div className="space-y-3">
-                              {parsedList.intro && <p className="leading-relaxed whitespace-pre-wrap">{parsedList.intro}</p>}
-                              
-                              <div className="space-y-2.5 border-l-2 border-purple-500/30 pl-3 my-2">
-                                {visibleItems.map((item, idx) => (
-                                  <div key={idx} className="text-slate-300 leading-relaxed whitespace-pre-wrap text-xs md:text-sm">
-                                    {item}
-                                  </div>
-                                ))}
-                              </div>
-                              
-                              {parsedList.outro && <p className="leading-relaxed whitespace-pre-wrap text-xs text-slate-400 font-medium italic">{parsedList.outro}</p>}
-                              
-                              {/* Inline Pagination controls */}
-                              <div className="pt-2 flex items-center justify-between border-t border-white/5 mt-2">
-                                <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
-                                  {locale === 'ru' 
-                                    ? `Стр. ${currentPage + 1} из ${totalPages}` 
-                                    : `Page ${currentPage + 1} of ${totalPages}`}
-                                </span>
-                                <div className="flex gap-1.5">
+                            return (
+                              <div className="space-y-4">
+                                {scenarioObj.intro && <p className="leading-relaxed whitespace-pre-wrap text-slate-300 text-xs md:text-sm">{scenarioObj.intro}</p>}
+                                
+                                {/* Tabs Header */}
+                                <div className="flex flex-wrap gap-1 p-1 bg-black/40 rounded-xl border border-white/5">
+                                  {scenarioObj.scenarios.map(s => {
+                                    const isActive = s.id === activeTab;
+                                    return (
+                                      <button
+                                        key={s.id}
+                                        onClick={() => setActiveScenarioTabs(prev => ({ ...prev, [i]: s.id }))}
+                                        className={cn(
+                                          "px-3 py-1.5 rounded-lg text-[10px] font-black uppercase tracking-wider transition-all cursor-pointer",
+                                          isActive 
+                                            ? "bg-purple-600 text-white shadow-md shadow-purple-900/30" 
+                                            : "text-slate-400 hover:text-white hover:bg-white/5"
+                                        )}
+                                      >
+                                        {s.label}
+                                      </button>
+                                    );
+                                  })}
+                                </div>
+                                
+                                {/* Tab Content (Colorized Scenario) */}
+                                <div className="p-3 bg-black/35 border border-white/5 rounded-xl max-h-[300px] overflow-y-auto custom-scrollbar">
+                                  {renderColorizedText(activeScenario.content)}
+                                </div>
+                                
+                                {/* Action Button: Transfer Scenario */}
+                                <div className="pt-1 flex justify-end">
                                   <button
                                     onClick={() => {
-                                      const prevPage = (currentPage - 1 + totalPages) % totalPages;
-                                      setMessagePages(prev => ({ ...prev, [i]: prevPage }));
+                                      setIsOpen(false);
+                                      if (onTransferScenario) {
+                                        onTransferScenario(activeScenario.content);
+                                      } else if (onUseScript) {
+                                        onUseScript(activeScenario.content);
+                                      } else {
+                                        applySuggestion(activeScenario.content);
+                                      }
                                     }}
-                                    className="p-1 hover:bg-white/5 active:bg-white/10 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
-                                    title="Previous Page"
+                                    className="flex items-center gap-2 px-4 py-2 bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 border border-purple-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-[0_0_15px_rgba(147,51,234,0.3)] hover:scale-[1.02] active:scale-[0.98] cursor-pointer"
                                   >
-                                    <ChevronRight className="h-3.5 w-3.5 rotate-180" />
-                                  </button>
-                                  <button
-                                    onClick={() => {
-                                      const nextPage = (currentPage + 1) % totalPages;
-                                      setMessagePages(prev => ({ ...prev, [i]: nextPage }));
-                                    }}
-                                    className="p-1 hover:bg-white/5 active:bg-white/10 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
-                                    title="Next Page"
-                                  >
-                                    <ChevronRight className="h-3.5 w-3.5" />
+                                    <Zap className="h-3.5 w-3.5 text-yellow-300" />
+                                    {locale === 'ru' ? 'Перенести этот сценарий' : 'Transfer this scenario'}
                                   </button>
                                 </div>
                               </div>
-                            </div>
-                          )}
-
-                          {scriptText && (
-                            <div className="mt-2 p-3 bg-black/50 border border-purple-500/30 rounded-xl font-mono text-xs text-purple-200 select-text relative overflow-hidden shadow-inner leading-relaxed">
-                              <div className="absolute top-0 right-0 bg-purple-500/20 px-2 py-0.5 text-[8px] font-black uppercase text-purple-300 border-l border-b border-purple-500/20">
-                                Сценарий
-                              </div>
-                              <p className="whitespace-pre-wrap">{scriptText}</p>
-                            </div>
-                          )}
-                          {m.isError && (
-                            <div className="pt-1">
-                              <motion.button
-                                whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.25)' }}
-                                whileTap={{ scale: 0.98 }}
-                                onClick={handleRetry}
-                                className="group/retry flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-200 text-xs font-bold transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)]"
-                              >
-                                <RefreshCw className="h-3.5 w-3.5 transition-transform duration-500 group-hover/retry:rotate-180" />
-                                {locale === 'ru' ? 'Повторить попытку' : 'Retry Request'}
-                              </motion.button>
-                            </div>
-                          )}
-                        </div>
-                      );
-                    })()}
-                    
-                    {/* Copy to Clipboard & Play Voice - More visible on hover */}
-                    {m.role === 'assistant' && !isStreaming && (
-                      <div className="absolute -right-10 top-0 flex flex-col gap-2 opacity-0 group-hover/message:opacity-100 transition-all z-20">
-                        <button 
-                          onClick={() => {
-                            const { scriptText } = parseMessageContent(m.content);
-                            copyToClipboard(scriptText || m.content, i);
-                          }}
-                          className="p-2 text-slate-500 hover:text-white bg-[#0e0e16]/80 hover:bg-[#181824] backdrop-blur-md rounded-xl border border-white/10 transition-colors"
-                          title="Copy to Clipboard"
-                        >
-                          {copiedId === i ? <CheckCircle className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
-                        </button>
-                        
-                        <button 
-                          onClick={() => handlePlayVoiceClick(m.content, i)}
-                          className={cn(
-                            "p-2 rounded-xl border transition-colors backdrop-blur-md",
-                            isPlayingId === i 
-                              ? "text-red-400 bg-red-500/10 border-red-500/30" 
-                              : "text-slate-500 hover:text-white bg-[#0e0e16]/80 hover:bg-[#181824] border-white/10"
-                          )}
-                          title={isPlayingId === i ? "Stop speaking" : "Listen to answer"}
-                        >
-                          {isPlayingId === i ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
-                        </button>
-                      </div>
-                    )}
-                  </div>
-                  {/* Action suggesting for assistant messages */}
-                  {m.role === 'assistant' && i === messages.length - 1 && !isStreaming && (
-                    <div className="mt-2 flex flex-wrap gap-2">
-                      {(() => {
-                        const { scriptText } = parseMessageContent(m.content);
-                        if (scriptText) {
+                            );
+                          }
+ 
+                          const { textBefore, scriptText } = parseMessageContent(displayContent);
+                          const parsedList = parseNumberedList(textBefore || '');
+                          const shouldPaginate = parsedList.items.length > 3;
+                          const currentPage = messagePages[i] || 0;
+                          const itemsPerPage = 3;
+                          const totalPages = Math.ceil(parsedList.items.length / itemsPerPage);
+                          const startIndex = currentPage * itemsPerPage;
+                          const visibleItems = shouldPaginate 
+                            ? parsedList.items.slice(startIndex, startIndex + itemsPerPage) 
+                            : parsedList.items;
+ 
                           return (
+                            <div className="space-y-3">
+                              {!shouldPaginate && textBefore && <p className="leading-relaxed whitespace-pre-wrap">{textBefore}</p>}
+                              
+                              {shouldPaginate && (
+                                <div className="space-y-3">
+                                  {parsedList.intro && <p className="leading-relaxed whitespace-pre-wrap">{parsedList.intro}</p>}
+                                  
+                                  <div className="space-y-2.5 border-l-2 border-purple-500/30 pl-3 my-2">
+                                    {visibleItems.map((item, idx) => (
+                                      <div key={idx} className="text-slate-300 leading-relaxed whitespace-pre-wrap text-xs md:text-sm">
+                                        {item}
+                                      </div>
+                                    ))}
+                                  </div>
+                                  
+                                  {parsedList.outro && <p className="leading-relaxed whitespace-pre-wrap text-xs text-slate-400 font-medium italic">{parsedList.outro}</p>}
+                                  
+                                  {/* Inline Pagination controls */}
+                                  <div className="pt-2 flex items-center justify-between border-t border-white/5 mt-2">
+                                    <span className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">
+                                      {locale === 'ru' 
+                                        ? `Стр. ${currentPage + 1} из ${totalPages}` 
+                                        : `Page ${currentPage + 1} of ${totalPages}`}
+                                    </span>
+                                    <div className="flex gap-1.5">
+                                      <button
+                                        onClick={() => {
+                                          const prevPage = (currentPage - 1 + totalPages) % totalPages;
+                                          setMessagePages(prev => ({ ...prev, [i]: prevPage }));
+                                        }}
+                                        className="p-1 hover:bg-white/5 active:bg-white/10 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                        title="Previous Page"
+                                      >
+                                        <ChevronRight className="h-3.5 w-3.5 rotate-180" />
+                                      </button>
+                                      <button
+                                        onClick={() => {
+                                          const nextPage = (currentPage + 1) % totalPages;
+                                          setMessagePages(prev => ({ ...prev, [i]: nextPage }));
+                                        }}
+                                        className="p-1 hover:bg-white/5 active:bg-white/10 rounded text-slate-400 hover:text-white transition-colors cursor-pointer"
+                                        title="Next Page"
+                                      >
+                                        <ChevronRight className="h-3.5 w-3.5" />
+                                      </button>
+                                    </div>
+                                  </div>
+                                </div>
+                              )}
+ 
+                              {scriptText && (
+                                <div className="mt-2 p-3 bg-black/50 border border-purple-500/30 rounded-xl font-mono text-xs text-purple-200 select-text relative overflow-hidden shadow-inner leading-relaxed">
+                                  <div className="absolute top-0 right-0 bg-purple-500/20 px-2 py-0.5 text-[8px] font-black uppercase text-purple-300 border-l border-b border-purple-500/20">
+                                    Сценарий
+                                  </div>
+                                  <p className="whitespace-pre-wrap">{scriptText}</p>
+                                </div>
+                              )}
+                              {m.isError && (
+                                <div className="pt-1">
+                                  <motion.button
+                                    whileHover={{ scale: 1.02, backgroundColor: 'rgba(239, 68, 68, 0.25)' }}
+                                    whileTap={{ scale: 0.98 }}
+                                    onClick={handleRetry}
+                                    className="group/retry flex items-center gap-2 px-3 py-1.5 rounded-lg bg-red-500/15 border border-red-500/30 text-red-200 text-xs font-bold transition-all shadow-[0_0_15px_rgba(239,68,68,0.1)]"
+                                  >
+                                    <RefreshCw className="h-3.5 w-3.5 transition-transform duration-500 group-hover/retry:rotate-180" />
+                                    {locale === 'ru' ? 'Повторить попытку' : 'Retry Request'}
+                                  </motion.button>
+                                </div>
+                              )}
+                            </div>
+                          );
+                        })()}
+                        
+                        {/* Copy to Clipboard & Play Voice - More visible on hover */}
+                        {m.role === 'assistant' && !isStreaming && (
+                          <div className="absolute -right-10 top-0 flex flex-col gap-2 opacity-0 group-hover/message:opacity-100 transition-all z-20">
                             <button 
-                               onClick={() => {
-                                 // 1. Copy scriptText to clipboard
-                                 const nav = (globalThis as any).navigator; if (nav && nav.clipboard) nav.clipboard.writeText(scriptText);
-                                 setCopiedId(i);
-                                 setTimeout(() => setCopiedId(null), 2000);
-                                 // 2. Close panel
-                                 setIsOpen(false);
-                                 // 3. Callback
-                                 if (onUseScript) onUseScript(scriptText);
-                                 else applySuggestion(scriptText);
-                               }}
-                               className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] active:scale-95 group/use"
+                              onClick={() => {
+                                const { scriptText } = parseMessageContent(displayContent);
+                                copyToClipboard(scriptText || displayContent, i);
+                              }}
+                              className="p-2 text-slate-500 hover:text-white bg-[#0e0e16]/80 hover:bg-[#181824] backdrop-blur-md rounded-xl border border-white/10 transition-colors"
+                              title="Copy to Clipboard"
                             >
-                              <Zap className="h-3.5 w-3.5 text-yellow-300 group-hover/use:animate-pulse" /> 
-                              {locale === 'ru' ? 'Экспорт в Готовый Рилс' : 'Export to Ready Reel'}
+                              {copiedId === i ? <CheckCircle className="h-4 w-4 text-green-400" /> : <Copy className="h-4 w-4" />}
                             </button>
+                            
+                            <button 
+                              onClick={() => handlePlayVoiceClick(displayContent, i)}
+                              className={cn(
+                                "p-2 rounded-xl border transition-colors backdrop-blur-md",
+                                isPlayingId === i 
+                                  ? "text-red-400 bg-red-500/10 border-red-500/30" 
+                                  : "text-slate-500 hover:text-white bg-[#0e0e16]/80 hover:bg-[#181824] border-white/10"
+                              )}
+                              title={isPlayingId === i ? "Stop speaking" : "Listen to answer"}
+                            >
+                              {isPlayingId === i ? <VolumeX className="h-4 w-4" /> : <Volume2 className="h-4 w-4" />}
+                            </button>
+                          </div>
+                        )}
+                      </div>
+                      {/* Action suggesting for assistant messages */}
+                      {m.role === 'assistant' && i === visibleMessages.length - 1 && !isStreaming && (
+                        <div className="mt-2 flex flex-wrap gap-2">
+                          {(() => {
+                            const { scriptText } = parseMessageContent(displayContent);
+                            if (scriptText) {
+                              return (
+                                <button 
+                                   onClick={() => {
+                                     // 1. Copy scriptText to clipboard
+                                     const nav = (globalThis as any).navigator; if (nav && nav.clipboard) nav.clipboard.writeText(scriptText);
+                                     setCopiedId(i);
+                                     setTimeout(() => setCopiedId(null), 2000);
+                                     // 2. Close panel
+                                     setIsOpen(false);
+                                     // 3. Callback
+                                     if (onUseScript) onUseScript(scriptText);
+                                     else applySuggestion(scriptText);
+                                   }}
+                                   className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] active:scale-95 group/use"
+                                >
+                                  <Zap className="h-3.5 w-3.5 text-yellow-300 group-hover/use:animate-pulse" /> 
+                                  {locale === 'ru' ? 'Экспорт в Готовый Рилс' : 'Export to Ready Reel'}
+                                </button>
+                              );
+                            }
+                            return null;
+                          })()}
+                        </div>
+                      )}
+                      {/* Quick Replies (Numbers Only) & Pagination Shortcuts */}
+                      {m.role === 'assistant' && i === visibleMessages.length - 1 && !isStreaming && (() => {
+                        const { textBefore } = parseMessageContent(displayContent);
+                        const parsedList = parseNumberedList(textBefore || '');
+                        const shouldPaginate = parsedList.items.length > 3;
+                        
+                        if (shouldPaginate) {
+                          const totalPages = Math.ceil(parsedList.items.length / 3);
+                          const currentPage = messagePages[i] || 0;
+                          
+                          const visibleNums: number[] = [];
+                          const itemsPerPage = 3;
+                          const start = currentPage * itemsPerPage;
+                          const end = Math.min(start + itemsPerPage, parsedList.items.length);
+                          
+                          for (let k = start; k < end; k++) {
+                            const match = parsedList.items[k].match(/^\s*(\d+)/);
+                            if (match) {
+                              visibleNums.push(parseInt(match[1], 10));
+                            }
+                          }
+                          
+                          return (
+                            <div className="mt-2.5 flex items-center gap-2 animate-fade-in pl-1">
+                              {visibleNums.map((num) => (
+                                <button
+                                  key={num}
+                                  onClick={() => {
+                                    handleSend(undefined, String(num));
+                                  }}
+                                  className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                >
+                                  {num}
+                                </button>
+                              ))}
+                              
+                              <button
+                                onClick={() => {
+                                  const nextPage = (currentPage + 1) % totalPages;
+                                  setMessagePages(prev => ({ ...prev, [i]: nextPage }));
+                                }}
+                                className="h-8 px-3 rounded-lg bg-purple-600 hover:bg-purple-500 border border-purple-500/30 text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center transition-all active:scale-95 shadow-md shadow-purple-900/20 cursor-pointer"
+                              >
+                                {currentPage === totalPages - 1
+                                  ? (locale === 'ru' ? '← В начало' : '← Reset')
+                                  : (locale === 'ru' ? 'Больше →' : 'More →')}
+                              </button>
+                            </div>
+                          );
+                        }
+ 
+                        const replies = getQuickReplies(displayContent);
+                        if (replies.length > 0) {
+                          const isTrizStep = replies.length === 9;
+                          const isScenarioStep = replies.length === 5;
+                          const foundFact = (isTrizStep || isScenarioStep) ? extractFoundFact(messages) : null;
+ 
+                          return (
+                            <div className="mt-2.5 space-y-3 animate-fade-in pl-1">
+                              {foundFact && (
+                                <motion.div 
+                                  initial={{ opacity: 0, y: 10 }}
+                                  animate={{ opacity: 1, y: 0 }}
+                                  className="p-3 bg-purple-500/10 border border-purple-500/20 rounded-xl flex items-start gap-2.5 shadow-lg backdrop-blur-md max-w-[85%]"
+                                >
+                                  <div className="mt-0.5 bg-purple-500/20 p-1.5 rounded-lg text-purple-400 shrink-0 animate-pulse">
+                                    <Sparkles className="h-4 w-4" />
+                                  </div>
+                                  <div className="space-y-1">
+                                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-300">
+                                      {locale === 'ru' ? '🎯 АКТУАЛЬНЫЙ ФАКТ / ПОВОД' : '🎯 FOUND NEWS / MYTH'}
+                                    </span>
+                                    <p className="text-xs leading-relaxed text-slate-200 font-medium whitespace-pre-wrap">
+                                      {foundFact}
+                                    </p>
+                                  </div>
+                                </motion.div>
+                              )}
+                              <div className="flex flex-wrap gap-2">
+                                {replies.map((num) => (
+                                  <button
+                                    key={num}
+                                    onClick={() => {
+                                      handleSend(undefined, String(num));
+                                    }}
+                                    className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                  >
+                                    {num}
+                                  </button>
+                                ))}
+                              </div>
+                            </div>
                           );
                         }
                         return null;
                       })()}
                     </div>
-                  )}
-                  {/* Quick Replies (Numbers Only) & Pagination Shortcuts */}
-                  {m.role === 'assistant' && i === messages.length - 1 && !isStreaming && (() => {
-                    const { textBefore } = parseMessageContent(m.content);
-                    const parsedList = parseNumberedList(textBefore || '');
-                    const shouldPaginate = parsedList.items.length > 3;
-                    
-                    if (shouldPaginate) {
-                      const totalPages = Math.ceil(parsedList.items.length / 3);
-                      const currentPage = messagePages[i] || 0;
-                      
-                      const visibleNums: number[] = [];
-                      const itemsPerPage = 3;
-                      const start = currentPage * itemsPerPage;
-                      const end = Math.min(start + itemsPerPage, parsedList.items.length);
-                      
-                      for (let k = start; k < end; k++) {
-                        const match = parsedList.items[k].match(/^\s*(\d+)/);
-                        if (match) {
-                          visibleNums.push(parseInt(match[1], 10));
-                        }
-                      }
-                      
-                      return (
-                        <div className="mt-2.5 flex items-center gap-2 animate-fade-in pl-1">
-                          {visibleNums.map((num) => (
-                            <button
-                              key={num}
-                              onClick={() => {
-                                handleSend(undefined, String(num));
-                              }}
-                              className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90 cursor-pointer"
-                            >
-                              {num}
-                            </button>
-                          ))}
-                          
-                          <button
-                            onClick={() => {
-                              const nextPage = (currentPage + 1) % totalPages;
-                              setMessagePages(prev => ({ ...prev, [i]: nextPage }));
-                            }}
-                            className="h-8 px-3 rounded-lg bg-purple-600 hover:bg-purple-500 border border-purple-500/30 text-white text-[10px] font-black uppercase tracking-wider flex items-center justify-center transition-all active:scale-95 shadow-md shadow-purple-900/20 cursor-pointer"
-                          >
-                            {currentPage === totalPages - 1
-                              ? (locale === 'ru' ? '← В начало' : '← Reset')
-                              : (locale === 'ru' ? 'Больше →' : 'More →')}
-                          </button>
-                        </div>
-                      );
-                    }
-
-                    const replies = getQuickReplies(m.content);
-                    if (replies.length > 0) {
-                      return (
-                        <div className="mt-2.5 flex flex-wrap gap-2 animate-fade-in pl-1">
-                          {replies.map((num) => (
-                            <button
-                              key={num}
-                              onClick={() => {
-                                handleSend(undefined, String(num));
-                              }}
-                              className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90 cursor-pointer"
-                            >
-                              {num}
-                            </button>
-                          ))}
-                        </div>
-                      );
-                    }
-                    return null;
-                  })()}
+                  );
+                });
+              })()}
+              
+              {/* Web Search Loading indicator */}
+              {isSearching && (
+                <div className="flex items-center gap-3 text-xs text-purple-300 bg-purple-500/5 border border-purple-500/20 p-3 rounded-2xl rounded-tl-none animate-pulse max-w-[85%]">
+                  <RefreshCw className="h-4 w-4 animate-spin text-purple-400 shrink-0" />
+                  <span>{locale === 'ru' ? 'Активно ищу факты, новости и мифы в сети...' : 'Actively searching the web for facts, news, and myths...'}</span>
                 </div>
-              ))}
+              )}
               {/* Voice Status Indicator */}
               {isVoiceMode && (isRecording || isStreaming || isAIPointing) && (
                 <div className="flex justify-center my-2 sticky bottom-0 pointer-events-none z-20">
