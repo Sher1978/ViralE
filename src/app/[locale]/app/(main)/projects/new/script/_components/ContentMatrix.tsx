@@ -196,7 +196,7 @@ export function ContentMatrix({
                 edutainment: { color: '#3B82F6', label: locale === 'ru' ? 'Польза' : 'Edutainment' },
                 controversial: { color: '#EF4444', label: locale === 'ru' ? 'Провокация' : 'Controversial' },
                 detective: { color: '#06B6D4', label: locale === 'ru' ? 'Детектив' : 'Detective' },
-                napkin_explainer: { color: '#A855F7', label: locale === 'ru' ? 'Салфетка' : 'Napkin Explainer' }
+                napkin_explainer: { color: '#A855F7', label: locale === 'ru' ? 'Маркер и доска' : 'Marker & Board' }
               }[scenarioId] || { color: '#A855F7', label: 'Scenario' };
 
               const offset = i - activeIndex;

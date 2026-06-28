@@ -1314,7 +1314,7 @@ export default function ScriptLabPage() {
             { id: 'trends', color: '#FF8A00', label: 'Trends' },
             { id: 'controversial', color: '#FF2D55', label: 'Controversial' },
             { id: 'detective', color: '#00D2FF', label: locale === 'ru' ? 'Детектив' : 'Detective' },
-            { id: 'napkin_explainer', color: '#A855F7', label: locale === 'ru' ? 'Салфетка' : 'Napkin Explainer' }
+            { id: 'napkin_explainer', color: '#A855F7', label: locale === 'ru' ? 'Маркер и доска' : 'Marker & Board' }
           ]} 
         />
       </div>
