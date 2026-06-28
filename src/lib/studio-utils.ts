@@ -104,26 +104,28 @@ export function createInitialManifest(projectId: string, versionId: string, scri
     duration: 5
   });
 
-  // 2. Context (Visual Scene)
+  // 2. Context (Whiteboard Visual — body block)
   if (contextText) {
+    const subjectSnippet = contextText.substring(0, 60);
     segments.push({
       id: uuidv4(),
       type: 'animated_still',
       scriptText: contextText,
-      prompt: `Cinematic visualization of the context: ${contextText.substring(0, 80)}`,
+      prompt: `A charming naive children's book doodle illustration of ${subjectSnippet}, simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, isolated on a solid pure white canvas. Strictly no complex shading, no gradients, vector lines. The bottom-right quadrant of the canvas is completely empty, pure solid white blank space, strictly zero objects, lines or text in the bottom right corner.`,
       status: 'pending',
       animationStyle: 'zoom-in',
       duration: 6
     });
   }
 
-  // 3. Meat (Value Scene)
+  // 3. Meat/TRIZ (Whiteboard Visual — triz/meat block)
   if (meatText) {
+    const subjectSnippet = meatText.substring(0, 60);
     segments.push({
       id: uuidv4(),
-      type: 'broll',
+      type: 'animated_still',
       scriptText: meatText,
-      prompt: `High-value cinematic B-Roll: ${meatText.substring(0, 80)}`,
+      prompt: `A charming naive children's book doodle illustration of ${subjectSnippet}, simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, isolated on a solid pure white canvas. Strictly no complex shading, no gradients, vector lines. The bottom-right quadrant of the canvas is completely empty, pure solid white blank space, strictly zero objects, lines or text in the bottom right corner.`,
       status: 'pending',
       animationStyle: 'glitch',
       duration: 8

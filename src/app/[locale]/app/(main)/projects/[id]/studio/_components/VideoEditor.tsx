@@ -1328,8 +1328,13 @@ export const VideoEditor = React.memo(({
                 ) : editingWhiteboardClip.imageUrl ? (
                   <img 
                     src={editingWhiteboardClip.imageUrl} 
+                    crossOrigin="anonymous"
                     className="w-full h-full object-contain"
                     alt="Whiteboard sketch preview"
+                    onError={(e) => {
+                      console.error('[Whiteboard] Failed to load preview image. URL:', editingWhiteboardClip.imageUrl);
+                      (globalThis as any).addSystemLog?.(`[Скетч] Ошибка загрузки превью: ${editingWhiteboardClip.imageUrl?.substring(0, 80)}`);
+                    }}
                   />
                 ) : (
                   <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">

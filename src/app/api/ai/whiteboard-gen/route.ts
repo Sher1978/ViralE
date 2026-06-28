@@ -78,8 +78,8 @@ Rules:
       input: {
         prompt: optimizedPrompt,
         image_size: { width: 768, height: 1344 },
-        num_inference_steps: 4,
-        enable_safety_checker: true,
+        num_inference_steps: 8,
+        enable_safety_checker: false,
         sync_mode: true
       }
     });
