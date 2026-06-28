@@ -1337,7 +1337,9 @@ export const VideoEditor = React.memo(({
             >
               <button 
                 onClick={() => setEditingWhiteboardClipId(null)}
-                className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors"
+                className="absolute top-8 right-8 text-white/40 hover:text-white transition-all bg-white/5 hover:bg-white/10 p-3 rounded-full flex items-center justify-center z-50 active:scale-95"
+                style={{ minWidth: '44px', minHeight: '44px' }}
+                title="Закрыть"
               >
                 <X size={20} />
               </button>
