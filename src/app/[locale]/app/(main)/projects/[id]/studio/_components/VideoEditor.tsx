@@ -1333,7 +1333,7 @@ export const VideoEditor = React.memo(({
               initial={{ scale: 0.9, y: 20 }}
               animate={{ scale: 1, y: 0 }}
               exit={{ scale: 0.9, y: 20 }}
-              className="w-full max-w-lg rounded-[2.5rem] bg-[#0c0c14] border border-white/10 p-8 space-y-6 shadow-2xl relative"
+              className="w-full max-w-lg rounded-[2.5rem] bg-[#0c0c14] border border-white/10 p-8 space-y-6 shadow-2xl relative max-h-[92vh] overflow-y-auto"
             >
               <button 
                 onClick={() => setEditingWhiteboardClipId(null)}
@@ -1440,9 +1440,13 @@ export const VideoEditor = React.memo(({
                 <div className="space-y-2">
                   <label className="text-[10px] font-black uppercase tracking-wider text-white/40">ИИ Промпт для скетча</label>
                   <textarea 
-                    readOnly
-                    value={editingWhiteboardClip.prompt}
-                    className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-xs text-white/50 focus:outline-none resize-none h-20"
+                    value={editingWhiteboardClip.prompt || ''}
+                    onChange={(e) => {
+                      const val = (e.target as any).value;
+                      setWhiteboardClips(prev => prev.map(c => c.id === editingWhiteboardClip.id ? { ...c, prompt: val } : c));
+                    }}
+                    placeholder="Введите описание рисунка (ИИ-промпт)..."
+                    className="w-full p-4 rounded-2xl bg-white/[0.04] border border-white/10 text-xs text-white placeholder-white/20 focus:border-purple-500 focus:outline-none resize-none h-20 transition-all"
                   />
                 </div>
 
@@ -1545,9 +1549,15 @@ export const VideoEditor = React.memo(({
                     deleteWhiteboardClip(editingWhiteboardClip.id);
                     setEditingWhiteboardClipId(null);
                   }}
-                  className="px-6 py-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                  className="px-4 py-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/20 transition-all"
                 >
                   Удалить
+                </button>
+                <button 
+                  onClick={() => setEditingWhiteboardClipId(null)}
+                  className="px-4 py-4 bg-white/5 border border-white/10 text-white rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-white/10 active:scale-95 transition-all"
+                >
+                  Готово
                 </button>
               </div>
             </motion.div>
