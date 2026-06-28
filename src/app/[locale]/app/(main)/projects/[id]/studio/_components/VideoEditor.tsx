@@ -1431,12 +1431,13 @@ export const VideoEditor = React.memo(({
                     
                     setWhiteboardClips(prev => prev.map(c => c.id === clipId ? { 
                       ...c, 
+                      url: '',
+                      imageUrl: '',
                       userPromptAddition: editingWhiteboardClip.userPromptAddition,
                       speed: clipSpeed,
-                      status: 'generating'
+                      status: 'generating',
+                      errorMsg: undefined
                     } : c));
-                    
-                    setEditingWhiteboardClipId(null);
                     
                     try {
                       const res = await fetch('/api/ai/whiteboard-gen', {
