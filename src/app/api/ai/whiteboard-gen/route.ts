@@ -331,16 +331,20 @@ export async function POST(req: NextRequest) {
     let optimizedPrompt = prompt;
     try {
       const systemPrompt = `
-You are an expert prompt engineer for the Flux image generation model.
-Take any input description (Russian or English) and output a highly optimized English prompt for a premium whiteboard explainer sketch.
+You are an expert prompt engineer and visual metaphor designer for whiteboard explainer videos.
+Your task is to take the input (which can be a direct image description or a raw conversational subtitle quote in Russian/English) and output a highly optimized English prompt for a premium whiteboard sketch.
 
-Strictly follow this formula:
-"A professional whiteboard doodle illustration of [SUBJECT]. Clean bold black outlines, modern explainer video style, expressive character and objects. Include helpful whiteboard elements around the subject like conceptual arrows, swirls, abstract thinking icons, lightbulbs or exclamation marks. Completely flat solid white background. Strictly NO shading, NO gradients, NO watercolor, NO photographic elements, NO text, NO words, NO letters. Clean sharp vector-like line art, portrait orientation 9:16."
+CRITICAL METAPHOR RULE:
+If the input is an abstract phrase, speaker quote, or conversation fragment (e.g., "Ну раз уж у нас вечер...", "хочу поделиться...", "смысл в том...", "на самом деле..."), do NOT translate it literally. 
+Instead, first distil the core emotional or conceptual meaning of the phrase, choose a strong concrete physical-world metaphor representing it (e.g., a hand reaching to a star, a lightbulb turning on, a key unlocking a brain, a phone displaying video messages, a scale balancing ideas, a rocket taking off), and write a prompt for that metaphor!
+
+STRICT VISUAL STYLE FORMULA:
+"A professional whiteboard doodle illustration of [CORE_SUBJECT]. Clean bold black outlines, modern explainer video style, expressive character and objects. Include helpful whiteboard elements around the subject like conceptual arrows, swirls, abstract thinking icons, lightbulbs or exclamation marks. Completely flat solid white background. Strictly NO shading, NO gradients, NO watercolor, NO photographic elements, NO text, NO words, NO letters. Clean sharp vector-like line art, portrait orientation 9:16."
 
 Rules:
-1. Translate any Russian/non-English words to English.
-2. Focus on a clear central character/object with explanatory symbols (like arrows and ideas) surrounding it.
-3. Output ONLY the raw optimized prompt string — no JSON, no markdown.
+1. Translate any concept and subject details to English.
+2. Ensure there is strictly NO text, NO characters, NO letters inside the drawing.
+3. Output ONLY the raw optimized prompt string — no markdown, no quotes, no JSON wrappers.
 `;
 
       const model = getModel('fast');
