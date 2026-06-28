@@ -413,7 +413,37 @@ export const VideoEditor = React.memo(({
       }).filter((c): c is any => c !== null));
 
       if (rawPlaceholders.length === 0) {
-        (globalThis as any).alert('В сценарии отсутствуют подходящие визуальные скетчи (animated_still).');
+        console.log('[Studio LOG] Falling back to generating whiteboards from subtitles directly...');
+        const duration = subtitles[subtitles.length - 1]?.endTime || 60;
+        const segmentDuration = 5.0; // 5 seconds per sketch
+        const numSegments = Math.max(1, Math.ceil(duration / segmentDuration));
+        
+        for (let i = 0; i < numSegments; i++) {
+          const startTime = i * segmentDuration;
+          const endTime = Math.min(duration, (i + 1) * segmentDuration);
+          if (endTime - startTime < 1.5) continue;
+          
+          const rangeSubs = subtitles.filter(s => s.startTime >= startTime - 0.5 && s.endTime <= endTime + 0.5);
+          const rangeText = rangeSubs.map(s => s.text).join(' ').trim();
+          if (!rangeText) continue;
+          
+          const id = `wb_sub_fallback_${Date.now()}_${i}`;
+          rawPlaceholders.push({
+            id,
+            url: '',
+            imageUrl: '',
+            label: rangeText.substring(0, 20) || 'Sketch',
+            prompt: rangeText,
+            startTime,
+            endTime,
+            track: 2,
+            status: 'pending' as const
+          });
+        }
+      }
+
+      if (rawPlaceholders.length === 0) {
+        (globalThis as any).alert('В сценарии отсутствуют подходящие визуальные скетчи, а в распознанном голосе нет слов для автогенерации.');
         setIsAutoGeneratingWhiteboard(false);
         return;
       }
