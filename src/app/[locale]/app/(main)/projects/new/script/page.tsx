@@ -837,7 +837,7 @@ export default function ScriptLabPage() {
             className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110"
             alt="Splash Background"
           />
-          <div className="absolute inset-0 bg-[#050508]/60 backdrop-blur-md" />
+          <div className="absolute inset-0 bg-[#050508]/80" />
         </div>
 
         <div className="relative z-10 space-y-2 mb-12">
@@ -891,7 +891,7 @@ export default function ScriptLabPage() {
             className="w-full h-full object-cover opacity-60 animate-ken-burns scale-110"
             alt="Splash Background"
           />
-          <div className="absolute inset-0 bg-[#050508]/60 backdrop-blur-md" />
+          <div className="absolute inset-0 bg-[#050508]/80" />
         </div>
 
         <div className="relative z-10 space-y-2 mb-12">
