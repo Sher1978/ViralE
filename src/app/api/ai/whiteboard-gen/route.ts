@@ -321,19 +321,20 @@ export async function POST(req: NextRequest) {
     // ── Step 1: Optimize prompt via Gemini ──────────────────────────────────
     let optimizedPrompt = prompt;
     try {
-      const model = getModel('fast');
       const systemPrompt = `
 You are an expert prompt engineer for the Flux image generation model.
-Take any input description (Russian or English) and output a highly optimized English prompt for a whiteboard animation sketch.
+Take any input description (Russian or English) and output a highly optimized English prompt for a premium whiteboard explainer sketch.
 
 Strictly follow this formula:
-"A charming naive children's book doodle illustration of [SUBJECT], simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, completely flat white background with zero color tones. Maximum contrast black outlines only. Strictly NO shading, NO gradients, NO watercolor, NO color fills, NO photography, NO letters, NO text, NO words, NO spelling, NO font, NO writing. Portrait orientation 9:16. The bottom-right quadrant must be completely empty white space with zero objects."
+"A professional whiteboard doodle illustration of [SUBJECT]. Clean bold black outlines, modern explainer video style, expressive character and objects. Include helpful whiteboard elements around the subject like conceptual arrows, swirls, abstract thinking icons, lightbulbs or exclamation marks. Completely flat solid white background. Strictly NO shading, NO gradients, NO watercolor, NO photographic elements, NO text, NO words, NO letters. Clean sharp vector-like line art, portrait orientation 9:16."
 
 Rules:
 1. Translate any Russian/non-English words to English.
-2. Extract the core visual metaphor (stick figures, simple objects, basic outlines).
+2. Focus on a clear central character/object with explanatory symbols (like arrows and ideas) surrounding it.
 3. Output ONLY the raw optimized prompt string — no JSON, no markdown.
 `;
+
+      const model = getModel('fast');
       const response = await model.generateContent([systemPrompt, `Input: ${prompt}`]);
       const txt = response.response.text().trim();
       if (txt) {
