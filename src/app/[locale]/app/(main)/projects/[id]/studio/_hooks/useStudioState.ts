@@ -122,6 +122,8 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   const [subtitleStyle, setSubtitleStyle] = useState<number>(0);
   const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
   const [pxPerSecond, setPxPerSecond] = useState(100);
+  const [subtitleColor, setSubtitleColor] = useState<string>('');
+  const [subtitleBgColor, setSubtitleBgColor] = useState<string>('');
   const [preFetchedBrolls, setPreFetchedBrolls] = useState<Record<string, any[]>>({});
   const [pendingBrollPhrases, setPendingBrollPhrases] = useState<BRollPhrase[]>([]);
   const [voiceoverUrl, setVoiceoverUrl] = useState<string | null>(null);
@@ -166,6 +168,8 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
           if (data.subtitleStyle !== undefined) setSubtitleStyle(data.subtitleStyle);
           if (data.showSubtitles !== undefined) setShowSubtitles(data.showSubtitles);
           if (data.pxPerSecond) setPxPerSecond(data.pxPerSecond);
+          if (data.subtitleColor !== undefined) setSubtitleColor(data.subtitleColor);
+          if (data.subtitleBgColor !== undefined) setSubtitleBgColor(data.subtitleBgColor);
           if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
             setARollUrl(data.aRollUrl);
           }
@@ -207,9 +211,9 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   useEffect(() => {
     if (!projectId || !persistenceLoadedRef.current) return;
     const key = `viral_editor_draft_${projectId}`;
-    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond };
+    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond, subtitleColor, subtitleBgColor };
     idb.set(key, state, 'ProjectDrafts');
-  }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond]);
+  }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond, subtitleColor, subtitleBgColor]);
 
   // Heavy file persistence
   useEffect(() => {
@@ -605,6 +609,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     subtitleStyle, setSubtitleStyle, showSubtitles, setShowSubtitles, pxPerSecond, setPxPerSecond,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
     voiceoverUrl, setVoiceoverUrl,
+    subtitleColor, setSubtitleColor, subtitleBgColor, setSubtitleBgColor,
     runTranscriptionAndPhrases, setRawFile,
     deleteBroll: (id: string) => setBrollClips(prev => prev.filter(c => c.id !== id))
   };

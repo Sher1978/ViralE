@@ -318,7 +318,9 @@ export function useStudioExport({
     subPos?: { x: number; y: number },
     subSize?: number,
     subStyle?: number,
-    showSubtitles?: boolean
+    showSubtitles?: boolean,
+    subColor?: string,
+    subBgColor?: string
   ) => {
     setIsSaving(true);
     try {
@@ -365,6 +367,8 @@ export function useStudioExport({
         subtitleSize: subSize || (manifest as any).subtitleSize || 18,
         subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
         showSubtitles: showSubtitles !== undefined ? showSubtitles : true,
+        subtitleColor: subColor !== undefined ? subColor : (manifest as any).subtitleColor || '',
+        subtitleBgColor: subBgColor !== undefined ? subBgColor : (manifest as any).subtitleBgColor || '',
         _log_subs_count: subs?.length || 0,
         segments: manifest.segments.map((s: any, i: number) => i === 0 ? {
           ...s,
@@ -372,7 +376,9 @@ export function useStudioExport({
           subtitleClips: subs || [],
           subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
           subtitleSize: subSize || (manifest as any).subtitleSize || 18,
-          showSubtitles: showSubtitles !== undefined ? showSubtitles : true
+          showSubtitles: showSubtitles !== undefined ? showSubtitles : true,
+          subtitleColor: subColor !== undefined ? subColor : (manifest as any).subtitleColor || '',
+          subtitleBgColor: subBgColor !== undefined ? subBgColor : (manifest as any).subtitleBgColor || ''
         } : s)
       };
 
@@ -417,7 +423,9 @@ export function useStudioExport({
           subtitlePos: subPos || (manifest as any).subtitlePos || { x: 0, y: 0 },
           subtitleSize: subSize || (manifest as any).subtitleSize || 18,
           subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
-          showSubtitles: showSubtitles !== undefined ? showSubtitles : true
+          showSubtitles: showSubtitles !== undefined ? showSubtitles : true,
+          subtitleColor: subColor !== undefined ? subColor : (manifest as any).subtitleColor || '',
+          subtitleBgColor: subBgColor !== undefined ? subBgColor : (manifest as any).subtitleBgColor || ''
         };
         await idb.set(key, state, 'ProjectDrafts');
         console.log('[useStudioExport] Local draft synced for delivery session');

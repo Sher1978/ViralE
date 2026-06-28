@@ -36,109 +36,60 @@ interface StudioViewportProps {
   showSubtitles: boolean;
   setBrollClips: React.Dispatch<React.SetStateAction<BRollClip[]>>;
   voiceoverUrl: string | null;
+  subtitleColor: string;
+  subtitleBgColor: string;
 }
 
 const SUBTITLE_STYLES: Record<number, any> = {
-  0: { // Classic Yellow (Requested)
+  0: { // Yellow Italic (Original Style #1)
     color: '#facc15',
     fontStyle: 'italic',
     textShadow: '2px 2px 0px #000, -2px -2px 0px #000, 2px -2px 0px #000, -2px 2px 0px #000, 0px 4px 10px rgba(0,0,0,0.8)',
     fontWeight: '900',
     fontFamily: "'Roboto-Bold', sans-serif",
     textTransform: 'uppercase' as const,
+    textAlign: 'center' as const,
     animation: { initial: { opacity: 0, y: 20, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -10, x: 0 }, transition: { duration: 0.15 } }
   },
-  1: { // White Bold
+  1: { // Left White Bold (Screenshot 1)
     color: '#ffffff',
-    textShadow: '0 4px 20px rgba(0,0,0,0.5)',
+    textShadow: '0 4px 12px rgba(0,0,0,0.6)',
     fontWeight: '900',
     fontFamily: "'Roboto-Bold', sans-serif",
     textTransform: 'uppercase' as const,
-    animation: { initial: { opacity: 0, y: -20, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: 20, x: 0 }, transition: { duration: 0.15 } }
+    textAlign: 'left' as const,
+    alignItems: 'flex-start',
+    animation: { initial: { opacity: 0, x: -30, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 20, y: 0 }, transition: { duration: 0.15 } }
   },
-  2: { // Red Outline
-    color: '#ef4444',
-    WebkitTextStroke: '2px white',
-    textShadow: '4px 4px 0px rgba(0,0,0,0.5)',
-    fontWeight: '900',
-    fontFamily: "'Roboto-Bold', sans-serif",
-    animation: { initial: { opacity: 0, x: -50, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 50, y: 0 }, transition: { duration: 0.15 } }
-  },
-  3: { // Cyber Neon
-    color: '#22d3ee',
-    textShadow: '0 0 10px #22d3ee, 0 0 20px #22d3ee',
-    fontWeight: '700',
-    fontStyle: 'italic',
-    animation: { initial: { opacity: 0, x: -20, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 20, y: 0 }, transition: { duration: 0.15 } }
-  },
-  4: { // Minimalist
+  2: { // Center Thin White (Screenshot 2)
     color: '#ffffff',
-    backgroundColor: 'rgba(0,0,0,0.6)',
-    padding: '4px 12px',
-    borderRadius: '8px',
-    fontWeight: '500',
-    fontSize: '0.8em',
-    animation: { initial: { opacity: 0, x: 0, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 0, y: 0 }, transition: { duration: 0.15 } }
-  },
-  5: { // Boxy Yellow
-    color: '#000000',
-    backgroundColor: '#facc15',
-    padding: '2px 10px',
-    fontWeight: '900',
-    textTransform: 'uppercase' as const,
-    animation: { initial: { opacity: 0, y: 30, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -30, x: 0 }, transition: { duration: 0.15 } }
-  },
-  6: { // Gradient Text
-    background: 'linear-gradient(to bottom, #fff, #999)',
-    WebkitBackgroundClip: 'text',
-    WebkitTextFillColor: 'transparent',
-    fontWeight: '800',
-    animation: { initial: { opacity: 0, y: 20, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -20, x: 0 }, transition: { duration: 0.15 } }
-  },
-  7: { // Soft Pink
-    color: '#f472b6',
-    textShadow: '0 2px 10px rgba(244,114,182,0.4)',
-    fontWeight: '600',
-    animation: { initial: { opacity: 0, y: 10, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -10, x: 0 }, transition: { duration: 0.15 } }
-  },
-  8: { // Ghostly
-    color: 'rgba(255,255,255,0.3)',
-    letterSpacing: '0.2em',
-    fontWeight: '300',
-    animation: { initial: { opacity: 0, x: 0, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 0, y: 0 }, transition: { duration: 0.15 } }
-  },
-  9: { // Impact
-    color: '#ffffff',
-    textShadow: '0 0 20px #fff',
-    fontWeight: '900',
-    animation: { initial: { opacity: 0, y: -40, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: 40, x: 0 }, transition: { duration: 0.15 } }
-  },
-  10: { // Green Hacker
-    color: '#10b981',
-    fontFamily: 'monospace',
-    textShadow: '0 0 5px #10b981',
-    animation: { initial: { opacity: 0, x: 0, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 0, y: 0 }, transition: { duration: 0.15 } }
-  },
-  11: { // Royal Gold
-    color: '#fbbf24',
-    textShadow: '0 2px 4px rgba(0,0,0,0.5)',
-    fontWeight: '800',
-    fontStyle: 'italic',
-    animation: { initial: { opacity: 0, y: -15, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: 15, x: 0 }, transition: { duration: 0.15 } }
-  },
-  12: { // Elegant Italic
-    color: '#ffffff',
-    fontStyle: 'italic',
-    textShadow: '0 2px 10px rgba(255,255,255,0.3)',
+    textShadow: '0 4px 10px rgba(0,0,0,0.4)',
     fontWeight: '400',
+    fontFamily: "'Roboto-Bold', sans-serif",
+    textTransform: 'uppercase' as const,
+    letterSpacing: '0.1em',
+    textAlign: 'center' as const,
+    animation: { initial: { opacity: 0, scale: 0.95, y: 5 }, animate: { opacity: 1, scale: 1, y: 0 }, exit: { opacity: 0, scale: 1.05, y: -5 }, transition: { duration: 0.15 } }
+  },
+  3: { // Center Yellow Outline (Screenshot 3, bottom)
+    color: '#facc15',
+    textShadow: '1px 1px 0px #000, -1px -1px 0px #000, 1px -1px 0px #000, -1px 1px 0px #000, 0px 4px 10px rgba(0,0,0,0.8)',
+    fontWeight: '800',
+    fontFamily: "'Roboto-Bold', sans-serif",
+    textTransform: 'none' as const,
+    textAlign: 'center' as const,
     animation: { initial: { opacity: 0, y: 15, x: 0 }, animate: { opacity: 1, y: 0, x: 0 }, exit: { opacity: 0, y: -15, x: 0 }, transition: { duration: 0.15 } }
   },
-  13: { // Gentle Pastel
-    color: '#fef3c7',
-    textShadow: '0 1px 3px rgba(0,0,0,0.1)',
-    fontWeight: '300',
-    letterSpacing: '0.05em',
-    animation: { initial: { opacity: 0, x: -10, y: 0 }, animate: { opacity: 1, x: 0, y: 0 }, exit: { opacity: 0, x: 10, y: 0 }, transition: { duration: 0.15 } }
+  4: { // Highlighter Yellow (Screenshot 3, top)
+    color: '#000000',
+    backgroundColor: '#facc15',
+    padding: '4px 10px',
+    borderRadius: '4px',
+    fontWeight: '900',
+    fontFamily: "'Roboto-Bold', sans-serif",
+    textTransform: 'uppercase' as const,
+    textAlign: 'center' as const,
+    animation: { initial: { opacity: 0, scale: 0.9 }, animate: { opacity: 1, scale: 1 }, exit: { opacity: 0, scale: 1.1 }, transition: { duration: 0.15 } }
   }
 };
 
@@ -196,7 +147,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
   brollClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
   setCurrentTime, setARollDuration, onUploadClick,
   stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage,
-  selectedCaptionId, subtitleStyle, setBrollClips, voiceoverUrl, showSubtitles
+  selectedCaptionId, subtitleStyle, setBrollClips, voiceoverUrl, showSubtitles, subtitleColor, subtitleBgColor
 }) => {
   const viewportRef = useRef<HTMLDivElement>(null);
   const voiceoverRef = useRef<HTMLAudioElement>(null);
@@ -378,19 +329,20 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                     fontFamily: styleConfig.fontFamily || "'Roboto-Bold', sans-serif",
                     fontWeight: styleConfig.fontWeight || '900',
                     fontStyle: styleConfig.fontStyle || 'normal',
-                    color: styleConfig.color,
+                    color: subtitleColor || styleConfig.color,
                     textShadow: styleConfig.textShadow,
                     textTransform: styleConfig.textTransform || 'uppercase',
-                    background: styleConfig.background,
-                    WebkitBackgroundClip: styleConfig.WebkitBackgroundClip,
-                    WebkitTextFillColor: styleConfig.WebkitTextFillColor,
+                    background: subtitleColor ? undefined : styleConfig.background,
+                    WebkitBackgroundClip: subtitleColor ? undefined : styleConfig.WebkitBackgroundClip,
+                    WebkitTextFillColor: subtitleColor ? undefined : styleConfig.WebkitTextFillColor,
                     letterSpacing: styleConfig.letterSpacing,
+                    textAlign: styleConfig.textAlign,
                   };
 
                   const lineStyle = {
-                    backgroundColor: styleConfig.backgroundColor,
-                    padding: styleConfig.backgroundColor ? (styleConfig.padding || '2px 10px') : undefined,
-                    borderRadius: styleConfig.backgroundColor ? (styleConfig.borderRadius || '4px') : undefined,
+                    backgroundColor: subtitleBgColor || styleConfig.backgroundColor,
+                    padding: (subtitleBgColor || styleConfig.backgroundColor) ? (styleConfig.padding || '2px 10px') : undefined,
+                    borderRadius: (subtitleBgColor || styleConfig.backgroundColor) ? (styleConfig.borderRadius || '4px') : undefined,
                   };
 
                   return (
@@ -408,7 +360,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                       initial={styleConfig.animation.initial}
                       animate={styleConfig.animation.animate}
                       exit={styleConfig.animation.exit}
-                      className={`absolute inset-x-4 flex justify-center pointer-events-auto cursor-grab active:cursor-grabbing ${isSelected ? 'ring-2 ring-yellow-400 ring-offset-4 ring-offset-black/20 rounded-xl' : ''}`}
+                      className={`absolute inset-x-4 flex ${styleConfig.textAlign === 'left' ? 'justify-start pl-8' : 'justify-center'} pointer-events-auto cursor-grab active:cursor-grabbing ${isSelected ? 'ring-2 ring-yellow-400 ring-offset-4 ring-offset-black/20 rounded-xl' : ''}`}
                       style={{ bottom: '15%', x: subtitlePos.x, y: subtitlePos.y }}
                     >
                       <div className="relative group">

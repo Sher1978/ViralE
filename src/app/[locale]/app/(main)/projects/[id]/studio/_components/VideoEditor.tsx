@@ -26,7 +26,7 @@ interface VideoEditorProps {
   projectId: string;
   aRollUrl: string;
   onBack: () => void;
-  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number, showSubtitles?: boolean) => Promise<void>;
+  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number, showSubtitles?: boolean, subColor?: string, subBgColor?: string) => Promise<void>;
   manifest?: ProductionManifest | null;
   onFaceless?: () => void;
 }
@@ -46,6 +46,7 @@ export const VideoEditor = React.memo(({
     brollClips, setBrollClips, phrases, setPhrases,
     transcriptionError, setTranscriptionError, isAnalyzingBroll,
     subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize, subtitleStyle, setSubtitleStyle, showSubtitles, setShowSubtitles, pxPerSecond, setPxPerSecond,
+    subtitleColor, setSubtitleColor, subtitleBgColor, setSubtitleBgColor,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
     voiceoverUrl, setVoiceoverUrl,
     runTranscriptionAndPhrases, setRawFile, deleteBroll
@@ -324,7 +325,7 @@ export const VideoEditor = React.memo(({
           if (isExporting) return;
           setIsExporting(true);
           try {
-            await onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize, subtitleStyle, showSubtitles);
+            await onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, subtitleColor, subtitleBgColor);
           } catch (e) {
             console.error('[VideoEditor] Export failed:', e);
           } finally {
@@ -344,6 +345,8 @@ export const VideoEditor = React.memo(({
         subtitleStyle={subtitleStyle}
         showSubtitles={showSubtitles}
         voiceoverUrl={voiceoverUrl}
+        subtitleColor={subtitleColor}
+        subtitleBgColor={subtitleBgColor}
       />
 
 
@@ -460,6 +463,10 @@ export const VideoEditor = React.memo(({
                     setSubtitleStyle(idx);
                 }}
                 onClose={() => setActiveTool(null)}
+                subtitleColor={subtitleColor}
+                setSubtitleColor={setSubtitleColor}
+                subtitleBgColor={subtitleBgColor}
+                setSubtitleBgColor={setSubtitleBgColor}
             />
         )}
         {activeTool === 'text' && (

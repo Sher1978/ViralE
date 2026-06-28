@@ -233,7 +233,7 @@ function DeliveryPageContent() {
 
   
   // Build drawtext filter chain
-  const buildDrawtextFilter = (clips: any[], baseFilter: string, videoHeight: number = 1920): string => {
+  const buildDrawtextFilter = (clips: any[], baseFilter: string, videoHeight: number = 1920, manifestData: any = null): string => {
     if (clips.length === 0) return baseFilter;
     
     // Escape special chars for FFmpeg drawtext
@@ -245,10 +245,22 @@ function DeliveryPageContent() {
       .replace(/\[/g, '\\\\[')
       .replace(/\]/g, '\\\\]');
 
-    const subStyleIdx = manifest?.subtitleStyle || 0;
-    const subSizeRaw = manifest?.subtitleSize || 18; // Default matches StudioViewport.tsx
-    const subPos = manifest?.subtitlePos || { x: 0, y: 0 };
+    const activeManifest = manifestData || manifest;
+    const subStyleIdx = activeManifest?.subtitleStyle || 0;
+    const subSizeRaw = activeManifest?.subtitleSize || 18; // Default matches StudioViewport.tsx
+    const subPos = activeManifest?.subtitlePos || { x: 0, y: 0 };
+    const customTextColor = activeManifest?.subtitleColor;
+    const customBgColor = activeManifest?.subtitleBgColor;
     
+    const toFfmpegColor = (hex: string, defaultColor: string): string => {
+      if (!hex) return defaultColor;
+      if (hex === 'transparent') return 'transparent';
+      if (hex.startsWith('#')) {
+        return '0x' + hex.substring(1).toUpperCase();
+      }
+      return hex;
+    };
+
     // Scale subtitle size to match 1080p canvas proportions
     // 82px in the ~360px studio viewport equals ~246px in 1080p
     const isMobile = videoHeight === 1280;
@@ -260,8 +272,12 @@ function DeliveryPageContent() {
       const line1 = lines[0] || '';
       const line2 = lines[1] || '';
 
-      const txt1 = esc(line1);
-      const txt2 = esc(line2);
+      const isUppercase = subStyleIdx !== 3;
+      const line1Processed = isUppercase ? line1.toUpperCase() : line1;
+      const line2Processed = isUppercase ? line2.toUpperCase() : line2;
+
+      const txt1 = esc(line1Processed);
+      const txt2 = esc(line2Processed);
       
       // Style mapping with FFmpeg-compatible colors
       let fontcolor = 'white';
@@ -274,34 +290,29 @@ function DeliveryPageContent() {
       let shadowcolor = 'black@0.8';
       let useItalic = false;
 
-      if (subStyleIdx === 0) { // Classic Yellow Italic
+      if (subStyleIdx === 0) { // Yellow Italic (титры №1)
         fontcolor = '0xFACC15'; borderw = Math.round(2 * baseScale); shadowx = Math.round(2 * baseScale); shadowy = Math.round(2 * baseScale); useItalic = true;
-      } else if (subStyleIdx === 1) { // White Bold
-        fontcolor = 'white'; borderw = 0; shadowy = Math.round(4 * baseScale);
-      } else if (subStyleIdx === 2) { // Red Outline
-        fontcolor = '0xEF4444'; borderw = Math.round(2 * baseScale); bordercolor = 'white'; shadowx = Math.round(4 * baseScale); shadowy = Math.round(4 * baseScale);
-      } else if (subStyleIdx === 3) { // Cyber Neon
-        fontcolor = '0x22D3EE'; shadowx = 0; shadowy = 0; useItalic = true; borderw = 0;
-      } else if (subStyleIdx === 4) { // Minimalist
-        fontcolor = 'white'; box = 1; boxcolor = 'black@0.6';
-      } else if (subStyleIdx === 5) { // Boxy Yellow
-        fontcolor = 'black'; box = 1; boxcolor = '0xFACC15';
-      } else if (subStyleIdx === 6) { // Gradient (Approx)
-        fontcolor = 'white'; shadowy = Math.round(2 * baseScale); shadowcolor = 'black@0.5';
-      } else if (subStyleIdx === 7) { // Soft Pink
-        fontcolor = '0xF472B6'; shadowy = Math.round(2 * baseScale);
-      } else if (subStyleIdx === 8) { // Ghostly
-        fontcolor = 'white@0.4';
-      } else if (subStyleIdx === 9) { // Impact
-        fontcolor = 'white'; shadowx = 0; shadowy = 0; borderw = Math.round(4 * baseScale); bordercolor = 'white@0.5';
-      } else if (subStyleIdx === 10) { // Green Hacker
-        fontcolor = '0x10B981'; shadowx = 0; shadowy = 0;
-      } else if (subStyleIdx === 11) { // Royal Gold
-        fontcolor = '0xFBBF24'; useItalic = true; shadowy = Math.round(2 * baseScale);
-      } else if (subStyleIdx === 12) { // Elegant Italic
-        fontcolor = 'white'; shadowy = Math.round(2 * baseScale); shadowcolor = 'white@0.3'; useItalic = true;
-      } else if (subStyleIdx === 13) { // Gentle Pastel
-        fontcolor = '0xFEF3C7'; shadowy = Math.round(1 * baseScale); shadowcolor = 'black@0.1';
+      } else if (subStyleIdx === 1) { // Left White Bold (Screenshot 1)
+        fontcolor = 'white'; borderw = 0; shadowy = Math.round(2 * baseScale); shadowcolor = 'black@0.6';
+      } else if (subStyleIdx === 2) { // Center Thin White (Screenshot 2)
+        fontcolor = 'white'; borderw = 0; shadowy = Math.round(2 * baseScale); shadowcolor = 'black@0.4';
+      } else if (subStyleIdx === 3) { // Center Yellow Outline (Screenshot 3, bottom)
+        fontcolor = '0xFACC15'; borderw = Math.round(2 * baseScale); bordercolor = 'black'; shadowx = 0; shadowy = 0;
+      } else if (subStyleIdx === 4) { // Highlighter Yellow (Screenshot 3, top)
+        fontcolor = 'black'; box = 1; boxcolor = '0xFACC15'; borderw = 0; shadowx = 0; shadowy = 0;
+      }
+
+      // Override colors if customized
+      if (customTextColor) {
+        fontcolor = toFfmpegColor(customTextColor, fontcolor);
+      }
+      if (customBgColor) {
+        if (customBgColor === 'transparent') {
+          box = 0;
+        } else {
+          box = 1;
+          boxcolor = toFfmpegColor(customBgColor, boxcolor);
+        }
       }
 
       // Map Y coordinates exactly to canvas editor: bottom 15% + framer-motion translation
@@ -309,7 +320,11 @@ function DeliveryPageContent() {
       const translatedY = subPos.y * (isMobile ? (720/1080) : 1);
       const finalY = Math.round(videoHeight - baseBottom - subSize + translatedY);
       const translatedX = subPos.x * (isMobile ? (720/1080) : 1);
-      const finalX = `(w-text_w)/2 + ${Math.round(translatedX)}`;
+      
+      const isLeftAlign = subStyleIdx === 1;
+      const finalX = isLeftAlign
+        ? `w*0.1 + ${Math.round(translatedX)}`
+        : `(w-text_w)/2 + ${Math.round(translatedX)}`;
 
       const subStart = typeof c.startTime === 'number' && !isNaN(c.startTime) ? c.startTime : 0;
       const subEnd = typeof c.endTime === 'number' && !isNaN(c.endTime) ? c.endTime : subStart + 3;
@@ -319,19 +334,10 @@ function DeliveryPageContent() {
       const FADE_DUR = 0.15;
       const animMap: Record<number, {dxIn: number, dyIn: number, dxOut: number, dyOut: number}> = {
         0: { dxIn: 0, dyIn: 20, dxOut: 0, dyOut: -10 },
-        1: { dxIn: 0, dyIn: -20, dxOut: 0, dyOut: 20 },
-        2: { dxIn: -50, dyIn: 0, dxOut: 50, dyOut: 0 },
-        3: { dxIn: -20, dyIn: 0, dxOut: 20, dyOut: 0 },
+        1: { dxIn: -30, dyIn: 0, dxOut: 20, dyOut: 0 },
+        2: { dxIn: 0, dyIn: 5, dxOut: 0, dyOut: -5 },
+        3: { dxIn: 0, dyIn: 15, dxOut: 0, dyOut: -15 },
         4: { dxIn: 0, dyIn: 0, dxOut: 0, dyOut: 0 },
-        5: { dxIn: 0, dyIn: 30, dxOut: 0, dyOut: -30 },
-        6: { dxIn: 0, dyIn: 20, dxOut: 0, dyOut: -20 },
-        7: { dxIn: 0, dyIn: 10, dxOut: 0, dyOut: -10 },
-        8: { dxIn: 0, dyIn: 0, dxOut: 0, dyOut: 0 },
-        9: { dxIn: 0, dyIn: -40, dxOut: 0, dyOut: 40 },
-        10: { dxIn: 0, dyIn: 0, dxOut: 0, dyOut: 0 },
-        11: { dxIn: 0, dyIn: -15, dxOut: 0, dyOut: 15 },
-        12: { dxIn: 0, dyIn: 15, dxOut: 0, dyOut: -15 },
-        13: { dxIn: -10, dyIn: 0, dxOut: 10, dyOut: 0 },
       };
       
       const anim = animMap[subStyleIdx] || animMap[0];
@@ -545,7 +551,7 @@ function DeliveryPageContent() {
         let vfFilter = scale;
         if (subs.length > 0) {
           setRenderStatus(`Быстрая сборка + субтитры (${subs.length})...`);
-          vfFilter = buildDrawtextFilter(subs, scale, isMobile ? 1280 : 1920);
+          vfFilter = buildDrawtextFilter(subs, scale, isMobile ? 1280 : 1920, manifest);
         }
 
         await ffmpeg.exec([
@@ -598,7 +604,7 @@ function DeliveryPageContent() {
         if (subs.length > 0) {
           setRenderStatus(`Наложение субтитров (${subs.length})...`);
           const subOutput = currentInput === 'temp_A.mp4' ? `temp_B.mp4` : `temp_A.mp4`;
-          const vfFilter = buildDrawtextFilter(subs, '', isMobile ? 1280 : 1920);
+          const vfFilter = buildDrawtextFilter(subs, '', isMobile ? 1280 : 1920, manifest);
           
           const exitCodeSub = await ffmpeg.exec([
             '-i', currentInput,
