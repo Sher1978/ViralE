@@ -8,13 +8,13 @@ import { useInView } from 'react-intersection-observer';
 
 interface ContentMatrixProps {
   blocks: { id: string; label: string }[];
-  scenarios: ('edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective')[];
-  selectionSources: Record<string, 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective'>;
+  scenarios: ('edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective' | 'napkin_explainer')[];
+  selectionSources: Record<string, 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective' | 'napkin_explainer'>;
   allScenarios: any;
   scriptData: any;
   locale: string;
   t: (key: string) => string;
-  onBlockSelect: (blockId: string, scenarioId: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective') => void;
+  onBlockSelect: (blockId: string, scenarioId: 'edutainment' | 'evergreen' | 'trends' | 'controversial' | 'detective' | 'napkin_explainer') => void;
   onBlockUpdate: (blockId: string, scenarioId: string, newContent: string) => void;
   onRefine: (instruction: string) => void;
   onAccept: () => void;
@@ -195,7 +195,8 @@ export function ContentMatrix({
                 trends: { color: '#F59E0B', label: locale === 'ru' ? 'Тренды' : 'Trends' },
                 edutainment: { color: '#3B82F6', label: locale === 'ru' ? 'Польза' : 'Edutainment' },
                 controversial: { color: '#EF4444', label: locale === 'ru' ? 'Провокация' : 'Controversial' },
-                detective: { color: '#06B6D4', label: locale === 'ru' ? 'Детектив' : 'Detective' }
+                detective: { color: '#06B6D4', label: locale === 'ru' ? 'Детектив' : 'Detective' },
+                napkin_explainer: { color: '#A855F7', label: locale === 'ru' ? 'Салфетка' : 'Napkin Explainer' }
               }[scenarioId] || { color: '#A855F7', label: 'Scenario' };
 
               const offset = i - activeIndex;

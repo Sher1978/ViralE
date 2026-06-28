@@ -260,7 +260,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
-    Based on this idea: "${coreIdea}", generate 5 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
+    Based on this idea: "${coreIdea}", generate 6 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
     
     ${trizMatrix ? `
     --- STRATEGIC TRIZ 9-SCREEN MATRIX BLUEPRINT ---
@@ -289,9 +289,10 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     3. evergreen (Case Study): Desire-based breakdown of results.
     4. trends (The Listicle): Dynamic value list (weakest to strongest).
     5. detective (Investigative Detective): Mini-investigation by an empathetic researcher. Structure: 1. Hook by topic, 2. Body: take a real fact from the internet/studies and reference it, 3. TRIZ: contradiction using transitions ("однако выяснилось...", "Однако неочевидная сторона вопроса...", "есть и другой взгляд...", "но это также означает..."), 4. CTA: call to leave a comment to find out more.
+    6. napkin_explainer (Napkin Explainer): Whiteboard animation scenario. Must build on spatial/physical world metaphors (labyrinths, levers, scales, bridges, tents). Slow-paced, hypnotizing rhythm. Starts with a visual thought experiment ("Imagine..."), and decomposes the solution strictly into 3 numbered simple components.
 
     Structure for EACH scenario (style):
-    - style_name: controversial | edutainment | evergreen | trends | detective
+    - style_name: controversial | edutainment | evergreen | trends | detective | napkin_explainer
     - hook: { visual: "...", screen_text: "...", words: "..." }
     - body: { words: "..." }
     - triz_inversion: { words: "..." }
@@ -307,7 +308,8 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
       "edutainment": { ... },
       "evergreen": { ... },
       "trends": { ... },
-      "detective": { ... }
+      "detective": { ... },
+      "napkin_explainer": { ... }
     }
   `;
 
