@@ -213,14 +213,14 @@ async function createDrawingVideo(
   if (hasHand) {
     filterComplex = [
       `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
-      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=rgba[sketch_full]`,
+      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
       `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
       
       // Create static diagonal gradient (45-degree white/black split on 2400x2400)
       `color=c=black:s=2400x2400,trim=end_frame=1,geq=lum='if(lt(X+Y,2400),255,0)'[diag_static]`,
       // Slide the diagonal gradient over the 840x1540 viewport based on time
       `color=c=black:s=840x1540,trim=duration=${durSec}[mask_bg]`,
-      `[mask_bg][diag_static]overlay=x='-2400 + 3240*(t/${durSec})':y='-2400 + 3940*(t/${durSec})',format=gray[mask]`,
+      `[mask_bg][diag_static]overlay=x='-840 + 840*(t/${durSec})':y='-1540 + 1540*(t/${durSec})',format=gray[mask]`,
       
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
@@ -231,18 +231,18 @@ async function createDrawingVideo(
       // Circular movements (140px X / 100px Y amplitude) + 12hz jitter keep the pen tip exactly on the drawing frontier.
       // Wrist always goes past the bottom/right screen edges for realism.
       `[paper_with_sketch][hand_scaled]overlay=` +
-        `x='clip(120 + 840*(t/${durSec}) + 140*cos(2*PI*1.5*t) + 30*sin(2*PI*10*t)\\, 120\\, 960) - 0':` +
-        `y='clip(190 + 1540*(t/${durSec}) + 100*sin(2*PI*1.5*t) + 30*sin(2*PI*12*t)\\, 190\\, 1730) - 515'[out]`
+        `x='clip(120 + 840*(t/${durSec}) + 140*cos(2*PI*1.5*t) + 30*sin(2*PI*10*t)\\, 120\\, 960) - 35':` +
+        `y='clip(190 + 1540*(t/${durSec}) + 100*sin(2*PI*1.5*t) + 30*sin(2*PI*12*t)\\, 190\\, 1730) - 61'[out]`
     ].join(';');
   } else {
     filterComplex = [
       `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
-      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=rgba[sketch_full]`,
+      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
       `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
       
       `color=c=black:s=2400x2400,trim=end_frame=1,geq=lum='if(lt(X+Y,2400),255,0)'[diag_static]`,
       `color=c=black:s=840x1540,trim=duration=${durSec}[mask_bg]`,
-      `[mask_bg][diag_static]overlay=x='-2400 + 3240*(t/${durSec})':y='-2400 + 3940*(t/${durSec})',format=gray[mask]`,
+      `[mask_bg][diag_static]overlay=x='-840 + 840*(t/${durSec})':y='-1540 + 1540*(t/${durSec})',format=gray[mask]`,
       
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
