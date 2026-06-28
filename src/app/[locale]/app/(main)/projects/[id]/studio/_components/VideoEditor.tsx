@@ -354,10 +354,23 @@ export const VideoEditor = React.memo(({
         });
       });
 
+      // Hierarchical fallback for whiteboard target segments
+      let targetSegments = segments.filter((s: any) => s.type === 'animated_still');
+      if (targetSegments.length === 0) {
+        console.log('[Studio LOG] No animated_still segments found, falling back to broll segments...');
+        targetSegments = segments.filter((s: any) => s.type === 'broll');
+      }
+      if (targetSegments.length === 0) {
+        console.log('[Studio LOG] No broll segments found, falling back to any text-bearing segments...');
+        targetSegments = segments.filter((s: any) => s.type !== 'intro_avatar' && s.type !== 'outro_avatar' && s.scriptText);
+      }
+      if (targetSegments.length === 0) {
+        // Absolute fallback: just use the entire segments list
+        targetSegments = segments;
+      }
+
       // Align segments
-      const rawPlaceholders = (segments.map((seg: any, segIdx: number) => {
-        if (seg.type !== 'animated_still') return null; // Whiteboard segments in script manifest
-        
+      const rawPlaceholders = (targetSegments.map((seg: any, segIdx: number) => {
         const cleanScript = (seg.scriptText || '').toLowerCase().replace(/[^a-zа-я0-9\s]/g, ' ');
         const segWords = cleanScript.split(/\s+/).filter(Boolean);
         if (segWords.length === 0) return null;
@@ -375,7 +388,7 @@ export const VideoEditor = React.memo(({
 
         if (matchIdx === -1) {
           const totalDur = subtitles[subtitles.length - 1].endTime;
-          const partDur = totalDur / segments.length;
+          const partDur = totalDur / targetSegments.length;
           startTime = segIdx * partDur;
           endTime = (segIdx + 1) * partDur;
         } else {

@@ -73,6 +73,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   const contentRef = useRef<HTMLDivElement>(null);
   const [isScrolling, setIsScrolling] = useState(false);
   const isProgrammaticScrollRef = useRef(false);
+  const lastProgrammaticScrollTimeRef = useRef(0);
   const lastTouchDistance = useRef<number | null>(null);
   const [placeholderTime, setPlaceholderTime] = useState<number | null>(null);
   const [wbPlaceholderTime, setWbPlaceholderTime] = useState<number | null>(null);
@@ -95,14 +96,18 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
     if (containerRef.current && !isScrolling) {
       if (Math.abs((containerRef.current as any).scrollLeft - targetX) > 0.1) {
         isProgrammaticScrollRef.current = true;
+        lastProgrammaticScrollTimeRef.current = Date.now();
         (containerRef.current as any).scrollLeft = targetX;
       }
     }
   }, [currentTime, isScrolling, PX_PER_SECOND]);
 
   const handleScroll = () => {
-    if (isProgrammaticScrollRef.current) {
-      isProgrammaticScrollRef.current = false;
+    const timeSinceProgrammatic = Date.now() - lastProgrammaticScrollTimeRef.current;
+    if (isProgrammaticScrollRef.current || timeSinceProgrammatic < 150) {
+      if (timeSinceProgrammatic > 150) {
+        isProgrammaticScrollRef.current = false;
+      }
       return;
     }
 
