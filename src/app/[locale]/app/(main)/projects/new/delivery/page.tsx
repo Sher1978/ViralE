@@ -500,6 +500,32 @@ function DeliveryPageContent() {
         } catch (e) {}
       }
 
+      // Download Whiteboard clips
+      const whiteboardClipsRaw = manifest?.whiteboardClips || [];
+      const whiteboardFiles: Array<{ name: string; clip: any }> = [];
+
+      for (let i = 0; i < whiteboardClipsRaw.length; i++) {
+        const clip = whiteboardClipsRaw[i];
+        try {
+          setRenderStatus(`Синхронизация скетча ${i + 1}/${whiteboardClipsRaw.length}...`);
+          let clipUrl = clip.url;
+          if (!clipUrl || clipUrl.startsWith('blob:')) {
+            const cachedWb = await idb.get(`whiteboard_file_${clip.id}`, 'MediaBuffer');
+            if (cachedWb instanceof Blob) {
+              clipUrl = URL.createObjectURL(cachedWb);
+            }
+          }
+          if (clipUrl) {
+            const wbData = await fetchFile(clipUrl);
+            const name = `whiteboard_${i}.mp4`;
+            await ffmpeg.writeFile(name, wbData);
+            whiteboardFiles.push({ name, clip });
+          }
+        } catch (e) {
+          console.warn('[Delivery] Failed to download whiteboard clip:', e);
+        }
+      }
+
       setRenderStatus('Подготовка субтитров и шрифтов...');
       try {
         const fontData = await fetchFile('/fonts/Roboto-Bold.ttf');
@@ -534,6 +560,27 @@ function DeliveryPageContent() {
         try { await ffmpeg.deleteFile(name); } catch(e) {}
       }
 
+      // Optimize Whiteboard clips
+      const processedWhiteboards = [];
+      for (let i = 0; i < whiteboardFiles.length; i++) {
+        setRenderStatus(`Оптимизация скетча ${i+1}/${whiteboardFiles.length}...`);
+        const { name, clip } = whiteboardFiles[i];
+        const optName = `opt_${name}`;
+        
+        const clipStart = typeof clip.startTime === 'number' && !isNaN(clip.startTime) ? clip.startTime : 0;
+        const clipEnd = typeof clip.endTime === 'number' && !isNaN(clip.endTime) ? clip.endTime : clipStart + 5;
+        const duration = Math.max(0.1, clipEnd - clipStart);
+
+        await ffmpeg.exec([
+          '-i', name,
+          '-t', duration.toString(),
+          '-vf', scale,
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName
+        ]);
+        processedWhiteboards.push({ name: optName, clip: { ...clip, startTime: clipStart, endTime: clipEnd } });
+        try { await ffmpeg.deleteFile(name); } catch(e) {}
+      }
+
       const shouldShowSubtitles = manifest.showSubtitles !== false;
       const subs = shouldShowSubtitles ? (manifest.subtitleClips || manifest.segments?.[0]?.subtitleClips || []) : [];
       console.log('[Delivery] Subtitle clips found:', subs.length, 'Enabled:', shouldShowSubtitles);
@@ -541,10 +588,10 @@ function DeliveryPageContent() {
       setRenderStatus(`Финальная сборка ${isMobile ? '720p' : '1080p'}...`);
       setRenderProgress(60);
 
-      const hasBrolls = processedBrolls.length > 0;
+      const hasOverlays = processedBrolls.length > 0 || processedWhiteboards.length > 0;
       let currentInput = 'input_aroll.mp4';
 
-      if (!hasBrolls) {
+      if (!hasOverlays) {
         setRenderStatus(`Быстрая сборка ${isMobile ? '720p' : '1080p'}...`);
         const subOutput = 'final_fast.mp4';
         
@@ -577,6 +624,7 @@ function DeliveryPageContent() {
         try { await ffmpeg.deleteFile('input_aroll.mp4'); } catch(e) {}
         currentInput = scaledOutput;
 
+        // Overlay B-Roll layers
         for (let i = 0; i < processedBrolls.length; i++) {
           const broll = processedBrolls[i];
           const nextOutput = i % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
@@ -598,6 +646,28 @@ function DeliveryPageContent() {
           ]);
           try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
           try { await ffmpeg.deleteFile(broll.name); } catch(e) {}
+          currentInput = nextOutput;
+        }
+
+        // Overlay Whiteboard sketch animation layers
+        for (let i = 0; i < processedWhiteboards.length; i++) {
+          const wb = processedWhiteboards[i];
+          const nextOutput = (processedBrolls.length + i) % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
+          
+          setRenderStatus(`Слой скетча ${i + 1} из ${processedWhiteboards.length}...`);
+          
+          const overlayFilter = `[0:v][1:v]overlay=x=0:y=0:enable='between(t,${wb.clip.startTime},${wb.clip.endTime})'[out]`;
+          await ffmpeg.exec([
+            '-i', currentInput,
+            '-itsoffset', wb.clip.startTime.toString(),
+            '-i', wb.name,
+            '-filter_complex', overlayFilter,
+            '-map', '[out]',
+            '-map', '0:a',
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
+          ]);
+          try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
+          try { await ffmpeg.deleteFile(wb.name); } catch(e) {}
           currentInput = nextOutput;
         }
 

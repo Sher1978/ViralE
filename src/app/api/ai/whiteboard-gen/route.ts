@@ -213,32 +213,41 @@ async function createDrawingVideo(
       `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
       `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=rgba[sketch_full]`,
       `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
-      `color=c=black:s=840x1540,trim=duration=${durSec}[mask_black]`,
-      `color=c=white:s=840x1540,trim=duration=${durSec}[mask_white]`,
-      `[mask_black][mask_white]overlay=y='-1540 + 1540*(t/${durSec})'[mask]`,
+      
+      // Create static diagonal gradient (45-degree white/black split on 2400x2400)
+      `color=c=black:s=2400x2400,trim=end_frame=1,geq=lum='if(lt(X+Y,2400),255,0)'[diag_static]`,
+      // Slide the diagonal gradient over the 840x1540 viewport based on time
+      `color=c=black:s=840x1540,trim=duration=${durSec}[mask_bg]`,
+      `[mask_bg][diag_static]overlay=x='-2400 + 3240*(t/${durSec})':y='-2400 + 3940*(t/${durSec})'[mask]`,
+      
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
-      `[2:v]scale=950:-1,format=rgba[hand_scaled]`,
-      // Choppy time-lapse movement: jump discretely 18 times per second (floor(t*18))
-      // localized around the current progress line Y (with some vertical jumping range)
-      // hand is scaled to 950px so the wrist always goes out of screen bounds
+      
+      `[2:v]scale=1500:-1,format=rgba[hand_scaled]`, // hand scaled to 1500px to fully cover frame borders
+      // Hand tracking coordinates precisely matching the mask frontier:
+      // X_mean goes from 120 to 960, Y_mean goes from 190 to 1730
+      // Circular movements (140px X / 100px Y amplitude) + 12hz jitter keep the pen tip exactly on the drawing frontier.
+      // Wrist always goes past the bottom/right screen edges for realism.
       `[paper_with_sketch][hand_scaled]overlay=` +
-        `x='clip(540 + 420*sin(4.3*floor(t*18))\\, 120\\, 960) - 75':` +
-        `y='clip(190 + 1540*(t/${durSec}) + 350*sin(7.1*floor(t*18))\\, 190\\, 1730) - 45'[out]`
+        `x='clip(120 + 840*(t/${durSec}) + 140*cos(2*PI*1.5*t) + 30*sin(2*PI*10*t)\\, 120\\, 960) - 0':` +
+        `y='clip(190 + 1540*(t/${durSec}) + 100*sin(2*PI*1.5*t) + 30*sin(2*PI*12*t)\\, 190\\, 1730) - 515'[out]`
     ].join(';');
   } else {
     filterComplex = [
       `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
       `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=rgba[sketch_full]`,
       `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
-      `color=c=black:s=840x1540,trim=duration=${durSec}[mask_black]`,
-      `color=c=white:s=840x1540,trim=duration=${durSec}[mask_white]`,
-      `[mask_black][mask_white]overlay=y='-1540 + 1540*(t/${durSec})'[mask]`,
+      
+      `color=c=black:s=2400x2400,trim=end_frame=1,geq=lum='if(lt(X+Y,2400),255,0)'[diag_static]`,
+      `color=c=black:s=840x1540,trim=duration=${durSec}[mask_bg]`,
+      `[mask_bg][diag_static]overlay=x='-2400 + 3240*(t/${durSec})':y='-2400 + 3940*(t/${durSec})'[mask]`,
+      
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
+      
       `[paper_with_sketch]drawtext=text='o':fontcolor=0x302515:` +
-        `x='clip(540 + 420*sin(4.3*floor(t*18))\\, 120\\, 960) - 6':` +
-        `y='clip(190 + 1540*(t/${durSec}) + 350*sin(7.1*floor(t*18))\\, 190\\, 1730) - 6':fontsize=18[out]`
+        `x='clip(120 + 840*(t/${durSec}) + 140*cos(2*PI*1.5*t) + 30*sin(2*PI*10*t) - 6\\, 120\\, 960)':` +
+        `y='clip(190 + 1540*(t/${durSec}) + 100*sin(2*PI*1.5*t) + 30*sin(2*PI*12*t) - 6\\, 190\\, 1730)':fontsize=18[out]`
     ].join(';');
   }
 
