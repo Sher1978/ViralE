@@ -144,8 +144,8 @@ async function compositeSketchOnNotebook(
 ): Promise<string> {
   const outPath = path.join(tmpDir, 'composited.png');
 
-  // Scale background to 1080x1920 first, then place scaled sketch (840x1540) on top.
-  // This ensures the canvas has the correct 9:16 aspect ratio before overlays, preventing out-of-bounds crops.
+  // Scale background to 1080x1920 first, then place scaled sketch (840x1540) on top using blend=multiply.
+  // This avoids colorkey wiping out actual drawing lines due to soft anti-aliased edge similarities.
   const cmd = [
     'ffmpeg', '-y',
     '-i', `"${notebookPath}"`,
@@ -154,8 +154,8 @@ async function compositeSketchOnNotebook(
     `"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg];` +
     `[1:v]scale=840:1540:force_original_aspect_ratio=decrease,` +
     `pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white,` +
-    `colorkey=0xFFFFFF:similarity=0.25:blend=0.15[sketch];` +
-    `[bg][sketch]overlay=x=120:y=190[out]"`,
+    `pad=1080:1920:120:190:color=white[sketch];` +
+    `[bg][sketch]blend=all_mode=multiply[out]"`,
     '-map', '[out]',
     '-frames:v', '1', '-update', '1',
     `"${outPath}"`
@@ -165,15 +165,17 @@ async function compositeSketchOnNotebook(
     await execAsync(cmd);
     return outPath;
   } catch (err: any) {
-    console.warn('[Whiteboard] Composite failed, falling back to simple overlay:', err.message?.slice(0, 100));
+    console.warn('[Whiteboard] Composite failed, falling back to simple multiply:', err.message?.slice(0, 100));
     const fallbackCmd = [
       'ffmpeg', '-y',
       '-i', `"${notebookPath}"`,
       '-i', `"${sketchPath}"`,
       '-filter_complex',
       `"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg];` +
-      `[1:v]scale=840:1540:force_original_aspect_ratio=decrease,pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white[sk];` +
-      `[bg][sk]overlay=120:190[out]"`,
+      `[1:v]scale=840:1540:force_original_aspect_ratio=decrease,` +
+      `pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white,` +
+      `pad=1080:1920:120:190:color=white[sk];` +
+      `[bg][sk]blend=all_mode=multiply[out]"`,
       '-map', '[out]', '-frames:v', '1', '-update', '1',
       `"${outPath}"`
     ].join(' ');
