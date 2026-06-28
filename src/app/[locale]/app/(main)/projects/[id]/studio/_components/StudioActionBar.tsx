@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { 
-  Play, Pause, RotateCcw, RotateCw, VolumeX, Volume2, Square, Scissors
+  Play, Pause, RotateCcw, RotateCw, VolumeX, Volume2, Square, Scissors, Trash2
 } from 'lucide-react';
 
 interface StudioActionBarProps {
@@ -14,6 +14,8 @@ interface StudioActionBarProps {
   onSeek: (time: number) => void;
   setIsMuted: (muted: boolean) => void;
   onSplit?: () => void;
+  selectedClip?: { id: string; type: 'aroll' | 'broll' | 'whiteboard' | 'subtitle'; } | null;
+  onDeleteSelected?: () => void;
 }
 
 const fmt = (s: number) => {
@@ -23,7 +25,7 @@ const fmt = (s: number) => {
 };
 
 export const StudioActionBar: React.FC<StudioActionBarProps> = ({
-  isPlaying, isMuted, currentTime, duration, togglePlay, onSeek, setIsMuted, onSplit
+  isPlaying, isMuted, currentTime, duration, togglePlay, onSeek, setIsMuted, onSplit, selectedClip, onDeleteSelected
 }) => {
   return (
     <div className="flex items-center justify-between px-6 h-14 bg-black border-y border-white/[0.06] flex-shrink-0 z-40">
@@ -51,13 +53,32 @@ export const StudioActionBar: React.FC<StudioActionBarProps> = ({
           )}
         </button>
         {onSplit && (
-          <button 
-            onClick={onSplit}
-            className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-all active:scale-90"
-            title="Split Segment (Разрезать A-Roll)"
-          >
-            <Scissors size={18} />
-          </button>
+          <div className="flex items-center gap-1 bg-white/5 border border-white/10 rounded-full p-0.5">
+            <button 
+              disabled={!selectedClip}
+              onClick={onSplit}
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${
+                selectedClip
+                  ? 'text-white bg-purple-500 hover:bg-purple-600'
+                  : 'text-white/20 cursor-not-allowed'
+              }`}
+              title="Split Segment (Разрезать выделенный фрагмент)"
+            >
+              <Scissors size={18} />
+            </button>
+            <button 
+              disabled={!selectedClip}
+              onClick={onDeleteSelected}
+              className={`w-10 h-10 flex items-center justify-center rounded-full transition-all active:scale-90 ${
+                selectedClip
+                  ? 'text-red-400 hover:text-red-300 hover:bg-red-500/10'
+                  : 'text-white/20 cursor-not-allowed'
+              }`}
+              title="Delete Selected (Удалить выделенный фрагмент)"
+            >
+              <Trash2 size={18} />
+            </button>
+          </div>
         )}
         <button 
           onClick={() => setIsMuted(!isMuted)}

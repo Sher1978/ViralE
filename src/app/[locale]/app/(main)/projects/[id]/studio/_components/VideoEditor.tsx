@@ -63,8 +63,126 @@ export const VideoEditor = React.memo(({
     subtitleColor, setSubtitleColor, subtitleBgColor, setSubtitleBgColor,
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
     voiceoverUrl, setVoiceoverUrl,
-    runTranscriptionAndPhrases, setRawFile, deleteBroll
+    runTranscriptionAndPhrases, setRawFile, deleteBroll,
+    manifest: activeManifest, setManifest
   } = useStudioState(projectId, manifest || null, propARollUrl);
+
+  const [selectedClip, setSelectedClip] = useState<{ id: string; type: 'aroll' | 'broll' | 'whiteboard' | 'subtitle'; } | null>(null);
+
+  const handleSplitSelected = useCallback(() => {
+    if (!selectedClip) return;
+    
+    if (selectedClip.type === 'aroll' || selectedClip.type === 'subtitle') {
+      splitSegmentAtTime(currentTime);
+      setSelectedClip(null);
+    } else if (selectedClip.type === 'broll') {
+      setBrollClips(prev => {
+        const target = prev.find(c => c.id === selectedClip.id);
+        if (!target || currentTime <= target.startTime || currentTime >= target.endTime) return prev;
+        
+        const b1 = {
+          ...target,
+          id: `${target.id}_split1_${Date.now()}`,
+          endTime: currentTime
+        };
+        
+        const b2 = {
+          ...target,
+          id: `${target.id}_split2_${Date.now()}`,
+          phraseId: `${target.phraseId || target.id}_split2_${Date.now()}`,
+          startTime: currentTime
+        };
+        
+        return [...prev.filter(c => c.id !== selectedClip.id), b1, b2].sort((x, y) => x.startTime - y.startTime);
+      });
+      setSelectedClip(null);
+    } else if (selectedClip.type === 'whiteboard') {
+      setWhiteboardClips(prev => {
+        const target = prev.find(c => c.id === selectedClip.id);
+        if (!target || currentTime <= target.startTime || currentTime >= target.endTime) return prev;
+        
+        const w1 = {
+          ...target,
+          id: `${target.id}_split1_${Date.now()}`,
+          endTime: currentTime
+        };
+        
+        const w2 = {
+          ...target,
+          id: `${target.id}_split2_${Date.now()}`,
+          startTime: currentTime
+        };
+        
+        return [...prev.filter(c => c.id !== selectedClip.id), w1, w2].sort((x, y) => x.startTime - y.startTime);
+      });
+      setSelectedClip(null);
+    }
+  }, [selectedClip, currentTime, splitSegmentAtTime, setBrollClips, setWhiteboardClips]);
+
+  const handleDeleteSelected = useCallback(() => {
+    if (!selectedClip) return;
+    
+    if (selectedClip.type === 'aroll') {
+      const segmentIdx = activeManifest?.segments?.findIndex((s: any) => s.id === selectedClip.id);
+      if (segmentIdx === undefined || segmentIdx === -1) return;
+      
+      const segmentToDelete = activeManifest!.segments[segmentIdx];
+      const durationToRemove = segmentToDelete.duration || 4.0;
+      
+      let accum = 0;
+      for (let i = 0; i < segmentIdx; i++) {
+        accum += activeManifest!.segments[i].duration || 4.0;
+      }
+      const startTime = accum;
+      const endTime = accum + durationToRemove;
+      
+      setManifest((prev: any) => {
+        if (!prev || !prev.segments) return prev;
+        return {
+          ...prev,
+          segments: prev.segments.filter((s: any) => s.id !== selectedClip.id)
+        };
+      });
+      
+      setSubtitleClips(prev => 
+        prev.filter(c => !(c.startTime >= startTime - 0.1 && c.endTime <= endTime + 0.1))
+            .map(c => {
+              if (c.startTime >= endTime - 0.1) {
+                return { ...c, startTime: c.startTime - durationToRemove, endTime: c.endTime - durationToRemove };
+              }
+              return c;
+            })
+      );
+      
+      setBrollClips(prev => 
+        prev.filter(c => !(c.startTime >= startTime - 0.1 && c.endTime <= endTime + 0.1))
+            .map(c => {
+              if (c.startTime >= endTime - 0.1) {
+                return { ...c, startTime: c.startTime - durationToRemove, endTime: c.endTime - durationToRemove };
+              }
+              return c;
+            })
+      );
+      
+      setWhiteboardClips(prev => 
+        prev.filter(c => !(c.startTime >= startTime - 0.1 && c.endTime <= endTime + 0.1))
+            .map(c => {
+              if (c.startTime >= endTime - 0.1) {
+                return { ...c, startTime: c.startTime - durationToRemove, endTime: c.endTime - durationToRemove };
+              }
+              return c;
+            })
+      );
+    } else if (selectedClip.type === 'broll') {
+      deleteBroll(selectedClip.id);
+    } else if (selectedClip.type === 'whiteboard') {
+      deleteWhiteboardClip(selectedClip.id);
+    } else if (selectedClip.type === 'subtitle') {
+      setSubtitleClips(prev => prev.filter(c => c.id !== selectedClip.id));
+    }
+    
+    setSelectedClip(null);
+  }, [selectedClip, activeManifest, setManifest, setSubtitleClips, setBrollClips, setWhiteboardClips, deleteBroll, deleteWhiteboardClip]);
 
   // Sync HTML5 video playback rate with A-roll speed factor
   useEffect(() => {
@@ -458,8 +576,11 @@ export const VideoEditor = React.memo(({
         togglePlay={togglePlay}
         onSeek={onSeek}
         setIsMuted={setIsMuted}
-        onSplit={() => splitSegmentAtTime(currentTime)}
+        onSplit={handleSplitSelected}
+        selectedClip={selectedClip}
+        onDeleteSelected={handleDeleteSelected}
       />
+
 
       <EditorTimeline 
         totalDuration={duration}
@@ -468,8 +589,8 @@ export const VideoEditor = React.memo(({
         onSeek={onSeek}
         aRollUrl={aRollUrl}
         onSplitSegment={splitSegmentAtTime}
-        arollSegments={manifest?.segments?.map((s: any, idx: number) => {
-            const start = manifest.segments.slice(0, idx).reduce((acc: number, curr: any) => acc + (curr.duration || 4.0), 0);
+        arollSegments={activeManifest?.segments?.map((s: any, idx: number) => {
+            const start = activeManifest.segments.slice(0, idx).reduce((acc: number, curr: any) => acc + (curr.duration || 4.0), 0);
             return {
                 id: s.id,
                 startTime: start,
@@ -477,6 +598,11 @@ export const VideoEditor = React.memo(({
                 content: s.scriptText || 'А-ролл'
             };
         }) || []}
+        selectedClipId={selectedClip?.id || null}
+        onSelectClip={(id, type) => {
+          if (!id) setSelectedClip(null);
+          else setSelectedClip({ id, type });
+        }}
         brollClips={brollClips.map(c => ({ id: c.id, type: 'broll', startTime: c.startTime, duration: c.endTime - c.startTime, content: c.url }))}
         subtitleClips={subtitleClips.map(c => ({ id: c.id, type: 'subtitle', startTime: c.startTime, duration: (c.endTime - c.startTime) || 0.5, content: c.text }))}
         whiteboardClips={whiteboardClips.map(c => ({ id: c.id, type: 'whiteboard', startTime: c.startTime, duration: c.endTime - c.startTime, content: c.url }))}

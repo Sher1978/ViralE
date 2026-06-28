@@ -745,6 +745,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     subtitleColor, setSubtitleColor, subtitleBgColor, setSubtitleBgColor,
     runTranscriptionAndPhrases, setRawFile,
     deleteBroll: (id: string) => setBrollClips(prev => prev.filter(c => c.id !== id)),
-    deleteWhiteboardClip: (id: string) => setWhiteboardClips(prev => prev.filter(c => c.id !== id))
+    deleteWhiteboardClip: (id: string) => setWhiteboardClips(prev => prev.filter(c => c.id !== id)),
+    manifest, setManifest
   };
 }

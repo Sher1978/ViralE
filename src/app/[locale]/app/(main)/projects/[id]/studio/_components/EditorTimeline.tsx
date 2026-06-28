@@ -36,6 +36,8 @@ interface EditorTimelineProps {
   onPxPerSecondChange: (px: number) => void;
   isPlaying?: boolean;
   arollSegments?: { id: string; startTime: number; duration: number; content: string; }[];
+  selectedClipId?: string | null;
+  onSelectClip?: (id: string | null, type: 'aroll' | 'broll' | 'whiteboard' | 'subtitle') => void;
 }
 
 export const EditorTimeline: React.FC<EditorTimelineProps> = ({
@@ -62,7 +64,9 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   pxPerSecond: PX_PER_SECOND,
   onPxPerSecondChange,
   isPlaying = false,
-  arollSegments = []
+  arollSegments = [],
+  selectedClipId = null,
+  onSelectClip
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -190,12 +194,15 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
       </div>
 
       {/* 2. Tracks Layer */}
-      <div className="flex-1 relative overflow-hidden bg-black/20">
+      <div 
+        className="flex-1 relative overflow-hidden bg-black/20"
+        onClick={() => onSelectClip?.(null, 'aroll')}
+      >
         {/* Track Grid Separators (Stationary Boundaries) */}
-        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '198px' }} />
-        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '146px' }} />
-        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '94px' }} />
-        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '41px' }} />
+        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '187px' }} />
+        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '141px' }} />
+        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '95px' }} />
+        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '49px' }} />
 
         <div 
             ref={trackRef}
@@ -205,9 +212,32 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                 
                 {/* A-ROLL TRACK */}
                 <div 
-                    className="absolute bottom-[148px] h-12 w-full cursor-pointer pointer-events-auto group/track"
+                    className="absolute bottom-[144px] h-10 w-full cursor-pointer pointer-events-auto group/track bg-teal-500/[0.04]"
+                    onPointerDown={(e) => {
+                        if ((e.target as any).closest('.aroll-clip-box') || (e.target as any).tagName === 'BUTTON') return;
+                        
+                        const startX = e.clientX;
+                        const initialScrollLeft = (containerRef.current as any)?.scrollLeft || 0;
+                        setIsScrolling(true);
+                        
+                        const onMove = (me: any) => {
+                            const deltaX = me.clientX - startX;
+                            if (containerRef.current) {
+                                (containerRef.current as any).scrollLeft = initialScrollLeft - deltaX;
+                            }
+                        };
+                        
+                        const onUp = () => {
+                            setIsScrolling(false);
+                            globalThis.removeEventListener('pointermove', onMove);
+                            globalThis.removeEventListener('pointerup', onUp);
+                        };
+                        
+                        globalThis.addEventListener('pointermove', onMove);
+                        globalThis.addEventListener('pointerup', onUp);
+                    }}
                 >
-                    <div className="absolute inset-0 bg-teal-500/[0.02] border-y border-teal-500/[0.05] group-hover/track:bg-teal-500/[0.04] transition-colors" />
+                    <div className="absolute inset-0 border-y border-teal-500/[0.05] group-hover/track:bg-teal-500/[0.08] transition-colors" />
                     
                     {arollSegments?.map(clip => (
                         <div 
@@ -222,8 +252,13 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                             onClick={(e) => {
                                 e.stopPropagation();
                                 onSeek(clip.startTime);
+                                onSelectClip?.(clip.id, 'aroll');
                             }}
-                            className="absolute h-full rounded-lg bg-teal-500/25 border-2 border-teal-400/40 flex items-center px-3 overflow-hidden cursor-pointer hover:bg-teal-500/35 transition-colors group/clip"
+                            className={`aroll-clip-box absolute h-full rounded-lg border-2 flex items-center px-3 overflow-hidden cursor-pointer transition-all group/clip ${
+                                selectedClipId === clip.id
+                                    ? 'bg-teal-500/40 border-purple-500 shadow-[0_0_10px_rgba(147,51,234,0.5)] z-30'
+                                    : 'bg-teal-500/25 border-teal-400/40 hover:bg-teal-500/35'
+                            }`}
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
                                 width: clip.duration * PX_PER_SECOND 
@@ -239,7 +274,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
 
                 {/* B-ROLL TRACK */}
                 <div 
-                    className="absolute bottom-24 h-12 w-full cursor-copy pointer-events-auto group/track"
+                    className="absolute bottom-[6px] h-10 w-full cursor-copy pointer-events-auto group/track bg-blue-500/[0.04]"
                     onClick={(e) => {
                         if ((e.target as any).closest('.broll-clip-box')) return;
                         const rect = (e.currentTarget as any).getBoundingClientRect();
@@ -248,7 +283,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                         setPlaceholderTime(time);
                     }}
                 >
-                    <div className="absolute inset-0 bg-white/[0.02] border-y border-white/[0.05] group-hover/track:bg-white/[0.04] transition-colors" />
+                    <div className="absolute inset-0 border-y border-blue-500/[0.05] group-hover/track:bg-blue-500/[0.08] transition-colors" />
                     
                     {/* Placeholder */}
                     {placeholderTime !== null && (
@@ -276,6 +311,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 onBrollLongPress?.(clip.id);
                             }}
                             onPointerDown={(e) => {
+                                onSelectClip?.(clip.id, 'broll');
                                 // --- DOUBLE TAP DETECTION ---
                                 const now = Date.now();
                                 if (now - lastTapRef.current < 300) {
@@ -328,11 +364,11 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 globalThis.addEventListener('pointerup', onDragUp);
                             }}
                             className={`broll-clip-box absolute h-full rounded-lg flex items-center justify-between overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10 ${
-                                !clip.content
-                                    // Placeholder style — awaiting user confirmation
-                                    ? 'border-2 border-dashed border-violet-400/70 bg-violet-500/15 animate-pulse'
-                                    // Filled clip style
-                                    : 'bg-blue-500/35 border-2 border-blue-400/60'
+                                selectedClipId === clip.id
+                                    ? 'bg-blue-500/50 border-purple-500 shadow-[0_0_10px_rgba(147,51,234,0.5)] z-30'
+                                    : !clip.content
+                                        ? 'border-2 border-dashed border-violet-400/70 bg-violet-500/15 animate-pulse'
+                                        : 'bg-blue-500/35 border-2 border-blue-400/60'
                             }`}
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
@@ -372,9 +408,9 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                     ))}
                 </div>
 
-                {/* WHITEBOARD TRACK */}
+                {/* WHITEBOARD/SKETCH TRACK */}
                 <div 
-                    className="absolute bottom-11 h-12 w-full cursor-copy pointer-events-auto group/track"
+                    className="absolute bottom-[52px] h-10 w-full cursor-copy pointer-events-auto group/track bg-purple-500/[0.04]"
                     onClick={(e) => {
                         if ((e.target as any).closest('.whiteboard-clip-box')) return;
                         const rect = (e.currentTarget as any).getBoundingClientRect();
@@ -383,7 +419,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                         setWbPlaceholderTime(time);
                     }}
                 >
-                    <div className="absolute inset-0 bg-purple-500/[0.02] border-y border-purple-500/[0.05] group-hover/track:bg-purple-500/[0.04] transition-colors" />
+                    <div className="absolute inset-0 border-y border-purple-500/[0.05] group-hover/track:bg-purple-500/[0.08] transition-colors" />
                     
                     {/* Placeholder */}
                     {wbPlaceholderTime !== null && (
@@ -416,6 +452,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                     onWhiteboardLongPress?.(clip.id);
                                 }}
                                 onPointerDown={(e) => {
+                                    onSelectClip?.(clip.id, 'whiteboard');
                                     // --- DOUBLE TAP DETECTION ---
                                     const now = Date.now();
                                     if (now - lastTapRef.current < 300) {
@@ -467,7 +504,13 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                     globalThis.addEventListener('pointermove', onDragMove);
                                     globalThis.addEventListener('pointerup', onDragUp);
                                 }}
-                                className={`whiteboard-clip-box absolute h-full rounded-lg flex items-center justify-between overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10 ${bgClass}`}
+                                className={`whiteboard-clip-box absolute h-full rounded-lg flex items-center justify-between overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10 ${
+                                    selectedClipId === clip.id
+                                        ? 'bg-purple-600/50 border-purple-500 shadow-[0_0_10px_rgba(147,51,234,0.5)] z-30 text-purple-100'
+                                        : isFullVideo 
+                                            ? 'bg-purple-950/90 border-2 border-purple-800/40 text-purple-200' 
+                                            : 'bg-purple-600/35 border-2 border-purple-400/60 text-purple-100'
+                                }`}
                                 style={{ 
                                     left: clip.startTime * PX_PER_SECOND, 
                                     width: clip.duration * PX_PER_SECOND 
@@ -506,10 +549,10 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
  
                 {/* SUBTITLE TRACK */}
                 <div 
-                    className="absolute bottom-1.5 h-8 w-full cursor-pointer pointer-events-auto"
+                    className="absolute bottom-[98px] h-10 w-full cursor-pointer pointer-events-auto bg-yellow-500/[0.04]"
                     onClick={() => onSubtitleTrackClick?.()}
                 >
-                    <div className="absolute inset-0 bg-yellow-500/[0.03] border-y border-yellow-500/[0.05]" />
+                    <div className="absolute inset-0 border-y border-yellow-500/[0.05] hover:bg-yellow-500/[0.08] transition-colors" />
                     {subtitleClips.map(clip => (
                         <div 
                             key={clip.id}
@@ -518,6 +561,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 onCaptionClick?.(clip.id);
                             }}
                             onPointerDown={(e) => {
+                                onSelectClip?.(clip.id, 'subtitle');
                                 // --- DOUBLE TAP DETECTION (Mobile/Responsive) ---
                                 const now = Date.now();
                                 if (now - lastSubtitleTapRef.current < 300) {
@@ -555,7 +599,13 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                                 globalThis.addEventListener('pointermove', onMove);
                                 globalThis.addEventListener('pointerup', onUp);
                             }}
-                            className={`absolute h-full rounded-md bg-yellow-500/20 border border-yellow-500/30 flex items-center px-2 overflow-hidden transition-all ${Math.abs(currentTime - clip.startTime) < 0.2 ? 'ring-2 ring-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]' : ''}`}
+                            className={`absolute h-full rounded-md flex items-center px-2 overflow-hidden transition-all ${
+                                selectedClipId === clip.id
+                                    ? 'bg-yellow-500/40 border-purple-500 ring-2 ring-purple-500 shadow-[0_0_10px_rgba(147,51,234,0.5)] z-30'
+                                    : Math.abs(currentTime - clip.startTime) < 0.2 
+                                        ? 'bg-yellow-500/20 border-yellow-500/30 ring-2 ring-yellow-400 shadow-[0_0_10px_rgba(250,204,21,0.3)]' 
+                                        : 'bg-yellow-500/20 border-yellow-500/30'
+                            }`}
                             style={{ 
                                 left: clip.startTime * PX_PER_SECOND, 
                                 width: clip.duration * PX_PER_SECOND 
