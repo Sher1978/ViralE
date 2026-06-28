@@ -218,7 +218,7 @@ async function createDrawingVideo(
       `color=c=black:s=2400x2400,trim=end_frame=1,geq=lum='if(lt(X+Y,2400),255,0)'[diag_static]`,
       // Slide the diagonal gradient over the 840x1540 viewport based on time
       `color=c=black:s=840x1540,trim=duration=${durSec}[mask_bg]`,
-      `[mask_bg][diag_static]overlay=x='-2400 + 3240*(t/${durSec})':y='-2400 + 3940*(t/${durSec})'[mask]`,
+      `[mask_bg][diag_static]overlay=x='-2400 + 3240*(t/${durSec})':y='-2400 + 3940*(t/${durSec})',format=gray[mask]`,
       
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
@@ -240,7 +240,7 @@ async function createDrawingVideo(
       
       `color=c=black:s=2400x2400,trim=end_frame=1,geq=lum='if(lt(X+Y,2400),255,0)'[diag_static]`,
       `color=c=black:s=840x1540,trim=duration=${durSec}[mask_bg]`,
-      `[mask_bg][diag_static]overlay=x='-2400 + 3240*(t/${durSec})':y='-2400 + 3940*(t/${durSec})'[mask]`,
+      `[mask_bg][diag_static]overlay=x='-2400 + 3240*(t/${durSec})':y='-2400 + 3940*(t/${durSec})',format=gray[mask]`,
       
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
