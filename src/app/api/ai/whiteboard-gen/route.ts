@@ -212,14 +212,15 @@ async function createDrawingVideo(
   let filterComplex = '';
   if (hasHand) {
     filterComplex = [
-      `[0:v]loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS[bg]`,
-      `[1:v]crop=840:1540:120:190[sketch_crop]`,
+      `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
+      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=rgba[sketch_full]`,
+      `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
       `color=c=black:s=840x1540,trim=duration=${durSec}[mask_black]`,
       `color=c=white:s=840x1540,trim=duration=${durSec}[mask_white]`,
       `[mask_black][mask_white]overlay=y='-1540 + 1540*(t/${durSec})'[mask]`,
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
-      `[bg][sketch_masked]overlay=120:190[paper_with_sketch]`,
-      `[2:v]scale=320:-1[hand_scaled]`,
+      `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
+      `[2:v]scale=320:-1,format=rgba[hand_scaled]`,
       // Choppy time-lapse movement: jump discretely 18 times per second (floor(t*18))
       // localized around the current progress line Y (with some vertical jumping range)
       `[paper_with_sketch][hand_scaled]overlay=` +
@@ -228,13 +229,14 @@ async function createDrawingVideo(
     ].join(';');
   } else {
     filterComplex = [
-      `[0:v]loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS[bg]`,
-      `[1:v]crop=840:1540:120:190[sketch_crop]`,
+      `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
+      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=rgba[sketch_full]`,
+      `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
       `color=c=black:s=840x1540,trim=duration=${durSec}[mask_black]`,
       `color=c=white:s=840x1540,trim=duration=${durSec}[mask_white]`,
       `[mask_black][mask_white]overlay=y='-1540 + 1540*(t/${durSec})'[mask]`,
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
-      `[bg][sketch_masked]overlay=120:190[paper_with_sketch]`,
+      `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
       `[paper_with_sketch]drawtext=text='o':fontcolor=0x302515:` +
         `x='clip(540 + 420*sin(4.3*floor(t*18))\\, 120\\, 960) - 6':` +
         `y='clip(190 + 1540*(t/${durSec}) + 350*sin(7.1*floor(t*18))\\, 190\\, 1730) - 6':fontsize=18[out]`
@@ -326,7 +328,7 @@ You are an expert prompt engineer for the Flux image generation model.
 Take any input description (Russian or English) and output a highly optimized English prompt for a whiteboard animation sketch.
 
 Strictly follow this formula:
-"A charming naive children's book doodle illustration of [SUBJECT], simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, completely flat white background with zero color tones. Maximum contrast black outlines only. Strictly no shading, no gradients, no watercolor, no color fills, no photography. Portrait orientation 9:16. The bottom-right quadrant must be completely empty white space with zero objects."
+"A charming naive children's book doodle illustration of [SUBJECT], simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, completely flat white background with zero color tones. Maximum contrast black outlines only. Strictly NO shading, NO gradients, NO watercolor, NO color fills, NO photography, NO letters, NO text, NO words, NO spelling, NO font, NO writing. Portrait orientation 9:16. The bottom-right quadrant must be completely empty white space with zero objects."
 
 Rules:
 1. Translate any Russian/non-English words to English.

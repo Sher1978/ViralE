@@ -216,6 +216,7 @@ export const VideoEditor = React.memo(({
   const [isAutoGeneratingWhiteboard, setIsAutoGeneratingWhiteboard] = useState(false);
   const [editingWhiteboardClipId, setEditingWhiteboardClipId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+  const [isSpeechContextCollapsed, setIsSpeechContextCollapsed] = useState(true);
 
   const editingWhiteboardClip = useMemo(() => {
     if (!editingWhiteboardClipId) return null;
@@ -1347,7 +1348,7 @@ export const VideoEditor = React.memo(({
               </div>
 
               {/* SKETCH PREVIEW CONTAINER */}
-              <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden bg-white/5 flex flex-col items-center justify-center border border-white/10 relative group/preview">
+              <div className="h-[280px] aspect-[9/16] mx-auto rounded-2xl overflow-hidden bg-white/5 flex flex-col items-center justify-center border border-white/10 relative group/preview">
                 {editingWhiteboardClip.url ? (
                   <video 
                     src={editingWhiteboardClip.url}
@@ -1405,10 +1406,33 @@ export const VideoEditor = React.memo(({
 
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <label className="text-[10px] font-black uppercase tracking-wider text-white/40">Речевой контекст (субтитры)</label>
-                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-xs text-white/70 leading-relaxed italic">
-                    "{editingWhiteboardClip.spokenText || 'Контекст отсутствует'}"
-                  </div>
+                  <button 
+                    type="button"
+                    onClick={() => setIsSpeechContextCollapsed(!isSpeechContextCollapsed)}
+                    className="flex items-center justify-between w-full text-left focus:outline-none"
+                  >
+                    <label className="text-[10px] font-black uppercase tracking-wider text-white/40 cursor-pointer">
+                      Речевой контекст (субтитры)
+                    </label>
+                    <span className="text-[10px] font-black text-purple-400 uppercase tracking-widest">
+                      {isSpeechContextCollapsed ? 'Развернуть' : 'Свернуть'}
+                    </span>
+                  </button>
+                  
+                  <AnimatePresence>
+                    {!isSpeechContextCollapsed && (
+                      <motion.div 
+                        initial={{ opacity: 0, height: 0 }}
+                        animate={{ opacity: 1, height: 'auto' }}
+                        exit={{ opacity: 0, height: 0 }}
+                        className="overflow-hidden"
+                      >
+                        <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-xs text-white/70 leading-relaxed italic">
+                          "{editingWhiteboardClip.spokenText || 'Контекст отсутствует'}"
+                        </div>
+                      </motion.div>
+                    )}
+                  </AnimatePresence>
                 </div>
 
                 <div className="space-y-2">
