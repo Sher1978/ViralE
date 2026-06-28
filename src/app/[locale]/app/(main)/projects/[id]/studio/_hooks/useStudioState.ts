@@ -70,6 +70,84 @@ const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
 
 // --- HELPERS ---
 
+function alignSegmentsWithSubtitles(segments: any[], subtitles: any[]) {
+  if (!segments || segments.length === 0 || !subtitles || subtitles.length === 0) {
+    return [];
+  }
+
+  // Join all subtitles into a single text sequence, keeping track of character indices and times
+  let fullSubtitleText = '';
+  const charTimeline: { charIndex: number; time: number; subIndex: number }[] = [];
+
+  subtitles.forEach((sub: any, subIdx: number) => {
+    const text = (sub.text || '').toLowerCase().replace(/[^a-zа-я0-9\s]/g, ' ');
+    const words = text.split(/\s+/).filter(Boolean);
+    
+    // Distribute time linearly across words in this subtitle
+    const duration = sub.endTime - sub.startTime;
+    const wordDuration = words.length > 0 ? duration / words.length : 0;
+
+    words.forEach((word: string, wordIdx: number) => {
+      const wordStartChar = fullSubtitleText.length;
+      fullSubtitleText += word + ' ';
+      const wordEndChar = fullSubtitleText.length;
+      
+      const wordStartTime = sub.startTime + (wordIdx * wordDuration);
+      
+      for (let i = wordStartChar; i < wordEndChar; i++) {
+        charTimeline.push({
+          charIndex: i,
+          time: wordStartTime,
+          subIndex: subIdx
+        });
+      }
+    });
+  });
+
+  // For each segment, search for its script text within fullSubtitleText
+  const aligned = segments.map((seg: any, segIdx: number) => {
+    const cleanScript = (seg.scriptText || '').toLowerCase().replace(/[^a-zа-я0-9\s]/g, ' ');
+    const segWords = cleanScript.split(/\s+/).filter(Boolean);
+    if (segWords.length === 0) return null;
+
+    const searchString = segWords.join(' ');
+    let matchIdx = fullSubtitleText.indexOf(searchString);
+
+    // If exact match not found, try to match first few words
+    if (matchIdx === -1 && segWords.length > 2) {
+      const partialSearch = segWords.slice(0, 3).join(' ');
+      matchIdx = fullSubtitleText.indexOf(partialSearch);
+    }
+    
+    // If still not found, fallback to linear split of duration based on segment index
+    if (matchIdx === -1) {
+      const totalDur = subtitles[subtitles.length - 1].endTime;
+      const partDur = totalDur / segments.length;
+      return {
+        segmentId: seg.id,
+        startTime: segIdx * partDur,
+        endTime: (segIdx + 1) * partDur,
+        segment: seg
+      };
+    }
+
+    const startChar = matchIdx;
+    const endChar = Math.min(charTimeline.length - 1, matchIdx + searchString.length);
+
+    const startTime = charTimeline[startChar]?.time ?? subtitles[0].startTime;
+    const endTime = charTimeline[endChar]?.time ?? subtitles[subtitles.length - 1].endTime;
+
+    return {
+      segmentId: seg.id,
+      startTime,
+      endTime: Math.max(startTime + 2.0, endTime),
+      segment: seg
+    };
+  }).filter(Boolean);
+
+  return aligned;
+}
+
 function buildTranscript(manifest: ProductionManifest | null, videoDuration: number): TranscriptWord[] {
   if (!manifest) {
     return [{ text: "[Редактируйте текст здесь]", start: 0, end: videoDuration }];
@@ -613,10 +691,90 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     setStageMessage('Генерация субтитров...');
     console.log('[Studio LOG] Formatting transcript segments & karaoke clips...');
     setTranscript(words);
-    setSubtitleClips(buildKaraokeClips(words));
+    const subs = buildKaraokeClips(words);
+    setSubtitleClips(subs);
     setStage('editing');
     setIsAnalyzingBroll(false); // Disable auto-creation of B-rolls
     setStageMessage('');
+
+    // Auto-import storyboard segments if manifest exists
+    if (manifest && manifest.segments && manifest.segments.length > 0) {
+      console.log('[Studio LOG] Auto-aligning storyboard segments with subtitles...');
+      try {
+        const aligned = alignSegmentsWithSubtitles(manifest.segments, subs);
+        
+        const importedBrolls: BRollClip[] = [];
+        const importedWhiteboards: WhiteboardClip[] = [];
+        
+        aligned.forEach((item: any) => {
+          if (!item) return;
+          const { segment, startTime, endTime } = item;
+          if (segment.type === 'broll') {
+            importedBrolls.push({
+              id: `br_imp_${segment.id}`,
+              url: '',
+              label: (segment.prompt || 'B-Roll').substring(0, 24),
+              prompt: segment.prompt || 'cinematic B-Roll',
+              startTime,
+              endTime,
+              track: 1
+            });
+          } else if (segment.type === 'animated_still') {
+            importedWhiteboards.push({
+              id: `wb_imp_${segment.id}`,
+              url: '',
+              imageUrl: '',
+              label: (segment.prompt || 'Whiteboard').substring(0, 24),
+              prompt: segment.prompt || 'whiteboard sketch doodle',
+              startTime,
+              endTime,
+              track: 2,
+              status: 'pending'
+            });
+          }
+        });
+        
+        if (importedBrolls.length > 0) {
+          setBrollClips(importedBrolls);
+          console.log('[Studio LOG] Auto-imported B-Roll clips:', importedBrolls);
+        }
+        if (importedWhiteboards.length > 0) {
+          setWhiteboardClips(importedWhiteboards);
+          console.log('[Studio LOG] Auto-imported Whiteboard clips:', importedWhiteboards);
+          
+          // Trigger background generation for imported whiteboards
+          importedWhiteboards.forEach(async (clip) => {
+            try {
+              setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'generating' } : c));
+              const res = await fetch('/api/ai/whiteboard-gen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  clipId: clip.id,
+                  projectId,
+                  prompt: clip.prompt,
+                  duration: clip.endTime - clip.startTime,
+                  speed: 1.0
+                })
+              });
+              if (!res.ok) throw new Error('API failed');
+              const data = await res.json();
+              setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
+                ...c,
+                url: data.videoUrl,
+                imageUrl: data.imageUrl,
+                status: 'completed'
+              } : c));
+            } catch (err) {
+              console.error(`[Studio LOG] Background gen failed for imported whiteboard ${clip.id}:`, err);
+              setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'failed' } : c));
+            }
+          });
+        }
+      } catch (alignErr) {
+        console.error('[Studio LOG] Failed to align storyboard segments:', alignErr);
+      }
+    }
     console.log('[Studio LOG] runTranscriptionAndPhrases completed successfully! Transitioned stage to editing.');
   }, [aRollUrl, rawFile, manifest, projectId, transcriptionError]);
 
