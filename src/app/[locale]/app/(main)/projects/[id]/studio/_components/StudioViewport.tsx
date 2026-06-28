@@ -332,7 +332,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
             {/* WHITEBOARD OVERLAY */}
             <AnimatePresence>
               {(() => {
-                const activeWB = whiteboardClips?.find(c => c.url && c.url.length > 5 && currentTime >= c.startTime && currentTime <= c.endTime);
+                const activeWB = whiteboardClips?.find(c => (c.url || c.imageUrl) && currentTime >= c.startTime && currentTime <= c.endTime);
                 if (!activeWB) return null;
                 return (
                   <motion.div 
@@ -342,12 +342,20 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                     exit={{ opacity: 0 }}
                     className="absolute inset-0 z-20 flex items-center justify-center bg-white"
                   >
-                    <BRollPreview 
-                      url={activeWB.url}
-                      startTime={activeWB.startTime}
-                      currentTime={currentTime}
-                      isPlaying={isPlaying}
-                    />
+                    {activeWB.url ? (
+                      <BRollPreview 
+                        url={activeWB.url}
+                        startTime={activeWB.startTime}
+                        currentTime={currentTime}
+                        isPlaying={isPlaying}
+                      />
+                    ) : (
+                      <img 
+                        src={activeWB.imageUrl} 
+                        className="w-full h-full object-contain"
+                        alt="Whiteboard sketch"
+                      />
+                    )}
                   </motion.div>
                 );
               })()}

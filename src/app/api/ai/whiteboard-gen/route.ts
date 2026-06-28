@@ -115,6 +115,9 @@ Rules:
     // Command: python scripts/viral_sketch_engine.py <sketch> <output> <duration>
     const cmd = `python "${pythonScript}" "${sketchPath}" "${videoPath}" ${duration}`;
     
+    let pythonFailed = false;
+    let pythonErrorMsg = '';
+
     try {
       const { stdout, stderr } = await execAsync(cmd, { cwd: projectRoot });
       console.log(`[Whiteboard Gen] Python output:\n${stdout}`);
@@ -123,34 +126,40 @@ Rules:
       }
     } catch (pythonErr: any) {
       console.error(`[Whiteboard Gen] Python engine failed:`, pythonErr);
-      throw new Error(`Python sketch rendering failed: ${pythonErr.message || pythonErr}`);
+      pythonFailed = true;
+      pythonErrorMsg = pythonErr.message || String(pythonErr);
     }
 
-    // 4. Verify video exists and upload outputs to Supabase
-    if (!fs.existsSync(videoPath)) {
-      throw new Error('Rendered video file was not created by the Python engine');
-    }
-
-    const videoBuffer = fs.readFileSync(videoPath);
-    
-    console.log('[Whiteboard Gen] Uploading sketch image and video to Supabase Storage...');
     const uuid = uuidv4();
     
-    // Upload image
+    // Upload image (always uploaded)
+    console.log('[Whiteboard Gen] Uploading sketch image to Supabase Storage...');
     const sketchStoragePath = `whiteboard/sketch_${projectId}_${uuid}.png`;
     const finalImageUrl = await uploadBufferToSupabase(imageBuffer, sketchStoragePath, 'image/png');
     
-    // Upload video
-    const videoStoragePath = `whiteboard/video_${projectId}_${uuid}.mp4`;
-    const finalVideoUrl = await uploadBufferToSupabase(videoBuffer, videoStoragePath, 'video/mp4');
+    // Upload video if python succeeded
+    let finalVideoUrl = '';
+    if (!pythonFailed && fs.existsSync(videoPath)) {
+      console.log('[Whiteboard Gen] Uploading sketch video to Supabase Storage...');
+      const videoStoragePath = `whiteboard/video_${projectId}_${uuid}.mp4`;
+      finalVideoUrl = await uploadBufferToSupabase(fs.readFileSync(videoPath), videoStoragePath, 'video/mp4');
+    }
 
-    console.log(`[Whiteboard Gen] Successfully generated. Image: ${finalImageUrl}, Video: ${finalVideoUrl}`);
+    console.log(`[Whiteboard Gen] Image: ${finalImageUrl}, Video: ${finalVideoUrl || 'NONE (python failed)'}`);
 
     // Cleanup local temp files
     try {
       fs.rmSync(tmpDir, { recursive: true, force: true });
     } catch (e) {
       console.warn('[Whiteboard Gen] Failed to clean up temp files:', e);
+    }
+
+    if (pythonFailed) {
+      return NextResponse.json({
+        imageUrl: finalImageUrl,
+        videoUrl: '',
+        warning: `Whiteboard animation script failed, showing static drawing. Details: ${pythonErrorMsg}`
+      });
     }
 
     return NextResponse.json({

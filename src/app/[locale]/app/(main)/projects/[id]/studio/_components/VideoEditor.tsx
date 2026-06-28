@@ -313,65 +313,105 @@ export const VideoEditor = React.memo(({
   };
 
   const handleAutoGenerateWhiteboards = async () => {
-    if (subtitleClips.length === 0) return;
+    if (!manifest || !manifest.segments || manifest.segments.length === 0 || subtitleClips.length === 0) {
+      (globalThis as any).alert('Сценарий пуст или субтитры отсутствуют.');
+      return;
+    }
+    
     setIsAutoGeneratingWhiteboard(true);
-    setAutoGenProgress('Анализ текста...');
+    setAutoGenProgress('Импорт из сценария...');
+    
     try {
-      const res = await fetch('/api/ai/auto-whiteboard', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ subtitles: subtitleClips })
+      // Helper function matching useStudioState logic
+      const segments = manifest.segments;
+      const subtitles = subtitleClips;
+      
+      // Join all subtitles into a single text sequence, keeping track of character indices and times
+      let fullSubtitleText = '';
+      const charTimeline: { charIndex: number; time: number; subIndex: number }[] = [];
+
+      subtitles.forEach((sub: any, subIdx: number) => {
+        const text = (sub.text || '').toLowerCase().replace(/[^a-zа-я0-9\s]/g, ' ');
+        const words = text.split(/\s+/).filter(Boolean);
+        
+        const duration = sub.endTime - sub.startTime;
+        const wordDuration = words.length > 0 ? duration / words.length : 0;
+
+        words.forEach((word: string, wordIdx: number) => {
+          const wordStartChar = fullSubtitleText.length;
+          fullSubtitleText += word + ' ';
+          const wordEndChar = fullSubtitleText.length;
+          
+          const wordStartTime = sub.startTime + (wordIdx * wordDuration);
+          
+          for (let i = wordStartChar; i < wordEndChar; i++) {
+            charTimeline.push({
+              charIndex: i,
+              time: wordStartTime,
+              subIndex: subIdx
+            });
+          }
+        });
       });
-      if (!res.ok) throw new Error('API failed');
 
-      const data = await res.json();
-      const clips = data.clips || [];
+      // Align segments
+      const rawPlaceholders = (segments.map((seg: any, segIdx: number) => {
+        if (seg.type !== 'animated_still') return null; // Whiteboard segments in script manifest
+        
+        const cleanScript = (seg.scriptText || '').toLowerCase().replace(/[^a-zа-я0-9\s]/g, ' ');
+        const segWords = cleanScript.split(/\s+/).filter(Boolean);
+        if (segWords.length === 0) return null;
 
-      if (clips.length === 0) {
-        (globalThis as any).alert('ИИ не нашёл подходящих моментов. Попробуйте записать более содержательное видео.');
+        const searchString = segWords.join(' ');
+        let matchIdx = fullSubtitleText.indexOf(searchString);
+
+        if (matchIdx === -1 && segWords.length > 2) {
+          const partialSearch = segWords.slice(0, 3).join(' ');
+          matchIdx = fullSubtitleText.indexOf(partialSearch);
+        }
+        
+        let startTime = 0;
+        let endTime = 0;
+
+        if (matchIdx === -1) {
+          const totalDur = subtitles[subtitles.length - 1].endTime;
+          const partDur = totalDur / segments.length;
+          startTime = segIdx * partDur;
+          endTime = (segIdx + 1) * partDur;
+        } else {
+          const startChar = matchIdx;
+          const endChar = Math.min(charTimeline.length - 1, matchIdx + searchString.length);
+          startTime = charTimeline[startChar]?.time ?? subtitles[0].startTime;
+          endTime = charTimeline[endChar]?.time ?? subtitles[subtitles.length - 1].endTime;
+        }
+
+        const id = `wb_${Date.now()}_${segIdx}`;
+        return {
+          id,
+          url: '',
+          imageUrl: '',
+          label: (seg.prompt || 'Whiteboard').substring(0, 24),
+          prompt: seg.prompt || 'whiteboard sketch doodle',
+          startTime,
+          endTime: Math.max(startTime + 2.0, endTime),
+          track: 2,
+          status: 'pending' as const
+        };
+      }).filter((c): c is any => c !== null));
+
+      if (rawPlaceholders.length === 0) {
+        (globalThis as any).alert('В сценарии отсутствуют подходящие визуальные скетчи (animated_still).');
         setIsAutoGeneratingWhiteboard(false);
         return;
       }
 
-      const parseTimestamp = (ts: any): number => {
-        if (typeof ts === 'number') return ts;
-        if (!ts) return 0;
-        const str = String(ts).trim();
-        const parts = str.split(':');
-        if (parts.length === 2) return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
-        if (parts.length === 3) return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2]);
-        return parseFloat(str) || 0;
-      };
-
-      const ts = Date.now();
-      const rawPlaceholders = clips.map((pc: any, index: number) => {
-        const id = `wb_${ts}_${index}`;
-        const prompt = pc.prompt || 'simple line art drawing';
-        const label = pc.label || 'Whiteboard Clip';
-        const startTime = parseTimestamp(pc.time_start || pc.timestamp_start);
-        const endTime = parseTimestamp(pc.time_end || pc.timestamp_end);
-
-        return {
-          id,
-          url: '',
-          label: label.slice(0, 24),
-          prompt,
-          startTime,
-          endTime,
-          track: 2,
-          status: 'pending'
-        };
-      });
-
-      // Resolve overlaps on generated placeholders to prevent timeline stacking
+      // Resolve overlaps
       const placeholders = rawPlaceholders.sort((a: any, b: any) => a.startTime - b.startTime);
       for (let i = 0; i < placeholders.length; i++) {
-        const current = placeholders[i];
+        const current = placeholders[i] as any;
         if (current.startTime < 0) current.startTime = 0;
-        if (current.endTime <= current.startTime) current.endTime = current.startTime + 3.0;
-        
         if (i < placeholders.length - 1) {
-          const next = placeholders[i + 1];
+          const next = placeholders[i + 1] as any;
           if (current.endTime > next.startTime) {
             if (next.startTime - current.startTime >= 2.0) {
               current.endTime = next.startTime;
@@ -383,12 +423,11 @@ export const VideoEditor = React.memo(({
         }
       }
 
-      setWhiteboardClips(placeholders);
+      setWhiteboardClips(placeholders as any[]);
       setAutoGenProgress('');
       setIsAutoGeneratingWhiteboard(false);
-      setStage('editing');
 
-      // Trigger actual whiteboard background video generation for each placeholder
+      // Trigger background generation
       placeholders.forEach(async (clip: any) => {
         try {
           setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'generating' } : c));
@@ -409,10 +448,10 @@ export const VideoEditor = React.memo(({
           }
           setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
             ...c,
-            url: data.videoUrl,
+            url: data.videoUrl || '',
             imageUrl: data.imageUrl,
             status: 'completed',
-            errorMsg: undefined
+            errorMsg: data.warning || undefined
           } : c));
         } catch (err: any) {
           const errorMsg = err.message || String(err);
@@ -427,7 +466,7 @@ export const VideoEditor = React.memo(({
       });
     } catch (err: any) {
       console.error('[Auto-Whiteboard] Failed:', err);
-      (globalThis as any).alert(`Ошибка автогенерации Whiteboard: ${err.message || err}`);
+      (globalThis as any).alert(`Ошибка импорта скетчей: ${err.message || err}`);
       setIsAutoGeneratingWhiteboard(false);
     }
   };
@@ -1405,11 +1444,11 @@ export const VideoEditor = React.memo(({
                       
                       setWhiteboardClips(prev => prev.map(c => c.id === clipId ? {
                         ...c,
-                        url: data.videoUrl,
+                        url: data.videoUrl || '',
                         imageUrl: data.imageUrl,
                         speed: clipSpeed,
                         status: 'completed',
-                        errorMsg: undefined
+                        errorMsg: data.warning || undefined
                       } : c));
                     } catch (err: any) {
                       const errorMsg = err.message || String(err);

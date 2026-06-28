@@ -764,10 +764,10 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
               }
               setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
                 ...c,
-                url: data.videoUrl,
+                url: data.videoUrl || '',
                 imageUrl: data.imageUrl,
                 status: 'completed',
-                errorMsg: undefined
+                errorMsg: data.warning || undefined
               } : c));
             } catch (err: any) {
               const errorMsg = err.message || String(err);
