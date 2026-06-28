@@ -196,80 +196,62 @@ async function createDrawingVideo(
   fps: number = 30
 ): Promise<string> {
   const outPath = path.join(tmpDir, 'video.mp4');
-  const totalFrames = Math.floor(duration * fps);
-
-  // Strategy: use a geq (per-pixel equation) filter to progressively reveal
-  // the sketch in a zigzag raster pattern, simulating drawing left→right row by row.
-  // 
-  // geq reveals pixels where: current sweep position has passed the pixel
-  // Sweep: rows of 100px height, alternating L→R / R→L
-  // Progress variable: t / duration (0..1)
-  //
-  // Each row covers 1/rows of total time.
-  // For row r (0-indexed), going L→R: reveal_x = W * frac
-  // For row r going R→L: reveal_x = W * (1-frac)
-  //
-  // We encode this as a geq expression on the alpha channel of the sketch layer.
-
-  const rows = 14;
-  const rowH = Math.floor(1920 / rows);
-
-  // Build geq expression:
-  // row = floor(Y / rowH)
-  // rowFrac = (T/duration - row/rows) * rows   [0..1 within that row]
-  // revealX = (row%2==0) ? rowFrac*W : (1-rowFrac)*W
-  // visible = (X < revealX AND Y is in current or past rows) + past rows fully visible
-  //
-  // Simplified version that works in FFmpeg geq:
-  // alpha(x,y,t) = 255 if:
-  //   floor(y/rowH)/rows < t/dur  → past rows always visible
-  //   floor(y/rowH)/rows == floor(t/dur * rows)/rows → current row, check X position
   const durSec = duration;
+  const handPath = path.join(process.cwd(), 'public', 'assets', 'studio', 'drawing_hand.png');
+  const hasHand = fs.existsSync(handPath);
 
-  const geqAlpha =
-    `if(` +
-      // Past rows: fully revealed
-      `lt(floor(Y/${rowH})/${rows}, floor(T*${rows}/${durSec})/${rows}),` +
-      `255,` +
-      // Current row: partial reveal
-      `if(eq(floor(Y/${rowH}),floor(T*${rows}/${durSec})),` +
-        `if(eq(mod(floor(Y/${rowH}),2),0),` +
-          // Even row: L→R
-          `if(lt(X, (T*${rows}/${durSec}-floor(T*${rows}/${durSec}))*W), 255, 0),` +
-          // Odd row: R→L
-          `if(gt(X, W-(T*${rows}/${durSec}-floor(T*${rows}/${durSec}))*W), 255, 0)` +
-        `),` +
-        // Future rows: hidden
-        `0` +
-      `)` +
-    `)`;
+  console.log(`[Whiteboard] Creating drawing video: duration=${durSec}s, fps=${fps}, hasHand=${hasHand}`);
 
-  // Also build a marker (drawing cursor) position expression for the hand dot
-  // We draw a dark oval at the current drawing position
-  const markerX = `if(eq(mod(floor(T*${rows}/${durSec}),2),0), (T*${rows}/${durSec}-floor(T*${rows}/${durSec}))*W, W-(T*${rows}/${durSec}-floor(T*${rows}/${durSec}))*W)`;
-  const markerY = `(floor(T*${rows}/${durSec})+0.5)*${rowH}`;
+  // Create highly optimized filter graph:
+  // 1. Loop the background notebook image.
+  // 2. Crop the sketch area (840x1540 at offset 120, 190).
+  // 3. Create a moving white block (on black bg) to act as a sliding reveal mask.
+  // 4. Alpha-merge the mask with the cropped sketch to progressively show it.
+  // 5. Overlay the masked sketch back on top of the notebook background.
+  // 6. Scale and overlay the drawing hand (or dot fallback) following the reveal edge with realistic hand jitter and pen-tip offsets.
+  let filterComplex = '';
+  if (hasHand) {
+    filterComplex = [
+      `[0:v]loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS[bg]`,
+      `[1:v]crop=840:1540:120:190[sketch_crop]`,
+      `color=c=black:s=840x1540,trim=duration=${durSec}[mask_black]`,
+      `color=c=white:s=840x1540,trim=duration=${durSec}[mask_white]`,
+      `[mask_black][mask_white]overlay=y='-1540 + 1540*(t/${durSec})'[mask]`,
+      `[sketch_crop][mask]alphamerge[sketch_masked]`,
+      `[bg][sketch_masked]overlay=120:190[paper_with_sketch]`,
+      `[2:v]scale=320:-1[hand_scaled]`,
+      // Choppy time-lapse movement: jump discretely 18 times per second (floor(t*18))
+      // localized around the current progress line Y (with some vertical jumping range)
+      `[paper_with_sketch][hand_scaled]overlay=` +
+        `x='clip(540 + 420*sin(4.3*floor(t*18))\\, 120\\, 960) - 25':` +
+        `y='clip(190 + 1540*(t/${durSec}) + 350*sin(7.1*floor(t*18))\\, 190\\, 1730) - 15'[out]`
+    ].join(';');
+  } else {
+    filterComplex = [
+      `[0:v]loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS[bg]`,
+      `[1:v]crop=840:1540:120:190[sketch_crop]`,
+      `color=c=black:s=840x1540,trim=duration=${durSec}[mask_black]`,
+      `color=c=white:s=840x1540,trim=duration=${durSec}[mask_white]`,
+      `[mask_black][mask_white]overlay=y='-1540 + 1540*(t/${durSec})'[mask]`,
+      `[sketch_crop][mask]alphamerge[sketch_masked]`,
+      `[bg][sketch_masked]overlay=120:190[paper_with_sketch]`,
+      `[paper_with_sketch]drawtext=text='o':fontcolor=0x302515:` +
+        `x='clip(540 + 420*sin(4.3*floor(t*18))\\, 120\\, 960) - 6':` +
+        `y='clip(190 + 1540*(t/${durSec}) + 350*sin(7.1*floor(t*18))\\, 190\\, 1730) - 6':fontsize=18[out]`
+    ].join(';');
+  }
 
-  // Build hand overlay (simple dark marker-tip dot with a slight gradient)
-  const markerGeqR = `if(lt(pow(X-(${markerX}),2)+pow(Y-(${markerY}),2), pow(18,2)), 30, r(X,Y))`;
-  const markerGeqG = `if(lt(pow(X-(${markerX}),2)+pow(Y-(${markerY}),2), pow(18,2)), 25, g(X,Y))`;
-  const markerGeqB = `if(lt(pow(X-(${markerX}),2)+pow(Y-(${markerY}),2), pow(18,2)), 20, b(X,Y))`;
-
-  const filterComplex = [
-    // Input 0: notebook background (looped for duration)
-    // Input 1: composited sketch (static)
-    `[0:v]loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS[bg]`,
-    // Apply geq reveal to sketch (alpha mask)
-    `[1:v]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${geqAlpha}'[sketch_revealed]`,
-    // Overlay revealed sketch on notebook
-    `[bg][sketch_revealed]overlay=0:0[with_sketch]`,
-    // Draw marker tip dot
-    `[with_sketch]geq=r='${markerGeqR}':g='${markerGeqG}':b='${markerGeqB}'[out]`,
-  ].join(';');
+  const inputs = [
+    '-loop', '1', '-i', `"${notebookPath}"`,
+    '-loop', '1', '-i', `"${compositedImagePath}"`
+  ];
+  if (hasHand) {
+    inputs.push('-loop', '1', '-i', `"${handPath}"`);
+  }
 
   const cmd = [
     'ffmpeg', '-y',
-    '-loop', '1', '-i', `"${notebookPath}"`,       // input 0: notebook bg
-    '-loop', '1', '-i', `"${compositedImagePath}"`, // input 1: composited sketch
+    ...inputs,
     '-filter_complex', `"${filterComplex}"`,
     '-map', '[out]',
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
@@ -280,15 +262,15 @@ async function createDrawingVideo(
   ].join(' ');
 
   try {
-    const { stderr } = await execAsync(cmd, { timeout: 90_000 });
+    const { stderr } = await execAsync(cmd, { timeout: 45_000 });
     if (stderr && stderr.toLowerCase().includes('error') && !fs.existsSync(outPath)) {
       throw new Error(stderr.slice(0, 300));
     }
     console.log(`[Whiteboard] Drawing video created: ${outPath}`);
     return outPath;
   } catch (err: any) {
-    // Fallback: simple ken-burns zoom on composite image (no progressive reveal)
-    console.warn('[Whiteboard] geq filter failed, using ken-burns fallback:', err.message?.slice(0, 100));
+    console.warn('[Whiteboard] fast overlay filter failed, using simple ken-burns fallback:', err.message?.slice(0, 100));
+    const totalFrames = Math.floor(duration * fps);
     const fallbackCmd = [
       'ffmpeg', '-y',
       '-loop', '1', '-i', `"${compositedImagePath}"`,
@@ -297,7 +279,7 @@ async function createDrawingVideo(
       '-t', String(durSec), '-r', String(fps),
       `"${outPath}"`
     ].join(' ');
-    await execAsync(fallbackCmd, { timeout: 90_000 });
+    await execAsync(fallbackCmd, { timeout: 45_000 });
     return outPath;
   }
 }
@@ -412,8 +394,12 @@ Rules:
       const sketchTmpPath = path.join(tmpDir, 'sketch.png');
       fs.writeFileSync(sketchTmpPath, imageBuffer);
 
-      // Generate notebook background
-      const notebookPath = await generateNotebookBackground(tmpDir);
+      // Use the premium pre-generated notebook background asset if available
+      let notebookPath = path.join(process.cwd(), 'public', 'assets', 'studio', 'notebook_bg.png');
+      if (!fs.existsSync(notebookPath)) {
+        console.log('[Whiteboard Gen] Premium background not found, generating on-the-fly');
+        notebookPath = await generateNotebookBackground(tmpDir);
+      }
 
       // Composite sketch onto notebook
       const compositedPath = await compositeSketchOnNotebook(sketchTmpPath, notebookPath, tmpDir);
