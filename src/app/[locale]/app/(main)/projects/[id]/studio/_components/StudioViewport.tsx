@@ -193,7 +193,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
   }, [isPlaying, setCurrentTime, videoRef]);
 
   return (
-    <div className="w-full px-4 py-3 flex items-center justify-center bg-black" style={{ height: '55vh' }}>
+    <div className="w-full px-4 py-1.5 flex items-center justify-center bg-black h-[32vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh]">
       <div 
         ref={viewportRef}
         className="relative h-full aspect-[9/16] bg-neutral-900 rounded-[20px] overflow-hidden shadow-2xl border border-white/5 group"

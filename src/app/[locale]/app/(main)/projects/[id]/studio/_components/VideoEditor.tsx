@@ -44,7 +44,7 @@ interface VideoEditorProps {
 }
 
 export const VideoEditor = React.memo(({
-  projectId, aRollUrl: propARollUrl, onBack, onNext, manifest: initialManifest, onFaceless
+  projectId, aRollUrl: propARollUrl, onBack, onNext, manifest, onFaceless
 }: VideoEditorProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -64,7 +64,7 @@ export const VideoEditor = React.memo(({
     preFetchedBrolls, setPreFetchedBrolls, pendingBrollPhrases, setPendingBrollPhrases,
     voiceoverUrl, setVoiceoverUrl,
     runTranscriptionAndPhrases, setRawFile, deleteBroll
-  } = useStudioState(projectId, initialManifest || null, propARollUrl);
+  } = useStudioState(projectId, manifest || null, propARollUrl);
 
   // Sync HTML5 video playback rate with A-roll speed factor
   useEffect(() => {
@@ -468,6 +468,15 @@ export const VideoEditor = React.memo(({
         onSeek={onSeek}
         aRollUrl={aRollUrl}
         onSplitSegment={splitSegmentAtTime}
+        arollSegments={manifest?.segments?.map((s: any, idx: number) => {
+            const start = manifest.segments.slice(0, idx).reduce((acc: number, curr: any) => acc + (curr.duration || 4.0), 0);
+            return {
+                id: s.id,
+                startTime: start,
+                duration: s.duration || 4.0,
+                content: s.scriptText || 'А-ролл'
+            };
+        }) || []}
         brollClips={brollClips.map(c => ({ id: c.id, type: 'broll', startTime: c.startTime, duration: c.endTime - c.startTime, content: c.url }))}
         subtitleClips={subtitleClips.map(c => ({ id: c.id, type: 'subtitle', startTime: c.startTime, duration: (c.endTime - c.startTime) || 0.5, content: c.text }))}
         whiteboardClips={whiteboardClips.map(c => ({ id: c.id, type: 'whiteboard', startTime: c.startTime, duration: c.endTime - c.startTime, content: c.url }))}
@@ -842,44 +851,6 @@ export const VideoEditor = React.memo(({
                         <span className="text-[9px] font-black uppercase tracking-widest">Закрыть</span>
                     </button>
                 </div>
-            </div>
-        )}
-        {activeTool === 'voice' && (
-            <div className="flex flex-col items-center justify-center py-8 gap-8">
-                <div className="relative">
-                    <button 
-                        onPointerDown={startRecording}
-                        onPointerUp={stopRecording}
-                        className={`w-24 h-24 rounded-full flex items-center justify-center transition-all ${
-                            isRecording ? 'bg-red-500 scale-125 shadow-[0_0_40px_rgba(239,68,68,0.5)]' : 'bg-white/5 border border-white/10 hover:bg-white/10'
-                        }`}
-                    >
-                        {isRecording ? <div className="w-6 h-6 bg-white rounded-sm animate-pulse" /> : <Mic size={32} className="text-white" />}
-                    </button>
-                    {isRecording && (
-                        <motion.div 
-                            animate={{ scale: [1, 1.5], opacity: [0.5, 0] }}
-                            transition={{ duration: 1, repeat: Infinity }}
-                            className="absolute inset-0 rounded-full bg-red-500 -z-10"
-                        />
-                    )}
-                </div>
-                <div className="text-center space-y-2">
-                    <h3 className="text-sm font-black uppercase tracking-widest">
-                        {isRecording ? 'Recording...' : voiceoverUrl ? 'Voiceover Recorded' : 'Hold to Record'}
-                    </h3>
-                    <p className="text-[10px] text-white/40 uppercase font-bold tracking-[0.2em]">
-                        Your voice will replace the video audio
-                    </p>
-                </div>
-                {voiceoverUrl && !isRecording && (
-                    <button 
-                        onClick={() => setVoiceoverUrl(null)}
-                        className="text-[10px] text-red-400 font-bold uppercase tracking-widest hover:text-red-300 transition-colors"
-                    >
-                        Delete & Retry
-                    </button>
-                )}
             </div>
         )}
         {activeTool === 'whiteboard' && (

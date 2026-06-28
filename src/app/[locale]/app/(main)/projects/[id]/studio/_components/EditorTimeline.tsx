@@ -35,6 +35,7 @@ interface EditorTimelineProps {
   pxPerSecond: number;
   onPxPerSecondChange: (px: number) => void;
   isPlaying?: boolean;
+  arollSegments?: { id: string; startTime: number; duration: number; content: string; }[];
 }
 
 export const EditorTimeline: React.FC<EditorTimelineProps> = ({
@@ -60,7 +61,8 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   onSplitSegment,
   pxPerSecond: PX_PER_SECOND,
   onPxPerSecondChange,
-  isPlaying = false
+  isPlaying = false,
+  arollSegments = []
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -157,9 +159,9 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   }, [totalDuration, PX_PER_SECOND]);
 
   return (
-    <div className="w-full bg-[#080808] border-t border-white/[0.06] flex flex-col select-none h-48">
+    <div className="w-full bg-[#080808] border-t border-white/[0.06] flex flex-col select-none h-[260px]">
       {/* 1. Ruler Layer */}
-      <div className="h-16 relative overflow-hidden border-b border-white/[0.03]">
+      <div className="h-10 relative overflow-hidden border-b border-white/[0.03]">
         <div 
           ref={containerRef}
           onScroll={handleScroll}
@@ -190,9 +192,10 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
       {/* 2. Tracks Layer */}
       <div className="flex-1 relative overflow-hidden bg-black/20">
         {/* Track Grid Separators (Stationary Boundaries) */}
+        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '198px' }} />
         <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '146px' }} />
         <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '94px' }} />
-        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '42px' }} />
+        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '41px' }} />
 
         <div 
             ref={trackRef}
@@ -200,6 +203,40 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
         >
             <div className="relative h-full" style={{ width: totalDuration * PX_PER_SECOND + 1000, paddingLeft: '50%', paddingRight: '50%' }}>
                 
+                {/* A-ROLL TRACK */}
+                <div 
+                    className="absolute bottom-[148px] h-12 w-full cursor-pointer pointer-events-auto group/track"
+                >
+                    <div className="absolute inset-0 bg-teal-500/[0.02] border-y border-teal-500/[0.05] group-hover/track:bg-teal-500/[0.04] transition-colors" />
+                    
+                    {arollSegments?.map(clip => (
+                        <div 
+                            key={clip.id}
+                            onDoubleClick={(e) => {
+                                e.stopPropagation();
+                                const rect = (e.currentTarget as any).getBoundingClientRect();
+                                const x = e.clientX - rect.left;
+                                const time = clip.startTime + (x / PX_PER_SECOND);
+                                onSplitSegment?.(time);
+                            }}
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onSeek(clip.startTime);
+                            }}
+                            className="absolute h-full rounded-lg bg-teal-500/25 border-2 border-teal-400/40 flex items-center px-3 overflow-hidden cursor-pointer hover:bg-teal-500/35 transition-colors group/clip"
+                            style={{ 
+                                left: clip.startTime * PX_PER_SECOND, 
+                                width: clip.duration * PX_PER_SECOND 
+                            }}
+                            title="Двойной клик: разрезать А-ролл в этой точке"
+                        >
+                            <span className="text-[9px] text-teal-100 font-bold uppercase tracking-tighter truncate pointer-events-none">
+                                🗣 {clip.content}
+                            </span>
+                        </div>
+                    ))}
+                </div>
+
                 {/* B-ROLL TRACK */}
                 <div 
                     className="absolute bottom-24 h-12 w-full cursor-copy pointer-events-auto group/track"

@@ -17,7 +17,6 @@ const TOOLS = [
   { id: 'broll', label: 'AI B-Roll', icon: Sparkles },
   { id: 'whiteboard', label: 'Whiteboard', icon: Pencil },
   { id: 'text', label: 'Script', icon: Type },
-  { id: 'voice', label: 'Voiceover', icon: Mic },
   { id: 'captions', label: 'CC', icon: ClosedCaption },
   { id: 'filters', label: 'Speed & FX', icon: Sliders },
 ];
