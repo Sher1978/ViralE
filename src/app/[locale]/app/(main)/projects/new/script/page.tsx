@@ -40,6 +40,7 @@ import { ContentMatrix } from './_components/ContentMatrix';
 import { ScenarioLegend } from './_components/ScenarioLegend';
 import { TrizMatrix } from './_components/TrizMatrix';
 import { createInitialManifest, parseScriptTextToPayload } from '@/lib/studio-utils';
+import { idb } from '@/lib/idb';
 
 import { BottomNav } from '@/components/layout/BottomNav';
 
@@ -760,6 +761,15 @@ export default function ScriptLabPage() {
         });
         if (!project) throw new Error(locale === 'ru' ? 'Не удалось создать проект' : 'Project creation failed');
         pId = project.id;
+      }
+
+      // Clear local IndexedDB cache drafts to force the Studio to reload the fresh script manifest
+      try {
+        await idb.delete(`viral_draft_${pId}`, 'ProjectDrafts');
+        await idb.delete(`viral_editor_draft_${pId}`, 'ProjectDrafts');
+        console.log('[ScriptLab] Cleared local IndexedDB drafts for project:', pId);
+      } catch (e) {
+        console.warn('[ScriptLab] Failed to clear local drafts:', e);
       }
 
       // 2. Update version with latest script data
