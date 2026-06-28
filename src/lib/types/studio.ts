@@ -4,11 +4,12 @@ export type AnimationStyle = 'zoom-in' | 'zoom-out' | 'pan-left' | 'pan-right' |
 
 export interface TimelineOverlay {
   id: string;
-  type: 'broll' | 'subtitle';
+  type: 'broll' | 'subtitle' | 'whiteboard';
   startTime: number;
   duration: number;
   content: string; // URL for broll, Text for subtitle
   style?: any;
+  speed?: number; // Speed factor multiplier (e.g. 1.0, 1.25, 0.8)
 }
 
 export interface SceneSegment {
@@ -66,6 +67,7 @@ export interface ProductionManifest {
   segments: SceneSegment[];
   brollClips?: TimelineOverlay[];    // NEW: Independent B-rolls
   subtitleClips?: TimelineOverlay[]; // NEW: Independent Subtitles
+  whiteboardClips?: TimelineOverlay[]; // NEW: Whiteboard animations
   videoUrl?: string;
   transcript?: any[]; 
   totalDuration: number;
@@ -78,5 +80,6 @@ export interface ProductionManifest {
     musicUrl?: string;
     musicVolume: number;
     defaultProvider?: AvatarProvider;
+    aRollSpeed?: number;
   };
 }

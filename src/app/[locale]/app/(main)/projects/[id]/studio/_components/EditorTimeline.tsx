@@ -5,7 +5,7 @@ import { Layers } from 'lucide-react';
 
 interface TimelineOverlay {
   id: string;
-  type: 'broll' | 'subtitle';
+  type: 'broll' | 'subtitle' | 'whiteboard';
   startTime: number;
   duration: number;
   content?: string;
@@ -18,13 +18,20 @@ interface EditorTimelineProps {
   aRollUrl?: string | null;
   brollClips?: TimelineOverlay[];
   subtitleClips?: TimelineOverlay[];
+  whiteboardClips?: TimelineOverlay[];
   onCreateBroll?: (time: number) => void;
+  onCreateWhiteboard?: (time: number) => void;
   onCaptionClick?: (id: string) => void;
   onSubtitleTrackClick?: () => void;
   onBrollMove?: (id: string, newStartTime: number) => void;
   onBrollResize?: (id: string, newDuration: number) => void;
   onBrollLongPress?: (id: string) => void;
   onDeleteBroll?: (id: string) => void;
+  onWhiteboardMove?: (id: string, newStartTime: number) => void;
+  onWhiteboardResize?: (id: string, newDuration: number) => void;
+  onWhiteboardLongPress?: (id: string) => void;
+  onDeleteWhiteboard?: (id: string) => void;
+  onSplitSegment?: (time: number) => void;
   pxPerSecond: number;
   onPxPerSecondChange: (px: number) => void;
 }
@@ -36,13 +43,20 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   aRollUrl,
   brollClips = [],
   subtitleClips = [],
+  whiteboardClips = [],
   onCreateBroll,
+  onCreateWhiteboard,
   onCaptionClick,
   onSubtitleTrackClick,
   onBrollMove,
   onBrollResize,
   onBrollLongPress,
   onDeleteBroll,
+  onWhiteboardMove,
+  onWhiteboardResize,
+  onWhiteboardLongPress,
+  onDeleteWhiteboard,
+  onSplitSegment,
   pxPerSecond: PX_PER_SECOND,
   onPxPerSecondChange
 }) => {
@@ -52,6 +66,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   const isProgrammaticScrollRef = useRef(false);
   const lastTouchDistance = useRef<number | null>(null);
   const [placeholderTime, setPlaceholderTime] = useState<number | null>(null);
+  const [wbPlaceholderTime, setWbPlaceholderTime] = useState<number | null>(null);
 
   const lastTapRef = useRef<number>(0);
   const lastSubtitleTapRef = useRef<number>(0);
@@ -147,10 +162,21 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
           onScroll={handleScroll}
           onMouseDown={() => setIsScrolling(true)}
           onMouseUp={() => setIsScrolling(false)}
+          onDoubleClick={(e) => {
+            const target = e.currentTarget as any;
+            const rect = target.getBoundingClientRect();
+            const x = e.clientX - rect.left;
+            const scrollLeft = target.scrollLeft;
+            const clickTime = (x - rect.width / 2 + scrollLeft) / PX_PER_SECOND;
+            if (clickTime >= 0 && clickTime <= totalDuration) {
+              onSplitSegment?.(clickTime);
+            }
+          }}
           onTouchStart={(e) => { if (e.touches.length === 2) lastTouchDistance.current = null; setIsScrolling(true); }}
           onTouchMove={(e) => handlePinch(e, 'timeline')}
           onTouchEnd={() => { lastTouchDistance.current = null; setIsScrolling(false); }}
-          className="absolute inset-0 overflow-x-auto no-scrollbar"
+          className="absolute inset-0 overflow-x-auto no-scrollbar cursor-cell"
+          title="Двойной клик на линейке: разрезать А-ролл"
         >
           <div className="relative h-full" style={{ width: totalDuration * PX_PER_SECOND + 1000, paddingLeft: '50%', paddingRight: '50%' }}>
             {markers}
@@ -168,7 +194,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                 
                 {/* B-ROLL TRACK */}
                 <div 
-                    className="absolute bottom-11 h-12 w-full cursor-copy pointer-events-auto group/track"
+                    className="absolute bottom-24 h-12 w-full cursor-copy pointer-events-auto group/track"
                     onClick={(e) => {
                         if ((e.target as any).closest('.broll-clip-box')) return;
                         const rect = (e.currentTarget as any).getBoundingClientRect();
@@ -299,6 +325,138 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                             </div>
                         </div>
                     ))}
+                </div>
+
+                {/* WHITEBOARD TRACK */}
+                <div 
+                    className="absolute bottom-11 h-12 w-full cursor-copy pointer-events-auto group/track"
+                    onClick={(e) => {
+                        if ((e.target as any).closest('.whiteboard-clip-box')) return;
+                        const rect = (e.currentTarget as any).getBoundingClientRect();
+                        const x = e.clientX - rect.left;
+                        const time = (x - rect.width / 2 + (containerRef.current as any).scrollLeft) / PX_PER_SECOND;
+                        setWbPlaceholderTime(time);
+                    }}
+                >
+                    <div className="absolute inset-0 bg-purple-500/[0.02] border-y border-purple-500/[0.05] group-hover/track:bg-purple-500/[0.04] transition-colors" />
+                    
+                    {/* Placeholder */}
+                    {wbPlaceholderTime !== null && (
+                        <div 
+                            onClick={(e) => {
+                                e.stopPropagation();
+                                onCreateWhiteboard?.(wbPlaceholderTime);
+                                setWbPlaceholderTime(null);
+                            }}
+                            className="absolute h-full w-12 bg-white/10 border-2 border-dashed border-purple-500/20 rounded-lg flex items-center justify-center cursor-pointer hover:bg-white/20 hover:border-purple-500/40 transition-all animate-in fade-in zoom-in duration-200 z-30"
+                            style={{ left: wbPlaceholderTime * PX_PER_SECOND }}
+                        >
+                            <span className="text-xl font-bold text-purple-400/80">+</span>
+                        </div>
+                    )}
+ 
+                    {whiteboardClips.map(clip => {
+                        const isFullVideo = clip.duration >= (totalDuration - 0.5);
+                        const bgClass = isFullVideo 
+                            ? 'bg-purple-950/90 border-2 border-purple-800/40 text-purple-200' 
+                            : 'bg-purple-600/35 border-2 border-purple-400/60 text-purple-100';
+                        return (
+                            <div 
+                                key={clip.id}
+                                onTouchStart={(e) => { if (e.touches.length === 2) lastTouchDistance.current = null; }}
+                                onTouchMove={(e) => handlePinch(e, 'clip', clip.id)}
+                                onTouchEnd={() => { lastTouchDistance.current = null; }}
+                                onDoubleClick={(e) => {
+                                    e.stopPropagation();
+                                    onWhiteboardLongPress?.(clip.id);
+                                }}
+                                onPointerDown={(e) => {
+                                    // --- DOUBLE TAP DETECTION ---
+                                    const now = Date.now();
+                                    if (now - lastTapRef.current < 300) {
+                                        onWhiteboardLongPress?.(clip.id);
+                                        if (typeof navigator !== 'undefined' && 'vibrate' in navigator) (navigator as any).vibrate([30, 30]);
+                                        lastTapRef.current = 0;
+                                        return;
+                                    }
+                                    lastTapRef.current = now;
+
+                                    const startX = e.clientX;
+                                    const startY = e.clientY;
+                                    let movedTooMuch = false;
+     
+                                    const timer = setTimeout(() => {
+                                        if (!movedTooMuch) {
+                                            if (typeof navigator !== 'undefined' && 'vibrate' in navigator) (navigator as any).vibrate(50);
+                                            onWhiteboardLongPress?.(clip.id);
+                                        }
+                                    }, 500);
+                                    
+                                    const onMove = (me: any) => {
+                                        const dist = Math.sqrt(Math.pow(me.clientX - startX, 2) + Math.pow(me.clientY - startY, 2));
+                                        if (dist > 8) { movedTooMuch = true; clearTimeout(timer); }
+                                    };
+                                    const onUp = () => {
+                                        clearTimeout(timer);
+                                        globalThis.removeEventListener('pointermove', onMove);
+                                        globalThis.removeEventListener('pointerup', onUp);
+                                    };
+                                    globalThis.addEventListener('pointermove', onMove);
+                                    globalThis.addEventListener('pointerup', onUp);
+     
+                                    if ((e.target as any).classList.contains('resize-handle')) return;
+                                    if ((e.target as any).closest('.delete-btn')) return;
+                                    
+                                    const initialStartTime = clip.startTime;
+                                    const initialMouseX = e.clientX;
+                                    
+                                    const onDragMove = (me: any) => {
+                                        const deltaX = me.clientX - initialMouseX;
+                                        const newStartTime = initialStartTime + (deltaX / PX_PER_SECOND);
+                                        onWhiteboardMove?.(clip.id, Math.max(0, newStartTime));
+                                    };
+                                    const onDragUp = () => {
+                                        globalThis.removeEventListener('pointermove', onDragMove);
+                                        globalThis.removeEventListener('pointerup', onDragUp);
+                                    };
+                                    globalThis.addEventListener('pointermove', onDragMove);
+                                    globalThis.addEventListener('pointerup', onDragUp);
+                                }}
+                                className={`whiteboard-clip-box absolute h-full rounded-lg flex items-center justify-between overflow-hidden cursor-grab active:cursor-grabbing group/clip z-10 ${bgClass}`}
+                                style={{ 
+                                    left: clip.startTime * PX_PER_SECOND, 
+                                    width: clip.duration * PX_PER_SECOND 
+                                }}
+                            >
+                                <div className="absolute inset-0 bg-gradient-to-br from-purple-400/5 to-transparent pointer-events-none" />
+                                <span className="text-[9px] font-black ml-2 relative z-10 pointer-events-none truncate uppercase tracking-tighter max-w-[80%]">
+                                    {isFullVideo ? '🎨 WHITEBOARD (FULL VIDEO)' : `🎨 ${clip.content ? 'Скетч сгенерирован' : 'Ожидает генерации'}`}
+                                </span>
+                                
+                                {/* Resize Handle */}
+                                <div 
+                                    className="resize-handle absolute right-0 top-0 bottom-0 w-4 hover:bg-purple-400/60 cursor-ew-resize z-20 flex items-center justify-center bg-purple-400/20"
+                                    onPointerDown={(e) => {
+                                        e.stopPropagation();
+                                        const startX = e.clientX;
+                                        const startDur = clip.duration;
+                                        const move = (me: any) => {
+                                            const delta = (me.clientX - startX) / PX_PER_SECOND;
+                                            onWhiteboardResize?.(clip.id, Math.max(0.2, startDur + delta));
+                                        };
+                                        const up = () => {
+                                            globalThis.removeEventListener('pointermove', move);
+                                            globalThis.removeEventListener('pointerup', up);
+                                        };
+                                        globalThis.addEventListener('pointermove', move);
+                                        globalThis.addEventListener('pointerup', up);
+                                    }}
+                                >
+                                    <div className="w-[2px] h-4 bg-purple-200/50 rounded-full pointer-events-none" />
+                                </div>
+                            </div>
+                        );
+                    })}
                 </div>
  
                 {/* SUBTITLE TRACK */}

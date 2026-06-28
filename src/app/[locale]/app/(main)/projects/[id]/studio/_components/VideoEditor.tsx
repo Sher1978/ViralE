@@ -4,14 +4,14 @@ import React, { useRef, useState, useEffect, useCallback } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   ArrowLeft, Cpu, Upload, Loader2, Sparkles, Wand2, SkipBack, Play, Pause, VolumeX, Volume2, Mic, Zap,
-  Music, Type, Sliders, PlayCircle, Pencil, Clock, Trash2
+  Music, Type, Sliders, PlayCircle, Pencil, Clock, Trash2, X
 } from 'lucide-react';
 
 import { ProductionManifest } from '@/lib/types/studio';
 import { idb } from '@/lib/idb';
 
 // Modular Components (Edits Style)
-import { useStudioState, BRollClip, SubtitleClip, TranscriptWord } from '../_hooks/useStudioState';
+import { useStudioState, BRollClip, SubtitleClip, TranscriptWord, WhiteboardClip } from '../_hooks/useStudioState';
 import { EditorTopBar } from './EditorTopBar';
 import { StudioViewport } from './StudioViewport';
 import { StudioActionBar } from './StudioActionBar';
@@ -26,7 +26,19 @@ interface VideoEditorProps {
   projectId: string;
   aRollUrl: string;
   onBack: () => void;
-  onNext?: (broll: BRollClip[], subs: SubtitleClip[], aRollUrl: string | null, subPos?: { x: number, y: number }, subSize?: number, subStyle?: number, showSubtitles?: boolean, subColor?: string, subBgColor?: string) => Promise<void>;
+  onNext?: (
+    broll: BRollClip[],
+    subs: SubtitleClip[],
+    aRollUrl: string | null,
+    subPos?: { x: number, y: number },
+    subSize?: number,
+    subStyle?: number,
+    showSubtitles?: boolean,
+    subColor?: string,
+    subBgColor?: string,
+    whiteboard?: WhiteboardClip[],
+    aRollSpeed?: number
+  ) => Promise<void>;
   manifest?: ProductionManifest | null;
   onFaceless?: () => void;
 }
@@ -44,6 +56,8 @@ export const VideoEditor = React.memo(({
     currentTime, setCurrentTime, aRollDuration, setARollDuration, duration,
     transcript, setTranscript, subtitleClips, setSubtitleClips,
     brollClips, setBrollClips, phrases, setPhrases,
+    whiteboardClips, setWhiteboardClips, deleteWhiteboardClip,
+    aRollSpeed, setARollSpeed, splitSegmentAtTime,
     transcriptionError, setTranscriptionError, isAnalyzingBroll,
     subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize, subtitleStyle, setSubtitleStyle, showSubtitles, setShowSubtitles, pxPerSecond, setPxPerSecond,
     subtitleColor, setSubtitleColor, subtitleBgColor, setSubtitleBgColor,
@@ -52,7 +66,15 @@ export const VideoEditor = React.memo(({
     runTranscriptionAndPhrases, setRawFile, deleteBroll
   } = useStudioState(projectId, initialManifest || null, propARollUrl);
 
-  const [activeTool, setActiveTool] = useState<'captions' | 'broll' | 'audio' | 'style' | 'voice' | 'filters' | 'text' | null>(null);
+  // Sync HTML5 video playback rate with A-roll speed factor
+  useEffect(() => {
+    const v = videoRef.current;
+    if (v) {
+      (v as any).playbackRate = aRollSpeed;
+    }
+  }, [aRollSpeed, isPlaying, aRollUrl]);
+
+  const [activeTool, setActiveTool] = useState<'captions' | 'broll' | 'whiteboard' | 'audio' | 'style' | 'voice' | 'filters' | 'text' | null>(null);
   const [selectedCaptionId, setSelectedCaptionId] = useState<string | null>(null);
   const [selectedClipId, setSelectedClipId] = useState<string | null>(null);
   const [subtitleEditorOpen, setSubtitleEditorOpen] = useState(false);
@@ -71,6 +93,10 @@ export const VideoEditor = React.memo(({
   const [isAutoGeneratingBroll, setIsAutoGeneratingBroll] = useState(false);
   const [editingBrollClip, setEditingBrollClip] = useState<BRollClipMeta | null>(null);
   const [autoGenProgress, setAutoGenProgress] = useState('');
+
+  // Auto-Whiteboard States
+  const [isAutoGeneratingWhiteboard, setIsAutoGeneratingWhiteboard] = useState(false);
+  const [editingWhiteboardClip, setEditingWhiteboardClip] = useState<any | null>(null);
   const [isExporting, setIsExporting] = useState(false);
 
   // --- ACTIONS ---
@@ -155,6 +181,68 @@ export const VideoEditor = React.memo(({
     }
   };
 
+  const handleAutoGenerateWhiteboards = async () => {
+    if (subtitleClips.length === 0) return;
+    setIsAutoGeneratingWhiteboard(true);
+    setAutoGenProgress('Анализ текста...');
+    try {
+      const res = await fetch('/api/ai/auto-whiteboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subtitles: subtitleClips })
+      });
+      if (!res.ok) throw new Error('API failed');
+
+      const data = await res.json();
+      const clips = data.clips || [];
+
+      if (clips.length === 0) {
+        (globalThis as any).alert('ИИ не нашёл подходящих моментов. Попробуйте записать более содержательное видео.');
+        setIsAutoGeneratingWhiteboard(false);
+        return;
+      }
+
+      const parseTimestamp = (ts: any): number => {
+        if (typeof ts === 'number') return ts;
+        if (!ts) return 0;
+        const str = String(ts).trim();
+        const parts = str.split(':');
+        if (parts.length === 2) return parseInt(parts[0], 10) * 60 + parseFloat(parts[1]);
+        if (parts.length === 3) return parseInt(parts[0], 10) * 3600 + parseInt(parts[1], 10) * 60 + parseFloat(parts[2]);
+        return parseFloat(str) || 0;
+      };
+
+      const ts = Date.now();
+      const placeholders = clips.map((pc: any, index: number) => {
+        const id = `wb_${ts}_${index}`;
+        const prompt = pc.prompt || 'simple line art drawing';
+        const label = pc.label || 'Whiteboard Clip';
+        const startTime = parseTimestamp(pc.time_start || pc.timestamp_start);
+        const endTime = parseTimestamp(pc.time_end || pc.timestamp_end);
+
+        return {
+          id,
+          url: '',
+          label: label.slice(0, 24),
+          prompt,
+          startTime,
+          endTime,
+          track: 2,
+          status: 'pending'
+        };
+      });
+
+      setWhiteboardClips(placeholders);
+      setAutoGenProgress('');
+      setIsAutoGeneratingWhiteboard(false);
+      setStage('editing');
+    } catch (err: any) {
+      console.error('[Auto-Whiteboard] Failed:', err);
+      (globalThis as any).alert(`Ошибка автогенерации Whiteboard: ${err.message || err}`);
+      setIsAutoGeneratingWhiteboard(false);
+    }
+  };
+
 
   const togglePlay = useCallback(() => {
     const v = videoRef.current as any;
@@ -227,11 +315,11 @@ export const VideoEditor = React.memo(({
     setStage('editing');
   };
 
-  const handleBrollPromptSelect = useCallback((clipId: string, videoUrl: string, label?: string) => {
+  const handleBrollPromptSelect = useCallback((clipId: string, videoUrl: string, label?: string, speed?: number) => {
     setBrollClips(prev => prev.map(c => {
       if (c.id !== clipId) return c;
       downloadAndCache(videoUrl, clipId);
-      return { ...c, url: videoUrl, label: label?.slice(0, 20) || c.label };
+      return { ...c, url: videoUrl, label: label?.slice(0, 20) || c.label, speed: speed || c.speed || 1.0 };
     }));
   }, [downloadAndCache, setBrollClips]);
 
@@ -325,7 +413,19 @@ export const VideoEditor = React.memo(({
           if (isExporting) return;
           setIsExporting(true);
           try {
-            await onNext?.(brollClips, subtitleClips, aRollUrl, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, subtitleColor, subtitleBgColor);
+            await onNext?.(
+              brollClips,
+              subtitleClips,
+              aRollUrl,
+              subtitlePos,
+              subtitleSize,
+              subtitleStyle,
+              showSubtitles,
+              subtitleColor,
+              subtitleBgColor,
+              whiteboardClips,
+              aRollSpeed
+            );
           } catch (e) {
             console.error('[VideoEditor] Export failed:', e);
           } finally {
@@ -358,6 +458,7 @@ export const VideoEditor = React.memo(({
         togglePlay={togglePlay}
         onSeek={onSeek}
         setIsMuted={setIsMuted}
+        onSplit={() => splitSegmentAtTime(currentTime)}
       />
 
       <EditorTimeline 
@@ -365,12 +466,42 @@ export const VideoEditor = React.memo(({
         currentTime={currentTime}
         onSeek={onSeek}
         aRollUrl={aRollUrl}
+        onSplitSegment={splitSegmentAtTime}
         brollClips={brollClips.map(c => ({ id: c.id, type: 'broll', startTime: c.startTime, duration: c.endTime - c.startTime, content: c.url }))}
         subtitleClips={subtitleClips.map(c => ({ id: c.id, type: 'subtitle', startTime: c.startTime, duration: (c.endTime - c.startTime) || 0.5, content: c.text }))}
+        whiteboardClips={whiteboardClips.map(c => ({ id: c.id, type: 'whiteboard', startTime: c.startTime, duration: c.endTime - c.startTime, content: c.url }))}
         onCreateBroll={(time) => {
             const id = `br_${Date.now()}`;
             setBrollClips(prev => [...prev, { id, phraseId: id, startTime: time, endTime: time + 3, label: 'New Scene', url: '', prompt: 'cinematic shot', track: 1 }]);
             openBRollHunterForClip(id, 'cinematic shot');
+        }}
+        onCreateWhiteboard={(time) => {
+            const id = `wb_${Date.now()}`;
+            const matchingSubs = subtitleClips.filter(c => time >= c.startTime && time <= c.endTime);
+            const defaultPrompt = matchingSubs.map(s => s.text).join(' ') || 'simple line art drawing';
+            setWhiteboardClips(prev => [...prev, { 
+                id, 
+                startTime: time, 
+                endTime: time + 4, 
+                label: 'Скетч вручную', 
+                url: '', 
+                prompt: defaultPrompt,
+                track: 2,
+                status: 'pending'
+            }]);
+            const wordsInRange = transcript.filter(w => w.start >= time && w.start <= time + 4);
+            const spokenText = wordsInRange.map(w => w.text).join(' ').trim() || defaultPrompt;
+            setEditingWhiteboardClip({
+                id,
+                startTime: time,
+                endTime: time + 4,
+                label: 'Скетч вручную',
+                url: '',
+                prompt: defaultPrompt,
+                track: 2,
+                status: 'pending',
+                spokenText
+            });
         }}
         onCaptionClick={handleCaptionClick}
         onSubtitleTrackClick={() => setActiveTool('captions')}
@@ -442,6 +573,59 @@ export const VideoEditor = React.memo(({
             }
         }}
         onDeleteBroll={deleteBroll}
+        onWhiteboardMove={(id, newStart) => {
+            setWhiteboardClips(prev => {
+                const clip = prev.find(c => c.id === id);
+                if (!clip) return prev;
+                const duration = clip.endTime - clip.startTime;
+                let finalStart = newStart;
+                
+                prev.forEach(other => {
+                    if (other.id === id) return;
+                    if (finalStart < other.endTime && finalStart + duration > other.startTime) {
+                        if (clip.startTime >= other.endTime) {
+                            finalStart = other.endTime;
+                        } else if (clip.startTime + duration <= other.startTime) {
+                            finalStart = other.startTime - duration;
+                        }
+                    }
+                });
+
+                return prev.map(c => c.id === id ? { ...c, startTime: finalStart, endTime: finalStart + duration } : c);
+            });
+        }}
+        onWhiteboardResize={(id, newDur) => {
+            setWhiteboardClips(prev => {
+                const clip = prev.find(c => c.id === id);
+                if (!clip) return prev;
+                let finalDur = newDur;
+
+                prev.forEach(other => {
+                    if (other.id === id) return;
+                    if (clip.startTime < other.startTime && clip.startTime + finalDur > other.startTime) {
+                        finalDur = other.startTime - clip.startTime;
+                    }
+                });
+
+                return prev.map(c => c.id === id ? { ...c, endTime: c.startTime + finalDur } : c);
+            });
+        }}
+        onWhiteboardLongPress={(id) => {
+            const clip = whiteboardClips.find(c => c.id === id);
+            if (clip) {
+              const wordsInRange = transcript.filter(w => {
+                return (w.start >= clip.startTime - 0.2 && w.start <= clip.endTime + 0.2) ||
+                       (w.end >= clip.startTime - 0.2 && w.end <= clip.endTime + 0.2) ||
+                       (w.start <= clip.startTime && w.end >= clip.endTime);
+              });
+              const spokenText = wordsInRange.map(w => w.text).join(' ').trim();
+              setEditingWhiteboardClip({
+                ...clip,
+                spokenText
+              });
+            }
+        }}
+        onDeleteWhiteboard={deleteWhiteboardClip}
       />
 
       {/* 5. Tool Drawer */}
@@ -697,12 +881,214 @@ export const VideoEditor = React.memo(({
                 )}
             </div>
         )}
+        {activeTool === 'whiteboard' && (
+            <div className="flex flex-col gap-3 py-4">
+                {/* ── AUTO-GENERATE WHITEBOARDS ── */}
+                <button
+                    id="auto-generate-whiteboard-btn"
+                    disabled={isAutoGeneratingWhiteboard || subtitleClips.length === 0}
+                    onClick={handleAutoGenerateWhiteboards}
+                    className={`w-full relative overflow-hidden rounded-3xl flex flex-col items-center justify-center gap-2 transition-all active:scale-95 disabled:opacity-60 disabled:cursor-not-allowed ${
+                        isAutoGeneratingWhiteboard
+                            ? 'py-5 bg-purple-600/80'
+                            : 'py-6 bg-gradient-to-br from-purple-600 via-fuchsia-600 to-pink-600 shadow-xl shadow-purple-900/40 hover:shadow-purple-500/30'
+                    }`}
+                >
+                    {!isAutoGeneratingWhiteboard && (
+                        <motion.div
+                            animate={{ x: ['-100%', '200%'] }}
+                            transition={{ duration: 2.4, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1.2 }}
+                            className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] pointer-events-none"
+                        />
+                    )}
+                    {isAutoGeneratingWhiteboard ? (
+                        <>
+                            <div className="flex items-center gap-3">
+                                <motion.div
+                                    animate={{ rotate: 360 }}
+                                    transition={{ duration: 1, repeat: Infinity, ease: 'linear' }}
+                                >
+                                    <Sparkles size={20} className="text-white/80" />
+                                </motion.div>
+                                <span className="text-[11px] font-black uppercase tracking-widest text-white/90">
+                                    {autoGenProgress || 'Анализ...'}
+                                </span>
+                            </div>
+                        </>
+                    ) : (
+                        <>
+                            <div className="flex items-center gap-2">
+                                <Wand2 size={20} className="text-white" />
+                                <span className="text-[13px] font-black uppercase tracking-widest text-white">
+                                    Создать Whiteboard
+                                </span>
+                            </div>
+                            <span className="text-[9px] text-white/50 font-bold uppercase tracking-[0.2em]">
+                                ИИ разобьет сценарий на рисованные сцены
+                            </span>
+                        </>
+                    )}
+                </button>
+
+                {/* ── WHITEBOARD CLIPS LIST ── */}
+                {whiteboardClips.length > 0 && (
+                    <div className="space-y-1.5">
+                        <p className="text-[8px] font-black uppercase tracking-[0.3em] text-white/25 px-1 pt-1">
+                            Рисунки на таймлайне ({whiteboardClips.length})
+                        </p>
+                        <div className="space-y-2 max-h-44 overflow-y-auto no-scrollbar">
+                            {whiteboardClips.map((clip) => (
+                                <div
+                                    key={clip.id}
+                                    className="flex items-center gap-3 px-3 py-2.5 rounded-2xl bg-white/[0.04] border border-white/[0.06] group"
+                                >
+                                    {/* Thumbnail / Status */}
+                                    <div className="w-10 h-10 rounded-xl bg-white/5 flex-shrink-0 overflow-hidden border border-white/8 flex items-center justify-center">
+                                        {clip.imageUrl ? (
+                                            <img
+                                                src={clip.imageUrl}
+                                                className="w-full h-full object-cover"
+                                            />
+                                        ) : clip.status === 'generating' ? (
+                                            <Loader2 className="w-4 h-4 text-purple-400 animate-spin" />
+                                        ) : (
+                                            <Pencil size={14} className="text-purple-400/50" />
+                                        )}
+                                    </div>
+                                    {/* Info */}
+                                    <div className="flex-1 min-w-0">
+                                        <p className="text-[11px] font-black text-white/80 truncate leading-tight">
+                                            {clip.label}
+                                        </p>
+                                        <div className="flex items-center gap-1 mt-0.5">
+                                            <Clock size={8} className="text-white/25" />
+                                            <span className="text-[8px] text-white/30 font-bold tabular-nums">
+                                                {clip.startTime.toFixed(1)}s – {clip.endTime.toFixed(1)}s
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {/* Action buttons */}
+                                    <div className="flex items-center gap-1.5 flex-shrink-0">
+                                        {/* Edit button */}
+                                        <button
+                                            onClick={() => {
+                                                const wordsInRange = transcript.filter(w => {
+                                                    return (w.start >= clip.startTime - 0.2 && w.start <= clip.endTime + 0.2) ||
+                                                           (w.end >= clip.startTime - 0.2 && w.end <= clip.endTime + 0.2) ||
+                                                           (w.start <= clip.startTime && w.end >= clip.endTime);
+                                                });
+                                                const spokenText = wordsInRange.map(w => w.text).join(' ').trim();
+                                                setEditingWhiteboardClip({
+                                                    ...clip,
+                                                    spokenText
+                                                });
+                                            }}
+                                            className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 active:scale-90 transition-all hover:bg-purple-500/20"
+                                        >
+                                            <Pencil size={13} />
+                                        </button>
+                                        {/* Delete button */}
+                                        <button
+                                            onClick={() => {
+                                                if ((globalThis as any).confirm?.('Вы уверены, что хотите удалить этот скетч?')) {
+                                                    deleteWhiteboardClip(clip.id);
+                                                }
+                                            }}
+                                            className="p-2 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 active:scale-90 transition-all hover:bg-red-500/20"
+                                        >
+                                            <Trash2 size={13} />
+                                        </button>
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+
+                {/* ── MANUAL WHITEBOARD ADD ── */}
+                <button 
+                    onClick={() => {
+                        const id = `wb_${Date.now()}`;
+                        const matchingSubs = subtitleClips.filter(c => currentTime >= c.startTime && currentTime <= c.endTime);
+                        const defaultPrompt = matchingSubs.map(s => s.text).join(' ') || 'simple line art drawing';
+                        setWhiteboardClips(prev => [...prev, { 
+                            id, 
+                            startTime: currentTime, 
+                            endTime: currentTime + 4, 
+                            label: 'Скетч вручную', 
+                            url: '', 
+                            prompt: defaultPrompt,
+                            track: 2,
+                            status: 'pending'
+                        }]);
+                        const wordsInRange = transcript.filter(w => w.start >= currentTime && w.start <= currentTime + 4);
+                        const spokenText = wordsInRange.map(w => w.text).join(' ').trim() || defaultPrompt;
+                        setEditingWhiteboardClip({
+                            id,
+                            startTime: currentTime,
+                            endTime: currentTime + 4,
+                            label: 'Скетч вручную',
+                            url: '',
+                            prompt: defaultPrompt,
+                            track: 2,
+                            status: 'pending',
+                            spokenText
+                        });
+                    }}
+                    className="w-full py-5 bg-purple-500/10 border border-purple-500/20 rounded-3xl flex flex-col items-center gap-1.5 shadow-lg shadow-purple-500/10 active:scale-95 transition-all hover:bg-purple-500/15"
+                >
+                    <Pencil size={20} className="text-purple-400" />
+                    <span className="text-[11px] font-black uppercase tracking-widest text-purple-400">Добавить скетч вручную</span>
+                    <span className="text-[9px] text-white/30 font-bold uppercase tracking-[0.15em]">В текущее время</span>
+                </button>
+            </div>
+        )}
         {(activeTool === 'filters') && (
-            <div className="flex flex-col items-center justify-center h-40 gap-4 opacity-20">
-                <div className="w-16 h-16 rounded-full border-2 border-dashed border-white/40 flex items-center justify-center">
-                    <Sliders size={24} />
+            <div className="space-y-6 py-4 px-2 select-none">
+                <div className="space-y-2">
+                    <div className="flex justify-between items-center">
+                        <label className="text-[10px] font-black uppercase tracking-wider text-white/40">Скорость видео спикера (A-Roll Speed)</label>
+                        <span className="px-3 py-1 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-xs font-black tabular-nums">
+                            {aRollSpeed.toFixed(2)}x
+                        </span>
+                    </div>
+                    
+                    {/* Range Slider container */}
+                    <div className="relative flex items-center h-12 bg-white/[0.02] border border-white/5 rounded-2xl px-4">
+                        <input 
+                            type="range"
+                            min="0.5"
+                            max="2.0"
+                            step="0.05"
+                            value={aRollSpeed}
+                            onChange={(e) => setARollSpeed(Number((e.target as any).value))}
+                            className="w-full h-1 accent-purple-500 bg-white/10 rounded-lg cursor-pointer"
+                        />
+                    </div>
                 </div>
-                <span className="text-[10px] font-black uppercase tracking-[0.3em]">Coming Soon</span>
+
+                {/* Preset Chips */}
+                <div className="space-y-2">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-white/40">Быстрый выбор</label>
+                    <div className="flex flex-wrap gap-2">
+                        {[1.0, 1.1, 1.15, 1.25, 1.5, 2.0].map((preset) => {
+                            const isActive = Math.abs(aRollSpeed - preset) < 0.01;
+                            return (
+                                <button
+                                    key={preset}
+                                    onClick={() => setARollSpeed(preset)}
+                                    className={`px-4 py-2.5 rounded-xl text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all border ${
+                                        isActive 
+                                            ? 'bg-purple-500 border-purple-400/30 text-white shadow-lg shadow-purple-500/20' 
+                                            : 'bg-white/[0.03] border-white/5 text-white/40 hover:text-white/60 hover:bg-white/[0.05]'
+                                    }`}
+                                >
+                                    {preset === 1.0 ? '1.0x (Обычная)' : `${preset.toFixed(2)}x`}
+                                </button>
+                            );
+                        })}
+                    </div>
+                </div>
             </div>
         )}
       </EditorToolDrawer>
@@ -722,6 +1108,149 @@ export const VideoEditor = React.memo(({
         onSelect={handleBrollPromptSelect}
         onDelete={deleteBroll}
       />
+
+      {/* 8. Whiteboard Editor Modal */}
+      <AnimatePresence>
+        {editingWhiteboardClip && (
+          <motion.div 
+            initial={{ opacity: 0 }} 
+            animate={{ opacity: 1 }} 
+            exit={{ opacity: 0 }}
+            className="fixed inset-0 z-[300] bg-black/80 backdrop-blur-md flex items-center justify-center p-6"
+          >
+            <motion.div 
+              initial={{ scale: 0.9, y: 20 }}
+              animate={{ scale: 1, y: 0 }}
+              exit={{ scale: 0.9, y: 20 }}
+              className="w-full max-w-lg rounded-[2.5rem] bg-[#0c0c14] border border-white/10 p-8 space-y-6 shadow-2xl relative"
+            >
+              <button 
+                onClick={() => setEditingWhiteboardClip(null)}
+                className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors"
+              >
+                <X size={20} />
+              </button>
+              
+              <div className="space-y-1">
+                <h3 className="text-xl font-black uppercase italic tracking-tighter text-white">Настройка скетча (Whiteboard)</h3>
+                <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Whiteboard Animation Node</p>
+              </div>
+
+              <div className="space-y-4">
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-white/40">Речевой контекст (субтитры)</label>
+                  <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-xs text-white/70 leading-relaxed italic">
+                    "{editingWhiteboardClip.spokenText || 'Контекст отсутствует'}"
+                  </div>
+                </div>
+
+                <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-white/40">ИИ Промпт для скетча</label>
+                  <textarea 
+                    readOnly
+                    value={editingWhiteboardClip.prompt}
+                    className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/5 text-xs text-white/50 focus:outline-none resize-none h-20"
+                  />
+                </div>
+
+                 <div className="space-y-2">
+                  <label className="text-[10px] font-black uppercase tracking-wider text-white/40">Уточнения пользователя (дополнение к промпту)</label>
+                  <textarea 
+                    value={editingWhiteboardClip.userPromptAddition || ''}
+                    onChange={(e) => {
+                      const val = (e.target as any).value;
+                      setEditingWhiteboardClip((prev: any) => prev ? { ...prev, userPromptAddition: val } : null);
+                    }}
+                    placeholder="Например: добавь изображение ракеты на фоне, сделай контуры жирнее..."
+                    className="w-full p-4 rounded-2xl bg-white/[0.04] border border-white/10 text-xs text-white placeholder-white/20 focus:border-purple-500 focus:outline-none resize-none h-20 transition-all"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[10px] font-black uppercase tracking-wider text-white/40">Скорость анимации рисования</label>
+                    <span className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-bold tabular-nums">
+                      {(editingWhiteboardClip.speed || 1.0).toFixed(2)}x
+                    </span>
+                  </div>
+                  <div className="relative flex items-center h-10 bg-white/[0.02] border border-white/5 rounded-2xl px-4">
+                    <input 
+                      type="range"
+                      min="0.5"
+                      max="2.5"
+                      step="0.1"
+                      value={editingWhiteboardClip.speed || 1.0}
+                      onChange={(e) => {
+                        const val = Number((e.target as any).value);
+                        setEditingWhiteboardClip((prev: any) => prev ? { ...prev, speed: val } : null);
+                      }}
+                      className="w-full h-1 accent-purple-500 bg-white/10 rounded-lg cursor-pointer"
+                    />
+                  </div>
+                </div>
+              </div>
+
+              <div className="flex gap-4 pt-2">
+                <button 
+                  onClick={async () => {
+                    const clipId = editingWhiteboardClip.id;
+                    const finalPrompt = `${editingWhiteboardClip.prompt}${editingWhiteboardClip.userPromptAddition ? `, user addition: ${editingWhiteboardClip.userPromptAddition}` : ''}`;
+                    const clipSpeed = editingWhiteboardClip.speed || 1.0;
+                    
+                    setWhiteboardClips(prev => prev.map(c => c.id === clipId ? { 
+                      ...c, 
+                      userPromptAddition: editingWhiteboardClip.userPromptAddition,
+                      speed: clipSpeed,
+                      status: 'generating'
+                    } : c));
+                    
+                    setEditingWhiteboardClip(null);
+                    
+                    try {
+                      const res = await fetch('/api/ai/whiteboard-gen', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                          clipId,
+                          projectId,
+                          prompt: finalPrompt,
+                          duration: editingWhiteboardClip.endTime - editingWhiteboardClip.startTime,
+                          speed: clipSpeed
+                        })
+                      });
+                      if (!res.ok) throw new Error('Generation failed');
+                      const data = await res.json();
+                      
+                      setWhiteboardClips(prev => prev.map(c => c.id === clipId ? {
+                        ...c,
+                        url: data.videoUrl,
+                        imageUrl: data.imageUrl,
+                        speed: clipSpeed,
+                        status: 'completed'
+                      } : c));
+                    } catch (err) {
+                      console.error('Whiteboard gen failed:', err);
+                      setWhiteboardClips(prev => prev.map(c => c.id === clipId ? { ...c, status: 'failed' } : c));
+                    }
+                  }}
+                  className="flex-1 py-4 bg-purple-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all text-white flex items-center justify-center gap-2"
+                >
+                  <Sparkles size={16} /> Перегенерировать
+                </button>
+                <button 
+                  onClick={() => {
+                    deleteWhiteboardClip(editingWhiteboardClip.id);
+                    setEditingWhiteboardClip(null);
+                  }}
+                  className="px-6 py-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/20 transition-all"
+                >
+                  Удалить
+                </button>
+              </div>
+            </motion.div>
+          </motion.div>
+        )}
+      </AnimatePresence>
     </div>
   );
 });

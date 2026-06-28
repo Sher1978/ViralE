@@ -16,11 +16,11 @@ interface StudioTimelineProps {
   subtitleClips: TimelineOverlay[];
   activeIndex: number;
   selectedId: string | null;
-  onSelect: (type: 'segment' | 'broll' | 'subtitle', id: string) => void;
-  onUpdateOverlay: (type: 'broll' | 'subtitle', id: string, data: Partial<TimelineOverlay>) => void;
-  onDeleteOverlay: (type: 'broll' | 'subtitle', id: string) => void;
-  onCreateOverlay: (type: 'broll' | 'subtitle', startTime: number) => void;
-  onOpenEditor: (type: 'broll' | 'subtitle', id: string) => void;
+  onSelect: (type: 'segment' | 'broll' | 'subtitle' | 'whiteboard', id: string) => void;
+  onUpdateOverlay: (type: 'broll' | 'subtitle' | 'whiteboard', id: string, data: Partial<TimelineOverlay>) => void;
+  onDeleteOverlay: (type: 'broll' | 'subtitle' | 'whiteboard', id: string) => void;
+  onCreateOverlay: (type: 'broll' | 'subtitle' | 'whiteboard', startTime: number) => void;
+  onOpenEditor: (type: 'broll' | 'subtitle' | 'whiteboard', id: string) => void;
   onAddSegment?: () => void;
   isRegenerating?: string | null;
   onSeek?: (time: number) => void;
@@ -51,7 +51,7 @@ const StudioTimeline: React.FC<StudioTimelineProps> = ({
   // Interaction State
   const [dragState, setDragState] = useState<{
     id: string;
-    type: 'broll' | 'subtitle';
+    type: 'broll' | 'subtitle' | 'whiteboard';
     handle: 'move' | 'start' | 'end';
     initialX: number;
     initialStartTime: number;

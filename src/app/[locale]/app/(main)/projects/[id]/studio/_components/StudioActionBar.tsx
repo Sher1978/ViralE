@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { 
-  Play, Pause, RotateCcw, RotateCw, VolumeX, Volume2, Square
+  Play, Pause, RotateCcw, RotateCw, VolumeX, Volume2, Square, Scissors
 } from 'lucide-react';
 
 interface StudioActionBarProps {
@@ -13,6 +13,7 @@ interface StudioActionBarProps {
   togglePlay: () => void;
   onSeek: (time: number) => void;
   setIsMuted: (muted: boolean) => void;
+  onSplit?: () => void;
 }
 
 const fmt = (s: number) => {
@@ -22,7 +23,7 @@ const fmt = (s: number) => {
 };
 
 export const StudioActionBar: React.FC<StudioActionBarProps> = ({
-  isPlaying, isMuted, currentTime, duration, togglePlay, onSeek, setIsMuted
+  isPlaying, isMuted, currentTime, duration, togglePlay, onSeek, setIsMuted, onSplit
 }) => {
   return (
     <div className="flex items-center justify-between px-6 h-14 bg-black border-y border-white/[0.06] flex-shrink-0 z-40">
@@ -49,6 +50,15 @@ export const StudioActionBar: React.FC<StudioActionBarProps> = ({
             <Play size={22} fill="white" strokeWidth={0} className="ml-0.5" />
           )}
         </button>
+        {onSplit && (
+          <button 
+            onClick={onSplit}
+            className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white hover:bg-white/5 rounded-full transition-all active:scale-90"
+            title="Split Segment (Разрезать A-Roll)"
+          >
+            <Scissors size={18} />
+          </button>
+        )}
         <button 
           onClick={() => setIsMuted(!isMuted)}
           className="w-10 h-10 flex items-center justify-center text-white/40 hover:text-white transition-all active:scale-90"

@@ -49,6 +49,21 @@ export interface BRollClip {
   x?: number;
   y?: number;
   scale?: number;
+  speed?: number; // playback rate multiplier
+}
+
+export interface WhiteboardClip {
+  id: string;
+  url: string; // generated video URL of hand drawing
+  imageUrl?: string; // generated static Flux sketch URL
+  label: string;
+  prompt: string;
+  userPromptAddition?: string; // user adjustments
+  startTime: number;
+  endTime: number;
+  track: number;
+  status: 'pending' | 'generating' | 'completed' | 'failed';
+  speed?: number; // drawing speed factor
 }
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -111,7 +126,13 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   const [transcript, setTranscript] = useState<TranscriptWord[]>([]);
   const [subtitleClips, setSubtitleClips] = useState<SubtitleClip[]>([]);
   const [brollClips, setBrollClips] = useState<BRollClip[]>([]);
+  const [whiteboardClips, setWhiteboardClips] = useState<WhiteboardClip[]>([]);
   const [phrases, setPhrases] = useState<BRollPhrase[]>([]);
+  
+  // Speed State
+  const [aRollSpeed, setARollSpeed] = useState<number>(() => {
+    return initialManifest?.config?.aRollSpeed || 1.0;
+  });
   
   // UI State
   const [persistenceLoaded, setPersistenceLoaded] = useState(false);
@@ -163,6 +184,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
           } else if (data.stage) {
             setStage(data.stage);
           }
+          if (data.whiteboardClips) setWhiteboardClips(data.whiteboardClips);
           if (data.subtitlePos) setSubtitlePos(data.subtitlePos);
           if (data.subtitleSize) setSubtitleSize(data.subtitleSize || 18);
           if (data.subtitleStyle !== undefined) setSubtitleStyle(data.subtitleStyle);
@@ -170,6 +192,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
           if (data.pxPerSecond) setPxPerSecond(data.pxPerSecond);
           if (data.subtitleColor !== undefined) setSubtitleColor(data.subtitleColor);
           if (data.subtitleBgColor !== undefined) setSubtitleBgColor(data.subtitleBgColor);
+          if (data.aRollSpeed !== undefined) setARollSpeed(data.aRollSpeed);
           if (data.aRollUrl && !data.aRollUrl.startsWith('blob:')) {
             setARollUrl(data.aRollUrl);
           }
@@ -202,6 +225,21 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
              setBrollClips(restoredClips);
           })();
         }
+
+        // Background restoration of heavy assets (Whiteboards)
+        if (dataToRestore?.whiteboardClips) {
+          const wboards = dataToRestore.whiteboardClips;
+          (async () => {
+             const restoredClips = await Promise.all(wboards.map(async (clip: WhiteboardClip) => {
+               try {
+                 const blob = await idb.get(`whiteboard_file_${clip.id}`, 'MediaBuffer');
+                 if (blob instanceof Blob) return { ...clip, url: URL.createObjectURL(blob) };
+               } catch (e) {}
+               return clip;
+             }));
+             setWhiteboardClips(restoredClips);
+          })();
+        }
       }
     }
     
@@ -211,9 +249,9 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   useEffect(() => {
     if (!projectId || !persistenceLoadedRef.current) return;
     const key = `viral_editor_draft_${projectId}`;
-    const state = { aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond, subtitleColor, subtitleBgColor };
+    const state = { aRollUrl, brollClips, whiteboardClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond, subtitleColor, subtitleBgColor, aRollSpeed };
     idb.set(key, state, 'ProjectDrafts');
-  }, [projectId, aRollUrl, brollClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond, subtitleColor, subtitleBgColor]);
+  }, [projectId, aRollUrl, brollClips, whiteboardClips, subtitleClips, transcript, stage, subtitlePos, subtitleSize, subtitleStyle, showSubtitles, pxPerSecond, subtitleColor, subtitleBgColor, aRollSpeed]);
 
   // Heavy file persistence
   useEffect(() => {
@@ -592,10 +630,103 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
   // Duration sync
   useEffect(() => {
     const maxBrollEnd = brollClips.length > 0 ? Math.max(...brollClips.map(c => c.endTime)) : 0;
+    const maxWhiteboardEnd = whiteboardClips.length > 0 ? Math.max(...whiteboardClips.map(c => c.endTime)) : 0;
     const validARollDur = (typeof aRollDuration === 'number' && isFinite(aRollDuration) && aRollDuration > 0) ? aRollDuration : 60;
-    const newDuration = Math.max(validARollDur, maxBrollEnd, 60);
+    const newDuration = Math.max(validARollDur, maxBrollEnd, maxWhiteboardEnd, 60);
     if (Math.abs(newDuration - duration) > 0.1) setDuration(newDuration);
-  }, [aRollDuration, brollClips, duration]);
+  }, [aRollDuration, brollClips, whiteboardClips, duration]);
+
+  const splitSegmentAtTime = useCallback((time: number) => {
+    // 1. Find the subtitle clip containing time
+    const targetIdx = subtitleClips.findIndex(c => time > c.startTime && time < c.endTime);
+    if (targetIdx === -1) {
+      console.warn('[useStudioState] No subtitle clip found to split at time:', time);
+      return;
+    }
+    const targetClip = subtitleClips[targetIdx];
+    
+    // 2. Find words inside transcript that fall within the split ranges
+    const wordsInTarget = transcript.filter(w => w.start >= targetClip.startTime && w.end <= targetClip.endTime);
+    const leftWords = wordsInTarget.filter(w => w.end <= time);
+    const rightWords = wordsInTarget.filter(w => w.start >= time);
+    
+    // Fallback if word timings are missing
+    const leftText = leftWords.map(w => w.text).join(' ').trim() || targetClip.text.slice(0, Math.floor(targetClip.text.length / 2));
+    const rightText = rightWords.map(w => w.text).join(' ').trim() || targetClip.text.slice(Math.floor(targetClip.text.length / 2)).trim();
+    
+    // 3. Create the two split subtitle clips
+    const leftClip: SubtitleClip = {
+      id: `${targetClip.id}_left_${Date.now()}`,
+      startTime: targetClip.startTime,
+      endTime: time,
+      text: leftText,
+      style: targetClip.style
+    };
+    
+    const rightClip: SubtitleClip = {
+      id: `${targetClip.id}_right_${Date.now()}`,
+      startTime: time,
+      endTime: targetClip.endTime,
+      text: rightText,
+      style: targetClip.style
+    };
+    
+    // 4. Update subtitleClips state
+    setSubtitleClips(prev => {
+      const next = [...prev];
+      next.splice(targetIdx, 1, leftClip, rightClip);
+      return next;
+    });
+
+    // 5. If we have manifest segments, split them as well!
+    setManifest(prev => {
+      if (!prev || !prev.segments) return prev;
+      
+      // Find the segment containing time
+      // The timeline segments are cumulative: segment start = sum of previous durations
+      let accumTime = 0;
+      let segIdx = -1;
+      for (let i = 0; i < prev.segments.length; i++) {
+        const segDur = prev.segments[i].duration || 5;
+        if (time >= accumTime && time <= accumTime + segDur) {
+          segIdx = i;
+          break;
+        }
+        accumTime += segDur;
+      }
+      
+      if (segIdx === -1) return prev;
+      
+      const targetSeg = prev.segments[segIdx];
+      const targetSegDur = targetSeg.duration || 5;
+      const leftDur = time - accumTime;
+      const rightDur = accumTime + targetSegDur - time;
+      
+      const leftSeg = {
+        ...targetSeg,
+        id: `${targetSeg.id}_left_${Date.now()}`,
+        duration: leftDur,
+        scriptText: leftText
+      };
+      
+      const rightSeg = {
+        ...targetSeg,
+        id: `${targetSeg.id}_right_${Date.now()}`,
+        duration: rightDur,
+        scriptText: rightText
+      };
+      
+      const nextSegments = [...prev.segments];
+      nextSegments.splice(segIdx, 1, leftSeg, rightSeg);
+      
+      return {
+        ...prev,
+        segments: nextSegments
+      };
+    });
+
+    console.log('[useStudioState] Subtitle/segment split complete at:', time);
+  }, [subtitleClips, transcript]);
 
   return {
     persistenceLoaded,
@@ -604,6 +735,8 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     currentTime, setCurrentTime, aRollDuration, setARollDuration, duration,
     transcript, setTranscript, subtitleClips, setSubtitleClips,
     brollClips, setBrollClips, phrases, setPhrases,
+    whiteboardClips, setWhiteboardClips,
+    aRollSpeed, setARollSpeed, splitSegmentAtTime,
     transcriptionError, setTranscriptionError, isAnalyzingBroll,
     subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
     subtitleStyle, setSubtitleStyle, showSubtitles, setShowSubtitles, pxPerSecond, setPxPerSecond,
@@ -611,6 +744,7 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
     voiceoverUrl, setVoiceoverUrl,
     subtitleColor, setSubtitleColor, subtitleBgColor, setSubtitleBgColor,
     runTranscriptionAndPhrases, setRawFile,
-    deleteBroll: (id: string) => setBrollClips(prev => prev.filter(c => c.id !== id))
+    deleteBroll: (id: string) => setBrollClips(prev => prev.filter(c => c.id !== id)),
+    deleteWhiteboardClip: (id: string) => setWhiteboardClips(prev => prev.filter(c => c.id !== id))
   };
 }

@@ -29,13 +29,14 @@ export interface BRollClipMeta {
   anchor_type?: 'Literal' | 'Conceptual' | 'Emotional' | 'Data';
   url: string;
   spoken_text?: string;
+  speed?: number;
 }
 
 interface Props {
   clip: BRollClipMeta | null;
   isOpen: boolean;
   onClose: () => void;
-  onSelect: (clipId: string, videoUrl: string, label?: string) => void;
+  onSelect: (clipId: string, videoUrl: string, label?: string, speed?: number) => void;
   onDelete?: (clipId: string) => void;
 }
 
@@ -49,6 +50,9 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
   const [isSearching, setIsSearching] = useState(false);
   const [results, setResults] = useState<VideoItem[]>([]);
   const [previewItem, setPreviewItem] = useState<VideoItem | null>(null);
+
+  // Speed state
+  const [clipSpeed, setClipSpeed] = useState(1.0);
 
   // Generate state
   const [visualPrompt, setVisualPrompt] = useState('');
@@ -71,6 +75,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
       setGeneratedUrl('');
       setGenJobId('');
       setUserComment('');
+      setClipSpeed(clip.speed || 1.0);
 
       const initializeSearch = async () => {
         // If we have spoken text, calculate a highly optimized search query using AI
@@ -277,6 +282,57 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
               </button>
             </div>
 
+            {/* Speed Slider */}
+            <div className="bg-white/[0.02] border border-white/5 rounded-2xl p-4 mb-4 space-y-2">
+              <div className="flex justify-between items-center">
+                <label className="text-[10px] font-black uppercase tracking-wider text-white/40">Скорость воспроизведения Б-ролла</label>
+                <span className="px-2 py-0.5 rounded bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[10px] font-bold tabular-nums">
+                  {clipSpeed.toFixed(2)}x
+                </span>
+              </div>
+              <div className="relative flex items-center h-10 bg-white/[0.02] border border-white/5 rounded-2xl px-4">
+                <input 
+                  type="range"
+                  min="0.5"
+                  max="2.5"
+                  step="0.1"
+                  value={clipSpeed}
+                  onChange={(e) => setClipSpeed(Number((e.target as any).value))}
+                  className="w-full h-1 accent-purple-500 bg-white/10 rounded-lg cursor-pointer"
+                />
+              </div>
+              <div className="flex flex-wrap items-center justify-between gap-2 pt-1">
+                <div className="flex gap-1.5">
+                  {[1.0, 1.25, 1.5, 2.0].map((preset) => (
+                    <button
+                      key={preset}
+                      type="button"
+                      onClick={() => setClipSpeed(preset)}
+                      className={`px-3 py-1.5 rounded-lg text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all border ${
+                        Math.abs(clipSpeed - preset) < 0.01
+                          ? 'bg-purple-500 border-purple-400/30 text-white shadow-md shadow-purple-500/10'
+                          : 'bg-white/5 border-white/8 text-white/40 hover:text-white/60'
+                      }`}
+                    >
+                      {preset.toFixed(2)}x
+                    </button>
+                  ))}
+                </div>
+                {clip.url && (
+                  <button
+                    type="button"
+                    onClick={() => {
+                      onSelect(clip.id, clip.url, clip.label, clipSpeed);
+                      onClose();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-white/10 border border-white/20 hover:bg-white/15 text-white text-[9px] font-black uppercase tracking-widest active:scale-95 transition-all"
+                  >
+                    Применить скорость ({clipSpeed.toFixed(2)}x)
+                  </button>
+                )}
+              </div>
+            </div>
+
             {/* Results */}
             {isSearching ? (
               <div className="flex flex-col items-center justify-center py-16 gap-4">
@@ -424,7 +480,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
                 </div>
               </div>
               <button
-                onClick={() => { onSelect(clip.id, generatedUrl, 'AI Generated'); onClose(); }}
+                onClick={() => { onSelect(clip.id, generatedUrl, 'AI Generated', clipSpeed); onClose(); }}
                 className="w-full py-4 rounded-2xl bg-white text-black font-black uppercase tracking-widest text-[12px] flex items-center justify-center gap-2 active:scale-95 transition-all"
               >
                 <Check size={18} /> Использовать этот клип
@@ -518,7 +574,7 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
             />
             <div className="absolute bottom-0 left-0 right-0 px-4 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] md:pb-4 space-y-2.5 z-20 bg-gradient-to-t from-black via-black/80 to-transparent">
               <button
-                onClick={() => { onSelect(clip.id, previewItem.videoUrl, previewItem.title || 'Stock Clip'); setPreviewItem(null); onClose(); }}
+                onClick={() => { onSelect(clip.id, previewItem.videoUrl, previewItem.title || 'Stock Clip', clipSpeed); setPreviewItem(null); onClose(); }}
                 className="w-full h-14 rounded-2xl bg-white text-black font-black uppercase tracking-[0.2em] text-[12px] active:scale-95 transition-all flex items-center justify-center gap-2"
               >
                 <Check size={18} /> Использовать

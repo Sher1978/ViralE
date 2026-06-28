@@ -320,7 +320,9 @@ export function useStudioExport({
     subStyle?: number,
     showSubtitles?: boolean,
     subColor?: string,
-    subBgColor?: string
+    subBgColor?: string,
+    whiteboard?: any[],
+    aRollSpeed?: number
   ) => {
     setIsSaving(true);
     try {
@@ -359,9 +361,14 @@ export function useStudioExport({
 
       const updatedManifest: any = {
         ...manifest,
+        config: {
+          ...(manifest?.config || { resolution: '1080x1920', fps: 30, musicVolume: 0.5 }),
+          aRollSpeed: aRollSpeed !== undefined ? aRollSpeed : (manifest?.config?.aRollSpeed || 1.0)
+        },
         aRollUrl: resolvedARollUrl,
         scriptText: finalScriptText,
         brollClips: resolvedBroll,
+        whiteboardClips: whiteboard || [],
         subtitleClips: subs || [],
         subtitlePos: subPos || (manifest as any).subtitlePos || { x: 0, y: 0 },
         subtitleSize: subSize || (manifest as any).subtitleSize || 18,
@@ -373,6 +380,7 @@ export function useStudioExport({
         segments: manifest.segments.map((s: any, i: number) => i === 0 ? {
           ...s,
           brollClips: resolvedBroll,
+          whiteboardClips: whiteboard || [],
           subtitleClips: subs || [],
           subtitleStyle: subStyle !== undefined ? subStyle : (manifest as any).subtitleStyle || 0,
           subtitleSize: subSize || (manifest as any).subtitleSize || 18,
@@ -417,6 +425,7 @@ export function useStudioExport({
         const state = {
           aRollUrl: resolvedARollUrl,
           brollClips: broll || [],
+          whiteboardClips: whiteboard || [],
           subtitleClips: subs || [],
           transcript: manifest.transcript || [],
           stage: 'editing',

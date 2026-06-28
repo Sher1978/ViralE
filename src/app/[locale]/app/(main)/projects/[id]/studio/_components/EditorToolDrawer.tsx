@@ -2,7 +2,7 @@
 
 import React, { useState } from 'react';
 import { 
-  Music, Type, Mic, ClosedCaption, Sliders, Sparkles, X, ChevronUp
+  Music, Type, Mic, ClosedCaption, Sliders, Sparkles, X, ChevronUp, Pencil
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 
@@ -15,10 +15,11 @@ interface EditorToolDrawerProps {
 
 const TOOLS = [
   { id: 'broll', label: 'AI B-Roll', icon: Sparkles },
+  { id: 'whiteboard', label: 'Whiteboard', icon: Pencil },
   { id: 'text', label: 'Script', icon: Type },
   { id: 'voice', label: 'Voiceover', icon: Mic },
   { id: 'captions', label: 'CC', icon: ClosedCaption },
-  { id: 'filters', label: 'Filters', icon: Sliders },
+  { id: 'filters', label: 'Speed & FX', icon: Sliders },
 ];
 
 export const EditorToolDrawer: React.FC<EditorToolDrawerProps> = ({
