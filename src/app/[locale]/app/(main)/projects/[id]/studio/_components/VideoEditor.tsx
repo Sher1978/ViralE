@@ -331,7 +331,7 @@ export const VideoEditor = React.memo(({
       };
 
       const ts = Date.now();
-      const placeholders = clips.map((pc: any, index: number) => {
+      const rawPlaceholders = clips.map((pc: any, index: number) => {
         const id = `wb_${ts}_${index}`;
         const prompt = pc.prompt || 'simple line art drawing';
         const label = pc.label || 'Whiteboard Clip';
@@ -350,10 +350,59 @@ export const VideoEditor = React.memo(({
         };
       });
 
+      // Resolve overlaps on generated placeholders to prevent timeline stacking
+      const placeholders = rawPlaceholders.sort((a: any, b: any) => a.startTime - b.startTime);
+      for (let i = 0; i < placeholders.length; i++) {
+        const current = placeholders[i];
+        if (current.startTime < 0) current.startTime = 0;
+        if (current.endTime <= current.startTime) current.endTime = current.startTime + 3.0;
+        
+        if (i < placeholders.length - 1) {
+          const next = placeholders[i + 1];
+          if (current.endTime > next.startTime) {
+            if (next.startTime - current.startTime >= 2.0) {
+              current.endTime = next.startTime;
+            } else {
+              next.startTime = current.endTime;
+              next.endTime = Math.max(next.endTime, next.startTime + 2.0);
+            }
+          }
+        }
+      }
+
       setWhiteboardClips(placeholders);
       setAutoGenProgress('');
       setIsAutoGeneratingWhiteboard(false);
       setStage('editing');
+
+      // Trigger actual whiteboard background video generation for each placeholder
+      placeholders.forEach(async (clip: any) => {
+        try {
+          setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'generating' } : c));
+          const res = await fetch('/api/ai/whiteboard-gen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              clipId: clip.id,
+              projectId,
+              prompt: clip.prompt,
+              duration: clip.endTime - clip.startTime,
+              speed: 1.0
+            })
+          });
+          if (!res.ok) throw new Error('API failed');
+          const data = await res.json();
+          setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
+            ...c,
+            url: data.videoUrl,
+            imageUrl: data.imageUrl,
+            status: 'completed'
+          } : c));
+        } catch (err) {
+          console.error(`[Auto-Whiteboard] Background gen failed for clip ${clip.id}:`, err);
+          setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'failed' } : c));
+        }
+      });
     } catch (err: any) {
       console.error('[Auto-Whiteboard] Failed:', err);
       (globalThis as any).alert(`Ошибка автогенерации Whiteboard: ${err.message || err}`);
@@ -1233,6 +1282,29 @@ export const VideoEditor = React.memo(({
                 <h3 className="text-xl font-black uppercase italic tracking-tighter text-white">Настройка скетча (Whiteboard)</h3>
                 <p className="text-[9px] font-bold text-white/30 uppercase tracking-widest">Whiteboard Animation Node</p>
               </div>
+
+              {/* SKETCH PREVIEW CONTAINER */}
+              {(editingWhiteboardClip.url || editingWhiteboardClip.imageUrl) && (
+                <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden bg-white flex items-center justify-center border border-white/10 relative group/preview">
+                  {editingWhiteboardClip.url ? (
+                    <video 
+                      src={editingWhiteboardClip.url}
+                      controls
+                      playsInline
+                      className="w-full h-full object-contain"
+                    />
+                  ) : (
+                    <img 
+                      src={editingWhiteboardClip.imageUrl} 
+                      className="w-full h-full object-contain"
+                      alt="Whiteboard sketch preview"
+                    />
+                  )}
+                  <span className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/60 text-white text-[8px] font-black uppercase tracking-widest pointer-events-none">
+                    Preview
+                  </span>
+                </div>
+              )}
 
               <div className="space-y-4">
                 <div className="space-y-2">
