@@ -64,6 +64,7 @@ export interface WhiteboardClip {
   track: number;
   status: 'pending' | 'generating' | 'completed' | 'failed';
   speed?: number; // drawing speed factor
+  errorMsg?: string; // detailed backend error message
 }
 
 const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
@@ -757,17 +758,26 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
                   speed: 1.0
                 })
               });
-              if (!res.ok) throw new Error('API failed');
               const data = await res.json();
+              if (!res.ok) {
+                throw new Error(data.error || 'API failed');
+              }
               setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
                 ...c,
                 url: data.videoUrl,
                 imageUrl: data.imageUrl,
-                status: 'completed'
+                status: 'completed',
+                errorMsg: undefined
               } : c));
-            } catch (err) {
-              console.error(`[Studio LOG] Background gen failed for imported whiteboard ${clip.id}:`, err);
-              setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'failed' } : c));
+            } catch (err: any) {
+              const errorMsg = err.message || String(err);
+              console.error(`[Studio LOG] Background gen failed for imported whiteboard ${clip.id}:`, errorMsg);
+              (globalThis as any).addSystemLog?.(`[Ошибка Скетча] Сбой генерации: ${errorMsg}`);
+              setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { 
+                ...c, 
+                status: 'failed',
+                errorMsg
+              } : c));
             }
           });
         }

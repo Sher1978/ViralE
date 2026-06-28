@@ -403,17 +403,26 @@ export const VideoEditor = React.memo(({
               speed: 1.0
             })
           });
-          if (!res.ok) throw new Error('API failed');
           const data = await res.json();
+          if (!res.ok) {
+            throw new Error(data.error || 'API failed');
+          }
           setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
             ...c,
             url: data.videoUrl,
             imageUrl: data.imageUrl,
-            status: 'completed'
+            status: 'completed',
+            errorMsg: undefined
           } : c));
-        } catch (err) {
-          console.error(`[Auto-Whiteboard] Background gen failed for clip ${clip.id}:`, err);
-          setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'failed' } : c));
+        } catch (err: any) {
+          const errorMsg = err.message || String(err);
+          console.error(`[Auto-Whiteboard] Background gen failed for clip ${clip.id}:`, errorMsg);
+          (globalThis as any).addSystemLog?.(`[Ошибка Скетча] Сбой генерации: ${errorMsg}`);
+          setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { 
+            ...c, 
+            status: 'failed',
+            errorMsg
+          } : c));
         }
       });
     } catch (err: any) {
@@ -1284,6 +1293,11 @@ export const VideoEditor = React.memo(({
                           <span className="text-red-400 font-black text-sm">!</span>
                         </div>
                         <p className="text-xs text-red-400 font-bold uppercase tracking-wider">Ошибка генерации</p>
+                        {editingWhiteboardClip.errorMsg && (
+                          <p className="text-[9px] text-red-300/80 font-medium px-4 max-w-xs break-words bg-red-500/5 p-2 rounded-xl border border-red-500/10 max-h-16 overflow-y-auto">
+                            {editingWhiteboardClip.errorMsg}
+                          </p>
+                        )}
                         <p className="text-[10px] text-white/30 font-medium">Попробуйте изменить промпт и перегенерировать</p>
                       </>
                     ) : (
@@ -1384,19 +1398,28 @@ export const VideoEditor = React.memo(({
                           speed: clipSpeed
                         })
                       });
-                      if (!res.ok) throw new Error('Generation failed');
                       const data = await res.json();
+                      if (!res.ok) {
+                        throw new Error(data.error || 'Generation failed');
+                      }
                       
                       setWhiteboardClips(prev => prev.map(c => c.id === clipId ? {
                         ...c,
                         url: data.videoUrl,
                         imageUrl: data.imageUrl,
                         speed: clipSpeed,
-                        status: 'completed'
+                        status: 'completed',
+                        errorMsg: undefined
                       } : c));
-                    } catch (err) {
-                      console.error('Whiteboard gen failed:', err);
-                      setWhiteboardClips(prev => prev.map(c => c.id === clipId ? { ...c, status: 'failed' } : c));
+                    } catch (err: any) {
+                      const errorMsg = err.message || String(err);
+                      console.error('Whiteboard gen failed:', errorMsg);
+                      (globalThis as any).addSystemLog?.(`[Ошибка Скетча] Сбой ручной генерации: ${errorMsg}`);
+                      setWhiteboardClips(prev => prev.map(c => c.id === clipId ? { 
+                        ...c, 
+                        status: 'failed',
+                        errorMsg
+                      } : c));
                     }
                   }}
                   className="flex-1 py-4 bg-purple-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all text-white flex items-center justify-center gap-2"

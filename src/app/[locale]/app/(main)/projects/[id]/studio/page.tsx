@@ -95,6 +95,15 @@ export default function StudioPage() {
     setSystemLogs(prev => [...prev.slice(-30), `[${time}] ${msg}`]);
   }, []);
 
+  useEffect(() => {
+    (globalThis as any).addSystemLog = addSystemLog;
+    return () => {
+      try {
+        delete (globalThis as any).addSystemLog;
+      } catch (e) {}
+    };
+  }, [addSystemLog]);
+
   const [showRecordingReview, setShowRecordingReview] = useState(false);
   const [scriptOpacity, setScriptOpacity] = useState(0.85);
   const [scriptColor, setScriptColor] = useState('#ffffff');
