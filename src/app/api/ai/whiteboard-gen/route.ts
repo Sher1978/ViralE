@@ -11,25 +11,300 @@ import os from 'os';
 
 const execAsync = promisify(exec);
 export const runtime = 'nodejs';
-export const maxDuration = 120; // Allow enough time for image gen + python video composition
+export const maxDuration = 120;
 
-async function uploadBufferToSupabase(buffer: Buffer, pathName: string, contentType: string): Promise<string> {
-  const { data, error } = await supabaseAdmin.storage
+// ---------------------------------------------------------------------------
+// Supabase upload helper
+// ---------------------------------------------------------------------------
+async function uploadBufferToSupabase(
+  buffer: Buffer,
+  pathName: string,
+  contentType: string
+): Promise<string> {
+  const { error } = await supabaseAdmin.storage
     .from('media')
-    .upload(pathName, buffer, {
-      contentType,
-      cacheControl: '31536000',
-      upsert: true,
-    });
-
-  if (error) {
-    throw error;
-  }
-
+    .upload(pathName, buffer, { contentType, cacheControl: '31536000', upsert: true });
+  if (error) throw error;
   const { data: { publicUrl } } = supabaseAdmin.storage.from('media').getPublicUrl(pathName);
   return publicUrl;
 }
 
+// ---------------------------------------------------------------------------
+// Notebook background generator (pure Node.js + FFmpeg drawbox/color filters)
+// Creates an 1080×1920 notebook page PNG and returns its temp path.
+// ---------------------------------------------------------------------------
+async function generateNotebookBackground(tmpDir: string): Promise<string> {
+  const outPath = path.join(tmpDir, 'notebook_bg.png');
+
+  // Build FFmpeg filtergraph:
+  //  1. Cream paper base (color=0xEBECF0, 1080x1920)
+  //  2. Horizontal ruled lines every 62px starting at y=180, light blue
+  //  3. Red vertical margin line at x=130
+  //  4. Spiral binding strip: white rectangle on left, grey border
+  //  5. Binding ring ovals (drawbox approximation with ellipses via lavfi)
+
+  const lineColor = '0xBDC3D0@0.8';   // soft blue-grey
+  const marginColor = '0xC85050@0.7'; // red margin
+  const paperColor = '0xEBECF0';      // cream paper
+  const bindingColor = '0xE2E4EA';    // slightly darker left strip
+  const ringColor = '0x505060';       // dark metal rings
+
+  // Generate ruled lines filter
+  const lineHeight = 62;
+  const firstLine = 180;
+  const canvasH = 1920;
+  const lineFilters: string[] = [];
+
+  let y = firstLine;
+  let idx = 0;
+  while (y < canvasH - 80) {
+    lineFilters.push(
+      `drawbox=x=80:y=${y}:w=960:h=1:color=${lineColor}:t=fill`
+    );
+    y += lineHeight;
+    idx++;
+  }
+
+  // Binding rings (ovals approximated as small rounded boxes)
+  const ringFilters: string[] = [];
+  const ringSpacing = 95;
+  const ringX = 10;
+  const ringW = 56;
+  const ringH = 26;
+  let ry = 100;
+  while (ry < canvasH - 80) {
+    // Outer ring shadow
+    ringFilters.push(
+      `drawbox=x=${ringX}:y=${ry - ringH / 2}:w=${ringW}:h=${ringH}:color=${ringColor}@0.8:t=3`
+    );
+    // Inner lighter ring
+    ringFilters.push(
+      `drawbox=x=${ringX + 8}:y=${ry - ringH / 2 + 4}:w=${ringW - 16}:h=${ringH - 8}:color=0x909098@0.5:t=2`
+    );
+    ry += ringSpacing;
+  }
+
+  // Build the complete filter_complex chain
+  const allFilters = [
+    // Paper base
+    `color=c=${paperColor}:s=1080x1920:d=1[base]`,
+    // Apply all line + ring drawboxes as a chain
+    `[base]` +
+      [...lineFilters, ...ringFilters,
+        // Margin line
+        `drawbox=x=130:y=40:w=2:h=1840:color=${marginColor}:t=fill`,
+        // Left binding strip
+        `drawbox=x=0:y=0:w=62:h=1920:color=${bindingColor}:t=fill`,
+        // Binding strip right border
+        `drawbox=x=60:y=0:w=2:h=1920:color=0xB0B5BF@0.8:t=fill`,
+        // Paper edge shadow (right)
+        `drawbox=x=1076:y=0:w=4:h=1920:color=0x000000@0.06:t=fill`,
+        // Paper edge shadow (bottom)
+        `drawbox=x=0:y=1916:w=1080:h=4:color=0x000000@0.06:t=fill`,
+      ].join(',') + `[out]`
+  ].join(';');
+
+  const cmd = [
+    'ffmpeg', '-y',
+    '-filter_complex', `"${allFilters}"`,
+    '-map', '[out]',
+    '-frames:v', '1',
+    '-update', '1',
+    `"${outPath}"`
+  ].join(' ');
+
+  try {
+    const { stderr } = await execAsync(cmd);
+    if (stderr && stderr.includes('Error')) {
+      throw new Error(stderr.slice(0, 200));
+    }
+    return outPath;
+  } catch (err: any) {
+    // Fallback: generate a plain cream PNG via simple color filter
+    console.warn('[Whiteboard] Notebook bg generation failed, using plain cream:', err.message?.slice(0, 100));
+    const fallbackCmd = [
+      'ffmpeg', '-y',
+      '-f', 'lavfi', '-i', `color=c=${paperColor}:s=1080x1920:d=1`,
+      '-frames:v', '1', '-update', '1',
+      `"${outPath}"`
+    ].join(' ');
+    await execAsync(fallbackCmd);
+    return outPath;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Composite sketch onto notebook background using FFmpeg overlay
+// Returns path to composited PNG
+// ---------------------------------------------------------------------------
+async function compositeSketchOnNotebook(
+  sketchPath: string,
+  notebookPath: string,
+  tmpDir: string
+): Promise<string> {
+  const outPath = path.join(tmpDir, 'composited.png');
+
+  // Scale sketch to fit page area (80px left margin, 60px right, 180px top, 120px bottom)
+  // Page area: 940×1620 inside binding+margin
+  // We scale to fit within 840×1540 and center it
+  const cmd = [
+    'ffmpeg', '-y',
+    '-i', `"${notebookPath}"`,
+    '-i', `"${sketchPath}"`,
+    '-filter_complex',
+    // Scale sketch: fit within 840x1540, keep aspect, pad with white for clean edges
+    // Then use colorkey to make near-white areas semi-transparent (let paper show through)
+    // Then overlay centered on page content area (offset: x=120, y=190)
+    `"[1:v]scale=840:1540:force_original_aspect_ratio=decrease,` +
+    `pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white,` +
+    `colorkey=0xFFFFFF:similarity=0.25:blend=0.15[sketch];` +
+    `[0:v][sketch]overlay=x=120:y=190[out]"`,
+    '-map', '[out]',
+    '-frames:v', '1', '-update', '1',
+    `"${outPath}"`
+  ].join(' ');
+
+  try {
+    await execAsync(cmd);
+    return outPath;
+  } catch (err: any) {
+    console.warn('[Whiteboard] Composite failed, falling back to simple overlay:', err.message?.slice(0, 100));
+    // Simple fallback: just scale and overlay without colorkey
+    const fallbackCmd = [
+      'ffmpeg', '-y',
+      '-i', `"${notebookPath}"`,
+      '-i', `"${sketchPath}"`,
+      '-filter_complex',
+      `"[1:v]scale=840:1540:force_original_aspect_ratio=decrease,pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white[sk];[0:v][sk]overlay=120:190[out]"`,
+      '-map', '[out]', '-frames:v', '1', '-update', '1',
+      `"${outPath}"`
+    ].join(' ');
+    await execAsync(fallbackCmd);
+    return outPath;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Create drawing-reveal animation video using FFmpeg
+// Uses a left-to-right / zigzag wipe effect to simulate progressive drawing
+// ---------------------------------------------------------------------------
+async function createDrawingVideo(
+  compositedImagePath: string,
+  notebookPath: string,
+  tmpDir: string,
+  duration: number,
+  fps: number = 30
+): Promise<string> {
+  const outPath = path.join(tmpDir, 'video.mp4');
+  const totalFrames = Math.floor(duration * fps);
+
+  // Strategy: use a geq (per-pixel equation) filter to progressively reveal
+  // the sketch in a zigzag raster pattern, simulating drawing left→right row by row.
+  // 
+  // geq reveals pixels where: current sweep position has passed the pixel
+  // Sweep: rows of 100px height, alternating L→R / R→L
+  // Progress variable: t / duration (0..1)
+  //
+  // Each row covers 1/rows of total time.
+  // For row r (0-indexed), going L→R: reveal_x = W * frac
+  // For row r going R→L: reveal_x = W * (1-frac)
+  //
+  // We encode this as a geq expression on the alpha channel of the sketch layer.
+
+  const rows = 14;
+  const rowH = Math.floor(1920 / rows);
+
+  // Build geq expression:
+  // row = floor(Y / rowH)
+  // rowFrac = (T/duration - row/rows) * rows   [0..1 within that row]
+  // revealX = (row%2==0) ? rowFrac*W : (1-rowFrac)*W
+  // visible = (X < revealX AND Y is in current or past rows) + past rows fully visible
+  //
+  // Simplified version that works in FFmpeg geq:
+  // alpha(x,y,t) = 255 if:
+  //   floor(y/rowH)/rows < t/dur  → past rows always visible
+  //   floor(y/rowH)/rows == floor(t/dur * rows)/rows → current row, check X position
+  const durSec = duration;
+
+  const geqAlpha =
+    `if(` +
+      // Past rows: fully revealed
+      `lt(floor(Y/${rowH})/${rows}, floor(T*${rows}/${durSec})/${rows}),` +
+      `255,` +
+      // Current row: partial reveal
+      `if(eq(floor(Y/${rowH}),floor(T*${rows}/${durSec})),` +
+        `if(eq(mod(floor(Y/${rowH}),2),0),` +
+          // Even row: L→R
+          `if(lt(X, (T*${rows}/${durSec}-floor(T*${rows}/${durSec}))*W), 255, 0),` +
+          // Odd row: R→L
+          `if(gt(X, W-(T*${rows}/${durSec}-floor(T*${rows}/${durSec}))*W), 255, 0)` +
+        `),` +
+        // Future rows: hidden
+        `0` +
+      `)` +
+    `)`;
+
+  // Also build a marker (drawing cursor) position expression for the hand dot
+  // We draw a dark oval at the current drawing position
+  const markerX = `if(eq(mod(floor(T*${rows}/${durSec}),2),0), (T*${rows}/${durSec}-floor(T*${rows}/${durSec}))*W, W-(T*${rows}/${durSec}-floor(T*${rows}/${durSec}))*W)`;
+  const markerY = `(floor(T*${rows}/${durSec})+0.5)*${rowH}`;
+
+  // Build hand overlay (simple dark marker-tip dot with a slight gradient)
+  const markerGeqR = `if(lt(pow(X-(${markerX}),2)+pow(Y-(${markerY}),2), pow(18,2)), 30, r(X,Y))`;
+  const markerGeqG = `if(lt(pow(X-(${markerX}),2)+pow(Y-(${markerY}),2), pow(18,2)), 25, g(X,Y))`;
+  const markerGeqB = `if(lt(pow(X-(${markerX}),2)+pow(Y-(${markerY}),2), pow(18,2)), 20, b(X,Y))`;
+
+  const filterComplex = [
+    // Input 0: notebook background (looped for duration)
+    // Input 1: composited sketch (static)
+    `[0:v]loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS[bg]`,
+    // Apply geq reveal to sketch (alpha mask)
+    `[1:v]format=rgba,geq=r='r(X,Y)':g='g(X,Y)':b='b(X,Y)':a='${geqAlpha}'[sketch_revealed]`,
+    // Overlay revealed sketch on notebook
+    `[bg][sketch_revealed]overlay=0:0[with_sketch]`,
+    // Draw marker tip dot
+    `[with_sketch]geq=r='${markerGeqR}':g='${markerGeqG}':b='${markerGeqB}'[out]`,
+  ].join(';');
+
+  const cmd = [
+    'ffmpeg', '-y',
+    '-loop', '1', '-i', `"${notebookPath}"`,       // input 0: notebook bg
+    '-loop', '1', '-i', `"${compositedImagePath}"`, // input 1: composited sketch
+    '-filter_complex', `"${filterComplex}"`,
+    '-map', '[out]',
+    '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+    '-profile:v', 'high', '-level', '4.0', '-crf', '22',
+    '-t', String(durSec),
+    '-r', String(fps),
+    `"${outPath}"`
+  ].join(' ');
+
+  try {
+    const { stderr } = await execAsync(cmd, { timeout: 90_000 });
+    if (stderr && stderr.toLowerCase().includes('error') && !fs.existsSync(outPath)) {
+      throw new Error(stderr.slice(0, 300));
+    }
+    console.log(`[Whiteboard] Drawing video created: ${outPath}`);
+    return outPath;
+  } catch (err: any) {
+    // Fallback: simple ken-burns zoom on composite image (no progressive reveal)
+    console.warn('[Whiteboard] geq filter failed, using ken-burns fallback:', err.message?.slice(0, 100));
+    const fallbackCmd = [
+      'ffmpeg', '-y',
+      '-loop', '1', '-i', `"${compositedImagePath}"`,
+      '-vf', `"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.0015,1.3)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=1080x1920"`,
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '22',
+      '-t', String(durSec), '-r', String(fps),
+      `"${outPath}"`
+    ].join(' ');
+    await execAsync(fallbackCmd, { timeout: 90_000 });
+    return outPath;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Main POST handler
+// ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
     const { clipId, projectId, prompt, duration = 4.0 } = await req.json();
@@ -37,43 +312,56 @@ export async function POST(req: NextRequest) {
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
     }
-
     if (!process.env.FAL_KEY) {
       return NextResponse.json({ error: 'Fal.ai API key is missing' }, { status: 500 });
     }
 
-    console.log(`[Whiteboard Gen] Generating sketch for clip ${clipId} with prompt: "${prompt}"...`);
+    // Check FFmpeg availability
+    let ffmpegAvailable = false;
+    try {
+      await execAsync('ffmpeg -version');
+      ffmpegAvailable = true;
+    } catch {
+      // Try ffmpeg-installer path
+      try {
+        const ffmpegPath = require('@ffmpeg-installer/ffmpeg').path;
+        process.env.PATH = `${path.dirname(ffmpegPath)}:${process.env.PATH || ''}`;
+        await execAsync('ffmpeg -version');
+        ffmpegAvailable = true;
+      } catch {
+        console.warn('[Whiteboard] FFmpeg not available — will return static image only');
+      }
+    }
 
-    // 1. Optimize and translate prompt via Gemini
+    console.log(`[Whiteboard Gen] clip=${clipId}, duration=${duration}s, ffmpeg=${ffmpegAvailable}`);
+
+    // ── Step 1: Optimize prompt via Gemini ──────────────────────────────────
     let optimizedPrompt = prompt;
     try {
       const model = getModel('fast');
       const systemPrompt = `
 You are an expert prompt engineer for the Flux image generation model.
-Your task is to take any input description (which may be a mix of Russian and English, raw speech transcripts, or visual instructions) and output a highly optimized, clean English prompt for a whiteboard animation sketch.
+Take any input description (Russian or English) and output a highly optimized English prompt for a whiteboard animation sketch.
 
-Strictly follow this prompt style formula:
-"A charming naive children's book doodle illustration of [SUBJECT], simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, completely flat white background with zero color tones. Maximum contrast black outlines only. Strictly no shading, no gradients, no watercolor, no color fills, no photography. Portrait orientation 9:16. The bottom-right quadrant of the canvas must be completely empty white space with zero objects."
+Strictly follow this formula:
+"A charming naive children's book doodle illustration of [SUBJECT], simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, completely flat white background with zero color tones. Maximum contrast black outlines only. Strictly no shading, no gradients, no watercolor, no color fills, no photography. Portrait orientation 9:16. The bottom-right quadrant must be completely empty white space with zero objects."
 
 Rules:
 1. Translate any Russian/non-English words to English.
-2. Refactor the core subject ([SUBJECT]) to represent a charming naive children's book doodle visual metaphor (e.g. stick figures, simple monsters, basic outlines, simple gears).
-3. Do NOT translate the prompt formula keywords; keep them exactly as in the template.
-4. Output ONLY the raw optimized English prompt string. Do not wrap in JSON, markdown, or codeblocks.
+2. Extract the core visual metaphor (stick figures, simple objects, basic outlines).
+3. Output ONLY the raw optimized prompt string — no JSON, no markdown.
 `;
-
-      const response = await model.generateContent([systemPrompt, `Input description: ${prompt}`]);
-      const responseText = response.response.text().trim();
-      if (responseText) {
-        optimizedPrompt = responseText;
-        console.log(`[Whiteboard Gen] Optimized prompt: "${optimizedPrompt}"`);
+      const response = await model.generateContent([systemPrompt, `Input: ${prompt}`]);
+      const txt = response.response.text().trim();
+      if (txt) {
+        optimizedPrompt = txt;
+        console.log(`[Whiteboard Gen] Optimized prompt: "${optimizedPrompt.substring(0, 80)}..."`);
       }
-    } catch (geminiErr) {
-      console.warn('[Whiteboard Gen] Gemini prompt optimization failed, falling back to original prompt:', geminiErr);
+    } catch (err) {
+      console.warn('[Whiteboard Gen] Gemini optimization failed, using original prompt');
     }
 
-    // 2. Generate Sketch Image via Fal.ai (Flux Schnell)
-    // We enforce 9:16 aspect ratio (768x1344)
+    // ── Step 2: Generate sketch image via Fal.ai Flux ───────────────────────
     const result = await fal.subscribe("fal-ai/flux/schnell", {
       input: {
         prompt: optimizedPrompt,
@@ -84,91 +372,81 @@ Rules:
       }
     });
 
-    const imageUrl = (result.data as any).images?.[0]?.url;
-    if (!imageUrl) {
+    const falImageUrl = (result.data as any).images?.[0]?.url;
+    if (!falImageUrl) {
       throw new Error('Fal.ai image generation returned no URL');
     }
+    console.log(`[Whiteboard Gen] Fal.ai image: ${falImageUrl}`);
 
-    console.log(`[Whiteboard Gen] Sketch image generated: ${imageUrl}`);
-
-    // Download the generated image
-    const imageRes = await fetch(imageUrl);
+    // Download sketch image
+    const imageRes = await fetch(falImageUrl);
     if (!imageRes.ok) {
-      throw new Error(`Failed to download generated image: ${imageRes.statusText}`);
+      throw new Error(`Failed to download Fal.ai image: ${imageRes.statusText}`);
     }
     const imageBuffer = Buffer.from(await imageRes.arrayBuffer());
 
-    // 2. Set up temporary paths for video generation
-    const tmpDir = path.join(os.tmpdir(), `wb_${uuidv4()}`);
-    fs.mkdirSync(tmpDir, { recursive: true });
-
-    const sketchPath = path.join(tmpDir, 'sketch.png');
-    const videoPath = path.join(tmpDir, 'video.mp4');
-
-    fs.writeFileSync(sketchPath, imageBuffer);
-
-    // 3. Call the Python Sketch Engine to render drawing animation
-    console.log(`[Whiteboard Gen] Invoking Python Sketch Engine for duration=${duration}s...`);
-    const projectRoot = process.cwd();
-    const pythonScript = path.join(projectRoot, 'scripts', 'viral_sketch_engine.py');
-    
-    // Command: python scripts/viral_sketch_engine.py <sketch> <output> <duration>
-    const cmd = `python "${pythonScript}" "${sketchPath}" "${videoPath}" ${duration}`;
-    
-    let pythonFailed = false;
-    let pythonErrorMsg = '';
-
-    try {
-      const { stdout, stderr } = await execAsync(cmd, { cwd: projectRoot });
-      console.log(`[Whiteboard Gen] Python output:\n${stdout}`);
-      if (stderr) {
-        console.warn(`[Whiteboard Gen] Python stderr warnings:\n${stderr}`);
-      }
-    } catch (pythonErr: any) {
-      console.error(`[Whiteboard Gen] Python engine failed:`, pythonErr);
-      pythonFailed = true;
-      pythonErrorMsg = pythonErr.message || String(pythonErr);
-    }
-
+    // ── Step 3: Upload sketch image to Supabase ──────────────────────────────
     const uuid = uuidv4();
-    
-    // Upload image (always uploaded)
-    console.log('[Whiteboard Gen] Uploading sketch image to Supabase Storage...');
     const sketchStoragePath = `whiteboard/sketch_${projectId}_${uuid}.png`;
     const finalImageUrl = await uploadBufferToSupabase(imageBuffer, sketchStoragePath, 'image/png');
-    
-    // Upload video if python succeeded
-    let finalVideoUrl = '';
-    if (!pythonFailed && fs.existsSync(videoPath)) {
-      console.log('[Whiteboard Gen] Uploading sketch video to Supabase Storage...');
-      const videoStoragePath = `whiteboard/video_${projectId}_${uuid}.mp4`;
-      finalVideoUrl = await uploadBufferToSupabase(fs.readFileSync(videoPath), videoStoragePath, 'video/mp4');
-    }
+    console.log(`[Whiteboard Gen] Sketch uploaded: ${finalImageUrl}`);
 
-    console.log(`[Whiteboard Gen] Image: ${finalImageUrl}, Video: ${finalVideoUrl || 'NONE (python failed)'}`);
-
-    // Cleanup local temp files
-    try {
-      fs.rmSync(tmpDir, { recursive: true, force: true });
-    } catch (e) {
-      console.warn('[Whiteboard Gen] Failed to clean up temp files:', e);
-    }
-
-    if (pythonFailed) {
+    // ── Step 4: Create notebook background + drawing animation ───────────────
+    if (!ffmpegAvailable) {
+      // No FFmpeg → return static image only
       return NextResponse.json({
         imageUrl: finalImageUrl,
         videoUrl: '',
-        warning: `Whiteboard animation script failed, showing static drawing. Details: ${pythonErrorMsg}`
+        warning: 'FFmpeg not available — showing static sketch without animation'
       });
+    }
+
+    const tmpDir = path.join(os.tmpdir(), `wb_${uuid}`);
+    fs.mkdirSync(tmpDir, { recursive: true });
+
+    let finalVideoUrl = '';
+    let warning: string | undefined;
+
+    try {
+      // Write sketch to temp file
+      const sketchTmpPath = path.join(tmpDir, 'sketch.png');
+      fs.writeFileSync(sketchTmpPath, imageBuffer);
+
+      // Generate notebook background
+      const notebookPath = await generateNotebookBackground(tmpDir);
+
+      // Composite sketch onto notebook
+      const compositedPath = await compositeSketchOnNotebook(sketchTmpPath, notebookPath, tmpDir);
+
+      // Create animated video
+      const videoPath = await createDrawingVideo(compositedPath, notebookPath, tmpDir, duration);
+
+      if (fs.existsSync(videoPath) && fs.statSync(videoPath).size > 0) {
+        const videoBuffer = fs.readFileSync(videoPath);
+        const videoStoragePath = `whiteboard/video_${projectId}_${uuid}.mp4`;
+        finalVideoUrl = await uploadBufferToSupabase(videoBuffer, videoStoragePath, 'video/mp4');
+        console.log(`[Whiteboard Gen] Video uploaded: ${finalVideoUrl}`);
+      } else {
+        warning = 'Video file was empty or missing after generation';
+      }
+    } catch (videoErr: any) {
+      console.error('[Whiteboard Gen] Video generation failed:', videoErr.message);
+      warning = `Animation failed: ${videoErr.message?.slice(0, 100)}`;
+    } finally {
+      try { fs.rmSync(tmpDir, { recursive: true, force: true }); } catch {}
     }
 
     return NextResponse.json({
       imageUrl: finalImageUrl,
-      videoUrl: finalVideoUrl
+      videoUrl: finalVideoUrl,
+      ...(warning ? { warning } : {})
     });
 
   } catch (error: any) {
     console.error('[Whiteboard Gen] Critical error:', error);
-    return NextResponse.json({ error: error.message || 'Internal server error' }, { status: 500 });
+    return NextResponse.json(
+      { error: error.message || 'Internal server error' },
+      { status: 500 }
+    );
   }
 }
