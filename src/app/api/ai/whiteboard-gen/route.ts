@@ -144,21 +144,18 @@ async function compositeSketchOnNotebook(
 ): Promise<string> {
   const outPath = path.join(tmpDir, 'composited.png');
 
-  // Scale sketch to fit page area (80px left margin, 60px right, 180px top, 120px bottom)
-  // Page area: 940×1620 inside binding+margin
-  // We scale to fit within 840×1540 and center it
+  // Scale background to 1080x1920 first, then place scaled sketch (840x1540) on top.
+  // This ensures the canvas has the correct 9:16 aspect ratio before overlays, preventing out-of-bounds crops.
   const cmd = [
     'ffmpeg', '-y',
     '-i', `"${notebookPath}"`,
     '-i', `"${sketchPath}"`,
     '-filter_complex',
-    // Scale sketch: fit within 840x1540, keep aspect, pad with white for clean edges
-    // Then use colorkey to make near-white areas semi-transparent (let paper show through)
-    // Then overlay centered on page content area (offset: x=120, y=190)
-    `"[1:v]scale=840:1540:force_original_aspect_ratio=decrease,` +
+    `"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg];` +
+    `[1:v]scale=840:1540:force_original_aspect_ratio=decrease,` +
     `pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white,` +
     `colorkey=0xFFFFFF:similarity=0.25:blend=0.15[sketch];` +
-    `[0:v][sketch]overlay=x=120:y=190[out]"`,
+    `[bg][sketch]overlay=x=120:y=190[out]"`,
     '-map', '[out]',
     '-frames:v', '1', '-update', '1',
     `"${outPath}"`
@@ -169,13 +166,14 @@ async function compositeSketchOnNotebook(
     return outPath;
   } catch (err: any) {
     console.warn('[Whiteboard] Composite failed, falling back to simple overlay:', err.message?.slice(0, 100));
-    // Simple fallback: just scale and overlay without colorkey
     const fallbackCmd = [
       'ffmpeg', '-y',
       '-i', `"${notebookPath}"`,
       '-i', `"${sketchPath}"`,
       '-filter_complex',
-      `"[1:v]scale=840:1540:force_original_aspect_ratio=decrease,pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white[sk];[0:v][sk]overlay=120:190[out]"`,
+      `"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg];` +
+      `[1:v]scale=840:1540:force_original_aspect_ratio=decrease,pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white[sk];` +
+      `[bg][sk]overlay=120:190[out]"`,
       '-map', '[out]', '-frames:v', '1', '-update', '1',
       `"${outPath}"`
     ].join(' ');
@@ -220,12 +218,13 @@ async function createDrawingVideo(
       `[mask_black][mask_white]overlay=y='-1540 + 1540*(t/${durSec})'[mask]`,
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
-      `[2:v]scale=320:-1,format=rgba[hand_scaled]`,
+      `[2:v]scale=950:-1,format=rgba[hand_scaled]`,
       // Choppy time-lapse movement: jump discretely 18 times per second (floor(t*18))
       // localized around the current progress line Y (with some vertical jumping range)
+      // hand is scaled to 950px so the wrist always goes out of screen bounds
       `[paper_with_sketch][hand_scaled]overlay=` +
-        `x='clip(540 + 420*sin(4.3*floor(t*18))\\, 120\\, 960) - 25':` +
-        `y='clip(190 + 1540*(t/${durSec}) + 350*sin(7.1*floor(t*18))\\, 190\\, 1730) - 15'[out]`
+        `x='clip(540 + 420*sin(4.3*floor(t*18))\\, 120\\, 960) - 75':` +
+        `y='clip(190 + 1540*(t/${durSec}) + 350*sin(7.1*floor(t*18))\\, 190\\, 1730) - 45'[out]`
     ].join(';');
   } else {
     filterComplex = [
