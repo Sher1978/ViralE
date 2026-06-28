@@ -40,14 +40,15 @@ export async function POST(req: NextRequest) {
 ---
 
 ### II. ИНЖЕНЕРИЯ ПРОМПТА ДЛЯ СБОРОЧНЫХ СКЕТЧЕЙ (FLUX)
-Каждый рисунок будет генерироваться ИИ Flux. Чтобы скетчи выглядели профессионально и однородно как классический Whiteboard, промпт должен строиться строго по следующей формуле:
-"Simple black marker line art on pure white background, minimal vector-like style showing [CORE_SUBJECT], storyboard sketch, doodle drawing, high contrast, isolated, clean borders"
+Каждый рисунок будет генерироваться ИИ Flux. Чтобы скетчи выглядели профессионально и однородно, промпт должен строиться строго по следующей формуле:
+"A charming naive children's book doodle illustration of [CORE_SUBJECT], simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, isolated on a solid pure white canvas. Strictly no complex shading, no gradients, vector lines. The bottom-right quadrant of the canvas is completely empty, pure solid white blank space, strictly zero objects, lines or text in the bottom right corner."
 
 **СТРОГИЕ ПРАВИЛА ДЛЯ ПРОМПТОВ:**
-- Рисунок должен быть **черным маркером на чисто белом фоне**. Никакого серого или цветного фона! Никаких теней или 3D объемов!
+- Рисунок должен быть в стиле детского скетча маркером на белом листе. Никакого серого или цветного фона! Никаких теней или 3D объемов!
 - Описывай простые контурные рисунки (Outline sketch).
 - Избегай фотореализма, градиентов или сложных детализаций.
-- Пример: "Simple black marker line art on pure white background, minimal vector-like style showing a human head with gearwheels inside, storyboard sketch, doodle drawing, high contrast, isolated"
+- Обязательно оставляй правый нижний угол пустым для overlay видео говорящей головы спикера.
+- Пример: "A charming naive children's book doodle illustration of a human head with gearwheels inside, simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, isolated on a solid pure white canvas. Strictly no complex shading, no gradients, vector lines. The bottom-right quadrant of the canvas is completely empty, pure solid white blank space, strictly zero objects, lines or text in the bottom right corner."
 
 ---
 

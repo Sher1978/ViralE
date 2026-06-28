@@ -4,6 +4,7 @@ import { fal } from "@fal-ai/client";
 import { supabaseAdmin } from '@/lib/supabase';
 import { exec } from 'child_process';
 import { promisify } from 'util';
+import { getModel } from '@/lib/ai/gemini';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -43,11 +44,39 @@ export async function POST(req: NextRequest) {
 
     console.log(`[Whiteboard Gen] Generating sketch for clip ${clipId} with prompt: "${prompt}"...`);
 
-    // 1. Generate Sketch Image via Fal.ai (Flux Schnell)
+    // 1. Optimize and translate prompt via Gemini
+    let optimizedPrompt = prompt;
+    try {
+      const model = getModel('fast');
+      const systemPrompt = `
+You are an expert prompt engineer for the Flux image generation model.
+Your task is to take any input description (which may be a mix of Russian and English, raw speech transcripts, or visual instructions) and output a highly optimized, clean English prompt for a whiteboard animation sketch.
+
+Strictly follow this prompt style formula:
+"A charming naive children's book doodle illustration of [SUBJECT], simple expressive black felt-tip marker drawing, whimsical hand-drawn style, minimalist kindergarten sketch aesthetic, funny, cute simplicity, isolated on a solid pure white canvas. Strictly no complex shading, no gradients, vector lines. The bottom-right quadrant of the canvas is completely empty, pure solid white blank space, strictly zero objects, lines or text in the bottom right corner."
+
+Rules:
+1. Translate any Russian/non-English words to English.
+2. Refactor the core subject ([SUBJECT]) to represent a charming naive children's book doodle visual metaphor (e.g. stick figures, simple monsters, basic outlines, simple gears).
+3. Do NOT translate the prompt formula keywords; keep them exactly as in the template.
+4. Output ONLY the raw optimized English prompt string. Do not wrap in JSON, markdown, or codeblocks.
+`;
+
+      const response = await model.generateContent([systemPrompt, `Input description: ${prompt}`]);
+      const responseText = response.response.text().trim();
+      if (responseText) {
+        optimizedPrompt = responseText;
+        console.log(`[Whiteboard Gen] Optimized prompt: "${optimizedPrompt}"`);
+      }
+    } catch (geminiErr) {
+      console.warn('[Whiteboard Gen] Gemini prompt optimization failed, falling back to original prompt:', geminiErr);
+    }
+
+    // 2. Generate Sketch Image via Fal.ai (Flux Schnell)
     // We enforce 9:16 aspect ratio (768x1344)
     const result = await fal.subscribe("fal-ai/flux/schnell", {
       input: {
-        prompt: prompt,
+        prompt: optimizedPrompt,
         image_size: { width: 768, height: 1344 },
         num_inference_steps: 4,
         enable_safety_checker: true,
