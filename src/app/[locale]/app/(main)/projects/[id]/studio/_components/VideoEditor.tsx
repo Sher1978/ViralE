@@ -438,7 +438,7 @@ export const VideoEditor = React.memo(({
       <StudioViewport 
         videoRef={videoRef} aRollUrl={aRollUrl} isMuted={isMuted} isPlaying={isPlaying} currentTime={currentTime} togglePlay={togglePlay}
         setCurrentTime={setCurrentTime} setARollDuration={setARollDuration}
-        brollClips={brollClips} setBrollClips={setBrollClips} subtitleClips={subtitleClips} subtitlePos={subtitlePos} setSubtitlePos={setSubtitlePos} subtitleSize={subtitleSize} setSubtitleSize={setSubtitleSize}
+        brollClips={brollClips} whiteboardClips={whiteboardClips} setBrollClips={setBrollClips} subtitleClips={subtitleClips} subtitlePos={subtitlePos} setSubtitlePos={setSubtitlePos} subtitleSize={subtitleSize} setSubtitleSize={setSubtitleSize}
         onUploadClick={() => (fileInputRef.current as any)?.click()}
         stage={stage} stageMessage={stageMessage} transcriptionError={transcriptionError} heartbeat={0}
         runTranscriptionAndPhrases={runTranscriptionAndPhrases} setStage={setStage} setTranscriptionError={setTranscriptionError} setStageMessage={setStageMessage}
@@ -464,6 +464,7 @@ export const VideoEditor = React.memo(({
       <EditorTimeline 
         totalDuration={duration}
         currentTime={currentTime}
+        isPlaying={isPlaying}
         onSeek={onSeek}
         aRollUrl={aRollUrl}
         onSplitSegment={splitSegmentAtTime}

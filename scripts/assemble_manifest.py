@@ -135,11 +135,13 @@ def assemble_video(job):
         # 3. Apply Timeline Overlays (B-Roll & Whiteboard) if present
         timeline_overlays = []
         for bc in manifest.get("brollClips", []):
-            if bc.get("content"):
-                timeline_overlays.append({**bc, "overlay_type": "broll"})
+            url = bc.get("content") or bc.get("url")
+            if url:
+                timeline_overlays.append({**bc, "content": url, "overlay_type": "broll"})
         for wb in manifest.get("whiteboardClips", []):
-            if wb.get("content"):
-                timeline_overlays.append({**wb, "overlay_type": "whiteboard"})
+            url = wb.get("content") or wb.get("url")
+            if url:
+                timeline_overlays.append({**wb, "content": url, "overlay_type": "whiteboard"})
 
         output_file = tmp_path / "final_production.mp4"
 

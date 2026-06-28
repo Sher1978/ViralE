@@ -34,6 +34,7 @@ interface EditorTimelineProps {
   onSplitSegment?: (time: number) => void;
   pxPerSecond: number;
   onPxPerSecondChange: (px: number) => void;
+  isPlaying?: boolean;
 }
 
 export const EditorTimeline: React.FC<EditorTimelineProps> = ({
@@ -58,7 +59,8 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   onDeleteWhiteboard,
   onSplitSegment,
   pxPerSecond: PX_PER_SECOND,
-  onPxPerSecondChange
+  onPxPerSecondChange,
+  isPlaying = false
 }) => {
   const containerRef = useRef<HTMLDivElement>(null);
   const trackRef = useRef<HTMLDivElement>(null);
@@ -88,6 +90,7 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   }, [currentTime, isScrolling, PX_PER_SECOND]);
 
   const handleScroll = () => {
+    if (isPlaying) return; // Prevent circular feedback loop during playback
     if (isProgrammaticScrollRef.current) {
       isProgrammaticScrollRef.current = false;
       return;
@@ -186,6 +189,11 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
 
       {/* 2. Tracks Layer */}
       <div className="flex-1 relative overflow-hidden bg-black/20">
+        {/* Track Grid Separators (Stationary Boundaries) */}
+        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '146px' }} />
+        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '94px' }} />
+        <div className="absolute left-0 right-0 border-t border-dashed border-white/10 pointer-events-none" style={{ bottom: '42px' }} />
+
         <div 
             ref={trackRef}
             className="absolute inset-0 overflow-x-auto no-scrollbar pointer-events-none"

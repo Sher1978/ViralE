@@ -3,7 +3,7 @@
 import React, { useRef, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Loader2, Upload, Wand2, RefreshCw } from 'lucide-react';
-import { BRollClip, SubtitleClip } from '../_hooks/useStudioState';
+import { BRollClip, SubtitleClip, WhiteboardClip } from '../_hooks/useStudioState';
 import { splitCaptionText } from '@/lib/utils';
 
 interface StudioViewportProps {
@@ -14,6 +14,7 @@ interface StudioViewportProps {
   currentTime: number;
   togglePlay: () => void;
   brollClips: BRollClip[];
+  whiteboardClips: WhiteboardClip[];
   subtitleClips: SubtitleClip[];
   subtitlePos: { x: number; y: number };
   setSubtitlePos: React.Dispatch<React.SetStateAction<{ x: number; y: number }>>;
@@ -144,7 +145,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
 
 export const StudioViewport: React.FC<StudioViewportProps> = ({
   videoRef, aRollUrl, isMuted, isPlaying, currentTime, togglePlay,
-  brollClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
+  brollClips, whiteboardClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
   setCurrentTime, setARollDuration, onUploadClick,
   stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage,
   selectedCaptionId, subtitleStyle, setBrollClips, voiceoverUrl, showSubtitles, subtitleColor, subtitleBgColor
@@ -304,6 +305,30 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                         <Wand2 size={14} className="text-white" />
                       </div>
                     )}
+                  </motion.div>
+                );
+              })()}
+            </AnimatePresence>
+
+            {/* WHITEBOARD OVERLAY */}
+            <AnimatePresence>
+              {(() => {
+                const activeWB = whiteboardClips?.find(c => c.url && c.url.length > 5 && currentTime >= c.startTime && currentTime <= c.endTime);
+                if (!activeWB) return null;
+                return (
+                  <motion.div 
+                    key={activeWB.id}
+                    initial={{ opacity: 0 }}
+                    animate={{ opacity: 1 }}
+                    exit={{ opacity: 0 }}
+                    className="absolute inset-0 z-20 flex items-center justify-center bg-white"
+                  >
+                    <BRollPreview 
+                      url={activeWB.url}
+                      startTime={activeWB.startTime}
+                      currentTime={currentTime}
+                      isPlaying={isPlaying}
+                    />
                   </motion.div>
                 );
               })()}
