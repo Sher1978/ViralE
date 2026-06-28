@@ -314,168 +314,42 @@ export const VideoEditor = React.memo(({
   };
 
   const handleAutoGenerateWhiteboards = async () => {
-    if (!manifest || !manifest.segments || manifest.segments.length === 0 || subtitleClips.length === 0) {
-      (globalThis as any).alert('Сценарий пуст или субтитры отсутствуют.');
+    if (subtitleClips.length === 0) {
+      (globalThis as any).alert('Субтитры отсутствуют. Сначала добавьте или сгенерируйте субтитры.');
       return;
     }
     
     setIsAutoGeneratingWhiteboard(true);
-    setAutoGenProgress('Импорт из сценария...');
+    setAutoGenProgress('ИИ планирует скетчи...');
     
     try {
-      // Helper function matching useStudioState logic
-      const segments = manifest.segments;
-      const subtitles = subtitleClips;
-      
-      // Join all subtitles into a single text sequence, keeping track of character indices and times
-      let fullSubtitleText = '';
-      const charTimeline: { charIndex: number; time: number; subIndex: number }[] = [];
-
-      subtitles.forEach((sub: any, subIdx: number) => {
-        const text = (sub.text || '').toLowerCase().replace(/[^a-zа-я0-9\s]/g, ' ');
-        const words = text.split(/\s+/).filter(Boolean);
-        
-        const duration = sub.endTime - sub.startTime;
-        const wordDuration = words.length > 0 ? duration / words.length : 0;
-
-        words.forEach((word: string, wordIdx: number) => {
-          const wordStartChar = fullSubtitleText.length;
-          fullSubtitleText += word + ' ';
-          const wordEndChar = fullSubtitleText.length;
-          
-          const wordStartTime = sub.startTime + (wordIdx * wordDuration);
-          
-          for (let i = wordStartChar; i < wordEndChar; i++) {
-            charTimeline.push({
-              charIndex: i,
-              time: wordStartTime,
-              subIndex: subIdx
-            });
-          }
-        });
+      const res = await fetch('/api/ai/auto-whiteboard', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ subtitles: subtitleClips })
       });
-
-      // Hierarchical fallback for whiteboard target segments
-      let targetSegments = segments.filter((s: any) => s.type === 'animated_still');
-      if (targetSegments.length === 0) {
-        console.log('[Studio LOG] No animated_still segments found, falling back to broll segments...');
-        targetSegments = segments.filter((s: any) => s.type === 'broll');
+      
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Server planning failed');
       }
-      if (targetSegments.length === 0) {
-        console.log('[Studio LOG] No broll segments found, falling back to any text-bearing segments...');
-        targetSegments = segments.filter((s: any) => s.type !== 'intro_avatar' && s.type !== 'outro_avatar' && s.scriptText);
-      }
-      if (targetSegments.length === 0) {
-        // Absolute fallback: just use the entire segments list
-        targetSegments = segments;
-      }
-
-      // Align segments
-      const rawPlaceholders = (targetSegments.map((seg: any, segIdx: number) => {
-        const cleanScript = (seg.scriptText || '').toLowerCase().replace(/[^a-zа-я0-9\s]/g, ' ');
-        const segWords = cleanScript.split(/\s+/).filter(Boolean);
-        if (segWords.length === 0) return null;
-
-        const searchString = segWords.join(' ');
-        let matchIdx = fullSubtitleText.indexOf(searchString);
-
-        if (matchIdx === -1 && segWords.length > 2) {
-          const partialSearch = segWords.slice(0, 3).join(' ');
-          matchIdx = fullSubtitleText.indexOf(partialSearch);
-        }
-        
-        let startTime = 0;
-        let endTime = 0;
-
-        if (matchIdx === -1) {
-          const totalDur = subtitles[subtitles.length - 1].endTime;
-          const partDur = totalDur / targetSegments.length;
-          startTime = segIdx * partDur;
-          endTime = (segIdx + 1) * partDur;
-        } else {
-          const startChar = matchIdx;
-          const endChar = Math.min(charTimeline.length - 1, matchIdx + searchString.length);
-          startTime = charTimeline[startChar]?.time ?? subtitles[0].startTime;
-          endTime = charTimeline[endChar]?.time ?? subtitles[subtitles.length - 1].endTime;
-        }
-
-        const id = `wb_${Date.now()}_${segIdx}`;
-        return {
-          id,
-          url: '',
-          imageUrl: '',
-          label: (seg.prompt || 'Whiteboard').substring(0, 24),
-          prompt: seg.prompt || 'whiteboard sketch doodle',
-          startTime,
-          endTime: Math.max(startTime + 2.0, endTime),
-          track: 2,
-          status: 'pending' as const
-        };
-      }).filter((c): c is any => c !== null));
-
-      if (rawPlaceholders.length === 0) {
-        console.log('[Studio LOG] Falling back to generating whiteboards from subtitles directly...');
-        const duration = subtitles[subtitles.length - 1]?.endTime || 60;
-        const segmentDuration = 5.0; // 5 seconds per sketch
-        const numSegments = Math.max(1, Math.ceil(duration / segmentDuration));
-        
-        for (let i = 0; i < numSegments; i++) {
-          const startTime = i * segmentDuration;
-          const endTime = Math.min(duration, (i + 1) * segmentDuration);
-          if (endTime - startTime < 1.5) continue;
-          
-          const rangeSubs = subtitles.filter(s => s.startTime >= startTime - 0.5 && s.endTime <= endTime + 0.5);
-          const rangeText = rangeSubs.map(s => s.text).join(' ').trim();
-          if (!rangeText) continue;
-          
-          const id = `wb_sub_fallback_${Date.now()}_${i}`;
-          rawPlaceholders.push({
-            id,
-            url: '',
-            imageUrl: '',
-            label: rangeText.substring(0, 20) || 'Sketch',
-            prompt: rangeText,
-            startTime,
-            endTime,
-            track: 2,
-            status: 'pending' as const
-          });
-        }
-      }
-
-      if (rawPlaceholders.length === 0) {
-        (globalThis as any).alert('В сценарии отсутствуют подходящие визуальные скетчи, а в распознанном голосе нет слов для автогенерации.');
+      
+      const placeholders = data.clips || [];
+      if (placeholders.length === 0) {
+        (globalThis as any).alert('ИИ не смог спланировать скетчи для этого текста.');
         setIsAutoGeneratingWhiteboard(false);
         return;
       }
 
-      // Resolve overlaps
-      const placeholders = rawPlaceholders.sort((a: any, b: any) => a.startTime - b.startTime);
-      for (let i = 0; i < placeholders.length; i++) {
-        const current = placeholders[i] as any;
-        if (current.startTime < 0) current.startTime = 0;
-        if (i < placeholders.length - 1) {
-          const next = placeholders[i + 1] as any;
-          if (current.endTime > next.startTime) {
-            if (next.startTime - current.startTime >= 2.0) {
-              current.endTime = next.startTime;
-            } else {
-              next.startTime = current.endTime;
-              next.endTime = Math.max(next.endTime, next.startTime + 2.0);
-            }
-          }
-        }
-      }
-
       setWhiteboardClips(placeholders as any[]);
-      setAutoGenProgress('');
+      setAutoGenProgress('Генерация скетчей...');
       setIsAutoGeneratingWhiteboard(false);
 
-      // Trigger background generation
+      // Trigger background generation for each placeholder
       placeholders.forEach(async (clip: any) => {
         try {
           setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'generating' } : c));
-          const res = await fetch('/api/ai/whiteboard-gen', {
+          const genRes = await fetch('/api/ai/whiteboard-gen', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -486,16 +360,16 @@ export const VideoEditor = React.memo(({
               speed: 1.0
             })
           });
-          const data = await res.json();
-          if (!res.ok) {
-            throw new Error(data.error || 'API failed');
+          const genData = await genRes.json();
+          if (!genRes.ok) {
+            throw new Error(genData.error || 'API failed');
           }
           setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
             ...c,
-            url: data.videoUrl || '',
-            imageUrl: data.imageUrl,
+            url: genData.videoUrl || '',
+            imageUrl: genData.imageUrl,
             status: 'completed',
-            errorMsg: data.warning || undefined
+            errorMsg: genData.warning || undefined
           } : c));
         } catch (err: any) {
           const errorMsg = err.message || String(err);
@@ -510,7 +384,7 @@ export const VideoEditor = React.memo(({
       });
     } catch (err: any) {
       console.error('[Auto-Whiteboard] Failed:', err);
-      (globalThis as any).alert(`Ошибка импорта скетчей: ${err.message || err}`);
+      (globalThis as any).alert(`Ошибка автогенерации скетчей: ${err.message || err}`);
       setIsAutoGeneratingWhiteboard(false);
     }
   };
@@ -1355,7 +1229,11 @@ export const VideoEditor = React.memo(({
                   <video 
                     src={editingWhiteboardClip.url}
                     controls
+                    autoPlay
+                    muted
+                    loop
                     playsInline
+                    crossOrigin="anonymous"
                     className="w-full h-full object-contain"
                   />
                 ) : editingWhiteboardClip.imageUrl ? (
