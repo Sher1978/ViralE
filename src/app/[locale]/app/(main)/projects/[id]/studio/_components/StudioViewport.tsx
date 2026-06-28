@@ -11,6 +11,7 @@ interface StudioViewportProps {
   aRollUrl: string | null;
   isMuted: boolean;
   isPlaying: boolean;
+  setIsPlaying: (playing: boolean) => void;
   currentTime: number;
   togglePlay: () => void;
   brollClips: BRollClip[];
@@ -144,7 +145,7 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
 });
 
 export const StudioViewport: React.FC<StudioViewportProps> = ({
-  videoRef, aRollUrl, isMuted, isPlaying, currentTime, togglePlay,
+  videoRef, aRollUrl, isMuted, isPlaying, setIsPlaying, currentTime, togglePlay,
   brollClips, whiteboardClips, subtitleClips, subtitlePos, setSubtitlePos, subtitleSize, setSubtitleSize,
   setCurrentTime, setARollDuration, onUploadClick,
   stage, stageMessage, transcriptionError, heartbeat, runTranscriptionAndPhrases, setStage, setTranscriptionError, setStageMessage,
@@ -209,6 +210,24 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               playsInline 
               preload="auto"
               crossOrigin="anonymous"
+              onPlay={() => setIsPlaying(true)}
+              onPause={() => {
+                setIsPlaying(false);
+                if (videoRef.current) {
+                  setCurrentTime((videoRef.current as any).currentTime);
+                }
+              }}
+              onEnded={() => {
+                setIsPlaying(false);
+                if (videoRef.current) {
+                  setCurrentTime((videoRef.current as any).currentTime);
+                }
+              }}
+              onTimeUpdate={(e) => {
+                if (!isPlaying) {
+                  setCurrentTime((e.currentTarget as any).currentTime);
+                }
+              }}
               onLoadedData={(e) => {
                 const target = e.currentTarget as any;
                 if (target.currentTime === 0) {

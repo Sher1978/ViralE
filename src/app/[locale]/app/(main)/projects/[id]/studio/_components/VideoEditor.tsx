@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useRef, useState, useEffect, useCallback } from 'react';
+import React, { useRef, useState, useEffect, useCallback, useMemo } from 'react';
 import { AnimatePresence, motion } from 'framer-motion';
 import { 
   ArrowLeft, Cpu, Upload, Loader2, Sparkles, Wand2, SkipBack, Play, Pause, VolumeX, Volume2, Mic, Zap,
@@ -214,8 +214,21 @@ export const VideoEditor = React.memo(({
 
   // Auto-Whiteboard States
   const [isAutoGeneratingWhiteboard, setIsAutoGeneratingWhiteboard] = useState(false);
-  const [editingWhiteboardClip, setEditingWhiteboardClip] = useState<any | null>(null);
+  const [editingWhiteboardClipId, setEditingWhiteboardClipId] = useState<string | null>(null);
   const [isExporting, setIsExporting] = useState(false);
+
+  const editingWhiteboardClip = useMemo(() => {
+    if (!editingWhiteboardClipId) return null;
+    const clip = whiteboardClips.find(c => c.id === editingWhiteboardClipId);
+    if (!clip) return null;
+    const wordsInRange = transcript.filter(w => {
+      return (w.start >= clip.startTime - 0.2 && w.start <= clip.endTime + 0.2) ||
+             (w.end >= clip.startTime - 0.2 && w.end <= clip.endTime + 0.2) ||
+             (w.start <= clip.startTime && w.end >= clip.endTime);
+    });
+    const spokenText = wordsInRange.map(w => w.text).join(' ').trim();
+    return { ...clip, spokenText };
+  }, [editingWhiteboardClipId, whiteboardClips, transcript]);
 
   // --- ACTIONS ---
 
@@ -414,9 +427,12 @@ export const VideoEditor = React.memo(({
   const togglePlay = useCallback(() => {
     const v = videoRef.current as any;
     if (!v || !aRollUrl) return;
-    if (isPlaying) v.pause(); else v.play();
-    setIsPlaying(p => !p);
-  }, [isPlaying, aRollUrl]);
+    if (v.paused) {
+      v.play().catch(() => {});
+    } else {
+      v.pause();
+    }
+  }, [aRollUrl]);
 
   const onSeek = useCallback((time: number) => {
     setCurrentTime(time);
@@ -603,7 +619,7 @@ export const VideoEditor = React.memo(({
 
       {/* 2. Video Preview (Viewport) */}
       <StudioViewport 
-        videoRef={videoRef} aRollUrl={aRollUrl} isMuted={isMuted} isPlaying={isPlaying} currentTime={currentTime} togglePlay={togglePlay}
+        videoRef={videoRef} aRollUrl={aRollUrl} isMuted={isMuted} isPlaying={isPlaying} setIsPlaying={setIsPlaying} currentTime={currentTime} togglePlay={togglePlay}
         setCurrentTime={setCurrentTime} setARollDuration={setARollDuration}
         brollClips={brollClips} whiteboardClips={whiteboardClips} setBrollClips={setBrollClips} subtitleClips={subtitleClips} subtitlePos={subtitlePos} setSubtitlePos={setSubtitlePos} subtitleSize={subtitleSize} setSubtitleSize={setSubtitleSize}
         onUploadClick={() => (fileInputRef.current as any)?.click()}
@@ -636,6 +652,7 @@ export const VideoEditor = React.memo(({
         currentTime={currentTime}
         isPlaying={isPlaying}
         onSeek={onSeek}
+        onScrollStart={() => { if (isPlaying) togglePlay(); }}
         aRollUrl={aRollUrl}
         onSplitSegment={splitSegmentAtTime}
         arollSegments={activeManifest?.segments?.map((s: any, idx: number) => {
@@ -674,19 +691,7 @@ export const VideoEditor = React.memo(({
                 track: 2,
                 status: 'pending'
             }]);
-            const wordsInRange = transcript.filter(w => w.start >= time && w.start <= time + 4);
-            const spokenText = wordsInRange.map(w => w.text).join(' ').trim() || defaultPrompt;
-            setEditingWhiteboardClip({
-                id,
-                startTime: time,
-                endTime: time + 4,
-                label: 'Скетч вручную',
-                url: '',
-                prompt: defaultPrompt,
-                track: 2,
-                status: 'pending',
-                spokenText
-            });
+            setEditingWhiteboardClipId(id);
         }}
         onCaptionClick={handleCaptionClick}
         onSubtitleTrackClick={() => setActiveTool('captions')}
@@ -796,19 +801,7 @@ export const VideoEditor = React.memo(({
             });
         }}
         onWhiteboardLongPress={(id) => {
-            const clip = whiteboardClips.find(c => c.id === id);
-            if (clip) {
-              const wordsInRange = transcript.filter(w => {
-                return (w.start >= clip.startTime - 0.2 && w.start <= clip.endTime + 0.2) ||
-                       (w.end >= clip.startTime - 0.2 && w.end <= clip.endTime + 0.2) ||
-                       (w.start <= clip.startTime && w.end >= clip.endTime);
-              });
-              const spokenText = wordsInRange.map(w => w.text).join(' ').trim();
-              setEditingWhiteboardClip({
-                ...clip,
-                spokenText
-              });
-            }
+            setEditingWhiteboardClipId(id);
         }}
         onDeleteWhiteboard={deleteWhiteboardClip}
       />
@@ -1119,16 +1112,7 @@ export const VideoEditor = React.memo(({
                                         {/* Edit button */}
                                         <button
                                             onClick={() => {
-                                                const wordsInRange = transcript.filter(w => {
-                                                    return (w.start >= clip.startTime - 0.2 && w.start <= clip.endTime + 0.2) ||
-                                                           (w.end >= clip.startTime - 0.2 && w.end <= clip.endTime + 0.2) ||
-                                                           (w.start <= clip.startTime && w.end >= clip.endTime);
-                                                });
-                                                const spokenText = wordsInRange.map(w => w.text).join(' ').trim();
-                                                setEditingWhiteboardClip({
-                                                    ...clip,
-                                                    spokenText
-                                                });
+                                                setEditingWhiteboardClipId(clip.id);
                                             }}
                                             className="p-2 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-400 active:scale-90 transition-all hover:bg-purple-500/20"
                                         >
@@ -1168,19 +1152,7 @@ export const VideoEditor = React.memo(({
                             track: 2,
                             status: 'pending'
                         }]);
-                        const wordsInRange = transcript.filter(w => w.start >= currentTime && w.start <= currentTime + 4);
-                        const spokenText = wordsInRange.map(w => w.text).join(' ').trim() || defaultPrompt;
-                        setEditingWhiteboardClip({
-                            id,
-                            startTime: currentTime,
-                            endTime: currentTime + 4,
-                            label: 'Скетч вручную',
-                            url: '',
-                            prompt: defaultPrompt,
-                            track: 2,
-                            status: 'pending',
-                            spokenText
-                        });
+                        setEditingWhiteboardClipId(id);
                     }}
                     className="w-full py-5 bg-purple-500/10 border border-purple-500/20 rounded-3xl flex flex-col items-center gap-1.5 shadow-lg shadow-purple-500/10 active:scale-95 transition-all hover:bg-purple-500/15"
                 >
@@ -1272,7 +1244,7 @@ export const VideoEditor = React.memo(({
               className="w-full max-w-lg rounded-[2.5rem] bg-[#0c0c14] border border-white/10 p-8 space-y-6 shadow-2xl relative"
             >
               <button 
-                onClick={() => setEditingWhiteboardClip(null)}
+                onClick={() => setEditingWhiteboardClipId(null)}
                 className="absolute top-6 right-6 text-white/40 hover:text-white transition-colors"
               >
                 <X size={20} />
@@ -1284,27 +1256,51 @@ export const VideoEditor = React.memo(({
               </div>
 
               {/* SKETCH PREVIEW CONTAINER */}
-              {(editingWhiteboardClip.url || editingWhiteboardClip.imageUrl) && (
-                <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden bg-white flex items-center justify-center border border-white/10 relative group/preview">
-                  {editingWhiteboardClip.url ? (
-                    <video 
-                      src={editingWhiteboardClip.url}
-                      controls
-                      playsInline
-                      className="w-full h-full object-contain"
-                    />
-                  ) : (
-                    <img 
-                      src={editingWhiteboardClip.imageUrl} 
-                      className="w-full h-full object-contain"
-                      alt="Whiteboard sketch preview"
-                    />
-                  )}
+              <div className="w-full aspect-[16/9] rounded-2xl overflow-hidden bg-white/5 flex flex-col items-center justify-center border border-white/10 relative group/preview">
+                {editingWhiteboardClip.url ? (
+                  <video 
+                    src={editingWhiteboardClip.url}
+                    controls
+                    playsInline
+                    className="w-full h-full object-contain"
+                  />
+                ) : editingWhiteboardClip.imageUrl ? (
+                  <img 
+                    src={editingWhiteboardClip.imageUrl} 
+                    className="w-full h-full object-contain"
+                    alt="Whiteboard sketch preview"
+                  />
+                ) : (
+                  <div className="flex flex-col items-center justify-center gap-3 p-6 text-center">
+                    {editingWhiteboardClip.status === 'generating' ? (
+                      <>
+                        <Loader2 className="w-8 h-8 text-purple-400 animate-spin" />
+                        <p className="text-xs text-purple-300 font-bold uppercase tracking-wider animate-pulse">ИИ генерирует скетч...</p>
+                        <p className="text-[10px] text-white/30 font-medium">Это займет около 10-15 секунд</p>
+                      </>
+                    ) : editingWhiteboardClip.status === 'failed' ? (
+                      <>
+                        <div className="w-10 h-10 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center">
+                          <span className="text-red-400 font-black text-sm">!</span>
+                        </div>
+                        <p className="text-xs text-red-400 font-bold uppercase tracking-wider">Ошибка генерации</p>
+                        <p className="text-[10px] text-white/30 font-medium">Попробуйте изменить промпт и перегенерировать</p>
+                      </>
+                    ) : (
+                      <>
+                        <Loader2 className="w-8 h-8 text-purple-400/50 animate-spin" />
+                        <p className="text-xs text-purple-300/80 font-bold uppercase tracking-wider">Скетч в очереди...</p>
+                        <p className="text-[10px] text-white/30 font-medium">Генерация начнется через мгновение</p>
+                      </>
+                    )}
+                  </div>
+                )}
+                {(editingWhiteboardClip.url || editingWhiteboardClip.imageUrl) && (
                   <span className="absolute bottom-3 right-3 px-2 py-1 rounded bg-black/60 text-white text-[8px] font-black uppercase tracking-widest pointer-events-none">
                     Preview
                   </span>
-                </div>
-              )}
+                )}
+              </div>
 
               <div className="space-y-4">
                 <div className="space-y-2">
@@ -1329,7 +1325,7 @@ export const VideoEditor = React.memo(({
                     value={editingWhiteboardClip.userPromptAddition || ''}
                     onChange={(e) => {
                       const val = (e.target as any).value;
-                      setEditingWhiteboardClip((prev: any) => prev ? { ...prev, userPromptAddition: val } : null);
+                      setWhiteboardClips(prev => prev.map(c => c.id === editingWhiteboardClip.id ? { ...c, userPromptAddition: val } : c));
                     }}
                     placeholder="Например: добавь изображение ракеты на фоне, сделай контуры жирнее..."
                     className="w-full p-4 rounded-2xl bg-white/[0.04] border border-white/10 text-xs text-white placeholder-white/20 focus:border-purple-500 focus:outline-none resize-none h-20 transition-all"
@@ -1352,7 +1348,7 @@ export const VideoEditor = React.memo(({
                       value={editingWhiteboardClip.speed || 1.0}
                       onChange={(e) => {
                         const val = Number((e.target as any).value);
-                        setEditingWhiteboardClip((prev: any) => prev ? { ...prev, speed: val } : null);
+                        setWhiteboardClips(prev => prev.map(c => c.id === editingWhiteboardClip.id ? { ...c, speed: val } : c));
                       }}
                       className="w-full h-1 accent-purple-500 bg-white/10 rounded-lg cursor-pointer"
                     />
@@ -1374,7 +1370,7 @@ export const VideoEditor = React.memo(({
                       status: 'generating'
                     } : c));
                     
-                    setEditingWhiteboardClip(null);
+                    setEditingWhiteboardClipId(null);
                     
                     try {
                       const res = await fetch('/api/ai/whiteboard-gen', {
@@ -1410,7 +1406,7 @@ export const VideoEditor = React.memo(({
                 <button 
                   onClick={() => {
                     deleteWhiteboardClip(editingWhiteboardClip.id);
-                    setEditingWhiteboardClip(null);
+                    setEditingWhiteboardClipId(null);
                   }}
                   className="px-6 py-4 bg-red-500/10 border border-red-500/20 text-red-400 rounded-2xl font-black text-xs uppercase tracking-widest hover:bg-red-500/20 transition-all"
                 >
