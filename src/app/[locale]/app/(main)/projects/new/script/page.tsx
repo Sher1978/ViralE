@@ -301,24 +301,8 @@ export default function ScriptLabPage() {
             if (typeof (globalThis as any).window !== 'undefined') {
               const text = (globalThis as any).localStorage?.getItem('strategist_export_text');
               if (text) {
-                const parsed = parseScriptTextToPayload(text);
-                setScriptData(parsed);
-                const dummyScenarios = {
-                  evergreen: parsed,
-                  trends: parsed,
-                  edutainment: parsed,
-                  controversial: parsed,
-                  detective: parsed,
-                  napkin_explainer: parsed
-                };
-                setAllScenarios(dummyScenarios);
-                
-                // Cache to sessionStorage so it survives reloads/refinements
-                (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(dummyScenarios));
-                
-                const hookText = typeof parsed.hook === 'string' ? parsed.hook : (parsed.hook as any)?.words || '';
-                const topicSnippet = hookText.substring(0, 35) + '...';
-                setTopicInput(topicSnippet);
+                // Set the entire text directly in the topicInput textarea
+                setTopicInput(text);
                 
                 // Clear localStorage keys
                 (globalThis as any).localStorage?.removeItem('strategist_export_text');
