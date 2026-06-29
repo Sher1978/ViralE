@@ -209,26 +209,14 @@ async function createDrawingVideo(
   const sY = 190;   // sketch y-offset on notebook canvas
   const sW = 840;   // sketch width
   const sH = 1540;  // sketch height
-  const lineH = 4;  // hatching stripe height — thin for dense feel
 
-  // ── Scanline / boustrophedon mask ─────────────────────────────────────────
+  // ── Scanline Y-reveal mask ────────────────────────────────────────────────
   // For each pixel (X,Y) in sketch-space [0..sW] x [0..sH]:
-  //   row        = floor(Y / lineH)
-  //   xInRow     = X if even row, (sW-1-X) if odd row   (boustrophedon)
-  //   pixelIdx   = row * sW + xInRow
-  //   totalPx    = sW * sH
-  //   revealedPx = totalPx * T / durSec
-  //   pixel on   = pixelIdx < revealedPx
+  //   revealedY = sH * T / durSec
+  //   pixel on  = Y < revealedY
   //
   // FFmpeg geq expression (lum channel; cb/cr = 128 → opaque white mask):
-  const maskGeq =
-    `if(` +
-      `lt(` +
-        `floor(Y/${lineH})*${sW}+if(eq(mod(floor(Y/${lineH}),2),0),X,${sW}-1-X),` +
-        `${sW}*${sH}*T/${durSec}` +
-      `),` +
-      `255,0` +
-    `)`;
+  const maskGeq = `if(lt(Y,${sH}*T/${durSec}),255,0)`;
 
   // ── Hand position expressions ─────────────────────────────────────────────
   // Y: smoothly tracks the vertical center of the current row (slow drift = duration).
@@ -260,7 +248,7 @@ async function createDrawingVideo(
       `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,` +
         `loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
       `[sketch_full]crop=${sW}:${sH}:${sX}:${sY},format=rgba[sketch_crop]`,
-      // Boustrophedon scanline mask
+      // Scanline Y-reveal mask
       `color=c=black:s=${sW}x${sH},geq=lum='${maskGeq}':cb=128:cr=128,format=rgba,trim=duration=${durSec}[mask]`,
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=${sX}:${sY},format=rgba[paper_with_sketch]`,

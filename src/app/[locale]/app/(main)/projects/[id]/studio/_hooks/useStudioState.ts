@@ -758,9 +758,21 @@ export function useStudioState(projectId: string, initialManifest: ProductionMan
                   speed: 1.0
                 })
               });
-              const data = await res.json();
+
+              const text = await res.text();
+              let data: any;
+              try {
+                data = JSON.parse(text);
+              } catch {
+                if (!res.ok) {
+                  throw new Error(`Server returned error ${res.status}: ${text.slice(0, 100) || res.statusText}`);
+                } else {
+                  throw new Error(`Failed to parse response: ${text.slice(0, 100)}`);
+                }
+              }
+
               if (!res.ok) {
-                throw new Error(data.error || 'API failed');
+                throw new Error(data.error || `Server error: ${res.status}`);
               }
               setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
                 ...c,
