@@ -151,10 +151,10 @@ async function compositeSketchOnNotebook(
     '-i', `"${notebookPath}"`,
     '-i', `"${sketchPath}"`,
     '-filter_complex',
-    `"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg];` +
+    `"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=rgba[bg];` +
     `[1:v]scale=840:1540:force_original_aspect_ratio=decrease,` +
     `pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white,` +
-    `pad=1080:1920:120:190:color=white[sketch];` +
+    `pad=1080:1920:120:190:color=white,format=rgba[sketch];` +
     `[bg][sketch]blend=all_mode=multiply[out]"`,
     '-map', '[out]',
     '-frames:v', '1', '-update', '1',
@@ -171,10 +171,10 @@ async function compositeSketchOnNotebook(
       '-i', `"${notebookPath}"`,
       '-i', `"${sketchPath}"`,
       '-filter_complex',
-      `"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920[bg];` +
+      `"[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,format=rgba[bg];` +
       `[1:v]scale=840:1540:force_original_aspect_ratio=decrease,` +
       `pad=840:1540:(ow-iw)/2:(oh-ih)/2:color=white,` +
-      `pad=1080:1920:120:190:color=white[sk];` +
+      `pad=1080:1920:120:190:color=white,format=rgba[sk];` +
       `[bg][sk]blend=all_mode=multiply[out]"`,
       '-map', '[out]', '-frames:v', '1', '-update', '1',
       `"${outPath}"`
@@ -216,11 +216,8 @@ async function createDrawingVideo(
       `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
       `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
       
-      // Create static diagonal gradient (45-degree white/black split on 2400x2400)
-      `color=c=black:s=2400x2400,trim=end_frame=1,geq=lum='if(lt(X+Y,2400),255,0)'[diag_static]`,
-      // Slide the diagonal gradient over the 840x1540 viewport based on time
-      `color=c=black:s=840x1540,trim=duration=${durSec}[mask_bg]`,
-      `[mask_bg][diag_static]overlay=x='-840 + 840*(t/${durSec})':y='-1540 + 1540*(t/${durSec})',format=gray[mask]`,
+      // Direct time-dependent diagonal sweep mask on 840x1540 black canvas
+      `color=c=black:s=840x1540,geq=lum='if(lt(X+Y,2380*(T/${durSec})),255,0)':cb=128:cr=128,format=rgba,trim=duration=${durSec}[mask]`,
       
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
@@ -240,9 +237,7 @@ async function createDrawingVideo(
       `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
       `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
       
-      `color=c=black:s=2400x2400,trim=end_frame=1,geq=lum='if(lt(X+Y,2400),255,0)'[diag_static]`,
-      `color=c=black:s=840x1540,trim=duration=${durSec}[mask_bg]`,
-      `[mask_bg][diag_static]overlay=x='-840 + 840*(t/${durSec})':y='-1540 + 1540*(t/${durSec})',format=gray[mask]`,
+      `color=c=black:s=840x1540,geq=lum='if(lt(X+Y,2380*(T/${durSec})),255,0)':cb=128:cr=128,format=rgba,trim=duration=${durSec}[mask]`,
       
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
