@@ -186,7 +186,9 @@ async function compositeSketchOnNotebook(
 
 // ---------------------------------------------------------------------------
 // Create drawing-reveal animation video using FFmpeg
-// Uses a left-to-right / zigzag wipe effect to simulate progressive drawing
+// Mask: scanline (boustrophedon) row-by-row — full reveal in `duration` seconds.
+// Hand: fast left-right hatching strokes (8 Hz) following the current row frontier,
+//       simulating accelerated pen hatching at 2-3× perceived speed.
 // ---------------------------------------------------------------------------
 async function createDrawingVideo(
   compositedImagePath: string,
@@ -202,49 +204,86 @@ async function createDrawingVideo(
 
   console.log(`[Whiteboard] Creating drawing video: duration=${durSec}s, fps=${fps}, hasHand=${hasHand}`);
 
-  // Create highly optimized filter graph:
-  // 1. Loop the background notebook image.
-  // 2. Crop the sketch area (840x1540 at offset 120, 190).
-  // 3. Create a moving white block (on black bg) to act as a sliding reveal mask.
-  // 4. Alpha-merge the mask with the cropped sketch to progressively show it.
-  // 5. Overlay the masked sketch back on top of the notebook background.
-  // 6. Scale and overlay the drawing hand (or dot fallback) following the reveal edge with realistic hand jitter and pen-tip offsets.
+  // ── Sketch area constants (must match compositeSketchOnNotebook) ──────────
+  const sX = 120;   // sketch x-offset on notebook canvas
+  const sY = 190;   // sketch y-offset on notebook canvas
+  const sW = 840;   // sketch width
+  const sH = 1540;  // sketch height
+  const lineH = 4;  // hatching stripe height — thin for dense feel
+
+  // ── Scanline / boustrophedon mask ─────────────────────────────────────────
+  // For each pixel (X,Y) in sketch-space [0..sW] x [0..sH]:
+  //   row        = floor(Y / lineH)
+  //   xInRow     = X if even row, (sW-1-X) if odd row   (boustrophedon)
+  //   pixelIdx   = row * sW + xInRow
+  //   totalPx    = sW * sH
+  //   revealedPx = totalPx * T / durSec
+  //   pixel on   = pixelIdx < revealedPx
+  //
+  // FFmpeg geq expression (lum channel; cb/cr = 128 → opaque white mask):
+  const maskGeq =
+    `if(` +
+      `lt(` +
+        `floor(Y/${lineH})*${sW}+if(eq(mod(floor(Y/${lineH}),2),0),X,${sW}-1-X),` +
+        `${sW}*${sH}*T/${durSec}` +
+      `),` +
+      `255,0` +
+    `)`;
+
+  // ── Hand position expressions ─────────────────────────────────────────────
+  // Y: smoothly tracks the vertical center of the current row (slow drift = duration).
+  // X: fast left→right / right→left oscillation at 8 Hz within current row bounds,
+  //    plus tiny tremor (3 px, 22 Hz) to simulate natural pen jitter.
+  //
+  // rowFrac(t) = (t / durSec) — which fraction of rows is done
+  // rowY_px    = sY + rowFrac * sH        (vertical tracking, slow)
+  //
+  // Within a row the pen sweeps the full sW width per half-cycle at 8 Hz:
+  //   x_sweep = sX + sW/2 + (sW/2)*sin(2*PI*8*t)     (fast back-and-forth)
+  // On odd rows the direction flips naturally because sin is symmetric.
+  //
+  // Hand image anchor is offset by (-35, -61) so pen-tip sits at the formula point.
+  const handXExpr = `${sX}+${sW}/2+(${sW}/2)*sin(2*PI*8*t)+3*sin(2*PI*22*t)-35`;
+  const handYExpr = `${sY}+(t/${durSec})*${sH}+3*cos(2*PI*22*t)-61`;
+
+  // ── Dot fallback expressions (same logic, tiny offset) ────────────────────
+  const dotXExpr = `${sX}+${sW}/2+(${sW}/2)*sin(2*PI*8*t)+3*sin(2*PI*22*t)-4`;
+  const dotYExpr = `${sY}+(t/${durSec})*${sH}+3*cos(2*PI*22*t)-4`;
+
   let filterComplex = '';
   if (hasHand) {
     filterComplex = [
-      `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
-      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
-      `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
-      
-      // Direct time-dependent diagonal sweep mask on 840x1540 black canvas
-      `color=c=black:s=840x1540,geq=lum='if(lt(X+Y,2380*(T/${durSec})),255,0)':cb=128:cr=128,format=rgba,trim=duration=${durSec}[mask]`,
-      
+      // Input 0: notebook background (looped static)
+      `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,` +
+        `loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
+      // Input 1: composited sketch (looped static)
+      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,` +
+        `loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
+      `[sketch_full]crop=${sW}:${sH}:${sX}:${sY},format=rgba[sketch_crop]`,
+      // Boustrophedon scanline mask
+      `color=c=black:s=${sW}x${sH},geq=lum='${maskGeq}':cb=128:cr=128,format=rgba,trim=duration=${durSec}[mask]`,
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
-      `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
-      
-      `[2:v]scale=1500:-1,format=rgba[hand_scaled]`, // hand scaled to 1500px to fully cover frame borders
-      // Hand tracking coordinates precisely matching the mask frontier:
-      // X_mean goes from 120 to 960, Y_mean goes from 190 to 1730
-      // Circular movements (140px X / 100px Y amplitude) + 12hz jitter keep the pen tip exactly on the drawing frontier.
-      // Wrist always goes past the bottom/right screen edges for realism.
+      `[bg][sketch_masked]overlay=${sX}:${sY},format=rgba[paper_with_sketch]`,
+      // Input 2: hand image (scaled, no loop needed)
+      `[2:v]scale=1200:-1,format=rgba[hand_scaled]`,
+      // Overlay hand: fast horizontal hatching strokes, slow vertical drift
       `[paper_with_sketch][hand_scaled]overlay=` +
-        `x='clip(120 + 840*(t/${durSec}) + 140*cos(2*PI*1.5*t) + 30*sin(2*PI*10*t)\\, 120\\, 960) - 35':` +
-        `y='clip(190 + 1540*(t/${durSec}) + 100*sin(2*PI*1.5*t) + 30*sin(2*PI*12*t)\\, 190\\, 1730) - 61'[out]`
+        `x='${handXExpr}':` +
+        `y='${handYExpr}'[out]`
     ].join(';');
   } else {
     filterComplex = [
-      `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
-      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
-      `[sketch_full]crop=840:1540:120:190,format=rgba[sketch_crop]`,
-      
-      `color=c=black:s=840x1540,geq=lum='if(lt(X+Y,2380*(T/${durSec})),255,0)':cb=128:cr=128,format=rgba,trim=duration=${durSec}[mask]`,
-      
+      `[0:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,` +
+        `loop=loop=-1:size=1:start=0,trim=duration=${durSec},setpts=PTS-STARTPTS,format=rgba[bg]`,
+      `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,` +
+        `loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
+      `[sketch_full]crop=${sW}:${sH}:${sX}:${sY},format=rgba[sketch_crop]`,
+      `color=c=black:s=${sW}x${sH},geq=lum='${maskGeq}':cb=128:cr=128,format=rgba,trim=duration=${durSec}[mask]`,
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
-      `[bg][sketch_masked]overlay=120:190,format=rgba[paper_with_sketch]`,
-      
-      `[paper_with_sketch]drawtext=text='o':fontcolor=0x302515:` +
-        `x='clip(120 + 840*(t/${durSec}) + 140*cos(2*PI*1.5*t) + 30*sin(2*PI*10*t) - 6\\, 120\\, 960)':` +
-        `y='clip(190 + 1540*(t/${durSec}) + 100*sin(2*PI*1.5*t) + 30*sin(2*PI*12*t) - 6\\, 190\\, 1730)':fontsize=18[out]`
+      `[bg][sketch_masked]overlay=${sX}:${sY},format=rgba[paper_with_sketch]`,
+      // Fallback: dot marker following the pen tip
+      `[paper_with_sketch]drawtext=text='•':fontcolor=0x302515:` +
+        `x='${dotXExpr}':y='${dotYExpr}':fontsize=20[out]`
     ].join(';');
   }
 
@@ -269,14 +308,14 @@ async function createDrawingVideo(
   ].join(' ');
 
   try {
-    const { stderr } = await execAsync(cmd, { timeout: 45_000 });
+    const { stderr } = await execAsync(cmd, { timeout: 60_000 });
     if (stderr && stderr.toLowerCase().includes('error') && !fs.existsSync(outPath)) {
       throw new Error(stderr.slice(0, 300));
     }
     console.log(`[Whiteboard] Drawing video created: ${outPath}`);
     return outPath;
   } catch (err: any) {
-    console.warn('[Whiteboard] fast overlay filter failed, using simple ken-burns fallback:', err.message?.slice(0, 100));
+    console.warn('[Whiteboard] filter failed, using ken-burns fallback:', err.message?.slice(0, 100));
     const totalFrames = Math.floor(duration * fps);
     const fallbackCmd = [
       'ffmpeg', '-y',
