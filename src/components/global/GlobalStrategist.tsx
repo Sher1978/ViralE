@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect } from 'react';
-import { useParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import { profileService, Profile } from '@/lib/services/profileService';
 import dynamic from 'next/dynamic';
 const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { 
@@ -11,6 +11,7 @@ const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat'
 
 export function GlobalStrategist() {
   const params = useParams();
+  const router = useRouter();
   const projectId = params?.id as string | undefined;
   const locale = params?.locale as string || 'en';
   
@@ -47,12 +48,28 @@ export function GlobalStrategist() {
 
   if (isExcluded) return null;
 
+  // Export handler: saves script text to localStorage and navigates to Script Lab
+  const handleExportToReel = (text: string) => {
+    try {
+      if (typeof (globalThis as any).localStorage !== 'undefined') {
+        (globalThis as any).localStorage.setItem('strategist_export_text', text);
+        (globalThis as any).localStorage.setItem('strategist_export_ts', String(Date.now()));
+      }
+    } catch (e) {
+      console.warn('[GlobalStrategist] Could not save to localStorage:', e);
+    }
+    // Navigate to script page — chat panel stays mounted (collapsed) on the new page
+    router.push(`/${locale}/app/projects/new/script?from_strategist=1`);
+  };
+
   return (
     <StrategistChat 
       projectId={projectId || 'global'}
       userId={profile.id}
       locale={locale}
       context={projectId ? 'studio' : 'production'}
+      onUseScript={handleExportToReel}
+      onTransferScenario={handleExportToReel}
     />
   );
 }

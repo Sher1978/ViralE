@@ -295,10 +295,45 @@ export default function ScriptLabPage() {
       }
 
       if (!projectIdParam) {
-        // If no project, check for pre-filled topic from Ideas page
-        const topic = searchParams.get('topic');
-        if (topic) {
-          setTopicInput(topic);
+        const fromStrategist = searchParams.get('from_strategist');
+        if (fromStrategist === '1') {
+          try {
+            if (typeof (globalThis as any).window !== 'undefined') {
+              const text = (globalThis as any).localStorage?.getItem('strategist_export_text');
+              if (text) {
+                const parsed = parseScriptTextToPayload(text);
+                setScriptData(parsed);
+                const dummyScenarios = {
+                  evergreen: parsed,
+                  trends: parsed,
+                  edutainment: parsed,
+                  controversial: parsed,
+                  detective: parsed,
+                  napkin_explainer: parsed
+                };
+                setAllScenarios(dummyScenarios);
+                
+                // Cache to sessionStorage so it survives reloads/refinements
+                (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(dummyScenarios));
+                
+                const hookText = typeof parsed.hook === 'string' ? parsed.hook : (parsed.hook as any)?.words || '';
+                const topicSnippet = hookText.substring(0, 35) + '...';
+                setTopicInput(topicSnippet);
+                
+                // Clear localStorage keys
+                (globalThis as any).localStorage?.removeItem('strategist_export_text');
+                (globalThis as any).localStorage?.removeItem('strategist_export_ts');
+              }
+            }
+          } catch (e) {
+            console.error('[ScriptLab] Failed to load strategist exported script:', e);
+          }
+        } else {
+          // If no project, check for pre-filled topic from Ideas page
+          const topic = searchParams.get('topic');
+          if (topic) {
+            setTopicInput(topic);
+          }
         }
         return;
       }
