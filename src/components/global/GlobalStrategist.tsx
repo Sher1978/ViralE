@@ -57,6 +57,15 @@ export function GlobalStrategist() {
     } catch (e) {
       console.warn('[GlobalStrategist] Could not save to localStorage:', e);
     }
+    
+    if (projectId) {
+      if (typeof (globalThis as any).window !== 'undefined') {
+        const event = new CustomEvent('strategist-export-script', { detail: { text } });
+        (globalThis as any).window.dispatchEvent(event);
+      }
+      return;
+    }
+    
     // Navigate to script page — chat panel stays mounted (collapsed) on the new page
     router.push(`/${locale}/app/projects/new/script?from_strategist=1`);
   };
