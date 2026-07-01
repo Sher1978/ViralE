@@ -38,24 +38,35 @@ const parseMessageContent = (content: string) => {
   return { textBefore: content, scriptText: null };
 };
 
-const getQuickReplies = (content: string): number[] => {
+const getQuickReplies = (content: string, locale: string = 'ru'): string[] => {
   if (!content) return [];
-  const hasItem = (num: number) => new RegExp(`(?:^|\\n)\\s*${num}\\.\\s`, 'i').test(content);
-  if (hasItem(9)) {
-    return [1, 2, 3, 4, 5, 6, 7, 8, 9];
-  } else if (hasItem(5)) {
-    return [1, 2, 3, 4, 5];
-  } else if (hasItem(3)) {
-    return [1, 2, 3];
+  
+  const isRu = locale === 'ru';
+  const hasBack = /назад|вернуться к выбору|go back|back to selection/i.test(content);
+  
+  const regex = /(?:^|\n)\s*(\d+)[.)]\s+/g;
+  const matches = [...content.matchAll(regex)];
+  
+  const replies: string[] = [];
+  if (matches.length > 0) {
+    const nums = Array.from(new Set(matches.map(m => parseInt(m[1], 10)))).sort((a, b) => a - b);
+    if (nums[0] === 1 && nums.every((n, i) => n === i + 1)) {
+      nums.forEach(n => replies.push(String(n)));
+    }
   }
-  return [];
+  
+  if (hasBack) {
+    replies.push(isRu ? 'Назад' : 'Back');
+  }
+  
+  return replies;
 };
 
 const extractFoundFact = (messages: Message[]): string | null => {
   for (let i = messages.length - 1; i >= 0; i--) {
     const m = messages[i];
     if (m.role === 'assistant') {
-      const regex = /(?:Нашел повод|Нашел новость|Found fact|Found news):\s*([\s\S]*?)(?=\n\s*\d+\.|\n\n\s*\d+\.|\n\n\s*\[|\n\s*\[|$)/i;
+      const regex = /(?:🎯 ФАКТ|🎯 FOUND FACT|Нашел повод|Нашел новость|Found fact|Found news|Инфоповод):\s*([\s\S]*?)(?=\n\s*\d+\.|\n\n\s*\d+\.|\n\n\s*\[|\n\s*\[|$)/i;
       const match = m.content.match(regex);
       if (match && match[1].trim()) {
         return match[1].trim().replace(/^\*\*|\*\*$/g, '').replace(/^«|»$/g, '').trim();
@@ -1465,11 +1476,9 @@ export function StrategistChat({
                           );
                         }
  
-                        const replies = getQuickReplies(displayContent);
+                        const replies = getQuickReplies(displayContent, locale);
                         if (replies.length > 0) {
-                          const isTrizStep = replies.length === 9;
-                          const isScenarioStep = replies.length === 5;
-                          const foundFact = (isTrizStep || isScenarioStep) ? extractFoundFact(messages) : null;
+                          const foundFact = extractFoundFact(messages);
  
                           return (
                             <div className="mt-2.5 space-y-3 animate-fade-in pl-1">
@@ -1499,7 +1508,10 @@ export function StrategistChat({
                                     onClick={() => {
                                       handleSend(undefined, String(num));
                                     }}
-                                    className="h-8 w-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90 cursor-pointer"
+                                    className={cn(
+                                      "h-8 rounded-lg bg-purple-500/10 hover:bg-purple-500/30 border border-purple-500/30 text-purple-300 text-xs font-black flex items-center justify-center transition-all active:scale-90 cursor-pointer",
+                                      num.length > 2 ? "px-4" : "w-8"
+                                    )}
                                   >
                                     {num}
                                   </button>

@@ -359,15 +359,11 @@ export default function StudioPage() {
         setUseCustomScript(true);
         setManifest(prev => {
           if (!prev) return prev;
-          const next = {
+          return {
             ...prev,
             customScript: text,
             useCustomScript: true
           };
-          if (projectId) {
-            projectService.updateLatestVersionManifest(projectId, next);
-          }
-          return next;
         });
         handleTabChange('script_editor');
       }
