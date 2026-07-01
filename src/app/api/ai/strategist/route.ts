@@ -221,12 +221,22 @@ export async function POST(req: Request) {
     } else {
       engine = getModel('fast', locale, 'text', geminiApiKey, systemPrompt + "\n" + projectContext);
     }
+    const isInterviewMode = messages.some((m: any) => 
+      m.content && typeof m.content === 'string' && (
+        m.content.toLowerCase().includes('интервью') || 
+        m.content.toLowerCase().includes('storybrand') || 
+        m.content.toLowerCase().includes('сторибренд') ||
+        m.content.toLowerCase().includes('днк') ||
+        m.content.toLowerCase().includes('dna')
+      )
+    );
+
     const chat = engine.startChat({
       history: chatHistory,
       generationConfig: {
         responseMimeType: "text/plain"
       },
-      tools: [{
+      tools: isInterviewMode ? [{
         functionDeclarations: [
           {
             name: "update_brand_dna",
@@ -314,12 +324,12 @@ export async function POST(req: Request) {
             }
           }
         ]
-      }],
-      toolConfig: {
+      }] : undefined,
+      toolConfig: isInterviewMode ? {
         functionCallingConfig: {
           mode: FunctionCallingMode.AUTO
         }
-      }
+      } : undefined
     });
 
     const result = await chat.sendMessageStream(currentParts);

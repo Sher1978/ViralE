@@ -7,7 +7,7 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // [REVERSIBLE OVERRIDE] Set to true to route all Gemini calls to Groq
 const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
-export const FAST_MODEL = "gemini-2.5-flash-lite";
+export const FAST_MODEL = "gemini-2.5-flash";
 export const PRO_MODEL = "gemini-1.5-pro";
 
 export function getModel(

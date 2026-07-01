@@ -200,7 +200,15 @@ async function createDrawingVideo(
   const outPath = path.join(tmpDir, 'video.mp4');
   const durSec = duration;
   const handPath = path.join(process.cwd(), 'public', 'assets', 'studio', 'drawing_hand.png');
-  const hasHand = fs.existsSync(handPath);
+  
+  let hasHand = false;
+  try {
+    // Explicit read to force Next.js NFT (Node File Trace) to bundle the asset
+    const handBuffer = fs.readFileSync(handPath);
+    hasHand = handBuffer.length > 0;
+  } catch (err) {
+    console.warn('[Whiteboard] Hand image not found or not readable:', err);
+  }
 
   console.log(`[Whiteboard] Creating drawing video: duration=${durSec}s, fps=${fps}, hasHand=${hasHand}`);
 
@@ -209,14 +217,6 @@ async function createDrawingVideo(
   const sY = 190;   // sketch y-offset on notebook canvas
   const sW = 840;   // sketch width
   const sH = 1540;  // sketch height
-
-  // ── Scanline Y-reveal mask ────────────────────────────────────────────────
-  // For each pixel (X,Y) in sketch-space [0..sW] x [0..sH]:
-  //   revealedY = sH * T / durSec
-  //   pixel on  = Y < revealedY
-  //
-  // FFmpeg geq expression (lum channel; cb/cr = 128 → opaque white mask):
-  const maskGeq = `if(lt(Y,${sH}*T/${durSec}),255,0)`;
 
   // ── Hand position expressions ─────────────────────────────────────────────
   // Y: smoothly tracks the vertical center of the current row (slow drift = duration).
@@ -234,9 +234,8 @@ async function createDrawingVideo(
   const handXExpr = `${sX}+${sW}/2+(${sW}/2)*sin(2*PI*8*t)+3*sin(2*PI*22*t)-35`;
   const handYExpr = `${sY}+(t/${durSec})*${sH}+3*cos(2*PI*22*t)-61`;
 
-  // ── Dot fallback expressions (same logic, tiny offset) ────────────────────
-  const dotXExpr = `${sX}+${sW}/2+(${sW}/2)*sin(2*PI*8*t)+3*sin(2*PI*22*t)-4`;
-  const dotYExpr = `${sY}+(t/${durSec})*${sH}+3*cos(2*PI*22*t)-4`;
+  const maskH = 3920; // 1540 (screen height) + 2380 (sweep distance)
+  const sweepDist = 2380;
 
   let filterComplex = '';
   if (hasHand) {
@@ -248,8 +247,12 @@ async function createDrawingVideo(
       `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,` +
         `loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
       `[sketch_full]crop=${sW}:${sH}:${sX}:${sY},format=rgba[sketch_crop]`,
-      // Scanline Y-reveal mask
-      `color=c=black:s=${sW}x${sH},geq=lum='${maskGeq}':cb=128:cr=128,format=rgba,trim=duration=${durSec}[mask]`,
+      // Generate static diagonal sweep mask once (1 frame)
+      `color=c=black:s=${sW}x${maskH},trim=duration=${durSec}[mask_base]`,
+      `[mask_base]geq=lum='if(lt(Y,1540),255,if(lt(X+Y-1540,840),255,0))':cb=128:cr=128,format=rgba[mask_static]`,
+      `color=c=black:s=${sW}x${sH},trim=duration=${durSec}[mask_bg]`,
+      // Slide the static diagonal mask
+      `[mask_bg][mask_static]overlay=x=0:y='-${sweepDist}+${sweepDist}*t/${durSec}':shortest=1,format=rgba[mask]`,
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
       `[bg][sketch_masked]overlay=${sX}:${sY},format=rgba[paper_with_sketch]`,
       // Input 2: hand image (scaled, no loop needed)
@@ -266,12 +269,14 @@ async function createDrawingVideo(
       `[1:v]scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,` +
         `loop=loop=-1:size=1:start=0,format=rgba[sketch_full]`,
       `[sketch_full]crop=${sW}:${sH}:${sX}:${sY},format=rgba[sketch_crop]`,
-      `color=c=black:s=${sW}x${sH},geq=lum='${maskGeq}':cb=128:cr=128,format=rgba,trim=duration=${durSec}[mask]`,
+      // Generate static diagonal sweep mask once (1 frame)
+      `color=c=black:s=${sW}x${maskH},trim=duration=${durSec}[mask_base]`,
+      `[mask_base]geq=lum='if(lt(Y,1540),255,if(lt(X+Y-1540,840),255,0))':cb=128:cr=128,format=rgba[mask_static]`,
+      `color=c=black:s=${sW}x${sH},trim=duration=${durSec}[mask_bg]`,
+      // Slide the static diagonal mask
+      `[mask_bg][mask_static]overlay=x=0:y='-${sweepDist}+${sweepDist}*t/${durSec}':shortest=1,format=rgba[mask]`,
       `[sketch_crop][mask]alphamerge[sketch_masked]`,
-      `[bg][sketch_masked]overlay=${sX}:${sY},format=rgba[paper_with_sketch]`,
-      // Fallback: dot marker following the pen tip
-      `[paper_with_sketch]drawtext=text='•':fontcolor=0x302515:` +
-        `x='${dotXExpr}':y='${dotYExpr}':fontsize=20[out]`
+      `[bg][sketch_masked]overlay=${sX}:${sY}[out]`
     ].join(';');
   }
 
@@ -289,6 +294,7 @@ async function createDrawingVideo(
     '-filter_complex', `"${filterComplex}"`,
     '-map', '[out]',
     '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+    '-preset', 'veryfast',
     '-profile:v', 'high', '-level', '4.0', '-crf', '22',
     '-t', String(durSec),
     '-r', String(fps),
@@ -309,7 +315,9 @@ async function createDrawingVideo(
       'ffmpeg', '-y',
       '-loop', '1', '-i', `"${compositedImagePath}"`,
       '-vf', `"scale=1080:1920:force_original_aspect_ratio=increase,crop=1080:1920,zoompan=z='min(zoom+0.0015,1.3)':x='iw/2-(iw/zoom/2)':y='ih/2-(ih/zoom/2)':d=${totalFrames}:s=1080x1920"`,
-      '-c:v', 'libx264', '-pix_fmt', 'yuv420p', '-crf', '22',
+      '-c:v', 'libx264', '-pix_fmt', 'yuv420p',
+      '-preset', 'veryfast',
+      '-crf', '22',
       '-t', String(durSec), '-r', String(fps),
       `"${outPath}"`
     ].join(' ');
@@ -435,7 +443,10 @@ Rules:
 
       // Use the premium pre-generated notebook background asset if available
       let notebookPath = path.join(process.cwd(), 'public', 'assets', 'studio', 'notebook_bg.png');
-      if (!fs.existsSync(notebookPath)) {
+      try {
+        // Explicit read to force Next.js NFT (Node File Trace) to bundle the asset
+        fs.readFileSync(notebookPath);
+      } catch (err) {
         console.log('[Whiteboard Gen] Premium background not found, generating on-the-fly');
         notebookPath = await generateNotebookBackground(tmpDir);
       }
