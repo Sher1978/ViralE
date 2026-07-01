@@ -187,6 +187,22 @@ const parseScenariosFromText = (text: string) => {
   return { intro, scenarios: parsedScenarios };
 };
 
+const fetchWithTimeout = async (url: string, options: RequestInit = {}, timeout = 8000) => {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeout);
+  try {
+    const response = await fetch(url, {
+      ...options,
+      signal: controller.signal
+    });
+    clearTimeout(id);
+    return response;
+  } catch (error) {
+    clearTimeout(id);
+    throw error;
+  }
+};
+
 const renderColorizedText = (content: string) => {
   if (!content) return null;
   
@@ -349,6 +365,23 @@ export function StrategistChat({
   const [input, setInput] = useState('');
   const [isStreaming, setIsStreaming] = useState(false);
   const [isSearching, setIsSearching] = useState(false);
+  const [searchPhase, setSearchPhase] = useState<'formulating' | 'connecting' | 'extracting' | 'analyzing'>('formulating');
+  
+  useEffect(() => {
+    if (!isSearching) {
+      setSearchPhase('formulating');
+      return;
+    }
+    const timer1 = setTimeout(() => setSearchPhase('connecting'), 2000);
+    const timer2 = setTimeout(() => setSearchPhase('extracting'), 4500);
+    const timer3 = setTimeout(() => setSearchPhase('analyzing'), 6500);
+    return () => {
+      clearTimeout(timer1);
+      clearTimeout(timer2);
+      clearTimeout(timer3);
+    };
+  }, [isSearching]);
+
   const [access, setAccess] = useState<AccessStatus | null>(null);
   const [isVoiceMode, setIsVoiceMode] = useState(false);
   const [isRecording, setIsRecording] = useState(false);
@@ -819,7 +852,7 @@ export function StrategistChat({
         setIsStreaming(true);
 
         try {
-          const searchRes = await fetch(`/api/search?q=${encodeURIComponent(searchQuery)}`);
+          const searchRes = await fetchWithTimeout(`/api/search?q=${encodeURIComponent(searchQuery)}`, {}, 8000);
           if (searchRes.ok) {
             const searchData = await searchRes.json();
             const resultsText = (searchData.results || [])
@@ -1529,9 +1562,42 @@ export function StrategistChat({
               
               {/* Web Search Loading indicator */}
               {isSearching && (
-                <div className="flex items-center gap-3 text-xs text-purple-300 bg-purple-500/5 border border-purple-500/20 p-3 rounded-2xl rounded-tl-none animate-pulse max-w-[85%]">
-                  <RefreshCw className="h-4 w-4 animate-spin text-purple-400 shrink-0" />
-                  <span>{locale === 'ru' ? 'Активно ищу факты, новости и мифы в сети...' : 'Actively searching the web for facts, news, and myths...'}</span>
+                <div className="flex items-center gap-3.5 text-xs text-slate-200 bg-gradient-to-r from-purple-900/10 to-indigo-900/10 border border-purple-500/20 p-3.5 rounded-2xl rounded-tl-none max-w-[85%] shadow-lg backdrop-blur-md relative overflow-hidden group">
+                  {/* Pulsing Live Indicator */}
+                  <div className="absolute top-2 right-2 w-2 h-2">
+                    <span className="flex h-2 w-2 relative">
+                      <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75"></span>
+                      <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500"></span>
+                    </span>
+                  </div>
+
+                  <div className="relative w-8 h-8 rounded-full border border-purple-500/30 flex items-center justify-center bg-purple-500/5 shrink-0">
+                    <div className="absolute inset-0 rounded-full border-t-2 border-purple-500 animate-spin" />
+                    <Sparkles className="h-3.5 w-3.5 text-purple-400" />
+                  </div>
+
+                  <div className="flex flex-col gap-0.5 min-w-0">
+                    <span className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                      {locale === 'ru' ? '🔍 LIVE: ПОИСК В СЕТИ' : '🔍 LIVE: WEB SEARCH'}
+                    </span>
+                    <span className="text-slate-300 font-medium leading-relaxed truncate">
+                      {(() => {
+                        const isRu = locale === 'ru';
+                        switch (searchPhase) {
+                          case 'formulating':
+                            return isRu ? 'Формулирую поисковый запрос для Google...' : 'Formulating search query for Google...';
+                          case 'connecting':
+                            return isRu ? 'Подключаюсь к поисковому шлюзу и сканирую сеть...' : 'Connecting to search gateway and scanning the web...';
+                          case 'extracting':
+                            return isRu ? 'Извлекаю факты, исследования и статьи...' : 'Extracting facts, research papers, and articles...';
+                          case 'analyzing':
+                            return isRu ? 'Группирую результаты и перепроверяю цифры...' : 'Synthesizing results and double-checking statistics...';
+                          default:
+                            return isRu ? 'Ищу в сети...' : 'Searching the web...';
+                        }
+                      })()}
+                    </span>
+                  </div>
                 </div>
               )}
               {/* Voice Status Indicator */}
