@@ -376,6 +376,31 @@ export default function StudioPage() {
     };
   }, [projectId, handleTabChange, addSystemLog]);
 
+  // Fallback: check localStorage for any pending exports from global strategist context
+  useEffect(() => {
+    if (typeof (globalThis as any).window !== 'undefined' && projectId) {
+      const text = (globalThis as any).localStorage?.getItem('strategist_export_text');
+      if (text) {
+        addSystemLog('Восстановление экспортированного текста из localStorage...');
+        setCustomScript(text);
+        setUseCustomScript(true);
+        setManifest(prev => {
+          if (!prev) return prev;
+          return {
+            ...prev,
+            customScript: text,
+            useCustomScript: true
+          };
+        });
+        // Clear it so we don't restore it repeatedly
+        (globalThis as any).localStorage?.removeItem('strategist_export_text');
+        (globalThis as any).localStorage?.removeItem('strategist_export_ts');
+        
+        handleTabChange('script_editor');
+      }
+    }
+  }, [projectId, handleTabChange, addSystemLog]);
+
   const handleAvatarSelect = async (photoUrl: string) => {
     setSelectedAvatarPhoto(photoUrl);
     // Update the Master Track in Timeline (we'll need to pass this to TimelineLab)

@@ -440,6 +440,22 @@ export function StrategistChat({
         } catch (e) {
           console.warn('[StrategistChat] Failed to parse stored messages:', e);
         }
+      } else if (projectId && projectId !== 'global') {
+        // Fallback: check if we have a global session that we can copy over!
+        const globalStored = (globalThis as any).sessionStorage.getItem('strategist_messages_global');
+        if (globalStored) {
+          try {
+            const parsed = JSON.parse(globalStored);
+            if (Array.isArray(parsed) && parsed.length > 0) {
+              setMessages(parsed);
+              // Save it for the new project ID as well
+              (globalThis as any).sessionStorage.setItem(`strategist_messages_${projectId}`, globalStored);
+              return;
+            }
+          } catch (e) {
+            console.warn('[StrategistChat] Failed to parse global stored messages:', e);
+          }
+        }
       }
     }
     
@@ -1285,7 +1301,7 @@ export function StrategistChat({
                                 </div>
                                 
                                 {/* Tab Content (Colorized Scenario) */}
-                                <div className="p-3 bg-black/35 border border-white/5 rounded-xl max-h-[300px] overflow-y-auto custom-scrollbar">
+                                <div className="p-3 bg-black/35 border border-white/5 rounded-xl">
                                   {renderColorizedText(activeScenario.content)}
                                 </div>
                                 
