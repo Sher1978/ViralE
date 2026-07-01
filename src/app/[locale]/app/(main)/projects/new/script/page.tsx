@@ -782,6 +782,19 @@ export default function ScriptLabPage() {
         });
         if (!project) throw new Error(locale === 'ru' ? 'Не удалось создать проект' : 'Project creation failed');
         pId = project.id;
+
+        // Copy dialogue session from temp empty/global key to new project ID
+        try {
+          if (typeof (globalThis as any).window !== 'undefined') {
+            const oldMessages = (globalThis as any).sessionStorage.getItem('strategist_messages_') || 
+                               (globalThis as any).sessionStorage.getItem('strategist_messages_global');
+            if (oldMessages) {
+              (globalThis as any).sessionStorage.setItem(`strategist_messages_${pId}`, oldMessages);
+            }
+          }
+        } catch (e) {
+          console.warn('[ScriptLab] Failed to copy strategist session to new project:', e);
+        }
       }
 
       // Clear local IndexedDB cache drafts to force the Studio to reload the fresh script manifest
@@ -793,7 +806,6 @@ export default function ScriptLabPage() {
         console.warn('[ScriptLab] Failed to clear local drafts:', e);
       }
 
-      // 2. Update version with latest script data
       if (!vId || vId === 'null') {
         console.log('[ScriptLab] No valid versionId, creating new version...');
         

@@ -67,7 +67,7 @@ export function PageShell({ children }: PageShellProps) {
         {children}
       </main>
       {!isStudioMode && <BottomNav />}
-      {!isStudioMode && <GlobalStrategist />}
+      <GlobalStrategist />
       <PwaInstallPrompt />
     </div>
   );

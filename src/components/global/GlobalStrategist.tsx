@@ -39,7 +39,6 @@ export function GlobalStrategist() {
   const isExcluded = typeof win !== 'undefined' && (
     win.location.pathname.includes('/onboarding') || 
     win.location.pathname.includes('/auth') ||
-    win.location.pathname.includes('/studio') ||
     win.location.pathname.includes('/dna') ||
     win.location.pathname.includes('/projects/new/script') ||
     win.location.pathname.endsWith('/projects') ||
