@@ -292,6 +292,18 @@ export default function ProfilePage() {
     }
   };
 
+  const handleStartStoryBrandInterview = () => {
+    const promptMessage = locale === 'ru' 
+      ? 'Привет! Я хочу заполнить свой СториБренд (пройти интервью).' 
+      : 'Hello! I want to fill in my StoryBrand (go through the interview).';
+      
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+    if (win) {
+      const event = new win.CustomEvent('open-strategist', { detail: { message: promptMessage } });
+      win.dispatchEvent(event);
+    }
+  };
+
   const handleDeleteStoryBrand = async () => {
     const confirmDelete = (globalThis as any).confirm?.(locale === 'ru' 
       ? 'Вы уверены, что хотите удалить СториБренд и вернуться к базовой ДНК?' 
@@ -487,6 +499,7 @@ export default function ProfilePage() {
   // Determine stable number in case full_name is missing
   const stableNum = profile ? parseInt(profile.id.slice(0, 4), 16) % 10000 : 0;
   const defaultName = locale === 'ru' ? `Медиа Криейтор #${stableNum}` : `Media Creator #${stableNum}`;
+  const isStoryBrandUnlocked = projectCount >= 3 || (profile && ((profile as any).tier === 'pro' || (profile as any).tier === 'scale'));
 
   return (
     <motion.div 
@@ -671,7 +684,7 @@ export default function ProfilePage() {
               {locale === 'ru' ? 'СториБренд (Расширенный ДНК)' : 'StoryBrand (Extended DNA)'}
             </h3>
           </div>
-          {projectCount >= 3 && (
+          {isStoryBrandUnlocked && (
             <span className="px-2.5 py-0.5 rounded-full bg-purple-500/10 border border-purple-500/20 text-purple-400 text-[8px] font-black uppercase tracking-wider">
               {locale === 'ru' ? 'АКТИВЕН (4+ пакет)' : 'ACTIVE (4+ pack)'}
             </span>
@@ -683,7 +696,7 @@ export default function ProfilePage() {
             <Loader2 className="animate-spin text-purple-400" size={16} />
             <span className="text-[10px] font-black uppercase tracking-widest text-white/30">Проверка прогресса...</span>
           </div>
-        ) : projectCount < 3 ? (
+        ) : !isStoryBrandUnlocked ? (
           // LOCKED / PROGRESS STATE (First 3 packages)
           <div className="space-y-4">
             <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
@@ -722,6 +735,13 @@ export default function ProfilePage() {
                 )}
               </p>
             </div>
+
+            <button
+              onClick={handleStartStoryBrandInterview}
+              className="w-full py-3.5 rounded-xl bg-purple-600/20 border border-purple-500/30 hover:bg-purple-500/30 active:scale-95 transition-all text-purple-300 text-[10px] font-black uppercase tracking-widest flex items-center justify-center gap-1.5 shadow-lg shadow-purple-950/20"
+            >
+              🧠 {locale === 'ru' ? 'Пройти интервью в ИИ-Стратеге' : 'Start Interview in AI-Strategist'}
+            </button>
           </div>
         ) : (
           // UNLOCKED STATE (4th+ Package)
@@ -856,6 +876,13 @@ export default function ProfilePage() {
                     📝 {locale === 'ru' ? 'Вставить текст' : 'Paste Text'}
                   </button>
                 </div>
+
+                <button
+                  onClick={handleStartStoryBrandInterview}
+                  className="w-full py-4 rounded-2xl bg-purple-500/10 border border-purple-500/20 hover:bg-purple-500/20 text-purple-300 text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-1.5"
+                >
+                  🧠 {locale === 'ru' ? 'Пройти интервью в ИИ-Стратеге' : 'Start Interview in AI-Strategist'}
+                </button>
               </div>
             )}
 

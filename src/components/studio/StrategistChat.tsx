@@ -928,6 +928,29 @@ export function StrategistChat({
     }
   };
 
+  const handleSendRef = useRef(handleSend);
+  useEffect(() => {
+    handleSendRef.current = handleSend;
+  });
+
+  useEffect(() => {
+    const handleOpenEvent = (e: Event) => {
+      const customEvent = e as CustomEvent;
+      setIsOpen(true);
+      if (customEvent.detail?.message) {
+        handleSendRef.current(undefined, customEvent.detail.message);
+      }
+    };
+
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+    if (win) {
+      win.addEventListener('open-strategist', handleOpenEvent);
+      return () => {
+        win.removeEventListener('open-strategist', handleOpenEvent);
+      };
+    }
+  }, []);
+
   const handleRetry = () => {
     if (!lastRequest || isStreaming) return;
 
