@@ -794,7 +794,14 @@ export function StrategistChat({
         return;
       }
 
-      if (!response.ok) throw new Error('Failed to fetch strategy');
+      if (!response.ok) {
+        let errMessage = 'Failed to fetch strategy';
+        try {
+          const errData = await response.json();
+          errMessage = errData.error || errData.message || errMessage;
+        } catch (_) {}
+        throw new Error(errMessage);
+      }
 
       const reader = response.body?.getReader();
       const decoder = new TextDecoder();
@@ -917,11 +924,11 @@ export function StrategistChat({
         }
       }
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Chat error:', error);
       const errorMsg = locale === 'ru'
-        ? "Извини, произошла техническая ошибка. Пожалуйста, попробуй еще раз."
-        : "Sorry, I lost my train of thought. Please try again.";
+        ? `Извини, произошла ошибка: ${error.message || 'попробуй еще раз'}`
+        : `Sorry, an error occurred: ${error.message || 'please try again'}`;
       setMessages(prev => [...prev, { role: 'assistant', content: errorMsg, isError: true }]);
     } finally {
       setIsStreaming(false);

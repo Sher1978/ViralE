@@ -184,6 +184,48 @@ export function getModel(
           throw lastError || new Error("Gemini generation failed on all fallback candidates.");
         };
       }
+      if (prop === 'startChat') {
+        return function(chatConfig: any) {
+          let currentModelIndex = 0;
+          let chatSession = target.startChat(chatConfig);
+          
+          return new Proxy(chatSession, {
+            get(chatTarget, chatProp, chatReceiver) {
+              if (chatProp === 'sendMessageStream') {
+                return async function(parts: any[]) {
+                  let lastError: any = null;
+                  
+                  for (let i = currentModelIndex; i < fallbackModels.length; i++) {
+                    const modelCandidate = fallbackModels[i];
+                    try {
+                      console.log(`[Gemini client chat] Sending message on candidate model: ${modelCandidate}`);
+                      if (i > currentModelIndex) {
+                        const fallbackModelInstance = client.getGenerativeModel({
+                          model: modelCandidate,
+                          systemInstruction,
+                          generationConfig: {
+                            responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
+                          }
+                        });
+                        chatSession = fallbackModelInstance.startChat(chatConfig);
+                        currentModelIndex = i;
+                      }
+                      return await chatSession.sendMessageStream(parts);
+                    } catch (err: any) {
+                      lastError = err;
+                      const errMsg = err.message || '';
+                      console.warn(`[Gemini client chat] Model ${modelCandidate} failed: ${errMsg}. Trying next...`);
+                      if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('key is invalid')) break;
+                    }
+                  }
+                  throw lastError || new Error("Gemini chat sendMessageStream failed on all fallback candidates.");
+                };
+              }
+              return Reflect.get(chatTarget, chatProp, chatReceiver);
+            }
+          });
+        };
+      }
       return Reflect.get(target, prop, receiver);
     }
   });
