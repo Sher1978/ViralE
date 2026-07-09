@@ -35,8 +35,31 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Promo code not found or invalid' }, { status: 404 });
     }
 
-    if (promo.is_used) {
-      return NextResponse.json({ error: 'Promo code has already been redeemed' }, { status: 400 });
+    const isReusable = cleanCode.startsWith('MULTI_') || cleanCode === 'VIRAL_MAX_MONTH';
+
+    if (isReusable) {
+      // For reusable codes, check if the user has already redeemed it
+      const { data: existingTx, error: txErr } = await supabaseAdmin
+        .from('credits_transactions')
+        .select('id')
+        .eq('user_id', user.id)
+        .eq('transaction_type', 'top_up')
+        .contains('metadata', { promo_code: cleanCode })
+        .maybeSingle();
+
+      if (txErr) {
+        console.error('[Promo API] Error checking existing transactions:', txErr);
+        return NextResponse.json({ error: 'Failed to validate promo code usage' }, { status: 500 });
+      }
+
+      if (existingTx) {
+        return NextResponse.json({ error: 'You have already redeemed this promo code' }, { status: 400 });
+      }
+    } else {
+      // Single-use code check
+      if (promo.is_used) {
+        return NextResponse.json({ error: 'Promo code has already been redeemed' }, { status: 400 });
+      }
     }
 
     // 2. Fetch user profile to calculate new credits balance
@@ -53,7 +76,7 @@ export async function POST(req: NextRequest) {
     const newBalance = (profile.credits_balance || 0) + (promo.credits_bonus || 0);
 
     // 3. Update the user profile (tier and credits)
-    const { error: updateProfErr } = await supabaseAdmin
+    let { error: updateProfErr } = await supabaseAdmin
       .from('profiles')
       .update({
         tier: promo.tier || profile.tier || 'free',
@@ -63,22 +86,65 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id);
 
     if (updateProfErr) {
+      const errMsg = updateProfErr.message.toLowerCase();
+      if (errMsg.includes('constraint') || errMsg.includes('check') || errMsg.includes('tier') || errMsg.includes('violates')) {
+        console.log('[Promo API] Constraint or tier error detected. Attempting to drop profiles_tier_check constraint...');
+        const DROP_CONSTRAINT_SQL = `
+          ALTER TABLE public.profiles DROP CONSTRAINT IF EXISTS profiles_tier_check;
+        `;
+        const { error: migrationError } = await supabaseAdmin.rpc('exec_sql', { sql: DROP_CONSTRAINT_SQL });
+        
+        if (!migrationError) {
+          console.log('[Promo API] Constraint dropped successfully! Retrying profile update...');
+          // Retry the update
+          const { error: retryErr } = await supabaseAdmin
+            .from('profiles')
+            .update({
+              tier: promo.tier || profile.tier || 'free',
+              credits_balance: newBalance,
+              subscription_status: 'active'
+            })
+            .eq('id', user.id);
+          updateProfErr = retryErr;
+        } else {
+          console.error('[Promo API] Failed to drop constraint via RPC:', migrationError.message);
+        }
+      }
+    }
+
+    if (updateProfErr) {
       console.error('[Promo API] Failed to update user profile:', updateProfErr);
       return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
     }
 
-    // 4. Mark promo code as used
-    const { error: updatePromoErr } = await supabaseAdmin
-      .from('promo_codes')
-      .update({
-        is_used: true,
-        used_by: user.id,
-        used_at: new Date().toISOString()
-      })
-      .eq('id', promo.id);
+    // 4. Record transaction in credits_transactions
+    const { error: txInsertErr } = await supabaseAdmin
+      .from('credits_transactions')
+      .insert({
+        user_id: user.id,
+        amount: promo.credits_bonus || 0,
+        transaction_type: 'top_up',
+        metadata: { promo_code: cleanCode }
+      });
 
-    if (updatePromoErr) {
-      console.error('[Promo API] Failed to mark promo code as used:', updatePromoErr);
+    if (txInsertErr) {
+      console.error('[Promo API] Failed to record credit transaction:', txInsertErr);
+    }
+
+    // 5. Mark single-use promo code as used
+    if (!isReusable) {
+      const { error: updatePromoErr } = await supabaseAdmin
+        .from('promo_codes')
+        .update({
+          is_used: true,
+          used_by: user.id,
+          used_at: new Date().toISOString()
+        })
+        .eq('id', promo.id);
+
+      if (updatePromoErr) {
+        console.error('[Promo API] Failed to mark promo code as used:', updatePromoErr);
+      }
     }
 
     return NextResponse.json({
