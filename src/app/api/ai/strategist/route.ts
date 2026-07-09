@@ -79,21 +79,28 @@ export async function POST(req: Request) {
       .eq('id', user.id)
       .single();
 
-    const isPro = profile?.tier === 'pro';
+    const isPremium = profile?.tier === 'pro' || profile?.tier === 'scale';
     const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
     const geminiApiKey = syntheticData.gemini_api_key || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || undefined;
 
-    let access = await strategistService.getAccessStatus(user.id);
-    
-    if (!isPro && access.status === 'no_access') {
-      const activated = await strategistService.activateTrial(user.id);
-      if (!activated) {
-        return new Response(JSON.stringify({ error: 'Failed to activate trial' }), { status: 500 });
+    let access = { hasAccess: true, status: 'active', trialExpiresAt: null };
+    if (!isPremium) {
+      try {
+        access = await strategistService.getAccessStatus(user.id);
+        if (access.status === 'no_access') {
+          const activated = await strategistService.activateTrial(user.id);
+          if (!activated) {
+            return new Response(JSON.stringify({ error: 'Failed to activate trial' }), { status: 500 });
+          }
+          access = await strategistService.getAccessStatus(user.id);
+        }
+      } catch (err: any) {
+        console.error('[Strategist API] Access check error:', err);
+        return new Response(JSON.stringify({ error: `Access check failed: ${err.message}` }), { status: 500 });
       }
-      access = await strategistService.getAccessStatus(user.id);
     }
 
-    if (!isPro && !access.hasAccess) {
+    if (!isPremium && !access.hasAccess) {
       return new Response(JSON.stringify({ 
         error: 'TRIAL_EXPIRED', 
         message: 'Your 24h trial has ended.' 
