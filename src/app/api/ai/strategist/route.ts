@@ -83,7 +83,7 @@ export async function POST(req: Request) {
     const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
     const geminiApiKey = syntheticData.gemini_api_key || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || undefined;
 
-    let access = { hasAccess: true, status: 'active', trialExpiresAt: null };
+    let access = { hasAccess: true, status: 'active', trialExpiresAt: null } as any;
     if (!isPremium) {
       try {
         access = await strategistService.getAccessStatus(user.id);
