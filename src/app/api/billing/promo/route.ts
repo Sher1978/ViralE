@@ -114,7 +114,8 @@ export async function POST(req: NextRequest) {
 
     if (updateProfErr) {
       console.error('[Promo API] Failed to update user profile:', updateProfErr);
-      return NextResponse.json({ error: 'Database update failed' }, { status: 500 });
+      const detailedError = `Database update failed: [${updateProfErr.code || 'NO_CODE'}] ${updateProfErr.message || 'Unknown error'}. Details: ${updateProfErr.details || 'None'}`;
+      return NextResponse.json({ error: detailedError }, { status: 500 });
     }
 
     // 4. Record transaction in credits_transactions
