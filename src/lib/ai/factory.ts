@@ -169,3 +169,65 @@ export async function refineScript(
       return gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
   }
 }
+
+export async function generatePreviews(
+  coreIdea: string,
+  digitalShadow: string,
+  options: GenerationOptions = {}
+) {
+  const { engine = 'groq', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna } = options;
+  let systemPromptBase = options.systemPromptBase;
+  if (!systemPromptBase) {
+    try {
+      const promptPath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', 'General_script.md');
+      if (fs.existsSync(promptPath)) {
+        systemPromptBase = fs.readFileSync(promptPath, 'utf-8');
+      }
+    } catch (err) {
+      console.warn('[Factory] Failed to read General_script.md', err);
+    }
+  }
+
+  switch (engine) {
+    case 'claude':
+    case 'claude-byok':
+      return anthropic.generatePreviews(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+    case 'groq':
+      return groq.generatePreviews(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+    case 'gemini':
+    default:
+      return gemini.generatePreviews(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+  }
+}
+
+export async function generateFullScript(
+  coreIdea: string,
+  selectedStyle: string,
+  selectedPreview: any,
+  digitalShadow: string,
+  options: GenerationOptions = {}
+) {
+  const { engine = 'groq', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna } = options;
+  let systemPromptBase = options.systemPromptBase;
+  if (!systemPromptBase) {
+    try {
+      const promptPath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', 'General_script.md');
+      if (fs.existsSync(promptPath)) {
+        systemPromptBase = fs.readFileSync(promptPath, 'utf-8');
+      }
+    } catch (err) {
+      console.warn('[Factory] Failed to read General_script.md', err);
+    }
+  }
+
+  switch (engine) {
+    case 'claude':
+    case 'claude-byok':
+      return anthropic.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+    case 'groq':
+      return groq.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+    case 'gemini':
+    default:
+      return gemini.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+  }
+}

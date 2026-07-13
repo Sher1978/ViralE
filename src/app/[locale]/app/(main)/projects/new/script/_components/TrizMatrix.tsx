@@ -22,7 +22,7 @@ export function TrizMatrix({ ideas, locale, onSelect, onBack }: TrizMatrixProps)
           {locale === 'ru' ? 'Выберите фокус сценария' : 'Choose Your Script Focus'}
         </h3>
         <p className="text-xs text-white/50 uppercase tracking-widest font-bold">
-          {locale === 'ru' ? '9-Экранная матрица ТРИЗ' : '9-Screen TRIZ Matrix'}
+          {locale === 'ru' ? '3 наиболее актуальных направления ТРИЗ' : '3 Most Relevant TRIZ Angles'}
         </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">

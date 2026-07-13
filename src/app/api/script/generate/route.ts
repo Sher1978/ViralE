@@ -11,14 +11,14 @@ export const maxDuration = 60; // 60 seconds timeout limit for serverless functi
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
-    let { projectId, coreIdea, locale = 'en', mode = 'initial', instruction, currentScript, versionId: targetVersionId, engine = 'gemini', hook, role } = await req.json();
+    let { projectId, coreIdea, locale = 'en', mode = 'initial', instruction, currentScript, versionId: targetVersionId, engine = 'gemini', hook, role, selectedStyle, selectedPreview } = await req.json();
 
     console.log(`[ScriptGen] Mode: ${mode}, Locale: ${locale}, Engine: ${engine}, ProjectID: ${projectId || 'NEW'}`);
 
     const userId = user.id;
 
-    // 0. Auto-create project if missing in initial mode
-    if (!projectId && mode === 'initial') {
+    // 0. Auto-create project if missing in initial or previews mode
+    if (!projectId && (mode === 'initial' || mode === 'previews')) {
       console.log(`[ScriptGen] Auto-creating project for user: ${userId}`);
       const { data: newProject, error: createError } = await authorizedSupabase
         .from('projects')
@@ -175,12 +175,12 @@ export async function POST(req: Request) {
       industry: profile?.industry_context
     };
 
-    // 4. Generate or Refine Script
+    // 4. Generate Previews, Full Script, or Refine
     let scriptJson;
     try {
-      if (mode === 'refine') {
-        console.log(`[ScriptGen] Refining script [Engine: ${engine}] with instruction: ${instruction}`);
-        scriptJson = await factory.refineScript(currentScript, instruction, digitalShadow, {
+      if (mode === 'initial' || mode === 'previews') {
+        console.log(`[ScriptGen] Generating previews [Engine: ${engine}] for idea: ${coreIdea}`);
+        const previews = await factory.generatePreviews(coreIdea, digitalShadow, {
           engine,
           locale,
           anthropicApiKey,
@@ -188,9 +188,27 @@ export async function POST(req: Request) {
           geminiApiKey,
           brandDna
         });
-      } else {
-        console.log(`[ScriptGen] Generating initial script [Engine: ${engine}] for idea: ${coreIdea}`);
-        scriptJson = await factory.generateScript(coreIdea, digitalShadow, {
+        
+        console.log(`[ScriptGen] Previews generated successfully. ProjectId: ${projectId}`);
+        return NextResponse.json({
+          success: true,
+          previews,
+          projectId,
+          onboardingIncomplete
+        });
+      } else if (mode === 'full_script') {
+        console.log(`[ScriptGen] Generating full script for style: ${selectedStyle} [Engine: ${engine}] for idea: ${coreIdea}`);
+        scriptJson = await factory.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, {
+          engine,
+          locale,
+          anthropicApiKey,
+          groqApiKey,
+          geminiApiKey,
+          brandDna
+        });
+      } else if (mode === 'refine') {
+        console.log(`[ScriptGen] Refining script [Engine: ${engine}] with instruction: ${instruction}`);
+        scriptJson = await factory.refineScript(currentScript, instruction, digitalShadow, {
           engine,
           locale,
           anthropicApiKey,

@@ -36,7 +36,8 @@ import { StrategistChat } from '@/components/studio/StrategistChat';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
-import { ContentMatrix } from './_components/ContentMatrix';
+import { ScriptPreviews } from './_components/ScriptPreviews';
+import { SingleScriptEditor } from './_components/SingleScriptEditor';
 import { ScenarioLegend } from './_components/ScenarioLegend';
 import { TrizMatrix } from './_components/TrizMatrix';
 import { createInitialManifest, parseScriptTextToPayload } from '@/lib/studio-utils';
@@ -75,6 +76,8 @@ export default function ScriptLabPage() {
   const [ideationType, setIdeationType] = useState<'text' | 'youtube'>('text');
   const [youtubeUrl, setYoutubeUrl] = useState('');
   const [youtubeLoading, setYoutubeLoading] = useState(false);
+  const [scriptPreviews, setScriptPreviews] = useState<any | null>(null);
+  const [selectedStyle, setSelectedStyle] = useState<string | null>(null);
 
   const [initialTab, setInitialTab] = useState<'new' | 'used'>('new');
   const [usedIdeas, setUsedIdeas] = useState<any[]>([]);
@@ -105,9 +108,13 @@ export default function ScriptLabPage() {
     setIsLoading(true);
 
     setAllScenarios(null);
+    setScriptPreviews(null);
+    setSelectedStyle(null);
     setScriptData({ hook: '' as any, body: '' as any, triz_inversion: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
     if (typeof (globalThis as any).window !== 'undefined') {
       (globalThis as any).sessionStorage?.removeItem('allScenarios');
+      (globalThis as any).sessionStorage?.removeItem('scriptPreviews');
+      (globalThis as any).sessionStorage?.removeItem('selectedStyle');
       (globalThis as any).sessionStorage?.removeItem('isGenerating');
     }
     try {
@@ -125,16 +132,11 @@ export default function ScriptLabPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || (locale === 'ru' ? 'Ошибка генерации' : 'Generation failed'));
 
-      const fullScript = data.script;
-      if (fullScript.evergreen) {
-        setAllScenarios(fullScript);
-        setScriptData(fullScript.evergreen);
-        setActiveScenario('evergreen');
+      if (data.previews) {
+        setScriptPreviews(data.previews);
         if (typeof (globalThis as any).window !== 'undefined') {
-          (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(fullScript));
+          (globalThis as any).sessionStorage?.setItem('scriptPreviews', JSON.stringify(data.previews));
         }
-      } else {
-        setScriptData(fullScript);
       }
 
       if (data.onboardingIncomplete) {
@@ -149,7 +151,7 @@ export default function ScriptLabPage() {
         (globalThis as any).sessionStorage?.setItem('isGenerating', 'true');
       }
       
-      router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
+      router.replace(`/app/projects/new/script?projectId=${data.projectId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Restart generation failed:', err);
       setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
@@ -243,9 +245,21 @@ export default function ScriptLabPage() {
     if (typeof (globalThis as any).window !== 'undefined') {
       const savedGenerating = (globalThis as any).sessionStorage?.getItem('isGenerating') === 'true';
       const savedScenarios = (globalThis as any).sessionStorage?.getItem('allScenarios');
+      const savedPreviews = (globalThis as any).sessionStorage?.getItem('scriptPreviews');
+      const savedStyle = (globalThis as any).sessionStorage?.getItem('selectedStyle');
       
       if (savedGenerating) {
         setIsGenerating(true);
+      }
+      
+      if (savedPreviews) {
+        try {
+          setScriptPreviews(JSON.parse(savedPreviews));
+        } catch (e) {}
+      }
+
+      if (savedStyle) {
+        setSelectedStyle(savedStyle);
       }
       
       if (savedScenarios) {
@@ -657,10 +671,14 @@ export default function ScriptLabPage() {
     setError(null);
     setIsLoading(true);
     setAllScenarios(null);
+    setScriptPreviews(null);
+    setSelectedStyle(null);
 
     setScriptData({ hook: '' as any, body: '' as any, triz_inversion: '' as any, cta: '' as any, visual_hook: '', social_post: '' });
     if (typeof (globalThis as any).window !== 'undefined') {
       (globalThis as any).sessionStorage?.removeItem('allScenarios');
+      (globalThis as any).sessionStorage?.removeItem('scriptPreviews');
+      (globalThis as any).sessionStorage?.removeItem('selectedStyle');
       (globalThis as any).sessionStorage?.removeItem('isGenerating');
     }
     const ideaToUse = overrideIdea || topicInput;
@@ -679,16 +697,11 @@ export default function ScriptLabPage() {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || (locale === 'ru' ? 'Ошибка генерации' : 'Generation failed'));
 
-      const fullScript = data.script;
-      if (fullScript.evergreen) {
-        setAllScenarios(fullScript);
-        setScriptData(fullScript.evergreen);
-        setActiveScenario('evergreen');
+      if (data.previews) {
+        setScriptPreviews(data.previews);
         if (typeof (globalThis as any).window !== 'undefined') {
-          (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(fullScript));
+          (globalThis as any).sessionStorage?.setItem('scriptPreviews', JSON.stringify(data.previews));
         }
-      } else {
-        setScriptData(fullScript);
       }
 
       if (data.onboardingIncomplete) {
@@ -704,7 +717,7 @@ export default function ScriptLabPage() {
         (globalThis as any).sessionStorage?.setItem('isGenerating', 'true');
       }
       
-      router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
+      router.replace(`/app/projects/new/script?projectId=${data.projectId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Generation failed:', err);
       const isCreditError = err.message === 'Insufficient credits' || 
@@ -728,8 +741,46 @@ export default function ScriptLabPage() {
       setIsGenerating(false);
       if (typeof (globalThis as any).window !== 'undefined') {
         (globalThis as any).sessionStorage?.removeItem('isGenerating');
-        (globalThis as any).sessionStorage?.removeItem('allScenarios');
+        (globalThis as any).sessionStorage?.removeItem('scriptPreviews');
       }
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  const handleSelectPreview = async (styleKey: string, preview: any) => {
+    setIsLoading(true);
+    setError(null);
+    try {
+      const response = await fetch('/api/script/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId: projectIdParam,
+          coreIdea: topicInput,
+          mode: 'full_script',
+          selectedStyle: styleKey,
+          selectedPreview: preview,
+          locale,
+          engine: selectedEngine
+        })
+      });
+
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || 'Failed to generate script');
+
+      setScriptData(data.script);
+      setSelectedStyle(styleKey);
+      
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).sessionStorage?.setItem('selectedStyle', styleKey);
+      }
+
+      // Redirect to include versionId in the URL
+      router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
+    } catch (err: any) {
+      console.error('[ScriptLab] Full script generation failed:', err);
+      setError(err.message || 'Error generating script');
     } finally {
       setIsLoading(false);
     }
@@ -911,7 +962,7 @@ export default function ScriptLabPage() {
   }
 
   // Only show full-screen loader if we have NO data to show yet
-  if ((isLoading || isGenerating) && !allScenarios) {
+  if ((isLoading || isGenerating) && !scriptPreviews && (!scriptData || !scriptData.hook || (!scriptData.hook.words && typeof scriptData.hook !== 'string'))) {
 
     return (
       <div className="fixed inset-0 z-[100] bg-black flex flex-col items-center justify-center p-8 text-center animate-fade-in overflow-hidden">
@@ -974,7 +1025,7 @@ export default function ScriptLabPage() {
   }
 
   // Initial Ideation UI if no project exists yet AND we don't have generated data in memory
-  if (!projectIdParam && !allScenarios) {
+  if (!projectIdParam && !scriptPreviews && (!scriptData || !scriptData.hook || (!scriptData.hook.words && typeof scriptData.hook !== 'string'))) {
     return (
       <div className="space-y-12 animate-fade-in max-w-2xl mx-auto py-10">
         <StatusStepper currentStep="script" />
@@ -1381,48 +1432,28 @@ export default function ScriptLabPage() {
         </div>
       )}
 
-      {/* Topic Edit */}
-      <div className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-center justify-between group hover:bg-white/[0.08] transition-all">
-        <div className="flex items-center gap-3 flex-1">
-          <div className="w-2 h-2 rounded-full bg-purple-500 animate-pulse" />
-          <p className="text-xs font-medium text-white/60">
-            {topicInput || 'Your core idea here...'}
-          </p>
-        </div>
-      </div>
-
-      <ContentMatrix 
-        isGenerating={isGenerating || isRefining}
-        blocks={[
-          { id: 'hook', label: locale === 'ru' ? 'ХУК' : 'HOOK' },
-          { id: 'body', label: locale === 'ru' ? 'BODY (ТЕЛО)' : 'BODY' },
-          { id: 'triz_inversion', label: locale === 'ru' ? 'ТРИЗ-ПЕРЕВЕРТЫШ' : 'TRIZ-INVERSION' },
-          { id: 'cta', label: locale === 'ru' ? 'CTA (ПРИЗЫВ)' : 'CTA' }
-        ]}
-        scenarios={['edutainment', 'evergreen', 'trends', 'controversial', 'detective', 'napkin_explainer']}
-        selectionSources={selectionSources}
-        allScenarios={allScenarios}
-        scriptData={scriptData}
-        locale={locale}
-        t={t}
-        onBlockSelect={handleBlockSelect}
-        onBlockUpdate={handleBlockUpdate}
-        onRefine={handleApplyRefinement}
-        onAccept={async () => {
-          const sd = scriptData as any;
-          const synthesizedScript = allScenarios ? {
-            hook: allScenarios[selectionSources.hook]?.hook || sd.hook,
-            body: allScenarios[selectionSources.body]?.body || sd.body,
-            triz_inversion: allScenarios[selectionSources.triz_inversion]?.triz_inversion || sd.triz_inversion,
-            cta: allScenarios[selectionSources.cta]?.cta || sd.cta,
-            visual_hook: allScenarios[selectionSources.hook]?.visual_hook || sd.visual_hook,
-            social_post: allScenarios[selectionSources.hook]?.social_post || sd.social_post,
-          } : sd;
-          handleApprove(synthesizedScript);
-        }}
-        onCopy={handleCopyToClipboard}
-        isSaving={isSaving}
-      />
+      {scriptPreviews && (!scriptData || !scriptData.hook || (!scriptData.hook.words && typeof scriptData.hook !== 'string')) ? (
+        <ScriptPreviews 
+          previews={scriptPreviews}
+          locale={locale}
+          onSelect={handleSelectPreview}
+          isLoading={isLoading}
+        />
+      ) : scriptData && (scriptData.hook?.words || typeof scriptData.hook === 'string') ? (
+        <SingleScriptEditor 
+          scriptData={scriptData}
+          locale={locale}
+          selectedStyle={selectedStyle}
+          onUpdate={setScriptData}
+          onRefine={handleApplyRefinement}
+          onAccept={async () => {
+            handleApprove(scriptData);
+          }}
+          onCopy={handleCopyToClipboard}
+          isSaving={isSaving}
+          isGenerating={isRefining || isLoading}
+        />
+      ) : null}
 
       <StrategistChat 
         projectId={projectIdParam || ''}
@@ -1431,56 +1462,6 @@ export default function ScriptLabPage() {
         locale={locale}
         onApplySuggestion={(text) => handleApplyRefinement(text)}
         onUseScript={(text) => handleApprove(text)}
-        onTransferScenario={(text) => {
-          console.log('[ScriptLab] Transferring scenario from Chat:', text);
-          const parsed = parseScriptTextToPayload(text);
-          setScriptData(parsed);
-          setAllScenarios((prev: any) => {
-            const newAll = prev ? { ...prev } : {
-              evergreen: parsed,
-              trends: parsed,
-              edutainment: parsed,
-              controversial: parsed,
-              detective: parsed,
-              napkin_explainer: parsed
-            };
-            newAll[activeScenario] = parsed;
-            return newAll;
-          });
-          if (typeof (globalThis as any).window !== 'undefined') {
-            (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify({
-              ...(allScenarios || {}),
-              [activeScenario]: parsed
-            }));
-          }
-        }}
-        onMatrixUpdate={(matrix) => {
-          console.log('[ScriptLab] Matrix sync from Chat:', matrix);
-          if (matrix.evergreen || matrix.trends) {
-             setAllScenarios(matrix);
-             setScriptData(matrix[activeScenario] || matrix.evergreen);
-             if (typeof (globalThis as any).window !== 'undefined') {
-                (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(matrix));
-             }
-          } else if (matrix.styles && Array.isArray(matrix.styles)) {
-             // Map styles array to the 5-scenario format if possible, or just use styles[0]
-             const mapped: any = {};
-              matrix.styles.forEach((s: any, i: number) => {
-                 const key = i === 0 ? 'edutainment' : i === 1 ? 'evergreen' : i === 2 ? 'trends' : i === 3 ? 'controversial' : i === 4 ? 'detective' : 'napkin_explainer';
-                mapped[key] = {
-                   hook: s.hook,
-                   body: s.body,
-                   triz_inversion: s.triz_inversion,
-                   cta: s.cta,
-                };
-             });
-             setAllScenarios(mapped);
-             setScriptData(mapped.evergreen);
-             if (typeof (globalThis as any).window !== 'undefined') {
-                (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(mapped));
-             }
-          }
-        }}
       />
 
       <PremiumLimitModal 

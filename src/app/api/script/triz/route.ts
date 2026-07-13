@@ -12,7 +12,9 @@ export const maxDuration = 60; // Vercel limit
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
-    const { coreIdea, locale = 'en', engine = 'gemini' } = await req.json();
+    const body = await req.json();
+    const coreIdea = body.coreIdea || body.topic;
+    const { locale = 'en', engine = 'gemini' } = body;
 
     const userId = user.id;
 
@@ -51,8 +53,8 @@ export async function POST(req: Request) {
       --- INPUTS ---
       * Object (Theme): ${coreIdea}
       
-      TASK: Generate a high-fidelity marketing matrix of 9 ideas following the TRIZ screens methodology. 
-      Output MUST BE a strictly valid JSON array of 9 objects.
+      TASK: Generate a high-fidelity marketing matrix of 3 ideas (select and focus only on the 3 most relevant presentation angles/screens out of the 9-screen TRIZ methodology). 
+      Output MUST BE a strictly valid JSON array of exactly 3 objects.
       Each object must have the following keys:
       - "level": string (e.g., "Надсистема - Настоящее")
       - "goal": string (e.g., "Охват")
