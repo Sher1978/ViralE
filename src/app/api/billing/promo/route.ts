@@ -81,7 +81,8 @@ export async function POST(req: NextRequest) {
       .update({
         tier: promo.tier || profile.tier || 'free',
         credits_balance: newBalance,
-        subscription_status: 'active'
+        subscription_status: 'active',
+        subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
       })
       .eq('id', user.id);
 
@@ -102,7 +103,8 @@ export async function POST(req: NextRequest) {
             .update({
               tier: promo.tier || profile.tier || 'free',
               credits_balance: newBalance,
-              subscription_status: 'active'
+              subscription_status: 'active',
+              subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
             })
             .eq('id', user.id);
           updateProfErr = retryErr;

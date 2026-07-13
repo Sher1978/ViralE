@@ -626,7 +626,10 @@ export default function ProfilePage() {
               
               <div className="flex items-center gap-2 pt-1">
                 {/* Dynamically Styled Tier Badge */}
-                <div className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center gap-1.5">
+                <div 
+                  onClick={() => router.push('/app/profile/subscription')}
+                  className="px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 flex items-center gap-1.5 cursor-pointer hover:scale-105 active:scale-95 transition-all duration-200"
+                >
                   <div className="w-1.5 h-1.5 rounded-full bg-yellow-400 animate-pulse" />
                   <span className="text-[9px] font-black uppercase text-yellow-400 tracking-wider">
                     {profile?.tier ? `${profile.tier} STATUS` : 'FREE STATUS'}
@@ -636,6 +639,7 @@ export default function ProfilePage() {
                 <CreditBadge 
                   credits={profile?.credits_balance ?? 0} 
                   packs={Math.max(0, Math.floor((profile?.credits_balance ?? 0) / 100))} 
+                  onClick={() => router.push('/app/profile/subscription')}
                 />
               </div>
             </div>

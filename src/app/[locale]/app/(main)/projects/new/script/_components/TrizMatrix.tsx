@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
 
 export interface TrizIdea {
@@ -15,6 +15,10 @@ interface TrizMatrixProps {
 }
 
 export function TrizMatrix({ ideas, locale, onSelect, onBack }: TrizMatrixProps) {
+  const [visibleCount, setVisibleCount] = useState(3);
+
+  const displayedIdeas = ideas.slice(0, visibleCount);
+
   return (
     <div className="space-y-6 animate-fade-in slide-in-from-bottom-4">
       <div className="text-center space-y-2">
@@ -22,12 +26,17 @@ export function TrizMatrix({ ideas, locale, onSelect, onBack }: TrizMatrixProps)
           {locale === 'ru' ? 'Выберите фокус сценария' : 'Choose Your Script Focus'}
         </h3>
         <p className="text-xs text-white/50 uppercase tracking-widest font-bold">
-          {locale === 'ru' ? '3 наиболее актуальных направления ТРИЗ' : '3 Most Relevant TRIZ Angles'}
+          {locale === 'ru'
+            ? `${Math.min(visibleCount, ideas.length)} наиболее актуальных направления ТРИЗ`
+            : `${Math.min(visibleCount, ideas.length)} Most Relevant TRIZ Angles`}
         </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        {ideas.map((idea, idx) => (
-          <button
+        {displayedIdeas.map((idea, idx) => (
+          <motion.button
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ duration: 0.3, delay: (idx % 3) * 0.1 }}
             key={idx}
             onClick={() => onSelect(`${idea.screen_name}: ${idea.idea_title} - ${idea.rationale}`)}
             className="p-5 rounded-[2rem] bg-white/[0.02] border border-white/10 hover:border-purple-500/50 hover:bg-purple-500/10 transition-all text-left group relative overflow-hidden flex flex-col h-full"
@@ -50,9 +59,19 @@ export function TrizMatrix({ ideas, locale, onSelect, onBack }: TrizMatrixProps)
                 {idea.rationale}
               </p>
             </div>
-          </button>
+          </motion.button>
         ))}
       </div>
+      {visibleCount < ideas.length && visibleCount < 9 && (
+        <div className="flex justify-center pt-2">
+          <button
+            onClick={() => setVisibleCount(prev => prev + 3)}
+            className="px-6 py-2.5 rounded-full bg-white/5 border border-white/10 hover:bg-white/10 hover:border-purple-500/30 text-xs font-bold uppercase tracking-widest text-white/80 hover:text-white transition-all shadow-md active:scale-95"
+          >
+            {locale === 'ru' ? 'Еще 3' : 'More 3'}
+          </button>
+        </div>
+      )}
       <button
          onClick={onBack}
          className="w-full py-4 text-xs text-white/40 uppercase tracking-widest font-black hover:text-white transition-colors border border-transparent hover:border-white/10 rounded-2xl hover:bg-white/5"

@@ -13,6 +13,7 @@ export interface Profile {
   knowledge_base_json?: any;
   tier: 'free' | 'creator' | 'pro';
   subscription_status: string;
+  subscription_expires_at: string | null;
   heygen_api_key?: string | null;
   anthropic_api_key?: string | null;
   elevenlabs_api_key?: string | null;

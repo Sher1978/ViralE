@@ -1,8 +1,8 @@
 'use client';
 
-import React from 'react';
+import React, { useState } from 'react';
 import { motion } from 'framer-motion';
-import { Zap, Sparkles, AlertTriangle, Cpu, HelpCircle, ArrowRight } from 'lucide-react';
+import { Zap, Sparkles, AlertTriangle, Cpu, HelpCircle, ArrowRight, Loader2 } from 'lucide-react';
 
 export interface PreviewData {
   title: string;
@@ -60,6 +60,7 @@ const STYLE_CONFIGS: Record<string, { color: string; bg: string; border: string;
 
 export function ScriptPreviews({ previews, locale, onSelect, isLoading }: ScriptPreviewsProps) {
   const styles = Object.keys(previews);
+  const [clickedStyle, setClickedStyle] = useState<string | null>(null);
 
   return (
     <div className="space-y-8 animate-fade-in pb-20">
@@ -69,7 +70,7 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
         </h2>
         <p className="text-xs text-white/50 uppercase tracking-widest font-bold">
           {locale === 'ru' 
-            ? 'ИИ подготовил 6 уникальных направлений подачи. Выберите наиболее подходящий вариант для полной генерации.'
+            ? 'ИИ подготовил 6 unique направлений подачи. Выберите наиболее подходящий вариант для полной генерации.'
             : 'AI prepared 6 unique presentation styles. Choose the best fit to write the full script.'}
         </p>
       </div>
@@ -83,6 +84,8 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
             border: 'border-purple-500/20 hover:border-purple-500/50',
             desc: { en: 'Script presentation style.', ru: 'Стиль подачи сценария.' }
           };
+
+          const isSelectedAndLoading = isLoading && clickedStyle === styleKey;
 
           return (
             <motion.div
@@ -158,12 +161,28 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
               </div>
 
               <button
-                onClick={() => onSelect(styleKey, preview)}
+                onClick={() => {
+                  setClickedStyle(styleKey);
+                  onSelect(styleKey, preview);
+                }}
                 disabled={isLoading}
-                className="w-full mt-6 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white hover:text-black hover:border-transparent text-white text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 group-hover:scale-[1.02] active:scale-[0.98] disabled:opacity-50"
+                className={`w-full mt-6 py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50
+                  ${isSelectedAndLoading 
+                    ? 'bg-purple-500/20 border-purple-500/40 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)] animate-pulse' 
+                    : 'bg-white/5 border-white/10 hover:bg-white hover:text-black hover:border-transparent text-white active:scale-[0.98] hover:scale-[1.02]'
+                  }`}
               >
-                {locale === 'ru' ? 'Выбрать этот сюжет' : 'Choose this plot'}
-                <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                {isSelectedAndLoading ? (
+                  <>
+                    <span>{locale === 'ru' ? 'Создаем сценарий' : 'Generating script'}</span>
+                    <Loader2 size={12} className="animate-spin text-purple-400" />
+                  </>
+                ) : (
+                  <>
+                    {locale === 'ru' ? 'Выбрать этот сюжет' : 'Choose this plot'}
+                    <ArrowRight size={12} className="group-hover:translate-x-1 transition-transform" />
+                  </>
+                )}
               </button>
             </motion.div>
           );

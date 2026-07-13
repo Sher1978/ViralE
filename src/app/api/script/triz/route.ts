@@ -53,8 +53,8 @@ export async function POST(req: Request) {
       --- INPUTS ---
       * Object (Theme): ${coreIdea}
       
-      TASK: Generate a high-fidelity marketing matrix of 3 ideas (select and focus only on the 3 most relevant presentation angles/screens out of the 9-screen TRIZ methodology). 
-      Output MUST BE a strictly valid JSON array of exactly 3 objects.
+      TASK: Generate a high-fidelity marketing matrix of 9 ideas (one for each of the 9 screens in the 9-screen TRIZ methodology). 
+      Output MUST BE a strictly valid JSON array of exactly 9 objects.
       Each object must have the following keys:
       - "level": string (e.g., "Надсистема - Настоящее")
       - "goal": string (e.g., "Охват")

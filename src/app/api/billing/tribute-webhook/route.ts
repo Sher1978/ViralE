@@ -140,6 +140,7 @@ export async function POST(req: NextRequest) {
         .update({
           tier,
           subscription_status: 'active',
+          subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
         })
         .eq('id', profile.id);
 

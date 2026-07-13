@@ -4,6 +4,8 @@ import { getLocale } from 'next-intl/server';
 import { AppDataProvider } from '@/components/providers/AppDataProvider';
 import { cookies } from 'next/headers';
 
+import { SubscriptionWarning } from '@/components/ui/SubscriptionWarning';
+
 export default async function MainLayout({
   children,
 }: {
@@ -39,6 +41,7 @@ export default async function MainLayout({
 
   return (
     <AppDataProvider>
+      <SubscriptionWarning />
       {children}
     </AppDataProvider>
   );
