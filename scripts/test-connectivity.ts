@@ -8,7 +8,7 @@ const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_AP
 const genAI = new GoogleGenerativeAI(apiKey);
 
 async function testConnectivity() {
-  const modelsToTest = ["gemini-1.5-flash", "gemini-1.5-flash-latest", "gemini-1.5-pro", "gemini-pro"];
+  const modelsToTest = ["gemini-2.5-flash", "gemini-2.5-pro", "gemini-2.5-flash-lite", "gemini-2.0-flash"];
   
   for (const modelName of modelsToTest) {
     try {

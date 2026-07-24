@@ -44,7 +44,9 @@ export async function generateDailyIdeas(
 
   if (totalIdeas && totalIdeas >= 200) {
     console.log(`User ${userId} reached 200 idea limit. Generation paused.`);
-    return [];
+    throw new Error(locale === 'ru'
+      ? 'Достигнут лимит в 200 идей. Удалите отработанные или устаревшие идеи для создания новых.'
+      : 'Limit of 200 ideas reached. Delete or clear spent ideas to generate new ones.');
   }
   
   // 1. Fetch user persona DNA, answers and tier

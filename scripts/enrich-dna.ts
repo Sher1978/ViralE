@@ -44,7 +44,7 @@ async function enrichDna() {
 
   // 2. Synthesize with Gemini
   console.log(`[DNA CLI] Synthesizing with Gemini...`);
-  const model = genAI.getGenerativeModel({ model: "gemini-1.5-flash" });
+  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `
     You are an AI Persona Architect. Update this Digital Shadow DNA by integrating new information.
     Synthesize it into a cohesive, consistent personality profile. Output ONLY the updated paragraph.

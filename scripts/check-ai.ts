@@ -6,7 +6,7 @@ import path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
-const modelName = process.env.GEMINI_MODEL || "gemini-3.1-pro-preview";
+const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
 
 async function checkAI() {
   console.log("🚀 Starting Gemini API Health Check...");
@@ -40,7 +40,7 @@ async function checkAI() {
     
     if (error.message?.includes("404")) {
       console.error("👉 Error 404: The model name is likely wrong or the region is not supported for this model.");
-      console.error("Suggestion: Try 'gemini-pro' or 'gemini-1.5-flash'.");
+      console.error("Suggestion: Try 'gemini-2.5-flash' or 'gemini-2.5-pro'.");
     } else if (error.message?.includes("401") || error.message?.includes("403")) {
       console.error("👉 Error 401/403: API Key is invalid or restricted.");
     } else if (error.message?.includes("429")) {

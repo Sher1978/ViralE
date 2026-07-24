@@ -3,24 +3,32 @@ import { generateDailyIdeas } from '@/lib/ideation';
 
 // Mock Supabase
 const mockSupabase = {
-  from: vi.fn(() => ({
-    select: vi.fn(() => ({
-      eq: vi.fn(() => ({
-        single: vi.fn().mockResolvedValue({
-          data: { 
-            digital_shadow_prompt: 'Test personality',
-            industry_context: 'Test industry'
-          },
-          error: null
-        }),
+  from: vi.fn((table: string) => {
+    if (table === 'ideation_feed') {
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn().mockResolvedValue({ count: 0, error: null }),
+        })),
+      };
+    }
+    return {
+      select: vi.fn(() => ({
+        eq: vi.fn(() => ({
+          single: vi.fn().mockResolvedValue({
+            data: { 
+              digital_shadow_prompt: 'Test personality',
+              industry_context: 'Test industry'
+            },
+            error: null
+          }),
+        })),
       })),
-    })),
-  })),
+    };
+  }),
 } as any;
 
-// Mock Gemini AI
-vi.mock('@/lib/ai/gemini', () => ({
-  model: {
+vi.mock('@/lib/ai/gemini', () => {
+  const mockGenerativeModel = {
     generateContent: vi.fn().mockResolvedValue({
       response: {
         text: () => JSON.stringify([
@@ -32,8 +40,13 @@ vi.mock('@/lib/ai/gemini', () => ({
         ])
       }
     })
-  }
-}));
+  };
+
+  return {
+    model: mockGenerativeModel,
+    getModel: vi.fn(() => mockGenerativeModel),
+  };
+});
 
 describe('generateDailyIdeas', () => {
   it('should generate 3 ideas and return them as an array', async () => {
@@ -45,12 +58,21 @@ describe('generateDailyIdeas', () => {
   });
 
   it('should throw error if profile is missing', async () => {
-    mockSupabase.from.mockReturnValueOnce({
-      select: vi.fn(() => ({
-        eq: vi.fn(() => ({
-          single: vi.fn().mockResolvedValue({ data: null, error: new Error('Not found') })
+    mockSupabase.from.mockImplementation((table: string) => {
+      if (table === 'ideation_feed') {
+        return {
+          select: vi.fn(() => ({
+            eq: vi.fn().mockResolvedValue({ count: 0, error: null }),
+          })),
+        };
+      }
+      return {
+        select: vi.fn(() => ({
+          eq: vi.fn(() => ({
+            single: vi.fn().mockResolvedValue({ data: null, error: { code: 'PGRST116', message: 'Not found' } })
+          }))
         }))
-      }))
+      };
     });
 
     await expect(generateDailyIdeas(mockSupabase, 'wrong-user', 'en'))

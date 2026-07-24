@@ -1,6 +1,6 @@
 'use client';
 import { useState, useEffect, useCallback, useMemo, useRef } from 'react';
-import { TrendingUp, Bookmark, Loader2, Sparkles, Dna, X, TrendingDown, Target, RefreshCw } from 'lucide-react';
+import { TrendingUp, Bookmark, Loader2, Sparkles, Dna, X, TrendingDown, Target, RefreshCw, AlertTriangle } from 'lucide-react';
 import { useTranslations, useLocale } from 'next-intl';
 import { useRouter } from '@/navigation';
 import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
@@ -54,6 +54,8 @@ export default function IdeasPage() {
     usedIdeas, 
     refreshIdeas, 
     loadingIdeas, 
+    ideasError,
+    clearIdeasError,
     updateProfile, 
     moveIdeaLocally, 
     markIdeaAsUsed, 
@@ -242,6 +244,37 @@ export default function IdeasPage() {
       </div>
 
       <AnimatePresence>
+        {ideasError && (
+          <motion.div 
+            initial={{ opacity: 0, height: 0 }} 
+            animate={{ opacity: 1, height: 'auto' }} 
+            exit={{ opacity: 0, height: 0 }} 
+            className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between text-red-200 shadow-xl relative overflow-hidden"
+          >
+            <div className="flex items-center gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+              <div>
+                <h4 className="text-xs font-bold uppercase tracking-wider text-red-300">
+                  {locale === 'ru' ? 'Ошибка генерации идей' : 'Idea Generation Error'}
+                </h4>
+                <p className="text-xs text-red-200/80 mt-0.5">{ideasError}</p>
+              </div>
+            </div>
+            <div className="flex items-center gap-2 shrink-0">
+              <button 
+                onClick={() => refreshIdeas('new', undefined, true)}
+                className="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-100 text-xs font-bold transition-all border border-red-500/30 flex items-center gap-1.5"
+              >
+                <RefreshCw size={12} />
+                {locale === 'ru' ? 'Повторить' : 'Retry'}
+              </button>
+              <button onClick={clearIdeasError} className="p-1 hover:bg-white/10 rounded-lg text-red-400">
+                <X size={16} />
+              </button>
+            </div>
+          </motion.div>
+        )}
+
         {activeTab === 'new' && showWelcome && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0, scale: 0.95 }} className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-4 text-white/70 shadow-lg relative group overflow-hidden">
              <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-cyan-500/5 pointer-events-none" />

@@ -96,8 +96,15 @@ export async function GET(req: Request) {
 
     return NextResponse.json(existingIdeas || []);
   } catch (error: any) {
-    console.error('Ideal API Error:', error);
-    return new NextResponse(error.message || 'Internal Error', { status: 500 });
+    console.error('Ideas API Error:', error);
+    try {
+      const { notifyAdminError } = await import('@/lib/telegram');
+      notifyAdminError({
+        source: 'Ideas Generation API',
+        error,
+      }).catch(() => {});
+    } catch (e) {}
+    return NextResponse.json({ error: error.message || 'Internal Error' }, { status: 500 });
   }
 }
 

@@ -172,7 +172,7 @@ export async function POST(req: Request) {
           const base64 = Buffer.from(arrayBuffer).toString('base64');
           
           const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
-          const modelsToTry = ['gemini-2.5-flash-lite', 'gemini-1.5-flash', 'gemini-2.5-flash', 'gemini-1.5-pro'];
+          const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-flash-lite', 'gemini-3.5-flash', 'gemini-2.5-pro', 'gemini-3.5-pro', 'gemini-2.0-flash'];
           let text = '';
           
           for (const modelName of modelsToTry) {
@@ -216,10 +216,10 @@ export async function POST(req: Request) {
     // 4. Stream with AI Engine (Gemini or Groq Override)
     let engine;
     if (audioFile && !transcribed) {
-      console.log('[Strategist Agent] Whisper & Gemini transcription failed. Using gemini-1.5-flash for audio chat stream.');
+      console.log('[Strategist Agent] Whisper & Gemini transcription failed. Using gemini-2.5-flash for audio chat stream.');
       const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
       engine = client.getGenerativeModel({
-        model: 'gemini-1.5-flash',
+        model: 'gemini-2.5-flash',
         systemInstruction: systemPrompt + "\n" + projectContext,
         generationConfig: {
           responseMimeType: "text/plain"
@@ -457,6 +457,13 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('Strategist API error:', error);
+    try {
+      const { notifyAdminError } = await import('@/lib/telegram');
+      notifyAdminError({
+        source: 'Strategist AI Agent API',
+        error,
+      }).catch(() => {});
+    } catch (e) {}
     return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), { status: 500 });
   }
 }

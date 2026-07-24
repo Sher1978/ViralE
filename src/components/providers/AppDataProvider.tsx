@@ -18,6 +18,8 @@ interface AppDataContextType {
   loadingIdeas: boolean;
   loadingArchived: boolean;
   loadingUsed: boolean;
+  ideasError: string | null;
+  clearIdeasError: () => void;
   refreshIdeas: (status: 'new' | 'archived' | 'used', category?: string, force?: boolean) => Promise<void>;
   updateProfile: (updates: Partial<Profile>) => void;
   moveIdeaLocally: (ideaId: string, fromStatus: string, toStatus: string) => void;
@@ -35,8 +37,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const [loadingIdeas, setLoadingIdeas] = useState(true);
   const [loadingArchived, setLoadingArchived] = useState(true);
   const [loadingUsed, setLoadingUsed] = useState(true);
+  const [ideasError, setIdeasError] = useState<string | null>(null);
   const [dnaComplete, setDnaComplete] = useState(false);
   const [hasStrategistAccess, setHasStrategistAccess] = useState(false);
+
+  const clearIdeasError = useCallback(() => {
+    setIdeasError(null);
+  }, []);
 
   const fetchProfile = useCallback(async () => {
     const prof = await profileService.getOrCreateProfile();
@@ -101,6 +108,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           setIdeas(prev => prev.filter(i => (i as any).category !== category));
           url += `&force=true`;
         }
+      } else if (force) {
+        url += `&force=true`;
       }
       
       const res = await fetch(url);
@@ -117,20 +126,108 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           } else {
             setIdeas(ideasList);
           }
+          setIdeasError(null);
         } else if (status === 'archived') {
           setArchivedIdeas(ideasList);
         } else if (status === 'used') {
           setUsedIdeas(ideasList);
         }
+      } else {
+        let errorMsg = locale === 'ru' ? 'Не удалось сгенерировать идеи' : 'Failed to generate ideas';
+        try {
+          const errData = await res.json();
+          if (errData && errData.error) {
+            errorMsg = errData.error;
+          }
+        } catch (e) {
+          try {
+            const text = await res.text();
+            if (text) errorMsg = text;
+          } catch (e2) {}
+        }
+        console.error(`[AppDataProvider] Error fetching ${status} ideas:`, errorMsg);
+        if (status === 'new') {
+          setIdeasError(errorMsg);
+          const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+          fetch('/api/report-error', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              source: 'Client Ideas Generation',
+              error: errorMsg,
+              url: win ? win.location.href : '',
+            }),
+          }).catch(() => {});
+        }
       }
-    } catch (err) {
+    } catch (err: any) {
       console.error(`Failed to fetch ${status} ideas:`, err);
+      if (status === 'new') {
+        const errorText = err?.message || (locale === 'ru' ? 'Ошибка сети при генерации идей' : 'Network error during idea generation');
+        setIdeasError(errorText);
+        const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+        fetch('/api/report-error', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            source: 'Client Ideas Exception',
+            error: errorText,
+            url: win ? win.location.href : '',
+          }),
+        }).catch(() => {});
+      }
     } finally {
       if (status === 'new') setLoadingIdeas(false);
       else if (status === 'archived') setLoadingArchived(false);
       else if (status === 'used') setLoadingUsed(false);
     }
   }, [locale]);
+
+  // Global Session Unhandled Error Listener -> Sends Admin Alert to Telegram
+  useEffect(() => {
+    const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+    if (!win) return;
+
+    const handleWindowError = (event: any) => {
+      const errorMsg = event.error?.message || event.message || 'Unhandled Window Error';
+      const stack = event.error?.stack;
+
+      fetch('/api/report-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'Client Unhandled Exception',
+          error: `${errorMsg} (${event.filename}:${event.lineno})`,
+          url: win.location.href,
+          extra: { stack }
+        }),
+      }).catch(() => {});
+    };
+
+    const handleUnhandledRejection = (event: any) => {
+      const reason = event.reason;
+      const errorMsg = typeof reason === 'string' ? reason : reason?.message || JSON.stringify(reason);
+
+      fetch('/api/report-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'Client Unhandled Promise Rejection',
+          error: errorMsg,
+          url: win.location.href,
+          extra: { stack: reason?.stack }
+        }),
+      }).catch(() => {});
+    };
+
+    win.addEventListener('error', handleWindowError);
+    win.addEventListener('unhandledrejection', handleUnhandledRejection);
+
+    return () => {
+      win.removeEventListener('error', handleWindowError);
+      win.removeEventListener('unhandledrejection', handleUnhandledRejection);
+    };
+  }, []);
 
   // 1. Initial Load - Profile & DNA
   useEffect(() => {
@@ -240,6 +337,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       loadingIdeas,
       loadingArchived,
       loadingUsed,
+      ideasError,
+      clearIdeasError,
       refreshIdeas: fetchIdeas,
       updateProfile: updateProfileState,
       moveIdeaLocally,
