@@ -23,6 +23,7 @@ import {
   Edit2,
   Loader2,
   Images,
+  HelpCircle,
   Lock,
   Smartphone,
   Crown
@@ -499,6 +500,14 @@ export default function ProfilePage() {
           sub: locale === 'ru' ? 'Полноэкранный режим без рамок браузера' : 'Immersive fullscreen application', 
           href: `/install`, 
           accent: '#FACC15' 
+        },
+        { 
+          icon: HelpCircle, 
+          label: locale === 'ru' ? 'Служба Поддержки' : 'Support & Admin', 
+          sub: locale === 'ru' ? 'Написать сообщение напрямую суперадминистратору' : 'Send message directly to SuperAdmin in Telegram', 
+          href: 'https://t.me/ViralE_bot?start=support', 
+          external: true,
+          accent: '#00FFCC' 
         },
       ],
     },
@@ -1097,7 +1106,9 @@ export default function ProfilePage() {
 
                 return (
                   <React.Fragment key={item.label}>
-                    {item.href ? (
+                    {(item as any).external ? (
+                      <a href={item.href} target="_blank" rel="noopener noreferrer">{content}</a>
+                    ) : item.href ? (
                       <Link href={item.href}>{content}</Link>
                     ) : (
                       <div onClick={(item as any).onClick}>{content}</div>

@@ -538,21 +538,38 @@ export async function POST(req: NextRequest) {
           })
         });
       }
+    } else if (text.startsWith('/support') || (text.startsWith('/start') && text.includes('support'))) {
+      const locale = user.language_code === 'ru' ? 'ru' : 'en';
+      const supportPrompt = locale === 'ru'
+        ? `💬 *Служба Поддержки Viral Studio*\n\nНапишите ваш вопрос, сообщение или отзыв прямо в этот чат!\nОно будет немедленно доставлено суперадминистратору.`
+        : `💬 *Viral Studio Support*\n\nSend your question or feedback directly in this chat!\nIt will be delivered immediately to the SuperAdmin.`;
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: supportPrompt,
+          parse_mode: 'Markdown'
+        })
+      });
     } else if (text.startsWith('/help')) {
       const locale = user.language_code === 'ru' ? 'ru' : 'en';
       const helpText = locale === 'ru'
         ? `🤖 *Помощник Viral Studio*\n\n` +
           `• /start — Войти в личный кабинет\n` +
+          `• /support — Написать в поддержку суперадмину\n` +
           `• /admin — Панель администратора\n` +
           `• /grant <email> <amount> — Начислить кредиты\n` +
           `• /balance — Проверить ресурсы (только для админов)\n` +
-          `• Отправляйте видео и идеи боту, чтобы начать работу.`
+          `• Отправляйте любые вопросы и сообщения боту — они передаются админу.`
         : `🤖 *Viral Studio Assistant*\n\n` +
           `• /start — Sign in to your dashboard\n` +
+          `• /support — Contact support / admin\n` +
           `• /admin — SuperAdmin Control Menu\n` +
           `• /grant <email> <amount> — Grant user credits\n` +
           `• /balance — Check API limits (Admin only)\n` +
-          `• Send videos or ideas to get started.`;
+          `• Send any text message to reach support directly.`;
 
       await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
         method: 'POST',
@@ -563,6 +580,57 @@ export async function POST(req: NextRequest) {
           parse_mode: 'Markdown'
         })
       });
+    } else if (!text.startsWith('/')) {
+      // Regular user text message -> Forward to SuperAdmin if sender is not the SuperAdmin
+      const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+      
+      if (String(user.id) !== String(ADMIN_ID)) {
+        const userNameStr = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Пользователь';
+        const userUsername = user.username ? `@${user.username}` : 'без_юзернейма';
+
+        const forwardHeader = `🆘 <b>ОБРАЩЕНИЕ В ПОДДЕРЖКУ</b>\n\n` +
+          `<b>👤 От:</b> ${userNameStr} (${userUsername})\n` +
+          `<b>🆔 Telegram ID:</b> <code>${user.id}</code>\n\n` +
+          `💬 <b>Сообщение:</b>\n` +
+          `${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}`;
+
+        // Forward to SuperAdmin
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: ADMIN_ID,
+            text: forwardHeader,
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: '✉️ Ответить в Telegram',
+                    url: `tg://user?id=${user.id}`
+                  }
+                ]
+              ]
+            }
+          })
+        });
+
+        // Reply confirmation to the user
+        const locale = user.language_code === 'ru' ? 'ru' : 'en';
+        const ackText = locale === 'ru'
+          ? `✅ *Ваше сообщение доставлено суперадминистратору!*\n\nМы свяжемся с вами в ближайшее время.`
+          : `✅ *Your message has been delivered to the SuperAdmin!*\n\nWe will get back to you shortly.`;
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: ackText,
+            parse_mode: 'Markdown'
+          })
+        });
+      }
     }
 
     return NextResponse.json({ ok: true });
