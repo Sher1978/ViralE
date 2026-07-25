@@ -207,7 +207,7 @@ export async function POST(req: NextRequest) {
             { text: '🛠 API Балансы', callback_data: 'admin_balances' }
           ],
           [
-            { text: '🌐 Открыть Веб-Панель', url: 'https://viral-engine.uno/ru/app/admin' }
+            { text: '🌐 Открыть Веб-Панель', url: 'https://www.virale.uno/ru/app/admin' }
           ]
         ];
 
@@ -440,7 +440,7 @@ export async function POST(req: NextRequest) {
           { text: '🛠 API Балансы', callback_data: 'admin_balances' }
         ],
         [
-          { text: '🌐 Открыть Веб-Панель', url: 'https://viral-engine.uno/ru/app/admin' }
+          { text: '🌐 Открыть Веб-Панель', url: 'https://www.virale.uno/ru/app/admin' }
         ]
       ];
 
