@@ -86,7 +86,7 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
           email: user.email || `anon_${user.id}@viral.engine`,
           full_name: user.user_metadata?.full_name || defaultName,
           avatar_url: user.user_metadata?.avatar_url || null,
-          credits_balance: 100,
+          credits_balance: 0,
           digital_shadow_prompt: null,
           industry_context: null,
           onboarding_completed: false,

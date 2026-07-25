@@ -61,7 +61,7 @@ export const profileService = {
             email: user.email || `anon_${user.id}@viral.engine`,
             full_name: googleName || defaultName,
             avatar_url: googleAvatar || null,
-            credits_balance: 100, // Starting credits
+            credits_balance: 0, // Starting credits set to 0
             tier: 'free',
             subscription_status: 'active',
             preferred_language: 'ru',

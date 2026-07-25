@@ -31,7 +31,7 @@ export async function checkBalance(supabase: SupabaseClient, userId: string) {
         // Create profile if missing
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
-          .insert({ id: userId, credits_balance: 50 })
+          .insert({ id: userId, credits_balance: 0 })
           .select('credits_balance')
           .single();
         

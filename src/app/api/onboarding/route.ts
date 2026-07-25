@@ -23,8 +23,13 @@ export async function POST(req: Request) {
 
     console.log('[Onboarding] Updating profile for user:', userId);
     
-    // 2. Upsert Profile with DNA and mark onboarding complete
-    // We upsert to safely handle cases where the profile row does not exist yet.
+    // Fetch existing credits if profile exists to avoid overwriting paid balance
+    const { data: existingProf } = await authorizedSupabase
+      .from('profiles')
+      .select('credits_balance')
+      .eq('id', userId)
+      .single();
+
     const { data, error } = await authorizedSupabase
       .from('profiles')
       .upsert({
@@ -37,7 +42,7 @@ export async function POST(req: Request) {
         raw_onboarding_data: answers || null,
         dna_answers: answers || null,
         onboarding_completed: true,
-        credits_balance: 100,
+        credits_balance: existingProf?.credits_balance ?? 0,
         tier: 'free',
         subscription_status: 'active'
       })
