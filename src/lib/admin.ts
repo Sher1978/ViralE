@@ -2,8 +2,7 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { addCredits } from '@/lib/credits';
 import { monitoringService } from '@/lib/services/monitoringService';
 
-const ADMIN_TELEGRAM_IDS = ['260669598'];
-const ADMIN_EMAILS = ['0451611@gmail.com', 'poljarnik16@gmail.com'];
+const ADMIN_EMAILS = ['0451611@gmail.com'];
 
 export function isSuperAdmin(user?: { id?: string; email?: string | null; telegram_id?: string | number | null } | null): boolean {
   if (!user) return false;

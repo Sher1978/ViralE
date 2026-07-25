@@ -430,7 +430,6 @@ export default function ProfilePage() {
     profile && (
       String((profile as any).telegram_id) === '260669598' ||
       profile.email?.toLowerCase() === '0451611@gmail.com' ||
-      profile.email?.toLowerCase() === 'poljarnik16@gmail.com' ||
       (profile as any).tier === 'superadmin'
     )
   );
