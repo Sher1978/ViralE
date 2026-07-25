@@ -366,7 +366,7 @@ export async function POST(req: NextRequest) {
         });
 
         const locale = user.language_code === 'ru' ? 'ru' : 'en';
-        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://viral-engine.uno';
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno';
         const authUrl = `${baseUrl}/${locale}/auth/telegram/callback?${params.toString()}`;
 
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
