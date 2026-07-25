@@ -78,7 +78,7 @@ export function SubscriptionWarning() {
   if (!profile) return null;
 
   return (
-    <div className="fixed top-4 left-1/2 -translate-x-1/2 w-[92%] max-w-[440px] z-[100] space-y-2 pointer-events-none">
+    <div className="fixed top-[max(3.25rem,calc(env(safe-area-inset-top,0px)+0.75rem))] sm:top-5 left-1/2 -translate-x-1/2 w-[92%] max-w-[440px] z-[100] space-y-2 pointer-events-none">
       <AnimatePresence>
         {showExpiryWarning && daysRemaining !== null && (
           <motion.div

@@ -177,6 +177,92 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ ok: true });
     }
 
+    // 1.1. Handle callback_query (Inline Buttons)
+    if (body.callback_query) {
+      const cb = body.callback_query;
+      const fromId = String(cb.from.id);
+      const data = cb.data;
+      const callbackQueryId = cb.id;
+
+      // Answer callback query right away
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/answerCallbackQuery`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ callback_query_id: callbackQueryId }),
+      });
+
+      const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+      if (fromId === String(ADMIN_ID) && data.startsWith('admin_')) {
+        const { getAdminOverviewStats, getAdminUsersList, getAdminPaymentsLog } = await import('@/lib/admin');
+        const { monitoringService } = await import('@/lib/services/monitoringService');
+
+        let text = '';
+        const inlineKeyboard = [
+          [
+            { text: '📊 Статистика', callback_data: 'admin_stats' },
+            { text: '👥 Юзеры', callback_data: 'admin_users' }
+          ],
+          [
+            { text: '💳 Оплаты', callback_data: 'admin_payments' },
+            { text: '🛠 API Балансы', callback_data: 'admin_balances' }
+          ],
+          [
+            { text: '🌐 Открыть Веб-Панель', url: 'https://viral-engine.uno/ru/app/admin' }
+          ]
+        ];
+
+        if (data === 'admin_menu') {
+          text = `👑 *Панель Суперадминистратора*\n\nВыберите нужный раздел или перейдите в полную веб-версию:`;
+        } else if (data === 'admin_stats') {
+          const stats = await getAdminOverviewStats();
+          text = `📊 *Статистика Платформы*\n\n` +
+            `• Всего пользователей: *${stats.totalUsers}*\n` +
+            `• Новых сегодня: *+${stats.newUsersToday}*\n` +
+            `• Новых за неделю: *+${stats.newUsersThisWeek}*\n` +
+            `• Активных подписок: *${stats.activeSubscriptions}*\n\n` +
+            `*Разбивка по тарифам:*\n` +
+            `└ Free: ${stats.tierCounts.free} | Creator: ${stats.tierCounts.creator} | Pro: ${stats.tierCounts.pro} | Scale: ${stats.tierCounts.scale}\n\n` +
+            `• Кредитов в обороте: *${stats.totalCreditsInCirculation.toLocaleString()} CR*\n` +
+            `• Рендеров выполнено: *${stats.totalRenders}* из *${stats.totalProjects}* проектов`;
+        } else if (data === 'admin_users') {
+          const res = await getAdminUsersList({ limit: 5 });
+          const userLines = res.users.map((u, i) =>
+            `${i + 1}. *${u.full_name || 'Творец'}* (\`${u.email}\`)\n` +
+            `   └ Тариф: *${(u.tier || 'free').toUpperCase()}* | Баланс: *${u.credits_balance} CR* | Рег: ${new Date(u.created_at).toLocaleDateString()}`
+          ).join('\n\n');
+          text = `👥 *Последние зарегистрированные юзеры* (всего ${res.total}):\n\n${userLines}`;
+        } else if (data === 'admin_payments') {
+          const payments = await getAdminPaymentsLog(5);
+          const payLines = payments.map((p: any, i: number) =>
+            `${i + 1}. *${p.profiles?.full_name || p.profiles?.email || 'Пользователь'}*\n` +
+            `   └ +*${p.amount} CR* (${p.transaction_type}) | ${new Date(p.created_at).toLocaleString()}`
+          ).join('\n\n');
+          text = `💳 *Последние пополнения и оплаты*:\n\n${payLines || 'Записей нет'}`;
+        } else if (data === 'admin_balances') {
+          const report = await monitoringService.getFullSystemReport();
+          const statusEmoji = (s: string) => s === 'critical' ? '🔴' : s === 'warning' ? '🟡' : '🟢';
+          const reportText = report.map(r =>
+            `${statusEmoji(r.status)} *${r.provider}*\n` +
+            `Remaining: ${typeof r.remaining === 'number' ? r.remaining.toLocaleString() : r.remaining} ${r.unit}`
+          ).join('\n\n');
+          text = `🛠 *Состояние API ресурсов:*\n\n${reportText}`;
+        }
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: cb.message.chat.id,
+            text,
+            parse_mode: 'Markdown',
+            reply_markup: { inline_keyboard: inlineKeyboard }
+          })
+        });
+      }
+
+      return NextResponse.json({ ok: true });
+    }
+
     const { message } = body;
 
     // 2. Handle successful_payment (Telegram Stars payment successful)
@@ -338,15 +424,133 @@ export async function POST(req: NextRequest) {
           parse_mode: 'Markdown'
         })
       });
+    } else if (text.startsWith('/admin')) {
+      const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+      if (String(user.id) !== String(ADMIN_ID)) {
+        return NextResponse.json({ ok: true });
+      }
+
+      const inlineKeyboard = [
+        [
+          { text: '📊 Статистика', callback_data: 'admin_stats' },
+          { text: '👥 Юзеры', callback_data: 'admin_users' }
+        ],
+        [
+          { text: '💳 Оплаты', callback_data: 'admin_payments' },
+          { text: '🛠 API Балансы', callback_data: 'admin_balances' }
+        ],
+        [
+          { text: '🌐 Открыть Веб-Панель', url: 'https://viral-engine.uno/ru/app/admin' }
+        ]
+      ];
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: `👑 *Панель Суперадминистратора*\n\nДобро пожаловать, Главный Администратор! Выберите действие ниже или перейдите в веб-версию:`,
+          parse_mode: 'Markdown',
+          reply_markup: { inline_keyboard: inlineKeyboard }
+        })
+      });
+    } else if (text.startsWith('/grant')) {
+      const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+      if (String(user.id) !== String(ADMIN_ID)) {
+        return NextResponse.json({ ok: true });
+      }
+
+      // Format: /grant <email_or_user_id> <amount>
+      const parts = text.split(' ').filter(Boolean);
+      if (parts.length < 3) {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: `⚠️ *Формат команды:* \`/grant <email_или_uuid> <количество>\`\n\nПример: \`/grant user@example.com 500\``,
+            parse_mode: 'Markdown'
+          })
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      const target = parts[1];
+      const amount = parseInt(parts[2], 10);
+
+      if (isNaN(amount) || amount === 0) {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: `⚠️ *Укажите корректное число кредитов.*`,
+            parse_mode: 'Markdown'
+          })
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      try {
+        const { supabaseAdmin } = await import('@/lib/supabase');
+        const { adminGrantCredits } = await import('@/lib/admin');
+
+        // Find user by email or ID
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('id, email, full_name, credits_balance')
+          .or(`email.eq.${target},id.eq.${target}`)
+          .maybeSingle();
+
+        if (!profile) {
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: `❌ *Пользователь "${target}" не найден в базе данных.*`,
+              parse_mode: 'Markdown'
+            })
+          });
+          return NextResponse.json({ ok: true });
+        }
+
+        await adminGrantCredits(profile.id, amount, 'tg_bot_admin_grant');
+        const newBal = (profile.credits_balance || 0) + amount;
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: `✅ *Кредиты успешно начислены!*\n\n• Пользователь: *${profile.full_name || 'Творец'}* (\`${profile.email}\`)\n• Сумма: *+${amount} CR*\n• Новый баланс: *${newBal} CR*`,
+            parse_mode: 'Markdown'
+          })
+        });
+      } catch (err: any) {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: `💥 *Ошибка исполнения:* ${err.message || err}`,
+            parse_mode: 'Markdown'
+          })
+        });
+      }
     } else if (text.startsWith('/help')) {
       const locale = user.language_code === 'ru' ? 'ru' : 'en';
       const helpText = locale === 'ru'
         ? `🤖 *Помощник Viral Studio*\n\n` +
           `• /start — Войти в личный кабинет\n` +
+          `• /admin — Панель администратора\n` +
+          `• /grant <email> <amount> — Начислить кредиты\n` +
           `• /balance — Проверить ресурсы (только для админов)\n` +
           `• Отправляйте видео и идеи боту, чтобы начать работу.`
         : `🤖 *Viral Studio Assistant*\n\n` +
           `• /start — Sign in to your dashboard\n` +
+          `• /admin — SuperAdmin Control Menu\n` +
+          `• /grant <email> <amount> — Grant user credits\n` +
           `• /balance — Check API limits (Admin only)\n` +
           `• Send videos or ideas to get started.`;
 

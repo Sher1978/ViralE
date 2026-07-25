@@ -149,6 +149,17 @@ export const profileService = {
   },
 
   async updateProfile(userId: string, updates: Partial<Profile>): Promise<boolean> {
+    try {
+      const res = await fetch('/api/profile/update', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify(updates)
+      });
+      if (res.ok) return true;
+    } catch (apiErr) {
+      console.warn('[ProfileService] API update failed, falling back to direct DB update:', apiErr);
+    }
+
     const { error } = await supabase
       .from('profiles')
       .update(updates)

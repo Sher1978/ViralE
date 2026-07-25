@@ -24,7 +24,8 @@ import {
   Loader2,
   Images,
   Lock,
-  Smartphone
+  Smartphone,
+  Crown
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
@@ -421,9 +422,34 @@ export default function ProfilePage() {
     }
   };
 
+  const [imgErr, setImgErr] = useState(false);
+
   const isHeyGenLocked = !profile || (profile.tier !== 'creator' && profile.tier !== 'pro');
 
+  const isSuperAdminUser = Boolean(
+    profile && (
+      String((profile as any).telegram_id) === '260669598' ||
+      profile.email?.toLowerCase() === '0451611@gmail.com' ||
+      profile.email?.toLowerCase() === 'poljarnik16@gmail.com' ||
+      (profile as any).tier === 'superadmin'
+    )
+  );
+
   const SETTINGS_SECTIONS = [
+    ...(isSuperAdminUser ? [
+      {
+        title: locale === 'ru' ? 'СУПЕРАДМИНИСТРИРОВАНИЕ' : 'SUPERADMINISTRATIVE CONTROL',
+        items: [
+          {
+            icon: Crown,
+            label: locale === 'ru' ? '👑 Панель Управления Суперадмина' : '👑 SuperAdmin Control Panel',
+            sub: locale === 'ru' ? 'Мониторинг юзеров, транзакций, кредитов и API' : 'User monitoring, transactions, credits & API status',
+            href: '/app/admin',
+            accent: '#A855F7'
+          }
+        ]
+      }
+    ] : []),
     {
       title: t('sectionProfile'),
       items: [
@@ -535,11 +561,12 @@ export default function ProfilePage() {
               >
                 {uploading ? (
                   <Loader2 className="animate-spin text-cyan-400" size={24} />
-                ) : profile?.avatar_url ? (
+                ) : (profile?.avatar_url && !imgErr) ? (
                   <img 
                     src={profile.avatar_url} 
                     alt={profile.full_name || 'Avatar'} 
                     className="w-full h-full object-cover" 
+                    onError={() => setImgErr(true)}
                   />
                 ) : (
                   <span className="text-3xl font-black text-cyan-400 select-none">
@@ -675,6 +702,38 @@ export default function ProfilePage() {
         )}
 
       </motion.div>
+
+      {/* --- SUPERADMIN CONTROL CENTER BUTTON (Admin only) --- */}
+      {isSuperAdminUser && (
+        <motion.div
+          variants={itemVariants as any}
+          className="mx-4 p-6 rounded-[2rem] bg-gradient-to-r from-purple-950/80 via-indigo-950/80 to-black border border-purple-500/30 backdrop-blur-xl relative overflow-hidden shadow-2xl"
+        >
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center text-purple-300 shadow-lg shadow-purple-500/20">
+                <Crown size={22} />
+              </div>
+              <div>
+                <div className="flex items-center gap-1.5">
+                  <span className="px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 text-[8px] font-black uppercase tracking-widest border border-purple-500/30">
+                    SUPERADMIN
+                  </span>
+                </div>
+                <h3 className="text-sm font-black text-white mt-0.5">Панель Управления</h3>
+                <p className="text-[10px] text-white/40 font-medium">Мониторинг юзеров, транзакций и ресурсов</p>
+              </div>
+            </div>
+
+            <Link
+              href="/app/admin"
+              className="px-4 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-purple-600/30 transition-all flex items-center gap-1"
+            >
+              Открыть →
+            </Link>
+          </div>
+        </motion.div>
+      )}
 
       {/* --- STORYBRAND WIDGET (Mobile-First / Count Lock) --- */}
       <motion.div

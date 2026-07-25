@@ -122,24 +122,17 @@
 
 @layer utilities {
   /* === SAFE AREA INSETS (iOS & Android) === */
-  @media (max-width: 768px) {
-    .safe-top {
-      padding-top: calc(env(safe-area-inset-top, 0px) + 24px) !important;
-    }
-  }
-  @media (min-width: 769px) {
-    .safe-top {
-      padding-top: env(safe-area-inset-top, 0px);
-    }
+  .safe-top {
+    padding-top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1.25rem)) !important;
   }
   .safe-bottom {
-    padding-bottom: env(safe-area-inset-bottom, 0px);
+    padding-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
   .safe-mt {
-    margin-top: env(safe-area-inset-top, 0px);
+    margin-top: max(3.5rem, calc(env(safe-area-inset-top, 0px) + 1.25rem)) !important;
   }
   .safe-mb {
-    margin-bottom: env(safe-area-inset-bottom, 0px);
+    margin-bottom: max(1rem, env(safe-area-inset-bottom, 0px));
   }
 
   /* === GLASS SURFACES (iOS 26 Evolved) === */
