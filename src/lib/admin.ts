@@ -47,6 +47,17 @@ export interface AdminStatsOverview {
   newUsersToday: number;
   newUsersThisWeek: number;
   activeSubscriptions: number;
+export interface UserGrowthPoint {
+  date: string;
+  dateIso: string;
+  count: number;
+}
+
+export interface AdminStatsOverview {
+  totalUsers: number;
+  newUsersToday: number;
+  newUsersThisWeek: number;
+  activeSubscriptions: number;
   tierCounts: {
     free: number;
     creator: number;
@@ -57,6 +68,7 @@ export interface AdminStatsOverview {
   totalProjects: number;
   totalRenders: number;
   systemBalances: any[];
+  userGrowthTimeline: UserGrowthPoint[];
 }
 
 export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
@@ -78,6 +90,39 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
     .from('profiles')
     .select('id', { count: 'exact', head: true })
     .gte('created_at', weekStart);
+
+  // 1.5 Fetch registration timeline for the past 14 days
+  const fourteenDaysAgo = new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000);
+  fourteenDaysAgo.setHours(0, 0, 0, 0);
+
+  const { data: recentProfiles } = await supabaseAdmin
+    .from('profiles')
+    .select('created_at')
+    .gte('created_at', fourteenDaysAgo.toISOString());
+
+  const monthsRu = ['Янв', 'Фев', 'Мар', 'Апр', 'Май', 'Июн', 'Июл', 'Авг', 'Сен', 'Окт', 'Ноя', 'Дек'];
+  const userGrowthTimeline: UserGrowthPoint[] = [];
+
+  for (let i = 13; i >= 0; i--) {
+    const d = new Date(now.getTime() - i * 24 * 60 * 60 * 1000);
+    const dayStr = `${d.getDate()} ${monthsRu[d.getMonth()]}`;
+    const dateIso = d.toISOString().split('T')[0];
+
+    const dayStart = new Date(d.getFullYear(), d.getMonth(), d.getDate()).getTime();
+    const dayEnd = dayStart + 24 * 60 * 60 * 1000;
+
+    const count = (recentProfiles || []).filter((p: any) => {
+      if (!p.created_at) return false;
+      const t = new Date(p.created_at).getTime();
+      return t >= dayStart && t < dayEnd;
+    }).length;
+
+    userGrowthTimeline.push({
+      date: dayStr,
+      dateIso,
+      count
+    });
+  }
 
   // 2. Fetch Tier breakdown & Active subs
   const { data: profiles } = await supabaseAdmin
@@ -136,6 +181,7 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
     totalProjects: totalProjects || 0,
     totalRenders: totalRenders || 0,
     systemBalances,
+    userGrowthTimeline,
   };
 }
 

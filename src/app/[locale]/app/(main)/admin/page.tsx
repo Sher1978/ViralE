@@ -40,6 +40,7 @@ interface StatsData {
   totalProjects: number;
   totalRenders: number;
   systemBalances: any[];
+  userGrowthTimeline?: Array<{ date: string; dateIso: string; count: number }>;
 }
 
 interface UserItem {
@@ -484,6 +485,114 @@ export default function AdminDashboardPage() {
               </div>
             </div>
           </div>
+
+          {/* User Signups Timeline & Growth Dynamics Chart */}
+          {stats.userGrowthTimeline && stats.userGrowthTimeline.length > 0 && (
+            <div className="p-6 rounded-[2.5rem] bg-gradient-to-b from-[#0e0f22] to-[#070812] border border-purple-500/20 shadow-2xl space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-emerald-500/10 border border-emerald-500/30 text-emerald-400 text-[8px] font-black uppercase tracking-widest">
+                      АНАЛИТИКА РОСТА
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black uppercase italic tracking-tight text-white mt-1 flex items-center gap-2">
+                    <TrendingUp size={18} className="text-purple-400" /> Динамика Регистраций Новых Пользователей
+                  </h3>
+                  <p className="text-[10px] text-white/40 font-medium">
+                    Количество новых юзеров за последние 14 дней по датам
+                  </p>
+                </div>
+
+                {/* Summary Badges */}
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 rounded-2xl bg-white/5 border border-white/10 text-right">
+                    <span className="text-[8px] font-black uppercase text-white/40 block">Всего за 14 дней</span>
+                    <span className="text-xs font-black text-purple-300">
+                      +{stats.userGrowthTimeline.reduce((acc, curr) => acc + curr.count, 0)} юзеров
+                    </span>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-right">
+                    <span className="text-[8px] font-black uppercase text-purple-300/60 block">Пик в день</span>
+                    <span className="text-xs font-black text-purple-400">
+                      {Math.max(...stats.userGrowthTimeline.map(pt => pt.count))} рег.
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Histogram Bar Chart */}
+              <div className="pt-4 pb-2">
+                {(() => {
+                  const maxCount = Math.max(1, ...stats.userGrowthTimeline.map(pt => pt.count));
+                  return (
+                    <div className="grid grid-cols-14 gap-1 sm:gap-2 items-end h-44 px-2 pt-6 pb-2 bg-black/40 rounded-2xl border border-white/5 relative">
+                      {/* Grid background lines */}
+                      <div className="absolute inset-x-0 top-1/4 border-b border-white/[0.04] pointer-events-none" />
+                      <div className="absolute inset-x-0 top-2/4 border-b border-white/[0.04] pointer-events-none" />
+                      <div className="absolute inset-x-0 top-3/4 border-b border-white/[0.04] pointer-events-none" />
+
+                      {stats.userGrowthTimeline.map((pt, idx) => {
+                        const heightPct = Math.max(8, Math.round((pt.count / maxCount) * 100));
+                        const isPeak = pt.count > 0 && pt.count === maxCount;
+
+                        return (
+                          <div key={idx} className="flex flex-col items-center h-full justify-end group relative z-10">
+                            {/* Value Label above bar */}
+                            <span className={`text-[9px] font-black mb-1 transition-all ${
+                              pt.count > 0 ? (isPeak ? 'text-amber-400 font-bold scale-110' : 'text-purple-300') : 'text-white/20 opacity-0 group-hover:opacity-100'
+                            }`}>
+                              {pt.count}
+                            </span>
+
+                            {/* Column Bar */}
+                            <div className="w-full max-w-[28px] bg-white/5 rounded-t-xl overflow-hidden relative group-hover:scale-105 transition-all">
+                              <motion.div
+                                initial={{ height: 0 }}
+                                animate={{ height: `${heightPct}%` }}
+                                transition={{ duration: 0.5, delay: idx * 0.03 }}
+                                className={`w-full rounded-t-xl transition-all ${
+                                  isPeak
+                                    ? 'bg-gradient-to-t from-amber-500 via-purple-500 to-cyan-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+                                    : pt.count > 0
+                                      ? 'bg-gradient-to-t from-purple-700 via-purple-500 to-cyan-400'
+                                      : 'bg-white/10'
+                                }`}
+                              />
+                            </div>
+
+                            {/* Date Label */}
+                            <span className="text-[7.5px] sm:text-[8.5px] font-bold text-white/40 mt-2 truncate w-full text-center group-hover:text-white transition-colors">
+                              {pt.date}
+                            </span>
+
+                            {/* Hover Tooltip */}
+                            <div className="absolute -top-12 opacity-0 group-hover:opacity-100 pointer-events-none transition-all duration-200 z-30 bg-black/95 border border-purple-500/40 px-2.5 py-1.5 rounded-xl shadow-2xl whitespace-nowrap text-center">
+                              <p className="text-[9px] font-black text-white">{pt.date}</p>
+                              <p className="text-[10px] font-bold text-cyan-400">+{pt.count} новых юзеров</p>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  );
+                })()}
+              </div>
+
+              {/* Legend & Details */}
+              <div className="flex items-center justify-between text-[9px] font-medium text-white/40 px-1 pt-1 border-t border-white/5">
+                <div className="flex items-center gap-4">
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-purple-500 inline-block" /> Обычный день
+                  </span>
+                  <span className="flex items-center gap-1">
+                    <span className="w-2 h-2 rounded-full bg-amber-400 inline-block" /> Пиковый день
+                  </span>
+                </div>
+                <span>Обновляется автоматически при каждой новой регистрации</span>
+              </div>
+            </div>
+          )}
 
           {/* Tier Distribution Breakdown */}
           <div className="p-6 rounded-[2rem] bg-[#0c0c16]/90 border border-white/5 space-y-4">
