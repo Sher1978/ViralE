@@ -1400,6 +1400,7 @@ function DeliveryPageContent() {
             scriptText={scriptData.meat || "Video Content Analysis"}
             projectId={projectId as string}
             locale={locale}
+            projectTitle={(manifest as any)?.ideaTitle || (manifest as any)?.projectTitle || (manifest as any)?.title}
             onUpdateManifest={(newManifest: any) => {
                setVersion(prev => (prev ? { ...prev, script_data: newManifest } : prev) as any);
                if (projectId) {

@@ -1111,6 +1111,7 @@ export default function StudioPage() {
                     scriptText={(manifest as any)?.scriptText || manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
                     projectId={projectId}
                     locale={locale}
+                    projectTitle={project?.title}
                     onUpdateManifest={(newManifest) => {
                       setManifest(newManifest);
                       projectService.updateLatestVersionManifest(projectId, newManifest);

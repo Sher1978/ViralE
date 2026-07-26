@@ -11,11 +11,12 @@ export const maxDuration = 60; // 60 seconds timeout limit for serverless functi
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
-    let { projectId, coreIdea, locale = 'en', mode = 'initial', instruction, currentScript, versionId: targetVersionId, engine = 'gemini', hook, role, selectedStyle, selectedPreview } = await req.json();
+    let { projectId, coreIdea, ideaTitle, locale = 'en', mode = 'initial', instruction, currentScript, versionId: targetVersionId, engine = 'gemini', hook, role, selectedStyle, selectedPreview } = await req.json();
 
     console.log(`[ScriptGen] Mode: ${mode}, Locale: ${locale}, Engine: ${engine}, ProjectID: ${projectId || 'NEW'}`);
 
     const userId = user.id;
+    const cleanTitle = (ideaTitle || coreIdea?.split('\n')[0] || '').replace(/^\d+[\.\)]\s*/, '').trim() || (locale === 'ru' ? 'Новое видео' : 'New Video');
 
     // 0. Auto-create project if missing in initial or previews mode
     if (!projectId && (mode === 'initial' || mode === 'previews')) {
@@ -23,7 +24,7 @@ export async function POST(req: Request) {
       const { data: newProject, error: createError } = await authorizedSupabase
         .from('projects')
         .insert({
-          title: coreIdea?.substring(0, 50) || (locale === 'ru' ? 'Новое видео' : 'New Video'),
+          title: cleanTitle,
           user_id: userId,
           status: 'ideation',
           created_at: new Date().toISOString()
@@ -272,15 +273,14 @@ export async function POST(req: Request) {
       .eq('id', projectId);
 
     // 7. Mark idea as used if applicable
-      const ideaTitle = coreIdea;
-      if (ideaTitle) {
-        await authorizedSupabase
-          .from('ideation_feed')
-          .update({ status: 'used' })
-          .eq('user_id', userId)
-          .eq('topic_title', ideaTitle)
-          .eq('status', 'new');
-      }
+    if (cleanTitle) {
+      await authorizedSupabase
+        .from('ideation_feed')
+        .update({ status: 'used' })
+        .eq('user_id', userId)
+        .eq('topic_title', cleanTitle)
+        .eq('status', 'new');
+    }
 
     console.log(`[ScriptGen] Success: ${projectId}, Version: ${version.id}`);
     return NextResponse.json({

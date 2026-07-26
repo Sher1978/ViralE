@@ -10,10 +10,22 @@ export async function POST(req: Request) {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
     const userId = user.id;
 
-    const { scriptText, projectId, locale = 'ru' } = await req.json();
+    const { scriptText, projectId, ideaTitle, locale = 'ru' } = await req.json();
 
     if (!scriptText) {
       return NextResponse.json({ error: 'Script text is required' }, { status: 400 });
+    }
+
+    let projectTitle = ideaTitle || '';
+    if (projectId && !projectTitle) {
+      try {
+        const { data: proj } = await authorizedSupabase
+          .from('projects')
+          .select('title')
+          .eq('id', projectId)
+          .single();
+        if (proj?.title) projectTitle = proj.title;
+      } catch (e) {}
     }
 
     // 1. Fetch Active User DNA (Digital DNA or StoryBrand depending on project count)
@@ -27,6 +39,7 @@ export async function POST(req: Request) {
       Твоя задача — трансформировать сырую транскрибацию аудио пользователя в пакет контента, строго соблюдая его "Цифровую ДНК".
 
       User_DNA_Profile: ${userDNA}
+      Project_Topic_Title: "${projectTitle}"
       Raw_Transcription: ${scriptText}
 
       ИНСТРУКЦИИ ПО ГЕНЕРАЦИИ (6 ЭТАПОВ):
@@ -48,10 +61,10 @@ export async function POST(req: Request) {
       Стиль: Глубокий анализ, структурированный заголовок, введение, 3-4 смысловых блока с подзаголовками, заключение и мощный финальный вывод. (3000+ симв).
       Начни с: "Статья для блога:"
 
-      5. Описание смыслового кадра для обложки видео (Shorts/Reels Banner)
-      ВНИМАНИЕ: Описание (image_prompt) должно быть на английском языке и содержать ТОЛЬКО смысловую часть (действие, объект, окружение, эмоция), БЕЗ каких-либо технических деталей стиля, упоминаний разрешения, фотореалистичности или качественных прилагательных вроде 'ultra-realistic'. Это чистая смысловая пуля.
+      5. Описание смыслового кадра и заголовок обложки видео (Shorts/Reels Banner)
+      ВНИМАНИЕ: Для поля text_on_banner ОБЯЗАТЕЛЬНО используй название выбранной темы идеи: "${projectTitle || 'Хук вашего видео'}" (или лаконичный кликабельный вариант из 3-6 слов для максимального CTR).
+      Описание (image_prompt) должно быть на английском языке и содержать ТОЛЬКО смысловую часть (действие, объект, окружение, эмоция), БЕЗ каких-либо технических деталей стиля, упоминаний разрешения, фотореалистичности или качественных прилагательных вроде 'ultra-realistic'. Это чистая смысловая пуля.
       Пример: 'A close-up of a determined young woman looking at a large glowing map in a dark room.'
-      Текст (Overlay): Выдели самую хлесткую фразу-смысл для наложения.
 
       Locale: ${locale}
 

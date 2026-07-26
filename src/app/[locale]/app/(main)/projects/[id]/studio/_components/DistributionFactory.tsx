@@ -16,6 +16,7 @@ interface DistributionFactoryProps {
   scriptText: string;
   projectId: string;
   locale: string;
+  projectTitle?: string;
   onUpdateManifest?: (manifest: any) => void;
 }
 
@@ -87,7 +88,7 @@ const safeDocument = typeof globalThis !== 'undefined' ? (globalThis as any).doc
 const safeImage = typeof globalThis !== 'undefined' ? (globalThis as any).Image : null;
 const safeWindow = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
 
-export default function DistributionFactory({ manifest, scriptText, projectId, locale, onUpdateManifest }: DistributionFactoryProps) {
+export default function DistributionFactory({ manifest, scriptText, projectId, locale, projectTitle, onUpdateManifest }: DistributionFactoryProps) {
   const [activePlatform, setActivePlatform] = useState<Platform>('sfv');
   const [selectedDetail, setSelectedDetail] = useState<Platform | null>(null);
   const [assets, setAssets] = useState<GeneratedAsset | null>(null);
@@ -2032,7 +2033,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 space-y-3">
                               <h4 className="text-[9px] font-bold uppercase tracking-widest text-purple-400">{locale === 'ru' ? 'ЗАГОЛОВОК НА ОБЛОЖКЕ' : 'MAIN HEADLINE'}</h4>
                               <div className="text-xl font-black italic uppercase tracking-tighter text-white leading-tight">
-                                "{assets?.video_banner?.text_on_banner || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}"
+                                "{assets?.video_banner?.text_on_banner || manifest?.ideaTitle || manifest?.projectTitle || projectTitle || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}"
                               </div>
                             </div>
 

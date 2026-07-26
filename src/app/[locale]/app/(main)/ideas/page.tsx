@@ -169,7 +169,7 @@ export default function IdeasPage() {
       const cleanRationale = rationale.replace(/^\(.*\)\s*/, '');
       finalContent = `${content}\n\n${cleanRationale}`;
     }
-    let url = `/app/projects/new/script?topic=${encodeURIComponent(finalContent)}`;
+    let url = `/app/projects/new/script?topic=${encodeURIComponent(finalContent)}&ideaTitle=${encodeURIComponent(content)}`;
     router.push(url);
   };
 
