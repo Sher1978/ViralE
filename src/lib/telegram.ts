@@ -98,16 +98,12 @@ export async function notifyAdminError(details: {
     ? details.error 
     : details.error?.message || String(details.error);
 
-  // Ignore routine business paywall/limit errors so Telegram doesn't get spammed
-  if (
+  const isLimitEvent = 
     errorMessage.includes('INSUFFICIENT_CREDITS') ||
     errorMessage.includes('TRIAL_EXPIRED') ||
     errorMessage.includes('LIMIT_EXCEEDED') ||
     errorMessage.includes('BALANCE_TOO_LOW') ||
-    errorMessage.includes('Free trial limit')
-  ) {
-    return false;
-  }
+    errorMessage.includes('Free trial limit');
 
   const stack = typeof details.error === 'object' && details.error?.stack 
     ? details.error.stack.split('\n').slice(0, 4).join('\n') 
@@ -128,15 +124,27 @@ export async function notifyAdminError(details: {
     }
   }
 
-  const text = `🚨 <b>VIRAL ENGINE USER ERROR ALERT</b> 🚨\n\n` +
-    `<b>📍 Source:</b> <code>${escapeHtml(details.source)}</code>\n` +
-    (details.url ? `<b>🌐 URL:</b> <code>${escapeHtml(details.url)}</code>\n` : '') +
-    (details.userId ? `<b>👤 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` : '') +
-    (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
-    `<b>💥 Error:</b> <code>${escapeHtml(errorMessage.slice(0, 500))}</code>\n` +
-    (stack ? `<b>📜 Stack:</b>\n<pre>${escapeHtml(stack.slice(0, 400))}</pre>\n` : '') +
-    (details.extra ? `<b>ℹ️ Context:</b>\n<pre>${escapeHtml(JSON.stringify(details.extra, null, 2).slice(0, 300))}</pre>\n` : '') +
-    `<b>⏰ Time:</b> ${new Date().toISOString()}`;
+  let text = '';
+
+  if (isLimitEvent) {
+    text = `💳 <b>ДОСТИГНУТ ЛИМИТ ТАРИФА / ПЭЙВОЛЛ</b> 💳\n\n` +
+      `<b>📍 Сценарий:</b> <code>${escapeHtml(details.source)}</code>\n` +
+      (details.url ? `<b>🌐 URL:</b> <code>${escapeHtml(details.url)}</code>\n` : '') +
+      (details.userId ? `<b>👤 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` : '') +
+      (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
+      `<b>🔒 Лимит/Событие:</b> <code>${escapeHtml(errorMessage.slice(0, 400))}</code>\n` +
+      `<b>⏰ Время:</b> ${new Date().toISOString()}`;
+  } else {
+    text = `🚨 <b>VIRAL ENGINE USER ERROR ALERT</b> 🚨\n\n` +
+      `<b>📍 Source:</b> <code>${escapeHtml(details.source)}</code>\n` +
+      (details.url ? `<b>🌐 URL:</b> <code>${escapeHtml(details.url)}</code>\n` : '') +
+      (details.userId ? `<b>👤 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` : '') +
+      (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
+      `<b>💥 Error:</b> <code>${escapeHtml(errorMessage.slice(0, 500))}</code>\n` +
+      (stack ? `<b>📜 Stack:</b>\n<pre>${escapeHtml(stack.slice(0, 400))}</pre>\n` : '') +
+      (details.extra ? `<b>ℹ️ Context:</b>\n<pre>${escapeHtml(JSON.stringify(details.extra, null, 2).slice(0, 300))}</pre>\n` : '') +
+      `<b>⏰ Time:</b> ${new Date().toISOString()}`;
+  }
 
   try {
     const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
