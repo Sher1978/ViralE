@@ -395,9 +395,25 @@ export async function synthesizeDigitalShadow(rawInputs: any, locale: string = '
     Output ONLY a clean, declarative paragraph that will serve as the system prompt for this user.
   `;
 
-  const result = await model.generateContent(prompt);
-  const response = await result.response;
-  return response.text().trim();
+  try {
+    const targetModel = getModel('fast', locale, 'text');
+    const result = await targetModel.generateContent(prompt);
+    const response = await result.response;
+    const text = response.text().trim();
+    if (text) return text;
+  } catch (err: any) {
+    console.warn('[Gemini synthesizeDigitalShadow] AI call failed, generating smart fallback DNA:', err?.message || err);
+  }
+
+  // Fallback: Construct declarative DNA from rawInputs if Gemini API is unavailable or rate limited
+  const inputsStr = typeof rawInputs === 'object' 
+    ? Object.values(rawInputs).filter(Boolean).join('. ')
+    : String(rawInputs);
+
+  if (locale === 'ru') {
+    return `Экспертный автор и контент-создатель. Ключевой фокус: ${inputsStr.slice(0, 250)}. Стиль: экспертный, лаконичный, ориентация на максимальную виральность и удержание аудитории.`;
+  }
+  return `Expert content creator and author. Key focus: ${inputsStr.slice(0, 250)}. Style: authoritative, concise, focused on maximum virality and audience retention.`;
 }
 
 /**
