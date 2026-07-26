@@ -201,3 +201,83 @@ export async function notifyNewUserRegistration(profile: {
   }
 }
 
+export async function notifyPaymentAttempt(details: {
+  userId: string;
+  userEmail?: string;
+  fullName?: string;
+  title: string;
+  credits: number;
+  starsCount: number;
+  type: string;
+}): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+  if (!token || !adminChatId) return false;
+
+  const text = `⚡ <b>ПОПЫТКА ОПЛАТЫ / КЛИК НА ОПЛАТУ</b> ⚡\n\n` +
+    `<b>👤 Пользователь:</b> <code>${escapeHtml(details.fullName || 'Творец')}</code>\n` +
+    (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
+    `<b>🆔 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` +
+    `<b>📦 Товар:</b> <code>${escapeHtml(details.title)}</code> (${details.credits} CR)\n` +
+    `<b>⭐ Сумма:</b> <code>${details.starsCount} XTR</code> (Telegram Stars)\n` +
+    `<b>🏷️ Тип:</b> <code>${escapeHtml(details.type.toUpperCase())}</code>\n` +
+    `<b>⏰ Время:</b> ${new Date().toISOString()}`;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: adminChatId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('[Telegram Payment Attempt Alert] Failed to send notification:', err);
+    return false;
+  }
+}
+
+export async function notifyPaymentSuccess(details: {
+  userId: string;
+  userEmail?: string;
+  fullName?: string;
+  credits: number;
+  totalBalance?: number;
+  planOrPackage?: string;
+}): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+  if (!token || !adminChatId) return false;
+
+  const text = `💰 <b>УСПЕШНАЯ ОПЛАТА И НАЧИСЛЕНИЕ!</b> 💰\n\n` +
+    `<b>👤 Пользователь:</b> <code>${escapeHtml(details.fullName || 'Творец')}</code>\n` +
+    (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
+    `<b>🆔 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` +
+    `<b>➕ Начислено:</b> <code>+${details.credits} CR</code>\n` +
+    (details.totalBalance !== undefined ? `<b>🔋 Новый баланс:</b> <code>${details.totalBalance} CR</code>\n` : '') +
+    (details.planOrPackage ? `<b>📦 Тариф/Пакет:</b> <code>${escapeHtml(details.planOrPackage)}</code>\n` : '') +
+    `<b>⏰ Время:</b> ${new Date().toISOString()}`;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: adminChatId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('[Telegram Payment Success Alert] Failed to send notification:', err);
+    return false;
+  }
+}
+
+

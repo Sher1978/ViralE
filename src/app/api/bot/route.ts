@@ -311,6 +311,28 @@ export async function POST(req: NextRequest) {
                 parse_mode: 'Markdown',
               }),
             });
+
+            // Send admin notification about successful payment
+            try {
+              const { data: updatedProf } = await supabaseAdmin
+                .from('profiles')
+                .select('email, full_name, credits_balance')
+                .eq('id', userId)
+                .single();
+
+              const { notifyPaymentSuccess } = await import('@/lib/telegram');
+              await notifyPaymentSuccess({
+                userId,
+                userEmail: updatedProf?.email,
+                fullName: updatedProf?.full_name,
+                credits,
+                totalBalance: updatedProf?.credits_balance,
+                planOrPackage: type === 'plan' ? `Тариф ${itemId.toUpperCase()}` : `Пакет ${credits} CR`
+              });
+            } catch (notifyErr) {
+              console.error('[Telegram Webhook] Failed to notify admin of successful payment:', notifyErr);
+            }
+
             console.log(`[Telegram Stars Webhook] Successfully credited User ${userId} with ${credits} credits.`);
           }
         }

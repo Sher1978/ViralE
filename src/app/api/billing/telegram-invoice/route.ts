@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth';
+import { notifyPaymentAttempt } from '@/lib/telegram';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
@@ -87,6 +88,16 @@ export async function POST(req: Request) {
       console.error('[Telegram Stars] Invoice link creation failed:', data);
       return NextResponse.json({ error: data.description || 'Failed to generate invoice link' }, { status: 400 });
     }
+
+    notifyPaymentAttempt({
+      userId,
+      userEmail: user.email,
+      fullName: user.user_metadata?.full_name,
+      title,
+      credits,
+      starsCount,
+      type
+    }).catch(() => {});
 
     return NextResponse.json({
       success: true,
