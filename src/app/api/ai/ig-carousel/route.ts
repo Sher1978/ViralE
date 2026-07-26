@@ -35,6 +35,7 @@ export async function POST(req: Request) {
     const { 
       scriptText, 
       projectId, 
+      ideaTitle = '',
       locale = 'ru', 
       ctaWord = '', 
       toneMode = 'mentor', 
@@ -79,7 +80,7 @@ export async function POST(req: Request) {
       || STYLE_PREFIXES.startup_valley;
 
     // 2. Fetch Project Metadata Context
-    let projectTitle = '';
+    let projectTitle = ideaTitle || '';
     let projectTopic = '';
     let projectNiche = '';
     
@@ -91,8 +92,7 @@ export async function POST(req: Request) {
         .single();
       
       if (project) {
-        projectTitle = project.title || '';
-        // Map from input_source or metadata dynamically
+        if (!projectTitle) projectTitle = project.title || '';
         const meta = (project.metadata || {}) as Record<string, any>;
         projectTopic = project.input_source || meta.topic || meta.concept || '';
         projectNiche = meta.niche || meta.industry || '';
@@ -140,7 +140,6 @@ export async function POST(req: Request) {
       console.log('[ig-carousel API] Distilling fresh persona features...');
       distilledDna = await extractSignaturePhrases(userDNA, profile?.knowledge_base_json || {}, locale);
       
-      // Update DB DNA Cache if supported
       if (supportsDnaCache) {
         try {
           await authorizedSupabase
@@ -169,7 +168,7 @@ export async function POST(req: Request) {
 
     const systemPrompt = `
       Роль: Ты — ведущий ИИ-дизайнер Instagram-галерей в приложении ViralE.
-      Твоя задача — превратить субтитры видео в структурированную 6-слайдовую карусель (AR 4:5), отражающую "Цифровую ДНК" автора.
+      Твоя задача — превратить субтитры видео и тему в структурированную 6-слайдовую карусель (AR 4:5).
 
       TONE_STYLE_MODE: ${resolvedTone} (Генерируй тексты слайдов строго в соответствии с этой моделью вещания)
       - expert: упор на данные, тезисы, профессиональный авторитет, лаконичные формулировки.
@@ -178,93 +177,78 @@ export async function POST(req: Request) {
 
       USER_DNA_CONTEXT:
       - Niche/Style: ${userDNA}
-      - Характерные речевые фразы для интеграции: ${JSON.stringify(distilledDna.signature_phrases)}
+      - Характерные речевые фразы: ${JSON.stringify(distilledDna.signature_phrases)}
       - Описания болей аудитории: ${JSON.stringify(distilledDna.audience_pain_words)}
-      - Запрещенные клише: ${JSON.stringify(distilledDna.forbidden_words)}
 
       PROJECT_CONTEXT:
-      - Title: "${projectTitle}"
+      - Title / Matrix Idea: "${projectTitle}"
       - Topic: "${projectTopic}"
       - Niche: "${projectNiche}"
 
-      ${userBrief ? `ОСОБЫЕ ПОЖЕЛАНИЯ КЛИЕНТА (Учти их, адаптировав под DNA и сохранив 6-слайдовую структуру):\n"${userBrief}"\n` : ''}
+      ${userBrief ? `ОСОБЫЕ ПОЖЕЛАНИЯ КЛИЕНТА:\n"${userBrief}"\n` : ''}
 
-      RAW_SUBTITLES_SEGMENTED:
-      - Введение (Хук видео): "${processedSubs.intro}"
-      - Основная часть (Ключевая польза): "${processedSubs.body}"
-      - Заключение (Выводы): "${processedSubs.conclusion}"
-      - Главные предложения: ${JSON.stringify(processedSubs.key_sentences)}
+      RAW_SUBTITLES_TRANSCRIPTION (Субтитры из монтажки):
+      - Введение: "${processedSubs.intro}"
+      - Основная часть: "${processedSubs.body}"
+      - Заключение: "${processedSubs.conclusion}"
+      - Главные фразы: ${JSON.stringify(processedSubs.key_sentences)}
 
       ИНСТРУКЦИИ ДЛЯ СЛАЙДОВ (Ровно 6 слайдов, AR 4:5):
-      1. Выбери ОДНУ центральную смысловую метафору для визуализации ("central_metaphor", например: "развилка дорог", "строительство здания", "шахматный эндшпиль"). Она должна объединить всю серию фонов.
-      2. Сформируй промпты для фонов (image_prompt). Каждый промпт должен содержать элемент выбранной метафоры. Промпты должны быть без текста!
-         ВНИМАНИЕ: Каждое описание (image_prompt) должно содержать ТОЛЬКО смысловую часть (действие, объект, окружение, эмоцию) на английском языке, БЕЗ каких-либо технических деталей стиля, упоминаний разрешения, фотореалистичности или качественных прилагательных вроде 'ultra-realistic'. Это чистая смысловая пуля.
-         Пример: 'A hand holding a tiny lit lightbulb in a completely dark room'
-      3. Напиши лаконичный текст оверлея на слайдах ("text_on_slide") строго на языке: ${activeLanguage} (макс. 10-15 слов на слайд для моментального считывания). Интегрируй signature_phrases там, где уместно.
+      1. СЛАЙД 1 (ОБЛОЖКА):
+         - text_on_slide: ВАЖНО! Используй заголовок темы из матрицы идей: "${projectTitle || 'Хук вашей видео-идеи'}" (или его лаконичный выигрышный вариант).
+         - image_prompt: Сформируй визуальный промпт для обложки на английском языке (ТОЛЬКО ДЛЯ СЛАЙДА 1). Описание должно быть без текста, чистая смысловая пуля.
+      2. СЛАЙДЫ 2-6 (ОСНОВНЫЕ СЛАЙДЫ НА БАЗЕ СУБТИТРОВ):
+         - text_on_slide: Напиши четкие, глубокие тезисы/выводы строго на основе субтитров (15-25 слов на слайд).
+         - image_prompt: ОСТАВЬ ПУСТОЙ СТРОКОЙ (""). Основные слайды отрисовываются на однотонном или градиентном фоне без фоновых картинок.
 
-      ИНСТРУКЦИИ ДЛЯ КАПШЕНА (post_description):
-      1. Описание поста ("post_description") должно быть ярким, эмоциональным, вовлекающим и динамичным.
-      2. Обязательно используй множество релевантных эмодзи по всему тексту, особенно в начале абзацев и списков, чтобы привлечь внимание.
-      3. Сформируй четкие, структурированные списки с буллет-поинтами (используй эмодзи в качестве маркеров списка, например: 🔥, 📌, 👉, ✅).
-      4. Раздели текст на легко читаемые короткие абзацы (не пиши сплошной простыней).
-      5. Включи мощный призыв написать кодовое слово "${ctaWord || 'тематическое слово'}" в комментариях, чтобы получить материалы!
-
-      СЛАЙД-АРХИТЕКТУРА:
-      - Slide 1: Роль "hook". Сверх-хлесткий заголовок, останавливающий скроллинг.
-      - Slide 2: Роль "problem". Эмпатия к боли целевой аудитории.
-      - Slide 3: Роль "pivot". Разворот интриги / разрушение популярного мифа.
-      - Slide 4: Роль "takeaway1". Практический первый шаг или секрет.
-      - Slide 5: Роль "takeaway2". Второй шаг или ключевой инсайт.
-      - Slide 6: Роль "cta". Мощный призыв написать кодовое слово в комментарии: "${ctaWord || 'тематическое слово'}" для получения лид-магнита.
-
-      ВЫДАЙ СТРОГИЙ JSON (БЕЗ РАЗМЕТКИ MARKDOWN, ТОЛЬКО ЧИСТЫЙ JSON):
+      ВЫДАЙ СТРОГИЙ JSON (БЕЗ MARKDOWN, ТОЛЬКО JSON):
       {
-        "cta_word": "кодовое слово для автоматизации",
-        "central_metaphor": "название центральной метафоры",
+        "cta_word": "кодовое слово",
+        "central_metaphor": "метафора обложки",
         "visual_style_prefix": "${stylePrefix}",
-        "post_description": "Яркое, эмоциональное описание поста в Instagram с кучей эмодзи, разбитое на абзацы, с ключевыми мыслями в виде буллет-поинтов (маркеры-эмодзи) и четким CTA написать кодовое слово...",
+        "post_description": "Яркое описание поста с эмодзи и буллет-поинтами...",
         "slides": [
           {
             "slide_number": 1,
             "role": "hook",
-            "text_on_slide": "Заголовок-хук для Слайда 1",
-            "image_prompt": "Background image prompt representing the start of the metaphor...",
-            "metaphor_tag": "визуальный элемент метафоры"
+            "text_on_slide": "Заголовок из темы матрицы для Слайда 1",
+            "image_prompt": "Cover visual prompt for Slide 1...",
+            "metaphor_tag": "cover_concept"
           },
           {
             "slide_number": 2,
             "role": "problem",
-            "text_on_slide": "Текст Слайда 2 про боли",
-            "image_prompt": "Background image prompt representing frustration / struggle...",
-            "metaphor_tag": "визуальный элемент метафоры"
+            "text_on_slide": "Текст Слайда 2 из субтитров",
+            "image_prompt": "",
+            "metaphor_tag": ""
           },
           {
             "slide_number": 3,
             "role": "pivot",
-            "text_on_slide": "Текст Слайда 3 с разворотом",
-            "image_prompt": "Background image prompt representing contrast / twist...",
-            "metaphor_tag": "визуальный элемент метафоры"
+            "text_on_slide": "Текст Слайда 3 из субтитров",
+            "image_prompt": "",
+            "metaphor_tag": ""
           },
           {
             "slide_number": 4,
             "role": "takeaway1",
-            "text_on_slide": "Текст Слайда 4 с решением 1",
-            "image_prompt": "Background image prompt representing step 1...",
-            "metaphor_tag": "визуальный элемент метафоры"
+            "text_on_slide": "Текст Слайда 4 из субтитров",
+            "image_prompt": "",
+            "metaphor_tag": ""
           },
           {
             "slide_number": 5,
             "role": "takeaway2",
-            "text_on_slide": "Текст Слайда 5 с решением 2",
-            "image_prompt": "Background image prompt representing step 2...",
-            "metaphor_tag": "визуальный элемент метафоры"
+            "text_on_slide": "Текст Слайда 5 из субтитров",
+            "image_prompt": "",
+            "metaphor_tag": ""
           },
           {
             "slide_number": 6,
             "role": "cta",
-            "text_on_slide": "Текст Слайда 6 с кодовым словом и призывом",
-            "image_prompt": "Background image prompt representing final visual destination...",
-            "metaphor_tag": "визуальный элемент метафоры"
+            "text_on_slide": "Текст Слайда 6 с призывом написать кодовое слово",
+            "image_prompt": "",
+            "metaphor_tag": ""
           }
         ]
       }

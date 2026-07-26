@@ -118,6 +118,11 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   // Instagram Gallery Studio specific states
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
   const [activeTheme, setActiveTheme] = useState<'minimalist' | 'cyber' | 'business' | 'glow'>('minimalist');
+  const [carouselBgMode, setCarouselBgMode] = useState<'gradient' | 'solid'>('gradient');
+  const [carouselBg1, setCarouselBg1] = useState<string>('#0d071b');
+  const [carouselBg2, setCarouselBg2] = useState<string>('#230b42');
+  const [carouselTextColor, setCarouselTextColor] = useState<string>('#ffffff');
+  const [carouselAccentColor, setCarouselAccentColor] = useState<string>('#c084fc');
   const [customSlideTexts, setCustomSlideTexts] = useState<Record<number, string>>({});
   const [customImagePrompts, setCustomImagePrompts] = useState<Record<number, string>>({});
   const [customPostDescription, setCustomPostDescription] = useState<string>('');
@@ -293,6 +298,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           body: JSON.stringify({ 
             scriptText, 
             projectId, 
+            ideaTitle: projectTitle || (manifest as any)?.ideaTitle,
             locale, 
             ctaWord, 
             toneMode, 
@@ -323,29 +329,21 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             distributionAssets: currentAssets
           });
         }
-        console.log('[Unified Gen] Step 1 Complete: Text structure created.');
       }
       
-      // Step 2: Draw all 6 slide images in parallel
-      console.log('[Unified Gen] Step 2: Drawing 6 slides in parallel...');
+      // Step 2: Generate Cover Image background ONLY for Slide 1
       if (!currentAssets || !currentAssets.ig_carousel) {
         throw new Error(locale === 'ru' ? 'Текст карусели не был сгенерирован' : 'Carousel texts were not generated');
       }
       const rawCarousel = currentAssets.ig_carousel as any;
-      const resolvedSlides = rawCarousel.slides || rawCarousel.prompts?.map((p: string, i: number) => ({
-        slide_number: i + 1,
-        image_prompt: p,
-        text_on_slide: `Слайд ${i + 1}`
-      })) || [];
+      const resolvedSlides = rawCarousel.slides || [];
+      const coverSlide = resolvedSlides.find((s: any) => s.slide_number === 1);
 
-      await Promise.all(
-        resolvedSlides.map((slide: any) => {
-          const key = `carousel-${slide.slide_number - 1}`;
-          const prompt = customImagePrompts[slide.slide_number] || slide.image_prompt;
-          return generateSingleImage(prompt, '4:5', key);
-        })
-      );
-      console.log('[Unified Gen] Step 2 Complete: All images drawn.');
+      if (coverSlide && coverSlide.image_prompt) {
+        const key = `carousel-0`;
+        const prompt = customImagePrompts[1] || coverSlide.image_prompt;
+        await generateSingleImage(prompt, '4:5', key);
+      }
       
     } catch (err: any) {
       console.error('[Unified Gen Error]:', err);
@@ -374,168 +372,103 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       }
 
       const drawContent = (img: any) => {
-        // 1. Draw Background (Image or Gradient)
-        if (img) {
-          // Object-fit cover math
-          const imgRatio = img.width / img.height;
-          const canvasRatio = 1080 / 1350;
-          let sx = 0, sy = 0, sw = img.width, sh = img.height;
-          if (imgRatio > canvasRatio) {
-            sw = img.height * canvasRatio;
-            sx = (img.width - sw) / 2;
+        const slideData = assets?.ig_carousel?.slides?.find((s: any) => s.slide_number === slideNum);
+        const textToDraw = customSlideTexts[slideNum] || slideData?.text_on_slide || `Слайд ${slideNum}`;
+
+        if (slideNum === 1) {
+          // --- SLIDE 1: COVER SLIDE ---
+          if (img) {
+            const imgRatio = img.width / img.height;
+            const canvasRatio = 1080 / 1350;
+            let sx = 0, sy = 0, sw = img.width, sh = img.height;
+            if (imgRatio > canvasRatio) {
+              sw = img.height * canvasRatio;
+              sx = (img.width - sw) / 2;
+            } else {
+              sh = img.width / canvasRatio;
+              sy = (img.height - sh) / 2;
+            }
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1080, 1350);
+
+            const coverGrad = ctx.createLinearGradient(0, 0, 0, 1350);
+            coverGrad.addColorStop(0, 'rgba(0,0,0,0.3)');
+            coverGrad.addColorStop(0.5, 'rgba(0,0,0,0.6)');
+            coverGrad.addColorStop(1, 'rgba(0,0,0,0.95)');
+            ctx.fillStyle = coverGrad;
+            ctx.fillRect(0, 0, 1080, 1350);
           } else {
-            sh = img.width / canvasRatio;
-            sy = (img.height - sh) / 2;
+            const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
+            bgGrad.addColorStop(0, carouselBg1);
+            bgGrad.addColorStop(1, carouselBgMode === 'gradient' ? carouselBg2 : carouselBg1);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 1080, 1350);
           }
-          ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1080, 1350);
-        } else {
-          // Default Dark Gradient Background
-          const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
-          bgGrad.addColorStop(0, '#0a0a16');
-          bgGrad.addColorStop(0.5, '#05050b');
-          bgGrad.addColorStop(1, '#0e0e24');
-          ctx.fillStyle = bgGrad;
-          ctx.fillRect(0, 0, 1080, 1350);
-        }
 
-        // Reset shadow for overlays
-        ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
+          const coverHeadline = textToDraw || projectTitle || (manifest as any)?.ideaTitle || 'Хук вашего видео';
 
-        // 2. Draw Style Overlay & Card Details
-        const textToDraw = customSlideTexts[slideNum] || `Слайд ${slideNum}`;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.9)';
+          ctx.shadowBlur = 18;
+          ctx.shadowOffsetX = 2;
+          ctx.shadowOffsetY = 4;
 
-        if (activeTheme === 'minimalist') {
-          // Minimalist Dark Overlay
-          ctx.fillStyle = 'rgba(5, 5, 10, 0.6)';
-          ctx.fillRect(0, 0, 1080, 1350);
-
-          // Neon Border
-          ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)';
-          ctx.lineWidth = 6;
-          ctx.strokeRect(50, 50, 980, 1250);
-
-          // Render Text (Centered)
-          ctx.fillStyle = '#ffffff';
+          ctx.fillStyle = carouselTextColor || '#ffffff';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.font = 'bold 50px sans-serif';
+          ctx.font = '900 56px sans-serif';
 
-          // Word wrap
-          const maxTextWidth = 800;
-          const lines = wrapCanvasText(ctx, textToDraw, maxTextWidth);
-          const startY = 1350 / 2 - ((lines.length - 1) * 70) / 2;
+          const maxTextWidth = 920;
+          const lines = wrapCanvasText(ctx, coverHeadline.toUpperCase(), maxTextWidth);
+          const startY = 1350 / 2 - ((lines.length - 1) * 76) / 2;
           lines.forEach((line, idx) => {
-            ctx.fillText(line, 1080 / 2, startY + (idx * 70));
+            ctx.fillText(line, 1080 / 2, startY + (idx * 76));
           });
-        } 
-        else if (activeTheme === 'cyber') {
-          // Cyber style
-          ctx.fillStyle = 'rgba(3, 3, 5, 0.4)';
+        } else {
+          // --- SLIDES 2-6: BODY SLIDES (SOLID / 2-COLOR GRADIENT, NO BG IMAGE, NO CARDS) ---
+          if (carouselBgMode === 'gradient') {
+            const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
+            bgGrad.addColorStop(0, carouselBg1);
+            bgGrad.addColorStop(1, carouselBg2);
+            ctx.fillStyle = bgGrad;
+          } else {
+            ctx.fillStyle = carouselBg1;
+          }
           ctx.fillRect(0, 0, 1080, 1350);
 
-          // Dark transparent card in center
-          ctx.fillStyle = 'rgba(9, 9, 20, 0.9)';
-          ctx.strokeStyle = '#e1306c';
-          ctx.lineWidth = 4;
-          
-          drawRoundRect(ctx, 100, 300, 880, 750, 40);
-          ctx.fill();
-          ctx.stroke();
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
 
-          // Cyber accent neon line
-          ctx.fillStyle = '#00f2fe';
-          ctx.fillRect(160, 380, 80, 8);
-
-          // Text inside card
-          ctx.fillStyle = '#ffffff';
+          // Header Tag / Badge
+          ctx.fillStyle = carouselAccentColor || '#c084fc';
+          ctx.font = '900 24px sans-serif';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
-          ctx.font = 'bold 46px sans-serif';
+          ctx.fillText(`KEY TAKEAWAY 0${slideNum - 1}`, 100, 160);
 
-          const maxTextWidth = 760;
-          const lines = wrapCanvasText(ctx, textToDraw, maxTextWidth);
-          lines.forEach((line, idx) => {
-            ctx.fillText(line, 160, 440 + (idx * 65));
-          });
-        } 
-        else if (activeTheme === 'business') {
-          // Pristine bottom white card style
-          ctx.fillStyle = 'rgba(0, 0, 0, 0.1)';
-          ctx.fillRect(0, 0, 1080, 1350);
-
-          // White rounded card at bottom half
-          ctx.fillStyle = '#ffffff';
-          ctx.strokeStyle = '#eef2f6';
-          ctx.lineWidth = 1;
-          drawRoundRect(ctx, 80, 680, 920, 580, 32);
-          ctx.fill();
-          ctx.stroke();
-
-          // Text inside card
-          ctx.fillStyle = '#0f172a';
+          // Subtitle-derived text rendered cleanly directly on background
+          ctx.fillStyle = carouselTextColor || '#ffffff';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
-          ctx.font = 'bold 42px Georgia, serif';
+          ctx.font = 'bold 44px sans-serif';
 
-          // Small tag inside card
-          ctx.fillStyle = '#4f46e5';
-          ctx.font = 'bold 20px sans-serif';
-          ctx.fillText(`KEY TAKEAWAY #${slideNum}`, 140, 740);
-
-          ctx.fillStyle = '#1e293b';
-          ctx.font = 'bold 42px sans-serif';
-          const maxTextWidth = 800;
+          const maxTextWidth = 880;
           const lines = wrapCanvasText(ctx, textToDraw, maxTextWidth);
+          const startY = 260;
           lines.forEach((line, idx) => {
-            ctx.fillText(line, 140, 800 + (idx * 62));
-          });
-        } 
-        else if (activeTheme === 'glow') {
-          // Bottom gradient dark shadow
-          const gradient = ctx.createLinearGradient(0, 1350, 0, 400);
-          gradient.addColorStop(0, 'rgba(0,0,0,0.95)');
-          gradient.addColorStop(0.5, 'rgba(0,0,0,0.6)');
-          gradient.addColorStop(1, 'rgba(0,0,0,0)');
-          ctx.fillStyle = gradient;
-          ctx.fillRect(0, 0, 1080, 1350);
-
-          // Text lower aligned with drop shadow
-          ctx.fillStyle = '#ffffff';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'bottom';
-          
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
-          ctx.shadowBlur = 12;
-          ctx.shadowOffsetX = 3;
-          ctx.shadowOffsetY = 3;
-          ctx.font = '900 52px sans-serif';
-
-          const maxTextWidth = 900;
-          const lines = wrapCanvasText(ctx, textToDraw, maxTextWidth);
-          const startY = 1220 - ((lines.length - 1) * 75);
-          lines.forEach((line, idx) => {
-            ctx.fillText(line, 1080 / 2, startY + (idx * 75));
+            ctx.fillText(line, 100, startY + (idx * 66));
           });
         }
 
-        // 3. Draw slide numbers / branding (Clean)
+        // Slide numbering & branding footer
         ctx.shadowColor = 'transparent';
-        ctx.shadowBlur = 0;
-        ctx.shadowOffsetX = 0;
-        ctx.shadowOffsetY = 0;
-
-        ctx.fillStyle = activeTheme === 'business' ? '#94a3b8' : 'rgba(255,255,255,0.4)';
-        ctx.font = 'bold 24px sans-serif';
+        const isLight = carouselTextColor === '#000000' || carouselTextColor === '#0f172a';
+        ctx.fillStyle = isLight ? 'rgba(0,0,0,0.5)' : 'rgba(255,255,255,0.4)';
+        ctx.font = 'bold 22px sans-serif';
         ctx.textAlign = 'right';
-        ctx.fillText(`0${slideNum} / 06`, 980, 120);
+        ctx.fillText(`0${slideNum} / 06`, 980, 1260);
 
         ctx.textAlign = 'left';
-        ctx.fillText('@viral_engine', 100, 120);
+        ctx.fillText('@viral_engine', 100, 1260);
 
-        // Resolve data URL
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
           resolve(dataUrl);
@@ -544,12 +477,12 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         }
       };
 
-      // Load background image safely
-      const bgUrl = imageResults[`carousel-${slideNum - 1}`];
+      // Load image ONLY for Slide 1 (Cover)
+      const bgUrl = slideNum === 1 ? imageResults[`carousel-0`] : null;
       if (bgUrl) {
         const img = safeImage ? new safeImage() : null;
         if (img) {
-          img.crossOrigin = 'anonymous'; // critical for CORS issues on external URLs
+          img.crossOrigin = 'anonymous';
           img.onload = () => drawContent(img);
           img.onerror = () => drawContent(null);
           img.src = bgUrl;
