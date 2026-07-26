@@ -484,6 +484,25 @@ export function PremiumLimitModal({
                 </p>
               </div>
 
+              {/* Strategy Advice / Payment Info Block */}
+              {(type === 'tier' || type === 'tier_upgrade') && (
+                <div className="mb-6 p-4 bg-purple-500/10 border border-purple-500/20 rounded-2xl relative group space-y-2">
+                  <div className="flex gap-2.5 items-start">
+                    <BrainCircuit className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-purple-300">
+                        {locale === 'ru' ? 'Как происходит оплата в Telegram:' : 'How Telegram payment works:'}
+                      </p>
+                      <p className="text-[10px] text-white/70 leading-relaxed">
+                        {locale === 'ru' 
+                          ? 'Оплата тарифов производится через проверенного бота Telegram Tribute (@subscribeappbot). Картами МИР/Visa/Mastercard. После оплаты вы вступаете в канал и доступ активируется мгновенно.' 
+                          : 'Payments are processed via official Telegram Tribute bot (@subscribeappbot) or Stars. Access is granted instantly.'}
+                      </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
               {/* Strategy Advice Block */}
               {advice && (
                 <div className="mb-8 p-4 bg-white/5 border border-white/5 relative group">
@@ -518,25 +537,25 @@ export function PremiumLimitModal({
                       {locale === 'ru' ? 'Дальше' : 'Proceed'}
                     </button>
                   </div>
-                                ) : type === 'tier_upgrade' ? (
+                ) : (type === 'tier_upgrade' || type === 'trial' || type === 'credits') ? (
                   <button
                     onClick={() => {
                       router.push('/app/profile/subscription');
                       onClose();
                     }}
-                    className="group relative w-full overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 p-5 text-white transition-all hover:brightness-110 active:scale-95 shadow-[0_10px_30px_rgba(147,51,234,0.3)] font-mono"
+                    className="group relative w-full overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 p-5 text-white transition-all hover:brightness-110 active:scale-95 shadow-[0_10px_30px_rgba(147,51,234,0.3)] font-mono rounded-2xl"
                   >
                     <div className="relative z-10 flex items-center justify-center gap-3">
-                      <span className="text-sm font-black uppercase tracking-tighter italic text-white">
-                        {locale === 'ru' ? 'Перейти к тарифам' : 'Go to Plans'}
+                      <span className="text-xs font-black uppercase tracking-tighter italic text-white">
+                        {locale === 'ru' ? 'Перейти к оплате через Tribute →' : 'Go to Tribute Payment →'}
                       </span>
-                      <ArrowRight className="h-5 w-5 text-white transition-transform group-hover:translate-x-1" />
+                      <ArrowRight className="h-4 w-4 text-white transition-transform group-hover:translate-x-1" />
                     </div>
                   </button>
                 ) : (
                   <button
                     onClick={onClose}
-                    className="group relative w-full overflow-hidden bg-white/5 border border-white/10 p-5 text-white transition-all hover:bg-white/10 active:scale-95"
+                    className="group relative w-full overflow-hidden bg-white/5 border border-white/10 p-5 text-white transition-all hover:bg-white/10 active:scale-95 rounded-2xl"
                   >
                     <div className="relative z-10 flex items-center justify-center gap-3">
                       <span className="text-sm font-black uppercase tracking-tighter italic">

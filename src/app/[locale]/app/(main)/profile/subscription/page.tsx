@@ -458,81 +458,88 @@ export default function SubscriptionPage() {
                   </button>
                 </div>
               ) : (
-                <div className="space-y-6">
+                <div className="space-y-5">
                   <div className="text-center">
                      <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400 mb-1">
-                       {locale === 'ru' ? 'Выберите способ оплаты' : 'Choose payment method'}
+                       {locale === 'ru' ? 'Выбор способа оплаты подписки' : 'Select Subscription Payment Method'}
                      </p>
-                     <h3 className="text-2xl font-black uppercase tracking-tighter italic">
+                     <h3 className="text-2xl font-black uppercase tracking-tighter italic text-white">
                        {selectedTier?.toUpperCase()} PLAN
                      </h3>
                   </div>
 
-                  <div className="space-y-3">
+                  {/* STEP-BY-STEP EXPLANATION BOX */}
+                  <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-2">
+                    <p className="text-[10px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                      <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
+                      {locale === 'ru' ? 'Как устроена оплата подписки (3 шага):' : 'How subscription payment works (3 steps):'}
+                    </p>
+                    <ol className="text-[10px] text-white/70 space-y-1.5 list-decimal list-inside leading-relaxed">
+                      <li>
+                        {locale === 'ru' 
+                          ? <span>При выборе <b>Tribute</b> откроется бот <code>@subscribeappbot</code> (сервис оплаты Telegram).</span>
+                          : <span>Selecting <b>Tribute</b> opens <code>@subscribeappbot</code> (Telegram's official payment bot).</span>}
+                      </li>
+                      <li>
+                        {locale === 'ru'
+                          ? <span>Оплатите подписку картой МИР/Visa/Mastercard или Stars и <b>вступите в закрытый VIP-канал</b>.</span>
+                          : <span>Pay with card/Stars and <b>join the private VIP channel</b>.</span>}
+                      </li>
+                      <li>
+                        {locale === 'ru'
+                          ? <span>Студия <b>автоматически активирует</b> ваш тариф и начислит кредиты в личном кабинете!</span>
+                          : <span>The Studio <b>automatically grants access</b> and credits your account instantly!</span>}
+                      </li>
+                    </ol>
+                  </div>
+
+                  <div className="space-y-2.5">
+                    {/* Tribute Method (Primary Recommended) */}
+                    <button
+                      onClick={() => {
+                        setPaymentMethod('tribute');
+                        handleTributePayment();
+                      }}
+                      className="w-full flex items-center justify-between p-4 bg-purple-600 hover:bg-purple-500 border border-purple-400/40 rounded-2xl transition-all group active:scale-[0.98] shadow-lg shadow-purple-900/30"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
+                          <QrCode className="w-5 h-5" />
+                        </div>
+                        <div className="text-left">
+                          <p className="text-xs font-black text-white">{locale === 'ru' ? 'Подписка через Tribute Bot' : 'Tribute Bot Subscription'}</p>
+                          <p className="text-[9px] text-white/80">{locale === 'ru' ? 'Карты РФ/СНГ/Мир · @subscribeappbot' : 'Russian/Global Cards · @subscribeappbot'}</p>
+                        </div>
+                      </div>
+                      <div className="text-right">
+                        <span className="text-xs font-black text-white block">
+                          {PLANS_CONFIG.find(p => p.id === selectedTier)?.price} / mo
+                        </span>
+                        <span className="text-[8px] font-black uppercase text-yellow-300">Рекомендуется</span>
+                      </div>
+                    </button>
+
                     {/* Stars Method */}
                     <button
                       onClick={() => {
                         setPaymentMethod('stars');
                         startStarsPayment();
                       }}
-                      className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-[0.98]"
+                      className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl transition-all group active:scale-[0.98]"
                     >
                       <div className="flex items-center gap-3">
                         <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
                           <Coins className="w-5 h-5" />
                         </div>
                         <div className="text-left">
-                          <p className="text-xs font-black text-white">{locale === 'ru' ? 'Звёзды Telegram' : 'Telegram Stars'}</p>
-                          <p className="text-[9px] text-white/40">{locale === 'ru' ? 'Быстрая оплата в Mini App' : 'Instant in-app checkout'}</p>
+                          <p className="text-xs font-black text-white">{locale === 'ru' ? 'Звёзды Telegram (Stars)' : 'Telegram Stars'}</p>
+                          <p className="text-[9px] text-white/40">{locale === 'ru' ? 'Прямая оплата внутри Telegram Mini App' : 'Instant in-app checkout via Telegram'}</p>
                         </div>
                       </div>
                       <span className="text-xs font-black text-amber-400">
                         {PLANS_CONFIG.find(p => p.id === selectedTier)?.stars}
                       </span>
                     </button>
-
-                    {/* Tribute Method */}
-                    <button
-                      onClick={() => {
-                        setPaymentMethod('tribute');
-                        handleTributePayment();
-                      }}
-                      className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/5 hover:bg-white/10 rounded-2xl transition-all group active:scale-[0.98]"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400">
-                          <QrCode className="w-5 h-5" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-xs font-black text-white">{locale === 'ru' ? 'Подписка Tribute' : 'Tribute Subscription'}</p>
-                          <p className="text-[9px] text-white/40">{locale === 'ru' ? 'Через бота @subscribeappbot' : 'Via Tribute platform bot'}</p>
-                        </div>
-                      </div>
-                      <span className="text-xs font-black text-purple-400">
-                        {PLANS_CONFIG.find(p => p.id === selectedTier)?.price} / mo
-                      </span>
-                    </button>
-
-                    {/* Paybio Method (Soon) */}
-                    <div
-                      className="w-full flex items-center justify-between p-4 bg-white/[0.02] border border-white/5 rounded-2xl opacity-50 relative group cursor-not-allowed"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-slate-500/10 border border-slate-500/20 flex items-center justify-center text-slate-400">
-                          <CreditCard className="w-5 h-5" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-xs font-black text-white">{locale === 'ru' ? 'Оплата картой (Paybio)' : 'Card Checkout (Paybio)'}</p>
-                          <p className="text-[9px] text-white/40">{locale === 'ru' ? 'Карты РФ и СНГ (скоро)' : 'P2P Russian / CIS Cards (Soon)'}</p>
-                        </div>
-                      </div>
-                      <span className="text-[8px] bg-white/5 text-white/40 px-2 py-1 rounded font-black uppercase">Soon</span>
-                    </div>
-                  </div>
-
-                  <div className="pt-2 text-center">
-                    <p className="text-[9px] text-white/30 leading-normal uppercase">
-                      {locale === 'ru' 
                         ? 'При подписке на Tribute доступ активируется после вашего вступления в приватный канал.' 
                         : 'For Tribute, access will be granted immediately upon joining the private VIP channel.'}
                     </p>
