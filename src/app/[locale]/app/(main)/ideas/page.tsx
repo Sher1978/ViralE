@@ -299,11 +299,15 @@ export default function IdeasPage() {
             </div>
             <div className="flex items-center gap-2 shrink-0">
               <button 
-                onClick={() => refreshIdeas('new', undefined, true)}
-                className="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-100 text-xs font-bold transition-all border border-red-500/30 flex items-center gap-1.5"
+                onClick={() => {
+                  clearIdeasError();
+                  refreshIdeas('new', undefined, true);
+                }}
+                disabled={loadingIdeas}
+                className="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-100 text-xs font-bold transition-all border border-red-500/30 flex items-center gap-1.5 disabled:opacity-50"
               >
-                <RefreshCw size={12} />
-                {locale === 'ru' ? 'Повторить' : 'Retry'}
+                <RefreshCw size={12} className={loadingIdeas ? "animate-spin" : ""} />
+                {loadingIdeas ? (locale === 'ru' ? 'Генерация...' : 'Generating...') : (locale === 'ru' ? 'Повторить' : 'Retry')}
               </button>
               <button onClick={clearIdeasError} className="p-1 hover:bg-white/10 rounded-lg text-red-400">
                 <X size={16} />

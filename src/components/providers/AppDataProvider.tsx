@@ -72,7 +72,10 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   const fetchIdeas = useCallback(async (status: 'new' | 'archived' | 'used', category?: string, force?: boolean) => {
     try {
-      if (status === 'new') setLoadingIdeas(true);
+      if (status === 'new') {
+        setLoadingIdeas(true);
+        setIdeasError(null);
+      }
       else if (status === 'archived') setLoadingArchived(true);
       else if (status === 'used') setLoadingUsed(true);
 

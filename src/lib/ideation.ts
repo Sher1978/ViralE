@@ -49,10 +49,10 @@ export async function generateDailyIdeas(
       : 'Limit of 200 ideas reached. Delete or clear spent ideas to generate new ones.');
   }
   
-  // 1. Fetch user persona DNA, answers and tier
+  // 1. Fetch user persona DNA, answers, storybrand content and tier
   const { data: profile, error } = await supabase
     .from('profiles')
-    .select('digital_shadow_prompt, industry_context, dna_answers, tier')
+    .select('digital_shadow_prompt, storybrand_raw_content, industry_context, dna_answers, tier')
     .eq('id', userId)
     .single();
 
@@ -69,7 +69,25 @@ export async function generateDailyIdeas(
   let dnaContext = "";
   let isDnaComplete = false;
 
-  if (hasFileStrategy) {
+  // PRIORITY 1: StoryBrand Document (Explicitly uploaded text strategy document)
+  if (profile?.storybrand_raw_content && profile.storybrand_raw_content.trim().length > 20) {
+    dnaContext = `🧬 STORYBRAND STRATEGY DOCUMENT:\n${profile.storybrand_raw_content}`;
+    if (profile.digital_shadow_prompt && profile.digital_shadow_prompt.trim().length > 10) {
+      dnaContext += `\n\n🧬 DIGITAL SHADOW PERSONA:\n${profile.digital_shadow_prompt}`;
+    }
+    isDnaComplete = true;
+    console.log(`Using uploaded StoryBrand Document DNA for user ${userId}.`);
+  }
+
+  // PRIORITY 2: Digital Shadow Persona (Master prompt synthesized from onboarding or AI training)
+  if (!isDnaComplete && profile?.digital_shadow_prompt && profile.digital_shadow_prompt.trim().length > 10) {
+    dnaContext = `🧬 DIGITAL SHADOW DNA:\n${profile.digital_shadow_prompt}`;
+    isDnaComplete = true;
+    console.log(`Using Digital Shadow Prompt as DNA for user ${userId}.`);
+  }
+
+  // PRIORITY 3: Brand_DNA.md file from disk
+  if (!isDnaComplete && hasFileStrategy) {
     try {
       dnaContext = fs.readFileSync(userFilePath, 'utf-8');
       isDnaComplete = true;
@@ -79,7 +97,7 @@ export async function generateDailyIdeas(
     }
   }
 
-  // Fallback 1: Use database answers if file doesn't exist
+  // PRIORITY 4: Database structured DNA form answers
   if (!isDnaComplete && profile?.dna_answers) {
     const dnaAnswers = profile.dna_answers || {};
     const validAnswersCount = Object.values(dnaAnswers).filter((v: any) => v && v.toString().length > 2).length;
@@ -88,13 +106,6 @@ export async function generateDailyIdeas(
       isDnaComplete = true;
       console.log(`Using Database DNA answers for user ${userId}.`);
     }
-  }
-
-  // Fallback 2: Use digital shadow prompt if answers are missing but shadow is present
-  if (!isDnaComplete && profile?.digital_shadow_prompt && profile.digital_shadow_prompt.trim().length > 10) {
-    dnaContext = `🧬 DIGITAL SHADOW DNA:\n${profile.digital_shadow_prompt}`;
-    isDnaComplete = true;
-    console.log(`Using Digital Shadow Prompt as DNA fallback for user ${userId}.`);
   }
 
   if (!isDnaComplete) {

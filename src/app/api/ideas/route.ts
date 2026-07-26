@@ -76,12 +76,29 @@ export async function GET(req: Request) {
       }
 
       if (force || !existingIdeas || existingIdeas.length === 0) {
-        const categoriesToGenerate = categoryParam ? [categoryParam] : categories;
+        const categoriesToGenerate = categoryParam 
+          ? [categoryParam] 
+          : ["Hooks", "Problem", "Solution", "Trends"];
         
-        const allFreshIdeas = [];
-        for (const cat of categoriesToGenerate) {
-           const fresh = await generateDailyIdeas(authorizedSupabase as any, userId, locale, cat);
-           allFreshIdeas.push(...fresh);
+        // Execute AI generations in parallel to prevent 60s HTTP timeouts
+        const results = await Promise.allSettled(
+          categoriesToGenerate.map(cat => generateDailyIdeas(authorizedSupabase as any, userId, locale, cat))
+        );
+        
+        const allFreshIdeas: any[] = [];
+        let lastErrorMsg = '';
+
+        for (const res of results) {
+          if (res.status === 'fulfilled' && Array.isArray(res.value)) {
+            allFreshIdeas.push(...res.value);
+          } else if (res.status === 'rejected') {
+            console.error('[Ideas API] Batch category generation error:', res.reason);
+            lastErrorMsg = res.reason?.message || 'Error generating idea category';
+          }
+        }
+        
+        if (allFreshIdeas.length === 0 && lastErrorMsg) {
+          throw new Error(lastErrorMsg);
         }
         
         // 🔥 PERSIST TO DATABASE

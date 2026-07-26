@@ -113,7 +113,7 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
     CORE RULES:
     - NEVER use generic greetings or clichéd phrases. Start directly with the essence.
     - VISUAL PROMPT LOGIC (Visual_Script_Generator): 
-      - Analyze user DNA (e.g., auto-blogger, business coach).
+      - Analyze user DNA (niche, target audience, expertise, tone of voice).
       - Semantic Analysis: [DNA Context] + [Phrase Meaning] = [Visual Metaphor].
       - Structure: (Global Style Anchor), (Action/Object representing metaphor), (Environment), (Mood), --no fantasy, noir, cartoon.
     - TOTAL duration: ~60-80 SECONDS total (approx. 180-220 words total).
