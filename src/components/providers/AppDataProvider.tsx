@@ -61,34 +61,9 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         console.error('Failed to fetch strategist access status:', err);
       });
 
-      // Sync user language from database settings & auto-redirect on mismatch
+      // Sync user language preference with active UI locale without forced page redirects
       const preferredLanguage = prof.preferred_language;
-      if (preferredLanguage) {
-        if (preferredLanguage !== locale) {
-          const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
-          if (globalObj && typeof globalObj.document !== 'undefined') {
-            globalObj.document.cookie = `NEXT_LOCALE=${preferredLanguage}; path=/; max-age=31536000; SameSite=Lax`;
-          }
-          if (globalObj && typeof globalObj.window !== 'undefined') {
-            globalObj.window.localStorage.setItem('NEXT_LOCALE', preferredLanguage);
-          }
-
-          const pathname = globalObj && globalObj.window ? globalObj.window.location.pathname : '';
-          let newPath = pathname;
-          if (preferredLanguage === 'ru') {
-            if (!pathname.startsWith('/ru')) {
-              newPath = `/ru${pathname}`;
-            }
-          } else {
-            if (pathname.startsWith('/ru')) {
-              newPath = pathname.replace(/^\/ru/, '') || '/';
-            }
-          }
-          if (globalObj && globalObj.window) {
-            globalObj.window.location.href = newPath;
-          }
-        }
-      } else {
+      if (!preferredLanguage) {
         // Initialize preferred language in database to match current active UI locale
         supabase.from('profiles').update({ preferred_language: locale }).eq('id', prof.id).then();
       }
@@ -236,12 +211,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
   // 2. Pre-fetch ideas once profile is ready
   useEffect(() => {
-    if (profile) {
+    if (profile?.id) {
       fetchIdeas('new');
       fetchIdeas('archived');
       fetchIdeas('used');
     }
-  }, [profile, fetchIdeas]);
+  }, [profile?.id, fetchIdeas]);
 
   const updateProfileState = (updates: Partial<Profile>) => {
     setProfile(prev => prev ? { ...prev, ...updates } : null);

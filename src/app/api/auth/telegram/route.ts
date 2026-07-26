@@ -95,7 +95,7 @@ async function handleTelegramAuth(userData: any, hash: string) {
         full_name: fullName,
         avatar_url: avatarUrl,
         username: userData.username,
-        credits_balance: 100,
+        credits_balance: 0,
         tier: 'free',
         subscription_status: 'active',
         preferred_language: 'ru'

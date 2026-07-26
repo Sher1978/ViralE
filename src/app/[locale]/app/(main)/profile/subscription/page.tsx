@@ -540,6 +540,9 @@ export default function SubscriptionPage() {
                         {PLANS_CONFIG.find(p => p.id === selectedTier)?.stars}
                       </span>
                     </button>
+
+                    <p className="text-[9px] text-white/40 text-center pt-2">
+                      {locale === 'ru'
                         ? 'При подписке на Tribute доступ активируется после вашего вступления в приватный канал.' 
                         : 'For Tribute, access will be granted immediately upon joining the private VIP channel.'}
                     </p>

@@ -42,11 +42,6 @@ export async function isUserAdminByAuth(userId: string): Promise<boolean> {
   }
 }
 
-export interface AdminStatsOverview {
-  totalUsers: number;
-  newUsersToday: number;
-  newUsersThisWeek: number;
-  activeSubscriptions: number;
 export interface UserGrowthPoint {
   date: string;
   dateIso: string;
@@ -67,6 +62,9 @@ export interface AdminStatsOverview {
   totalCreditsInCirculation: number;
   totalProjects: number;
   totalRenders: number;
+  totalAvatarsGenerated: number;
+  totalImagesGenerated: number;
+  totalScriptsGenerated: number;
   systemBalances: any[];
   userGrowthTimeline: UserGrowthPoint[];
 }
@@ -154,7 +152,7 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
     totalCreditsInCirculation += (p.credits_balance || 0);
   });
 
-  // 3. Fetch Total Projects and Renders
+  // 3. Fetch Total Projects, Renders, and Heavy Operations Breakdown
   const { count: totalProjects } = await supabaseAdmin
     .from('projects')
     .select('id', { count: 'exact', head: true });
@@ -162,6 +160,21 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
   const { count: totalRenders } = await supabaseAdmin
     .from('render_jobs')
     .select('id', { count: 'exact', head: true });
+
+  const { count: totalAvatarsGenerated } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('transaction_type', 'HEYGEN_GENERATE');
+
+  const { count: totalImagesGenerated } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('id', { count: 'exact', head: true })
+    .in('transaction_type', ['FAL_IMAGE', 'FAL_TIMELINE', 'STORYBOARD_GEN']);
+
+  const { count: totalScriptsGenerated } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('transaction_type', 'SCRIPT_GEN');
 
   // 4. API System Balances
   let systemBalances: any[] = [];
@@ -180,6 +193,9 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
     totalCreditsInCirculation,
     totalProjects: totalProjects || 0,
     totalRenders: totalRenders || 0,
+    totalAvatarsGenerated: totalAvatarsGenerated || 0,
+    totalImagesGenerated: totalImagesGenerated || 0,
+    totalScriptsGenerated: totalScriptsGenerated || 0,
     systemBalances,
     userGrowthTimeline,
   };
@@ -198,6 +214,11 @@ export interface AdminUserListItem {
   created_at: string;
   updated_at: string;
   projects_count?: number;
+  heavy_ops?: {
+    avatars: number;
+    images: number;
+    scripts: number;
+  };
 }
 
 export async function getAdminUsersList(options: {
@@ -242,7 +263,7 @@ export async function getAdminUsersList(options: {
     throw error;
   }
 
-  // Enrich with projects count
+  // Enrich with projects count & heavy operations breakdown
   const enrichedUsers: AdminUserListItem[] = await Promise.all(
     (users || []).map(async (u: any) => {
       const { count: projCount } = await supabaseAdmin
@@ -250,9 +271,32 @@ export async function getAdminUsersList(options: {
         .select('id', { count: 'exact', head: true })
         .eq('user_id', u.id);
 
+      const { count: avatarCount } = await supabaseAdmin
+        .from('credits_transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', u.id)
+        .eq('transaction_type', 'HEYGEN_GENERATE');
+
+      const { count: imageCount } = await supabaseAdmin
+        .from('credits_transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', u.id)
+        .in('transaction_type', ['FAL_IMAGE', 'FAL_TIMELINE', 'STORYBOARD_GEN']);
+
+      const { count: scriptCount } = await supabaseAdmin
+        .from('credits_transactions')
+        .select('id', { count: 'exact', head: true })
+        .eq('user_id', u.id)
+        .eq('transaction_type', 'SCRIPT_GEN');
+
       return {
         ...u,
         projects_count: projCount || 0,
+        heavy_ops: {
+          avatars: avatarCount || 0,
+          images: imageCount || 0,
+          scripts: scriptCount || 0
+        }
       };
     })
   );
@@ -292,10 +336,34 @@ export async function getAdminUserDetail(userId: string) {
     .order('created_at', { ascending: false })
     .limit(20);
 
+  // Count user heavy operations
+  const { count: avatars } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('transaction_type', 'HEYGEN_GENERATE');
+
+  const { count: images } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .in('transaction_type', ['FAL_IMAGE', 'FAL_TIMELINE', 'STORYBOARD_GEN']);
+
+  const { count: scripts } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('user_id', userId)
+    .eq('transaction_type', 'SCRIPT_GEN');
+
   return {
     profile,
     projects: projects || [],
     transactions: transactions || [],
+    heavyOps: {
+      avatars: avatars || 0,
+      images: images || 0,
+      scripts: scripts || 0
+    }
   };
 }
 

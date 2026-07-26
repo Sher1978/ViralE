@@ -10,6 +10,9 @@ import TopicInput from '@/components/ideas/TopicInput';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppData } from '@/components/providers/AppDataProvider';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
+import { AppOnboardingTour } from '@/components/ui/AppOnboardingTour';
+import { TelegramConnectBanner } from '@/components/ui/TelegramConnectBanner';
+import { HelpCircle } from 'lucide-react';
 
 const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
   "Hooks": { en: "Virality Hooks", ru: "Крючки виральности" },
@@ -49,6 +52,7 @@ export default function IdeasPage() {
   const router = useRouter();
 
   const { 
+    profile,
     ideas: allNewIdeas, 
     archivedIdeas, 
     usedIdeas, 
@@ -69,14 +73,21 @@ export default function IdeasPage() {
   const [synthesisLoading, setSynthesisLoading] = useState(false);
   const [showDnaEditor, setShowDnaEditor] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
+  const [showTour, setShowTour] = useState(false);
   
   const [forcedLoading, setForcedLoading] = useState(true);
   
   useEffect(() => {
     const timer = setTimeout(() => setForcedLoading(false), 4000);
     const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
-    if (win && win.localStorage.getItem('hideWelcomeIdeas') === 'true') {
-      setShowWelcome(false);
+    if (win) {
+      if (win.localStorage.getItem('hideWelcomeIdeas') === 'true') {
+        setShowWelcome(false);
+      }
+      if (win.localStorage.getItem('hasCompletedAppTour_v1') !== 'true') {
+        const tourTimer = setTimeout(() => setShowTour(true), 1200);
+        return () => { clearTimeout(timer); clearTimeout(tourTimer); };
+      }
     }
     return () => clearTimeout(timer);
   }, []);
@@ -202,6 +213,12 @@ export default function IdeasPage() {
 
   return (
     <div className="flex flex-col gap-8 pb-32 animate-fade-in relative">
+      {/* Onboarding Feature Tour Modal */}
+      <AppOnboardingTour 
+        isOpen={showTour} 
+        onClose={() => setShowTour(false)} 
+      />
+
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between">
           <h1 className="text-4xl font-black italic tracking-tighter uppercase leading-none">
@@ -211,28 +228,40 @@ export default function IdeasPage() {
               ? (locale === 'ru' ? 'СОХРАНЕННЫЕ' : 'SAVED')
               : (locale === 'ru' ? 'ОТРАБОТАННЫЕ' : 'SPENT IDEAS')}
           </h1>
-          {isDnaComplete && activeTab === 'new' && (
-            <div className="flex flex-col gap-2 items-end">
-              <div className="flex items-center gap-2">
+
+          <div className="flex items-center gap-2">
+            <button
+              onClick={() => setShowTour(true)}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-2xl bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:bg-purple-500/20 transition-all text-[9px] font-black uppercase tracking-widest shadow-md"
+              title={locale === 'ru' ? 'Инструкция по приложению' : 'App Guide & Tour'}
+            >
+              <HelpCircle size={14} className="text-purple-400" />
+              <span>{locale === 'ru' ? 'Инструкция' : 'Guide'}</span>
+            </button>
+
+            {isDnaComplete && activeTab === 'new' && (
+              <div className="flex flex-col gap-2 items-end">
+                <div className="flex items-center gap-2">
+                  <button 
+                    onClick={() => setShowDnaEditor(!showDnaEditor)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-purple-400 hover:border-purple-500/30 transition-all text-[9px] font-black uppercase tracking-widest"
+                  >
+                    <Dna size={14} className={showDnaEditor ? "text-purple-400 animate-pulse" : ""} />
+                    {showDnaEditor ? (locale === 'ru' ? 'Скрыть ДНК' : 'Hide DNA') : (locale === 'ru' ? 'Настроить ДНК' : 'Tune DNA')}
+                  </button>
+                  <InfoTooltip content={locale === 'ru' ? "Обновите ДНК для точности ИИ" : "Update DNA for AI accuracy"} />
+                </div>
                 <button 
-                  onClick={() => setShowDnaEditor(!showDnaEditor)}
-                  className="flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 text-white/40 hover:text-purple-400 hover:border-purple-500/30 transition-all text-[9px] font-black uppercase tracking-widest"
+                  onClick={handleRegenerateMatrix}
+                  disabled={synthesisLoading}
+                  className="flex items-center gap-2 px-4 py-1.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400/80 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
                 >
-                  <Dna size={14} className={showDnaEditor ? "text-purple-400 animate-pulse" : ""} />
-                  {showDnaEditor ? (locale === 'ru' ? 'Скрыть ДНК' : 'Hide DNA') : (locale === 'ru' ? 'Настроить ДНК' : 'Tune DNA')}
+                  <RefreshCw size={12} className={synthesisLoading ? "animate-spin" : ""} />
+                  {synthesisLoading ? (locale === 'ru' ? 'Очистка...' : 'Clearing...') : (locale === 'ru' ? 'Сгенерировать новый контент' : 'Regenerate all content')}
                 </button>
-                <InfoTooltip content={locale === 'ru' ? "Обновите ДНК для точности ИИ" : "Update DNA for AI accuracy"} />
               </div>
-              <button 
-                onClick={handleRegenerateMatrix}
-                disabled={synthesisLoading}
-                className="flex items-center gap-2 px-4 py-1.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400/80 hover:text-red-400 hover:bg-red-500/20 hover:border-red-500/40 transition-all text-[9px] font-black uppercase tracking-widest disabled:opacity-50"
-              >
-                <RefreshCw size={12} className={synthesisLoading ? "animate-spin" : ""} />
-                {synthesisLoading ? (locale === 'ru' ? 'Очистка...' : 'Clearing...') : (locale === 'ru' ? 'Сгенерировать новый контент' : 'Regenerate all content')}
-              </button>
-            </div>
-          )}
+            )}
+          </div>
         </div>
         <p className="text-[10px] text-white/20 uppercase tracking-[0.4em] font-black">
           {activeTab === 'new' 
@@ -242,6 +271,14 @@ export default function IdeasPage() {
             : (locale === 'ru' ? 'КАТАЛОГ ИСПОЛЬЗОВАННЫХ ИДЕЙ' : 'SPENT IDEAS CATALOGUE')}
         </p>
       </div>
+
+      {/* Telegram Connection Motivation Banner (+50 CR Reward) */}
+      {activeTab === 'new' && (
+        <TelegramConnectBanner 
+          userId={profile?.id}
+          telegramLinked={Boolean((profile as any)?.telegram_id)}
+        />
+      )}
 
       <AnimatePresence>
         {ideasError && (

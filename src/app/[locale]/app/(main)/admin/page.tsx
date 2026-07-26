@@ -39,6 +39,9 @@ interface StatsData {
   totalCreditsInCirculation: number;
   totalProjects: number;
   totalRenders: number;
+  totalAvatarsGenerated?: number;
+  totalImagesGenerated?: number;
+  totalScriptsGenerated?: number;
   systemBalances: any[];
   userGrowthTimeline?: Array<{ date: string; dateIso: string; count: number }>;
 }
@@ -55,6 +58,11 @@ interface UserItem {
   subscription_expires_at: string | null;
   created_at: string;
   projects_count?: number;
+  heavy_ops?: {
+    avatars: number;
+    images: number;
+    scripts: number;
+  };
 }
 
 interface PaymentItem {
@@ -486,6 +494,32 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
+          {/* Heavy Operations Tracking Metrics */}
+          <div className="p-6 rounded-[2rem] bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-black border border-purple-500/20 space-y-4">
+            <h3 className="text-xs font-black uppercase tracking-widest text-purple-300 flex items-center gap-2">
+              <Activity size={14} className="text-purple-400" /> Статистика тяжелых операций (Защита ресурсов)
+            </h3>
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-purple-400 block">👤 HeyGen ИИ-Аватары</span>
+                <div className="text-xl font-black text-white">{stats.totalAvatarsGenerated || 0}</div>
+                <p className="text-[8.5px] text-white/40 font-medium">Видео с цифровыми аватарами</p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-cyan-400 block">🖼 Fal.ai Изображения</span>
+                <div className="text-xl font-black text-white">{stats.totalImagesGenerated || 0}</div>
+                <p className="text-[8.5px] text-white/40 font-medium">Генерация фото и кадров</p>
+              </div>
+
+              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
+                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 block">📝 Сценарии ИИ</span>
+                <div className="text-xl font-black text-white">{stats.totalScriptsGenerated || 0}</div>
+                <p className="text-[8.5px] text-white/40 font-medium">Сгенерировано текстов</p>
+              </div>
+            </div>
+          </div>
+
           {/* User Signups Timeline & Growth Dynamics Chart */}
           {stats.userGrowthTimeline && stats.userGrowthTimeline.length > 0 && (
             <div className="p-6 rounded-[2.5rem] bg-gradient-to-b from-[#0e0f22] to-[#070812] border border-purple-500/20 shadow-2xl space-y-5">
@@ -730,11 +764,17 @@ export default function AdminDashboardPage() {
                       </div>
                     </div>
 
-                    <div className="text-right shrink-0">
+                    <div className="text-right shrink-0 space-y-1">
                       <div className="text-xs font-black text-cyan-400">{u.credits_balance} CR</div>
                       <div className="text-[9px] text-white/30 font-medium">
                         {u.projects_count || 0} проектов
                       </div>
+                      {u.heavy_ops && (
+                        <div className="text-[8px] font-mono text-purple-300/80 flex items-center gap-1.5 justify-end">
+                          <span>👤 {u.heavy_ops.avatars}</span>
+                          <span>🖼 {u.heavy_ops.images}</span>
+                        </div>
+                      )}
                     </div>
                   </div>
 

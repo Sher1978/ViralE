@@ -1057,10 +1057,10 @@ export default function ProfilePage() {
 
       {/* Main Settings List */}
       <div className="space-y-8 px-1">
-        {SETTINGS_SECTIONS.map((section, sIdx) => (
+        {SETTINGS_SECTIONS.map((section) => (
           <motion.div 
             key={section.title} 
-            variants={section as any ? (itemVariants as any) : undefined}
+            variants={itemVariants as any}
             className="space-y-3"
           >
             <div className="flex items-center gap-2 px-2">

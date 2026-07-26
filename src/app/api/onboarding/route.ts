@@ -24,12 +24,17 @@ export async function POST(req: Request) {
 
     console.log('[Onboarding] Updating profile for user:', userId);
     
-    // Fetch existing credits if profile exists to avoid overwriting paid balance
+    // Fetch existing credits & onboarding state to award welcome bonus on first onboarding completion
     const { data: existingProf } = await authorizedSupabase
       .from('profiles')
-      .select('credits_balance')
+      .select('credits_balance, onboarding_completed')
       .eq('id', userId)
       .single();
+
+    const isFirstTimeOnboarding = !existingProf?.onboarding_completed;
+    const currentBalance = existingProf?.credits_balance ?? 0;
+    // Grant +100 CR welcome bonus upon completing onboarding for the first time
+    const newBalance = isFirstTimeOnboarding ? (currentBalance + 100) : currentBalance;
 
     const { data, error } = await authorizedSupabase
       .from('profiles')
@@ -43,7 +48,7 @@ export async function POST(req: Request) {
         raw_onboarding_data: answers || null,
         dna_answers: answers || null,
         onboarding_completed: true,
-        credits_balance: existingProf?.credits_balance ?? 0,
+        credits_balance: newBalance,
         tier: 'free',
         subscription_status: 'active'
       })

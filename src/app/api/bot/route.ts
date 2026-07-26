@@ -191,6 +191,32 @@ export async function POST(req: NextRequest) {
         body: JSON.stringify({ callback_query_id: callbackQueryId }),
       });
 
+      // Handle language selection callbacks
+      if (data === 'set_lang_ru' || data === 'set_lang_en') {
+        const targetLang = data === 'set_lang_ru' ? 'ru' : 'en';
+        const { supabaseAdmin } = await import('@/lib/supabase');
+        
+        await supabaseAdmin
+          .from('profiles')
+          .update({ preferred_language: targetLang })
+          .eq('telegram_id', fromId);
+
+        const langMsg = targetLang === 'ru'
+          ? `🇷🇺 *Язык успешно изменен на Русский!*\n\nТеперь все уведомления, сценарии и дайджесты будут приходить на русском языке.`
+          : `🇬🇧 *Language successfully set to English!*\n\nAll notifications, scripts, and digests will now be sent in English.`;
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: cb.message.chat.id,
+            text: langMsg,
+            parse_mode: 'Markdown'
+          })
+        });
+        return NextResponse.json({ ok: true });
+      }
+
       const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
       if (fromId === String(ADMIN_ID) && data.startsWith('admin_')) {
         const { getAdminOverviewStats, getAdminUsersList, getAdminPaymentsLog } = await import('@/lib/admin');
@@ -411,17 +437,111 @@ export async function POST(req: NextRequest) {
             }
           })
         });
+      } else if (payload && payload.startsWith('link_')) {
+        const targetUserId = payload.replace('link_', '');
+        const { supabaseAdmin } = await import('@/lib/supabase');
+        const { addCredits } = await import('@/lib/credits');
+
+        const { data: profile } = await supabaseAdmin
+          .from('profiles')
+          .select('id, telegram_id, credits_balance')
+          .eq('id', targetUserId)
+          .single();
+
+        if (profile) {
+          const alreadyLinked = Boolean(profile.telegram_id);
+          await supabaseAdmin
+            .from('profiles')
+            .update({
+              telegram_id: user.id,
+              username: user.username || null
+            })
+            .eq('id', targetUserId);
+
+          let bonusText = '';
+          const locale = user.language_code === 'ru' ? 'ru' : 'en';
+          if (!alreadyLinked) {
+            await addCredits(supabaseAdmin, targetUserId, 50, 'telegram_connect_bonus');
+            bonusText = locale === 'ru' 
+              ? `\n\n🎁 *Вам зачислено +50 CR бонуса!* Наслаждайтесь созданием вирального контента.`
+              : `\n\n🎁 *+50 CR Bonus credited to your account!* Enjoy creating viral content.`;
+          }
+
+          const linkSuccessMsg = locale === 'ru'
+            ? `🎉 *Аккаунт успешно подключен к Telegram!*${bonusText}\n\nТеперь вы будете получать автоматические трендовые сценарии и уведомления прямо сюда.`
+            : `🎉 *Account successfully linked to Telegram!*${bonusText}\n\nYou will now receive automated trend digests and notifications here.`;
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: chatId,
+              text: linkSuccessMsg,
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    {
+                      text: locale === 'ru' ? '🚀 Открыть Студию' : '🚀 Open Studio',
+                      url: 'https://www.virale.uno/app/ideas'
+                    }
+                  ]
+                ]
+              }
+            })
+          });
+        }
       } else {
-        // Regular welcome
+        // Regular welcome with language buttons
+        const locale = user.language_code === 'ru' ? 'ru' : 'en';
+        const welcomeMsg = locale === 'ru'
+          ? `Привет! Я официальный бот *Viral Studio* 🤖\n\nЯ помогаю генерировать сценарии, отслеживать тренды и доставлять контент прямо в Telegram!\n\nИспользуйте меню или выберите ваш язык ниже:`
+          : `Hello! I'm the official *Viral Studio Bot* 🤖\n\nI help you generate viral scripts, track trends, and deliver content directly to Telegram!\n\nUse the menu or choose your language below:`;
+
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
             chat_id: chatId,
-            text: `Welcome! I'm the Viral Studio Bot. 🤖\n\nI'll help you create viral videos and deliver them directly to your Telegram.\n\nUse /help to see what I can do.`
+            text: welcomeMsg,
+            parse_mode: 'Markdown',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '🇷🇺 Русский', callback_data: 'set_lang_ru' },
+                  { text: '🇬🇧 English', callback_data: 'set_lang_en' }
+                ],
+                [
+                  { text: '🌐 Открыть Студию', url: 'https://www.virale.uno/app/ideas' }
+                ]
+              ]
+            }
           })
         });
       }
+    } else if (text.startsWith('/language') || text.startsWith('/lang')) {
+      const locale = user.language_code === 'ru' ? 'ru' : 'en';
+      const promptText = locale === 'ru'
+        ? `🌐 *Выберите язык интерфейса и уведомлений:*`
+        : `🌐 *Select interface and notification language:*`;
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: promptText,
+          parse_mode: 'Markdown',
+          reply_markup: {
+            inline_keyboard: [
+              [
+                { text: '🇷🇺 Русский', callback_data: 'set_lang_ru' },
+                { text: '🇬🇧 English', callback_data: 'set_lang_en' }
+              ]
+            ]
+          }
+        })
+      });
     } else if (text.startsWith('/balance')) {
       const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
       if (String(user.id) !== String(ADMIN_ID)) {
