@@ -164,6 +164,8 @@ export async function notifyAdminError(details: {
   }
 }
 
+const notifiedUsers = new Set<string>();
+
 export async function notifyNewUserRegistration(profile: {
   id: string;
   email?: string;
@@ -175,6 +177,12 @@ export async function notifyNewUserRegistration(profile: {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
   if (!token || !adminChatId) return false;
+
+  // Ensure notification is sent exactly ONCE per user session/lifetime
+  if (notifiedUsers.has(profile.id)) {
+    return false;
+  }
+  notifiedUsers.add(profile.id);
 
   const text = `🎉 <b>НОВАЯ РЕГИСТРАЦИЯ ПОЛЬЗОВАТЕЛЯ</b> 🎉\n\n` +
     `<b>👤 Имя:</b> <code>${escapeHtml(profile.full_name || 'Не указано')}</code>\n` +
@@ -197,6 +205,41 @@ export async function notifyNewUserRegistration(profile: {
     return res.ok;
   } catch (err) {
     console.error('[Telegram New User Alert] Failed to send notification:', err);
+    return false;
+  }
+}
+
+export async function notifyDnaCompleted(details: {
+  userId: string;
+  userEmail?: string;
+  fullName?: string;
+  dnaSnippet?: string;
+}): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+  if (!token || !adminChatId) return false;
+
+  const text = `🧬 <b>ПОЛЬЗОВАТЕЛЬ СФОРМИРОВАЛ ДНК БРЕНДА</b> 🧬\n\n` +
+    `<b>👤 Имя:</b> <code>${escapeHtml(details.fullName || 'Не указано')}</code>\n` +
+    (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
+    `<b>🆔 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` +
+    (details.dnaSnippet ? `<b>📝 ДНК / Сфокусированная Ниша:</b>\n<pre>${escapeHtml(details.dnaSnippet.slice(0, 350))}</pre>\n` : '') +
+    `<b>⏰ Время:</b> ${new Date().toISOString()}`;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: adminChatId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('[Telegram DNA Completed Alert] Failed to send notification:', err);
     return false;
   }
 }

@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { synthesizeDigitalShadow } from '@/lib/ai/gemini';
 import { getAuthContext } from '@/lib/auth';
+import { notifyDnaCompleted, notifyNewUserRegistration } from '@/lib/telegram';
 
 export async function POST(req: Request) {
   try {
@@ -55,6 +56,15 @@ export async function POST(req: Request) {
     }
 
     console.log('[Onboarding] Profile updated successfully for user:', userId);
+
+    // Notify Telegram Admin about new user registration and DNA completion
+    notifyNewUserRegistration(data).catch(() => {});
+    notifyDnaCompleted({
+      userId,
+      userEmail: data.email,
+      fullName: data.full_name,
+      dnaSnippet: masterPrompt
+    }).catch(() => {});
 
     const response = NextResponse.json({
       success: true,

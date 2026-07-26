@@ -127,8 +127,13 @@ export const profileService = {
         .single();
       
       if (!updateError && updatedProfile) {
+        notifyNewUserRegistration(updatedProfile).catch(() => {});
         return updatedProfile;
       }
+    }
+
+    if (profile) {
+      notifyNewUserRegistration(profile).catch(() => {});
     }
 
     return profile;
