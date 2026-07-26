@@ -11,28 +11,46 @@ export interface AccessStatus {
 
 export const strategistService = {
   async getAccessStatus(userId: string): Promise<AccessStatus> {
-    const { data, error } = await supabase
-      .from('feature_access')
-      .select('trial_started_at, is_subscribed')
-      .eq('user_id', userId)
-      .eq('feature_id', 'strategist_pilot')
-      .single();
+    try {
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('tier, subscription_status')
+        .eq('id', userId)
+        .single();
 
-    if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') throw error;
-
-    if (data?.is_subscribed) {
-      return { hasAccess: true, status: 'active', trialExpiresAt: null };
-    }
-
-    if (data?.trial_started_at) {
-      const trialStart = new Date(data.trial_started_at);
-      const now = new Date();
-      const expiresAt = new Date(trialStart.getTime() + 24 * 60 * 60 * 1000);
-      if (now < expiresAt) {
-        return { hasAccess: true, status: 'trial', trialExpiresAt: expiresAt.toISOString() };
+      if (profile) {
+        const isPaidTier = profile.tier === 'pro' || profile.tier === 'scale' || profile.tier === 'creator';
+        if (isPaidTier && profile.subscription_status === 'active') {
+          return { hasAccess: true, status: 'active', trialExpiresAt: null };
+        }
       }
+
+      const { data, error } = await supabase
+        .from('feature_access')
+        .select('trial_started_at, is_subscribed')
+        .eq('user_id', userId)
+        .eq('feature_id', 'strategist_pilot')
+        .single();
+
+      if (error && error.code !== 'PGRST116' && error.code !== 'PGRST205') throw error;
+
+      if (data?.is_subscribed) {
+        return { hasAccess: true, status: 'active', trialExpiresAt: null };
+      }
+
+      if (data?.trial_started_at) {
+        const trialStart = new Date(data.trial_started_at);
+        const now = new Date();
+        const expiresAt = new Date(trialStart.getTime() + 24 * 60 * 60 * 1000);
+        if (now < expiresAt) {
+          return { hasAccess: true, status: 'trial', trialExpiresAt: expiresAt.toISOString() };
+        }
+      }
+      return { hasAccess: false, status: 'no_access', trialExpiresAt: null };
+    } catch (err) {
+      console.error('[StrategistService] Access check failed:', err);
+      return { hasAccess: false, status: 'no_access', trialExpiresAt: null };
     }
-    return { hasAccess: false, status: 'no_access', trialExpiresAt: null };
   },
 
   async activateTrial(userId: string): Promise<boolean> {
