@@ -51,7 +51,7 @@ export function BottomNav() {
               <li key={item.href} className="flex-1">
                 <Link
                   href={item.href}
-                  prefetch={false}
+                  prefetch={true}
                   className={cn(
                     "flex flex-col items-center justify-center py-1.5 transition-all duration-150 relative select-none touch-manipulation group",
                     isActive ? "text-white" : "text-white/30 hover:text-white/60"
@@ -60,14 +60,12 @@ export function BottomNav() {
                 >
                   {/* Top active indicator line */}
                   {isActive && (
-                    <motion.div
-                      layoutId="bottomNavIndicator"
-                      className="absolute -top-2 h-[2.5px] w-8 rounded-full shadow-lg"
+                    <div
+                      className="absolute -top-2 h-[2.5px] w-8 rounded-full shadow-lg transition-all duration-200"
                       style={{ 
                         backgroundColor: activeColor,
                         boxShadow: `0 0 10px ${activeColor}` 
                       }}
-                      transition={{ type: 'spring', stiffness: 400, damping: 30 }}
                     />
                   )}
 

@@ -204,14 +204,17 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     };
   }, []);
 
+  const hasFetchedIdeasRef = React.useRef(false);
+
   // 1. Initial Load - Profile & DNA
   useEffect(() => {
     fetchProfile();
   }, [fetchProfile]);
 
-  // 2. Pre-fetch ideas once profile is ready
+  // 2. Pre-fetch ideas once profile is ready (only once per session)
   useEffect(() => {
-    if (profile?.id) {
+    if (profile?.id && !hasFetchedIdeasRef.current) {
+      hasFetchedIdeasRef.current = true;
       fetchIdeas('new');
       fetchIdeas('archived');
       fetchIdeas('used');

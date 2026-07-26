@@ -261,11 +261,13 @@ function DeliveryPageContent() {
       return hex;
     };
 
-    // Scale subtitle size to match 1080p canvas proportions
-    // 82px in the ~360px studio viewport equals ~246px in 1080p
+    // Scale subtitle size to match 1080p/720p canvas proportions
     const isMobile = videoHeight === 1280;
     const baseScale = isMobile ? 2.0 : 3.0;
-    const subSize = Math.round(subSizeRaw * baseScale);
+    
+    // Clamp subSizeRaw between 14px and 30px to prevent oversized subtitles on export
+    const clampedSizeRaw = Math.min(30, Math.max(14, subSizeRaw));
+    const subSize = Math.round(clampedSizeRaw * baseScale);
 
     const drawtextChain = clips.flatMap(c => {
       const lines = splitCaptionText(c.text || '');
@@ -315,10 +317,8 @@ function DeliveryPageContent() {
         }
       }
 
-      // Map Y coordinates exactly to canvas editor: bottom 15% + framer-motion translation
-      const baseBottom = videoHeight * 0.15; 
-      const translatedY = subPos.y * (isMobile ? (720/1080) : 1);
-      const finalY = Math.round(videoHeight - baseBottom - subSize + translatedY);
+      // Map Y coordinates exactly to studio editor (bottom: 15% anchor + subtitlePos.y offset)
+      const baseBottomY = Math.round(videoHeight * 0.85 + (subPos.y * (isMobile ? (720/1080) : 1)));
       const translatedX = subPos.x * (isMobile ? (720/1080) : 1);
       
       const isLeftAlign = subStyleIdx === 1;
@@ -352,12 +352,14 @@ function DeliveryPageContent() {
       const alphaExpr = `clip((t-${subStart})/${FADE_DUR}\\,0\\,1)*clip((${subEnd}-t)/${FADE_DUR}\\,0\\,1)`;
       const xExpr = `${finalX} + ${dxIn}*(1-${progIn}) + ${dxOut}*${progOut}`;
 
-      const lineGap = Math.round(5 * baseScale);
+      const lineGap = Math.round(6 * baseScale);
       const hasTwoLines = !!line2;
-      const finalY1 = hasTwoLines 
-        ? Math.round(finalY - (subSize + lineGap) / 2) 
-        : finalY;
-      const finalY2 = Math.round(finalY + (subSize + lineGap) / 2);
+
+      // Mathematically anchor bottom of subtitle text block at baseBottomY
+      const finalY2 = Math.round(baseBottomY - subSize);
+      const finalY1 = hasTwoLines
+        ? Math.round(baseBottomY - (subSize * 2 + lineGap))
+        : finalY2;
 
       const yExpr1 = `${finalY1} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
       const yExpr2 = `${finalY2} + ${dyIn}*(1-${progIn}) + ${dyOut}*${progOut}`;
