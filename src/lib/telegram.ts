@@ -98,6 +98,17 @@ export async function notifyAdminError(details: {
     ? details.error 
     : details.error?.message || String(details.error);
 
+  // Ignore routine business paywall/limit errors so Telegram doesn't get spammed
+  if (
+    errorMessage.includes('INSUFFICIENT_CREDITS') ||
+    errorMessage.includes('TRIAL_EXPIRED') ||
+    errorMessage.includes('LIMIT_EXCEEDED') ||
+    errorMessage.includes('BALANCE_TOO_LOW') ||
+    errorMessage.includes('Free trial limit')
+  ) {
+    return false;
+  }
+
   const stack = typeof details.error === 'object' && details.error?.stack 
     ? details.error.stack.split('\n').slice(0, 4).join('\n') 
     : '';
@@ -144,3 +155,41 @@ export async function notifyAdminError(details: {
     return false;
   }
 }
+
+export async function notifyNewUserRegistration(profile: {
+  id: string;
+  email?: string;
+  full_name?: string | null;
+  tier?: string;
+  avatar_url?: string | null;
+  created_at?: string;
+}): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+  if (!token || !adminChatId) return false;
+
+  const text = `🎉 <b>НОВАЯ РЕГИСТРАЦИЯ ПОЛЬЗОВАТЕЛЯ</b> 🎉\n\n` +
+    `<b>👤 Имя:</b> <code>${escapeHtml(profile.full_name || 'Не указано')}</code>\n` +
+    `<b>📧 Email:</b> <code>${escapeHtml(profile.email || 'Не указан')}</code>\n` +
+    `<b>🆔 User ID:</b> <code>${escapeHtml(profile.id)}</code>\n` +
+    `<b>🏷️ Тариф:</b> <code>${escapeHtml((profile.tier || 'free').toUpperCase())}</code>\n` +
+    `<b>⏰ Время:</b> ${profile.created_at || new Date().toISOString()}`;
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: adminChatId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: true,
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('[Telegram New User Alert] Failed to send notification:', err);
+    return false;
+  }
+}
+

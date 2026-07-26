@@ -1,6 +1,8 @@
 import { createClient } from '@supabase/supabase-js';
 import { cookies } from 'next/headers';
 
+import { notifyNewUserRegistration } from '@/lib/telegram';
+
 /**
  * Server-side helper to get the authenticated context (user + authorized client).
  * This ensures that API routes can query data that respects RLS.
@@ -81,7 +83,7 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
         console.log('[Auth] Creating missing profile for user:', user.id);
         const stableNum = parseInt(user.id.slice(0, 4), 16) % 10000;
         const defaultName = `Media Creator #${stableNum}`;
-        await supabase.from('profiles').insert({
+        const profileData = {
           id: user.id,
           email: user.email || `anon_${user.id}@viral.engine`,
           full_name: user.user_metadata?.full_name || defaultName,
@@ -107,7 +109,9 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
           anthropic_api_key: null,
           elevenlabs_api_key: null,
           groq_api_key: null
-        });
+        };
+        await supabase.from('profiles').insert(profileData);
+        notifyNewUserRegistration(profileData).catch(() => {});
       }
     } catch (err) {
       console.warn('[Auth] Failed to ensure profile:', err);

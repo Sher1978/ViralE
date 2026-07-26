@@ -1,4 +1,5 @@
 import { supabase } from '../supabase';
+import { notifyNewUserRegistration } from '../telegram';
 
 export interface Profile {
   id: string;
@@ -90,6 +91,9 @@ export const profileService = {
       if (createError) {
         console.error('Error creating profile:', createError);
         return null;
+      }
+      if (newProfile) {
+        notifyNewUserRegistration(newProfile).catch(() => {});
       }
       return newProfile;
     }
