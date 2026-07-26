@@ -82,67 +82,107 @@ export function SubscriptionWarning() {
       <AnimatePresence>
         {showExpiryWarning && daysRemaining !== null && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0.8, bottom: 0.05 }}
+            onDragEnd={(_e, info) => {
+              if (info.offset.y < -25 || info.velocity.y < -200) {
+                handleDismissExpiry();
+              }
+            }}
+            initial={{ opacity: 0, y: -30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="p-4 rounded-3xl bg-red-950/80 border border-red-500/30 backdrop-blur-md shadow-2xl flex items-start gap-3 pointer-events-auto"
+            exit={{ opacity: 0, y: -60, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="p-4 pr-14 rounded-3xl bg-red-950/90 border border-red-500/30 backdrop-blur-md shadow-2xl flex flex-col pointer-events-auto touch-pan-y cursor-grab active:cursor-grabbing select-none relative"
           >
-            <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
-            <div className="flex-1 space-y-1">
-              <h4 className="text-xs font-black uppercase tracking-wider text-red-300">
-                {locale === 'ru' ? 'Срок пакета заканчивается' : 'Package Expiry Warning'}
-              </h4>
-              <p className="text-[10px] text-red-200/70 font-medium leading-relaxed">
-                {locale === 'ru'
-                  ? `Доступ к вашему тарифу истекает через ${daysRemaining} ${daysRemaining === 1 ? 'день' : 'дня'}. Продлите подписку заранее!`
-                  : `Your subscription expires in ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'}. Renew now to avoid service interruption!`}
-              </p>
-              <button
-                onClick={handleAction}
-                className="mt-2 px-3 py-1.5 rounded-lg bg-red-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-red-400 active:scale-95 transition-all"
-              >
-                {locale === 'ru' ? 'Продлить доступ' : 'Renew Access'}
-              </button>
+            {/* Swipe Handle Indicator */}
+            <div className="w-10 h-1 rounded-full bg-white/25 mx-auto mb-2 shrink-0" />
+
+            <div className="flex items-start gap-3">
+              <AlertTriangle className="w-5 h-5 text-red-400 shrink-0 mt-0.5" />
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-red-300">
+                    {locale === 'ru' ? 'Срок пакета заканчивается' : 'Package Expiry Warning'}
+                  </h4>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDismissExpiry();
+                    }}
+                    className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-red-300 transition-colors shrink-0 active:scale-90"
+                    title={locale === 'ru' ? 'Закрыть' : 'Close'}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-red-200/70 font-medium leading-relaxed pr-2">
+                  {locale === 'ru'
+                    ? `Доступ к вашему тарифу истекает через ${daysRemaining} ${daysRemaining === 1 ? 'день' : 'дня'}. Продлите подписку заранее!`
+                    : `Your subscription expires in ${daysRemaining} ${daysRemaining === 1 ? 'day' : 'days'}. Renew now to avoid service interruption!`}
+                </p>
+                <button
+                  onClick={handleAction}
+                  className="mt-2 px-3 py-1.5 rounded-lg bg-red-500 text-white text-[9px] font-black uppercase tracking-widest hover:bg-red-400 active:scale-95 transition-all"
+                >
+                  {locale === 'ru' ? 'Продлить доступ' : 'Renew Access'}
+                </button>
+              </div>
             </div>
-            <button
-              onClick={handleDismissExpiry}
-              className="p-1 rounded-lg hover:bg-white/5 text-red-400/50 hover:text-red-300 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </motion.div>
         )}
 
         {showCreditsWarning && (
           <motion.div
-            initial={{ opacity: 0, y: -20, scale: 0.95 }}
+            drag="y"
+            dragConstraints={{ top: 0, bottom: 0 }}
+            dragElastic={{ top: 0.8, bottom: 0.05 }}
+            onDragEnd={(_e, info) => {
+              if (info.offset.y < -25 || info.velocity.y < -200) {
+                handleDismissCredits();
+              }
+            }}
+            initial={{ opacity: 0, y: -30, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
-            exit={{ opacity: 0, y: -20, scale: 0.95 }}
-            className="p-4 rounded-3xl bg-yellow-950/80 border border-yellow-500/30 backdrop-blur-md shadow-2xl flex items-start gap-3 pointer-events-auto"
+            exit={{ opacity: 0, y: -60, scale: 0.9 }}
+            transition={{ duration: 0.2 }}
+            className="p-4 pr-14 rounded-3xl bg-yellow-950/90 border border-yellow-500/30 backdrop-blur-md shadow-2xl flex flex-col pointer-events-auto touch-pan-y cursor-grab active:cursor-grabbing select-none relative"
           >
-            <Zap className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5 animate-pulse" />
-            <div className="flex-1 space-y-1">
-              <h4 className="text-xs font-black uppercase tracking-wider text-yellow-300">
-                {locale === 'ru' ? 'Кредиты заканчиваются' : 'Low Credits Warning'}
-              </h4>
-              <p className="text-[10px] text-yellow-200/70 font-medium leading-relaxed">
-                {locale === 'ru'
-                  ? `У вас осталось всего ${profile.credits_balance} кр. Пополните баланс, чтобы продолжить генерацию сценариев и видео.`
-                  : `You only have ${profile.credits_balance} credits remaining. Top up to continue creating scripts and videos.`}
-              </p>
-              <button
-                onClick={handleAction}
-                className="mt-2 px-3 py-1.5 rounded-lg bg-yellow-500 text-black text-[9px] font-black uppercase tracking-widest hover:bg-yellow-400 active:scale-95 transition-all"
-              >
-                {locale === 'ru' ? 'Пополнить баланс' : 'Top Up Balance'}
-              </button>
+            {/* Swipe Handle Indicator */}
+            <div className="w-10 h-1 rounded-full bg-white/25 mx-auto mb-2 shrink-0" />
+
+            <div className="flex items-start gap-3">
+              <Zap className="w-5 h-5 text-yellow-400 shrink-0 mt-0.5 animate-pulse" />
+              <div className="flex-1 space-y-1">
+                <div className="flex items-center justify-between gap-2">
+                  <h4 className="text-xs font-black uppercase tracking-wider text-yellow-300">
+                    {locale === 'ru' ? 'Кредиты заканчиваются' : 'Low Credits Warning'}
+                  </h4>
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleDismissCredits();
+                    }}
+                    className="p-1.5 rounded-full bg-white/10 hover:bg-white/20 text-yellow-300 transition-colors shrink-0 active:scale-90"
+                    title={locale === 'ru' ? 'Закрыть' : 'Close'}
+                  >
+                    <X className="w-4 h-4" />
+                  </button>
+                </div>
+                <p className="text-[10px] text-yellow-200/70 font-medium leading-relaxed pr-2">
+                  {locale === 'ru'
+                    ? `У вас осталось всего ${profile.credits_balance} кр. Пополните баланс, чтобы продолжить генерацию сценариев и видео.`
+                    : `You only have ${profile.credits_balance} credits remaining. Top up to continue creating scripts and videos.`}
+                </p>
+                <button
+                  onClick={handleAction}
+                  className="mt-2 px-3 py-1.5 rounded-lg bg-yellow-500 text-black text-[9px] font-black uppercase tracking-widest hover:bg-yellow-400 active:scale-95 transition-all"
+                >
+                  {locale === 'ru' ? 'Пополнить баланс' : 'Top Up Balance'}
+                </button>
+              </div>
             </div>
-            <button
-              onClick={handleDismissCredits}
-              className="p-1 rounded-lg hover:bg-white/5 text-yellow-400/50 hover:text-yellow-300 transition-colors"
-            >
-              <X className="w-4 h-4" />
-            </button>
           </motion.div>
         )}
       </AnimatePresence>
