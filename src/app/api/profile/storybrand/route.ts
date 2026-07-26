@@ -120,7 +120,8 @@ export async function DELETE(req: Request) {
         storybrand_raw_content: null,
         storybrand_filename: null,
         storybrand_file_size: null,
-        storybrand_updated_at: null
+        storybrand_updated_at: null,
+        digital_shadow_prompt: null
       })
       .eq('id', userId);
 
@@ -143,7 +144,8 @@ export async function DELETE(req: Request) {
             storybrand_raw_content: null,
             storybrand_filename: null,
             storybrand_file_size: null,
-            storybrand_updated_at: null
+            storybrand_updated_at: null,
+            digital_shadow_prompt: null
           })
           .eq('id', userId);
 
@@ -152,6 +154,12 @@ export async function DELETE(req: Request) {
         throw deleteResult.error;
       }
     }
+
+    // Wipe ideation feed so old StoryBrand ideas don't linger
+    await authorizedSupabase
+      .from('ideation_feed')
+      .delete()
+      .eq('user_id', userId);
 
     console.log(`[StoryBrand API] Deleted successfully, falling back to base DNA.`);
     return NextResponse.json({ success: true });

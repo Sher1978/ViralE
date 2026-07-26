@@ -84,19 +84,37 @@ export async function DELETE() {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
     const userId = user.id;
 
-    const { error } = await authorizedSupabase
+    // 1. Wipe all profile DNA, StoryBrand document and onboarding state
+    const { error: profileError } = await authorizedSupabase
       .from('profiles')
       .update({
         digital_shadow_prompt: null,
         dna_answers: {},
         raw_onboarding_data: {},
+        storybrand_raw_content: null,
+        storybrand_filename: null,
+        storybrand_file_size: null,
+        storybrand_updated_at: null,
+        industry_context: null,
+        synthetic_training_data: null,
         onboarding_completed: false,
         updated_at: new Date().toISOString()
       })
       .eq('id', userId);
 
-    if (error) throw error;
+    if (profileError) throw profileError;
 
+    // 2. Wipe all ideation feed entries for this user
+    const { error: ideasError } = await authorizedSupabase
+      .from('ideation_feed')
+      .delete()
+      .eq('user_id', userId);
+
+    if (ideasError) {
+      console.warn('[Profile DNA Reset] Non-critical warning deleting ideas feed:', ideasError.message);
+    }
+
+    console.log(`[Profile DNA Reset] Completely wiped DNA, StoryBrand, and Ideas Feed for user ${userId}.`);
     return NextResponse.json({ success: true });
   } catch (error: any) {
     console.error('Reset DNA failed:', error);
