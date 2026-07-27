@@ -1,6 +1,17 @@
 import Anthropic from "@anthropic-ai/sdk";
  
-const DEFAULT_MODEL = "claude-3-5-haiku-latest";
+const DEFAULT_MODEL = "claude-3-5-sonnet-20241022";
+
+export function getAnthropicClient(apiKey?: string): Anthropic {
+  const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
+  if (!authKey) throw new Error("Anthropic API key not configured");
+
+  const options: any = { apiKey: authKey };
+  if (process.env.ANTHROPIC_BASE_URL) {
+    options.baseURL = process.env.ANTHROPIC_BASE_URL;
+  }
+  return new Anthropic(options);
+}
 
 async function createAnthropicMessage(
   anthropic: Anthropic,
@@ -11,17 +22,21 @@ async function createAnthropicMessage(
     messages: any[];
   }
 ) {
-  const modelName = params.model.toLowerCase();
+  const requestedModel = params.model.toLowerCase();
   const candidates = [
-    modelName,
-    "claude-3-5-haiku-latest",
-    "claude-3-5-haiku-20241022",
-    "claude-3-5-sonnet-latest",
+    requestedModel,
     "claude-3-5-sonnet-20241022",
-    "claude-3-haiku-20240307"
+    "claude-3-5-sonnet-latest",
+    "claude-3-7-sonnet-latest",
+    "claude-3-7-sonnet-20250219",
+    "claude-3-5-haiku-20241022",
+    "claude-3-5-haiku-latest",
+    "claude-3-haiku-20240307",
+    "claude-3-opus-20240229"
   ];
   
   const uniqueCandidates = Array.from(new Set(candidates));
+  let firstError: any = null;
   let lastError: any = null;
   
   for (const modelCandidate of uniqueCandidates) {
@@ -32,6 +47,7 @@ async function createAnthropicMessage(
         model: modelCandidate
       });
     } catch (err: any) {
+      if (!firstError) firstError = err;
       lastError = err;
       const errMsg = err.message || '';
       console.warn(`[Anthropic client] Model ${modelCandidate} failed: ${errMsg}. Trying next candidate...`);
@@ -41,14 +57,13 @@ async function createAnthropicMessage(
     }
   }
   
-  throw lastError || new Error("Anthropic generation failed on all fallback candidates.");
+  const targetErr = firstError || lastError;
+  const detailMsg = targetErr?.message || "Anthropic generation failed on all candidate models.";
+  throw new Error(`Anthropic (${requestedModel}): ${detailMsg}`);
 }
 
 export async function generateTrizText(prompt: string, apiKey?: string): Promise<string> {
-  const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
-  if (!authKey) throw new Error("Anthropic API key not configured");
-  
-  const anthropic = new Anthropic({ apiKey: authKey });
+  const anthropic = getAnthropicClient(apiKey);
   const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
   
   const response = await createAnthropicMessage(anthropic, {
@@ -131,8 +146,7 @@ export async function generateScript(
   trizMatrix?: string,
   systemPromptBase?: string
 ) {
-  const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
-  const anthropic = new Anthropic({ apiKey: authKey });
+  const anthropic = getAnthropicClient(apiKey);
   
   const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
@@ -214,8 +228,7 @@ export async function refineScript(
   brandDna?: any,
   systemPromptBase?: string
 ) {
-  const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
-  const anthropic = new Anthropic({ apiKey: authKey });
+  const anthropic = getAnthropicClient(apiKey);
   
   const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
@@ -261,10 +274,7 @@ export async function generatePreviews(
   brandDna?: any,
   systemPromptBase?: string
 ) {
-  const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
-  if (!authKey) throw new Error("Anthropic API key not configured");
-
-  const anthropic = new Anthropic({ apiKey: authKey });
+  const anthropic = getAnthropicClient(apiKey);
   const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
@@ -329,10 +339,7 @@ export async function generateFullScript(
   brandDna?: any,
   systemPromptBase?: string
 ) {
-  const authKey = apiKey || process.env.ANTHROPIC_API_KEY || "";
-  if (!authKey) throw new Error("Anthropic API key not configured");
-
-  const anthropic = new Anthropic({ apiKey: authKey });
+  const anthropic = getAnthropicClient(apiKey);
   const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 

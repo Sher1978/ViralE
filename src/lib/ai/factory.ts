@@ -129,7 +129,15 @@ export async function generateScript(
   switch (engine) {
     case 'claude':
     case 'claude-byok':
-      return anthropic.generateScript(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, trizMatrix, systemPromptBase);
+      try {
+        return await anthropic.generateScript(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, trizMatrix, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Claude generation failed, attempting automatic fallback...', err.message);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          return await groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, trizMatrix, systemPromptBase);
+        }
+        return await gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role, trizMatrix, systemPromptBase);
+      }
     case 'groq':
       return groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, trizMatrix, systemPromptBase);
     case 'gemini':
@@ -161,7 +169,15 @@ export async function refineScript(
   switch (engine) {
     case 'claude':
     case 'claude-byok':
-      return anthropic.refineScript(currentScript, instruction, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+      try {
+        return await anthropic.refineScript(currentScript, instruction, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Claude refineScript failed, falling back...', err.message);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          return await groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+        }
+        return await gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      }
     case 'groq':
       return groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
     case 'gemini':
@@ -191,7 +207,15 @@ export async function generatePreviews(
   switch (engine) {
     case 'claude':
     case 'claude-byok':
-      return anthropic.generatePreviews(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+      try {
+        return await anthropic.generatePreviews(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Claude generatePreviews failed, falling back...', err.message);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          return await groq.generatePreviews(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+        }
+        return await gemini.generatePreviews(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      }
     case 'groq':
       return groq.generatePreviews(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
     case 'gemini':
@@ -223,7 +247,15 @@ export async function generateFullScript(
   switch (engine) {
     case 'claude':
     case 'claude-byok':
-      return anthropic.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+      try {
+        return await anthropic.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Claude generateFullScript failed, falling back...', err.message);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          return await groq.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+        }
+        return await gemini.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      }
     case 'groq':
       return groq.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
     case 'gemini':
