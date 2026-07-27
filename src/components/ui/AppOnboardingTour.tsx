@@ -30,7 +30,7 @@ export function AppOnboardingTour({ isOpen, onClose, onConnectTelegram }: AppOnb
     {
       icon: Lightbulb,
       accent: '#10b981',
-      badge: locale === 'ru' ? 'ШАГ 1 ИЗ 3' : 'STEP 1 OF 3',
+      badge: locale === 'ru' ? 'ШАГ 1 ИЗ 4' : 'STEP 1 OF 4',
       title: locale === 'ru' ? '💡 Матрица Идей & AI-Тренды' : '💡 Ideas Matrix & AI Trends',
       subtitle: locale === 'ru' ? 'Генерация виральных тем под вашу ДНК' : 'Generating viral topics based on your DNA',
       description: locale === 'ru' 
@@ -40,13 +40,24 @@ export function AppOnboardingTour({ isOpen, onClose, onConnectTelegram }: AppOnb
     },
     {
       icon: Clapperboard,
+      accent: '#ec4899',
+      badge: locale === 'ru' ? 'ШАГ 2 ИЗ 4' : 'STEP 2 OF 4',
+      title: locale === 'ru' ? '🎬 4 Варианта Пайплайна Производства' : '🎬 4 Content Production Pipelines',
+      subtitle: locale === 'ru' ? 'Выберите подходящий формат создания ролика' : 'Select your preferred video creation format',
+      description: locale === 'ru'
+        ? 'Студия предлагает 4 готовых пути съемки и генерации:\n• 📱 Телесуфлер — Живая съемка с бегущим текстом на экране.\n• ✨ Фейс Свап — Наложение вашего лица на записанный ролик.\n• 🎬 Фейслесс — Авто-генерация нейро-сцен и кино-футажей.\n• 👤 Аватар Студия — Персональный HeyGen ИИ-диктор.'
+        : 'The Studio offers 4 production pathways:\n• 📱 Teleprompter — Live filming with smooth text on camera.\n• ✨ Face Swap — Seamless face replacement on your videos.\n• 🎬 AI Faceless — Auto-generated cinematic B-roll scenes.\n• 👤 Avatar Studio — Custom HeyGen AI digital speaker.',
+      highlightText: locale === 'ru' ? '🚀 Телесуфлер • Фейс Свап • Фейслесс • Аватар Студия' : '🚀 Teleprompter • Face Swap • Faceless • Avatar'
+    },
+    {
+      icon: Zap,
       accent: '#a855f7',
-      badge: locale === 'ru' ? 'ШАГ 2 ИЗ 3' : 'STEP 2 OF 3',
-      title: locale === 'ru' ? '🎬 ИИ-Студия & Автоматический Монтаж' : '🎬 AI Studio & Auto Editing',
+      badge: locale === 'ru' ? 'ШАГ 3 ИЗ 4' : 'STEP 3 OF 4',
+      title: locale === 'ru' ? '✂️ ИИ-Студия & Автоматический Монтаж' : '✂️ AI Studio & Auto Editing',
       subtitle: locale === 'ru' ? 'Создание видео от раскадровки до рендера' : 'Full production from storyboard to final render',
       description: locale === 'ru'
-        ? 'Студия превращает текст в готовый контент: создает пошаговые сцены, генерирует ИИ-аватары, подбирает фоны и накладывает озвучку. Вам больше не нужна съемочная команда или монтажер!'
-        : 'The Studio turns text into complete video: builds scene-by-scene storyboards, generates AI avatars, arranges b-roll, and adds voiceovers without needing a filming crew!',
+        ? 'Студия превращает текст в готовый контент: создает пошаговые сцены, подбирает фоны, генерирует обложки и накладывает озвучку. Вам больше не нужна съемочная команда или монтажер!'
+        : 'The Studio turns text into complete video: builds scene-by-scene storyboards, generates AI banners, arranges b-roll, and adds voiceovers without needing a filming crew!',
       highlightText: locale === 'ru' ? '✨ Полный цикл производства в одном окне' : '✨ End-to-end AI production'
     },
     {
