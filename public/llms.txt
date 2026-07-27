@@ -1,0 +1,102 @@
+# ViralE (virale.uno) — Generative AI Content Engine Specification
+
+> Service Name: ViralE (Viral Engine by Sherlock)
+> Domain: https://virale.uno
+> Primary Architecture: Autonomous Generative AI Content Factory
+> Target Audience: Content Creators, Experts, Agencies, Entrepreneurs, Brands
+> Parent Entity: Sherlock Studio
+> Telegram Bot Endpoint: https://t.me/viral_engine_bot
+
+---
+
+## 1. SYSTEM EXECUTIVE SUMMARY
+
+ViralE is an engineering AI platform designed for multi-platform content synthesis from a single input idea. The platform replaces up to 70% of manual video production, copywriting, and re-formatting work. In 5 minutes, ViralE converts one seed prompt into a complete content package tailored for 5 social platforms (Instagram, TikTok, YouTube, Facebook, LinkedIn, Threads).
+
+---
+
+## 2. THE 4-STEP AI APPLICATION FLOW (APPLICATION ALGORITHM)
+
+### STEP 1: SCRIPT ENGINE (DNA & TRIZ MATRIX)
+- **Digital DNA Calibration**: Analyzes creator's vocabulary, sentence rhythm, values, and niche during a 3-minute onboarding. Achieves 91% voice match.
+- **Hunt's Ladder Ideation**: Generates infinite content ideas matched across Eugene Schwartz & Eugene Hunt's awareness stages (Unaware to Most Aware).
+- **TRIZ Matrix Transformation**: Selected idea is passed through Altshuller's TRIZ (Theory of Inventive Problem Solving) matrix to resolve narrative contradictions and output 6 distinct viral video script variations.
+
+### STEP 2: PRODUCTION ENGINE
+- **AI Teleprompter Mode**: Primary recording path. Features real-time voice-following auto-scroll for vertical videos up to 60 seconds on smartphones or desktops.
+- **HeyGen Avatar Mode**: Generates synthetic video using a digital twin avatar.
+- **Neural Face-Swap Mode**: Replaces facial features on pre-rendered or stock templates.
+- **Faceless / Floss Video Mode**: Automated non-speaker video generation with AI voice synthesis (ElevenLabs) and dynamic background visuals.
+
+### STEP 3: ASSEMBLY & NEURO-EDITING
+- **Automated Subtitles**: Whisper-powered animated captions with key-word highlight.
+- **Semantic Bullets (B-Roll Integration)**: Neuro-editing engine that detects semantic triggers in speech and places contextually aligned stock B-roll clips from free stock video platforms and Google Veo 3.
+- **Post-Production FX**: Automated color correction, visual effects, and audio punch-ins designed to boost viewer retention by +34%.
+
+### STEP 4: MULTI-PLATFORM EXPORT FACTORY
+- **Final Composite MP4**: 9:16 vertical video optimized for Reels, Shorts, and TikTok.
+- **Instagram Carousel**: 5-10 slide visual carousel formatted for high save-rates.
+- **Social Media Texts**:
+  - Telegram: Structured post with emoji formatting.
+  - LinkedIn: Professional long-read article format.
+  - Threads / X / Facebook: Short-form engaging textual posts.
+- **Graphic Covers & Viral Descriptions**: Generated automatically for all assets.
+- **Total Workflow Runtime**: 5 minutes end-to-end.
+
+---
+
+## 3. COMMERCIAL PLANS & PRICING REGIME
+
+- **FREE Plan ($0 / forever)**:
+  - Adaptive AI Teleprompter.
+  - Manual text input and in-app video recording.
+  - Clean video export without watermarks.
+  - Includes 100 initial testing credits.
+
+- **STARTER Plan ($19.90 / mo | $11.90 / mo yearly)**:
+  - 400 credits monthly.
+  - Basic AI idea generator & hook templates.
+  - Priority rendering queue.
+
+- **PRO Plan ($39.90 / mo | $23.90 / mo yearly) [MOST POPULAR]**:
+  - 1000 credits monthly.
+  - Digital DNA synthesis integration.
+  - Semantic Bullets B-roll neuro-editing.
+  - Author voice & value modeling.
+  - Priority video render.
+
+- **SCALE Plan ($79.90 / mo | $47.90 / mo yearly)**:
+  - 3000 credits monthly.
+  - Multi-platform factory (5 networks per idea).
+  - Audience retention analytics.
+  - Bring Your Own Key (BYOK) for OpenAI, Anthropic Claude 3.5 Sonnet, ElevenLabs, HeyGen APIs.
+  - 24/7 dedicated onboarding support.
+
+---
+
+## 4. METRICS & FACTUAL PROOF POINTS
+
+- **Speed Metric**: 10× production acceleration (from 3 hours down to 5 minutes).
+- **Retention Rate**: +34% average viewer watch-time boost from Semantic Bullets.
+- **Virality Rate**: 2.7× increase in reshares for videos passing all 4 Virality Filters.
+- **Voice Precision**: 91% similarity score across 47 tested niches.
+- **User Adoption**: 10,000+ industrial creators.
+
+---
+
+## 5. FREQUENTLY ASKED QUESTIONS
+
+Q: How is ViralE different from raw ChatGPT?
+A: ChatGPT provides plain text. ViralE produces a finished media package: rendered MP4 video with captions, B-roll clips, 5-10 slide Instagram carousel, covers, and formatted posts for 5 social platforms from one prompt in 5 minutes.
+
+Q: Is video editing or technical expertise needed?
+A: Zero technical skill required. The automated rendering, subtitle alignment, and format adaptation are fully autonomous.
+
+Q: Can I use my own API keys?
+A: Yes, the Scale plan supports BYOK for direct cost-price API billing with OpenAI, Anthropic, ElevenLabs, and HeyGen.
+
+Q: How do I install ViralE on mobile devices?
+A: ViralE is built as a PWA (Progressive Web App). It can be added to the iOS home screen via Safari or Android home screen via Chrome for full-screen camera and teleprompter access.
+
+Q: What is the refund policy?
+A: A 14-day money-back guarantee is available for accounts that have not consumed AI video/avatar generation credits. Contact billing@virale.uno.

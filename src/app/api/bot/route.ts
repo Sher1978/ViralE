@@ -219,26 +219,43 @@ export async function POST(req: NextRequest) {
 
       const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
       if (fromId === String(ADMIN_ID) && data.startsWith('admin_')) {
-        const { getAdminOverviewStats, getAdminUsersList, getAdminPaymentsLog } = await import('@/lib/admin');
+        const { getAdminOverviewStats, getAdminUsersList, getAdminPaymentsLog, getAdminTrafficSourcesReport } = await import('@/lib/admin');
         const { monitoringService } = await import('@/lib/services/monitoringService');
 
         let text = '';
         const inlineKeyboard = [
           [
             { text: '📊 Статистика', callback_data: 'admin_stats' },
-            { text: '👥 Юзеры', callback_data: 'admin_users' }
+            { text: '🌐 Источники (ИИ)', callback_data: 'admin_sources' }
           ],
           [
-            { text: '💳 Оплаты', callback_data: 'admin_payments' },
-            { text: '🛠 API Балансы', callback_data: 'admin_balances' }
+            { text: '👥 Юзеры', callback_data: 'admin_users' },
+            { text: '💳 Оплаты', callback_data: 'admin_payments' }
           ],
           [
-            { text: '🌐 Открыть Веб-Панель', url: 'https://www.virale.uno/ru/app/admin' }
+            { text: '🛠 API Балансы', callback_data: 'admin_balances' },
+            { text: '🌐 Веб-Панель', url: 'https://www.virale.uno/ru/app/admin' }
           ]
         ];
 
         if (data === 'admin_menu') {
           text = `👑 *Панель Суперадминистратора*\n\nВыберите нужный раздел или перейдите в полную веб-версию:`;
+        } else if (data === 'admin_sources') {
+          const sourcesReport = await getAdminTrafficSourcesReport();
+          const srcLines = Object.entries(sourcesReport.sourcesBreakdown)
+            .map(([src, count]) => `• *${src}*: \`${count}\` чел.`)
+            .join('\n');
+
+          const discLines = Object.entries(sourcesReport.discoveryBreakdown)
+            .map(([disc, count]) => `• *${disc}*: \`${count}\` чел.`)
+            .join('\n');
+
+          text = `🌐 *Отчет по источникам трафика и ИИ-переходам*\n\n` +
+            `• Проанализировано пользователей: *${sourcesReport.totalAnalyzed}*\n` +
+            `• Переходов из ИИ-сервисов (ChatGPT/Perplexity): *${sourcesReport.aiTrafficCount}*\n` +
+            `• Dark Traffic (Прямой на глубокий URL): *${sourcesReport.darkTrafficCount}*\n\n` +
+            `*Разбивка по техническим источникам:*\n${srcLines || 'Данных нет'}\n\n` +
+            `*Опрос при онбординге (Zero-Party Data):*\n${discLines || 'Данных нет'}`;
         } else if (data === 'admin_stats') {
           const stats = await getAdminOverviewStats();
           text = `📊 *Статистика Платформы*\n\n` +
@@ -639,6 +656,39 @@ export async function POST(req: NextRequest) {
           parse_mode: 'Markdown'
         })
       });
+    } else if (text.startsWith('/sources')) {
+      const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+      if (String(user.id) !== String(ADMIN_ID)) {
+        return NextResponse.json({ ok: true });
+      }
+
+      const { getAdminTrafficSourcesReport } = await import('@/lib/admin');
+      const sourcesReport = await getAdminTrafficSourcesReport();
+
+      const srcLines = Object.entries(sourcesReport.sourcesBreakdown)
+        .map(([src, count]) => `• *${src}*: \`${count}\` чел.`)
+        .join('\n');
+
+      const discLines = Object.entries(sourcesReport.discoveryBreakdown)
+        .map(([disc, count]) => `• *${disc}*: \`${count}\` чел.`)
+        .join('\n');
+
+      const textReport = `🌐 *Отчет по источникам трафика и ИИ-переходам*\n\n` +
+        `• Проанализировано пользователей: *${sourcesReport.totalAnalyzed}*\n` +
+        `• Переходов из ИИ-сервисов (ChatGPT/Perplexity): *${sourcesReport.aiTrafficCount}*\n` +
+        `• Dark Traffic (Прямой на глубокий URL): *${sourcesReport.darkTrafficCount}*\n\n` +
+        `*Разбивка по техническим источникам:*\n${srcLines || 'Данных нет'}\n\n` +
+        `*Опрос при онбординге (Zero-Party Data):*\n${discLines || 'Данных нет'}`;
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: textReport,
+          parse_mode: 'Markdown'
+        })
+      });
     } else if (text.startsWith('/admin')) {
       const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
       if (String(user.id) !== String(ADMIN_ID)) {
@@ -648,13 +698,14 @@ export async function POST(req: NextRequest) {
       const inlineKeyboard = [
         [
           { text: '📊 Статистика', callback_data: 'admin_stats' },
-          { text: '👥 Юзеры', callback_data: 'admin_users' }
+          { text: '🌐 Источники (ИИ)', callback_data: 'admin_sources' }
         ],
         [
-          { text: '💳 Оплаты', callback_data: 'admin_payments' },
-          { text: '🛠 API Балансы', callback_data: 'admin_balances' }
+          { text: '👥 Юзеры', callback_data: 'admin_users' },
+          { text: '💳 Оплаты', callback_data: 'admin_payments' }
         ],
         [
+          { text: '🛠 API Балансы', callback_data: 'admin_balances' },
           { text: '🌐 Открыть Веб-Панель', url: 'https://www.virale.uno/ru/app/admin' }
         ]
       ];

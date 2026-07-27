@@ -1,0 +1,987 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ViralE (virale.uno) — ИИ-Фабрика Вирального Контента | Generative Engine Optimization</title>
+    <meta name="description" content="Инженерный AI-двигатель виральности ViralE (virale.uno). Генерация 5 видов контента за 5 минут: Reels, Shorts, карусели Instagram, посты для LinkedIn, Threads и Telegram на основе вашей Цифровой ДНК.">
+    <meta name="keywords" content="ViralE, virale.uno, AI контент завод, виральные видео, телесуфлер ИИ, Цифровая ДНК, генератор Reels, генерация контента ИИ, матрица ТРИЗ, нейромонтаж">
+    <meta name="author" content="Sherlock Studio">
+    <link rel="canonical" href="https://virale.uno/" />
+
+    <!-- Open Graph / Facebook -->
+    <meta property="og:type" content="website">
+    <meta property="og:url" content="https://virale.uno/">
+    <meta property="og:title" content="ViralE — ИИ-Фабрика Вирального Контента за 5 Минут">
+    <meta property="og:description" content="Автономная сборка Reels, Shorts, каруселей и текстовых постов для 5 социальных сетей из 1 идеи на базе матрицы ТРИЗ и Цифровой ДНК.">
+    <meta property="og:image" content="https://virale.uno/cyberpunk_splash.png">
+
+    <!-- Twitter -->
+    <meta property="twitter:card" content="summary_large_image">
+    <meta property="twitter:url" content="https://virale.uno/">
+    <meta property="twitter:title" content="ViralE — Generative AI Content Engine">
+    <meta property="twitter:description" content="От идеи до 5 соцсетей за 5 минут. Автономный нейро-продакшн контента.">
+    <meta property="twitter:image" content="https://virale.uno/cyberpunk_splash.png">
+
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Inter:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500;700&display=swap" rel="stylesheet">
+
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    colors: {
+                        'virale-bg': '#090A10',
+                        'virale-card': '#121420',
+                        'virale-card-hover': '#1A1D2E',
+                        'virale-gold': '#D4AF37',
+                        'virale-gold-light': '#F3E5AB',
+                        'virale-orange': '#FF5C00',
+                        'cyber-cyan': '#00F3FF',
+                        'virale-border': 'rgba(212, 175, 55, 0.15)',
+                    },
+                    fontFamily: {
+                        bebas: ['Bebas Neue', 'sans-serif'],
+                        inter: ['Inter', 'sans-serif'],
+                        jetbrains: ['JetBrains Mono', 'monospace'],
+                    },
+                    boxShadow: {
+                        'gold-glow': '0 0 30px rgba(212, 175, 55, 0.25)',
+                        'cyan-glow': '0 0 30px rgba(0, 243, 255, 0.25)',
+                        'orange-glow': '0 0 30px rgba(255, 92, 0, 0.25)',
+                    }
+                }
+            }
+        }
+    </script>
+
+    <!-- Alpine.js CDN -->
+    <script defer src="https://cdn.jsdelivr.net/npm/alpinejs@3.x.x/dist/cdn.min.js"></script>
+
+    <style>
+        body {
+            background-color: #090A10;
+            color: #E2E8F0;
+            font-family: 'Inter', sans-serif;
+            overflow-x: hidden;
+        }
+        .gold-gradient-text {
+            background: linear-gradient(135deg, #FFF5C0 0%, #D4AF37 50%, #AA7C11 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .cyber-cyan-text {
+            background: linear-gradient(135deg, #E0FFFF 0%, #00F3FF 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .orange-gradient-text {
+            background: linear-gradient(135deg, #FF9E66 0%, #FF5C00 100%);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+        .glass-panel {
+            background: rgba(18, 20, 32, 0.7);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+        .glass-panel-gold {
+            background: rgba(18, 20, 32, 0.85);
+            backdrop-filter: blur(20px);
+            border: 1px solid rgba(212, 175, 55, 0.3);
+        }
+        .cyber-grid {
+            background-image: radial-gradient(rgba(212, 175, 55, 0.1) 1px, transparent 0);
+            background-size: 32px 32px;
+        }
+    </style>
+
+    <!-- JSON-LD GEO SCHEMA MARKUP (Valid Graph Structure) -->
+    <script type="application/ld+json">
+    {
+      "@context": "https://schema.org",
+      "@graph": [
+        {
+          "@type": "Organization",
+          "@id": "https://virale.uno/#organization",
+          "name": "ViralE",
+          "alternateName": "Viral Engine by Sherlock",
+          "url": "https://virale.uno",
+          "logo": "https://virale.uno/icon-512x512.png",
+          "description": "Первый инженерный AI-двигатель виральности для экспертов и брендов. Автоматическая генерация мультиплатформенного видео и текстового контента за 5 минут на базе матрицы ТРИЗ и Цифровой ДНК.",
+          "founder": {
+            "@type": "Organization",
+            "name": "Sherlock Studio"
+          },
+          "contactPoint": {
+            "@type": "ContactPoint",
+            "email": "billing@virale.uno",
+            "contactType": "customer support",
+            "availableLanguage": ["Russian", "English"]
+          },
+          "sameAs": [
+            "https://t.me/viral_engine_bot"
+          ]
+        },
+        {
+          "@type": "WebApplication",
+          "@id": "https://virale.uno/#webapp",
+          "name": "ViralE App (PWA)",
+          "url": "https://virale.uno",
+          "applicationCategory": "MultimediaApplication",
+          "operatingSystem": "iOS, Android, Windows, macOS",
+          "browserRequirements": "Requires JavaScript. Requires HTML5.",
+          "offers": {
+            "@type": "AggregateOffer",
+            "priceCurrency": "USD",
+            "lowPrice": "0",
+            "highPrice": "79.90",
+            "offerCount": "4"
+          }
+        },
+        {
+          "@type": "FAQPage",
+          "@id": "https://virale.uno/#faq",
+          "mainEntity": [
+            {
+              "@type": "Question",
+              "name": "Чем ViralE отличается от ChatGPT?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "ChatGPT дает вам сырой текст. ViralE предоставляет полностью готовый комплектованный медиапак: видеоролик (Reels/Shorts), Instagram-карусель из 5-10 слайдов, визуальную обложку и нативные текстовые материалы для 5 платформ (Instagram, TikTok, YouTube, LinkedIn, Threads, Telegram) — из одной ключевой мысли за 5 минут."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Нужны ли технические навыки или опыт монтажа?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Технические знания не требуются. Если вы умеете записывать голосовые сообщения в мессенджере, вы легко освоите ViralE. Вся цепочка рендеринга, монтажа, наложения субтитров и форматирования выполняется автоматическим ИИ-конвейером."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Будет ли контент передавать мой настоящий голос или звучать роботоподобно?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Технология «Цифровая ДНК» оцифровывает вашу лексику, темп, триггеры и ценности во время 3-минутного первичного онбординга. Точность воспроизведения авторского стиля составляет 91% по результатам тестирования в 47 нишах."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Что входит в один полный «пакет контента» (Content Pack)?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Один пакет контента включает: 1) Виральное видео MP4 с авто-субтитрами и B-roll вставками, 2) Instagram-карусель (5-10 слайдов), 3) Адаптированный пост для Telegram, 4) Экспертную статью для LinkedIn, 5) Вовлекающие посты для Threads и Facebook."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Обязательно ли записываться на камеру для создания видео?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Запись на камеру необязательна. Вы можете использовать режим «Faceless Video» (безликое видео), где ИИ синтезирует голос и подбирает динамичные B-roll кадры. Также поддерживается генерация ИИ-аваторов HeyGen и замена лица (Face Swap)."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Могу ли я подключить свои собственные API-ключи (BYOK)?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Да, на тарифном плане Scale ($79.90/мес) доступна опция BYOK (Bring Your Own Key) для прямого подключения API-ключей OpenAI, Anthropic, ElevenLabs и HeyGen."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Поддерживается ли работа на смартфонах iOS и Android?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Да, ViralE выполнен по стандарту Progressive Web App (PWA). Вы можете добавить приложение на главный экран iOS (через Safari) или Android (через Chrome) для полноэкранного использования адаптивного телесуфлера и записи с камеры."
+              }
+            },
+            {
+              "@type": "Question",
+              "name": "Каковы условия гарантии и возврата средств?",
+              "acceptedAnswer": {
+                "@type": "Answer",
+                "text": "Действует 14-дневная гарантия возврата средств при условии, что вы не расходовали ИИ-кредиты на рендеринг видео или аватаров. Обращения принимаются по адресу billing@virale.uno."
+              }
+            }
+          ]
+        },
+        {
+          "@type": "OfferCatalog",
+          "@id": "https://virale.uno/#offers",
+          "name": "Тарифные План ViralE",
+          "itemListElement": [
+            {
+              "@type": "Offer",
+              "name": "FREE Plan",
+              "price": "0",
+              "priceCurrency": "USD",
+              "description": "Базовый телесуфлер, запись видео, manual input, экспорт чистого видео, 100 стартовых кредитов."
+            },
+            {
+              "@type": "Offer",
+              "name": "STARTER Plan",
+              "price": "19.90",
+              "priceCurrency": "USD",
+              "description": "400 кредитов/мес ($11.90 при годовой оплате), генератор идей по хукам, приоритетный рендер."
+            },
+            {
+              "@type": "Offer",
+              "name": "PRO Plan (Popular)",
+              "price": "39.90",
+              "priceCurrency": "USD",
+              "description": "1000 кредитов/мес ($23.90 при годовой оплате), Цифровая ДНК, ИИ-монтаж Смысловые Пули, приоритетный рендер."
+            },
+            {
+              "@type": "Offer",
+              "name": "SCALE Plan",
+              "price": "79.90",
+              "priceCurrency": "USD",
+              "description": "3000 кредитов/мес ($47.90 при годовой оплате), Мультиформатная Фабрика на 5 соцсетей, аналитика удержания, BYOK API ключи."
+            }
+          ]
+        }
+      ]
+    }
+    </script>
+</head>
+<body x-data="{ billingCycle: 'monthly', activeStep: 1, openFaq: 0 }" class="antialiased selection:bg-virale-gold selection:text-black">
+    <!-- Traffic Source Tracking Script (AI Referrers, UTM, Dark Traffic) -->
+    <script>
+      (function() {
+        try {
+          if (!sessionStorage.getItem('initial_ref')) {
+            var rawRef = document.referrer || '';
+            var landing = window.location.href;
+            var params = new URLSearchParams(window.location.search);
+            
+            var isAi = /chatgpt|openai|perplexity|claude|copilot|bing|gemini|poe|you\.com/i.test(rawRef) || /chatgpt|perplexity|claude|gemini|copilot/i.test(params.get('utm_source') || '');
+            var isDark = (!rawRef || rawRef === '') && (window.location.pathname !== '/' && window.location.pathname !== '/ru' && window.location.pathname !== '/en');
+
+            var trafficPayload = {
+              referrer: rawRef || 'Direct / Bookmark',
+              landing_page: landing,
+              utm_source: params.get('utm_source') || 'none',
+              utm_medium: params.get('utm_medium') || 'none',
+              utm_campaign: params.get('utm_campaign') || 'none',
+              is_ai_traffic: isAi,
+              is_dark_traffic: isDark,
+              captured_at: new Date().toISOString()
+            };
+
+            sessionStorage.setItem('initial_ref', JSON.stringify(trafficPayload));
+            localStorage.setItem('initial_ref', JSON.stringify(trafficPayload));
+            console.log('[Traffic Tracker] Source captured:', trafficPayload);
+          }
+        } catch (e) {
+          console.error('[Traffic Tracker] Initialization error:', e);
+        }
+      })();
+    </script>
+
+    <!-- Top Glow Effect -->
+    <div class="fixed top-0 left-1/2 -translate-x-1/2 w-[800px] h-[350px] bg-virale-gold/10 blur-[150px] pointer-events-none z-0 rounded-full"></div>
+
+    <!-- Navigation Header -->
+    <header class="fixed top-0 left-0 w-full z-50 glass-panel border-b border-white/5 py-4">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex items-center justify-between">
+            <div class="flex items-center gap-3">
+                <a href="#" class="font-bebas text-3xl tracking-wide flex items-center gap-1 text-white">
+                    VIRAL<span class="text-virale-gold">E</span>
+                </a>
+                <span class="hidden sm:inline-block px-2.5 py-0.5 rounded-full text-[10px] font-jetbrains font-bold uppercase tracking-wider bg-virale-gold/10 text-virale-gold border border-virale-gold/30">
+                    GEO Optimized v2.4
+                </span>
+            </div>
+
+            <nav class="hidden md:flex items-center gap-8 font-jetbrains text-xs uppercase tracking-widest text-slate-300">
+                <a href="#workflow" class="hover:text-virale-gold transition-colors">Алгоритм ИИ</a>
+                <a href="#technology" class="hover:text-virale-gold transition-colors">Технологии</a>
+                <a href="#comparison" class="hover:text-virale-gold transition-colors">Сравнение</a>
+                <a href="#pricing" class="hover:text-virale-gold transition-colors">Тарифы</a>
+                <a href="#faq" class="hover:text-virale-gold transition-colors">FAQ</a>
+            </nav>
+
+            <div class="flex items-center gap-4">
+                <a href="https://t.me/viral_engine_bot" target="_blank" class="hidden sm:flex items-center gap-2 px-4 py-2 rounded-lg bg-white/5 hover:bg-white/10 text-xs font-jetbrains text-slate-200 border border-white/10 transition-all">
+                    <span>Telegram Bot</span>
+                </a>
+                <a href="#pricing" class="px-5 py-2.5 rounded-lg bg-gradient-to-r from-virale-gold to-amber-500 text-black font-bebas text-lg tracking-wider hover:shadow-gold-glow transition-all active:scale-95">
+                    Запустить Фабрику
+                </a>
+            </div>
+        </div>
+    </header>
+
+    <!-- Main Content Container -->
+    <main class="relative z-10 pt-28">
+
+        <!-- Ticker Bar -->
+        <div class="w-full bg-virale-card/90 border-y border-virale-border py-3 overflow-hidden">
+            <div class="flex whitespace-nowrap animate-marquee font-jetbrains text-xs uppercase tracking-widest text-slate-400 gap-8">
+                <span class="text-virale-gold flex items-center gap-2">★ VIRAL ENGINE GEO ARCHITECTURE</span>
+                <span>● ТРИЗ МАТРИЦА СЦЕНАРИЕВ</span>
+                <span class="text-cyber-cyan">● ЦИФРОВАЯ ДНК АВТОРА</span>
+                <span>● 5 СОЦСЕТЕЙ ЗА 5 МИНУТ</span>
+                <span class="text-virale-orange">● СМЫСЛОВЫЕ ПУЛИ (NEURO-EDITING)</span>
+                <span class="text-virale-gold">● BYOK API KEY SUPPORT</span>
+            </div>
+        </div>
+
+        <!-- HERO SECTION -->
+        <section class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 pt-16 pb-20 text-center relative cyber-grid">
+            <div class="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-virale-gold/10 border border-virale-gold/30 text-virale-gold font-jetbrains text-xs uppercase tracking-widest mb-8">
+                <span class="w-2 h-2 rounded-full bg-virale-gold animate-ping"></span>
+                Senior GEO Engine Audit & Production Standards Enabled
+            </div>
+
+            <h1 class="font-bebas text-6xl sm:text-7xl lg:text-9xl leading-[0.9] tracking-tight mb-8 text-white">
+                ОТ ОДНОЙ ИДЕИ ДО <br />
+                <span class="gold-gradient-text">5 СОЦИАЛЬНЫХ СЕТЕЙ</span> <br />
+                <span class="cyber-cyan-text">ЗА 5 МИНУТ</span>
+            </h1>
+
+            <!-- DAO Optimized Paragraph (134-167 words standard fact density block) -->
+            <div class="max-w-4xl mx-auto glass-panel p-6 sm:p-8 rounded-2xl border border-white/10 mb-12 text-left sm:text-justify text-slate-300 text-base sm:text-lg leading-relaxed">
+                <p class="mb-4">
+                    <strong>ViralE (virale.uno)</strong> — это автономный инженерный ИИ-завод контента, созданный для экспертов, авторов и брендов, стремящихся к тотальному цифровому присутствию без затрат времени на ручной видеомонтаж и адаптацию текстов. Сервис исключает 70% рутинного продакшена, заменяя целый штат видеомонтажеров, копирайтеров и SMM-специалистов единым ИИ-конвейером.
+                </p>
+                <p>
+                    Архитектура платформы объединяет оцифровку авторского стиля («Цифровая ДНК» с точностью совпадения голоса 91%), стратегическую матрицу ТРИЗ для создания виральных сценариев по лестнице Ханта, адаптивный телесуфлер с нейро-скроллингом, синтез аватаров HeyGen и алгоритмы бесшовного нейро-монтажа «Смысловые пули». В результате вы получаете готовый медиапак: Shorts/Reels MP4, Instagram-карусель на 5–10 слайдов, пост для Telegram, лонгрид для LinkedIn и вовлекающий текст для Threads — за 5 минут при вычислительной стоимости от $1 за видео.
+                </p>
+            </div>
+
+            <div class="flex flex-col sm:flex-row items-center justify-center gap-4 mb-16">
+                <a href="#workflow" class="w-full sm:w-auto px-8 py-4 rounded-xl bg-gradient-to-r from-virale-gold via-amber-500 to-virale-orange text-black font-bebas text-2xl tracking-wider hover:shadow-gold-glow transition-all">
+                    ПОЛУЧИТЬ ДОСТУП — 30 ДНЕЙ БЕСПЛАТНО
+                </a>
+                <a href="#technology" class="w-full sm:w-auto px-8 py-4 rounded-xl glass-panel hover:bg-white/10 text-white font-bebas text-2xl tracking-wider border border-white/20 transition-all">
+                    ИЗУЧИТЬ ТЕХНОЛОГИЮ ИИ ↓
+                </a>
+            </div>
+
+            <!-- Key Indicators Bar -->
+            <div class="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-5xl mx-auto">
+                <div class="glass-panel p-5 rounded-xl border border-white/5 text-center">
+                    <div class="font-bebas text-4xl text-virale-gold">10×</div>
+                    <div class="font-jetbrains text-xs text-slate-400 uppercase tracking-wider">Ускорение продакшена</div>
+                </div>
+                <div class="glass-panel p-5 rounded-xl border border-white/5 text-center">
+                    <div class="font-bebas text-4xl text-cyber-cyan">5 Форматов</div>
+                    <div class="font-jetbrains text-xs text-slate-400 uppercase tracking-wider">Из одного промпта</div>
+                </div>
+                <div class="glass-panel p-5 rounded-xl border border-white/5 text-center">
+                    <div class="font-bebas text-4xl text-virale-orange">+34%</div>
+                    <div class="font-jetbrains text-xs text-slate-400 uppercase tracking-wider">Удержание зрителей</div>
+                </div>
+                <div class="glass-panel p-5 rounded-xl border border-white/5 text-center">
+                    <div class="font-bebas text-4xl text-white">91%</div>
+                    <div class="font-jetbrains text-xs text-slate-400 uppercase tracking-wider">Точность Цифровой ДНК</div>
+                </div>
+            </div>
+        </section>
+
+        <!-- SPECIAL MANDATE SECTION: 4-STEP AI APPLICATION FLOW -->
+        <section id="workflow" class="py-20 bg-virale-card/50 border-y border-white/5">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <span class="font-jetbrains text-xs text-virale-gold uppercase tracking-widest">// АЛГОРИТМ ИИ-ПРИЛОЖЕНИЯ</span>
+                    <h2 class="font-bebas text-5xl sm:text-6xl text-white mt-2">
+                        ПРИНЦИП РАБОТЫ: <span class="gold-gradient-text">4 ПОСЛЕДОВАТЕЛЬНЫХ ЭТАПА</span>
+                    </h2>
+                    <p class="font-inter text-slate-400 text-base sm:text-lg mt-4">
+                        Полная сквозная цепочка генерации вирального контента от первоначальной идеи до публикации в 5 соцсетях.
+                    </p>
+                </div>
+
+                <!-- Interactive Steps Switcher (Alpine.js) -->
+                <div class="mb-12 flex flex-wrap justify-center gap-3">
+                    <template x-for="step in [1, 2, 3, 4]" :key="step">
+                        <button 
+                            @click="activeStep = step"
+                            :class="activeStep === step ? 'bg-virale-gold text-black border-virale-gold shadow-gold-glow' : 'glass-panel text-slate-300 border-white/10 hover:border-virale-gold/50'"
+                            class="px-6 py-3 rounded-xl font-bebas text-xl tracking-wider border transition-all flex items-center gap-2"
+                        >
+                            <span x-text="'ЭТАП 0' + step"></span>
+                        </button>
+                    </template>
+                </div>
+
+                <!-- Step Details Panels -->
+                <div class="glass-panel-gold p-8 sm:p-12 rounded-3xl relative overflow-hidden">
+                    
+                    <!-- STEP 1 -->
+                    <div x-show="activeStep === 1" x-transition:enter="transition ease-out duration-300 transform opacity-0 translate-y-4" x-transition:enter-start="opacity-0 translate-y-4" x-transition:enter-end="opacity-100 translate-y-0" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                        <div class="lg:col-span-7">
+                            <span class="font-jetbrains text-xs text-virale-gold uppercase tracking-widest">ЭТАП №1 — ГЕНЕРАЦИЯ СЦЕНАРИЯ</span>
+                            <h3 class="font-bebas text-4xl sm:text-5xl text-white mt-2 mb-6">
+                                ТРЁХСТУПЕНЧАТАЯ СЦЕНАРНАЯ ИНЖЕНЕРИЯ На базе ДНК И ТРИЗ
+                            </h3>
+                            <div class="space-y-4 text-slate-300 text-base leading-relaxed">
+                                <p>
+                                    Генерация контента начинается с анализа профиля клиента — <strong>Цифровой ДНК</strong>. На первом шаге система генерирует бесконечное количество идей для роликов, опираясь на принципы <strong>Лестницы осведомленности Ханта</strong> (от неосведомленности до готовности к покупке).
+                                </p>
+                                <p>
+                                    Далее пользователь выбирает одну ключевую идею, которая трансформируется в уникальный сценарий с помощью <strong>Матрицы ТРИЗ</strong> (Теория Решения Изобретательских Задач). На выходе алгоритм автоматически создает <strong>6 различных вариантов вирального сценария</strong> с разной динамикой, контрарианскими хуками и структурой подачи.
+                                </p>
+                            </div>
+                            <div class="mt-8 flex flex-wrap gap-2 font-jetbrains text-xs text-virale-gold">
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-virale-gold/20">Цифровая ДНК</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-virale-gold/20">Лестница Ханта</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-virale-gold/20">Матрица ТРИЗ</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-virale-gold/20">6 Вариантов Сценария</span>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 bg-virale-bg/80 p-6 rounded-2xl border border-white/10 font-jetbrains text-xs space-y-3">
+                            <div class="text-slate-400">// Output Log: Step 1 Script Engine</div>
+                            <div class="text-virale-gold">&gt; DNA Persona Synced: Expert Voice (Scale 0.91)</div>
+                            <div class="text-slate-300">&gt; Generating ideas via Hunt's Ladder stages 1..5</div>
+                            <div class="text-cyber-cyan">&gt; TRIZ Matrix applied: Contradiction resolved</div>
+                            <div class="text-emerald-400">&gt; 6 Viral Variations generated successfully [OK]</div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 2 -->
+                    <div x-show="activeStep === 2" x-transition:enter="transition ease-out duration-300 transform opacity-0 translate-y-4" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                        <div class="lg:col-span-7">
+                            <span class="font-jetbrains text-xs text-cyber-cyan uppercase tracking-widest">ЭТАП №2 — ПРОДАКШН</span>
+                            <h3 class="font-bebas text-4xl sm:text-5xl text-white mt-2 mb-6">
+                                ТЕЛЕСУФЛЁР ИЛИ АВТОНОМНЫЙ НЕРЕАЛЬНЫЙ СПИКЕР
+                            </h3>
+                            <div class="space-y-4 text-slate-300 text-base leading-relaxed">
+                                <p>
+                                    Выбранный сценарий передается на вторую стадию — Продакшн. Основной способ съёмки — <strong>Адаптивный ИИ-Телесуфлёр</strong>, где эксперт читает текст с экрана смартфона или ПК и записывает вертикальное видео длительностью до 60 секунд. Телесуфлёр отслеживает темп речи спикера в реальном времени.
+                                </p>
+                                <p>
+                                    Альтернативные сценарии продакшена включают: генерацию видео с помощью <strong>цифрового аватара HeyGen</strong>, генерацию роликов с <strong>нейронной заменой лица (Face Swap)</strong>, а также создание полностью <strong>безликого видео (Floss / Faceless video)</strong> с синтезированным ИИ-голосом и динамическим видеорядом.
+                                </p>
+                            </div>
+                            <div class="mt-8 flex flex-wrap gap-2 font-jetbrains text-xs text-cyber-cyan">
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-cyber-cyan/20">AI Телесуфлер &lt; 1 мин</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-cyber-cyan/20">HeyGen Аватар</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-cyber-cyan/20">Face Swap</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-cyber-cyan/20">Floss / Faceless Video</span>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 bg-virale-bg/80 p-6 rounded-2xl border border-white/10 font-jetbrains text-xs space-y-3">
+                            <div class="text-slate-400">// Output Log: Step 2 Production</div>
+                            <div class="text-cyber-cyan">&gt; Mode: AI Teleprompter / Voice Following</div>
+                            <div class="text-slate-300">&gt; Alternative: Faceless Floss Rendering Ready</div>
+                            <div class="text-virale-gold">&gt; HeyGen Avatar Stream / Face Swap active</div>
+                            <div class="text-emerald-400">&gt; Raw Video Captured &amp; Sent to Stage 3 [OK]</div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 3 -->
+                    <div x-show="activeStep === 3" x-transition:enter="transition ease-out duration-300 transform opacity-0 translate-y-4" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                        <div class="lg:col-span-7">
+                            <span class="font-jetbrains text-xs text-virale-orange uppercase tracking-widest">ЭТАП №3 — МОНТАЖ</span>
+                            <h3 class="font-bebas text-4xl sm:text-5xl text-white mt-2 mb-6">
+                                СМЫСЛОВЫЕ ПУЛИ И НЕЙРО-МОНТАЖ B-ROLL
+                            </h3>
+                            <div class="space-y-4 text-slate-300 text-base leading-relaxed">
+                                <p>
+                                    Записанный или сгенерированный видеоматериал поступает на третий этап — автоматический ИИ-монтаж. На этой стадии система <strong>автоматически добавляет субтитры</strong> с подсвечиванием ключевых слов и динамической анимацией.
+                                </p>
+                                <p>
+                                    ИИ анализирует контекст речи и расставляет <strong>ролики-перебивки (B-rolls)</strong>, которые автоматически подбираются с бесплатных стоковых видеоплатформ и нейросетей (Google Veo 3 / Stock Engines). Дополнительно накладываются спецэффекты, звуковые акценты и цветокоррекция для максимального удержания зрителя.
+                                </p>
+                            </div>
+                            <div class="mt-8 flex flex-wrap gap-2 font-jetbrains text-xs text-virale-orange">
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-virale-orange/20">Авто-субтитры</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-virale-orange/20">Смысловые пули B-roll</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-virale-orange/20">Бесплатные видео-платформы</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-virale-orange/20">Visual FX &amp; Sound FX</span>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 bg-virale-bg/80 p-6 rounded-2xl border border-white/10 font-jetbrains text-xs space-y-3">
+                            <div class="text-slate-400">// Output Log: Step 3 Assembly</div>
+                            <div class="text-virale-orange">&gt; Auto-Subtitles Synced (Whisper AI)</div>
+                            <div class="text-slate-300">&gt; B-Roll Semantic bullets inserted: 14 clips</div>
+                            <div class="text-cyber-cyan">&gt; Visual &amp; Sound FX Overlay applied</div>
+                            <div class="text-emerald-400">&gt; Final Video Composite Assembled [OK]</div>
+                        </div>
+                    </div>
+
+                    <!-- STEP 4 -->
+                    <div x-show="activeStep === 4" x-transition:enter="transition ease-out duration-300 transform opacity-0 translate-y-4" class="grid grid-cols-1 lg:grid-cols-12 gap-8 items-center">
+                        <div class="lg:col-span-7">
+                            <span class="font-jetbrains text-xs text-emerald-400 uppercase tracking-widest">ЭТАП №4 — ЭКСПОРТ И МУЛЬТИ-ПОСТИНГ</span>
+                            <h3 class="font-bebas text-4xl sm:text-5xl text-white mt-2 mb-6">
+                                ФАБРИКА 5 СОЦИАЛЬНЫХ СЕТЕЙ ЗА 5 МИНУТ
+                            </h3>
+                            <div class="space-y-4 text-slate-300 text-base leading-relaxed">
+                                <p>
+                                    После окончания процесса монтажа видео поступает на четвертый этап — экспорт. На данном этапе происходит финальная сборка ролика, создание <strong>вирального текстового описания</strong> и сгенерированной <strong>графической обложки</strong>.
+                                </p>
+                                <p>
+                                    Одновременно генерируются специализированные текстовые форматы и карусели для публикации контента сразу в <strong>5 различных социальных сетях</strong>: Instagram (Reels &amp; Carousel), TikTok, YouTube (Shorts), Facebook, LinkedIn и Threads. Весь полный Flow занимает ровно <strong>5 минут</strong>.
+                                </p>
+                            </div>
+                            <div class="mt-8 flex flex-wrap gap-2 font-jetbrains text-xs text-emerald-400">
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-emerald-400/20">Instagram (Reels + Carousel)</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-emerald-400/20">TikTok</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-emerald-400/20">YouTube Shorts</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-emerald-400/20">LinkedIn Long-read</span>
+                                <span class="px-3 py-1 bg-white/5 rounded-md border border-emerald-400/20">Threads &amp; Facebook</span>
+                            </div>
+                        </div>
+                        <div class="lg:col-span-5 bg-virale-bg/80 p-6 rounded-2xl border border-white/10 font-jetbrains text-xs space-y-3">
+                            <div class="text-slate-400">// Output Log: Step 4 Multi-Export</div>
+                            <div class="text-emerald-400">&gt; Export Pack Assembled: 5 Platforms</div>
+                            <div class="text-slate-300">&gt; Covers &amp; Captions Generated</div>
+                            <div class="text-virale-gold">&gt; Delivery via Telegram Bot @viral_engine_bot</div>
+                            <div class="text-emerald-400">&gt; Total Cycle Elapsed Time: 04:58 [DONE]</div>
+                        </div>
+                    </div>
+
+                </div>
+            </div>
+        </section>
+
+        <!-- CORE TECHNOLOGIES & EEAT EVIDENCE SECTION -->
+        <section id="technology" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-16">
+                <span class="font-jetbrains text-xs text-cyber-cyan uppercase tracking-widest">// ТЕХНОЛОГИЧЕСКИЙ СТЕК</span>
+                <h2 class="font-bebas text-5xl sm:text-6xl text-white mt-2">
+                    3 СТОЛПА ИНЖЕНЕРНОЙ <span class="cyber-cyan-text">ВИРАЛЬНОСТИ VIRALE</span>
+                </h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                <!-- Tech Card 1 -->
+                <div class="glass-panel p-8 rounded-2xl border border-white/10 hover:border-virale-gold/40 transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-virale-gold/10 flex items-center justify-center text-virale-gold font-bebas text-2xl mb-6 group-hover:scale-110 transition-transform">
+                        01
+                    </div>
+                    <h3 class="font-bebas text-3xl text-white mb-4">ЦИФРОВАЯ ДНК АВТОРА</h3>
+                    <p class="font-inter text-slate-400 text-sm leading-relaxed mb-6">
+                        ViralE не генерирует обезличенный шаблонный текст. Система проводит 3-минутный онбординг, извлекая словарь, авторский сленг, темп и ценностные триггеры эксперта. Контент звучит так, словно вы создали его лично.
+                    </p>
+                    <div class="pt-4 border-t border-white/5 font-jetbrains text-xs text-virale-gold flex items-center justify-between">
+                        <span>Точность голоса: 91%</span>
+                        <span>47 Ниш</span>
+                    </div>
+                </div>
+
+                <!-- Tech Card 2 -->
+                <div class="glass-panel p-8 rounded-2xl border border-white/10 hover:border-cyber-cyan/40 transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-cyber-cyan/10 flex items-center justify-center text-cyber-cyan font-bebas text-2xl mb-6 group-hover:scale-110 transition-transform">
+                        02
+                    </div>
+                    <h3 class="font-bebas text-3xl text-white mb-4">СМЫСЛОВЫЕ ПУЛИ (NEURO-EDITING)</h3>
+                    <p class="font-inter text-slate-400 text-sm leading-relaxed mb-6">
+                        Инновационная методика автоматического расставления B-roll вставок под ключевые речевые триггеры. Видеоряд одновременно активирует эмоциональное и логическое восприятие зрителя, удерживая внимание.
+                    </p>
+                    <div class="pt-4 border-t border-white/5 font-jetbrains text-xs text-cyber-cyan flex items-center justify-between">
+                        <span>Рост удержания: +34%</span>
+                        <span>Google Veo 3</span>
+                    </div>
+                </div>
+
+                <!-- Tech Card 3 -->
+                <div class="glass-panel p-8 rounded-2xl border border-white/10 hover:border-virale-orange/40 transition-all group">
+                    <div class="w-12 h-12 rounded-xl bg-virale-orange/10 flex items-center justify-center text-virale-orange font-bebas text-2xl mb-6 group-hover:scale-110 transition-transform">
+                        03
+                    </div>
+                    <h3 class="font-bebas text-3xl text-white mb-4">4 ФИЛЬТРА ВИРАЛЬНОСТИ</h3>
+                    <p class="font-inter text-slate-400 text-sm leading-relaxed mb-6">
+                        Встроенный алгоритм-наставник проверяет ролик перед рендерингом по 4 ключевым параметрам: Click Trigger, Value Speed, Shareability и Subscribe Motivation. Ролики без вирального потенциала блокируются на этапе идеи.
+                    </p>
+                    <div class="pt-4 border-t border-white/5 font-jetbrains text-xs text-virale-orange flex items-center justify-between">
+                        <span>Репосты: 2.7×</span>
+                        <span>0% Флаффа</span>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- COMPARISON MATRIX SECTION -->
+        <section id="comparison" class="py-20 bg-virale-card/30 border-y border-white/5">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <span class="font-jetbrains text-xs text-virale-gold uppercase tracking-widest">// ЭКОНОМИКА ПРОДАКШЕНА</span>
+                    <h2 class="font-bebas text-5xl sm:text-6xl text-white mt-2">
+                        ПОСЧИТАЙТЕ СВОЮ <span class="gold-gradient-text">ВЫГОДУ</span>
+                    </h2>
+                </div>
+
+                <div class="overflow-x-auto">
+                    <table class="w-full text-left border-collapse min-w-[700px]">
+                        <thead>
+                            <tr class="border-b border-white/10 font-bebas text-2xl text-slate-400">
+                                <th class="py-4 px-6">Параметр сравнения</th>
+                                <th class="py-4 px-6 text-red-400 bg-red-950/20 rounded-t-xl">Традиционный Продакшн</th>
+                                <th class="py-4 px-6 text-virale-gold bg-virale-gold/10 rounded-t-xl">ViralE ИИ-Фабрика</th>
+                            </tr>
+                        </thead>
+                        <tbody class="divide-y divide-white/5 font-inter text-sm text-slate-300">
+                            <tr>
+                                <td class="py-5 px-6 font-semibold">Время на 1 видео</td>
+                                <td class="py-5 px-6 text-red-300 bg-red-950/10">3 – 4 часа (монтаж, субтитры)</td>
+                                <td class="py-5 px-6 text-emerald-400 bg-virale-gold/5 font-bold">5 минут (автономно)</td>
+                            </tr>
+                            <tr>
+                                <td class="py-5 px-6 font-semibold">Охват соцсетей</td>
+                                <td class="py-5 px-6 text-red-300 bg-red-950/10">1 платформа за раз</td>
+                                <td class="py-5 px-6 text-emerald-400 bg-virale-gold/5 font-bold">5 соцсетей одновременно</td>
+                            </tr>
+                            <tr>
+                                <td class="py-5 px-6 font-semibold">Финансовые затраты</td>
+                                <td class="py-5 px-6 text-red-300 bg-red-950/10">$500 – $2000 / мес (монтажер)</td>
+                                <td class="py-5 px-6 text-emerald-400 bg-virale-gold/5 font-bold">от $19.90 / мес</td>
+                            </tr>
+                            <tr>
+                                <td class="py-5 px-6 font-semibold">Уникальность стиля</td>
+                                <td class="py-5 px-6 text-red-300 bg-red-950/10">Зависит от квалификации монтажера</td>
+                                <td class="py-5 px-6 text-emerald-400 bg-virale-gold/5 font-bold">100% Цифровая ДНК автора</td>
+                            </tr>
+                            <tr>
+                                <td class="py-5 px-6 font-semibold">Регулярность публикаций</td>
+                                <td class="py-5 px-6 text-red-300 bg-red-950/10">1–2 раза в неделю (риск выгорания)</td>
+                                <td class="py-5 px-6 text-emerald-400 bg-virale-gold/5 font-bold">Ежедневно без усилий</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </section>
+
+        <!-- PRICING SECTION -->
+        <section id="pricing" class="py-24 max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center max-w-3xl mx-auto mb-12">
+                <span class="font-jetbrains text-xs text-virale-gold uppercase tracking-widest">// ТАРИФНЫЕ ПЛАНЫ</span>
+                <h2 class="font-bebas text-5xl sm:text-6xl text-white mt-2">
+                    ИНВЕСТИЦИЯ В СВОЮ <span class="gold-gradient-text">СВОБОДУ</span>
+                </h2>
+                <p class="font-inter text-slate-400 text-base mt-4">
+                    Выберите подходящий план. Начните бесплатно или сэкономьте 40% при выборе годовой подписки.
+                </p>
+
+                <!-- Billing Cycle Switcher -->
+                <div class="mt-8 inline-flex items-center gap-4 glass-panel p-2 rounded-full border border-white/10">
+                    <button 
+                        @click="billingCycle = 'monthly'"
+                        :class="billingCycle === 'monthly' ? 'bg-virale-gold text-black shadow-gold-glow' : 'text-slate-400 hover:text-white'"
+                        class="px-6 py-2 rounded-full font-jetbrains text-xs font-bold uppercase transition-all"
+                    >
+                        Ежемесячно
+                    </button>
+                    <button 
+                        @click="billingCycle = 'yearly'"
+                        :class="billingCycle === 'yearly' ? 'bg-virale-gold text-black shadow-gold-glow' : 'text-slate-400 hover:text-white'"
+                        class="px-6 py-2 rounded-full font-jetbrains text-xs font-bold uppercase transition-all flex items-center gap-2"
+                    >
+                        <span>Годовая подписка</span>
+                        <span class="px-2 py-0.5 rounded-full bg-virale-orange text-white text-[10px]">-40%</span>
+                    </button>
+                </div>
+            </div>
+
+            <!-- Pricing Grid -->
+            <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-8">
+                
+                <!-- FREE TIER -->
+                <div class="glass-panel p-8 rounded-3xl border border-white/10 flex flex-col justify-between hover:border-white/30 transition-all">
+                    <div>
+                        <div class="font-bebas text-3xl text-white mb-2">FREE</div>
+                        <p class="font-inter text-slate-400 text-xs mb-6">Для ознакомления с телесуфлером</p>
+                        <div class="font-bebas text-5xl text-white mb-6">
+                            $0 <span class="font-inter text-sm text-slate-400 font-normal">/навсегда</span>
+                        </div>
+                        <ul class="space-y-3 font-inter text-sm text-slate-300 mb-8">
+                            <li class="flex items-center gap-2 text-emerald-400">✓ Адаптивный телесуфлер</li>
+                            <li class="flex items-center gap-2 text-emerald-400">✓ Ручной ввод текста</li>
+                            <li class="flex items-center gap-2 text-emerald-400">✓ Запись видео в приложении</li>
+                            <li class="flex items-center gap-2 text-emerald-400">✓ Экспорт чистого видео</li>
+                            <li class="flex items-center gap-2 text-emerald-400">✓ 100 стартовых кредитов</li>
+                        </ul>
+                    </div>
+                    <a href="https://t.me/viral_engine_bot" target="_blank" class="w-full py-3 rounded-xl glass-panel hover:bg-white/10 text-white font-bebas text-xl text-center border border-white/20 transition-all">
+                        ПОПРОБОВАТЬ FREE
+                    </a>
+                </div>
+
+                <!-- STARTER TIER -->
+                <div class="glass-panel p-8 rounded-3xl border border-white/10 flex flex-col justify-between hover:border-virale-gold/40 transition-all">
+                    <div>
+                        <div class="font-bebas text-3xl text-white mb-2">STARTER</div>
+                        <p class="font-inter text-slate-400 text-xs mb-6">Для начинающих авторов</p>
+                        <div class="font-bebas text-5xl text-white mb-6">
+                            <span x-text="billingCycle === 'monthly' ? '$19.90' : '$11.90'"></span>
+                            <span class="font-inter text-sm text-slate-400 font-normal">/мес</span>
+                        </div>
+                        <ul class="space-y-3 font-inter text-sm text-slate-300 mb-8">
+                            <li class="flex items-center gap-2 text-emerald-400">✓ 400 кредитов ежемесячно</li>
+                            <li class="flex items-center gap-2 text-emerald-400">✓ Базовая ИИ-генерация идей</li>
+                            <li class="flex items-center gap-2 text-emerald-400">✓ Сценарии по хукам</li>
+                            <li class="flex items-center gap-2 text-emerald-400">✓ Все функции плана FREE</li>
+                            <li class="flex items-center gap-2 text-emerald-400">✓ Приоритетная генерация</li>
+                        </ul>
+                    </div>
+                    <a href="https://t.me/viral_engine_bot" target="_blank" class="w-full py-3 rounded-xl glass-panel hover:bg-white/10 text-white font-bebas text-xl text-center border border-white/20 transition-all">
+                        ВЫБРАТЬ STARTER
+                    </a>
+                </div>
+
+                <!-- PRO TIER (POPULAR) -->
+                <div class="glass-panel-gold p-8 rounded-3xl border-2 border-virale-gold flex flex-col justify-between shadow-gold-glow relative transform lg:-translate-y-4">
+                    <div class="absolute -top-3 left-1/2 -translate-x-1/2 px-4 py-0.5 rounded-full bg-virale-gold text-black font-jetbrains text-[10px] font-bold uppercase tracking-widest">
+                        САМЫЙ ПОПУЛЯРНЫЙ
+                    </div>
+                    <div>
+                        <div class="font-bebas text-3xl text-virale-gold mb-2">PRO</div>
+                        <p class="font-inter text-slate-300 text-xs mb-6">Полная оптимизация и стиль</p>
+                        <div class="font-bebas text-5xl text-white mb-6">
+                            <span x-text="billingCycle === 'monthly' ? '$39.90' : '$23.90'"></span>
+                            <span class="font-inter text-sm text-slate-400 font-normal">/мес</span>
+                        </div>
+                        <ul class="space-y-3 font-inter text-sm text-slate-200 mb-8">
+                            <li class="flex items-center gap-2 text-virale-gold">✓ 1000 кредитов ежемесячно</li>
+                            <li class="flex items-center gap-2 text-virale-gold">✓ Оцифровка Цифровой ДНК</li>
+                            <li class="flex items-center gap-2 text-virale-gold">✓ ИИ-монтаж «Смысловые пули»</li>
+                            <li class="flex items-center gap-2 text-virale-gold">✓ Голос и ценности автора</li>
+                            <li class="flex items-center gap-2 text-virale-gold">✓ Приоритетный видео-рендер</li>
+                        </ul>
+                    </div>
+                    <a href="https://t.me/viral_engine_bot" target="_blank" class="w-full py-3 rounded-xl bg-virale-gold hover:bg-amber-400 text-black font-bebas text-xl text-center font-bold shadow-gold-glow transition-all">
+                        ПОДКЛЮЧИТЬ PRO
+                    </a>
+                </div>
+
+                <!-- SCALE TIER -->
+                <div class="glass-panel p-8 rounded-3xl border border-white/10 flex flex-col justify-between hover:border-cyber-cyan/40 transition-all">
+                    <div>
+                        <div class="font-bebas text-3xl text-cyber-cyan mb-2">SCALE</div>
+                        <p class="font-inter text-slate-400 text-xs mb-6">Для агентств и масштабирования</p>
+                        <div class="font-bebas text-5xl text-white mb-6">
+                            <span x-text="billingCycle === 'monthly' ? '$79.90' : '$47.90'"></span>
+                            <span class="font-inter text-sm text-slate-400 font-normal">/мес</span>
+                        </div>
+                        <ul class="space-y-3 font-inter text-sm text-slate-300 mb-8">
+                            <li class="flex items-center gap-2 text-cyber-cyan">✓ 3000 кредитов ежемесячно</li>
+                            <li class="flex items-center gap-2 text-cyber-cyan">✓ 5 соцсетей из одной мысли</li>
+                            <li class="flex items-center gap-2 text-cyber-cyan">✓ Аналитика удержания зрителей</li>
+                            <li class="flex items-center gap-2 text-cyber-cyan">✓ Подключение BYOK API ключей</li>
+                            <li class="flex items-center gap-2 text-cyber-cyan">✓ Персональный онбординг 24/7</li>
+                        </ul>
+                    </div>
+                    <a href="https://t.me/viral_engine_bot" target="_blank" class="w-full py-3 rounded-xl glass-panel hover:bg-white/10 text-white font-bebas text-xl text-center border border-white/20 transition-all">
+                        ВЫБРАТЬ SCALE
+                    </a>
+                </div>
+
+            </div>
+        </section>
+
+        <!-- SOCIAL PROOF & TESTIMONIALS -->
+        <section class="py-20 bg-virale-card/40 border-y border-white/5">
+            <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
+                <div class="text-center max-w-3xl mx-auto mb-16">
+                    <span class="font-jetbrains text-xs text-virale-gold uppercase tracking-widest">// ПЕРВЫЕ РЕЗУЛЬТАТЫ</span>
+                    <h2 class="font-bebas text-5xl sm:text-6xl text-white mt-2">
+                        ОТЗЫВЫ <span class="gold-gradient-text">СОЗДАТЕЛЕЙ КОНТЕНТА</span>
+                    </h2>
+                </div>
+
+                <div class="grid grid-cols-1 md:grid-cols-3 gap-8">
+                    <div class="glass-panel p-8 rounded-2xl border border-white/10 relative">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 rounded-full bg-virale-orange flex items-center justify-center font-bebas text-2xl text-black font-bold">A</div>
+                            <div>
+                                <div class="font-bebas text-2xl text-white">Alex M.</div>
+                                <div class="font-jetbrains text-xs text-slate-400">@alexcreates · Dubai · 84K followers</div>
+                            </div>
+                        </div>
+                        <p class="font-inter text-slate-300 italic leading-relaxed">
+                            «За первую неделю создал 7 Reels. Раньше уходило 3 дня на один ролик. ViralE — это абсолютно несправедливое преимущество для каждого, кто ценит свое время.»
+                        </p>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-2xl border border-white/10 relative">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 rounded-full bg-virale-gold flex items-center justify-center font-bebas text-2xl text-black font-bold">S</div>
+                            <div>
+                                <div class="font-bebas text-2xl text-white">Sara K.</div>
+                                <div class="font-jetbrains text-xs text-slate-400">@sarabuilds · Bali · 42K followers</div>
+                            </div>
+                        </div>
+                        <p class="font-inter text-slate-300 italic leading-relaxed">
+                            «Цифровая ДНК реально работает. Впервые за 2 года мои посты звучат как я, а не как бездушный робот. До этого перепробовала 6 сервисов генерации контента.»
+                        </p>
+                    </div>
+
+                    <div class="glass-panel p-8 rounded-2xl border border-white/10 relative">
+                        <div class="flex items-center gap-4 mb-6">
+                            <div class="w-12 h-12 rounded-full bg-cyber-cyan flex items-center justify-center font-bebas text-2xl text-black font-bold">J</div>
+                            <div>
+                                <div class="font-bebas text-2xl text-white">James T.</div>
+                                <div class="font-jetbrains text-xs text-slate-400">@jamesgrowth · Vietnam · 127K followers</div>
+                            </div>
+                        </div>
+                        <p class="font-inter text-slate-300 italic leading-relaxed">
+                            «Перешел на ежедневный постинг без выгорания. Рост аудитории за 30 дней — ×2. Одна лишь функция генерации безликого видео окупает подписку на месяц вперёд.»
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FAQ ACCORDION SECTION -->
+        <section id="faq" class="py-24 max-w-4xl mx-auto px-4 sm:px-6 lg:px-8">
+            <div class="text-center mb-16">
+                <span class="font-jetbrains text-xs text-virale-gold uppercase tracking-widest">// ЧАСТО ЗАТРАГИВАЕМЫЕ ВОПРОСЫ</span>
+                <h2 class="font-bebas text-5xl sm:text-6xl text-white mt-2">
+                    ОТВЕТЫ НА <span class="gold-gradient-text">ОСНОВНЫЕ ВОПРОСЫ</span>
+                </h2>
+            </div>
+
+            <div class="space-y-4">
+                <!-- FAQ Item 1 -->
+                <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+                    <button @click="openFaq = openFaq === 1 ? null : 1" class="w-full p-6 text-left font-bebas text-2xl text-white flex justify-between items-center">
+                        <span>Чем ViralE отличается от обычного ChatGPT?</span>
+                        <span class="text-virale-gold text-3xl" x-text="openFaq === 1 ? '−' : '+'"></span>
+                    </button>
+                    <div x-show="openFaq === 1" class="p-6 pt-0 font-inter text-slate-300 text-sm leading-relaxed border-t border-white/5">
+                        ChatGPT предоставляет только сухой сырой текст. ViralE дает полностью готовый к публикации медиакомплекс: виральное видео (Reels/Shorts) с субтитрами и B-roll вставками, Instagram-карусель на 5–10 слайдов, визуальную обложку и нативные текстовые материалы для 5 различных социальных сетей из 1 мысли всего за 5 минут.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 2 -->
+                <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+                    <button @click="openFaq = openFaq === 2 ? null : 2" class="w-full p-6 text-left font-bebas text-2xl text-white flex justify-between items-center">
+                        <span>Нужно ли быть техническим специалистом или монтировать видео?</span>
+                        <span class="text-virale-gold text-3xl" x-text="openFaq === 2 ? '−' : '+'"></span>
+                    </button>
+                    <div x-show="openFaq === 2" class="p-6 pt-0 font-inter text-slate-300 text-sm leading-relaxed border-t border-white/5">
+                        Технические знания не требуются. Если вы умеете нажимать кнопки и наговаривать голосовые сообщения, вы полностью справитесь с работой в ViralE. Вся техническая работа по монтажу, подбору видеоряда и форматированию осуществляется в автоматическом режиме.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 3 -->
+                <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+                    <button @click="openFaq = openFaq === 3 ? null : 3" class="w-full p-6 text-left font-bebas text-2xl text-white flex justify-between items-center">
+                        <span>Будет ли контент звучать естественно и передавать мой авторский стиль?</span>
+                        <span class="text-virale-gold text-3xl" x-text="openFaq === 3 ? '−' : '+'"></span>
+                    </button>
+                    <div x-show="openFaq === 3" class="p-6 pt-0 font-inter text-slate-300 text-sm leading-relaxed border-t border-white/5">
+                        Да! Для этого внедрен модуль «Цифровая ДНК». Во время первичной 3-минутной настройки платформа анализирует ваш лексикон, манеру общения, ценности и специфику ниши, что обеспечивает 91% схожести синтезируемого текста с вашим живым голосом.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 4 -->
+                <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+                    <button @click="openFaq = openFaq === 4 ? null : 4" class="w-full p-6 text-left font-bebas text-2xl text-white flex justify-between items-center">
+                        <span>Что входит в один полный «пакет контента» (Content Pack)?</span>
+                        <span class="text-virale-gold text-3xl" x-text="openFaq === 4 ? '−' : '+'"></span>
+                    </button>
+                    <div x-show="openFaq === 4" class="p-6 pt-0 font-inter text-slate-300 text-sm leading-relaxed border-t border-white/5">
+                        Один контент-пак содержит полную обойму материалов по выбранной теме: 1) Виральный видеоролик Reels/Shorts MP4, 2) Instagram-карусель на 5-10 графических слайдов, 3) Адаптированный пост для Telegram, 4) Экспертную статью для LinkedIn, 5) Тексты для Threads и Facebook.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 5 -->
+                <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+                    <button @click="openFaq = openFaq === 5 ? null : 5" class="w-full p-6 text-left font-bebas text-2xl text-white flex justify-between items-center">
+                        <span>Обязательно ли записываться на видео лично?</span>
+                        <span class="text-virale-gold text-3xl" x-text="openFaq === 5 ? '−' : '+'"></span>
+                    </button>
+                    <div x-show="openFaq === 5" class="p-6 pt-0 font-inter text-slate-300 text-sm leading-relaxed border-t border-white/5">
+                        Не обязательно. Вы можете выбрать режим «Faceless Video» (безликое видео), ИИ-аватары HeyGen или нейронный Face Swap. Если вы предпочитаете сниматься лично, адаптивный телесуфлер обеспечит комфортное чтение сценария с первого дубля.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 6 -->
+                <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+                    <button @click="openFaq = openFaq === 6 ? null : 6" class="w-full p-6 text-left font-bebas text-2xl text-white flex justify-between items-center">
+                        <span>Можно ли использовать собственные API-ключи (BYOK)?</span>
+                        <span class="text-virale-gold text-3xl" x-text="openFaq === 6 ? '−' : '+'"></span>
+                    </button>
+                    <div x-show="openFaq === 6" class="p-6 pt-0 font-inter text-slate-300 text-sm leading-relaxed border-t border-white/5">
+                        Да, на тарифном плане Scale ($79.90/мес) вы можете подключить собственные ключи OpenAI, Anthropic Claude 3.5 Sonnet, ElevenLabs и HeyGen, оплачивая генерации напрямую провайдерам по их себестоимости.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 7 -->
+                <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+                    <button @click="openFaq = openFaq === 7 ? null : 7" class="w-full p-6 text-left font-bebas text-2xl text-white flex justify-between items-center">
+                        <span>Как установить приложение на смартфон (PWA)?</span>
+                        <span class="text-virale-gold text-3xl" x-text="openFaq === 7 ? '−' : '+'"></span>
+                    </button>
+                    <div x-show="openFaq === 7" class="p-6 pt-0 font-inter text-slate-300 text-sm leading-relaxed border-t border-white/5">
+                        Откройте сайт virale.uno в Safari на iOS (нажмите «Поделиться» → «На экран Домой») или в Chrome на Android (нажмите меню → «Установить приложение»). PWA запускается в полноэкранном режиме с поддержкой камеры и телесуфлера.
+                    </div>
+                </div>
+
+                <!-- FAQ Item 8 -->
+                <div class="glass-panel rounded-2xl border border-white/10 overflow-hidden">
+                    <button @click="openFaq = openFaq === 8 ? null : 8" class="w-full p-6 text-left font-bebas text-2xl text-white flex justify-between items-center">
+                        <span>Какова политика возврата средств?</span>
+                        <span class="text-virale-gold text-3xl" x-text="openFaq === 8 ? '−' : '+'"></span>
+                    </button>
+                    <div x-show="openFaq === 8" class="p-6 pt-0 font-inter text-slate-300 text-sm leading-relaxed border-t border-white/5">
+                        Мы предоставляем 14-дневную гарантию возврата денег при условии, что вы не расходовали ИИ-кредиты на генерацию видеороликов или аватаров. Запрос направляется по почте billing@virale.uno.
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <!-- FINAL CTA SECTION -->
+        <section class="py-24 max-w-5xl mx-auto px-4 sm:px-6 lg:px-8 text-center relative">
+            <div class="glass-panel-gold p-12 sm:p-16 rounded-3xl border border-virale-gold/40 shadow-gold-glow relative overflow-hidden">
+                <div class="absolute inset-0 bg-gradient-to-br from-virale-gold/10 to-transparent pointer-events-none"></div>
+                <h2 class="font-bebas text-6xl sm:text-7xl text-white mb-4 relative z-10">
+                    ХВАТИТ МОНТИРОВАТЬ. <br />
+                    <span class="gold-gradient-text">НАЧНИТЕ ВИРУСИТЬ.</span>
+                </h2>
+                <p class="font-inter text-slate-300 text-base sm:text-lg max-w-xl mx-auto mb-8 relative z-10">
+                    Создайте свою Цифровую ДНК за 3 минуты. Первый пакет контента для 5 социальных сетей — бесплатно.
+                </p>
+                <div class="flex flex-col sm:flex-row items-center justify-center gap-4 relative z-10">
+                    <a href="https://t.me/viral_engine_bot" target="_blank" class="w-full sm:w-auto px-10 py-5 rounded-xl bg-gradient-to-r from-virale-gold via-amber-500 to-virale-orange text-black font-bebas text-2xl tracking-wider hover:shadow-gold-glow transition-all font-bold">
+                        ЗАПУСТИТЬ ФАБРИКУ В TELEGRAM
+                    </a>
+                </div>
+                <div class="mt-6 font-jetbrains text-xs text-virale-gold uppercase tracking-widest relative z-10">
+                    ● Осталось 34 бесплатных тестовых места из 100
+                </div>
+            </div>
+        </section>
+
+    </main>
+
+    <!-- FOOTER -->
+    <footer class="bg-virale-card border-t border-white/5 py-12 relative z-10">
+        <div class="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 flex flex-col md:flex-row items-center justify-between gap-6">
+            <div>
+                <div class="font-bebas text-3xl text-white tracking-wide">
+                    VIRAL<span class="text-virale-gold">E</span>
+                </div>
+                <div class="font-jetbrains text-xs text-slate-400 uppercase tracking-widest mt-1">
+                    AI Content Factory by Sherlock Studio · virale.uno
+                </div>
+            </div>
+            <div class="flex flex-wrap items-center justify-center gap-6 font-jetbrains text-xs text-slate-400 uppercase tracking-wider">
+                <a href="#workflow" class="hover:text-virale-gold">Алгоритм</a>
+                <a href="#technology" class="hover:text-virale-gold">Технологии</a>
+                <a href="#pricing" class="hover:text-virale-gold">Тарифы</a>
+                <a href="#faq" class="hover:text-virale-gold">FAQ</a>
+                <a href="https://t.me/viral_engine_bot" target="_blank" class="text-virale-gold">Telegram Bot</a>
+            </div>
+            <div class="font-jetbrains text-xs text-slate-400">
+                © 2026 ViralE. All rights reserved.
+            </div>
+        </div>
+    </footer>
+
+</body>
+</html>

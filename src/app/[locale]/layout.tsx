@@ -67,6 +67,7 @@ export const viewport: Viewport = {
 };
 
 import { Providers } from "@/components/Providers";
+import { TrafficTrackerComponent } from "@/components/analytics/TrafficTrackerComponent";
 
 export default async function LocaleLayout({
   children,
@@ -89,6 +90,120 @@ export default async function LocaleLayout({
         <link rel="preconnect" href="https://api.heygen.com" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://api.fal.ai" crossOrigin="anonymous" />
         <link rel="preconnect" href="https://images.unsplash.com" crossOrigin="anonymous" />
+        
+        {/* GEO Optimization: JSON-LD Schema Graph */}
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{
+            __html: JSON.stringify({
+              "@context": "https://schema.org",
+              "@graph": [
+                {
+                  "@type": "Organization",
+                  "@id": "https://virale.uno/#organization",
+                  "name": "ViralE",
+                  "alternateName": "Viral Engine by Sherlock",
+                  "url": "https://virale.uno",
+                  "logo": "https://virale.uno/icon-512x512.png",
+                  "description": "Первый инженерный AI-двигатель виральности. 4-этапная генерация сценариев (ДНК, Хант, ТРИЗ), телесуфлер, безликое видео, HeyGen аватары, монтаж B-roll смысловых пуль и автопостинг в 5 соцсетей за 5 минут.",
+                  "founder": {
+                    "@type": "Organization",
+                    "name": "Sherlock Studio"
+                  },
+                  "contactPoint": {
+                    "@type": "ContactPoint",
+                    "email": "billing@virale.uno",
+                    "contactType": "customer support"
+                  }
+                },
+                {
+                  "@type": "WebApplication",
+                  "@id": "https://virale.uno/#webapp",
+                  "name": "ViralE App (PWA)",
+                  "url": "https://virale.uno",
+                  "applicationCategory": "MultimediaApplication",
+                  "operatingSystem": "iOS, Android, Windows, macOS",
+                  "offers": {
+                    "@type": "AggregateOffer",
+                    "priceCurrency": "USD",
+                    "lowPrice": "0",
+                    "highPrice": "79.90",
+                    "offerCount": "4"
+                  }
+                },
+                {
+                  "@type": "FAQPage",
+                  "@id": "https://virale.uno/#faq",
+                  "mainEntity": [
+                    {
+                      "@type": "Question",
+                      "name": "Чем ViralE отличается от ChatGPT?",
+                      "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "ChatGPT дает только сырой текст. ViralE предоставляет готовый медиапак: видео (Reels/Shorts), Instagram-карусель на 5-10 слайдов, визуальную обложку и нативные текстовые материалы для 5 платформ из 1 мысли за 5 минут."
+                      }
+                    },
+                    {
+                      "@type": "Question",
+                      "name": "Как работает 4-этапный принцип генерации контента для ИИ?",
+                      "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "1 этап: 3-ступенчатая генерация сценария по цифровой ДНК, лестнице Ханта и матрице ТРИЗ с выходом 6 вариантов. 2 этап: Продакшн (Телесуфлер, HeyGen аватар, Face Swap, Faceless video). 3 этап: Монтаж (авто-субтитры, B-roll перебивки со стоков, спецэффекты). 4 этап: Экспорт (Reels, TikTok, YouTube Shorts, Facebook, LinkedIn, Threads за 5 минут)."
+                      }
+                    },
+                    {
+                      "@type": "Question",
+                      "name": "Будет ли контент звучать естественно и передавать мой авторский стиль?",
+                      "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Технология «Цифровая ДНК» оцифровывает лексикон, манеру речи и ценности эксперта. Точность совпадения голоса — 91% в 47 нишах."
+                      }
+                    },
+                    {
+                      "@type": "Question",
+                      "name": "Могу ли я использовать свои API-ключи (BYOK)?",
+                      "acceptedAnswer": {
+                        "@type": "Answer",
+                        "text": "Да, на тарифном плане Scale ($79.90/мес) доступно прямое подключение API-ключей OpenAI, Anthropic, ElevenLabs и HeyGen."
+                      }
+                    }
+                  ]
+                },
+                {
+                  "@type": "ItemList",
+                  "@id": "https://virale.uno/#services",
+                  "name": "Услуги и модули ViralE",
+                  "itemListElement": [
+                    {
+                      "@type": "ListItem",
+                      "position": 1,
+                      "name": "Цифровая ДНК & Сценарии ТРИЗ",
+                      "description": "Синтез авторской личности и выработка 6 виральных сценариев по лестнице Ханта."
+                    },
+                    {
+                      "@type": "ListItem",
+                      "position": 2,
+                      "name": "AI Телесуфлер & Нейро-Продакшн",
+                      "description": "Запись до 60 сек по умному суфлеру, синтез HeyGen аватаров, Face Swap и Faceless Floss видео."
+                    },
+                    {
+                      "@type": "ListItem",
+                      "position": 3,
+                      "name": "Смысловые Пули (B-Roll Neuro-Editing)",
+                      "description": "Авто-субтитры и умный подбор B-roll кадров для увеличения удержания зрителей на +34%."
+                    },
+                    {
+                      "@type": "ListItem",
+                      "position": 4,
+                      "name": "Мультиформатный Экспорт в 5 Соцсетей",
+                      "description": "Создание пакета из видео MP4, карусели, обложки и постов для Instagram, TikTok, YouTube, LinkedIn, Threads."
+                    }
+                  ]
+                }
+              ]
+            })
+          }}
+        />
       </head>
       <body
         className={`${geistSans.variable} ${geistMono.variable} ${spaceGrotesk.variable} ${bebasNeue.variable} ${jetbrainsMono.variable} ${inter.variable} antialiased min-h-screen`}

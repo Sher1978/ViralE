@@ -173,6 +173,7 @@ export async function notifyNewUserRegistration(profile: {
   tier?: string;
   avatar_url?: string | null;
   created_at?: string;
+  raw_onboarding_data?: any;
 }): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
@@ -184,11 +185,28 @@ export async function notifyNewUserRegistration(profile: {
   }
   notifiedUsers.add(profile.id);
 
+  const raw = profile.raw_onboarding_data || {};
+  const traffic = raw.traffic_data || {};
+  const discovery = raw.discovery_source || raw.discoverySource || 'Не указан';
+
+  let srcFormatted = 'Direct / Bookmark';
+  if (traffic.is_ai_traffic) {
+    srcFormatted = `🤖 ИИ-Переход: ${traffic.ai_provider || 'AI Assistant'}`;
+  } else if (traffic.is_dark_traffic) {
+    srcFormatted = `🕵️ Dark Traffic (Глубокий URL)`;
+  } else if (traffic.referrer && traffic.referrer !== 'Direct / Bookmark') {
+    srcFormatted = `🌐 ${traffic.referrer.slice(0, 40)}`;
+  } else if (traffic.utm_source && traffic.utm_source !== 'none') {
+    srcFormatted = `🏷️ UTM Source: ${traffic.utm_source}`;
+  }
+
   const text = `🎉 <b>НОВАЯ РЕГИСТРАЦИЯ ПОЛЬЗОВАТЕЛЯ</b> 🎉\n\n` +
     `<b>👤 Имя:</b> <code>${escapeHtml(profile.full_name || 'Не указано')}</code>\n` +
     `<b>📧 Email:</b> <code>${escapeHtml(profile.email || 'Не указан')}</code>\n` +
     `<b>🆔 User ID:</b> <code>${escapeHtml(profile.id)}</code>\n` +
     `<b>🏷️ Тариф:</b> <code>${escapeHtml((profile.tier || 'free').toUpperCase())}</code>\n` +
+    `<b>🌐 Источник:</b> <code>${escapeHtml(srcFormatted)}</code>\n` +
+    `<b>🎯 Из ответа:</b> <code>${escapeHtml(discovery)}</code>\n` +
     `<b>⏰ Время:</b> ${profile.created_at || new Date().toISOString()}`;
 
   try {
@@ -214,15 +232,33 @@ export async function notifyDnaCompleted(details: {
   userEmail?: string;
   fullName?: string;
   dnaSnippet?: string;
+  trafficData?: any;
+  discoverySource?: string;
 }): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
   if (!token || !adminChatId) return false;
 
+  const traffic = details.trafficData || {};
+  const discovery = details.discoverySource || 'Не указан';
+
+  let srcFormatted = 'Direct / Bookmark';
+  if (traffic.is_ai_traffic) {
+    srcFormatted = `🤖 ИИ-Переход: ${traffic.ai_provider || 'AI Assistant'}`;
+  } else if (traffic.is_dark_traffic) {
+    srcFormatted = `🕵️ Dark Traffic (Глубокий URL)`;
+  } else if (traffic.referrer && traffic.referrer !== 'Direct / Bookmark') {
+    srcFormatted = `🌐 ${traffic.referrer.slice(0, 40)}`;
+  } else if (traffic.utm_source && traffic.utm_source !== 'none') {
+    srcFormatted = `🏷️ UTM Source: ${traffic.utm_source}`;
+  }
+
   const text = `🧬 <b>ПОЛЬЗОВАТЕЛЬ СФОРМИРОВАЛ ДНК БРЕНДА</b> 🧬\n\n` +
     `<b>👤 Имя:</b> <code>${escapeHtml(details.fullName || 'Не указано')}</code>\n` +
     (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
     `<b>🆔 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` +
+    `<b>🌐 Источник:</b> <code>${escapeHtml(srcFormatted)}</code>\n` +
+    `<b>🎯 Откуда узнал:</b> <code>${escapeHtml(discovery)}</code>\n` +
     (details.dnaSnippet ? `<b>📝 ДНК / Сфокусированная Ниша:</b>\n<pre>${escapeHtml(details.dnaSnippet.slice(0, 350))}</pre>\n` : '') +
     `<b>⏰ Время:</b> ${new Date().toISOString()}`;
 

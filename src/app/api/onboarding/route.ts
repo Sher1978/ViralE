@@ -6,12 +6,7 @@ import { notifyDnaCompleted, notifyNewUserRegistration } from '@/lib/telegram';
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
-    const { answers, dnaPrompt, locale = 'en' } = await req.json();
-
-    // Allow missing answers/dnaPrompt for the "Skip" case
-    // if (!answers && !dnaPrompt) {
-    //   return NextResponse.json({ error: 'Missing answers or DNA prompt' }, { status: 400 });
-    // }
+    const { answers, trafficData, dnaPrompt, locale = 'en' } = await req.json();
 
     const userId = user.id;
 
@@ -22,7 +17,7 @@ export async function POST(req: Request) {
       masterPrompt = await synthesizeDigitalShadow(answers, locale);
     }
 
-    console.log('[Onboarding] Updating profile for user:', userId);
+    console.log('[Onboarding] Updating profile for user:', userId, 'Traffic Data:', trafficData);
     
     // Fetch existing credits & onboarding state to award welcome bonus on first onboarding completion
     const { data: existingProf } = await authorizedSupabase
@@ -36,6 +31,8 @@ export async function POST(req: Request) {
     // Grant +100 CR welcome bonus upon completing onboarding for the first time
     const newBalance = isFirstTimeOnboarding ? (currentBalance + 100) : currentBalance;
 
+    const discoverySource = answers?.discoverySource || null;
+
     const { data, error } = await authorizedSupabase
       .from('profiles')
       .upsert({
@@ -45,7 +42,11 @@ export async function POST(req: Request) {
         avatar_url: user.user_metadata?.avatar_url || null,
         digital_shadow_prompt: masterPrompt || null,
         synthetic_training_data: masterPrompt || null, // New column
-        raw_onboarding_data: answers || null,
+        raw_onboarding_data: {
+          ...(answers || {}),
+          traffic_data: trafficData || null,
+          discovery_source: discoverySource
+        },
         dna_answers: answers || null,
         onboarding_completed: true,
         credits_balance: newBalance,
@@ -68,7 +69,9 @@ export async function POST(req: Request) {
       userId,
       userEmail: data.email,
       fullName: data.full_name,
-      dnaSnippet: masterPrompt
+      dnaSnippet: masterPrompt,
+      trafficData,
+      discoverySource
     }).catch(() => {});
 
     const response = NextResponse.json({

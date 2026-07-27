@@ -74,20 +74,40 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // 1. Fetch total users & new signups count
-  const { count: totalUsers } = await supabaseAdmin
-    .from('profiles')
-    .select('id', { count: 'exact', head: true });
+  // 1. Fetch total users & new signups count directly from auth.users for 100% accuracy
+  let totalUsers = 0;
+  let newUsersToday = 0;
+  let newUsersThisWeek = 0;
 
-  const { count: newUsersToday } = await supabaseAdmin
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .gte('created_at', todayStart);
+  try {
+    const { data: authRes } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 10000 });
+    if (authRes && authRes.users) {
+      totalUsers = authRes.users.length;
+      newUsersToday = authRes.users.filter((u: any) => u.created_at && u.created_at >= todayStart).length;
+      newUsersThisWeek = authRes.users.filter((u: any) => u.created_at && u.created_at >= weekStart).length;
+    }
+  } catch (err) {
+    console.warn('[AdminStats] Failed to fetch auth.users:', err);
+  }
 
-  const { count: newUsersThisWeek } = await supabaseAdmin
-    .from('profiles')
-    .select('id', { count: 'exact', head: true })
-    .gte('created_at', weekStart);
+  if (totalUsers === 0) {
+    const { count: profCount } = await supabaseAdmin
+      .from('profiles')
+      .select('id', { count: 'exact', head: true });
+    totalUsers = profCount || 0;
+
+    const { count: profToday } = await supabaseAdmin
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', todayStart);
+    newUsersToday = profToday || 0;
+
+    const { count: profWeek } = await supabaseAdmin
+      .from('profiles')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', weekStart);
+    newUsersThisWeek = profWeek || 0;
+  }
 
   // 1.5 Fetch registration timeline for the past 14 days
   const fourteenDaysAgo = new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000);
@@ -415,4 +435,76 @@ export async function getAdminPaymentsLog(limit: number = 50) {
   }
 
   return transactions || [];
+}
+
+export interface TrafficSourcesReport {
+  totalAnalyzed: number;
+  aiTrafficCount: number;
+  darkTrafficCount: number;
+  sourcesBreakdown: Record<string, number>;
+  discoveryBreakdown: Record<string, number>;
+  recentLeads: {
+    name: string;
+    email: string;
+    source: string;
+    discovery: string;
+    createdAt: string;
+  }[];
+}
+
+export async function getAdminTrafficSourcesReport(): Promise<TrafficSourcesReport> {
+  const { data: profiles } = await supabaseAdmin
+    .from('profiles')
+    .select('id, full_name, email, created_at, raw_onboarding_data')
+    .order('created_at', { ascending: false });
+
+  let totalAnalyzed = 0;
+  let aiTrafficCount = 0;
+  let darkTrafficCount = 0;
+
+  const sourcesBreakdown: Record<string, number> = {};
+  const discoveryBreakdown: Record<string, number> = {};
+  const recentLeads: TrafficSourcesReport['recentLeads'] = [];
+
+  (profiles || []).forEach((p: any) => {
+    totalAnalyzed++;
+    const raw = p.raw_onboarding_data || {};
+    const traffic = raw.traffic_data || {};
+    const discovery = raw.discovery_source || raw.discoverySource || 'Не указан';
+
+    let srcName = 'Direct / Прямой заход';
+    if (traffic.is_ai_traffic || (traffic.referrer && /chatgpt|perplexity|claude|gemini|copilot|ai/i.test(traffic.referrer))) {
+      srcName = `🤖 ИИ: ${traffic.ai_provider || 'AI Assistant'}`;
+      aiTrafficCount++;
+    } else if (traffic.is_dark_traffic) {
+      srcName = '🕵️ Dark Traffic (Глубокий URL)';
+      darkTrafficCount++;
+    } else if (traffic.referrer && traffic.referrer !== 'Direct / Bookmark') {
+      srcName = `🌐 ${traffic.referrer.slice(0, 30)}`;
+    } else if (traffic.utm_source && traffic.utm_source !== 'none') {
+      srcName = `🏷️ UTM: ${traffic.utm_source}`;
+    }
+
+    sourcesBreakdown[srcName] = (sourcesBreakdown[srcName] || 0) + 1;
+    discoveryBreakdown[discovery] = (discoveryBreakdown[discovery] || 0) + 1;
+
+    if (recentLeads.length < 5) {
+      recentLeads.push({
+        name: p.full_name || 'Творец',
+        email: p.email || 'N/A',
+        source: srcName,
+        discovery,
+        createdAt: p.created_at || new Date().toISOString()
+      });
+    }
+  });
+
+  return {
+    totalAnalyzed,
+    aiTrafficCount,
+    darkTrafficCount,
+    sourcesBreakdown,
+    discoveryBreakdown,
+    recentLeads
+  };
 }
