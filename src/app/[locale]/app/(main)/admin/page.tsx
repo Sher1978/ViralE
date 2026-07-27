@@ -27,7 +27,8 @@ import {
   TrendingUp,
   Cpu,
   User,
-  Shield
+  Shield,
+  Ticket
 } from 'lucide-react';
 
 interface StatsData {
@@ -79,13 +80,39 @@ interface PaymentItem {
   };
 }
 
+interface PromoItem {
+  id: string;
+  code: string;
+  tier: string;
+  credits_bonus: number;
+  is_used: boolean;
+  used_by: string | null;
+  used_at: string | null;
+  created_at: string;
+}
+
+interface PromoRedemptionItem {
+  id: string;
+  user_id: string;
+  amount: number;
+  transaction_type: string;
+  metadata?: any;
+  created_at: string;
+  profiles?: {
+    email: string;
+    full_name: string | null;
+    telegram_id: string | null;
+    avatar_url: string | null;
+  };
+}
+
 export default function AdminDashboardPage() {
   const locale = useLocale();
   const router = useRouter();
 
   const [loading, setLoading] = useState(true);
   const [authorized, setAuthorized] = useState<boolean | null>(null);
-  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments' | 'system'>('overview');
+  const [activeTab, setActiveTab] = useState<'overview' | 'users' | 'payments' | 'system' | 'promocodes'>('overview');
 
   // Stats state
   const [stats, setStats] = useState<StatsData | null>(null);
@@ -103,6 +130,17 @@ export default function AdminDashboardPage() {
   // Payments state
   const [payments, setPayments] = useState<PaymentItem[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
+
+  // Promos state
+  const [promos, setPromos] = useState<PromoItem[]>([]);
+  const [promoRedemptions, setPromoRedemptions] = useState<PromoRedemptionItem[]>([]);
+  const [promosLoading, setPromosLoading] = useState(false);
+
+  const [createPromoModalOpen, setCreatePromoModalOpen] = useState(false);
+  const [newPromoCode, setNewPromoCode] = useState('');
+  const [newPromoTier, setNewPromoTier] = useState('scale');
+  const [newPromoCredits, setNewPromoCredits] = useState('10000');
+  const [submittingCreatePromo, setSubmittingCreatePromo] = useState(false);
 
   // Modal / Drawer state
   const [selectedUser, setSelectedUser] = useState<UserItem | null>(null);
@@ -197,6 +235,64 @@ export default function AdminDashboardPage() {
     }
   }, []);
 
+  // Fetch promos & redemptions list
+  const fetchPromos = useCallback(async () => {
+    setPromosLoading(true);
+    try {
+      const res = await fetch('/api/admin/promos');
+      if (!res.ok) throw new Error('Failed to fetch promos');
+      const data = await res.json();
+      setPromos(data.promoCodes || []);
+      setPromoRedemptions(data.redemptions || []);
+    } catch (err: any) {
+      showToast(err.message || 'Error loading promos', 'error');
+    } finally {
+      setPromosLoading(false);
+    }
+  }, []);
+
+  const handleCreatePromo = async () => {
+    if (!newPromoCode.trim()) {
+      showToast('Введите код промокода', 'error');
+      return;
+    }
+    setSubmittingCreatePromo(true);
+    try {
+      const res = await fetch('/api/admin/promos', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          code: newPromoCode.trim(),
+          tier: newPromoTier,
+          credits_bonus: newPromoCredits
+        })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      showToast(data.message || 'Промокод создан!');
+      setCreatePromoModalOpen(false);
+      setNewPromoCode('');
+      fetchPromos();
+    } catch (err: any) {
+      showToast(err.message || 'Ошибка создания', 'error');
+    } finally {
+      setSubmittingCreatePromo(false);
+    }
+  };
+
+  const handleDeletePromo = async (id: string, code: string) => {
+    if (typeof globalThis !== 'undefined' && (globalThis as any).confirm && !(globalThis as any).confirm(`Удалить промокод ${code}?`)) return;
+    try {
+      const res = await fetch(`/api/admin/promos/${id}`, { method: 'DELETE' });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Failed');
+      showToast(`Промокод ${code} удален`);
+      fetchPromos();
+    } catch (err: any) {
+      showToast(err.message || 'Ошибка удаления', 'error');
+    }
+  };
+
   useEffect(() => {
     fetchStats();
   }, [fetchStats]);
@@ -205,8 +301,9 @@ export default function AdminDashboardPage() {
     if (authorized) {
       if (activeTab === 'users') fetchUsers(1);
       if (activeTab === 'payments') fetchPayments();
+      if (activeTab === 'promocodes') fetchPromos();
     }
-  }, [activeTab, authorized, fetchUsers, fetchPayments]);
+  }, [activeTab, authorized, fetchUsers, fetchPayments, fetchPromos]);
 
   const handleOpenUserDetail = async (user: UserItem) => {
     setSelectedUser(user);
@@ -402,6 +499,7 @@ export default function AdminDashboardPage() {
               fetchStats();
               if (activeTab === 'users') fetchUsers(usersPage);
               if (activeTab === 'payments') fetchPayments();
+              if (activeTab === 'promocodes') fetchPromos();
               showToast('Данные обновлены');
             }}
             className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all shadow-md"
@@ -417,6 +515,7 @@ export default function AdminDashboardPage() {
             { id: 'overview', label: 'Обзор', icon: Activity },
             { id: 'users', label: 'Пользователи', icon: Users, badge: stats?.totalUsers },
             { id: 'payments', label: 'Оплаты', icon: CreditCard },
+            { id: 'promocodes', label: 'Промокоды', icon: Ticket, badge: promos.length },
             { id: 'system', label: 'Статус АПИ', icon: Cpu }
           ].map(tab => {
             const Icon = tab.icon;
@@ -931,6 +1030,162 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
+      {/* --- TAB 5: PROMO CODES --- */}
+      {activeTab === 'promocodes' && (
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Promo Code Overview & Action Bar */}
+          <div className="p-6 rounded-[2rem] bg-[#0c0c16]/90 border border-white/5 space-y-4">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+              <div>
+                <h3 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2">
+                  <Ticket size={18} className="text-purple-400" /> Промокоды Системы
+                </h3>
+                <p className="text-[11px] text-white/40 font-medium mt-0.5">
+                  Управление активными, командными и многоразовыми промокодами
+                </p>
+              </div>
+
+              <button
+                onClick={() => setCreatePromoModalOpen(true)}
+                className="px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-500 hover:to-indigo-500 text-white text-xs font-black uppercase tracking-wider flex items-center gap-2 shadow-lg shadow-purple-600/30 active:scale-95 transition-all"
+              >
+                <PlusCircle size={15} />
+                <span>Создать промокод</span>
+              </button>
+            </div>
+
+            {/* Promos Table / Grid */}
+            {promosLoading ? (
+              <div className="py-12 flex justify-center">
+                <Loader2 className="animate-spin text-purple-400" size={24} />
+              </div>
+            ) : promos.length === 0 ? (
+              <div className="py-8 text-center text-white/30 text-xs">Промокоды не найдены</div>
+            ) : (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                {promos.map(p => {
+                  const isTeamCode = p.code.startsWith('SCALE-') || p.code.startsWith('TEAM-') || p.code.startsWith('VIRAL-') || !p.used_by;
+                  return (
+                    <div
+                      key={p.id}
+                      className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-purple-500/30 transition-all space-y-2 relative group"
+                    >
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <span className="font-mono text-sm font-black text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-xl">
+                            {p.code}
+                          </span>
+                          {isTeamCode ? (
+                            <span className="px-2 py-0.5 rounded-full text-[8px] font-black uppercase border bg-amber-500/10 border-amber-500/30 text-amber-300">
+                              ⚡ Командный (Многоразовый)
+                            </span>
+                          ) : (
+                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase border ${p.is_used ? 'bg-red-500/10 border-red-500/30 text-red-400' : 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300'}`}>
+                              {p.is_used ? 'Использован' : 'Активен'}
+                            </span>
+                          )}
+                        </div>
+
+                        <button
+                          onClick={() => handleDeletePromo(p.id, p.code)}
+                          className="opacity-0 group-hover:opacity-100 p-1.5 rounded-xl bg-red-500/10 border border-red-500/20 text-red-400 hover:bg-red-500/20 transition-all text-xs"
+                          title="Удалить промокод"
+                        >
+                          <X size={12} />
+                        </button>
+                      </div>
+
+                      <div className="flex items-center justify-between text-xs text-white/50 pt-1">
+                        <span>
+                          Тариф: <strong className="text-white uppercase">{p.tier || 'FREE'}</strong>
+                        </span>
+                        <span>
+                          Бонус: <strong className="text-cyan-400">+{p.credits_bonus?.toLocaleString() || 0} CR</strong>
+                        </span>
+                      </div>
+
+                      <div className="text-[9px] text-white/30 font-mono flex items-center justify-between pt-1 border-t border-white/5">
+                        <span>Создан: {new Date(p.created_at).toLocaleDateString()}</span>
+                        <span>{isTeamCode ? 'Без ограничений по времени' : p.is_used ? 'Активирован' : 'Ожидает активации'}</span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+
+          {/* Section: Who Redeemed (История активаций) */}
+          <div className="p-6 rounded-[2rem] bg-[#0c0c16]/90 border border-white/5 space-y-4">
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-widest text-white flex items-center gap-2">
+                <Users size={16} className="text-cyan-400" /> Кто использует (История активаций)
+              </h3>
+              <p className="text-[11px] text-white/40 font-medium mt-0.5">
+                Детальный лог активаций промокодов пользователями и командой
+              </p>
+            </div>
+
+            {promosLoading ? (
+              <div className="py-8 flex justify-center">
+                <Loader2 className="animate-spin text-cyan-400" size={20} />
+              </div>
+            ) : promoRedemptions.length === 0 ? (
+              <div className="py-6 text-center text-white/30 text-xs">
+                Пока никто не активировал промокоды
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {promoRedemptions.map((r, idx) => {
+                  const codeUsed = r.metadata?.code || 'ПРОМОКОД';
+                  const tierGranted = r.metadata?.tier;
+                  return (
+                    <div
+                      key={r.id || idx}
+                      className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                    >
+                      <div className="flex items-center gap-3">
+                        <div className="w-8 h-8 rounded-xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300 font-bold text-xs shrink-0">
+                          {r.profiles?.full_name ? r.profiles.full_name.charAt(0).toUpperCase() : 'U'}
+                        </div>
+                        <div>
+                          <div className="font-bold text-white flex items-center gap-2">
+                            <span>{r.profiles?.full_name || 'Пользователь'}</span>
+                            <span className="text-[10px] font-mono text-white/40">({r.profiles?.email || 'no email'})</span>
+                            {r.profiles?.telegram_id && (
+                              <span className="text-[9px] font-mono text-blue-400 bg-blue-500/10 px-1.5 py-0.5 rounded">
+                                TG: {r.profiles.telegram_id}
+                              </span>
+                            )}
+                          </div>
+                          <div className="text-[10px] text-white/40">
+                            {new Date(r.created_at).toLocaleString()}
+                          </div>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 self-end sm:self-auto">
+                        <span className="font-mono text-xs font-black text-purple-300 bg-purple-500/10 border border-purple-500/20 px-2.5 py-1 rounded-xl">
+                          {codeUsed}
+                        </span>
+                        {tierGranted && tierGranted !== 'free' && (
+                          <span className="px-2 py-0.5 rounded-full text-[9px] font-black uppercase bg-amber-500/10 border border-amber-500/30 text-amber-300">
+                            {tierGranted}
+                          </span>
+                        )}
+                        <span className="text-xs font-black text-cyan-400">
+                          +{r.amount?.toLocaleString()} CR
+                        </span>
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* --- MODAL: GRANT CREDITS --- */}
       <AnimatePresence>
         {creditModalUser && (
@@ -1129,6 +1384,89 @@ export default function AdminDashboardPage() {
                   className="flex-1 py-3 rounded-xl bg-blue-600 hover:bg-blue-500 text-white text-xs font-black uppercase flex items-center justify-center gap-1.5"
                 >
                   {submittingTg ? <Loader2 size={14} className="animate-spin" /> : 'Отправить'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MODAL: CREATE PROMO CODE --- */}
+      <AnimatePresence>
+        {createPromoModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ scale: 0.95, opacity: 0 }}
+              animate={{ scale: 1, opacity: 1 }}
+              exit={{ scale: 0.95, opacity: 0 }}
+              className="w-full max-w-md p-6 rounded-[2rem] bg-[#0d0e1b] border border-white/10 space-y-4 shadow-2xl"
+            >
+              <div className="flex items-center justify-between">
+                <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+                  <Ticket size={16} className="text-purple-400" /> Создать Новый Промокод
+                </h3>
+                <button onClick={() => setCreatePromoModalOpen(false)} className="text-white/40 hover:text-white">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="space-y-3">
+                <div>
+                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">
+                    Код (название)
+                  </label>
+                  <input
+                    type="text"
+                    value={newPromoCode}
+                    onChange={(e) => setNewPromoCode((e.currentTarget as any).value.toUpperCase())}
+                    placeholder="например: SCALE-TEAM-2026 или TEAM-50K"
+                    className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono uppercase focus:outline-none focus:border-purple-500/50"
+                  />
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">
+                    Тариф подписки (Пакет)
+                  </label>
+                  <select
+                    value={newPromoTier}
+                    onChange={(e) => setNewPromoTier((e.currentTarget as any).value)}
+                    className="w-full bg-[#121426] border border-white/10 rounded-xl px-4 py-3 text-xs text-white focus:outline-none focus:border-purple-500/50"
+                  >
+                    <option value="scale">SCALE (Скейл - 10,000 CR + Макс возможности)</option>
+                    <option value="pro">PRO (Про - 1,000 CR)</option>
+                    <option value="creator">CREATOR (Создатель - 300 CR)</option>
+                    <option value="none">Без изменения тарифа (Только кредиты)</option>
+                  </select>
+                </div>
+
+                <div>
+                  <label className="text-[10px] font-bold text-white/40 uppercase tracking-wider block mb-1">
+                    Бонусные Кредиты
+                  </label>
+                  <input
+                    type="number"
+                    value={newPromoCredits}
+                    onChange={(e) => setNewPromoCredits((e.currentTarget as any).value)}
+                    placeholder="50000"
+                    className="w-full bg-white/[0.04] border border-white/10 rounded-xl px-4 py-3 text-xs text-white font-mono focus:outline-none focus:border-purple-500/50"
+                  />
+                </div>
+              </div>
+
+              <div className="flex gap-2 pt-2">
+                <button
+                  onClick={() => setCreatePromoModalOpen(false)}
+                  className="flex-1 py-3 rounded-xl border border-white/10 text-white/60 text-xs font-black uppercase"
+                >
+                  Отмена
+                </button>
+                <button
+                  onClick={handleCreatePromo}
+                  disabled={submittingCreatePromo || !newPromoCode.trim()}
+                  className="flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-xs font-black uppercase flex items-center justify-center gap-1.5"
+                >
+                  {submittingCreatePromo ? <Loader2 size={14} className="animate-spin" /> : 'Создать'}
                 </button>
               </div>
             </motion.div>
