@@ -26,7 +26,8 @@ import {
   HelpCircle,
   Lock,
   Smartphone,
-  Crown
+  Crown,
+  DollarSign
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
@@ -450,6 +451,18 @@ export default function ProfilePage() {
         ]
       }
     ] : []),
+    {
+      title: locale === 'ru' ? 'МОНЕТИЗАЦИЯ И ПАРТНЁРКА' : 'MONETIZATION & AFFILIATE',
+      items: [
+        {
+          icon: DollarSign,
+          label: locale === 'ru' ? '💸 Партнёрская программа (30%)' : '💸 30% Affiliate Program',
+          sub: locale === 'ru' ? 'Зарабатывайте 30% в USD с оплат приглашённых и выводите средства от $100' : 'Earn 30% USD commission on referral purchases',
+          href: '/app/profile/partner',
+          accent: '#10B981'
+        }
+      ]
+    },
     {
       title: t('sectionProfile'),
       items: [

@@ -20,6 +20,18 @@ export function middleware(request: NextRequest) {
   // Inject pathname for server components layout logic
   response.headers.set('x-pathname', pathname);
 
+  // Capture referral code from URL query parameter (?ref=...) and store in cookie for 30 days
+  const refParam = request.nextUrl.searchParams.get('ref');
+  if (refParam) {
+    const cleanRef = refParam.trim().toLowerCase();
+    response.cookies.set('viral_ref_code', cleanRef, {
+      maxAge: 30 * 24 * 60 * 60, // 30 days
+      path: '/',
+      httpOnly: false,
+      sameSite: 'lax',
+    });
+  }
+
   // Bypass Supabase auth checks for static assets, APIs, and auth pages
   const isAuthBypass = isI18nBypass || pathname.includes('/auth');
   if (isAuthBypass) {

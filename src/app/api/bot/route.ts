@@ -491,6 +491,79 @@ export async function POST(req: NextRequest) {
             })
           });
         }
+      } else if (payload && payload.startsWith('payout_')) {
+        const payoutId = payload.replace('payout_', '');
+        const { supabaseAdmin } = await import('@/lib/supabase');
+
+        const { data: payoutReq } = await supabaseAdmin
+          .from('payout_requests')
+          .select('*, user:profiles(id, full_name, email, tier, partner_balance_usd, telegram_id)')
+          .eq('id', payoutId)
+          .single();
+
+        const targetUserId = payoutReq?.user_id || payoutReq?.user?.id;
+        if (targetUserId) {
+          await supabaseAdmin
+            .from('profiles')
+            .update({
+              telegram_id: user.id,
+              username: user.username || null
+            })
+            .eq('id', targetUserId);
+        }
+
+        const locale = user.language_code === 'ru' ? 'ru' : 'en';
+        const amountUsd = payoutReq ? Number(payoutReq.amount_usd).toFixed(2) : '100.00';
+
+        const payoutAckText = locale === 'ru'
+          ? `💳 *Ваша заявка на вывод средств ($${amountUsd} USD) принята!*\n\nГлавный администратор проверяет реквизиты. Вы можете писать любые уточнения прямым сообщением в этот бот — они моментально доставляются админу.`
+          : `💳 *Your payout request ($${amountUsd} USD) has been received!*\n\nThe SuperAdmin is verifying your details. You can reply directly in this chat to reach the admin.`;
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: payoutAckText,
+            parse_mode: 'Markdown',
+          }),
+        });
+
+        // Send alert to Superadmin
+        const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+        const userNameStr = `${user.first_name || ''} ${user.last_name || ''}`.trim() || payoutReq?.user?.full_name || 'Творец';
+        const userUsername = user.username ? `@${user.username}` : 'без_юзернейма';
+
+        const adminAlertText = 
+          `💸 <b>НОВАЯ ЗАЯВКА НА ВЫВОД ПАРТНЁРСКИХ СРЕДСТВ</b>\n\n` +
+          `<b>👤 Пользователь:</b> ${userNameStr} (${userUsername})\n` +
+          `<b>📧 Email:</b> <code>${payoutReq?.user?.email || 'N/A'}</code>\n` +
+          `<b>🆔 User ID:</b> <code>${targetUserId || 'N/A'}</code>\n` +
+          `<b>💰 Сумма к выводу:</b> <b>$${amountUsd} USD</b>\n` +
+          `<b>👑 Тариф:</b> <b>${(payoutReq?.user?.tier || 'free').toUpperCase()}</b>\n` +
+          `<b>💳 Метод:</b> <code>${payoutReq?.payout_method || 'USDT TRC-20 / Card'}</code>\n` +
+          `<b>📌 Реквизиты:</b> <code>${payoutReq?.payout_details || 'Не указаны (запросить в чате)'}</code>\n\n` +
+          `👇 <i>Ответьте на это сообщение или перейдите в диалог с пользователем:</i>`;
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: ADMIN_ID,
+            text: adminAlertText,
+            parse_mode: 'HTML',
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  {
+                    text: '💬 Ответить пользователю',
+                    url: `tg://user?id=${user.id}`
+                  }
+                ]
+              ]
+            }
+          })
+        });
       } else {
         // Regular welcome with language buttons
         const locale = user.language_code === 'ru' ? 'ru' : 'en';

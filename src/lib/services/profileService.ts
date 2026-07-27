@@ -20,6 +20,11 @@ export interface Profile {
   elevenlabs_api_key?: string | null;
   groq_api_key?: string | null;
   
+  // Referral System Fields
+  referral_code?: string | null;
+  referred_by_id?: string | null;
+  partner_balance_usd?: number;
+
   // Social Media Integrations
   instagram_linked?: boolean;
   instagram_token?: string | null;
@@ -31,6 +36,12 @@ export interface Profile {
   preferred_language?: string | null;
 }
 
+export function generateReferralCode(userId: string): string {
+  const cleanId = userId.replace(/-/g, '');
+  const prefix = cleanId.slice(0, 4).toLowerCase();
+  const suffix = cleanId.slice(-4).toLowerCase();
+  return `ref_${prefix}${suffix}`;
+}
 
 export const profileService = {
   /**
@@ -51,8 +62,35 @@ export const profileService = {
     const defaultName = `Media Creator #${stableNum}`;
     const googleName = user.user_metadata?.full_name;
     const googleAvatar = user.user_metadata?.avatar_url;
+    const userRefCode = generateReferralCode(user.id);
 
     if (error && error.code === 'PGRST116') {
+      // Check for inviter from viral_ref_code cookie
+      let inviterId: string | null = null;
+      try {
+        const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+        const cookieStr: string = globalObj && globalObj.document ? globalObj.document.cookie : '';
+        if (cookieStr) {
+          const cookies = cookieStr.split('; ');
+          const refCookie = cookies.find((c: string) => c.startsWith('viral_ref_code='));
+          if (refCookie) {
+            const code = refCookie.split('=')[1]?.trim();
+            if (code) {
+              const { data: inviter } = await supabase
+                .from('profiles')
+                .select('id')
+                .eq('referral_code', code)
+                .single();
+              if (inviter && inviter.id !== user.id) {
+                inviterId = inviter.id;
+              }
+            }
+          }
+        }
+      } catch (e) {
+        console.warn('[ProfileService] Failed to resolve inviter from cookie:', e);
+      }
+
       // Profile missing, create it
       const { data: newProfile, error: createError } = await supabase
         .from('profiles')
@@ -82,7 +120,10 @@ export const profileService = {
             heygen_api_key: null,
             anthropic_api_key: null,
             elevenlabs_api_key: null,
-            groq_api_key: null
+            groq_api_key: null,
+            referral_code: userRefCode,
+            referred_by_id: inviterId,
+            partner_balance_usd: 0.00
           }
         ])
         .select()
@@ -103,9 +144,14 @@ export const profileService = {
       return null;
     }
 
-    // Dynamic sync/back-fill for existing profiles
+    // Dynamic sync/back-fill for existing profiles missing referral_code
     let needsUpdate = false;
     const updates: Partial<Profile> = {};
+
+    if (!profile.referral_code) {
+      updates.referral_code = userRefCode;
+      needsUpdate = true;
+    }
 
     // If profile has generic "Creator" or is missing a full name, update it
     if (!profile.full_name || profile.full_name === 'Creator') {
