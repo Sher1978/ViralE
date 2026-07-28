@@ -29,47 +29,47 @@ export function AppOnboardingTour({ isOpen, onClose, onConnectTelegram }: AppOnb
   const steps = [
     {
       icon: Lightbulb,
-      accent: '#10b981',
+      accent: '#a855f7',
       badge: locale === 'ru' ? 'ШАГ 1 ИЗ 4' : 'STEP 1 OF 4',
-      title: locale === 'ru' ? '💡 Матрица Идей & AI-Тренды' : '💡 Ideas Matrix & AI Trends',
-      subtitle: locale === 'ru' ? 'Генерация виральных тем под вашу ДНК' : 'Generating viral topics based on your DNA',
-      description: locale === 'ru' 
-        ? 'ИИ непрерывно анализирует вашу экспертную «Цифровую ДНК» и генерирует уникальные концепты роликов для Reels, Shorts и TikTok. Просто нажмите на любую идею — и ИИ моментально напишет готовый сценарий!'
-        : 'AI continuously analyzes your expert Digital DNA to generate unique video concepts for Reels, Shorts, and TikTok. Just click any idea and the AI will craft a complete script instantly!',
-      highlightText: locale === 'ru' ? '⚡ Создание сценария за 1 клик' : '⚡ 1-Click Script Generation'
+      title: locale === 'ru' ? '💡 Сценарий — 3-Ступенчатый Синтез' : '💡 Script — 3-Stage Synthesis',
+      subtitle: locale === 'ru' ? 'Идея → Концепт → Вирусный сценарий' : 'Idea → Concept → Viral Script',
+      description: locale === 'ru'
+        ? 'На основе вашей Цифровой ДНК — бренд-профиля эксперта — ИИ генерирует бесконечную матрицу тем по принципу «Лестницы Ханта». Вы выбираете одну идею и она превращается в полноценный сценарий через матрицу ТРИЗ. Затем создаётся 6 уникальных вариантов вирусного сценария — выбирайте лучший и переходите к съёмке.'
+        : 'Based on your Digital DNA — your expert brand profile — AI generates an infinite idea matrix using Hunt\'s Awareness Ladder. Pick one idea, and it transforms into a full script via the TRIZ matrix. Then 6 unique viral script versions are generated — pick the best and move to production.',
+      highlightText: locale === 'ru' ? '⚡ ДНК → Идея → ТРИЗ → 6 Вариантов Сценария' : '⚡ DNA → Idea → TRIZ → 6 Script Variants'
     },
     {
       icon: Clapperboard,
       accent: '#ec4899',
       badge: locale === 'ru' ? 'ШАГ 2 ИЗ 4' : 'STEP 2 OF 4',
-      title: locale === 'ru' ? '🎬 4 Варианта Пайплайна Производства' : '🎬 4 Content Production Pipelines',
-      subtitle: locale === 'ru' ? 'Выберите подходящий формат создания ролика' : 'Select your preferred video creation format',
+      title: locale === 'ru' ? '🎬 Продакшн — 4 Режима Съёмки' : '🎬 Production — 4 Filming Modes',
+      subtitle: locale === 'ru' ? 'Запись ролика до 1 минуты удобным способом' : 'Record your video in up to 1 minute your way',
       description: locale === 'ru'
-        ? 'Студия предлагает 4 готовых пути съемки и генерации:\n• 📱 Телесуфлер — Живая съемка с бегущим текстом на экране.\n• ✨ Фейс Свап — Наложение вашего лица на записанный ролик.\n• 🎬 Фейслесс — Авто-генерация нейро-сцен и кино-футажей.\n• 👤 Аватар Студия — Персональный HeyGen ИИ-диктор.'
-        : 'The Studio offers 4 production pathways:\n• 📱 Teleprompter — Live filming with smooth text on camera.\n• ✨ Face Swap — Seamless face replacement on your videos.\n• 🎬 AI Faceless — Auto-generated cinematic B-roll scenes.\n• 👤 Avatar Studio — Custom HeyGen AI digital speaker.',
-      highlightText: locale === 'ru' ? '🚀 Телесуфлер • Фейс Свап • Фейслесс • Аватар Студия' : '🚀 Teleprompter • Face Swap • Faceless • Avatar'
+        ? 'Выбирайте удобный формат производства:\n• 📱 Телесуфлёр — Эксперт читает текст с экрана, записывает видео до 1 мин.\n• 🔄 Фейс Своп — Наложение вашего лица на готовый ролик.\n• 🤖 Аватар Студия — Персональный HeyGen ИИ-спикер без камеры.\n• 🎬 Фейслесс — Генерация видео без спикера (B-roll + закадровый голос).'
+        : 'Choose your preferred production format:\n• 📱 Teleprompter — Expert reads the script on screen, records video up to 1 min.\n• 🔄 Face Swap — Your face seamlessly overlaid onto a pre-recorded clip.\n• 🤖 Avatar Studio — Personal HeyGen AI speaker, no camera needed.\n• 🎬 Faceless — Video generation without a speaker (B-roll + voiceover).',
+      highlightText: locale === 'ru' ? '🚀 Телесуфлёр • Фейс Своп • Аватар • Фейслесс' : '🚀 Teleprompter • Face Swap • Avatar • Faceless'
     },
     {
       icon: Zap,
-      accent: '#a855f7',
+      accent: '#06b6d4',
       badge: locale === 'ru' ? 'ШАГ 3 ИЗ 4' : 'STEP 3 OF 4',
-      title: locale === 'ru' ? '✂️ ИИ-Студия & Автоматический Монтаж' : '✂️ AI Studio & Auto Editing',
-      subtitle: locale === 'ru' ? 'Создание видео от раскадровки до рендера' : 'Full production from storyboard to final render',
+      title: locale === 'ru' ? '✂️ Монтаж — ИИ на Автопилоте' : '✂️ Editing — AI on Autopilot',
+      subtitle: locale === 'ru' ? 'Субтитры, B-Roll и спецэффекты за секунды' : 'Subtitles, B-Roll & effects in seconds',
       description: locale === 'ru'
-        ? 'Студия превращает текст в готовый контент: создает пошаговые сцены, подбирает фоны, генерирует обложки и накладывает озвучку. Вам больше не нужна съемочная команда или монтажер!'
-        : 'The Studio turns text into complete video: builds scene-by-scene storyboards, generates AI banners, arranges b-roll, and adds voiceovers without needing a filming crew!',
-      highlightText: locale === 'ru' ? '✨ Полный цикл производства в одном окне' : '✨ End-to-end AI production'
+        ? 'На этапе монтажа ИИ автоматически накладывает субтитры. Вы можете добавить B-roll из бесплатных видеоплатформ, подобрать визуальные сцены-переходы и применить спецэффекты — всё в одном окне без сторонних программ.'
+        : 'At the editing stage, AI automatically generates subtitles. You can add B-roll footage from free video platforms, select visual transition scenes, and apply special effects — all within one interface without third-party software.',
+      highlightText: locale === 'ru' ? '✨ Авто-субтитры • B-Roll • Эффекты в 1 клик' : '✨ Auto-subtitles • B-Roll • Effects in 1 click'
     },
     {
-      icon: Bot,
-      accent: '#06b6d4',
-      badge: locale === 'ru' ? 'ФИНАЛЬНЫЙ ШАГ' : 'FINAL STEP',
-      title: locale === 'ru' ? '📱 Telegram-Бот & Бонус +50 CR' : '📱 Telegram Bot & +50 CR Bonus',
-      subtitle: locale === 'ru' ? 'Автоматические дайджесты и генерации' : 'Automated digests & instant notifications',
+      icon: Send,
+      accent: '#10b981',
+      badge: locale === 'ru' ? 'ШАГ 4 ИЗ 4' : 'STEP 4 OF 4',
+      title: locale === 'ru' ? '🚀 Экспорт — Контент для 5 Платформ' : '🚀 Export — Content for 5 Platforms',
+      subtitle: locale === 'ru' ? 'Видео + тексты + обложки за 5 минут' : 'Video + captions + thumbnails in 5 minutes',
       description: locale === 'ru'
-        ? 'Подключите Telegram-бота за 1 клик! Бот будет присылать вам трендовые сценарии прямо в мессенджер, а вы мгновенно получите +50 CR бонуса на свой аккаунт!'
-        : 'Connect our Telegram Bot in 1 click! The bot sends trending ideas directly to your messenger, and you instantly receive +50 CR bonus on your balance!',
-      highlightText: locale === 'ru' ? '🎁 +50 CR за привязку бота' : '🎁 +50 CR for connecting Telegram Bot'
+        ? 'Готовый ролик экспортируется вместе с полным пакетом: вирусное текстовое описание, графическая обложка и длинные авторские посты для Instagram, TikTok, YouTube, Facebook, LinkedIn и Threads. Один флоу — контент сразу для пяти соцсетей!'
+        : 'The final video exports with a full content package: viral caption, custom thumbnail, and long-form posts for Instagram, TikTok, YouTube, Facebook, LinkedIn, and Threads. One flow — content for five platforms at once!',
+      highlightText: locale === 'ru' ? '🌐 Instagram • TikTok • YouTube • LinkedIn • Threads' : '🌐 Instagram • TikTok • YouTube • LinkedIn • Threads'
     }
   ];
 
@@ -209,7 +209,7 @@ export function AppOnboardingTour({ isOpen, onClose, onConnectTelegram }: AppOnb
             >
               <span>
                 {currentStep === steps.length - 1 
-                  ? (locale === 'ru' ? 'Подключить Telegram (+50 CR)' : 'Connect Telegram (+50 CR)')
+                  ? (locale === 'ru' ? '🚀 Запустить Viral Engine' : '🚀 Launch Viral Engine')
                   : (locale === 'ru' ? 'Дальше →' : 'Next →')}
               </span>
             </button>
