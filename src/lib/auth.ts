@@ -115,10 +115,7 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
           onboarding_completed: false,
           tier: 'free',
           subscription_status: 'active',
-          preferred_language: 'ru',
-          referral_code: userRefCode,
-          referred_by_id: inviterId,
-          partner_balance_usd: 0.00
+          preferred_language: 'ru'
         };
         const { error: insertErr } = await supabase.from('profiles').insert(profileData);
         if (insertErr) throw insertErr;

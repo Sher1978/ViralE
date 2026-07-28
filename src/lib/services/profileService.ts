@@ -106,10 +106,7 @@ export const profileService = {
             preferred_language: 'ru',
             digital_shadow_prompt: null,
             industry_context: null,
-            onboarding_completed: false,
-            referral_code: userRefCode,
-            referred_by_id: inviterId,
-            partner_balance_usd: 0.00
+            onboarding_completed: false
           }
         ])
         .select()
