@@ -134,11 +134,25 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
           referred_by_id: inviterId,
           partner_balance_usd: 0.00
         };
-        await supabase.from('profiles').insert(profileData);
+        const { error: insertErr } = await supabase.from('profiles').insert(profileData);
+        if (insertErr) throw insertErr;
+        
         notifyNewUserRegistration(profileData).catch(() => {});
       }
-    } catch (err) {
+    } catch (err: any) {
       console.warn('[Auth] Failed to ensure profile:', err);
+      try {
+        const { notifyAdminError } = await import('@/lib/telegram');
+        notifyAdminError({
+          source: 'Auth:EnsureProfile',
+          error: err,
+          userId: user.id,
+          userEmail: user.email,
+          extra: { action: 'insert_profile' }
+        }).catch(() => {});
+      } catch (e) {
+        console.error('Failed to notify admin of auth error:', e);
+      }
     }
   }
 

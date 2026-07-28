@@ -9,9 +9,22 @@ export const maxDuration = 60; // 60 seconds timeout limit for serverless functi
 
 
 export async function POST(req: Request) {
+  let user: any = null;
+  let projectId: string | undefined = undefined;
+  let mode: string = 'initial';
+  let coreIdea: string = '';
+
   try {
-    const { user, supabase: authorizedSupabase } = await getAuthContext();
-    let { projectId, coreIdea, ideaTitle, locale = 'en', mode = 'initial', instruction, currentScript, versionId: targetVersionId, engine = 'gemini', hook, role, selectedStyle, selectedPreview } = await req.json();
+    const authContext = await getAuthContext();
+    user = authContext.user;
+    const authorizedSupabase = authContext.supabase;
+    
+    const body = await req.json().catch(() => ({}));
+    projectId = body.projectId;
+    coreIdea = body.coreIdea || '';
+    mode = body.mode || 'initial';
+    
+    let { ideaTitle, locale = 'en', instruction, currentScript, versionId: targetVersionId, engine = 'gemini', hook, role, selectedStyle, selectedPreview } = body;
 
     console.log(`[ScriptGen] Mode: ${mode}, Locale: ${locale}, Engine: ${engine}, ProjectID: ${projectId || 'NEW'}`);
 
@@ -293,6 +306,18 @@ export async function POST(req: Request) {
 
   } catch (error: any) {
     console.error('[ScriptGen] CRITICAL ERROR:', error);
+    try {
+      const { notifyAdminError } = await import('@/lib/telegram');
+      notifyAdminError({
+        source: 'Script Generation API',
+        error,
+        userId: user?.id,
+        userEmail: user?.email,
+        extra: { projectId, mode, coreIdea }
+      }).catch(() => {});
+    } catch (e) {
+      console.error('Failed to notify admin of ScriptGen error:', e);
+    }
     return NextResponse.json({ 
       error: error.message,
       stack: process.env.NODE_ENV === 'development' ? error.stack : undefined 
