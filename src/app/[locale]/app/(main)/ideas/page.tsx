@@ -281,40 +281,83 @@ export default function IdeasPage() {
       )}
 
       <AnimatePresence>
-        {ideasError && (
-          <motion.div 
-            initial={{ opacity: 0, height: 0 }} 
-            animate={{ opacity: 1, height: 'auto' }} 
-            exit={{ opacity: 0, height: 0 }} 
-            className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between text-red-200 shadow-xl relative overflow-hidden"
-          >
-            <div className="flex items-center gap-3">
-              <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
-              <div>
-                <h4 className="text-xs font-bold uppercase tracking-wider text-red-300">
-                  {locale === 'ru' ? 'Ошибка генерации идей' : 'Idea Generation Error'}
-                </h4>
-                <p className="text-xs text-red-200/80 mt-0.5">{ideasError}</p>
-              </div>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
-              <button 
-                onClick={() => {
-                  clearIdeasError();
-                  refreshIdeas('new', undefined, true);
-                }}
-                disabled={loadingIdeas}
-                className="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-100 text-xs font-bold transition-all border border-red-500/30 flex items-center gap-1.5 disabled:opacity-50"
+        {ideasError && (() => {
+          const isDnaError = ideasError.includes('ДНК') || ideasError.includes('DNA') || ideasError.includes('brand DNA') || ideasError.includes('Brand DNA');
+          if (isDnaError) {
+            return (
+              <motion.div
+                initial={{ opacity: 0, height: 0 }}
+                animate={{ opacity: 1, height: 'auto' }}
+                exit={{ opacity: 0, height: 0 }}
+                className="p-5 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex flex-col sm:flex-row items-center justify-between gap-4 shadow-xl relative overflow-hidden"
               >
-                <RefreshCw size={12} className={loadingIdeas ? "animate-spin" : ""} />
-                {loadingIdeas ? (locale === 'ru' ? 'Генерация...' : 'Generating...') : (locale === 'ru' ? 'Повторить' : 'Retry')}
-              </button>
-              <button onClick={clearIdeasError} className="p-1 hover:bg-white/10 rounded-lg text-red-400">
-                <X size={16} />
-              </button>
-            </div>
-          </motion.div>
-        )}
+                <div className="absolute inset-0 bg-gradient-to-r from-purple-500/5 to-blue-500/5 pointer-events-none" />
+                <div className="flex items-center gap-3 z-10">
+                  <Dna className="w-6 h-6 text-purple-400 shrink-0 animate-pulse" />
+                  <div>
+                    <h4 className="text-xs font-black uppercase tracking-wider text-purple-300">
+                      {locale === 'ru' ? 'ДНК Бренда не заполнена' : 'Brand DNA Not Configured'}
+                    </h4>
+                    <p className="text-xs text-purple-200/60 mt-0.5 max-w-xs">
+                      {locale === 'ru'
+                        ? 'Для генерации персонализированных идей необходимо заполнить профиль вашего бренда.'
+                        : 'To generate personalized ideas, please complete your brand profile.'}
+                    </p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-2 shrink-0 z-10">
+                  <button
+                    onClick={() => {
+                      clearIdeasError();
+                      router.push('/app/onboarding' as any);
+                    }}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-black uppercase tracking-widest shadow-lg shadow-purple-500/20 hover:scale-105 active:scale-95 transition-all flex items-center gap-2"
+                  >
+                    <Dna size={12} />
+                    {locale === 'ru' ? 'Заполнить ДНК' : 'Configure DNA'}
+                  </button>
+                  <button onClick={clearIdeasError} className="p-1 hover:bg-white/10 rounded-lg text-purple-400">
+                    <X size={16} />
+                  </button>
+                </div>
+              </motion.div>
+            );
+          }
+          return (
+            <motion.div
+              initial={{ opacity: 0, height: 0 }}
+              animate={{ opacity: 1, height: 'auto' }}
+              exit={{ opacity: 0, height: 0 }}
+              className="p-4 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-between text-red-200 shadow-xl relative overflow-hidden"
+            >
+              <div className="flex items-center gap-3">
+                <AlertTriangle className="w-5 h-5 text-red-400 shrink-0" />
+                <div>
+                  <h4 className="text-xs font-bold uppercase tracking-wider text-red-300">
+                    {locale === 'ru' ? 'Ошибка генерации идей' : 'Idea Generation Error'}
+                  </h4>
+                  <p className="text-xs text-red-200/80 mt-0.5">{ideasError}</p>
+                </div>
+              </div>
+              <div className="flex items-center gap-2 shrink-0">
+                <button
+                  onClick={() => {
+                    clearIdeasError();
+                    refreshIdeas('new', undefined, true);
+                  }}
+                  disabled={loadingIdeas}
+                  className="px-3 py-1.5 rounded-xl bg-red-500/20 hover:bg-red-500/30 text-red-100 text-xs font-bold transition-all border border-red-500/30 flex items-center gap-1.5 disabled:opacity-50"
+                >
+                  <RefreshCw size={12} className={loadingIdeas ? "animate-spin" : ""} />
+                  {loadingIdeas ? (locale === 'ru' ? 'Генерация...' : 'Generating...') : (locale === 'ru' ? 'Повторить' : 'Retry')}
+                </button>
+                <button onClick={clearIdeasError} className="p-1 hover:bg-white/10 rounded-lg text-red-400">
+                  <X size={16} />
+                </button>
+              </div>
+            </motion.div>
+          );
+        })()}
 
         {activeTab === 'new' && showWelcome && (
           <motion.div initial={{ opacity: 0, height: 0 }} animate={{ opacity: 1, height: 'auto' }} exit={{ opacity: 0, height: 0, scale: 0.95 }} className="p-4 rounded-2xl bg-white/5 border border-white/10 flex items-start gap-4 text-white/70 shadow-lg relative group overflow-hidden">
