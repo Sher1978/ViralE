@@ -15,7 +15,6 @@ interface DnaAnswers {
   goal: string;
   tone: string;
   advantage: string;
-  discoverySource: string;
 }
 
 export default function OnboardingPage() {
@@ -23,7 +22,7 @@ export default function OnboardingPage() {
   const common = useTranslations('common');
   const locale = useLocale();
 
-  const [step, setStep] = useState(0); // 0-7: Questions, 8: Summary Review
+  const [step, setStep] = useState(0); // 0-6: Questions, 7: Summary Review
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [answers, setAnswers] = useState<DnaAnswers>({
     sphere: '',
@@ -33,7 +32,6 @@ export default function OnboardingPage() {
     goal: '',
     tone: '',
     advantage: '',
-    discoverySource: '',
   });
 
   const questions: { id: keyof DnaAnswers; label: string; placeholder: string; hint: string }[] = [
@@ -78,19 +76,13 @@ export default function OnboardingPage() {
        label: locale === 'ru' ? '7. Финальный Оффер' : '7. Final Offer', 
        placeholder: locale === 'ru' ? 'Какое ваше главное предложение для клиентов? Почему они купят именно у вас?' : 'What is your main offer? Why will they buy from you?',
        hint: locale === 'ru' ? 'Ваше ключевое конкурентное преимущество.' : 'Your main competitive advantage.'
-    },
-    {
-       id: 'discoverySource',
-       label: locale === 'ru' ? '8. Как вы о нас узнали?' : '8. How did you hear about us?',
-       placeholder: locale === 'ru' ? 'Напр: Порекомендовал ChatGPT / ИИ-помощник, Поиск (Google/Яндекс), Telegram, Соцсети, Посоветовали коллеги...' : 'e.g. Recommended by ChatGPT / AI assistant, Google Search, Telegram, Colleague...',
-       hint: locale === 'ru' ? 'Помогите нам понять ваш источник перехода (Zero-Party Data).' : 'Help us understand your referral source (Zero-Party Data).'
     }
   ];
 
   const currentQuestion = questions[step];
 
   const handleTextChange = (value: string) => {
-    if (step <= 7) {
+    if (step < questions.length) {
       setAnswers(prev => ({
         ...prev,
         [currentQuestion.id]: value
@@ -99,7 +91,7 @@ export default function OnboardingPage() {
   };
 
   const goNext = () => {
-    if (step < 8) {
+    if (step < questions.length) {
       setStep(s => s + 1);
     }
   };
@@ -159,7 +151,7 @@ export default function OnboardingPage() {
     }
   };
 
-  const percent = step === 8 ? 100 : Math.round(((step + 1) / 8) * 100);
+  const percent = step === questions.length ? 100 : Math.round(((step + 1) / questions.length) * 100);
 
   return (
     <div className="flex flex-col min-h-screen py-6 px-4 md:px-8 space-y-6 animate-fade-in justify-center max-w-2xl mx-auto">
@@ -174,14 +166,14 @@ export default function OnboardingPage() {
               {locale === 'ru' ? 'Калибровка ДНК' : 'DNA Calibration'}
             </h1>
             <p className="text-[9px] text-white/40 font-bold uppercase tracking-widest leading-none mt-1 animate-pulse">
-              {step === 8 
+              {step === questions.length 
                 ? (locale === 'ru' ? 'Финальный обзор' : 'Final Review')
-                : (locale === 'ru' ? `Вопрос ${step + 1} из 8` : `Question ${step + 1} of 8`)}
+                : (locale === 'ru' ? `Вопрос ${step + 1} из ${questions.length}` : `Question ${step + 1} of ${questions.length}`)}
             </p>
           </div>
         </div>
 
-        {step < 8 && (
+        {step < questions.length && (
           <button
             onClick={handleSkip}
             className="text-[9px] font-black uppercase tracking-widest text-white/30 hover:text-white/60 transition-colors"
@@ -204,7 +196,7 @@ export default function OnboardingPage() {
       {/* Main wizard cards container */}
       <div className="flex-1 flex flex-col justify-center min-h-[360px]">
         <AnimatePresence mode="wait">
-          {step <= 7 ? (
+          {step < questions.length ? (
             <motion.div
               key={`question-${step}`}
               initial={{ opacity: 0, x: 20 }}
@@ -297,7 +289,7 @@ export default function OnboardingPage() {
           </button>
         )}
 
-        {step < 8 ? (
+        {step < questions.length ? (
           <button
             onClick={goNext}
             className="flex-1 flex items-center justify-center gap-1.5 py-4 rounded-[1.5rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black uppercase tracking-widest text-[10px] shadow-lg shadow-purple-500/10 transition-all hover:scale-[1.01] active:scale-95"
