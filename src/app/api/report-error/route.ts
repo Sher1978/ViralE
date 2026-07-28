@@ -9,17 +9,17 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
     const { source, error, url, extra } = body;
 
-    let userId: string | undefined;
-    let userEmail: string | undefined;
+    let userId: string | undefined = body.userId;
+    let userEmail: string | undefined = body.userEmail;
 
     try {
       const auth = await getAuthContext();
       if (auth.user) {
         userId = auth.user.id;
-        userEmail = auth.user.email;
+        userEmail = auth.user.email || userEmail;
       }
     } catch (e) {
-      // User might be unauthenticated
+      // User might be unauthenticated or cookie token missing
     }
 
     if (error) {

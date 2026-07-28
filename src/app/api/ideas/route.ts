@@ -6,8 +6,11 @@ export const maxDuration = 60; // 60 seconds timeout limit for idea generation
 
 
 export async function GET(req: Request) {
+  let user: any = null;
   try {
-    const { user, supabase: authorizedSupabase } = await getAuthContext();
+    const authCtx = await getAuthContext();
+    user = authCtx.user;
+    const authorizedSupabase = authCtx.supabase;
 
     if (!user) {
       return new NextResponse('Unauthorized', { status: 401 });
@@ -119,6 +122,8 @@ export async function GET(req: Request) {
       notifyAdminError({
         source: 'Ideas Generation API',
         error,
+        userId: user?.id,
+        userEmail: user?.email,
       }).catch(() => {});
     } catch (e) {}
     return NextResponse.json({ error: error.message || 'Internal Error' }, { status: 500 });

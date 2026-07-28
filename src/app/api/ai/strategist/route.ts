@@ -41,6 +41,9 @@ function cleanChatHistory(messages: any[]): any[] {
 }
 
 export async function POST(req: Request) {
+  let user: any = null;
+  let authorizedSupabase: any = null;
+
   try {
     const contentType = req.headers.get('content-type') || '';
     let messages, projectId, locale, audioFile: File | null = null;
@@ -63,7 +66,6 @@ export async function POST(req: Request) {
     }
 
     // 1. Authenticate user
-    let user, authorizedSupabase;
     try {
       const auth = await getAuthContext();
       user = auth.user;
@@ -462,6 +464,8 @@ export async function POST(req: Request) {
       notifyAdminError({
         source: 'Strategist AI Agent API',
         error,
+        userId: user?.id,
+        userEmail: user?.email,
       }).catch(() => {});
     } catch (e) {}
     return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), { status: 500 });

@@ -82,6 +82,31 @@ function escapeHtml(str: string): string {
     .replace(/"/g, '&quot;');
 }
 
+async function resolveUserEmail(userId?: string, userEmail?: string): Promise<string | undefined> {
+  if (userEmail) return userEmail;
+  if (!userId) return undefined;
+
+  try {
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
+    const serviceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+    if (supabaseUrl && serviceKey) {
+      const { createClient } = await import('@supabase/supabase-js');
+      const supabase = createClient(supabaseUrl, serviceKey, { auth: { persistSession: false } });
+      const { data: profile } = await supabase
+        .from('profiles')
+        .select('email')
+        .eq('id', userId)
+        .maybeSingle();
+      if (profile?.email) {
+        return profile.email;
+      }
+    }
+  } catch (e) {
+    // Ignore resolution errors
+  }
+  return undefined;
+}
+
 export async function notifyAdminError(details: {
   source: string;
   error: string | Error;
@@ -109,8 +134,11 @@ export async function notifyAdminError(details: {
     ? details.error.stack.split('\n').slice(0, 4).join('\n') 
     : '';
 
+  const resolvedEmail = await resolveUserEmail(details.userId, details.userEmail);
+  const displayEmail = resolvedEmail || 'Не указан / Unauthenticated';
+
   // Deduplicate identical error notifications within 60s
-  const signature = `${details.source}:${errorMessage}:${details.url || ''}`;
+  const signature = `${details.source}:${errorMessage}:${details.url || ''}:${resolvedEmail || ''}`;
   const now = Date.now();
   const lastSent = recentErrorSignatures.get(signature);
   if (lastSent && now - lastSent < 60000) {
@@ -129,17 +157,17 @@ export async function notifyAdminError(details: {
   if (isLimitEvent) {
     text = `💳 <b>ДОСТИГНУТ ЛИМИТ ТАРИФА / ПЭЙВОЛЛ</b> 💳\n\n` +
       `<b>📍 Сценарий:</b> <code>${escapeHtml(details.source)}</code>\n` +
+      `<b>📧 Email:</b> <code>${escapeHtml(displayEmail)}</code>\n` +
       (details.url ? `<b>🌐 URL:</b> <code>${escapeHtml(details.url)}</code>\n` : '') +
       (details.userId ? `<b>👤 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` : '') +
-      (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
       `<b>🔒 Лимит/Событие:</b> <code>${escapeHtml(errorMessage.slice(0, 400))}</code>\n` +
       `<b>⏰ Время:</b> ${new Date().toISOString()}`;
   } else {
     text = `🚨 <b>VIRAL ENGINE USER ERROR ALERT</b> 🚨\n\n` +
       `<b>📍 Source:</b> <code>${escapeHtml(details.source)}</code>\n` +
+      `<b>📧 Email:</b> <code>${escapeHtml(displayEmail)}</code>\n` +
       (details.url ? `<b>🌐 URL:</b> <code>${escapeHtml(details.url)}</code>\n` : '') +
       (details.userId ? `<b>👤 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` : '') +
-      (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
       `<b>💥 Error:</b> <code>${escapeHtml(errorMessage.slice(0, 500))}</code>\n` +
       (stack ? `<b>📜 Stack:</b>\n<pre>${escapeHtml(stack.slice(0, 400))}</pre>\n` : '') +
       (details.extra ? `<b>ℹ️ Context:</b>\n<pre>${escapeHtml(JSON.stringify(details.extra, null, 2).slice(0, 300))}</pre>\n` : '') +
@@ -239,6 +267,7 @@ export async function notifyDnaCompleted(details: {
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
   if (!token || !adminChatId) return false;
 
+  const resolvedEmail = await resolveUserEmail(details.userId, details.userEmail);
   const traffic = details.trafficData || {};
   const discovery = details.discoverySource || 'Не указан';
 
@@ -255,7 +284,7 @@ export async function notifyDnaCompleted(details: {
 
   const text = `🧬 <b>ПОЛЬЗОВАТЕЛЬ СФОРМИРОВАЛ ДНК БРЕНДА</b> 🧬\n\n` +
     `<b>👤 Имя:</b> <code>${escapeHtml(details.fullName || 'Не указано')}</code>\n` +
-    (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
+    `<b>📧 Email:</b> <code>${escapeHtml(resolvedEmail || 'Не указан')}</code>\n` +
     `<b>🆔 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` +
     `<b>🌐 Источник:</b> <code>${escapeHtml(srcFormatted)}</code>\n` +
     `<b>🎯 Откуда узнал:</b> <code>${escapeHtml(discovery)}</code>\n` +
@@ -293,9 +322,11 @@ export async function notifyPaymentAttempt(details: {
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
   if (!token || !adminChatId) return false;
 
+  const resolvedEmail = await resolveUserEmail(details.userId, details.userEmail);
+
   const text = `⚡ <b>ПОПЫТКА ОПЛАТЫ / КЛИК НА ОПЛАТУ</b> ⚡\n\n` +
     `<b>👤 Пользователь:</b> <code>${escapeHtml(details.fullName || 'Творец')}</code>\n` +
-    (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
+    `<b>📧 Email:</b> <code>${escapeHtml(resolvedEmail || 'Не указан')}</code>\n` +
     `<b>🆔 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` +
     `<b>📦 Товар:</b> <code>${escapeHtml(details.title)}</code> (${details.credits} CR)\n` +
     `<b>⭐ Сумма:</b> <code>${details.starsCount} XTR</code> (Telegram Stars)\n` +
@@ -332,9 +363,11 @@ export async function notifyPaymentSuccess(details: {
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
   if (!token || !adminChatId) return false;
 
+  const resolvedEmail = await resolveUserEmail(details.userId, details.userEmail);
+
   const text = `💰 <b>УСПЕШНАЯ ОПЛАТА И НАЧИСЛЕНИЕ!</b> 💰\n\n` +
     `<b>👤 Пользователь:</b> <code>${escapeHtml(details.fullName || 'Творец')}</code>\n` +
-    (details.userEmail ? `<b>📧 Email:</b> <code>${escapeHtml(details.userEmail)}</code>\n` : '') +
+    `<b>📧 Email:</b> <code>${escapeHtml(resolvedEmail || 'Не указан')}</code>\n` +
     `<b>🆔 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` +
     `<b>➕ Начислено:</b> <code>+${details.credits} CR</code>\n` +
     (details.totalBalance !== undefined ? `<b>🔋 Новый баланс:</b> <code>${details.totalBalance} CR</code>\n` : '') +

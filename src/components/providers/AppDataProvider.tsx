@@ -137,6 +137,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
                 source: 'Client Ideas Generation',
                 error: errorMsg,
                 url: win ? win.location.href : '',
+                userId: profile?.id,
+                userEmail: profile?.email,
               }),
             }).catch(() => {});
           }
@@ -155,6 +157,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             source: 'Client Ideas Exception',
             error: errorText,
             url: win ? win.location.href : '',
+            userId: profile?.id,
+            userEmail: profile?.email,
           }),
         }).catch(() => {});
       }
@@ -163,7 +167,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       else if (status === 'archived') setLoadingArchived(false);
       else if (status === 'used') setLoadingUsed(false);
     }
-  }, [locale]);
+  }, [locale, profile?.id, profile?.email]);
 
   // Global Session Unhandled Error Listener -> Sends Admin Alert to Telegram
   useEffect(() => {
@@ -181,6 +185,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           source: 'Client Unhandled Exception',
           error: `${errorMsg} (${event.filename}:${event.lineno})`,
           url: win.location.href,
+          userId: profile?.id,
+          userEmail: profile?.email,
           extra: { stack }
         }),
       }).catch(() => {});
@@ -197,6 +203,8 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           source: 'Client Unhandled Promise Rejection',
           error: errorMsg,
           url: win.location.href,
+          userId: profile?.id,
+          userEmail: profile?.email,
           extra: { stack: reason?.stack }
         }),
       }).catch(() => {});
