@@ -347,7 +347,7 @@ export const TeleprompterView = React.memo(({
       />
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black via-black/95 to-transparent z-[35] pointer-events-none" />
       
-      <div className="absolute top-8 left-0 right-0 px-6 flex items-center justify-between z-[45]">
+      <div className="absolute top-[max(2.5rem,calc(env(safe-area-inset-top,0px)+0.75rem))] left-0 right-0 px-6 flex items-center justify-between z-[45]">
         <button 
           onClick={onBack}
           className="w-12 h-12 rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 transition-all active:scale-95"

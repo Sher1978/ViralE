@@ -212,7 +212,7 @@ export default function IdeasPage() {
   ];
 
   return (
-    <div className="flex flex-col gap-8 pb-32 animate-fade-in relative">
+    <div className="flex flex-col gap-8 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+1rem))] pb-32 animate-fade-in relative">
       {/* Onboarding Feature Tour Modal */}
       <AppOnboardingTour 
         isOpen={showTour} 

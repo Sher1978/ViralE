@@ -223,7 +223,7 @@ export default function LandingPage() {
         <div className="absolute inset-0 bg-grid opacity-[0.03]" />
       </div>
 
-      <nav className="relative z-50 flex justify-between items-center px-8 py-8 max-w-7xl mx-auto">
+      <nav className="relative z-50 flex justify-between items-center px-8 pt-[max(2.5rem,calc(env(safe-area-inset-top,0px)+1rem))] pb-8 max-w-7xl mx-auto">
         <motion.div 
           initial={{ opacity: 0, x: -20 }}
           animate={{ opacity: 1, x: 0 }}

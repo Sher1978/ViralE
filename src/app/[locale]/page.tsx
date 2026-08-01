@@ -127,7 +127,7 @@ const Navbar = () => {
       initial={{ y: -100 }}
       animate={{ y: 0 }}
       className={`fixed top-0 left-0 w-full z-[100] transition-all duration-300 ${
-        isScrolled ? 'bg-virale-bg/85 backdrop-blur-xl border-b border-white/5 py-3' : 'bg-transparent py-6'
+        isScrolled ? 'bg-virale-bg/85 backdrop-blur-xl border-b border-white/5 pb-3 pt-[max(0.75rem,env(safe-area-inset-top,0px))]' : 'bg-transparent pb-6 pt-[max(1.5rem,calc(env(safe-area-inset-top,0px)+0.5rem))]'
       }`}
     >
       <div className="max-w-[1280px] mx-auto px-5 md:px-10 flex items-center justify-between">

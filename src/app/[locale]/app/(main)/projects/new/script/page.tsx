@@ -1049,7 +1049,7 @@ export default function ScriptLabPage() {
   // Initial Ideation UI if no project exists yet AND we don't have generated data in memory
   if (!projectIdParam && !scriptPreviews && (!scriptData || !scriptData.hook || (!scriptData.hook.words && typeof scriptData.hook !== 'string'))) {
     return (
-      <div className="space-y-12 animate-fade-in max-w-2xl mx-auto py-10">
+      <div className="space-y-12 animate-fade-in max-w-2xl mx-auto pt-[max(3.5rem,calc(env(safe-area-inset-top,0px)+1.25rem))] pb-10 px-4">
         <StatusStepper currentStep="script" />
         
         <div className="space-y-6 text-center">

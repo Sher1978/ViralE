@@ -19,7 +19,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   isExporting = false,
 }) => {
   return (
-    <div className="flex items-center justify-between px-4 pt-0 h-14 box-content bg-black border-b border-white/[0.06] flex-shrink-0 z-50">
+    <div className="flex items-center justify-between px-4 pt-[max(0.75rem,env(safe-area-inset-top,0px))] pb-2 min-h-[calc(3.5rem+env(safe-area-inset-top,0px))] box-content bg-black border-b border-white/[0.06] flex-shrink-0 z-50">
       {/* Left: Close */}
       <button
         onClick={onBack}

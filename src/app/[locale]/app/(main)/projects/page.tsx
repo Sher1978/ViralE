@@ -168,7 +168,7 @@ export default function ProjectsPage() {
   return (
     <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-[#0A0A10] flex flex-col touch-none select-none">
       {/* Fixed Header */}
-      <header className="px-6 pt-[56px] pb-4 flex items-center justify-between shrink-0 z-50">
+      <header className="px-6 pt-[max(3.5rem,calc(env(safe-area-inset-top,0px)+1.25rem))] pb-4 flex items-center justify-between shrink-0 z-50">
         <div className="flex flex-col">
           <h1 className={`text-4xl font-black italic tracking-tighter leading-none text-white ${hasStrategistAccess ? 'animate-[pulse_3s_ease-in-out_infinite]' : ''}`}>
             VIRAL<span className="text-purple-500">E</span>

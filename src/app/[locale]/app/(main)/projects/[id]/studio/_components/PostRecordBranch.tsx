@@ -34,7 +34,7 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
   return (
     <div className="h-full w-full flex flex-col bg-[#050508] overflow-y-auto pb-10 relative">
       {/* iOS Style Retake Button */}
-      <div className="absolute top-8 left-8 z-[60]">
+      <div className="absolute top-[max(2rem,calc(env(safe-area-inset-top,0px)+0.75rem))] left-8 z-[60]">
         <motion.button
           whileHover={{ scale: 1.05 }}
           whileTap={{ scale: 0.95 }}

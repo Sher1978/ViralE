@@ -11,7 +11,7 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
   const [subMode, setSubMode] = useState<'main' | 'ai'>('main');
 
   return (
-    <div className="h-full flex flex-col items-center justify-center px-6 text-center overflow-y-auto py-8">
+    <div className="h-full flex flex-col items-center justify-center px-6 text-center overflow-y-auto pt-[max(3rem,calc(env(safe-area-inset-top,0px)+1rem))] pb-8">
       
       {/* Keyframe styles for scrolling prompter text */}
       <style dangerouslySetInnerHTML={{ __html: `

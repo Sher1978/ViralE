@@ -553,7 +553,7 @@ export default function ProfilePage() {
       variants={containerVariants as any}
       initial="hidden"
       animate="visible"
-      className="space-y-6 pb-24"
+      className="space-y-6 pb-24 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+1rem))]"
     >
       {/* Profile Header - Dynamic & Fully Interactive */}
       <motion.div
