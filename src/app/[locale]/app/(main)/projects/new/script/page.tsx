@@ -315,8 +315,30 @@ export default function ScriptLabPage() {
             if (typeof (globalThis as any).window !== 'undefined') {
               const text = (globalThis as any).localStorage?.getItem('strategist_export_text');
               if (text) {
-                // Set the entire text directly in the topicInput textarea
-                setTopicInput(text);
+                const parsed = parseScriptTextToPayload(text);
+                const scriptObj = {
+                  hook: parsed.hook || text,
+                  body: parsed.body || '',
+                  triz_inversion: parsed.triz_inversion || '',
+                  cta: parsed.cta || '',
+                  visual_hook: '',
+                  social_post: ''
+                };
+                
+                const matrixObj = {
+                  evergreen: scriptObj,
+                  trends: scriptObj,
+                  edutainment: scriptObj,
+                  controversial: scriptObj,
+                  detective: scriptObj,
+                  napkin_explainer: scriptObj
+                };
+                
+                setScriptData(scriptObj);
+                setAllScenarios(matrixObj);
+                setTopicInput(parsed.hook ? parsed.hook.slice(0, 60) : text.slice(0, 60));
+
+                (globalThis as any).sessionStorage?.setItem('allScenarios', JSON.stringify(matrixObj));
                 
                 // Clear localStorage keys
                 (globalThis as any).localStorage?.removeItem('strategist_export_text');
@@ -662,8 +684,8 @@ export default function ScriptLabPage() {
         setYoutubeLoading(false);
       }
     } else {
-      // First generate TRIZ ideas
-      await handleGenerateTriz();
+      // Directly generate 6 scenarios bypassing TRIZ matrix
+      await executeGeneration(topicInput);
     }
   };
 
@@ -1326,14 +1348,14 @@ export default function ScriptLabPage() {
                 ) : (
                   <>
                     <span className="font-black text-lg uppercase tracking-widest flex items-center gap-3">
-                      {isGeneratingTriz ? (locale === 'ru' ? 'Анализ ТРИЗ...' : 'Analyzing TRIZ...') : (locale === 'ru' ? 'Матрица идей (ТРИЗ)' : 'Idea Matrix (TRIZ)')}
+                      {locale === 'ru' ? 'Сгенерировать 6 сценариев' : 'Generate 6 Scripts'}
                       <InfoTooltip 
-                        content={locale === 'ru' ? "Сначала мы сгенерируем 9 уникальных углов подачи через матрицу ТРИЗ." : "We will generate 9 unique angles using the TRIZ matrix first."} 
+                        content={locale === 'ru' ? "Сразу генерирует 6 уникальных вариантов сценариев Reels по вашей теме." : "Generates 6 unique Reels script styles based on your topic directly."} 
                         iconClassName="text-white hover:text-white/80"
                         size={18}
                       />
                     </span>
-                    {isGeneratingTriz ? <Loader2 className="w-6 h-6 animate-spin text-white" /> : <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />}
+                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
                   </>
                 )}
               </button>
