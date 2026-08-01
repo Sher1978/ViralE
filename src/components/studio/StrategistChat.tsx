@@ -1475,47 +1475,45 @@ export function StrategistChat({
                         )}
                       </div>
                       {/* Action suggesting for assistant messages */}
-                      {m.role === 'assistant' && i === visibleMessages.length - 1 && !isStreaming && (
-                        <div className="mt-2 flex flex-wrap gap-2">
-                          {(() => {
-                            const { scriptText } = parseMessageContent(displayContent);
-                            const textToCopy = scriptText || displayContent;
-                            return (
-                              <>
-                                <button 
-                                  onClick={() => {
-                                    copyToClipboard(textToCopy, i);
-                                  }}
-                                  className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/15 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95 cursor-pointer shadow-lg"
-                                >
-                                  {copiedId === i ? <CheckCircle className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5 text-purple-300" />}
-                                  {copiedId === i ? (locale === 'ru' ? 'Скопировано!' : 'Copied!') : (locale === 'ru' ? 'Копировать' : 'Copy Text')}
-                                </button>
+                      {m.role === 'assistant' && !isStreaming && (() => {
+                        const { scriptText } = parseMessageContent(displayContent);
+                        const textToCopy = scriptText || displayContent;
+                        const isLastMessage = i === visibleMessages.length - 1;
+                        if (!isLastMessage && !scriptText) return null;
+                        return (
+                          <div className="mt-2 flex flex-wrap gap-2">
+                            <button 
+                              onClick={() => {
+                                copyToClipboard(textToCopy, i);
+                              }}
+                              className="flex items-center gap-2 px-4 py-2.5 bg-white/10 hover:bg-white/20 border border-white/15 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all active:scale-95 cursor-pointer shadow-lg"
+                            >
+                              {copiedId === i ? <CheckCircle className="h-3.5 w-3.5 text-green-400" /> : <Copy className="h-3.5 w-3.5 text-purple-300" />}
+                              {copiedId === i ? (locale === 'ru' ? 'Скопировано!' : 'Copied!') : (locale === 'ru' ? 'Копировать' : 'Copy Text')}
+                            </button>
 
-                                {scriptText && (
-                                  <button 
-                                     onClick={() => {
-                                       // 1. Copy scriptText to clipboard
-                                       const nav = (globalThis as any).navigator; if (nav && nav.clipboard) nav.clipboard.writeText(scriptText);
-                                       setCopiedId(i);
-                                       setTimeout(() => setCopiedId(null), 2000);
-                                       // 2. Close panel
-                                       setIsOpen(false);
-                                       // 3. Callback
-                                       if (onUseScript) onUseScript(scriptText);
-                                       else applySuggestion(scriptText);
-                                     }}
-                                     className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] active:scale-95 group/use"
-                                  >
-                                    <Zap className="h-3.5 w-3.5 text-yellow-300 group-hover/use:animate-pulse" /> 
-                                    {locale === 'ru' ? 'В сценарную' : 'Export to Script Lab'}
-                                  </button>
-                                )}
-                              </>
-                            );
-                          })()}
-                        </div>
-                      )}
+                            {scriptText && (
+                              <button 
+                                 onClick={() => {
+                                   // 1. Copy scriptText to clipboard
+                                   const nav = (globalThis as any).navigator; if (nav && nav.clipboard) nav.clipboard.writeText(scriptText);
+                                   setCopiedId(i);
+                                   setTimeout(() => setCopiedId(null), 2000);
+                                   // 2. Close panel
+                                   setIsOpen(false);
+                                   // 3. Callback
+                                   if (onUseScript) onUseScript(scriptText);
+                                   else applySuggestion(scriptText);
+                                 }}
+                                 className="flex items-center gap-2 px-5 py-2.5 bg-gradient-to-r from-emerald-600 to-teal-600 hover:from-emerald-500 hover:to-teal-500 border border-emerald-500/30 rounded-xl text-[10px] font-black uppercase tracking-widest text-white transition-all shadow-[0_0_20px_rgba(16,185,129,0.3)] hover:shadow-[0_0_30px_rgba(16,185,129,0.5)] active:scale-95 group/use"
+                              >
+                                <Zap className="h-3.5 w-3.5 text-yellow-300 group-hover/use:animate-pulse" /> 
+                                {locale === 'ru' ? 'В сценарную' : 'Export to Script Lab'}
+                              </button>
+                            )}
+                          </div>
+                        );
+                      })()}
                       {/* Quick Replies (Numbers Only) & Pagination Shortcuts */}
                       {m.role === 'assistant' && i === visibleMessages.length - 1 && !isStreaming && (() => {
                         const { textBefore } = parseMessageContent(displayContent);
