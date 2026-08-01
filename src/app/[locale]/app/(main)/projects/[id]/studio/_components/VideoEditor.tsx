@@ -9,6 +9,7 @@ import {
 
 import { ProductionManifest } from '@/lib/types/studio';
 import { idb } from '@/lib/idb';
+import { projectService } from '@/lib/services/projectService';
 
 // Modular Components (Edits Style)
 import { useStudioState, BRollClip, SubtitleClip, TranscriptWord, WhiteboardClip } from '../_hooks/useStudioState';
