@@ -95,12 +95,24 @@ const SUBTITLE_STYLES: Record<number, any> = {
   }
 };
 
+const isImageUrl = (url: string) => {
+  if (!url) return false;
+  if (url.startsWith('data:image/')) return true;
+  return /\.(png|jpe?g|webp|gif|svg)($|\?)/i.test(url);
+};
+
 const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: { 
   url: string; startTime: number; currentTime: number; isPlaying: boolean;
 }) => {
   const vRef = useRef<HTMLVideoElement>(null);
+  const [isImg, setIsImg] = React.useState(() => isImageUrl(url));
 
   useEffect(() => {
+    setIsImg(isImageUrl(url));
+  }, [url]);
+
+  useEffect(() => {
+    if (isImg) return;
     const v = vRef.current as any;
     if (!v) return;
 
@@ -114,15 +126,23 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
     // Handle time sync
     const relativeTime = Math.max(0, currentTime - startTime);
     const drift = Math.abs(v.currentTime - relativeTime);
-    
-    // 🔥 OPTIMIZATION: Only seek if we are paused/dragging OR if the drift is significant (>300ms)
-    // Seeking every frame (60fps) kills performance.
     const needsSeek = !isPlaying || drift > 0.3;
 
     if (needsSeek) {
       v.currentTime = relativeTime;
     }
-  }, [isPlaying, currentTime, startTime]);
+  }, [isPlaying, currentTime, startTime, isImg]);
+
+  if (isImg) {
+    return (
+      <img 
+        src={url}
+        alt="B-Roll"
+        className="w-full h-full object-cover relative z-10"
+        style={{ transform: 'scale(1.02)' }}
+      />
+    );
+  }
 
   return (
     <video 
@@ -133,6 +153,10 @@ const BRollPreview = React.memo(({ url, startTime, currentTime, isPlaying }: {
       preload="auto"
       crossOrigin="anonymous"
       className="w-full h-full object-cover relative z-10" 
+      onError={() => {
+        // Fallback: If video element fails to decode (e.g. image file blob), render as image
+        setIsImg(true);
+      }}
       onLoadedData={(e) => {
         const target = e.target as any;
         target.style.opacity = "1";
@@ -374,8 +398,8 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                   const lines = splitCaptionText(activeSub.text);
 
                   const sf = getScaleFactor();
-                  // Effective 1080p canvas size (default 38px if legacy small size < 25)
-                  const effectiveCanvasSize = (subtitleSize && subtitleSize >= 25) ? subtitleSize : 38;
+                  // Effective 1080p canvas size (default 46px if legacy small size < 25)
+                  const effectiveCanvasSize = (subtitleSize && subtitleSize >= 25) ? subtitleSize : 46;
                   const previewFontSize = Math.max(8, effectiveCanvasSize / sf);
                   const previewX = subtitlePos.x / sf;
                   const previewY = subtitlePos.y / sf;
