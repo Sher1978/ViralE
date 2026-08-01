@@ -5,6 +5,7 @@ import { motion } from 'framer-motion';
 import { Scissors, Sparkles, Download, Send, RotateCcw, Loader2, CheckCircle2, Share2 } from 'lucide-react';
 
 interface PostRecordBranchProps {
+  projectId?: string;
   videoUrl: string;
   recordedSize?: number | null;
   onSelect: (type: 'pure' | 'animate') => void;
@@ -18,6 +19,7 @@ interface PostRecordBranchProps {
 }
 
 export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
+  projectId = '',
   videoUrl,
   recordedSize = null,
   onSelect,
@@ -164,20 +166,47 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
                     const { gdriveService } = await import('@/lib/services/gdriveService');
                     const token = await gdriveService.getProviderToken();
                     if (!token) {
+                      try {
+                        localStorage.setItem(`pending_gdrive_upload_${projectId}`, 'true');
+                      } catch (e) {}
+                      (globalThis as any).alert?.('Для первого сохранения на Google Диск нужно авторизоваться. Вас направит на страницу Google, после чего видео автоматически сохранится.');
                       await gdriveService.signInWithGoogleDrive();
                       return;
                     }
-                    (globalThis as any).alert?.('Загрузка в ваш Google Диск запущена...');
-                    const res = await fetch(mp4Url || videoUrl);
-                    const blob = await res.blob();
+                    (globalThis as any).alert?.('Загрузка видео на ваш Google Диск запущена...');
+                    
+                    let blob: Blob | null = null;
+                    if (mp4Url) {
+                      try {
+                        const res = await fetch(mp4Url);
+                        if (res.ok) blob = await res.blob();
+                      } catch (e) {}
+                    }
+                    if (!blob && videoUrl) {
+                      try {
+                        const res = await fetch(videoUrl);
+                        if (res.ok) blob = await res.blob();
+                      } catch (e) {}
+                    }
+                    if (!blob && projectId) {
+                      const { idb } = await import('@/lib/idb');
+                      const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+                      if (cached instanceof Blob) blob = cached;
+                    }
+
+                    if (!blob) {
+                      (globalThis as any).alert?.('Ошибка: Файл записи не найден в памяти устройства. Попробуйте переснять ролик.');
+                      return;
+                    }
+
                     const result = await gdriveService.uploadFileToDrive(blob, `ViralEngine_Record_${Date.now()}.mp4`);
                     if (result.webViewLink) {
-                      (globalThis as any).alert?.(`Успешно сохранено на Google Диск!\nСсылка: ${result.webViewLink}`);
+                      (globalThis as any).alert?.(`Успешно сохранено на Google Диск!\n\nСсылка: ${result.webViewLink}`);
                     } else if (result.error) {
                       (globalThis as any).alert?.(`Ошибка Google Диска: ${result.error}`);
                     }
                   } catch (e: any) {
-                    (globalThis as any).alert?.(`Ошибка: ${e.message}`);
+                    (globalThis as any).alert?.(`Ошибка записи: ${e.message || e}`);
                   }
                 }}
                 className="py-3 rounded-[2rem] bg-amber-600/10 border border-amber-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex flex-col items-center justify-center gap-1 shadow-lg min-h-[52px]"

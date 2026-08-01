@@ -6,11 +6,12 @@ const PremiumLimitModal = dynamic(() => import('@/components/ui/PremiumLimitModa
 import Link from 'next/link';
 import { useTranslations, useLocale } from 'next-intl';
 import { 
-  Sparkles, Play, Clock, Monitor, ArrowRight, Video, Hourglass, X
+  Sparkles, Play, Clock, Monitor, ArrowRight, Video, Hourglass, X, Trash2, Film, Download, ExternalLink, Scissors
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { projectService, Project } from '@/lib/services/projectService';
 import { profileService } from '@/lib/services/profileService';
+import { supabase } from '@/lib/supabase';
 import { useRouter } from '@/navigation';
 import { useAppData } from '@/components/providers/AppDataProvider';
 const StrategistChat = dynamic(() => import('@/components/studio/StrategistChat').then(m => m.StrategistChat), { ssr: false });
@@ -105,6 +106,8 @@ export default function ProjectsPage() {
   const [error, setError] = useState<string | null>(null);
   const [mounted, setMounted] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [mediaAssets, setMediaAssets] = useState<any[]>([]);
+  const [overlayTab, setOverlayTab] = useState<'projects' | 'archive'>('projects');
   const [loading, setLoading] = useState(true);
   const [profile, setProfile] = useState<any>(null);
   const [showProjectsOverlay, setShowProjectsOverlay] = useState(false);
@@ -116,6 +119,13 @@ export default function ProjectsPage() {
       if (data?.id) {
         const projData = await projectService.listProjects(data.id);
         setProjects(projData);
+
+        // Load all recorded user media assets (Archive)
+        const { data: assets } = await supabase
+          .from('media_assets')
+          .select('*')
+          .order('created_at', { ascending: false });
+        setMediaAssets(assets || []);
       }
     } catch (err) {
       console.error('Error loading projects:', err);
@@ -259,42 +269,154 @@ export default function ProjectsPage() {
                   </div>
               </div>
 
-              <div className="flex items-center justify-between mb-12 ml-10">
+              <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 ml-10">
                 <div className="flex flex-col">
-                  <h2 className="text-3xl font-black uppercase tracking-tighter italic text-white">RESUME FLOW</h2>
-                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mt-1">ACTIVE PRODUCTION SEQUENCES</p>
+                  <h2 className="text-3xl font-black uppercase tracking-tighter italic text-white">
+                    {overlayTab === 'projects' ? 'RESUME FLOW' : 'МЕДИА АРХИВ'}
+                  </h2>
+                  <p className="text-[10px] font-black uppercase tracking-[0.3em] text-white/20 mt-1">
+                    {overlayTab === 'projects' ? 'АКТИВНЫЕ СЕКВЕНЦИИ ПРОЕКТОВ' : 'ВСЕ ЗАПИСАННЫЕ ДУБЛИ И СУФЛЕРЫ'}
+                  </p>
                 </div>
-                <button
-                  onClick={() => setShowProjectsOverlay(false)}
-                   className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 text-white/40 hover:text-white transition-all"
-                >
-                  <X className="w-5 h-5" />
-                </button>
+
+                <div className="flex items-center gap-2">
+                  <div className="flex p-1 bg-white/5 border border-white/10 rounded-2xl">
+                    <button
+                      onClick={() => setOverlayTab('projects')}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        overlayTab === 'projects' ? 'bg-amber-500 text-black shadow-lg' : 'text-white/40 hover:text-white'
+                      }`}
+                    >
+                      📁 Проекты ({projects.length})
+                    </button>
+                    <button
+                      onClick={() => setOverlayTab('archive')}
+                      className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${
+                        overlayTab === 'archive' ? 'bg-purple-600 text-white shadow-lg' : 'text-white/40 hover:text-white'
+                      }`}
+                    >
+                      🎥 Архив Записей ({mediaAssets.length})
+                    </button>
+                  </div>
+
+                  <button
+                    onClick={() => setShowProjectsOverlay(false)}
+                    className="w-12 h-12 rounded-2xl bg-white/5 flex items-center justify-center border border-white/10 text-white/40 hover:text-white transition-all ml-2"
+                  >
+                    <X className="w-5 h-5" />
+                  </button>
+                </div>
               </div>
 
-              {projects.length > 0 ? (
-                <div className="grid gap-4">
-                  {projects.map((project) => (
-                    <div key={project.id} className="relative">
-                      <ProjectCard 
-                        project={project} 
-                        locale={locale} 
-                        router={router} 
-                        onDelete={async (id) => {
-                          const glob = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
-                          if (glob && glob.confirm && !glob.confirm(locale === 'ru' ? 'Удалить этот проект навсегда?' : 'Delete this project permanently?')) return;
-                          const ok = await projectService.deleteProject(id);
-                          if (ok) setProjects(prev => prev.filter(p => p.id !== id));
-                        }} 
-                      />
-                    </div>
-                  ))}
-                </div>
+              {overlayTab === 'projects' ? (
+                projects.length > 0 ? (
+                  <div className="grid gap-4">
+                    {projects.map((project) => (
+                      <div key={project.id} className="relative">
+                        <ProjectCard 
+                          project={project} 
+                          locale={locale} 
+                          router={router} 
+                          onDelete={async (id) => {
+                            const glob = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+                            if (glob && glob.confirm && !glob.confirm(locale === 'ru' ? 'Удалить этот проект навсегда?' : 'Delete this project permanently?')) return;
+                            const ok = await projectService.deleteProject(id);
+                            if (ok) setProjects(prev => prev.filter(p => p.id !== id));
+                          }} 
+                        />
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-20 rounded-[4rem] bg-white/[0.02] border border-dashed border-white/10 text-center space-y-5">
+                    <Monitor className="w-16 h-16 text-white/5 mx-auto" />
+                    <p className="text-xs font-black uppercase tracking-widest text-white/10">No unfinished projects detected in the grid</p>
+                  </div>
+                )
               ) : (
-                <div className="p-20 rounded-[4rem] bg-white/[0.02] border border-dashed border-white/10 text-center space-y-5">
-                  <Monitor className="w-16 h-16 text-white/5 mx-auto" />
-                  <p className="text-xs font-black uppercase tracking-widest text-white/10">No unfinished projects detected in the grid</p>
-                </div>
+                mediaAssets.length > 0 ? (
+                  <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                    {mediaAssets.map((asset) => (
+                      <div 
+                        key={asset.id} 
+                        className="group relative bg-white/[0.02] border border-white/10 rounded-[2.5rem] p-5 flex flex-col justify-between space-y-4 hover:border-purple-500/40 hover:bg-white/[0.04] transition-all shadow-xl"
+                      >
+                        {/* Video / Audio Preview */}
+                        <div className="relative w-full aspect-[9/16] bg-black/60 rounded-[1.8rem] overflow-hidden border border-white/5 flex items-center justify-center">
+                          {asset.asset_type === 'video' ? (
+                            <video 
+                              src={asset.public_url} 
+                              controls 
+                              playsInline 
+                              className="w-full h-full object-cover"
+                            />
+                          ) : (
+                            <div className="flex flex-col items-center gap-3 p-6 text-center">
+                              <Film className="w-12 h-12 text-purple-400 animate-pulse" />
+                              <span className="text-[10px] font-black uppercase text-white/60 tracking-widest">Аудиозапись</span>
+                              <audio src={asset.public_url} controls className="w-full mt-2" />
+                            </div>
+                          )}
+
+                          <div className="absolute top-3 left-3 px-3 py-1 rounded-full bg-black/70 border border-white/10 backdrop-blur-md text-[8px] font-black uppercase tracking-widest text-purple-300">
+                            {asset.asset_type === 'video' ? '🎬 Запись Суфлёра' : '🎙️ Голос'}
+                          </div>
+                        </div>
+
+                        <div className="space-y-1">
+                          <div className="text-[9px] font-black uppercase tracking-widest text-white/30">
+                            {new Date(asset.created_at).toLocaleString(locale === 'ru' ? 'ru-RU' : 'en-US')}
+                          </div>
+                          {asset.metadata?.original_size && (
+                            <div className="text-[8px] font-bold text-white/20 uppercase tracking-wider">
+                              Размер: {(asset.metadata.original_size / (1024 * 1024)).toFixed(1)} МБ
+                            </div>
+                          )}
+                        </div>
+
+                        {/* Actions */}
+                        <div className="grid grid-cols-3 gap-2">
+                          <button
+                            onClick={() => router.push(`/app/projects/${asset.project_id}/studio?tab=assembly`)}
+                            className="py-2.5 rounded-2xl bg-purple-600/20 border border-purple-500/30 text-purple-300 font-black uppercase text-[8px] tracking-widest flex items-center justify-center gap-1 hover:bg-purple-600/40 transition-all"
+                            title="Открыть в Монтажке"
+                          >
+                            <Scissors size={10} /> Монтаж
+                          </button>
+                          <a
+                            href={asset.public_url}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            download
+                            className="py-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/70 font-black uppercase text-[8px] tracking-widest flex items-center justify-center gap-1 hover:bg-white/10 transition-all"
+                            title="Скачать файл"
+                          >
+                            <Download size={10} /> Скачать
+                          </a>
+                          <button
+                            onClick={async () => {
+                              const glob = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+                              if (glob && glob.confirm && !glob.confirm('Удалить эту запись из архива?')) return;
+                              const { error } = await supabase.from('media_assets').delete().eq('id', asset.id);
+                              if (!error) {
+                                setMediaAssets(prev => prev.filter(a => a.id !== asset.id));
+                              }
+                            }}
+                            className="py-2.5 rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400 font-black uppercase text-[8px] tracking-widest flex items-center justify-center gap-1 hover:bg-red-500/20 transition-all"
+                            title="Удалить запись"
+                          >
+                            <Trash2 size={10} /> Удалить
+                          </button>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                ) : (
+                  <div className="p-20 rounded-[4rem] bg-white/[0.02] border border-dashed border-white/10 text-center space-y-5">
+                    <Film className="w-16 h-16 text-white/5 mx-auto" />
+                    <p className="text-xs font-black uppercase tracking-widest text-white/20">В архиве пока нет сохраненных записей суфлёра</p>
+                  </div>
+                )
               )}
             </motion.div>
           </>

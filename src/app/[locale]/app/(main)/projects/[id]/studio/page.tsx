@@ -252,6 +252,8 @@ export default function StudioPage() {
   const isMobileRef = useRef(typeof globalThis.navigator !== 'undefined' && /Android|iPhone|iPad|iPod|Honor/i.test((globalThis.navigator as any).userAgent));
 
 
+  const lastSyncedUrlRef = useRef<string | null>(null);
+
   // State Sync Effect (URL Persistence)
   useEffect(() => {
     if (isLoading) return;
@@ -261,27 +263,31 @@ export default function StudioPage() {
       return;
     }
 
-    // Defer URL update to avoid conflict with heavy UI transitions (especially on Android)
+    const win = globalThis as any;
+    if (!win?.location) return;
+    const params = new URLSearchParams(win.location.search);
+    params.set('tab', activeTab);
+    if (showFaceless) params.set('mode', 'faceless');
+    else params.delete('mode');
+    
+    const currentPath = win.location.pathname;
+    const newUrl = `${currentPath}?${params.toString()}`;
+    
+    if (lastSyncedUrlRef.current === newUrl) {
+      return;
+    }
+
     const timeout = setTimeout(() => {
-      const win = globalThis as any;
-      if (!win.location) return;
-      const params = new URLSearchParams(win.location.search);
-      params.set('tab', activeTab);
-      if (showFaceless) params.set('mode', 'faceless');
-      else params.delete('mode');
-      
-      const currentPath = win.location.pathname;
-      const newUrl = `${currentPath}?${params.toString()}`;
-      
       try {
         if (win.location.search !== `?${params.toString()}`) {
+          lastSyncedUrlRef.current = newUrl;
           win.history.replaceState({ path: newUrl }, '', newUrl);
           console.log('[Studio] Syncing URL:', newUrl);
         }
       } catch (e) {
         console.warn('[Studio] replaceState failed:', e);
       }
-    }, 150);
+    }, 200);
 
     return () => clearTimeout(timeout);
   }, [activeTab, showFaceless, isLoading]);
@@ -324,8 +330,29 @@ export default function StudioPage() {
           recordedBlobRef.current = cachedBlob;
           setRecordedSize(cachedBlob.size);
           addSystemLog(`Сессия восстановлена! Запись загружена: ${(cachedBlob.size / (1024 * 1024)).toFixed(2)} MB. Ссылка: ${restoredUrl}`);
+
+          // Check if user just completed Google OAuth for Google Drive
+          const isPendingGDrive = localStorage.getItem(`pending_gdrive_upload_${projectId}`);
+          if (isPendingGDrive === 'true') {
+            localStorage.removeItem(`pending_gdrive_upload_${projectId}`);
+            addSystemLog('🚀 Обнаружен возврат из Google OAuth. Переключение на экран экспорта...');
+            setActiveTab('post_record_branch');
+            setVisitedTabs(prev => ({ ...prev, post_record_branch: true }));
+
+            const { gdriveService } = await import('@/lib/services/gdriveService');
+            const token = await gdriveService.getProviderToken();
+            if (token) {
+              (globalThis as any).alert?.('Авторизация Google прошла успешно! Загрузка на Google Диск запущена...');
+              const result = await gdriveService.uploadFileToDrive(cachedBlob, `ViralEngine_Record_${Date.now()}.mp4`);
+              if (result.webViewLink) {
+                (globalThis as any).alert?.(`Успешно сохранено на ваш Google Диск!\n\nСсылка: ${result.webViewLink}`);
+              } else if (result.error) {
+                (globalThis as any).alert?.(`Ошибка Google Диска: ${result.error}`);
+              }
+            }
+          }
         } else {
-          addSystemLog('Восстановление сессии: Записей in IndexedDB не обнаружено.');
+          addSystemLog('Восстановление сессии: Записей в IndexedDB не обнаружено.');
         }
       } catch (err: any) {
         addSystemLog(`Ошибка восстановления сессии из IDB: ${err.message || err}`);
