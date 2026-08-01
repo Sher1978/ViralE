@@ -442,17 +442,19 @@ function DeliveryPageContent() {
       const ffmpeg = await getFFmpeg();
       ffmpegRef.current = ffmpeg;
 
+      setRenderProgress(10);
+      setRenderStatus('Проверка готовности WASM...');
+
       ffmpeg.on('log', ({ message }: any) => {
         console.log('[FFmpeg]', message);
       });
       
       ffmpeg.on('progress', ({ progress }: any) => {
         if (typeof progress !== 'number' || isNaN(progress) || progress < 0) return;
-        const p = Math.max(0, Math.min(98, 50 + Math.round(progress * 48)));
+        // Map FFmpeg execution progress smoothly from 60% to 98%
+        const p = Math.max(60, Math.min(98, 60 + Math.round(progress * 38)));
         setRenderProgress(p);
       });
-
-      setRenderStatus('Проверка готовности WASM...');
 
       const manifest = ver.script_data as any;
       const nav = globalThis.navigator as any;
@@ -476,8 +478,10 @@ function DeliveryPageContent() {
       setPreviewUrl(aRollUrl);
 
       setRenderStatus('Скачивание основного видео...');
+      setRenderProgress(18);
       const aRollData = await fetchFile(aRollUrl);
       await ffmpeg.writeFile('input_aroll.mp4', aRollData);
+      setRenderProgress(28);
 
       const brollClipsRaw = manifest?.brollClips || [];
       const brollFiles: Array<{ name: string; clip: any }> = [];
@@ -486,6 +490,7 @@ function DeliveryPageContent() {
         const clip = brollClipsRaw[i];
         try {
           setRenderStatus(`Синхронизация B-Roll ${i + 1}/${brollClipsRaw.length}...`);
+          setRenderProgress(28 + Math.round(((i + 1) / Math.max(1, brollClipsRaw.length)) * 10));
           let clipUrl = clip.url;
           if (!clipUrl || clipUrl.startsWith('blob:')) {
             const cachedBroll = await idb.get(`broll_file_${clip.id}`, 'MediaBuffer');
@@ -510,6 +515,7 @@ function DeliveryPageContent() {
         const clip = whiteboardClipsRaw[i];
         try {
           setRenderStatus(`Синхронизация скетча ${i + 1}/${whiteboardClipsRaw.length}...`);
+          setRenderProgress(38 + Math.round(((i + 1) / Math.max(1, whiteboardClipsRaw.length)) * 8));
           let clipUrl = clip.url;
           if (!clipUrl || clipUrl.startsWith('blob:')) {
             const cachedWb = await idb.get(`whiteboard_file_${clip.id}`, 'MediaBuffer');
@@ -529,6 +535,7 @@ function DeliveryPageContent() {
       }
 
       setRenderStatus('Подготовка субтитров и шрифтов...');
+      setRenderProgress(48);
       try {
         const fontData = await fetchFile('/fonts/Roboto-Bold.ttf');
         await ffmpeg.writeFile('font.ttf', fontData);
@@ -550,6 +557,7 @@ function DeliveryPageContent() {
       const processedBrolls = [];
       for (let i = 0; i < brollFiles.length; i++) {
         setRenderStatus(`Оптимизация B-Roll ${i+1}/${brollFiles.length}...`);
+        setRenderProgress(50 + Math.round(((i + 1) / Math.max(1, brollFiles.length)) * 5));
         const { name, clip } = brollFiles[i];
         const optName = `opt_${name}`;
         
@@ -566,6 +574,7 @@ function DeliveryPageContent() {
       const processedWhiteboards = [];
       for (let i = 0; i < whiteboardFiles.length; i++) {
         setRenderStatus(`Оптимизация скетча ${i+1}/${whiteboardFiles.length}...`);
+        setRenderProgress(55 + Math.round(((i + 1) / Math.max(1, whiteboardFiles.length)) * 5));
         const { name, clip } = whiteboardFiles[i];
         const optName = `opt_${name}`;
         
@@ -833,15 +842,42 @@ function DeliveryPageContent() {
 
   const handleExport = async (target: 'telegram' | 'drive') => {
     setIsExporting(true);
-    await new Promise(r => setTimeout(r, 1500));
-    if (target === 'telegram') {
-      if (typeof (globalThis as any).window !== 'undefined') {
-        (globalThis as any).window.open('https://t.me/ViralEngine_Bot', '_blank');
+    try {
+      if (target === 'telegram') {
+        if (typeof (globalThis as any).window !== 'undefined') {
+          (globalThis as any).window.open('https://t.me/ViralEngine_Bot', '_blank');
+        }
+      } else {
+        addSystemLog('Загрузка видео на ваш Google Диск...');
+        if (!job?.output_url) {
+          throw new Error('Видео еще не сформировано.');
+        }
+
+        const res = await fetch(job.output_url);
+        const blob = await res.blob();
+        const { gdriveService } = await import('@/lib/services/gdriveService');
+        const uploadRes = await gdriveService.uploadFileToDrive(blob, `ViralEngine_${projectId || 'video'}_${Date.now()}.mp4`);
+
+        if (uploadRes.error) {
+          if (uploadRes.error.includes('authorization token')) {
+            addSystemLog('Требуется авторизация Google Диска...');
+            if ((globalThis as any).confirm?.('Для сохранения файлов на Google Диск необходимо авторизоваться через Gmail аккаунт Google. Авторизоваться сейчас?')) {
+              await gdriveService.signInWithGoogleDrive();
+            }
+          } else {
+            throw new Error(uploadRes.error);
+          }
+        } else {
+          addSystemLog(`Видео файл успешно сохранён на вашем Google Диске!`);
+          (globalThis as any).alert?.('🎉 Файл видео успешно сохранен на ваш Google Диск!');
+        }
       }
-    } else {
-      (globalThis as any).alert?.('Загрузка на Google Drive начата.');
+    } catch (err: any) {
+      addSystemLog(`Ошибка Google Drive: ${err.message || err}`);
+      (globalThis as any).alert?.(`Ошибка экспорт на Google Диск: ${err.message || err}`);
+    } finally {
+      setIsExporting(false);
     }
-    setIsExporting(false);
   };
 
   const handleCopy = (text: string) => {

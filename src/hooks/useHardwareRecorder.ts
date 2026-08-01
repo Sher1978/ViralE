@@ -164,6 +164,7 @@ export function useHardwareRecorder({
           video: isVoiceOnly ? false : {
             deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
             facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
+            advanced: [{ imageStabilization: 'on' }] as any,
             ...resMap[res]
           },
           audio: {
@@ -178,6 +179,18 @@ export function useHardwareRecorder({
           console.log(`[useHardwareRecorder] initCamera trying resolution: ${res}`);
           stream = await nav.mediaDevices.getUserMedia(constraints);
           if (stream) {
+            // Apply track-level hardware image stabilization if supported
+            const videoTrack = stream.getVideoTracks()[0];
+            if (videoTrack && typeof videoTrack.applyConstraints === 'function') {
+              try {
+                await videoTrack.applyConstraints({
+                  advanced: [{ imageStabilization: 'on' }] as any
+                });
+                console.log('[useHardwareRecorder] Video hardware image stabilization enabled successfully.');
+              } catch (stabErr) {
+                console.log('[useHardwareRecorder] Advanced image stabilization constraint not supported on this track:', stabErr);
+              }
+            }
             if (res !== videoResolution) {
               console.warn(`[useHardwareRecorder] Fell back from requested ${videoResolution} to ${res}`);
               addSystemLog(`Предупреждение: не удалось запустить камеру в ${videoResolution}. Автоматически выбрано разрешение ${res}.`);
@@ -541,24 +554,80 @@ export function useHardwareRecorder({
     }
   };
 
-  // 9. Download Background MP4 helper
+  // 9. Download or Share Raw/MP4 video via System Interface
+  const shareOrSaveRawVideo = async () => {
+    const nav = globalThis.navigator as any;
+    const blob = recordedBlobRef.current;
+    
+    if (blob) {
+      const ext = isVoiceOnly ? 'webm' : 'mp4';
+      const mime = blob.type || (isVoiceOnly ? 'audio/webm' : 'video/mp4');
+      const file = new File([blob], `ViralEngine_Record_${Date.now()}.${ext}`, { type: mime });
+
+      if (nav?.share && nav?.canShare && nav.canShare({ files: [file] })) {
+        try {
+          await nav.share({
+            files: [file],
+            title: 'Запись с Телесуфлёра',
+            text: 'Видео записанное в Телесуфлёре ViralEngine'
+          });
+          return;
+        } catch (err: any) {
+          if (err.name !== 'AbortError') {
+            console.warn('[useHardwareRecorder] Web Share files failed:', err);
+          } else {
+            return;
+          }
+        }
+      }
+
+      // Fallback: direct blob download
+      const url = URL.createObjectURL(blob);
+      const doc = (globalThis as any).document;
+      if (doc) {
+        const a = doc.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        doc.body.appendChild(a);
+        a.click();
+        doc.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
+      return;
+    }
+
+    if (backgroundMp4Url) {
+      await downloadBackgroundMp4();
+      return;
+    }
+
+    (globalThis as any).alert?.('Записанный файл не найден в памяти.');
+  };
+
   const downloadBackgroundMp4 = async () => {
     const nav = globalThis.navigator as any;
-    const isMobile = typeof globalThis.navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(nav.userAgent);
 
     if (backgroundMp4Url) {
       console.log('[useHardwareRecorder] Sharing or downloading background MP4:', backgroundMp4Url);
       
-      if (isMobile && typeof globalThis.navigator !== 'undefined' && nav.share) {
-        try {
+      try {
+        const res = await fetch(backgroundMp4Url);
+        const blob = await res.blob();
+        const file = new File([blob], `ViralEngine_H264_${Date.now()}.mp4`, { type: 'video/mp4' });
+
+        if (nav?.share && nav?.canShare && nav.canShare({ files: [file] })) {
           await nav.share({
-            url: backgroundMp4Url,
+            files: [file],
             title: 'Viral Engine H.264 MP4',
-            text: 'Here is your compatible H.264 MP4 video!'
+            text: 'Запись с Телесуфлёра (H.264 MP4)'
           });
           return;
-        } catch (err) {
+        }
+      } catch (err: any) {
+        if (err.name !== 'AbortError') {
           console.warn('[useHardwareRecorder] Web Share failed for normalized MP4:', err);
+        } else {
+          return;
         }
       }
 
@@ -625,6 +694,7 @@ export function useHardwareRecorder({
     stopCamera,
     startVideoRecording,
     stopVideoRecording,
-    downloadBackgroundMp4
+    downloadBackgroundMp4,
+    shareOrSaveRawVideo
   };
 }

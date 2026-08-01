@@ -69,6 +69,64 @@ export const VideoEditor = React.memo(({
 
   const [selectedClip, setSelectedClip] = useState<{ id: string; type: 'aroll' | 'broll' | 'whiteboard' | 'subtitle'; } | null>(null);
 
+  // 🛑 Prevent accidental swipe-back navigation & page unload in Montage Editor
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      try {
+        window.history.pushState({ inEditor: true }, '', window.location.href);
+      } catch (e) {}
+    }
+
+    const handlePopState = (e: PopStateEvent) => {
+      const confirmExit = (globalThis as any).confirm?.(
+        'Вы действительно хотите выйти из монтажной студии? Все несохраненные изменения будут утеряны.'
+      );
+      if (!confirmExit) {
+        try {
+          window.history.pushState({ inEditor: true }, '', window.location.href);
+        } catch (err) {}
+      } else {
+        onBack();
+      }
+    };
+
+    let touchStartX = 0;
+    const handleTouchStart = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 0) {
+        touchStartX = e.touches[0].clientX;
+      }
+    };
+
+    const handleTouchMove = (e: TouchEvent) => {
+      if (e.touches && e.touches.length > 0) {
+        const touchCurrentX = e.touches[0].clientX;
+        // Intercept swipe left-to-right from edge (< 50px)
+        if (touchStartX < 50 && touchCurrentX > touchStartX) {
+          if (e.cancelable) {
+            e.preventDefault();
+          }
+        }
+      }
+    };
+
+    const handleBeforeUnload = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = '';
+    };
+
+    window.addEventListener('popstate', handlePopState);
+    window.addEventListener('touchstart', handleTouchStart, { passive: true });
+    window.addEventListener('touchmove', handleTouchMove, { passive: false });
+    window.addEventListener('beforeunload', handleBeforeUnload);
+
+    return () => {
+      window.removeEventListener('popstate', handlePopState);
+      window.removeEventListener('touchstart', handleTouchStart);
+      window.removeEventListener('touchmove', handleTouchMove);
+      window.removeEventListener('beforeunload', handleBeforeUnload);
+    };
+  }, [onBack]);
+
   const handleSplitSelected = useCallback(() => {
     if (!selectedClip) return;
     
@@ -529,7 +587,7 @@ export const VideoEditor = React.memo(({
   }
 
   return (
-    <div className="flex flex-col bg-black text-white h-full max-h-[100dvh] relative overflow-hidden select-none">
+    <div className="flex flex-col bg-black text-white h-full max-h-[100dvh] relative overflow-hidden select-none touch-pan-y overscroll-none">
       <input ref={fileInputRef} type="file" accept="video/*" className="hidden" onChange={handleFileChange} />
 
       {/* FOUNDATION SELECTION */}
@@ -795,6 +853,8 @@ export const VideoEditor = React.memo(({
                 setSubtitleColor={setSubtitleColor}
                 subtitleBgColor={subtitleBgColor}
                 setSubtitleBgColor={setSubtitleBgColor}
+                showSubtitles={showSubtitles}
+                setShowSubtitles={setShowSubtitles}
             />
         )}
         {activeTool === 'text' && (

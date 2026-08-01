@@ -13,13 +13,34 @@ import { ContentPack, JTBDCategory, JTBD_META } from '@/lib/types/contentPack';
 import { profileService } from '@/lib/services/profileService';
 import { projectService } from '@/lib/services/projectService';
 
-function buildRealPacks(projects: any[]): ContentPack[] {
-  return projects.map((p) => {
-    // Map project status to JTBD Category
+async function buildRealPacks(projects: any[]): Promise<ContentPack[]> {
+  const packs = await Promise.all(projects.map(async (p) => {
     let jtbd: JTBDCategory = 'draft';
     if (p.status === 'completed') jtbd = 'published';
     else if (p.status === 'rendering' || p.status === 'storyboard' || p.status === 'scripting') jtbd = 'in_progress';
     else if (p.status === 'ideation') jtbd = 'post_today';
+
+    let versionManifest: any = {};
+    try {
+      const ver = await projectService.getLatestVersion(p.id);
+      if (ver?.script_data) {
+        versionManifest = ver.script_data;
+      }
+    } catch (e) {}
+
+    const metadata = p.metadata || {};
+    const configJson = p.config_json || {};
+
+    const distAssets = versionManifest.distributionAssets || metadata.distributionAssets || configJson.distributionAssets || {};
+    const distImages = versionManifest.distributionImages || metadata.distributionImages || configJson.distributionImages || {};
+
+    const rawVideoUrl = metadata.raw_video_url || metadata.aRollUrl || versionManifest.aRollUrl || p.input_source;
+    const finalVideoUrl = p.final_video_url || metadata.final_video_url || versionManifest.videoUrl;
+    const coverUrl = distImages['banner'] || distImages['carousel-0'] || metadata.cover_image_url || versionManifest.coverImageUrl;
+    const rawCaption = distAssets?.sfv_description?.text || metadata.caption || versionManifest.scriptText;
+    const cleanedCaption = rawCaption ? rawCaption.replace(/^(Для\s+)?(TikTok|Тикток|Рилс|Reels)(\/|\s+)?(TikTok|Тикток|Рилс|Reels)?:?\s*/i, '').trim() : undefined;
+    const article = distAssets?.longread_article?.text;
+    const gallery = Object.values(distImages).filter((v): v is string => typeof v === 'string');
 
     return {
       id: p.id,
@@ -28,24 +49,25 @@ function buildRealPacks(projects: any[]): ContentPack[] {
       createdAt: p.created_at || new Date().toISOString(),
       updatedAt: p.updated_at || new Date().toISOString(),
       jtbd,
-      videoUrl: p.final_video_url,
-      coverImageUrl: undefined,
-      caption: undefined,
-      article: undefined,
-      galleryImages: [],
+      videoUrl: finalVideoUrl,
+      rawVideoUrl: rawVideoUrl,
+      coverImageUrl: coverUrl,
+      caption: cleanedCaption,
+      article: article,
+      galleryImages: gallery,
       postedTo: [],
       assetsReady: p.status === 'completed' ? 5 : p.status === 'rendering' ? 3 : 1,
     };
-  });
+  }));
+
+  return packs;
 }
 
 // ── Asset icons for cards ──────────────────────────────────────────────────
 const ASSET_DOTS = [
   { key: 'video', Icon: Video, color: 'text-purple-400' },
   { key: 'cover', Icon: Image, color: 'text-blue-400' },
-  { key: 'caption', Icon: FileText, color: 'text-amber-400' },
-  { key: 'article', Icon: AlignLeft, color: 'text-emerald-400' },
-  { key: 'gallery', Icon: Grid, color: 'text-pink-400' },
+  { key: 'text', Icon: FileText, color: 'text-pink-400' },
 ];
 
 const JTBD_ICONS: Record<JTBDCategory, React.FC<any>> = {
@@ -71,7 +93,7 @@ export default function LibraryPage() {
       const profile = await profileService.getOrCreateProfile();
       if (!profile) return;
       const projects = await projectService.listProjects(profile.id);
-      const realPacks = buildRealPacks(projects);
+      const realPacks = await buildRealPacks(projects);
       setPacks(realPacks);
     } catch (err) {
       console.error(err);

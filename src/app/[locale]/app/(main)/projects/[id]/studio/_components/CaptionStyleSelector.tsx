@@ -11,6 +11,8 @@ interface CaptionStyleSelectorProps {
   setSubtitleColor: (color: string) => void;
   subtitleBgColor: string;
   setSubtitleBgColor: (color: string) => void;
+  showSubtitles?: boolean;
+  setShowSubtitles?: (show: boolean) => void;
 }
 
 const STYLES_PREVIEW = [
@@ -47,6 +49,8 @@ export const CaptionStyleSelector: React.FC<CaptionStyleSelectorProps> = ({
   setSubtitleColor,
   subtitleBgColor,
   setSubtitleBgColor,
+  showSubtitles = true,
+  setShowSubtitles,
 }) => {
   return (
     <div className="flex flex-col h-full bg-[#0d0d12] text-white rounded-t-[3rem] overflow-hidden">
@@ -59,6 +63,27 @@ export const CaptionStyleSelector: React.FC<CaptionStyleSelectorProps> = ({
       </div>
 
       <div className="flex-1 overflow-y-auto px-6 py-6 custom-scrollbar pb-16">
+        {/* Subtitles Master Toggle Switch */}
+        {setShowSubtitles && (
+          <div className="mb-6 p-4 rounded-3xl bg-white/[0.04] border border-white/10 flex items-center justify-between shadow-xl">
+            <div>
+              <p className="text-xs font-black uppercase tracking-wider text-white">Отображение титров</p>
+              <p className="text-[9px] font-bold text-white/40 uppercase tracking-widest mt-0.5">
+                {showSubtitles ? 'Титры включены на видео' : 'Видео без титров (титры отключены)'}
+              </p>
+            </div>
+            <button
+              onClick={() => setShowSubtitles(!showSubtitles)}
+              className={`w-14 h-8 rounded-full p-1 transition-colors duration-300 ${
+                showSubtitles ? 'bg-purple-600' : 'bg-white/10'
+              }`}
+            >
+              <div className={`w-6 h-6 rounded-full bg-white transition-transform duration-300 ${
+                showSubtitles ? 'translate-x-6' : 'translate-x-0'
+              }`} />
+            </button>
+          </div>
+        )}
         <h3 className="text-xs font-black uppercase tracking-widest text-white/40 mb-3 px-1">Стиль текста</h3>
         <div className="grid grid-cols-2 gap-4 mb-8">
           {STYLES_PREVIEW.map((s, idx) => (

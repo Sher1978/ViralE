@@ -529,11 +529,34 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const downloadSingleRenderedSlide = async (slideNum: number) => {
     try {
       const dataUrl = await exportSlideToCanvas(slideNum);
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const fileName = `slide_${slideNum}_cover_${Date.now()}.jpg`;
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+      const nav = globalThis.navigator as any;
+      if (nav?.share && nav?.canShare && nav.canShare({ files: [file] })) {
+        try {
+          await nav.share({
+            files: [file],
+            title: `Обложка слайда #${slideNum}`,
+            text: `Обложка/слайд #${slideNum} из ViralEngine`
+          });
+          return;
+        } catch (err: any) {
+          if (err.name === 'AbortError') return;
+        }
+      }
+
       const link = safeDocument ? safeDocument.createElement('a') : null;
       if (link) {
-        link.href = dataUrl;
-        link.download = `slide_${slideNum}_rendered.jpg`;
+        const objectUrl = URL.createObjectURL(blob);
+        link.href = objectUrl;
+        link.download = fileName;
+        safeDocument.body.appendChild(link);
         link.click();
+        safeDocument.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
       }
     } catch (e) {
       console.error('[Slide Render Error]:', e);
@@ -710,11 +733,34 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const downloadRenderedBanner = async () => {
     try {
       const dataUrl = await exportBannerToCanvas();
+      const res = await fetch(dataUrl);
+      const blob = await res.blob();
+      const fileName = `video_cover_banner_${projectId || 'viral'}_${Date.now()}.jpg`;
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+      const nav = globalThis.navigator as any;
+      if (nav?.share && nav?.canShare && nav.canShare({ files: [file] })) {
+        try {
+          await nav.share({
+            files: [file],
+            title: 'Обложка для видео',
+            text: 'Обложка видео сгенерированная в ViralEngine'
+          });
+          return;
+        } catch (err: any) {
+          if (err.name === 'AbortError') return;
+        }
+      }
+
       const link = safeDocument ? safeDocument.createElement('a') : null;
       if (link) {
-        link.href = dataUrl;
-        link.download = `video_banner_rendered.jpg`;
+        const objectUrl = URL.createObjectURL(blob);
+        link.href = objectUrl;
+        link.download = fileName;
+        safeDocument.body.appendChild(link);
         link.click();
+        safeDocument.body.removeChild(link);
+        setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
       }
     } catch (e) {
       console.error('[Banner Render Error]:', e);
@@ -1246,7 +1292,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                           
                           <div className="p-6 sm:p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 relative group min-h-[250px]">
                             <pre className="text-[14px] sm:text-[15px] text-white/90 leading-relaxed font-sans whitespace-pre-wrap selection:bg-purple-500/30">
-                              {selectedDetail === 'sfv' ? assets?.sfv_description.text : 
+                              {selectedDetail === 'sfv' ? (assets?.sfv_description?.text ? assets.sfv_description.text.replace(/^(Для\s+)?(TikTok|Тикток|Рилс|Reels)(\/|\s+)?(TikTok|Тикток|Рилс|Reels)?:?\s*/i, '').trim() : '') : 
                                selectedDetail === 'threads' ? assets?.deep_content.threads_fb_text : 
                                selectedDetail === 'linkedin' ? assets?.linkedin_executive.text :
                                selectedDetail === 'article' ? (
