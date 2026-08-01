@@ -71,25 +71,6 @@ export const VideoEditor = React.memo(({
 
   // 🛑 Prevent accidental swipe-back navigation & page unload in Montage Editor
   useEffect(() => {
-    if (typeof window !== 'undefined') {
-      try {
-        window.history.pushState({ inEditor: true }, '', window.location.href);
-      } catch (e) {}
-    }
-
-    const handlePopState = (e: PopStateEvent) => {
-      const confirmExit = (globalThis as any).confirm?.(
-        'Вы действительно хотите выйти из монтажной студии? Все несохраненные изменения будут утеряны.'
-      );
-      if (!confirmExit) {
-        try {
-          window.history.pushState({ inEditor: true }, '', window.location.href);
-        } catch (err) {}
-      } else {
-        onBack();
-      }
-    };
-
     let touchStartX = 0;
     const handleTouchStart = (e: TouchEvent) => {
       if (e.touches && e.touches.length > 0) {
@@ -114,18 +95,16 @@ export const VideoEditor = React.memo(({
       e.returnValue = '';
     };
 
-    window.addEventListener('popstate', handlePopState);
     window.addEventListener('touchstart', handleTouchStart, { passive: true });
     window.addEventListener('touchmove', handleTouchMove, { passive: false });
     window.addEventListener('beforeunload', handleBeforeUnload);
 
     return () => {
-      window.removeEventListener('popstate', handlePopState);
       window.removeEventListener('touchstart', handleTouchStart);
       window.removeEventListener('touchmove', handleTouchMove);
       window.removeEventListener('beforeunload', handleBeforeUnload);
     };
-  }, [onBack]);
+  }, []);
 
   const handleSplitSelected = useCallback(() => {
     if (!selectedClip) return;
