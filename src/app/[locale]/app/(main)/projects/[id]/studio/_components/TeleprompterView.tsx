@@ -382,16 +382,16 @@ export const TeleprompterView = React.memo(({
       >
         <div 
           id="scrolling-content"
-          className="w-full space-y-12 transition-all duration-700 ease-out pl-8 pr-24 sm:px-36 text-center flex flex-col pt-[18vh] pb-[100vh]"
+          className="w-full transition-all duration-300 ease-out px-4 sm:px-16 text-center flex flex-col pt-[calc(env(safe-area-inset-top,0px)+3.5rem)] pb-[calc(env(safe-area-inset-bottom,0px)+7rem)]"
         >
           {/* Eye Contact Guide (Only for Video Mode) */}
           {!isVoiceOnly && (
-            <div className="absolute top-[18vh] inset-x-8 pr-24 sm:inset-x-36 h-32 border-y border-white/5 pointer-events-none z-0" />
+            <div className="absolute top-[calc(env(safe-area-inset-top,0px)+3.5rem)] inset-x-4 sm:inset-x-16 h-28 border-y border-white/5 pointer-events-none z-0" />
           )}
           
           <p 
-            className={`font-medium leading-[1.3] transition-all duration-500 tracking-normal drop-shadow-[0_4px_40px_rgba(0,0,0,1)] ${
-              textSize === 'sm' ? 'text-3xl' : textSize === 'lg' ? 'text-7xl sm:text-8xl' : 'text-5xl sm:text-6xl'
+            className={`font-medium leading-[1.35] transition-all duration-300 tracking-normal drop-shadow-[0_4px_40px_rgba(0,0,0,1)] ${
+              textSize === 'sm' ? 'text-xl sm:text-3xl' : textSize === 'lg' ? 'text-3xl sm:text-6xl' : 'text-2xl sm:text-4xl'
             }`}
             style={{ 
               fontFamily: "'Roboto', 'Inter', sans-serif",
