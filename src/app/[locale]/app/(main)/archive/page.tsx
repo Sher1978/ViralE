@@ -9,7 +9,7 @@ import {
   Video, Image, FileText, AlignLeft, Grid,
   Flame, CheckCircle2, Clock, FileEdit
 } from 'lucide-react';
-import { ContentPack, JTBDCategory, JTBD_META } from '@/lib/types/contentPack';
+import { ContentPack, GalleryImage, JTBDCategory, JTBD_META } from '@/lib/types/contentPack';
 import { profileService } from '@/lib/services/profileService';
 import { projectService } from '@/lib/services/projectService';
 
@@ -40,7 +40,9 @@ async function buildRealPacks(projects: any[]): Promise<ContentPack[]> {
     const rawCaption = distAssets?.sfv_description?.text || metadata.caption || versionManifest.scriptText;
     const cleanedCaption = rawCaption ? rawCaption.replace(/^(Для\s+)?(TikTok|Тикток|Рилс|Reels)(\/|\s+)?(TikTok|Тикток|Рилс|Reels)?:?\s*/i, '').trim() : undefined;
     const article = distAssets?.longread_article?.text;
-    const gallery = Object.values(distImages).filter((v): v is string => typeof v === 'string');
+    const gallery: GalleryImage[] = Object.values(distImages)
+      .filter((v): v is string => typeof v === 'string')
+      .map((url, idx) => ({ id: `img-${idx}`, url, caption: '' }));
 
     return {
       id: p.id,
