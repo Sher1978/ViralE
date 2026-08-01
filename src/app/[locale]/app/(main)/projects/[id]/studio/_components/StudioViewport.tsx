@@ -373,10 +373,17 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                   const styleConfig = SUBTITLE_STYLES[subtitleStyle] || SUBTITLE_STYLES[0];
                   const lines = splitCaptionText(activeSub.text);
 
+                  const sf = getScaleFactor();
+                  // Effective 1080p canvas size (default 38px if legacy small size < 25)
+                  const effectiveCanvasSize = (subtitleSize && subtitleSize >= 25) ? subtitleSize : 38;
+                  const previewFontSize = Math.max(8, effectiveCanvasSize / sf);
+                  const previewX = subtitlePos.x / sf;
+                  const previewY = subtitlePos.y / sf;
+
                   // Extract container animation & placement, but keep styling on spans
                   const textStyle = {
-                    fontSize: `${subtitleSize}px`,
-                    lineHeight: '1.2',
+                    fontSize: `${previewFontSize}px`,
+                    lineHeight: '1.25',
                     WebkitTextStroke: styleConfig.WebkitTextStroke || '1px rgba(0,0,0,0.5)',
                     fontFamily: styleConfig.fontFamily || "'Roboto-Bold', sans-serif",
                     fontWeight: styleConfig.fontWeight || '900',
@@ -393,7 +400,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
 
                   const lineStyle = {
                     backgroundColor: subtitleBgColor || styleConfig.backgroundColor,
-                    padding: (subtitleBgColor || styleConfig.backgroundColor) ? (styleConfig.padding || '2px 10px') : undefined,
+                    padding: (subtitleBgColor || styleConfig.backgroundColor) ? (styleConfig.padding || '2px 8px') : undefined,
                     borderRadius: (subtitleBgColor || styleConfig.backgroundColor) ? (styleConfig.borderRadius || '4px') : undefined,
                   };
 
@@ -403,7 +410,6 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                       drag
                       dragMomentum={false}
                       onDrag={(e, info) => {
-                        const sf = getScaleFactor();
                         setSubtitlePos(prev => ({
                           x: prev.x + info.delta.x * sf,
                           y: prev.y + info.delta.y * sf
@@ -413,10 +419,10 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                       animate={styleConfig.animation.animate}
                       exit={styleConfig.animation.exit}
                       className={`absolute inset-x-4 flex ${styleConfig.textAlign === 'left' ? 'justify-start pl-8' : 'justify-center'} pointer-events-auto cursor-grab active:cursor-grabbing ${isSelected ? 'ring-2 ring-yellow-400 ring-offset-4 ring-offset-black/20 rounded-xl' : ''}`}
-                      style={{ bottom: '15%', x: subtitlePos.x, y: subtitlePos.y }}
+                      style={{ bottom: '15%', x: previewX, y: previewY }}
                     >
                       <div className="relative group">
-                        <div className="px-6 py-3 text-center flex flex-col items-center gap-1.5"
+                        <div className="px-4 py-2 text-center flex flex-col items-center gap-1"
                              style={textStyle}>
                           {lines.map((line, lIdx) => (
                             <span 
@@ -436,11 +442,11 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
                             onPointerDown={(e) => {
                               e.stopPropagation();
                               const startX = e.clientX;
-                              const startSize = subtitleSize;
+                              const startSize = effectiveCanvasSize;
                               
                               const onPointerMove = (moveEvent: any) => {
                                 const delta = moveEvent.clientX - startX;
-                                setSubtitleSize(Math.max(10, Math.min(200, startSize + delta * 0.5)));
+                                setSubtitleSize(Math.max(20, Math.min(90, startSize + delta * sf * 0.3)));
                               };
                               
                               const onPointerUp = () => {

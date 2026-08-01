@@ -247,7 +247,8 @@ function DeliveryPageContent() {
 
     const activeManifest = manifestData || manifest;
     const subStyleIdx = activeManifest?.subtitleStyle || 0;
-    const subSizeRaw = activeManifest?.subtitleSize || 18; // Default matches StudioViewport.tsx
+    const rawSize = activeManifest?.subtitleSize;
+    const subSize1080p = (rawSize && rawSize >= 25) ? rawSize : 38;
     const subPos = activeManifest?.subtitlePos || { x: 0, y: 0 };
     const customTextColor = activeManifest?.subtitleColor;
     const customBgColor = activeManifest?.subtitleBgColor;
@@ -261,13 +262,12 @@ function DeliveryPageContent() {
       return hex;
     };
 
-    // Scale subtitle size to match 1080p/720p canvas proportions
+    // Scale coordinates accurately for 1080p (or 720p mobile export canvas)
     const isMobile = videoHeight === 1280;
-    const baseScale = isMobile ? 2.0 : 3.0;
+    const canvasScale = isMobile ? (720 / 1080) : 1.0;
+    const baseScale = isMobile ? 0.67 : 1.0;
     
-    // Clamp subSizeRaw between 14px and 30px to prevent oversized subtitles on export
-    const clampedSizeRaw = Math.min(30, Math.max(14, subSizeRaw));
-    const subSize = Math.round(clampedSizeRaw * baseScale);
+    const subSize = Math.round(subSize1080p * canvasScale);
 
     const drawtextChain = clips.flatMap(c => {
       const lines = splitCaptionText(c.text || '');
@@ -318,8 +318,8 @@ function DeliveryPageContent() {
       }
 
       // Map Y coordinates exactly to studio editor (bottom: 15% anchor + subtitlePos.y offset)
-      const baseBottomY = Math.round(videoHeight * 0.85 + (subPos.y * (isMobile ? (720/1080) : 1)));
-      const translatedX = subPos.x * (isMobile ? (720/1080) : 1);
+      const baseBottomY = Math.round(videoHeight * 0.85 + (subPos.y * canvasScale));
+      const translatedX = Math.round(subPos.x * canvasScale);
       
       const isLeftAlign = subStyleIdx === 1;
       const finalX = isLeftAlign
