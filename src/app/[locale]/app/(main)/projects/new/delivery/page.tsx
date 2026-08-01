@@ -1134,53 +1134,6 @@ function DeliveryPageContent() {
             </button>
           </div>
         </div>
-
-        {/* Realtime Floating system logs console panel */}
-        <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2">
-          <button
-            onClick={() => setShowLogConsole(prev => !prev)}
-            className="px-4 py-2.5 rounded-full bg-[#8b5cf6]/90 hover:bg-[#7c3aed] text-white font-black uppercase tracking-widest text-[9px] border border-white/10 backdrop-blur-md shadow-2xl flex items-center gap-1.5 active:scale-95 transition-all"
-          >
-            <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-            {locale === 'ru' ? `ЛОГИ СБОРКИ (${systemLogs.length})` : `RENDER LOGS (${systemLogs.length})`}
-          </button>
-
-          <AnimatePresence>
-            {showLogConsole && (
-              <motion.div
-                initial={{ opacity: 0, y: 50, scale: 0.95 }}
-                animate={{ opacity: 1, y: 0, scale: 1 }}
-                exit={{ opacity: 0, y: 50, scale: 0.95 }}
-                className="w-[calc(100vw-2rem)] sm:w-[400px] h-[300px] bg-black/95 border border-white/10 rounded-3xl backdrop-blur-2xl shadow-2xl p-4 flex flex-col"
-              >
-                <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
-                  <span className="text-[10px] font-black uppercase tracking-widest text-white/50">
-                    {locale === 'ru' ? 'Системный Лог Рендера' : 'Render System Log'}
-                  </span>
-                  <button
-                    onClick={() => setSystemLogs([])}
-                    className="text-[8px] font-black uppercase tracking-widest text-red-400 hover:text-red-300"
-                  >
-                    {locale === 'ru' ? 'Очистить' : 'Clear'}
-                  </button>
-                </div>
-                <div className="flex-1 overflow-y-auto space-y-2 font-mono text-[9px] text-white/70 select-text custom-scrollbar">
-                  {systemLogs.length === 0 ? (
-                    <p className="text-white/20 italic text-center pt-24">
-                      {locale === 'ru' ? 'Лента логов пуста.' : 'Log is empty.'}
-                    </p>
-                  ) : (
-                    systemLogs.map((log, idx) => (
-                      <div key={idx} className="border-l-2 border-purple-500 pl-2 leading-relaxed text-left">
-                        {log}
-                      </div>
-                    ))
-                  )}
-                </div>
-              </motion.div>
-            )}
-          </AnimatePresence>
-        </div>
       </>
     );
   }
@@ -1446,53 +1399,6 @@ function DeliveryPageContent() {
           />
         </div>
       </section>
-
-      {/* Realtime Floating system logs console panel */}
-      <div className="fixed bottom-4 right-4 z-[9999] flex flex-col items-end gap-2">
-        <button
-          onClick={() => setShowLogConsole(prev => !prev)}
-          className="px-4 py-2.5 rounded-full bg-[#8b5cf6]/90 hover:bg-[#7c3aed] text-white font-black uppercase tracking-widest text-[9px] border border-white/10 backdrop-blur-md shadow-2xl flex items-center gap-1.5 active:scale-95 transition-all"
-        >
-          <span className="w-1.5 h-1.5 rounded-full bg-green-400 animate-pulse" />
-          {locale === 'ru' ? `ЛОГИ СБОРКИ (${systemLogs.length})` : `RENDER LOGS (${systemLogs.length})`}
-        </button>
-
-        <AnimatePresence>
-          {showLogConsole && (
-            <motion.div
-              initial={{ opacity: 0, y: 50, scale: 0.95 }}
-              animate={{ opacity: 1, y: 0, scale: 1 }}
-              exit={{ opacity: 0, y: 50, scale: 0.95 }}
-              className="w-[calc(100vw-2rem)] sm:w-[400px] h-[300px] bg-black/95 border border-white/10 rounded-3xl backdrop-blur-2xl shadow-2xl p-4 flex flex-col"
-            >
-              <div className="flex items-center justify-between border-b border-white/5 pb-2 mb-2">
-                <span className="text-[10px] font-black uppercase tracking-widest text-white/50">
-                  {locale === 'ru' ? 'Системный Лог Рендера' : 'Render System Log'}
-                </span>
-                <button
-                  onClick={() => setSystemLogs([])}
-                  className="text-[8px] font-black uppercase tracking-widest text-red-400 hover:text-red-300"
-                >
-                  {locale === 'ru' ? 'Очистить' : 'Clear'}
-                </button>
-              </div>
-              <div className="flex-1 overflow-y-auto space-y-2 font-mono text-[9px] text-white/70 select-text custom-scrollbar">
-                {systemLogs.length === 0 ? (
-                  <p className="text-white/20 italic text-center pt-24">
-                    {locale === 'ru' ? 'Лента логов пуста.' : 'Log is empty.'}
-                  </p>
-                ) : (
-                  systemLogs.map((log, idx) => (
-                    <div key={idx} className="border-l-2 border-purple-500 pl-2 leading-relaxed text-left">
-                      {log}
-                    </div>
-                  ))
-                )}
-              </div>
-            </motion.div>
-          )}
-        </AnimatePresence>
-      </div>
     </div>
   );
 }

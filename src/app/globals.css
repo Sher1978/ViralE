@@ -96,6 +96,8 @@
     -webkit-font-smoothing: antialiased;
     -moz-osx-font-smoothing: grayscale;
     text-rendering: optimizeLegibility;
+    overscroll-behavior: none !important;
+    overscroll-behavior-x: none !important;
   }
   
   body {
@@ -104,10 +106,11 @@
     font-family: var(--font-sans);
     font-feature-settings: "ss01", "ss02", "cv01", "cv02";
     selection-background-color: rgba(0, 255, 204, 0.25);
-    touch-action: pan-y;
+    touch-action: pan-y !important;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
-    overscroll-behavior-x: contain;
+    overscroll-behavior: none !important;
+    overscroll-behavior-x: none !important;
   }
   
   ::selection {
