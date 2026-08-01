@@ -107,6 +107,7 @@
     touch-action: pan-y;
     -webkit-tap-highlight-color: transparent;
     overflow-x: hidden;
+    overscroll-behavior-x: contain;
   }
   
   ::selection {

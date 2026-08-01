@@ -98,6 +98,24 @@ export async function POST(req: Request) {
     
     try {
       const assets = safeJsonParse(text);
+
+      const cleanPrefix = (str: string) => {
+        if (!str) return str;
+        return str
+          .replace(/^(?:для\s+(?:tiktok|reels|shorts|threads|facebook|linkedin|блога|риле?с|тикток)|for\s+(?:tiktok|reels|shorts|threads|facebook|linkedin)):\s*/i, '')
+          .trim();
+      };
+
+      if (assets?.sfv_description?.text) {
+        assets.sfv_description.text = cleanPrefix(assets.sfv_description.text);
+      }
+      if (assets?.deep_content?.threads_fb_text) {
+        assets.deep_content.threads_fb_text = cleanPrefix(assets.deep_content.threads_fb_text);
+      }
+      if (assets?.linkedin_executive?.text) {
+        assets.linkedin_executive.text = cleanPrefix(assets.linkedin_executive.text);
+      }
+
       return NextResponse.json(assets);
     } catch (parseErr: any) {
       console.error('[Distribution Assets API JSON Parse Error]:', parseErr.message);

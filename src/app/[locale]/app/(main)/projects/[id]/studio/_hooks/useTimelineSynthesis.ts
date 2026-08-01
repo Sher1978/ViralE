@@ -101,30 +101,45 @@ export function useTimelineSynthesis({
       setFusionProgress(35);
       setFusionStatus('processing');
 
-      const response = await fetch('/api/ai/fal/process-timeline', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          projectId,
-          videoUrl: finalVideoUrl,
-          segments: timelineSegments
-        })
-      });
+      // Smooth progress ticker to avoid hanging at 50% during processing
+      const progressInterval = setInterval(() => {
+        setFusionProgress(prev => {
+          if (prev >= 92) return prev;
+          return prev + Math.floor(Math.random() * 4) + 2;
+        });
+      }, 700);
 
-      if (!response.ok) {
-        const errorData = await response.json();
-        throw new Error(errorData.error || 'Synthesis failed');
-      }
+      try {
+        const response = await fetch('/api/ai/fal/process-timeline', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            projectId,
+            videoUrl: finalVideoUrl,
+            segments: timelineSegments
+          })
+        });
 
-      const data = await response.json();
+        clearInterval(progressInterval);
 
-      if (data.status === 'completed' && data.videoUrl) {
-        setFusionStatus('completed');
-        setFusionProgress(100);
-        setFusedVideoUrl(data.videoUrl); 
-        setTimeout(() => handleTabChange('fusion_preview'), 1000);
-      } else {
-        throw new Error('Synthesis failed to return a result');
+        if (!response.ok) {
+          const errorData = await response.json();
+          throw new Error(errorData.error || 'Synthesis failed');
+        }
+
+        const data = await response.json();
+
+        if (data.status === 'completed' && data.videoUrl) {
+          setFusionStatus('completed');
+          setFusionProgress(100);
+          setFusedVideoUrl(data.videoUrl); 
+          setTimeout(() => handleTabChange('fusion_preview'), 1000);
+        } else {
+          throw new Error('Synthesis failed to return a result');
+        }
+      } catch (err: any) {
+        clearInterval(progressInterval);
+        throw err;
       }
 
     } catch (err: any) {

@@ -2,7 +2,7 @@
 
 import React from 'react';
 import { motion } from 'framer-motion';
-import { Scissors, Sparkles, Download, Send, RotateCcw, Loader2, CheckCircle2 } from 'lucide-react';
+import { Scissors, Sparkles, Download, Send, RotateCcw, Loader2, CheckCircle2, Share2 } from 'lucide-react';
 
 interface PostRecordBranchProps {
   videoUrl: string;
@@ -114,14 +114,14 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               FACE SWAP <Sparkles size={14} className="text-purple-400" />
             </motion.button>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-3 gap-2">
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
                 onClick={onDownload}
                 className="py-3 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex flex-col items-center justify-center gap-1 shadow-lg min-h-[52px]"
               >
-                <span className="flex items-center gap-1">Скачать RAW <Download size={12} className="text-blue-400" /></span>
+                <span className="flex items-center gap-1">RAW <Download size={12} className="text-blue-400" /></span>
                 {recordedSize && (
                   <span className="text-[7px] text-white/40 lowercase tracking-normal">
                     ({(recordedSize / (1024 * 1024)).toFixed(1)} MB)
@@ -135,12 +135,44 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
                 onClick={onDownloadMp4}
                 className="py-3 rounded-[2rem] bg-green-600/10 border border-green-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex flex-col items-center justify-center gap-1 shadow-lg min-h-[52px]"
               >
-                <span className="flex items-center gap-1">Скачать MP4 {isMp4Converting ? <Loader2 size={12} className="animate-spin text-green-400" /> : <Download size={12} className="text-green-400" />}</span>
+                <span className="flex items-center gap-1">MP4 {isMp4Converting ? <Loader2 size={12} className="animate-spin text-green-400" /> : <Download size={12} className="text-green-400" />}</span>
                 {recordedSize && !isMp4Converting && (
                   <span className="text-[7px] text-white/40 lowercase tracking-normal">
                     (~{(recordedSize * 0.8 / (1024 * 1024)).toFixed(1)} MB)
                   </span>
                 )}
+              </motion.button>
+
+              <motion.button
+                whileHover={{ scale: 1.02 }}
+                whileTap={{ scale: 0.98 }}
+                onClick={async () => {
+                  try {
+                    const { gdriveService } = await import('@/lib/services/gdriveService');
+                    const token = await gdriveService.getProviderToken();
+                    if (!token) {
+                      await gdriveService.signInWithGoogleDrive();
+                      return;
+                    }
+                    (globalThis as any).alert?.('Загрузка в ваш Google Диск запущена...');
+                    const res = await fetch(mp4Url || videoUrl);
+                    const blob = await res.blob();
+                    const result = await gdriveService.uploadFileToDrive(blob, `ViralEngine_Record_${Date.now()}.mp4`);
+                    if (result.webViewLink) {
+                      (globalThis as any).alert?.(`Успешно сохранено на Google Диск!\nСсылка: ${result.webViewLink}`);
+                    } else if (result.error) {
+                      (globalThis as any).alert?.(`Ошибка Google Диска: ${result.error}`);
+                    }
+                  } catch (e: any) {
+                    (globalThis as any).alert?.(`Ошибка: ${e.message}`);
+                  }
+                }}
+                className="py-3 rounded-[2rem] bg-amber-600/10 border border-amber-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex flex-col items-center justify-center gap-1 shadow-lg min-h-[52px]"
+              >
+                <span className="flex items-center gap-1 text-amber-300">G-Drive <Share2 size={12} className="text-amber-400" /></span>
+                <span className="text-[7px] text-amber-400/60 lowercase tracking-normal">
+                  Google Диск
+                </span>
               </motion.button>
             </div>
 
