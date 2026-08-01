@@ -4,8 +4,10 @@ import React, { useState, useEffect, useRef } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   X, Search, Wand2, RefreshCcw, Sparkles, ArrowLeft,
-  Play, Check, MessageSquare, Zap, Pencil, Film
+  Play, Check, MessageSquare, Zap, Pencil, Film, Upload
 } from 'lucide-react';
+import { supabase } from '@/lib/supabase';
+import { idb } from '@/lib/idb';
 
 type Screen = 'search' | 'generate' | 'edit-prompt';
 
@@ -38,16 +40,67 @@ interface Props {
   onClose: () => void;
   onSelect: (clipId: string, videoUrl: string, label?: string, speed?: number) => void;
   onDelete?: (clipId: string) => void;
+  projectId?: string;
 }
 
 const fmt = (s: number) => `${Math.floor(s / 60)}:${Math.floor(s % 60).toString().padStart(2, '0')}`;
 
-const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, onDelete }) => {
+const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, onDelete, projectId }) => {
   const [screen, setScreen] = useState<Screen>('search');
 
   // Search state
   const [searchQuery, setSearchQuery] = useState('');
   const [isSearching, setIsSearching] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
+  const fileInputRef = useRef<HTMLInputElement>(null);
+
+  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !clip) return;
+
+    setIsUploading(true);
+    setUploadProgress('Сохранение файла...');
+
+    try {
+      const localUrl = URL.createObjectURL(file);
+      
+      // 1. Cache raw blob in IndexedDB for immediate playback
+      try {
+        await idb.set(`broll_file_${clip.id}`, file);
+      } catch (err) {
+        console.warn('[BRollEditor] IndexedDB cache warning:', err);
+      }
+
+      // 2. Upload file to Supabase Storage 'media' bucket for Cloud & Database persistence
+      setUploadProgress('Загрузка в облако...');
+      const fileExt = file.name.split('.').pop() || (file.type.startsWith('image/') ? 'png' : 'mp4');
+      const filePath = `brolls/${projectId || 'global'}/${clip.id}_${Date.now()}.${fileExt}`;
+      
+      let finalUrl = localUrl;
+      const { error: uploadError } = await supabase.storage.from('media').upload(filePath, file, { upsert: true });
+      if (!uploadError) {
+        const { data } = supabase.storage.from('media').getPublicUrl(filePath);
+        if (data?.publicUrl) {
+          finalUrl = data.publicUrl;
+        }
+      } else {
+        console.warn('[BRollEditor] Cloud storage upload warning:', uploadError);
+      }
+
+      // 3. Select uploaded clip and trigger manifest update
+      onSelect(clip.id, finalUrl, file.name, clipSpeed);
+      onClose();
+    } catch (err: any) {
+      console.error('[BRollEditor] Upload failed:', err);
+      const win = (globalThis as any).window;
+      if (win) win.alert(`Ошибка загрузки: ${err.message || 'Не удалось загрузить файл'}`);
+    } finally {
+      setIsUploading(false);
+      setUploadProgress('');
+      if (e.target) e.target.value = '';
+    }
+  };
   const [results, setResults] = useState<VideoItem[]>([]);
   const [previewItem, setPreviewItem] = useState<VideoItem | null>(null);
 
@@ -370,28 +423,58 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
                 })}
               </div>
             ) : (
-              <div className="flex flex-col items-center justify-center py-12 gap-3 border border-dashed border-white/8 rounded-2xl">
+              <div className="flex flex-col items-center justify-center py-12 gap-3 border border-dashed border-white/8 rounded-2xl p-6 text-center">
                 <Film size={28} className="text-white/10" />
                 <p className="text-[9px] font-black uppercase tracking-widest text-white/20 text-center">
-                  Введите запрос и нажмите поиск
+                  Введите запрос для поиска или загрузите свой файл
                 </p>
+                <button
+                  type="button"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={isUploading}
+                  className="mt-2 px-5 py-3 rounded-2xl bg-white/10 border border-white/15 hover:bg-white/20 text-white font-black uppercase tracking-widest text-[9px] flex items-center gap-2 transition-all active:scale-95 disabled:opacity-40"
+                >
+                  <Upload size={14} className="text-purple-400" />
+                  Загрузить своё видео или фото
+                </button>
               </div>
             )}
           </div>
 
-          {/* Footer: Generate button */}
-          <div className="flex-none px-4 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] border-t border-white/[0.06]">
-            <button
-              onClick={() => { setEditPromptDraft(visualPrompt); setScreen('generate'); }}
-              className="w-full py-4 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-600 flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[11px] text-white shadow-xl shadow-purple-900/30 active:scale-95 transition-all relative overflow-hidden"
-            >
-              <motion.div
-                animate={{ x: ['-100%', '200%'] }}
-                transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1 }}
-                className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] pointer-events-none"
-              />
-              <Zap size={16} /> Генерировать Б-ролл
-            </button>
+          {/* Footer: Upload & AI Generate buttons */}
+          <div className="flex-none px-4 pt-4 pb-[calc(env(safe-area-inset-bottom,0px)+16px)] border-t border-white/[0.06] space-y-2">
+            {isUploading && (
+              <div className="flex items-center justify-center gap-2 py-2 text-purple-400 text-[10px] font-black uppercase tracking-widest animate-pulse">
+                <RefreshCcw size={14} className="animate-spin" />
+                <span>{uploadProgress || 'Загрузка медиафайла...'}</span>
+              </div>
+            )}
+
+            <div className="flex gap-2">
+              <button
+                type="button"
+                onClick={() => fileInputRef.current?.click()}
+                disabled={isUploading}
+                className="flex-1 py-4 rounded-2xl bg-white/10 hover:bg-white/15 border border-white/20 flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] text-white active:scale-95 transition-all disabled:opacity-40"
+              >
+                <Upload size={15} className="text-purple-400" />
+                Загрузить свой B-Roll
+              </button>
+
+              <button
+                type="button"
+                onClick={() => { setEditPromptDraft(visualPrompt); setScreen('generate'); }}
+                disabled={isUploading}
+                className="flex-1 py-4 rounded-2xl bg-gradient-to-br from-indigo-600 via-purple-600 to-violet-600 flex items-center justify-center gap-2 font-black uppercase tracking-widest text-[10px] text-white shadow-xl shadow-purple-900/30 active:scale-95 transition-all disabled:opacity-40 relative overflow-hidden"
+              >
+                <motion.div
+                  animate={{ x: ['-100%', '200%'] }}
+                  transition={{ duration: 2.5, repeat: Infinity, ease: 'easeInOut', repeatDelay: 1 }}
+                  className="absolute inset-0 bg-gradient-to-r from-transparent via-white/10 to-transparent skew-x-[-20deg] pointer-events-none"
+                />
+                <Zap size={15} /> ИИ-Генерация
+              </button>
+            </div>
           </div>
         </>
       )}
@@ -586,6 +669,14 @@ const BRollEditorModal: React.FC<Props> = ({ clip, isOpen, onClose, onSelect, on
           </motion.div>
         )}
       </AnimatePresence>
+
+      <input 
+        ref={fileInputRef} 
+        type="file" 
+        accept="video/*,image/*" 
+        className="hidden" 
+        onChange={handleFileUpload}
+      />
     </motion.div>
   );
 };

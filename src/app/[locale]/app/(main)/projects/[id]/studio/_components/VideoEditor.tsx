@@ -502,12 +502,33 @@ export const VideoEditor = React.memo(({
   };
 
   const handleBrollPromptSelect = useCallback((clipId: string, videoUrl: string, label?: string, speed?: number) => {
-    setBrollClips(prev => prev.map(c => {
-      if (c.id !== clipId) return c;
-      downloadAndCache(videoUrl, clipId);
-      return { ...c, url: videoUrl, label: label?.slice(0, 20) || c.label, speed: speed || c.speed || 1.0 };
-    }));
-  }, [downloadAndCache, setBrollClips]);
+    setBrollClips(prev => {
+      const updatedClips = prev.map(c => {
+        if (c.id !== clipId) return c;
+        downloadAndCache(videoUrl, clipId);
+        return { ...c, url: videoUrl, label: label?.slice(0, 20) || c.label, speed: speed || c.speed || 1.0 };
+      });
+
+      // Immediate Cloud & Database Manifest Persistence
+      if (projectId) {
+        setManifest(prevManifest => {
+          if (!prevManifest) return prevManifest;
+          const nextManifest = {
+            ...prevManifest,
+            brolls: updatedClips
+          };
+          projectService.updateLatestVersionManifest(projectId, nextManifest).then(() => {
+            console.log('[VideoEditor] User B-roll uploaded & synced to database manifest');
+          }).catch(err => {
+            console.warn('[VideoEditor] Manifest cloud sync warning:', err);
+          });
+          return nextManifest;
+        });
+      }
+
+      return updatedClips;
+    });
+  }, [downloadAndCache, setBrollClips, projectId, setManifest]);
 
   const startRecording = async () => {
     try {
@@ -1231,6 +1252,7 @@ export const VideoEditor = React.memo(({
         onClose={() => setEditingBrollClip(null)}
         onSelect={handleBrollPromptSelect}
         onDelete={deleteBroll}
+        projectId={projectId}
       />
 
       {/* 8. Whiteboard Editor Modal */}
