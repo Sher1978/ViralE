@@ -3,7 +3,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, ArrowLeft, Library, Square, 
   Settings, Type, Timer, Palette, Mic2, Camera,
-  MoreVertical, Edit3, Check, RotateCw, Sparkles
+  MoreVertical, Edit3, Check, RotateCw, Sparkles, Zap
 } from 'lucide-react';
 import { useRouter } from '@/navigation';
 import { useLocale } from 'next-intl';
@@ -40,6 +40,8 @@ interface TeleprompterViewProps {
   audioDevices?: any[];
   selectedAudioDeviceId?: string;
   onAudioDeviceChange?: (id: string) => void;
+  recordingQuality?: 'standard' | 'pro';
+  onQualityToggle?: () => void;
   t: (key: string, data?: any) => string;
 }
 
@@ -75,6 +77,8 @@ export const TeleprompterView = React.memo(({
   audioDevices = [],
   selectedAudioDeviceId = '',
   onAudioDeviceChange,
+  recordingQuality = 'standard',
+  onQualityToggle,
   t,
 }: TeleprompterViewProps) => {
   const router = useRouter();
@@ -474,6 +478,23 @@ export const TeleprompterView = React.memo(({
             <button onClick={onFlipCamera} className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
               <RotateCw size={16} />
               <span className="text-[5px] font-black uppercase mt-0.5">Flip</span>
+            </button>
+          )}
+
+          {!isVoiceOnly && (
+            <button 
+              onClick={onQualityToggle} 
+              className={`w-12 h-12 rounded-full border flex flex-col items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
+                recordingQuality === 'pro' 
+                  ? 'bg-purple-600/30 border-purple-400 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
+                  : 'bg-black/40 border-white/10 text-white/80'
+              }`}
+              title={recordingQuality === 'pro' ? 'Режим PRO 60 FPS (1080p / 14Mbps)' : 'Стандартный режим (30 FPS)'}
+            >
+              <Zap size={15} className={recordingQuality === 'pro' ? 'text-purple-400 animate-pulse' : 'text-white/60'} />
+              <span className="text-[5px] font-black uppercase mt-0.5 tracking-tighter">
+                {recordingQuality === 'pro' ? '60 FPS' : '30 FPS'}
+              </span>
             </button>
           )}
         </div>

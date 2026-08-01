@@ -178,8 +178,21 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={() => onSelect('voice-master')}
-                  className="group relative h-64 rounded-[2.5rem] bg-white/[0.02] border border-white/10 overflow-hidden flex flex-col justify-between p-6 text-left transition-all hover:bg-white/[0.04] hover:border-purple-500/40 shadow-xl"
+                  onClick={async () => {
+                    try {
+                      const { supabase } = await import('@/lib/supabase');
+                      const { data: { user } } = await supabase.auth.getUser();
+                      if (user) {
+                        const { data: profile } = await supabase.from('profiles').select('tier').eq('id', user.id).single();
+                        if (profile?.tier !== 'pro') {
+                          (globalThis as any).alert?.("🔒 Опция Фейс Свап (Face Swap) доступна ТОЛЬКО в премиум-пакете SCALE ($79.90/мес).\nПожалуйста, перейдите в профиль и обновите подписку до тарифа Scale для доступа к нейро-замене лиц.");
+                          return;
+                        }
+                      }
+                    } catch (e) {}
+                    onSelect('voice-master');
+                  }}
+                  className="group relative h-64 rounded-[2.5rem] bg-white/[0.02] border border-amber-500/20 overflow-hidden flex flex-col justify-between p-6 text-left transition-all hover:bg-white/[0.04] hover:border-amber-500/50 shadow-xl"
                 >
                   <img 
                     src="https://images.unsplash.com/photo-1544005313-94ddf0286df2?auto=format&fit=crop&w=600&q=80" 
@@ -189,18 +202,18 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
                   <div className="absolute inset-0 bg-gradient-to-t from-[#090a14] via-[#090a14]/70 to-transparent" />
 
                   <div className="relative z-10 flex justify-between items-start">
-                    <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/30 backdrop-blur-md flex items-center justify-center shadow-lg">
-                      <Mic size={20} className="text-purple-400" />
+                    <div className="w-12 h-12 rounded-2xl bg-amber-500/20 border border-amber-500/30 backdrop-blur-md flex items-center justify-center shadow-lg">
+                      <Mic size={20} className="text-amber-400" />
                     </div>
-                    <span className="px-2.5 py-1 rounded-full bg-purple-500/20 border border-purple-500/30 text-[8px] font-black uppercase tracking-widest text-purple-300 backdrop-blur-md">
-                      ✨ Face Swap
+                    <span className="px-2.5 py-1 rounded-full bg-amber-500/20 border border-amber-500/30 text-[8px] font-black uppercase tracking-widest text-amber-300 backdrop-blur-md shadow-lg flex items-center gap-1">
+                      👑 SCALE ONLY
                     </span>
                   </div>
 
                   <div className="relative z-10 space-y-1">
                     <h3 className="text-base font-black italic uppercase tracking-tighter text-white leading-none">Фейс Свап</h3>
-                    <p className="text-[9px] font-bold text-white/50 uppercase tracking-widest leading-relaxed">
-                      Голос диктора + Замена лица (Face Swap) на записанном ролике
+                    <p className="text-[9px] font-bold text-amber-200/60 uppercase tracking-widest leading-relaxed">
+                      Голос диктора + Замена лица (Только в тарифе Scale)
                     </p>
                   </div>
                 </motion.button>

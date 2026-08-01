@@ -108,10 +108,23 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
-              onClick={() => onSelect('animate')}
-              className="w-full py-4 rounded-[2rem] bg-white/5 border border-white/10 text-white font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2"
+              onClick={async () => {
+                try {
+                  const { supabase } = await import('@/lib/supabase');
+                  const { data: { user } } = await supabase.auth.getUser();
+                  if (user) {
+                    const { data: profile } = await supabase.from('profiles').select('tier').eq('id', user.id).single();
+                    if (profile?.tier !== 'pro') {
+                      (globalThis as any).alert?.("🔒 Опция Фейс Свап (Face Swap) доступна ТОЛЬКО в премиум-пакете SCALE ($79.90/мес).\nПожалуйста, перейдите в профиль и обновите подписку до тарифа Scale для доступа к нейро-замене лиц.");
+                      return;
+                    }
+                  }
+                } catch (e) {}
+                onSelect('animate');
+              }}
+              className="w-full py-4 rounded-[2rem] bg-amber-500/10 border border-amber-500/30 text-amber-300 font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2"
             >
-              FACE SWAP <Sparkles size={14} className="text-purple-400" />
+              FACE SWAP 👑 (SCALE ONLY) <Sparkles size={14} className="text-amber-400" />
             </motion.button>
 
             <div className="grid grid-cols-3 gap-2">

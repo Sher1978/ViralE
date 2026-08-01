@@ -96,6 +96,23 @@ export async function POST(req: NextRequest) {
       throw new Error('Timeline contains no active video segments. Please wait for the video player to load or add at least one segment.');
     }
 
+    // Backend Tier Protection for Face Swap (avatarUrl)
+    const isFaceSwapRequested = segments.some((s: any) => s.avatarUrl);
+    if (isFaceSwapRequested) {
+      const { getAuthContext } = await import('@/lib/auth');
+      try {
+        const { user, supabase: authClient } = await getAuthContext();
+        const { data: profile } = await authClient.from('profiles').select('tier').eq('id', user.id).single();
+        if (profile?.tier !== 'pro') {
+          return NextResponse.json({ 
+            error: '🔒 Опция Фейс Свап (Face Swap) доступна ТОЛЬКО в премиум-пакете SCALE ($79.90/мес). Пожалуйста, обновите ваш подписочный план.' 
+          }, { status: 403 });
+        }
+      } catch (authErr) {
+        console.warn('[Fusion] Tier check auth error:', authErr);
+      }
+    }
+
     const normalizedVideoUrl = normalizeSupabaseUrl(videoUrl);
     console.log(`[Fusion] Original video URL normalized from "${videoUrl}" to "${normalizedVideoUrl}"`);
 

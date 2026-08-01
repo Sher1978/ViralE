@@ -42,12 +42,27 @@ export function useHardwareRecorder({
   const [selectedVideoDeviceId, setSelectedVideoDeviceId] = useState<string>('');
   const [selectedAudioDeviceId, setSelectedAudioDeviceId] = useState<string>('');
   const [videoResolution, setVideoResolution] = useState<'360p' | '720p' | '1080p' | '4k'>('720p');
+  const [recordingQuality, setRecordingQuality] = useState<'standard' | 'pro'>('standard');
   const [recordingTime, setRecordingTime] = useState(0);
   const [cameraError, setCameraError] = useState<string | null>(null);
   const [countdown, setCountdown] = useState<number | null>(null);
   const [isReading, setIsReading] = useState(false);
   const [backgroundMp4Url, setBackgroundMp4Url] = useState<string | null>(null);
   const [isBackgroundConverting, setIsBackgroundConverting] = useState(false);
+
+  const toggleQualityMode = () => {
+    setRecordingQuality(prev => {
+      const next = prev === 'standard' ? 'pro' : 'standard';
+      if (next === 'pro') {
+        setVideoResolution('1080p');
+        addSystemLog('🚀 Активирован PRO режим съемки: 1080p @ 60 FPS (Битрейт 14 Mbps).');
+      } else {
+        setVideoResolution('720p');
+        addSystemLog('⚡ Переключено на Стандартный режим съемки: 720p @ 30 FPS (Битрейт 6 Mbps).');
+      }
+      return next;
+    });
+  };
 
   // Internal Refs
   const mediaRecorderRef = useRef<any>(null);
@@ -164,6 +179,7 @@ export function useHardwareRecorder({
           video: isVoiceOnly ? false : {
             deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
             facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
+            frameRate: recordingQuality === 'pro' ? { ideal: 60, min: 30 } : { ideal: 30 },
             advanced: [{ imageStabilization: 'on' }] as any,
             ...resMap[res]
           },
@@ -334,11 +350,11 @@ export function useHardwareRecorder({
 
             const bitrateMap = {
               '360p': 1200000,   // 1.2 Mbps
-              '720p': 4000000,   // 4 Mbps
-              '1080p': 8000000,  // 8 Mbps
-              '4k': 20000000     // 20 Mbps
+              '720p': recordingQuality === 'pro' ? 8000000 : 4000000,
+              '1080p': recordingQuality === 'pro' ? 14000000 : 8000000,
+              '4k': recordingQuality === 'pro' ? 25000000 : 18000000
             };
-            let targetBitrate = bitrateMap[videoResolution as keyof typeof bitrateMap] || 4000000;
+            let targetBitrate = bitrateMap[videoResolution as keyof typeof bitrateMap] || 8000000;
             if (isMobile) {
               // Scale down slightly on mobile to save memory and avoid heating and save battery, but keep it high quality
               targetBitrate = Math.round(targetBitrate * 0.75);
@@ -683,6 +699,9 @@ export function useHardwareRecorder({
     setSelectedAudioDeviceId,
     videoResolution,
     setVideoResolution,
+    recordingQuality,
+    setRecordingQuality,
+    toggleQualityMode,
     recordingTime,
     cameraError,
     countdown,
