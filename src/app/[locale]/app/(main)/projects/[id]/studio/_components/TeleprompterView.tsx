@@ -201,7 +201,7 @@ export const TeleprompterView = React.memo(({
   };
 
   return (
-    <div className="w-full h-full relative flex flex-col items-center justify-center overflow-hidden bg-black rounded-[3rem] border border-white/10 shadow-2xl">
+    <div className="w-full h-full relative flex flex-col items-center justify-center overflow-hidden bg-black sm:rounded-[2.5rem] sm:border sm:border-white/10 shadow-2xl">
       {/* 📹 Video Foundation - Full Opacity per request */}
       <div className="absolute inset-0 z-0 bg-neutral-900">
         {isVoiceOnly ? (
@@ -347,24 +347,24 @@ export const TeleprompterView = React.memo(({
       />
       <div className="absolute bottom-0 left-0 right-0 h-64 bg-gradient-to-t from-black via-black/95 to-transparent z-[35] pointer-events-none" />
       
-      <div className="absolute top-[max(2.5rem,calc(env(safe-area-inset-top,0px)+0.75rem))] left-0 right-0 px-6 flex items-center justify-between z-[45]">
+      <div className="absolute top-[max(0.75rem,calc(env(safe-area-inset-top,0px)+0.25rem))] left-0 right-0 px-4 flex items-center justify-between z-[45]">
         <button 
           onClick={onBack}
-          className="w-12 h-12 rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 transition-all active:scale-95"
+          className="w-10 h-10 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 transition-all active:scale-95"
         >
-          <X size={24} />
+          <X size={20} />
         </button>
         
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2">
           <button 
             onClick={handleStartEdit}
-            className="w-12 h-12 rounded-2xl bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 transition-all active:scale-95"
+            className="w-10 h-10 rounded-xl bg-black/60 backdrop-blur-md border border-white/10 flex items-center justify-center text-white/80 transition-all active:scale-95"
           >
-            <Edit3 size={20} />
+            <Edit3 size={18} />
           </button>
           <button 
             onClick={onFinish}
-            className="px-6 h-12 rounded-2xl bg-purple-600 text-white font-black uppercase tracking-widest text-[10px] shadow-[0_0_30px_rgba(168,85,247,0.4)] border border-purple-500/30 flex items-center gap-2 transition-all active:scale-95 leading-none"
+            className="px-4 h-10 rounded-xl bg-purple-600 text-white font-black uppercase tracking-widest text-[9px] shadow-[0_0_20px_rgba(168,85,247,0.4)] border border-purple-500/30 flex items-center gap-1.5 transition-all active:scale-95 leading-none"
           >
             {locale === 'ru' ? 'СОХРАНИТЬ' : 'SAVE RECORDING'}
             <ArrowLeft className="w-3 h-3 rotate-180" />
@@ -405,22 +405,22 @@ export const TeleprompterView = React.memo(({
       </div>
 
       {/* 🛠️ Bottom Navigation Bar - Glassmorphic */}
-      <div className="absolute bottom-6 left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto flex flex-col items-center gap-4 z-50">
+      <div className="absolute bottom-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.25rem))] left-2 right-2 sm:left-1/2 sm:-translate-x-1/2 sm:right-auto flex flex-col items-center gap-2 z-50">
         
         {/* Record Button (above the control bar or inside it) */}
         <motion.button 
           whileTap={{ scale: 0.9 }}
           onClick={onToggleRecording}
-          className="w-20 h-20 rounded-full border-4 border-white flex items-center justify-center relative bg-black/20 backdrop-blur-md shadow-2xl"
+          className="w-16 h-16 sm:w-20 sm:h-20 rounded-full border-4 border-white flex items-center justify-center relative bg-black/20 backdrop-blur-md shadow-2xl shrink-0"
         >
           <div className={`transition-all duration-300 ${
             isRecordingVideo 
-              ? 'w-8 h-8 bg-red-600 rounded-xl animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.8)]' 
-              : 'w-16 h-16 bg-red-600 rounded-full shadow-[0_0_30px_rgba(239,68,68,0.5)]'
+              ? 'w-7 h-7 bg-red-600 rounded-xl animate-pulse shadow-[0_0_40px_rgba(239,68,68,0.8)]' 
+              : 'w-12 h-12 sm:w-16 sm:h-16 bg-red-600 rounded-full shadow-[0_0_30px_rgba(239,68,68,0.5)]'
           }`} />
           
           {isRecordingVideo && (
-            <div className="absolute -top-10 px-3 py-1 rounded-full bg-red-600 border border-red-400 text-white text-[9px] font-black tracking-widest uppercase flex items-center gap-2 shadow-[0_0_30px_rgba(220,38,38,0.5)]">
+            <div className="absolute -top-9 px-3 py-1 rounded-full bg-red-600 border border-red-400 text-white text-[9px] font-black tracking-widest uppercase flex items-center gap-2 shadow-[0_0_30px_rgba(220,38,38,0.5)] whitespace-nowrap">
               <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
               <span>REC {Math.floor(recordingTime / 60)}:{(recordingTime % 60).toString().padStart(2, '0')}</span>
             </div>
@@ -428,10 +428,10 @@ export const TeleprompterView = React.memo(({
         </motion.button>
 
         {/* Control Buttons */}
-        <div className="flex items-center justify-center gap-1.5 bg-white/10 backdrop-blur-2xl border border-white/20 p-2 rounded-[2rem] shadow-2xl w-full max-w-[95vw] sm:max-w-none overflow-x-auto scrollbar-none">
+        <div className="flex items-center justify-center gap-1.5 bg-white/10 backdrop-blur-2xl border border-white/20 p-1.5 rounded-full shadow-2xl w-full max-w-[96vw] sm:max-w-none overflow-x-auto scrollbar-none">
           {/* Audio Source Selector */}
-          <div className="relative w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 active:scale-95 transition-all flex-shrink-0">
-            <Mic2 size={16} />
+          <div className="relative w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 active:scale-95 transition-all flex-shrink-0">
+            <Mic2 size={14} />
             <span className="text-[5px] font-black uppercase mt-0.5">Mic</span>
             <select
               className="absolute inset-0 opacity-0 w-full h-full cursor-pointer"
@@ -447,36 +447,36 @@ export const TeleprompterView = React.memo(({
             </select>
           </div>
 
-          <button onClick={rotateTextSize} className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
-            <Type size={16} />
+          <button onClick={rotateTextSize} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
+            <Type size={14} />
             <span className="text-[5px] font-black uppercase mt-0.5">{textSize}</span>
           </button>
 
-          <button onClick={rotateColor} className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
-            <Palette size={16} style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }} />
+          <button onClick={rotateColor} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
+            <Palette size={14} style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }} />
             <span className="text-[5px] font-black uppercase mt-0.5" style={{ color: scriptColor === '#000000' ? '#ffffff' : scriptColor }}>COLOR</span>
           </button>
 
           {/* Speed Controller */}
-          <div className="flex items-center bg-black/40 rounded-[2rem] px-1 border border-white/10 h-12 flex-shrink-0">
-            <button onClick={() => onSpeedChange(Math.max(1, scrollSpeed - 1))} className="w-10 h-full flex items-center justify-center text-white/80 hover:text-white active:scale-75 transition-all text-lg font-bold">-</button>
-            <div className="flex flex-col items-center justify-center w-6">
-              <span className="text-[10px] font-black text-purple-400 leading-none">{scrollSpeed}</span>
+          <div className="flex items-center bg-black/40 rounded-full px-1 border border-white/10 h-10 sm:h-12 flex-shrink-0">
+            <button onClick={() => onSpeedChange(Math.max(1, scrollSpeed - 1))} className="w-8 h-full flex items-center justify-center text-white/80 hover:text-white active:scale-75 transition-all text-base font-bold">-</button>
+            <div className="flex flex-col items-center justify-center w-5">
+              <span className="text-[9px] font-black text-purple-400 leading-none">{scrollSpeed}</span>
               <span className="text-[4px] font-black uppercase text-white/30 tracking-tighter mt-0.5">SPD</span>
             </div>
-            <button onClick={() => onSpeedChange(Math.min(20, scrollSpeed + 1))} className="w-10 h-full flex items-center justify-center text-white/80 hover:text-white active:scale-75 transition-all text-lg font-bold">+</button>
+            <button onClick={() => onSpeedChange(Math.min(20, scrollSpeed + 1))} className="w-8 h-full flex items-center justify-center text-white/80 hover:text-white active:scale-75 transition-all text-base font-bold">+</button>
           </div>
 
-          <button onClick={rotateOpacity} className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
-            <div className="w-3 h-3 rounded-full border border-white/40 overflow-hidden flex flex-col">
+          <button onClick={rotateOpacity} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
+            <div className="w-2.5 h-2.5 rounded-full border border-white/40 overflow-hidden flex flex-col">
               <div className="flex-1 bg-white" style={{ opacity: scriptOpacity }} />
             </div>
             <span className="text-[5px] font-black uppercase mt-0.5">{Math.round(scriptOpacity * 100)}%</span>
           </button>
 
           {!isVoiceOnly && (
-            <button onClick={onFlipCamera} className="w-12 h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
-              <RotateCw size={16} />
+            <button onClick={onFlipCamera} className="w-10 h-10 sm:w-12 sm:h-12 rounded-full bg-black/40 border border-white/10 flex flex-col items-center justify-center text-white/80 transition-all active:scale-95 flex-shrink-0">
+              <RotateCw size={14} />
               <span className="text-[5px] font-black uppercase mt-0.5">Flip</span>
             </button>
           )}
@@ -484,14 +484,14 @@ export const TeleprompterView = React.memo(({
           {!isVoiceOnly && (
             <button 
               onClick={onQualityToggle} 
-              className={`w-12 h-12 rounded-full border flex flex-col items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
+              className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full border flex flex-col items-center justify-center transition-all active:scale-95 flex-shrink-0 ${
                 recordingQuality === 'pro' 
                   ? 'bg-purple-600/30 border-purple-400 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.4)]' 
                   : 'bg-black/40 border-white/10 text-white/80'
               }`}
               title={recordingQuality === 'pro' ? 'Режим PRO 60 FPS (1080p / 14Mbps)' : 'Стандартный режим (30 FPS)'}
             >
-              <Zap size={15} className={recordingQuality === 'pro' ? 'text-purple-400 animate-pulse' : 'text-white/60'} />
+              <Zap size={14} className={recordingQuality === 'pro' ? 'text-purple-400 animate-pulse' : 'text-white/60'} />
               <span className="text-[5px] font-black uppercase mt-0.5 tracking-tighter">
                 {recordingQuality === 'pro' ? '60 FPS' : '30 FPS'}
               </span>

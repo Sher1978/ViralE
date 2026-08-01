@@ -37,7 +37,7 @@ export function BottomNav() {
   if (hideNav) return null;
 
   return (
-    <nav className="fixed bottom-0 inset-x-0 w-full z-50 bg-[#080811]/95 backdrop-blur-2xl border-t border-white/10 pb-[env(safe-area-inset-bottom,0px)] shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
+    <nav className="fixed bottom-0 inset-x-0 w-full z-50 bg-[#080811]/95 backdrop-blur-2xl border-t border-white/10 pb-[max(0.5rem,calc(env(safe-area-inset-bottom,0px)+0.25rem))] shadow-[0_-10px_30px_rgba(0,0,0,0.8)]">
       <div className="max-w-md mx-auto px-4 py-2">
         <ul className="flex items-center justify-around">
           {navItems.map((item) => {
