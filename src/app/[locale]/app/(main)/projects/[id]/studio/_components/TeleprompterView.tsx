@@ -284,7 +284,7 @@ export const TeleprompterView = React.memo(({
             autoPlay 
             muted 
             playsInline
-            className={`w-full h-full object-cover opacity-100 transition-transform duration-1000 ${isVideoMirrored ? 'scale-x-[-1]' : ''}`}
+            className={`w-full h-full object-cover opacity-100 will-change-transform transform-gpu ${isVideoMirrored ? 'scale-x-[-1]' : ''}`}
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-10 text-center">

@@ -179,8 +179,13 @@ export function useHardwareRecorder({
           video: isVoiceOnly ? false : {
             deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
             facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
-            frameRate: recordingQuality === 'pro' ? { ideal: 60, min: 30 } : { ideal: 30 },
-            advanced: [{ imageStabilization: 'on' }] as any,
+            frameRate: recordingQuality === 'pro' ? { ideal: 60, max: 60, min: 30 } : { ideal: 30, max: 30 },
+            aspectRatio: isMobile ? { ideal: 0.5625 } : undefined,
+            advanced: [
+              { imageStabilization: 'on' },
+              { imageStabilizationMode: 'cinematic' },
+              { imageStabilizationMode: 'standard' }
+            ] as any,
             ...resMap[res]
           },
           audio: {
@@ -195,16 +200,24 @@ export function useHardwareRecorder({
           console.log(`[useHardwareRecorder] initCamera trying resolution: ${res}`);
           stream = await nav.mediaDevices.getUserMedia(constraints);
           if (stream) {
-            // Apply track-level hardware image stabilization if supported
+            // Apply track-level hardware image stabilization if supported by sensor/driver
             const videoTrack = stream.getVideoTracks()[0];
             if (videoTrack && typeof videoTrack.applyConstraints === 'function') {
-              try {
-                await videoTrack.applyConstraints({
-                  advanced: [{ imageStabilization: 'on' }] as any
-                });
-                console.log('[useHardwareRecorder] Video hardware image stabilization enabled successfully.');
-              } catch (stabErr) {
-                console.log('[useHardwareRecorder] Advanced image stabilization constraint not supported on this track:', stabErr);
+              const stabVariants = [
+                { advanced: [{ imageStabilization: 'on' }, { imageStabilizationMode: 'cinematic' }] },
+                { advanced: [{ imageStabilization: true }, { imageStabilizationMode: 'standard' }] },
+                { advanced: [{ imageStabilization: 'auto' }] },
+                { advanced: [{ imageStabilization: 'on' }] }
+              ];
+
+              for (const variant of stabVariants) {
+                try {
+                  await videoTrack.applyConstraints(variant as any);
+                  console.log('[useHardwareRecorder] Video hardware image stabilization applied successfully:', variant);
+                  break;
+                } catch (e) {
+                  // try next variant
+                }
               }
             }
             if (res !== videoResolution) {
