@@ -810,6 +810,59 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     }
   };
 
+  const generateCoverImage = async () => {
+    let currentBannerPrompt = assets?.video_banner?.image_prompt;
+    
+    // If video_banner prompt is not generated yet, generate concept on-the-fly using the transcript text!
+    if (!currentBannerPrompt) {
+      setIsGenerating(true);
+      try {
+        const textToUse = scriptText || (manifest as any)?.customScript || (manifest as any)?.scriptText || manifest?.transcript?.text || '';
+        const res = await fetch('/api/ai/distribution-assets', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ 
+            scriptText: textToUse, 
+            projectId, 
+            ideaTitle: projectTitle || manifest?.ideaTitle || manifest?.projectTitle,
+            locale 
+          })
+        });
+        if (!res.ok) {
+          const errorData = await res.json().catch(() => ({}));
+          throw new Error(errorData.error || 'Failed to generate cover concept');
+        }
+        const data = await res.json();
+        const updatedAssets = { ...(assets || {}), ...data };
+        setAssets(updatedAssets);
+        if (onUpdateManifest) {
+          onUpdateManifest({
+            ...manifest,
+            distributionAssets: updatedAssets
+          });
+        }
+        currentBannerPrompt = data?.video_banner?.image_prompt;
+      } catch (err: any) {
+        console.error('[Generate Cover Asset Error]:', err);
+        safeAlert(locale === 'ru' 
+          ? `Ошибка генерации концепта обложки: ${err.message || err}` 
+          : `Failed to generate cover concept: ${err.message || err}`
+        );
+        return;
+      } finally {
+        setIsGenerating(false);
+      }
+    }
+
+    if (currentBannerPrompt) {
+      await generateSingleImage(currentBannerPrompt, '9:16', 'banner');
+    } else {
+      const textToUse = scriptText || projectTitle || (locale === 'ru' ? 'Обложка видео' : 'Video cover');
+      const fallbackPrompt = `Cinematic keyframe graphic representing: ${textToUse}. High contrast 9:16 banner --no text, words`;
+      await generateSingleImage(fallbackPrompt, '9:16', 'banner');
+    }
+  };
+
   const generateCarouselOnly = async () => {
     setIsGenerating(true);
     try {
@@ -2026,11 +2079,11 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
                           <div className="flex flex-col gap-3 pt-4">
                             <button 
-                              onClick={() => assets?.video_banner && generateSingleImage(assets.video_banner.image_prompt, '9:16', 'banner')}
-                              disabled={!assets?.video_banner || isGeneratingImages['banner']}
-                              className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-30"
+                              onClick={generateCoverImage}
+                              disabled={isAnyGenerationActive}
+                              className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 cursor-pointer"
                             >
-                              {isGeneratingImages['banner'] ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
+                              {isGeneratingImages['banner'] || isGenerating ? <Loader2 size={18} className="animate-spin text-white" /> : <Wand2 size={18} />}
                               {imageResults['banner'] 
                                 ? (locale === 'ru' ? 'ПЕРЕСОЗДАТЬ ОБЛОЖКУ' : 'REGENERATE THUMBNAIL') 
                                 : (locale === 'ru' ? 'СГЕНЕРИРОВАТЬ ОБЛОЖКУ' : 'GENERATE THUMBNAIL')}
@@ -2077,7 +2130,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                       className="relative bg-[#FFE600] text-black px-5 py-3.5 font-black italic uppercase tracking-tighter text-xs flex items-center justify-center text-center leading-snug border-2 border-black"
                                       style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 8px), calc(100% - 8px) 50%, 100% calc(50% + 8px), 100% 100%, 0% 100%, 0% calc(50% + 8px), 8px 50%, 0% calc(50% - 8px))' }}
                                     >
-                                      {assets?.video_banner.text_on_banner}
+                                      {assets?.video_banner?.text_on_banner || manifest?.ideaTitle || manifest?.projectTitle || projectTitle || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
                                     </div>
                                   </div>
                                 </div>
@@ -2136,16 +2189,17 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           }}
           className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-10 animate-in fade-in duration-200"
         >
-          {/* Close button with premium micro-interaction */}
+          {/* Close button in top-left corner with premium micro-interaction */}
           <button 
             onClick={(e) => {
               e.stopPropagation();
               setLightboxType(null);
               setLightboxIndex(null);
             }}
-            className="absolute top-[calc(env(safe-area-inset-top,0px)+1.5rem)] right-6 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all z-20 shadow-lg"
+            className="absolute top-[calc(env(safe-area-inset-top,0px)+1.5rem)] left-6 px-4 py-2.5 rounded-full bg-white/10 border border-white/15 flex items-center gap-2 text-white/80 hover:text-white hover:bg-white/20 active:scale-95 transition-all z-20 shadow-xl backdrop-blur-md text-xs font-black uppercase tracking-wider"
           >
-            <X size={24} />
+            <X size={18} />
+            <span>{locale === 'ru' ? 'ЗАКРЫТЬ' : 'CLOSE'}</span>
           </button>
 
           {/* Lightbox Slide Container */}
@@ -2250,15 +2304,16 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           onClick={() => setLightboxType(null)}
           className="fixed inset-0 z-[10000] bg-black/95 backdrop-blur-xl flex flex-col items-center justify-center p-4 sm:p-10 animate-in fade-in duration-200"
         >
-          {/* Close button with premium micro-interaction */}
+          {/* Close button in top-left corner with premium micro-interaction */}
           <button 
             onClick={(e) => {
               e.stopPropagation();
               setLightboxType(null);
             }}
-            className="absolute top-[calc(env(safe-area-inset-top,0px)+1.5rem)] right-6 w-12 h-12 rounded-full bg-white/5 border border-white/10 flex items-center justify-center text-white/60 hover:text-white hover:bg-white/10 active:scale-90 transition-all z-20 shadow-lg"
+            className="absolute top-[calc(env(safe-area-inset-top,0px)+1.5rem)] left-6 px-4 py-2.5 rounded-full bg-white/10 border border-white/15 flex items-center gap-2 text-white/80 hover:text-white hover:bg-white/20 active:scale-95 transition-all z-20 shadow-xl backdrop-blur-md text-xs font-black uppercase tracking-wider"
           >
-            <X size={24} />
+            <X size={18} />
+            <span>{locale === 'ru' ? 'ЗАКРЫТЬ' : 'CLOSE'}</span>
           </button>
 
           {/* Lightbox Banner Container */}
@@ -2280,7 +2335,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                       className="relative bg-[#FFE600] text-black px-7 py-4.5 font-black italic uppercase tracking-tighter text-md flex items-center justify-center text-center leading-snug border-[3px] border-black"
                       style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 10px), calc(100% - 10px) 50%, 100% calc(50% + 10px), 100% 100%, 0% 100%, 0% calc(50% + 10px), 10px 50%, 0% calc(50% - 10px))' }}
                     >
-                      {assets?.video_banner?.text_on_banner}
+                      {assets?.video_banner?.text_on_banner || manifest?.ideaTitle || manifest?.projectTitle || projectTitle || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
                     </div>
                   </div>
                 </div>

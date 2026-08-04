@@ -162,12 +162,17 @@ function DeliveryPageContent() {
     
     if (version && projectId) {
       const updatedManifest = {
-        ...version.script_data as any,
+        ...(version.script_data as any),
         showSubtitles: checked
       };
       
+      const updatedVersion: ProjectVersion = {
+        ...version,
+        script_data: updatedManifest
+      };
+
       // Update local state optimistically
-      setVersion(prev => prev ? { ...prev, script_data: updatedManifest } : null);
+      setVersion(updatedVersion);
       
       try {
         await projectService.updateLatestVersionManifest(projectId, updatedManifest);
@@ -176,6 +181,27 @@ function DeliveryPageContent() {
         console.error('Failed to update subtitles flag:', err);
         addSystemLog(`Ошибка сохранения настроек субтитров: ${err.message}`);
       }
+
+      // If an FFmpeg render is currently running, cancel/reset it
+      if (isLaunchingRenderRef.current) {
+        addSystemLog('Прерываем текущий рендеринг...');
+        try {
+          await resetFFmpeg();
+        } catch (e) {
+          console.warn('[Delivery] Reset FFmpeg error:', e);
+        }
+        isLaunchingRenderRef.current = false;
+      }
+
+      // Reset current job view so loader or new cached render is shown
+      setJob(null);
+      setRenderProgress(0);
+      setRenderStatus(checked ? 'Перезапуск рендера с субтитрами...' : 'Перезапуск рендера без субтитров...');
+
+      // Immediately trigger client render with updated version
+      setTimeout(() => {
+        handleClientRender(updatedVersion);
+      }, 150);
     }
   };
 
@@ -416,15 +442,21 @@ function DeliveryPageContent() {
     if (isLaunchingRenderRef.current) return;
     isLaunchingRenderRef.current = true;
     
+    const manifestData = ver.script_data as any;
+    const shouldShowSubtitles = manifestData?.showSubtitles !== false;
+    const cacheKey = `final_render_${projectId}_${ver.id}_${shouldShowSubtitles ? 'subs' : 'nosubs'}`;
+    
     // 0. CHECK CACHE FIRST
     try {
-      const cachedRender = await idb.get(`final_render_${projectId}_${ver.id}`, 'MediaBuffer');
+      const cachedRender = await idb.get(cacheKey, 'MediaBuffer');
       if (cachedRender instanceof Blob) {
-        console.log('[Delivery] Found cached render for version', ver.id);
+        console.log('[Delivery] Found cached render for version', ver.id, 'subs:', shouldShowSubtitles);
         const url = URL.createObjectURL(cachedRender);
         setJob({ id: 'local-render', status: 'completed', output_url: url, progress: 100 } as any);
         setRenderProgress(100);
-        setRenderStatus('Готово (из кеша)');
+        setRenderStatus(shouldShowSubtitles ? 'Готово (с субтитрами из кеша)' : 'Готово (без субтитров из кеша)');
+        setIsLoading(false);
+        isLaunchingRenderRef.current = false;
         return;
       }
     } catch (e) { console.warn('[Delivery] Cache check failed:', e); }
@@ -706,7 +738,7 @@ function DeliveryPageContent() {
       const videoBlob = new Blob([finalData as any], { type: 'video/mp4' });
       
       // PERSIST TO IDB
-      await idb.set(`final_render_${projectId}_${ver.id}`, videoBlob, 'MediaBuffer');
+      await idb.set(cacheKey, videoBlob, 'MediaBuffer');
       
       const videoUrl = URL.createObjectURL(videoBlob);
       

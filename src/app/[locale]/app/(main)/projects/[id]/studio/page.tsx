@@ -1135,7 +1135,13 @@ export default function StudioPage() {
                 <div className="max-w-6xl mx-auto h-full p-10">
                   <DistributionFactory 
                     manifest={manifest}
-                    scriptText={(manifest as any)?.scriptText || manifest?.segments?.map(s => s.scriptText).filter(Boolean).join('\n\n') || ''}
+                    scriptText={
+                      customScript ||
+                      (manifest as any)?.customScript ||
+                      (typeof (manifest as any)?.transcript === 'string' ? (manifest as any).transcript : (manifest as any)?.transcript?.text || (Array.isArray((manifest as any)?.transcript) ? (manifest as any).transcript.map((t: any) => t.text || '').join(' ') : '')) ||
+                      manifest?.segments?.map((s: any) => s.scriptText || s.text || '').filter(Boolean).join('\n\n') ||
+                      ''
+                    }
                     projectId={projectId}
                     locale={locale}
                     projectTitle={project?.title}
