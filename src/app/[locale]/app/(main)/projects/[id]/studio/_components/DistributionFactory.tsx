@@ -20,6 +20,33 @@ interface DistributionFactoryProps {
   onUpdateManifest?: (manifest: any) => void;
 }
 
+const isGenericTitle = (title?: string | null): boolean => {
+  if (!title || typeof title !== 'string') return true;
+  const normalized = title.trim().toLowerCase();
+  const genericTitles = [
+    'новый продакшн',
+    'new production',
+    'без названия',
+    'untitled',
+    'проект без названия',
+    'untitled project',
+    'новый проект',
+    'new project',
+    'обложка видео',
+    'video cover'
+  ];
+  return genericTitles.some(g => normalized.includes(g));
+};
+
+const getCleanTitle = (...titles: Array<string | undefined | null>): string => {
+  for (const t of titles) {
+    if (t && !isGenericTitle(t)) {
+      return t.trim();
+    }
+  }
+  return '';
+};
+
 interface GeneratedAsset {
   user_context_applied: string;
   sfv_description: {
@@ -818,13 +845,14 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       setIsGenerating(true);
       try {
         const textToUse = scriptText || (manifest as any)?.customScript || (manifest as any)?.scriptText || manifest?.transcript?.text || '';
+        const cleanTitle = getCleanTitle(projectTitle, manifest?.ideaTitle, manifest?.projectTitle);
         const res = await fetch('/api/ai/distribution-assets', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ 
             scriptText: textToUse, 
             projectId, 
-            ideaTitle: projectTitle || manifest?.ideaTitle || manifest?.projectTitle,
+            ideaTitle: cleanTitle || undefined,
             locale 
           })
         });
@@ -857,7 +885,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     if (currentBannerPrompt) {
       await generateSingleImage(currentBannerPrompt, '9:16', 'banner');
     } else {
-      const textToUse = scriptText || projectTitle || (locale === 'ru' ? 'Обложка видео' : 'Video cover');
+      const cleanTitle = getCleanTitle(projectTitle, manifest?.ideaTitle, manifest?.projectTitle);
+      const textToUse = scriptText?.slice(0, 200) || cleanTitle || (locale === 'ru' ? 'Обложка видео' : 'Video cover');
       const fallbackPrompt = `Cinematic keyframe graphic representing: ${textToUse}. High contrast 9:16 banner --no text, words`;
       await generateSingleImage(fallbackPrompt, '9:16', 'banner');
     }
@@ -2065,7 +2094,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                             <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 space-y-3">
                               <h4 className="text-[9px] font-bold uppercase tracking-widest text-purple-400">{locale === 'ru' ? 'ЗАГОЛОВОК НА ОБЛОЖКЕ' : 'MAIN HEADLINE'}</h4>
                               <div className="text-xl font-black italic uppercase tracking-tighter text-white leading-tight">
-                                "{assets?.video_banner?.text_on_banner || manifest?.ideaTitle || manifest?.projectTitle || projectTitle || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}"
+                                "{assets?.video_banner?.text_on_banner || getCleanTitle(manifest?.ideaTitle, manifest?.projectTitle, projectTitle) || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}"
                               </div>
                             </div>
 
@@ -2130,7 +2159,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                       className="relative bg-[#FFE600] text-black px-5 py-3.5 font-black italic uppercase tracking-tighter text-xs flex items-center justify-center text-center leading-snug border-2 border-black"
                                       style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 8px), calc(100% - 8px) 50%, 100% calc(50% + 8px), 100% 100%, 0% 100%, 0% calc(50% + 8px), 8px 50%, 0% calc(50% - 8px))' }}
                                     >
-                                      {assets?.video_banner?.text_on_banner || manifest?.ideaTitle || manifest?.projectTitle || projectTitle || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
+                                      {assets?.video_banner?.text_on_banner || getCleanTitle(manifest?.ideaTitle, manifest?.projectTitle, projectTitle) || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
                                     </div>
                                   </div>
                                 </div>
@@ -2335,7 +2364,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                       className="relative bg-[#FFE600] text-black px-7 py-4.5 font-black italic uppercase tracking-tighter text-md flex items-center justify-center text-center leading-snug border-[3px] border-black"
                       style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 10px), calc(100% - 10px) 50%, 100% calc(50% + 10px), 100% 100%, 0% 100%, 0% calc(50% + 10px), 10px 50%, 0% calc(50% - 10px))' }}
                     >
-                      {assets?.video_banner?.text_on_banner || manifest?.ideaTitle || manifest?.projectTitle || projectTitle || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
+                      {assets?.video_banner?.text_on_banner || getCleanTitle(manifest?.ideaTitle, manifest?.projectTitle, projectTitle) || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
                     </div>
                   </div>
                 </div>

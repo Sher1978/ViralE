@@ -1333,32 +1333,83 @@ export default function ScriptLabPage() {
                 onBack={() => setTrizIdeas(null)}
               />
             ) : (
-              <button
-                id="generate-script-btn"
-                onClick={handleInitialGenerate}
-                disabled={
-                  ideationType === 'youtube'
-                    ? (!youtubeUrl || youtubeUrl.trim().length < 5 || isLoading)
-                    : (!topicInput || topicInput.trim().length < 3 || isLoading)
-                }
-                className="w-full btn-primary py-6 rounded-[2rem] flex items-center justify-center gap-4 group disabled:opacity-30 disabled:grayscale transition-all shadow-[0_20px_40px_rgba(168,85,247,0.3)] relative z-10"
-              >
-                {isLoading ? (
-                  <Loader2 className="w-6 h-6 animate-spin text-purple-400" />
-                ) : (
-                  <>
-                    <span className="font-black text-lg uppercase tracking-widest flex items-center gap-3">
-                      {locale === 'ru' ? 'Сгенерировать 6 сценариев' : 'Generate 6 Scripts'}
-                      <InfoTooltip 
-                        content={locale === 'ru' ? "Сразу генерирует 6 уникальных вариантов сценариев Reels по вашей теме." : "Generates 6 unique Reels script styles based on your topic directly."} 
-                        iconClassName="text-white hover:text-white/80"
-                        size={18}
-                      />
-                    </span>
-                    <ArrowRight className="w-6 h-6 group-hover:translate-x-2 transition-transform" />
-                  </>
-                )}
-              </button>
+              <div className="space-y-3">
+                <p className="text-[10px] font-black uppercase tracking-[0.2em] text-purple-400/60 ml-2">
+                  {locale === 'ru' ? 'ВЫБЕРИТЕ ПАЙПЛАЙН ГЕНЕРАЦИИ' : 'SELECT GENERATION PIPELINE'}
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 relative z-10">
+                  {/* Pipeline Option 1: TRIZ 9-Screen Matrix */}
+                  <button
+                    onClick={handleGenerateTriz}
+                    disabled={
+                      ideationType === 'youtube'
+                        ? (!youtubeUrl || youtubeUrl.trim().length < 5 || isLoading || isGeneratingTriz)
+                        : (!topicInput || topicInput.trim().length < 3 || isLoading || isGeneratingTriz)
+                    }
+                    className="p-6 rounded-[2rem] bg-gradient-to-br from-purple-900/30 via-purple-900/10 to-transparent border border-purple-500/30 hover:border-purple-500/60 hover:from-purple-900/40 text-left transition-all group disabled:opacity-30 disabled:pointer-events-none active:scale-[0.98] shadow-xl flex flex-col justify-between gap-4"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="w-9 h-9 rounded-2xl bg-purple-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                          {isGeneratingTriz ? <Loader2 size={18} className="animate-spin" /> : <Sparkles size={18} />}
+                        </span>
+                        <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-purple-500/10 text-purple-300 border border-purple-500/20">
+                          {locale === 'ru' ? '9 Экранов' : '9 Screens'}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-black uppercase italic tracking-tight text-white group-hover:text-purple-300 transition-colors">
+                        {locale === 'ru' ? '🧩 Матрица ТРИЗ' : '🧩 TRIZ Matrix'}
+                      </h4>
+                      <p className="text-[11px] font-medium text-white/50 leading-relaxed">
+                        {locale === 'ru'
+                          ? 'Анализ идеи по 9 экранам ТРИЗ (надсистема, подсистема, прошлое/будущее) для поиска нестандартного угла.'
+                          : 'Deep idea analysis across 9 TRIZ screens (supersystem, subsystem, past/future) to find a unique angle.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[10px] font-black uppercase tracking-widest text-purple-400 group-hover:text-purple-300">
+                      <span>{isGeneratingTriz ? (locale === 'ru' ? 'Синтезирую ТРИЗ...' : 'Generating TRIZ...') : (locale === 'ru' ? 'Прогнать через ТРИЗ →' : 'Run TRIZ Matrix →')}</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </button>
+
+                  {/* Pipeline Option 2: Direct 6 Scripts */}
+                  <button
+                    id="generate-script-btn"
+                    onClick={handleInitialGenerate}
+                    disabled={
+                      ideationType === 'youtube'
+                        ? (!youtubeUrl || youtubeUrl.trim().length < 5 || isLoading || isGeneratingTriz)
+                        : (!topicInput || topicInput.trim().length < 3 || isLoading || isGeneratingTriz)
+                    }
+                    className="p-6 rounded-[2rem] bg-gradient-to-br from-indigo-900/30 via-indigo-900/10 to-transparent border border-indigo-500/30 hover:border-indigo-500/60 hover:from-indigo-900/40 text-left transition-all group disabled:opacity-30 disabled:pointer-events-none active:scale-[0.98] shadow-xl flex flex-col justify-between gap-4"
+                  >
+                    <div className="space-y-2">
+                      <div className="flex items-center justify-between">
+                        <span className="w-9 h-9 rounded-2xl bg-indigo-500/20 border border-indigo-500/30 flex items-center justify-center text-indigo-300">
+                          {isLoading ? <Loader2 size={18} className="animate-spin" /> : <Wand2 size={18} />}
+                        </span>
+                        <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full bg-indigo-500/10 text-indigo-300 border border-indigo-500/20">
+                          {locale === 'ru' ? 'Быстрый старт' : 'Fast Track'}
+                        </span>
+                      </div>
+                      <h4 className="text-base font-black uppercase italic tracking-tight text-white group-hover:text-indigo-300 transition-colors">
+                        {locale === 'ru' ? '🚀 Сразу 6 сценариев' : '🚀 Direct 6 Scripts'}
+                      </h4>
+                      <p className="text-[11px] font-medium text-white/50 leading-relaxed">
+                        {locale === 'ru'
+                          ? 'Прямой синтез 6 готовых вариантов сценария под разные психотипы (Evergreen, Trends, Edutainment и др.).'
+                          : 'Directly generate 6 complete script variations tailored to different viewer personas.'}
+                      </p>
+                    </div>
+
+                    <div className="flex items-center justify-between pt-2 border-t border-white/5 text-[10px] font-black uppercase tracking-widest text-indigo-400 group-hover:text-indigo-300">
+                      <span>{isLoading ? (locale === 'ru' ? 'Генерирую сценарии...' : 'Generating Scripts...') : (locale === 'ru' ? 'Сгенерировать 6 вариантов →' : 'Generate 6 Scripts →')}</span>
+                      <ArrowRight size={14} className="group-hover:translate-x-1 transition-transform" />
+                    </div>
+                  </button>
+                </div>
+              </div>
             )}
           </div>
         )}

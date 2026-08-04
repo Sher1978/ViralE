@@ -5,6 +5,24 @@ import { safeJsonParse } from '@/lib/utils';
 
 import { profileService } from '@/lib/services/profileService';
 
+export const isGenericTitle = (title?: string | null): boolean => {
+  if (!title || typeof title !== 'string') return true;
+  const normalized = title.trim().toLowerCase();
+  const genericTitles = [
+    'новый продакшн',
+    'new production',
+    'без названия',
+    'untitled',
+    'проект без названия',
+    'untitled project',
+    'новый проект',
+    'new project',
+    'обложка видео',
+    'video cover'
+  ];
+  return genericTitles.some(g => normalized.includes(g));
+};
+
 export async function POST(req: Request) {
   try {
     const { user, supabase: authorizedSupabase } = await getAuthContext();
@@ -16,17 +34,19 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Script text is required' }, { status: 400 });
     }
 
-    let projectTitle = ideaTitle || '';
-    if (projectId && !projectTitle) {
+    let rawProjectTitle = ideaTitle || '';
+    if (projectId && !rawProjectTitle) {
       try {
         const { data: proj } = await authorizedSupabase
           .from('projects')
           .select('title')
           .eq('id', projectId)
           .single();
-        if (proj?.title) projectTitle = proj.title;
+        if (proj?.title) rawProjectTitle = proj.title;
       } catch (e) {}
     }
+
+    const effectiveTitle = !isGenericTitle(rawProjectTitle) ? rawProjectTitle.trim() : '';
 
     // 1. Fetch Active User DNA (Digital DNA or StoryBrand depending on project count)
     const { brandContext } = await profileService.getActiveBrandContext(userId, authorizedSupabase);
@@ -39,7 +59,7 @@ export async function POST(req: Request) {
       Твоя задача — трансформировать сырую транскрибацию аудио пользователя в пакет контента, строго соблюдая его "Цифровую ДНК".
 
       User_DNA_Profile: ${userDNA}
-      Project_Topic_Title: "${projectTitle}"
+      ${effectiveTitle ? `Project_Topic_Title: "${effectiveTitle}"` : 'Project_Topic_Title: (Тема определяется исключительно по транскрипции)'}
       Raw_Transcription: ${scriptText}
 
       ИНСТРУКЦИИ ПО ГЕНЕРАЦИИ (6 ЭТАПОВ):
@@ -62,8 +82,14 @@ export async function POST(req: Request) {
       Начни с: "Статья для блога:"
 
       5. Описание смыслового кадра и заголовок обложки видео (Shorts/Reels Banner)
-      ВНИМАНИЕ: Для поля text_on_banner ОБЯЗАТЕЛЬНО используй название выбранной темы идеи: "${projectTitle || 'Хук вашего видео'}" (или лаконичный кликабельный вариант из 3-6 слов для максимального CTR).
-      Описание (image_prompt) должно быть на английском языке и содержать ТОЛЬКО смысловую часть (действие, объект, окружение, эмоция), БЕЗ каких-либо технических деталей стиля, упоминаний разрешения, фотореалистичности или качественных прилагательных вроде 'ultra-realistic'. Это чистая смысловая пуля.
+      ВНИМАНИЕ ПО ТЕКСТУ (text_on_banner):
+      - Создай мощный, лаконичный, кликабельный заголовок-хук из 3-6 слов для максимального CTR.${effectiveTitle ? ` Заголовок должен быть основан на теме "${effectiveTitle}" или ключевом тезисе транскрипции.` : ' Заголовок ДОЛЖЕН передавать главную суть и самый сильный хук из транскрипции (Raw_Transcription).'}
+      - КАТЕГОРИЧЕСКИ ЗАПРЕЩЕНО использовать системные или технические названия (например: "Новый Продакшн", "New Production", "Без названия").
+
+      ВНИМАНИЕ ПО ИЗОБРАЖЕНИЮ (image_prompt):
+      - image_prompt должен описывать конкретную визуальную сцену на английском языке, НАПРЯМУЮ отражающую тему, смысл и ключевой сюжет из транскрипции (Raw_Transcription).
+      - Не придумывай абстрактные сюжеты (например, поездки на скутере), если они не упоминаются в транскрипции.
+      - Поле image_prompt должно содержать ТОЛЬКО смысловую часть (действие, объект, окружение, эмоция), БЕЗ каких-либо технических деталей стиля, упоминаний разрешения, фотореалистичности или качественных прилагательных вроде 'ultra-realistic'. Это чистая смысловая пуля.
       Пример: 'A close-up of a determined young woman looking at a large glowing map in a dark room.'
 
       Locale: ${locale}
@@ -112,8 +138,8 @@ export async function POST(req: Request) {
       if (assets?.deep_content?.threads_fb_text) {
         assets.deep_content.threads_fb_text = cleanPrefix(assets.deep_content.threads_fb_text);
       }
-      if (assets?.linkedin_executive?.text) {
-        assets.linkedin_executive.text = cleanPrefix(assets.linkedin_executive.text);
+      if (assets?.video_banner?.text_on_banner && isGenericTitle(assets.video_banner.text_on_banner)) {
+        delete assets.video_banner.text_on_banner;
       }
 
       return NextResponse.json(assets);

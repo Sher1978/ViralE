@@ -650,6 +650,20 @@ export function StrategistChat({
     }
   }, [isOpen]);
 
+  // Lock background page scroll when Strategist panel is open
+  useEffect(() => {
+    if (isOpen) {
+      const originalOverflow = document.body.style.overflow;
+      const originalTouchAction = document.body.style.touchAction;
+      document.body.style.overflow = 'hidden';
+      document.body.style.touchAction = 'none';
+      return () => {
+        document.body.style.overflow = originalOverflow;
+        document.body.style.touchAction = originalTouchAction;
+      };
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     const checkAccess = async () => {
       let currentUserId = userId;
@@ -1208,8 +1222,16 @@ export function StrategistChat({
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[150]" 
-            onClick={() => setIsOpen(false)} 
+            className="fixed inset-0 bg-black/60 backdrop-blur-md z-[150] touch-none select-none" 
+            onClick={() => setIsOpen(false)}
+            onWheel={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
+            onTouchMove={(e) => {
+              e.preventDefault();
+              e.stopPropagation();
+            }}
           />
         )}
       </AnimatePresence>
@@ -1221,7 +1243,9 @@ export function StrategistChat({
             initial={{ opacity: 0, y: 20, scale: 0.95 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
             exit={{ opacity: 0, y: 20, scale: 0.95 }}
-            className="fixed inset-x-4 top-[calc(env(safe-area-inset-top,0px)+80px)] bottom-[calc(env(safe-area-inset-bottom,0px)+100px)] md:inset-auto md:top-24 md:right-6 md:w-[450px] md:h-[70vh] bg-black/90 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden z-[160]"
+            onWheel={(e) => e.stopPropagation()}
+            onTouchMove={(e) => e.stopPropagation()}
+            className="fixed inset-x-4 top-[calc(env(safe-area-inset-top,0px)+80px)] bottom-[calc(env(safe-area-inset-bottom,0px)+100px)] md:inset-auto md:top-24 md:right-6 md:w-[450px] md:h-[70vh] bg-black/90 backdrop-blur-3xl border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden z-[160] overscroll-contain"
           >
             {/* Background Visualizer */}
             <div className="absolute inset-0 z-0 pointer-events-none overflow-hidden">
@@ -1277,7 +1301,7 @@ export function StrategistChat({
               <div 
                 ref={scrollContainerRef}
                 onScroll={handleScroll}
-                className="w-full h-full overflow-y-auto p-4 space-y-4 custom-scrollbar"
+                className="w-full h-full overflow-y-auto p-4 space-y-4 custom-scrollbar overscroll-contain"
               >
               {(() => {
                 const visibleMessages = messages.filter(m => !m.isHidden);
