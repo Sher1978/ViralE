@@ -360,13 +360,18 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
     });
   };
 
-  // Canvas Exporter (Exact replica of screenshot for Slide 1 + Gradient for Slides 2-6)
+  // Canvas Exporter (Exact replica of screenshot for Slide 1 + Gradient/Photo for Slides 2-6)
   const exportSlideToCanvas = (slideNum: number): Promise<string> => {
-    return new Promise((resolve, reject) => {
+    return new Promise(async (resolve, reject) => {
       const canvas = safeDocument ? safeDocument.createElement('canvas') : null;
       if (!canvas) {
         reject(new Error('Document not available'));
         return;
+      }
+      if (safeDocument?.fonts?.ready) {
+        try {
+          await safeDocument.fonts.ready;
+        } catch (e) {}
       }
       canvas.width = 1080;
       canvas.height = 1350;
@@ -377,10 +382,10 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
       }
 
       const drawContent = (img: any) => {
-        const slideData = assets?.ig_carousel?.slides?.find((s: any) => s.slide_number === slideNum);
-        const textToDraw = customSlideTexts[slideNum] || slideData?.text_on_slide || (slideNum === 1 ? reelsHook || 'Хук сценария рилса' : DEFAULT_SLIDE_FALLBACKS[slideNum] || `Тезис слайда ${slideNum}`);
-
-
+        const slideData = generatedSlides[slideNum - 1] || assets?.ig_carousel?.slides?.find((s: any) => s.slide_number === slideNum);
+        const textToDraw = (customSlideTexts[slideNum] !== undefined && customSlideTexts[slideNum].trim() !== '')
+          ? customSlideTexts[slideNum]
+          : (slideData?.text_on_slide || (slideNum === 1 ? reelsHook || 'Хук сценария рилса' : DEFAULT_SLIDE_FALLBACKS[slideNum] || `Тезис слайда ${slideNum}`));
 
         if (slideNum === 1) {
           // --- SLIDE 1: COVER SLIDE (Exact screenshot replica) ---
@@ -424,7 +429,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.font = '800 48px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif';
 
           const maxTextWidth = 920;
-          const words = textToDraw.toUpperCase().split(' ');
+          const words = textToDraw.toUpperCase().split(/\s+/);
 
           let line = '';
           const lines: { text: string; words: { word: string; isYellow: boolean }[] }[] = [];
@@ -613,40 +618,72 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           const { title: tierTitle, body: tierBody } = parseTwoTierSlideText(textToDraw);
 
           const maxTextWidth = 900;
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-          ctx.shadowBlur = 12;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+          ctx.shadowBlur = 14;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 2;
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
 
           const wrapTextLines = (text: string, font: string): string[] => {
+            if (!text) return [];
             ctx.font = font;
-            const words = text.split(/\s+/);
-            let line = '';
+            const explicitLines = text.split('\n');
             const lines: string[] = [];
-            for (let n = 0; n < words.length; n++) {
-              const testLine = line + words[n] + ' ';
-              const metrics = ctx.measureText(testLine);
-              if (metrics.width > maxTextWidth && n > 0) {
-                lines.push(line.trim());
-                line = words[n] + ' ';
-              } else {
-                line = testLine;
+
+            explicitLines.forEach(expLine => {
+              const cleanExp = expLine.trim();
+              if (!cleanExp) return;
+              const words = cleanExp.split(/\s+/);
+              let line = '';
+              for (let n = 0; n < words.length; n++) {
+                const testLine = line + words[n] + ' ';
+                const metrics = ctx.measureText(testLine);
+                if (metrics.width > maxTextWidth && n > 0) {
+                  lines.push(line.trim());
+                  line = words[n] + ' ';
+                } else {
+                  line = testLine;
+                }
               }
-            }
-            if (line.trim()) lines.push(line.trim());
+              if (line.trim()) lines.push(line.trim());
+            });
+
             return lines;
           };
 
-          const titleFont = '800 46px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif';
-          const titleLineHeight = 62;
-          const titleLines = wrapTextLines(tierTitle.toUpperCase(), titleFont);
+          // Dynamic Font Autoscaling so text NEVER overflows or gets truncated!
+          let titleFontSize = 46;
+          let bodyFontSize = 32;
+          const maxCardContentHeight = 880;
 
-          const bodyFont = '500 32px Inter, system-ui, -apple-system, sans-serif';
-          const bodyLineHeight = 48;
-          const bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
+          let titleFont = `800 ${titleFontSize}px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif`;
+          let bodyFont = `500 ${bodyFontSize}px Inter, system-ui, -apple-system, sans-serif`;
+          
+          let titleLineHeight = Math.round(titleFontSize * 1.35);
+          let bodyLineHeight = Math.round(bodyFontSize * 1.45);
 
-          const gap = tierBody ? 32 : 0;
-          const totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
+          let titleLines = wrapTextLines((tierTitle || '').toUpperCase(), titleFont);
+          let bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
+          let gap = (titleLines.length > 0 && bodyLines.length > 0) ? 32 : 0;
+          let totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
+
+          // If text height exceeds card content area, scale down font sizes proportionally!
+          if (totalTextHeight > maxCardContentHeight) {
+            const scale = Math.max(0.60, Math.min(0.95, maxCardContentHeight / totalTextHeight));
+            titleFontSize = Math.max(26, Math.round(titleFontSize * scale));
+            bodyFontSize = Math.max(18, Math.round(bodyFontSize * scale));
+            
+            titleFont = `800 ${titleFontSize}px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif`;
+            bodyFont = `500 ${bodyFontSize}px Inter, system-ui, -apple-system, sans-serif`;
+            titleLineHeight = Math.round(titleFontSize * 1.35);
+            bodyLineHeight = Math.round(bodyFontSize * 1.45);
+
+            titleLines = wrapTextLines((tierTitle || '').toUpperCase(), titleFont);
+            bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
+            gap = (titleLines.length > 0 && bodyLines.length > 0) ? Math.round(32 * scale) : 0;
+            totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
+          }
 
           let currentY = (cardY + cardH / 2) - (totalTextHeight / 2);
 
@@ -1291,17 +1328,36 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-            <div className="space-y-2">
-              <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                📝 {currentSlideNum === 1 ? (isRu ? 'Заголовок на обложке (из Хука сценария)' : 'Cover Headline Text') : (isRu ? 'Текст слайда (1 мысль, до 15 слов)' : 'Slide Thought Text')}
-              </label>
-              <textarea
-                value={customSlideTexts[currentSlideNum] !== undefined ? customSlideTexts[currentSlideNum] : (currentSlideData?.text_on_slide || (currentSlideNum === 1 ? reelsHook || 'Хук вашего видео-сценария' : ''))}
-                onChange={(e) => setCustomSlideTexts(prev => ({ ...prev, [currentSlideNum]: e.target.value }))}
-                rows={3}
-                className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white focus:border-purple-500/50 focus:outline-none transition-all resize-none"
-              />
-            </div>
+            {(() => {
+              const activeVal = customSlideTexts[currentSlideNum] !== undefined ? customSlideTexts[currentSlideNum] : (currentSlideData?.text_on_slide || (currentSlideNum === 1 ? reelsHook || 'Хук вашего видео-сценария' : ''));
+              const wordCount = activeVal.trim() ? activeVal.trim().split(/\s+/).length : 0;
+              const charCount = activeVal.length;
+
+              return (
+                <div className="space-y-2">
+                  <div className="flex justify-between items-center">
+                    <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
+                      📝 {currentSlideNum === 1 ? (isRu ? 'Заголовок на обложке (из Хука сценария)' : 'Cover Headline Text') : (isRu ? 'Текст слайда (Тезис + Мысль)' : 'Slide Thought Text')}
+                    </label>
+                    <span className={cn(
+                      "px-2.5 py-0.5 rounded-full font-mono text-[8px] font-bold tracking-wider transition-all",
+                      wordCount <= 18 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
+                      wordCount <= 25 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                      "bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse"
+                    )}>
+                      {wordCount} {isRu ? 'слов' : 'words'} ({charCount} {isRu ? 'симв' : 'chars'})
+                      {wordCount > 20 && (isRu ? ' • Рекомендуется до 18 слов' : ' • Max 18 words recommended')}
+                    </span>
+                  </div>
+                  <textarea
+                    value={activeVal}
+                    onChange={(e) => setCustomSlideTexts(prev => ({ ...prev, [currentSlideNum]: e.target.value }))}
+                    rows={3}
+                    className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white focus:border-purple-500/50 focus:outline-none transition-all resize-none font-sans"
+                  />
+                </div>
+              );
+            })()}
 
             <div className="space-y-2">
               <div className="flex justify-between items-center">
