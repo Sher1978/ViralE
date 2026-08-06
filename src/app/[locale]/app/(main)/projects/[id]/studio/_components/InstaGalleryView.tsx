@@ -4,8 +4,10 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, Download, Copy, Check, Loader2, Image as ImageIcon,
-  ChevronRight, ChevronLeft, RefreshCw, Wand2, ArrowLeft, X, Fingerprint, Share2
+  ChevronRight, ChevronLeft, RefreshCw, Wand2, ArrowLeft, X, Fingerprint, Share2, ListOrdered, BookOpen, Flame
 } from 'lucide-react';
+
+
 
 import { cn } from '@/lib/utils';
 import { parseScriptTextToPayload } from '@/lib/studio-utils';
@@ -261,11 +263,23 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
     }
   };
 
+  // Narrative Presets for Carousel Format Selection
+  const CAROUSEL_FORMAT_BRIEFS: Record<string, string> = {
+    standard: 'Оформи карусель в емком экспертном стиле. Слайды 2-6 должны содержать 2-этажный текст (Строка 1: Крупный тезис, Строка 2: Раскрытие мысли).',
+    numbered_list: 'ОФОРМИ СЛАЙДЫ 2-6 В ВИДЕ СТРОГОГО НУМЕРОВАННОГО СПИСКА (Пункт 01, Пункт 02, Пункт 03, Пункт 04, Пункт 05). Каждый слайд 2-6 должен иметь крупный нумерованный заголовок на 1-й строчке (например: "01. ПЕРВАЯ ПРИЧИНА" или "01. СПОСОБ #1"), а на 2-й строчке подробное экспертное пояснение!',
+    storytelling: 'ОФОРМИ КАРУСЕЛЬ В СТИЛЕ ЭМОЦИОНАЛЬНОГО СТОРИТЕЛЛИНГА через личный опыт автора. Слайд 2: Интригующая завязка истории. Слайд 3: Неожиданный переломный момент. Слайд 4: Переживания и инсайт. Слайд 5: Практический вывод и урок. Слайд 6: Призыв написать кодовое слово в комментариях!',
+    provocation: 'ОФОРМИ КАРУСЕЛЬ В ПРОВОКАЦИОННОМ СТИЛЕ РАЗОБЛАЧЕНИЯ МИФОВ. Слайд 2: Громкое сокрушение популярного стереотипа. Слайд 3: Разоблачение и твердые факты. Слайд 4: Почему 90% экспертов ошибаются. Слайд 5: Новый подход. Слайд 6: Призыв написать кодовое слово!'
+  };
+
+  const [activeFormatStyle, setActiveFormatStyle] = useState<string>('standard');
+
   // Full Unified Generation Action
-  const generateFullGalleryAtOnce = async () => {
+  const generateFullGalleryAtOnce = async (formatStyle: 'standard' | 'numbered_list' | 'storytelling' | 'provocation' = 'standard') => {
     setIsRegeneratingAll(true);
+    setActiveFormatStyle(formatStyle);
     try {
       const activeHook = getReelsScriptHook(scriptText, manifest);
+      const userBrief = CAROUSEL_FORMAT_BRIEFS[formatStyle] || CAROUSEL_FORMAT_BRIEFS.standard;
 
       // 1. Generate text structure and Slide 1 prompt from script text & reels hook
       const resText = await fetch('/api/ai/ig-carousel', {
@@ -276,9 +290,12 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           projectId,
           ideaTitle: activeHook || projectTitle || (manifest as any)?.ideaTitle,
           locale,
-          toneMode: 'mentor',
+          toneMode: formatStyle === 'provocation' ? 'provocateur' : 'mentor',
+          userBrief
         })
       });
+
+
 
       if (!resText.ok) {
         const errorData = await resText.json().catch(() => ({}));
@@ -813,7 +830,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
           <div className="flex flex-wrap items-center gap-3">
             <button
-              onClick={generateFullGalleryAtOnce}
+              onClick={() => generateFullGalleryAtOnce(activeFormatStyle as any)}
               disabled={isAnyGenerationActive}
               className={cn(
                 "px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg border border-white/10 disabled:opacity-50",
@@ -848,7 +865,56 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           </div>
         </div>
 
+        {/* Carousel Narrative Format Selector Toolbar */}
+        <div className="p-6 rounded-[2.5rem] bg-white/[0.03] border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.37),inset_0_1px_1px_rgba(255,255,255,0.1)] space-y-4">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-white/5 pb-3">
+            <span className="text-[11px] font-black uppercase tracking-widest text-white/60 flex items-center gap-2">
+              <Sparkles size={14} className="text-purple-400" />
+              {isRu ? 'Быстрый выбор формата и подачи карусели:' : 'Quick Carousel Format Selection:'}
+            </span>
+          </div>
+
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            {[
+              { id: 'standard', nameRu: '✦ Стандарт', nameEn: 'Standard', icon: Sparkles, hint: 'Экспертный разбор' },
+              { id: 'numbered_list', nameRu: '🔢 Список (1-5)', nameEn: 'List (1-5)', icon: ListOrdered, hint: 'Нумерованные пункты' },
+              { id: 'storytelling', nameRu: '📖 Сторителлинг', nameEn: 'Storytelling', icon: BookOpen, hint: 'Личный опыт и история' },
+              { id: 'provocation', nameRu: '🔥 Провокация', nameEn: 'Provocation', icon: Flame, hint: 'Разбор мифов и хайп' }
+            ].map((fmt) => {
+              const IconComp = fmt.icon;
+              const isActive = activeFormatStyle === fmt.id;
+              return (
+                <button
+                  key={fmt.id}
+                  onClick={() => generateFullGalleryAtOnce(fmt.id as any)}
+                  disabled={isAnyGenerationActive}
+                  className={cn(
+                    "p-3.5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between h-20 group active:scale-98 disabled:opacity-50",
+                    isActive
+                      ? "border-purple-500 bg-white/10 ring-2 ring-purple-500/50 shadow-lg"
+                      : "border-white/10 bg-white/[0.03] hover:border-white/20 hover:bg-white/[0.06]"
+                  )}
+                >
+                  <div className="flex items-center justify-between z-10">
+                    <span className="text-[10px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                      <IconComp size={14} className={isActive ? "text-purple-300 animate-pulse" : "text-white/60"} />
+                      {isRu ? fmt.nameRu : fmt.nameEn}
+                    </span>
+                    {isActive && (
+                      <span className="w-2 h-2 rounded-full bg-purple-400 animate-ping" />
+                    )}
+                  </div>
+                  <span className="text-[8px] font-mono uppercase tracking-widest text-white/40 z-10 pt-1">
+                    {fmt.hint}
+                  </span>
+                </button>
+              );
+            })}
+          </div>
+        </div>
+
         {/* 3 Color Palette Selector */}
+
         <div className="p-6 rounded-[2.5rem] bg-white/[0.03] border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.37),inset_0_1px_1px_rgba(255,255,255,0.1)] space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
