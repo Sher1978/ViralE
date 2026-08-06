@@ -426,7 +426,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.textBaseline = 'top';
           ctx.fillText(`0${slideNum} / 06`, 100, 140);
 
-          // Single Thought Text (10-18 words max)
+          // Single Thought Text (Vertically centered by height)
           ctx.fillStyle = carouselTextColor || '#ffffff';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
@@ -449,9 +449,12 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           }
           lines.push(line.trim());
 
-          const startY = 320;
+          const lineHeight = 64;
+          const totalTextHeight = lines.length * lineHeight;
+          // Vertically centered between top badge (Y=200) and bottom watermark (Y=1200)
+          const startY = 700 - (totalTextHeight / 2);
           lines.forEach((lineText, idx) => {
-            ctx.fillText(lineText, 100, startY + (idx * 64));
+            ctx.fillText(lineText, 100, startY + (idx * lineHeight));
           });
 
           // Footer Watermark
@@ -464,9 +467,6 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.fillText(`Слайд ${slideNum}`, 980, 1240);
         }
 
-
-
-
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
           resolve(dataUrl);
@@ -477,27 +477,51 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
       const bgUrl = slideNum === 1 ? imageResults[`carousel-0`] : null;
       if (bgUrl) {
-        const img = safeImage ? new safeImage() : null;
-        if (img) {
-          img.crossOrigin = 'anonymous';
-          img.onload = () => drawContent(img);
-          img.onerror = () => drawContent(null);
-          img.src = bgUrl;
-        } else {
-          drawContent(null);
-        }
+        // Fetch external image as base64 dataUrl to prevent CORS canvas tainting
+        fetch(bgUrl)
+          .then(res => res.blob())
+          .then(blob => {
+            const reader = new FileReader();
+            reader.onloadend = () => {
+              const img = safeImage ? new safeImage() : null;
+              if (img) {
+                img.onload = () => drawContent(img);
+                img.onerror = () => drawContent(null);
+                img.src = reader.result as string;
+              } else {
+                drawContent(null);
+              }
+            };
+            reader.onerror = () => drawContent(null);
+            reader.readAsDataURL(blob);
+          })
+          .catch(() => {
+            // Fallback direct image load
+            const img = safeImage ? new safeImage() : null;
+            if (img) {
+              img.crossOrigin = 'anonymous';
+              img.onload = () => drawContent(img);
+              img.onerror = () => drawContent(null);
+              img.src = bgUrl;
+            } else {
+              drawContent(null);
+            }
+          });
       } else {
         drawContent(null);
       }
     });
   };
 
+  // State for mobile image preview modal
+  const [modalShareImages, setModalShareImages] = useState<{ url: string; num: number }[] | null>(null);
+
   const downloadSingleRenderedSlide = async (slideNum: number) => {
     try {
       const dataUrl = await exportSlideToCanvas(slideNum);
       const res = await fetch(dataUrl);
       const blob = await res.blob();
-      const fileName = `gallery_slide_${slideNum}_${Date.now()}.jpg`;
+      const fileName = `gallery_slide_${slideNum}.jpg`;
       const file = new File([blob], fileName, { type: 'image/jpeg' });
 
       const nav = globalThis.navigator as any;
@@ -506,7 +530,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           await nav.share({
             files: [file],
             title: `Слайд #${slideNum}`,
-            text: `Слайд #${slideNum} из ViralEngine`
+            text: `Слайд #${slideNum} карусели`
           });
           return;
         } catch (err: any) {
@@ -514,6 +538,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
         }
       }
 
+      // Fallback 1: Direct link download
       const link = safeDocument ? safeDocument.createElement('a') : null;
       if (link) {
         const objectUrl = URL.createObjectURL(blob);
@@ -524,6 +549,9 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
         safeDocument.body.removeChild(link);
         setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
       }
+
+      // Fallback 2: Display modal for long-press saving on mobile
+      setModalShareImages([{ url: dataUrl, num: slideNum }]);
     } catch (e) {
       console.error('[Slide Render Error]:', e);
       safeAlert(isRu ? 'Ошибка рендеринга слайда. Попробуйте еще раз.' : 'Error rendering slide.');
@@ -533,16 +561,56 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const downloadAllRenderedSlides = async () => {
     setIsExportingAll(true);
     try {
+      const allFiles: File[] = [];
+      const allModalImages: { url: string; num: number }[] = [];
+
       for (let i = 1; i <= 6; i++) {
-        await new Promise(r => setTimeout(r, 150));
-        await downloadSingleRenderedSlide(i);
+        const dataUrl = await exportSlideToCanvas(i);
+        const res = await fetch(dataUrl);
+        const blob = await res.blob();
+        const fileName = `gallery_slide_${i}.jpg`;
+        const file = new File([blob], fileName, { type: 'image/jpeg' });
+        allFiles.push(file);
+        allModalImages.push({ url: dataUrl, num: i });
       }
+
+      // 1. Try Native Web Share API with all 6 files at once (triggers iOS/Android native Share sheet)
+      const nav = globalThis.navigator as any;
+      if (nav?.share && nav?.canShare && nav.canShare({ files: allFiles })) {
+        try {
+          await nav.share({
+            files: allFiles,
+            title: 'Инстаграм Галерея (6 слайдов)',
+            text: '6 слайдов карусели для Instagram'
+          });
+          return;
+        } catch (err: any) {
+          if (err.name === 'AbortError') return;
+        }
+      }
+
+      // 2. Fallback: Download each link + show mobile save modal
+      for (let i = 0; i < allModalImages.length; i++) {
+        const item = allModalImages[i];
+        const link = safeDocument ? safeDocument.createElement('a') : null;
+        if (link) {
+          link.href = item.url;
+          link.download = `gallery_slide_${item.num}.jpg`;
+          safeDocument.body.appendChild(link);
+          link.click();
+          safeDocument.body.removeChild(link);
+        }
+        await new Promise(r => setTimeout(r, 200));
+      }
+
+      setModalShareImages(allModalImages);
     } catch (err) {
-      console.error(err);
+      console.error('[Batch Export Error]:', err);
     } finally {
       setIsExportingAll(false);
     }
   };
+
 
   const copyText = (text: string, id: string) => {
     if (!text) return;
@@ -923,8 +991,61 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           />
         </div>
 
+        {/* Fullscreen Mobile Save & Share Modal */}
+        <AnimatePresence>
+          {modalShareImages && (
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              className="fixed inset-0 z-50 bg-black/85 backdrop-blur-xl p-4 md:p-8 flex flex-col items-center justify-center overflow-y-auto"
+            >
+              <div className="max-w-2xl w-full bg-[#0d0d16] border border-white/10 rounded-[2.5rem] p-6 space-y-6 shadow-2xl relative my-auto">
+                <button
+                  onClick={() => setModalShareImages(null)}
+                  className="absolute top-6 right-6 p-2.5 rounded-full bg-white/5 border border-white/10 text-white/60 hover:text-white active:scale-95 transition-all"
+                >
+                  <X size={18} />
+                </button>
+
+                <div className="space-y-1 pr-12">
+                  <h3 className="text-lg font-black text-white uppercase italic tracking-wider flex items-center gap-2">
+                    <Download size={18} className="text-purple-400" />
+                    {isRu ? 'Сохранить слайды в Галерею' : 'Save Slides to Photos'}
+                  </h3>
+                  <p className="text-[10px] text-white/40 font-bold uppercase tracking-widest">
+                    {isRu ? 'Нажмите и удерживайте изображение, чтобы сохранить в фотопленку' : 'Long-press any image to save to your photo gallery'}
+                  </p>
+                </div>
+
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[55vh] overflow-y-auto custom-scrollbar p-1">
+                  {modalShareImages.map((img) => (
+                    <div key={img.num} className="space-y-2 text-center">
+                      <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-lg">
+                        <img 
+                          src={img.url} 
+                          alt={`Slide ${img.num}`} 
+                          className="w-full h-full object-cover select-all"
+                        />
+                      </div>
+                      <span className="text-[9px] font-mono text-white/50">Слайд #{img.num}</span>
+                    </div>
+                  ))}
+                </div>
+
+                <button
+                  onClick={() => setModalShareImages(null)}
+                  className="w-full py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-fuchsia-600 to-pink-600 text-white text-[10px] font-black uppercase tracking-widest shadow-lg active:scale-98 transition-all"
+                >
+                  {isRu ? 'Готово' : 'Done'}
+                </button>
+              </div>
+            </motion.div>
+          )}
+        </AnimatePresence>
 
       </div>
     </div>
   );
 };
+
