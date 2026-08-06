@@ -740,6 +740,9 @@ export default function ScriptLabPage() {
       setIsGenerating(true);
       if (typeof (globalThis as any).window !== 'undefined') {
         (globalThis as any).sessionStorage?.setItem('isGenerating', 'true');
+        if (data.projectId) {
+          (globalThis as any).sessionStorage?.setItem('currentProjectId', data.projectId);
+        }
       }
       
       router.replace(`/app/projects/new/script?projectId=${data.projectId}`);
@@ -776,12 +779,13 @@ export default function ScriptLabPage() {
   const handleSelectPreview = async (styleKey: string, preview: any) => {
     setIsLoading(true);
     setError(null);
+    const targetProjectId = projectIdParam || currentProject?.id || (typeof (globalThis as any).window !== 'undefined' ? (globalThis as any).sessionStorage?.getItem('currentProjectId') : null);
     try {
       const response = await fetch('/api/script/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projectId: projectIdParam,
+          projectId: targetProjectId,
           coreIdea: topicInput,
           mode: 'full_script',
           selectedStyle: styleKey,
@@ -793,6 +797,10 @@ export default function ScriptLabPage() {
 
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || 'Failed to generate script');
+
+      if (data.projectId && typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).sessionStorage?.setItem('currentProjectId', data.projectId);
+      }
 
       setScriptData(data.script);
       setSelectedStyle(styleKey);

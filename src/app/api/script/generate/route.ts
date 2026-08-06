@@ -31,8 +31,8 @@ export async function POST(req: Request) {
     const userId = user.id;
     const cleanTitle = (ideaTitle || coreIdea?.split('\n')[0] || '').replace(/^\d+[\.\)]\s*/, '').trim() || (locale === 'ru' ? 'Новое видео' : 'New Video');
 
-    // 0. Auto-create project if missing in initial or previews mode
-    if (!projectId && (mode === 'initial' || mode === 'previews')) {
+    // 0. Auto-create project if missing in any generation mode (initial, previews, full_script, etc.)
+    if (!projectId) {
       console.log(`[ScriptGen] Auto-creating project for user: ${userId}`);
       const { data: newProject, error: createError } = await authorizedSupabase
         .from('projects')

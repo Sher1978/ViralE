@@ -184,6 +184,8 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const [carouselBg2, setCarouselBg2] = useState<string>(PALETTE_PRESETS[0].bg2);
   const [carouselTextColor, setCarouselTextColor] = useState<string>(PALETTE_PRESETS[0].textColor);
   const [carouselAccentColor, setCarouselAccentColor] = useState<string>(PALETTE_PRESETS[0].accentColor);
+  const [usePhotoBackdrop, setUsePhotoBackdrop] = useState<boolean>(true);
+  const [backdropDarkness, setBackdropDarkness] = useState<number>(75);
 
   // Gallery Data States
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
@@ -486,20 +488,63 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
 
         } else {
-          // --- SLIDES 2-6: BODY SLIDES (EXPANDED GLASSMORPHISM CARD + GRADIENT BACKDROP) ---
-          // 1. Vibrant Gradient Backdrop
-          const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
-          bgGrad.addColorStop(0, carouselBg1);
-          bgGrad.addColorStop(1, carouselBg2);
-          ctx.fillStyle = bgGrad;
-          ctx.fillRect(0, 0, 1080, 1350);
+          // --- SLIDES 2-6: BODY SLIDES (EXPANDED GLASSMORPHISM CARD + GRADIENT/PHOTO BACKDROP) ---
+          if (img && usePhotoBackdrop) {
+            // 1a. Photo Backdrop from Slide 1 with Blur & Controlled Darkening
+            const imgRatio = img.width / img.height;
+            const canvasRatio = 1080 / 1350;
+            let sx = 0, sy = 0, sw = img.width, sh = img.height;
+            if (imgRatio > canvasRatio) {
+              sw = img.height * canvasRatio;
+              sx = (img.width - sw) / 2;
+            } else {
+              sh = img.width / canvasRatio;
+              sy = (img.height - sh) / 2;
+            }
 
-          // Ambient Radial Light Highlight
-          const orbGrad = ctx.createRadialGradient(880, 200, 40, 880, 200, 650);
-          orbGrad.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
-          orbGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          ctx.fillStyle = orbGrad;
-          ctx.fillRect(0, 0, 1080, 1350);
+            ctx.save();
+            if ('filter' in ctx) {
+              (ctx as any).filter = 'blur(24px) brightness(0.65)';
+              ctx.drawImage(img, sx, sy, sw, sh, -40, -40, 1160, 1430);
+              (ctx as any).filter = 'none';
+            } else {
+              ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1080, 1350);
+            }
+            ctx.restore();
+
+            // Controlled Dark Scrim Overlay for Guaranteed Contrast (>7:1 ratio)
+            const alpha = backdropDarkness / 100;
+            const scrimGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
+            scrimGrad.addColorStop(0, `rgba(5, 5, 12, ${alpha * 0.95})`);
+            scrimGrad.addColorStop(1, `rgba(15, 10, 25, ${alpha})`);
+            ctx.fillStyle = scrimGrad;
+            ctx.fillRect(0, 0, 1080, 1350);
+
+            // Subtle color tint from chosen palette
+            const colorBlend = ctx.createLinearGradient(0, 0, 1080, 1350);
+            colorBlend.addColorStop(0, carouselBg1);
+            colorBlend.addColorStop(1, carouselBg2);
+            ctx.globalCompositeOperation = 'screen';
+            ctx.globalAlpha = 0.22;
+            ctx.fillStyle = colorBlend;
+            ctx.fillRect(0, 0, 1080, 1350);
+            ctx.globalCompositeOperation = 'source-over';
+            ctx.globalAlpha = 1.0;
+          } else {
+            // 1b. Vibrant Gradient Backdrop Fallback
+            const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
+            bgGrad.addColorStop(0, carouselBg1);
+            bgGrad.addColorStop(1, carouselBg2);
+            ctx.fillStyle = bgGrad;
+            ctx.fillRect(0, 0, 1080, 1350);
+
+            // Ambient Radial Light Highlight
+            const orbGrad = ctx.createRadialGradient(880, 200, 40, 880, 200, 650);
+            orbGrad.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+            orbGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+            ctx.fillStyle = orbGrad;
+            ctx.fillRect(0, 0, 1080, 1350);
+          }
 
           // 2. Expanded Glassmorphism Card (Larger area: 1000px wide x 1250px tall)
           const cardX = 40;
@@ -630,7 +675,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
         }
       };
 
-      const bgUrl = slideNum === 1 ? imageResults[`carousel-0`] : null;
+      const bgUrl = (slideNum === 1 || usePhotoBackdrop) ? imageResults[`carousel-0`] : null;
       if (bgUrl) {
         if (bgUrl.startsWith('data:')) {
           // Direct base64 dataUrl - draw directly onto canvas without calling fetch() in Safari
@@ -966,43 +1011,82 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             })}
           </div>
 
-          {/* Color Fine-tuner */}
-          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
-            <div className="space-y-1">
-              <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Градиент 1</label>
-              <input
-                type="color"
-                value={carouselBg1}
-                onChange={(e) => setCarouselBg1(e.target.value)}
-                className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
-              />
+          {/* Color & Backdrop Fine-tuner */}
+          <div className="space-y-3 pt-2 border-t border-white/5">
+            <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Градиент 1</label>
+                <input
+                  type="color"
+                  value={carouselBg1}
+                  onChange={(e) => setCarouselBg1(e.target.value)}
+                  className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Градиент 2</label>
+                <input
+                  type="color"
+                  value={carouselBg2}
+                  onChange={(e) => setCarouselBg2(e.target.value)}
+                  className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Цвет текста</label>
+                <input
+                  type="color"
+                  value={carouselTextColor}
+                  onChange={(e) => setCarouselTextColor(e.target.value)}
+                  className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
+                />
+              </div>
+              <div className="space-y-1">
+                <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Акцент (Желтый)</label>
+                <input
+                  type="color"
+                  value={carouselAccentColor}
+                  onChange={(e) => setCarouselAccentColor(e.target.value)}
+                  className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
+                />
+              </div>
             </div>
-            <div className="space-y-1">
-              <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Градиент 2</label>
-              <input
-                type="color"
-                value={carouselBg2}
-                onChange={(e) => setCarouselBg2(e.target.value)}
-                className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Цвет текста</label>
-              <input
-                type="color"
-                value={carouselTextColor}
-                onChange={(e) => setCarouselTextColor(e.target.value)}
-                className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
-              />
-            </div>
-            <div className="space-y-1">
-              <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Акцент (Желтый)</label>
-              <input
-                type="color"
-                value={carouselAccentColor}
-                onChange={(e) => setCarouselAccentColor(e.target.value)}
-                className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
-              />
+
+            {/* Photo Backdrop & Contrast Controls */}
+            <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 pt-3 border-t border-white/5 bg-white/[0.02] p-3 rounded-2xl border border-white/10">
+              <label className="flex items-center gap-3 cursor-pointer select-none">
+                <input
+                  type="checkbox"
+                  checked={usePhotoBackdrop}
+                  onChange={(e) => setUsePhotoBackdrop(e.target.checked)}
+                  className="w-4 h-4 rounded border-white/20 bg-white/5 text-purple-500 focus:ring-purple-500/40 accent-purple-500 cursor-pointer"
+                />
+                <div className="space-y-0.5">
+                  <span className="text-[10px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
+                    🖼️ {isRu ? 'Фото 1-го слайда как размытый фон (Glassmorphism)' : 'Slide 1 Photo as Blurred Backdrop'}
+                  </span>
+                  <span className="text-[8px] font-mono text-white/40 block">
+                    {isRu ? 'Использует арт с обложки в качестве объёмного фона под стеклом' : 'Uses cover photo as ambient backdrop under glass card'}
+                  </span>
+                </div>
+              </label>
+
+              {usePhotoBackdrop && (
+                <div className="flex items-center gap-3 shrink-0">
+                  <span className="text-[9px] font-black uppercase tracking-widest text-purple-300">
+                    {isRu ? `Затемнение (Контраст): ${backdropDarkness}%` : `Darkness: ${backdropDarkness}%`}
+                  </span>
+                  <input
+                    type="range"
+                    min="40"
+                    max="92"
+                    step="2"
+                    value={backdropDarkness}
+                    onChange={(e) => setBackdropDarkness(Number(e.target.value))}
+                    className="w-32 accent-purple-500 cursor-pointer"
+                  />
+                </div>
+              )}
             </div>
           </div>
         </div>
@@ -1078,9 +1162,33 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
                         </>
                       ) : (
-                        /* SLIDES 2-6 (BODY SLIDES - EXPANDED GLASSMORPHISM CARD DESIGN) */
-                        <div className="w-full h-full p-1">
-                          <div className="w-full h-full rounded-[1.4rem] bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.4)] p-3.5 flex flex-col justify-between relative overflow-hidden">
+                        /* SLIDES 2-6 (BODY SLIDES - EXPANDED GLASSMORPHISM CARD DESIGN WITH PHOTO BACKDROP) */
+                        <div className="w-full h-full p-1 relative overflow-hidden rounded-[1.8rem]">
+                          {/* Photo Backdrop from Slide 1 with Blur & Controlled Scrim */}
+                          {imageResults['carousel-0'] && usePhotoBackdrop ? (
+                            <>
+                              <img
+                                src={imageResults['carousel-0']}
+                                alt={`Slide ${num} Backdrop`}
+                                crossOrigin="anonymous"
+                                className="absolute inset-0 w-full h-full object-cover scale-125 blur-md brightness-75 opacity-70 pointer-events-none"
+                              />
+                              <div
+                                className="absolute inset-0 transition-opacity pointer-events-none"
+                                style={{
+                                  backgroundColor: `rgba(5, 5, 12, ${(backdropDarkness / 100) * 0.88})`,
+                                  backgroundImage: `linear-gradient(135deg, ${carouselBg1}44, ${carouselBg2}66)`
+                                }}
+                              />
+                            </>
+                          ) : (
+                            <div
+                              className="absolute inset-0 pointer-events-none"
+                              style={{ background: `linear-gradient(135deg, ${carouselBg1}, ${carouselBg2})` }}
+                            />
+                          )}
+
+                          <div className="relative z-10 w-full h-full rounded-[1.4rem] bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.4)] p-3.5 flex flex-col justify-between overflow-hidden">
                             <div className="flex justify-between items-center z-10">
                               <span
                                 className="text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md shadow-sm"
