@@ -117,47 +117,52 @@ export function parseTwoTierSlideText(rawText: string): { title: string; body: s
   if (!rawText) return { title: '', body: '' };
 
   const clean = rawText.trim();
+  let rawTitle = '';
+  let rawBody = '';
 
   // 1. Explicit newline break (\n or \n\n)
   if (clean.includes('\n')) {
     const parts = clean.split('\n').map(p => p.trim()).filter(Boolean);
-    return {
-      title: parts[0],
-      body: parts.slice(1).join(' ')
-    };
+    rawTitle = parts[0];
+    rawBody = parts.slice(1).join(' ');
   }
-
   // 2. Colon separator (e.g. "ТЕЗИС: Подробное описание...")
-  if (clean.includes(':')) {
+  else if (clean.includes(':')) {
     const idx = clean.indexOf(':');
-    const head = clean.substring(0, idx + 1).trim();
+    const head = clean.substring(0, idx).trim();
     const rest = clean.substring(idx + 1).trim();
     if (rest.length > 5) {
-      return { title: head, body: rest };
+      rawTitle = head;
+      rawBody = rest;
+    } else {
+      rawTitle = clean;
+      rawBody = '';
+    }
+  }
+  // 3. Sentence split (. ! ?)
+  else {
+    const sentenceMatch = clean.match(/^([^.!?]+[.!?])\s*([\s\S]+)$/);
+    if (sentenceMatch && sentenceMatch[2]?.trim().length > 5) {
+      rawTitle = sentenceMatch[1].trim();
+      rawBody = sentenceMatch[2].trim();
+    } else {
+      const words = clean.split(/\s+/);
+      if (words.length > 8) {
+        rawTitle = words.slice(0, 4).join(' ');
+        rawBody = words.slice(4).join(' ');
+      } else {
+        rawTitle = clean;
+        rawBody = '';
+      }
     }
   }
 
-  // 3. Sentence split (. ! ?)
-  const sentenceMatch = clean.match(/^([^.!?]+[.!?])\s*([\s\S]+)$/);
-  if (sentenceMatch && sentenceMatch[2]?.trim().length > 5) {
-    return {
-      title: sentenceMatch[1].trim(),
-      body: sentenceMatch[2].trim()
-    };
-  }
-
-
-  // 4. Fallback for longer phrases: first 4 words as title, rest as body
-  const words = clean.split(/\s+/);
-  if (words.length > 8) {
-    const titleWords = words.slice(0, 4).join(' ');
-    const bodyWords = words.slice(4).join(' ');
-    return { title: titleWords, body: bodyWords };
-  }
+  // Strip trailing periods, colons, or punctuation from headline (e.g. "05. ВЕРНИ УВЕРЕННОСТЬ." -> "05. ВЕРНИ УВЕРЕННОСТЬ")
+  const title = rawTitle.replace(/[.:!?]+\s*$/, '').trim();
 
   return {
-    title: clean,
-    body: ''
+    title,
+    body: rawBody
   };
 }
 
@@ -185,7 +190,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const [carouselTextColor, setCarouselTextColor] = useState<string>(PALETTE_PRESETS[0].textColor);
   const [carouselAccentColor, setCarouselAccentColor] = useState<string>(PALETTE_PRESETS[0].accentColor);
   const [usePhotoBackdrop, setUsePhotoBackdrop] = useState<boolean>(true);
-  const [backdropDarkness, setBackdropDarkness] = useState<number>(60);
+  const [backdropDarkness, setBackdropDarkness] = useState<number>(75);
 
   // Gallery Data States
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
@@ -499,8 +504,8 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
               (ctx as any).filter = 'none';
             }
 
-            // Glass tint scrim inside card for text contrast
-            const alpha = (backdropDarkness / 100) * 0.65;
+            // Glass tint scrim inside card for text contrast (reduced transparency by 20%)
+            const alpha = (backdropDarkness / 100) * 0.82;
             const cardScrim = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
             cardScrim.addColorStop(0, `rgba(9, 8, 20, ${alpha * 0.95})`);
             cardScrim.addColorStop(1, `rgba(18, 12, 32, ${alpha * 1.1})`);
@@ -1208,7 +1213,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                           <div
                             className="relative z-10 w-full h-full rounded-[1.4rem] border border-white/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.5)] p-3.5 flex flex-col justify-between overflow-hidden"
                             style={{
-                              backgroundColor: usePhotoBackdrop ? `rgba(9, 8, 20, ${(backdropDarkness / 100) * 0.65})` : 'rgba(255, 255, 255, 0.08)',
+                              backgroundColor: usePhotoBackdrop ? `rgba(9, 8, 20, ${(backdropDarkness / 100) * 0.82})` : 'rgba(255, 255, 255, 0.08)',
                               backdropFilter: 'blur(8px)',
                               WebkitBackdropFilter: 'blur(8px)'
                             }}
