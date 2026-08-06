@@ -319,17 +319,17 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.fillStyle = bottomGrad;
           ctx.fillRect(0, 500, 1080, 850);
 
-          // Draw Title Text with Yellow Highlighted Keywords
+          // 3. Draw Title Text with Yellow Highlighted Keywords
           ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
-          ctx.shadowBlur = 20;
+          ctx.shadowBlur = 24;
           ctx.shadowOffsetX = 0;
           ctx.shadowOffsetY = 4;
 
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
-          ctx.font = '900 52px sans-serif';
+          ctx.font = '800 48px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif';
 
-          const maxTextWidth = 940;
+          const maxTextWidth = 920;
           const words = textToDraw.toUpperCase().split(' ');
           
           let line = '';
@@ -356,10 +356,11 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             lines.push({ text: line.trim(), words: currentLineWords });
           }
 
-          const startY = 1350 - 320 - ((lines.length - 1) * 72) / 2;
+          const lineHeight = 66;
+          const startY = 1350 - 330 - ((lines.length - 1) * lineHeight) / 2;
 
           lines.forEach((l, idx) => {
-            const y = startY + (idx * 72);
+            const y = startY + (idx * lineHeight);
             let lineTotalWidth = 0;
             const wordWidths = l.words.map(w => {
               const width = ctx.measureText(w.word + ' ').width;
@@ -380,13 +381,13 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
 
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
-          ctx.font = 'bold 20px sans-serif';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
+          ctx.font = '600 20px Inter, system-ui, -apple-system, sans-serif';
           ctx.textAlign = 'left';
           ctx.fillText('ViralEngine | экспертный контент', 70, 1260);
 
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
-          ctx.font = '16px sans-serif';
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.font = '400 16px Inter, system-ui, -apple-system, sans-serif';
           ctx.fillText('Качественно • По делу • Смысл', 70, 1288);
 
           ctx.fillStyle = '#FFE600';
@@ -395,34 +396,85 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.fill();
 
           ctx.fillStyle = '#000000';
-          ctx.font = '900 16px sans-serif';
+          ctx.font = '900 16px Inter, system-ui, sans-serif';
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('V', 1080 / 2, 1271);
 
         } else {
-          // --- SLIDES 2-6: BODY SLIDES (2-Color Gradient + Clean Typography) ---
+          // --- SLIDES 2-6: BODY SLIDES (GLASSMORPHISM CARD + GRADIENT BACKDROP) ---
+          // 1. Vibrant Gradient Backdrop
           const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
           bgGrad.addColorStop(0, carouselBg1);
           bgGrad.addColorStop(1, carouselBg2);
           ctx.fillStyle = bgGrad;
           ctx.fillRect(0, 0, 1080, 1350);
 
-          ctx.shadowColor = 'transparent';
-          ctx.shadowBlur = 0;
+          // Ambient Radial Light Highlight
+          const orbGrad = ctx.createRadialGradient(850, 250, 50, 850, 250, 600);
+          orbGrad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
+          orbGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = orbGrad;
+          ctx.fillRect(0, 0, 1080, 1350);
+
+          // 2. Glassmorphism Card (Centered Panel)
+          const cardX = 65;
+          const cardY = 85;
+          const cardW = 950;
+          const cardH = 1180;
+          const cardR = 48;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(cardX, cardY, cardW, cardH, cardR);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowBlur = 40;
+          ctx.shadowOffsetY = 16;
+          ctx.fill();
+
+          // Glossy Border Highlight
+          const glassBorder = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+          glassBorder.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
+          glassBorder.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
+          glassBorder.addColorStop(1, 'rgba(255, 255, 255, 0.25)');
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = glassBorder;
+          ctx.stroke();
+          ctx.restore();
+
+          // 3. Glassmorphism Pill Badge for 02 / 06
+          const badgeX = cardX + 50;
+          const badgeY = cardY + 50;
+          const badgeW = 145;
+          const badgeH = 52;
+          const badgeR = 26;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+          ctx.fill();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+          ctx.stroke();
 
           ctx.fillStyle = carouselAccentColor || '#FFE600';
-          ctx.font = '900 26px sans-serif';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-          ctx.fillText(`0${slideNum} / 06`, 100, 140);
+          ctx.font = '700 22px Inter, "Space Grotesk", system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`0${slideNum} / 06`, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
+          ctx.restore();
 
+          // 4. Slide Thought Text inside Glass Card
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+          ctx.shadowBlur = 12;
           ctx.fillStyle = carouselTextColor || '#ffffff';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
-          ctx.font = 'bold 46px sans-serif';
+          ctx.font = '600 42px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif';
 
-          const maxTextWidth = 880;
+          const maxTextWidth = 840;
           const words = textToDraw.split(' ');
           let line = '';
           const lines: string[] = [];
@@ -439,19 +491,24 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           }
           lines.push(line.trim());
 
-          const startY = 320;
+          const startY = cardY + 220;
           lines.forEach((lineText, idx) => {
-            ctx.fillText(lineText, 100, startY + (idx * 68));
+            ctx.fillText(lineText, cardX + 55, startY + (idx * 66));
           });
 
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
-          ctx.font = 'bold 22px sans-serif';
+          // 5. Glass Footer Watermark
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+          ctx.font = '500 20px Inter, system-ui, sans-serif';
           ctx.textAlign = 'left';
-          ctx.fillText('@viral_engine', 100, 1240);
+          ctx.fillText('@viral_engine', cardX + 55, cardY + cardH - 60);
 
           ctx.textAlign = 'right';
-          ctx.fillText(`Слайд ${slideNum}`, 980, 1240);
+          ctx.fillText(`Слайд ${slideNum}`, cardX + cardW - 55, cardY + cardH - 60);
         }
+
+
 
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
@@ -553,7 +610,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
       <div className="max-w-6xl mx-auto w-full space-y-8 animate-in fade-in duration-300">
         
         {/* Header Navigation */}
-        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5 backdrop-blur-md">
+        <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-[2.5rem] bg-white/[0.03] border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.37),inset_0_1px_1px_rgba(255,255,255,0.1)]">
           <div className="space-y-1.5">
             <button
               onClick={onBack}
@@ -608,7 +665,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
         </div>
 
         {/* 3 Color Palette Selector */}
-        <div className="p-6 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-4">
+        <div className="p-6 rounded-[2.5rem] bg-white/[0.03] border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.37),inset_0_1px_1px_rgba(255,255,255,0.1)] space-y-4">
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <div>
               <h3 className="text-xs font-black uppercase tracking-widest text-purple-400">
@@ -630,8 +687,8 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                   className={cn(
                     "p-4 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between h-24 group",
                     isSelected 
-                      ? "border-purple-500 bg-white/[0.05] ring-2 ring-purple-500/40 shadow-lg shadow-purple-500/10" 
-                      : "border-white/10 bg-white/[0.01] hover:border-white/20 hover:bg-white/[0.03]"
+                      ? "border-purple-500 bg-white/[0.08] backdrop-blur-xl ring-2 ring-purple-500/40 shadow-lg shadow-purple-500/10" 
+                      : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]"
                   )}
                 >
                   <div 
@@ -734,7 +791,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                   >
                     {/* Visual Card Canvas */}
                     <div 
-                      className="relative w-full aspect-[4/5] rounded-[1.8rem] overflow-hidden border border-white/10 flex flex-col justify-between p-6 group/canvas"
+                      className="relative w-full aspect-[4/5] rounded-[1.8rem] overflow-hidden border border-white/10 flex flex-col justify-between p-6 group/canvas shadow-2xl"
                       style={num === 1 ? {} : { background: `linear-gradient(135deg, ${carouselBg1}, ${carouselBg2})` }}
                     >
                       {/* SLIDE 1 (COVER PHOTO & EXACT SCREENSHOT DESIGN) */}
@@ -756,7 +813,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
                           {/* Main Title / Headline Text Overlaid on dark backdrop */}
                           <div className="relative z-10 mt-auto pb-10 space-y-2 text-center">
-                            <h3 className="text-white font-black text-sm md:text-base uppercase tracking-tight leading-snug drop-shadow-[0_2px_12px_rgba(0,0,0,0.9)]">
+                            <h3 className="text-white font-extrabold text-xs md:text-sm uppercase tracking-wide leading-relaxed drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] font-sans">
                               {renderHighlightText(textContent)}
                             </h3>
                           </div>
@@ -764,10 +821,10 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                           {/* Bottom Branding (Left: Watermark, Center: Fingerprint Logo) */}
                           <div className="absolute bottom-4 inset-x-5 flex items-center justify-between z-10">
                             <div className="text-left space-y-0.5">
-                              <p className="text-[7px] font-extrabold text-white/80 uppercase tracking-widest line-clamp-1">
+                              <p className="text-[7px] font-bold text-white/80 uppercase tracking-wider line-clamp-1">
                                 ViralEngine | экспертный контент
                               </p>
-                              <p className="text-[6px] font-bold text-white/40 uppercase tracking-widest">
+                              <p className="text-[6px] font-medium text-white/40 uppercase tracking-widest">
                                 Экспертный Контент
                               </p>
                             </div>
@@ -778,26 +835,30 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                           </div>
                         </>
                       ) : (
-                        /* SLIDES 2-6 (BODY SLIDES - CONCISE 1 THOUGHT) */
-                        <>
+                        /* SLIDES 2-6 (BODY SLIDES - GLASSMORPHISM CARD DESIGN) */
+                        <div className="w-full h-full rounded-[1.3rem] bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.4)] p-4 flex flex-col justify-between relative overflow-hidden">
                           <div className="flex justify-between items-center z-10">
-                            <span className="text-[8px] font-black uppercase tracking-widest px-2.5 py-1 rounded-full border border-white/10 bg-black/30 backdrop-blur-md" style={{ color: carouselAccentColor }}>
+                            <span 
+                              className="text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md shadow-sm" 
+                              style={{ color: carouselAccentColor }}
+                            >
                               0{num} / 06
                             </span>
                           </div>
 
                           <div className="my-auto text-left z-10 space-y-2">
-                            <p className="font-bold text-xs md:text-sm leading-relaxed" style={{ color: carouselTextColor }}>
+                            <p className="font-semibold text-xs md:text-sm leading-relaxed tracking-normal drop-shadow-md" style={{ color: carouselTextColor }}>
                               {textContent}
                             </p>
                           </div>
 
-                          <div className="flex justify-between items-center z-10 text-[7px] font-bold opacity-40 uppercase tracking-widest" style={{ color: carouselTextColor }}>
+                          <div className="flex justify-between items-center z-10 text-[7px] font-medium opacity-50 uppercase tracking-widest pt-2 border-t border-white/10" style={{ color: carouselTextColor }}>
                             <span>@viral_engine</span>
                             <span>Слайд {num}</span>
                           </div>
-                        </>
+                        </div>
                       )}
+
 
                       {/* Loading State Overlay */}
                       <AnimatePresence>
@@ -822,7 +883,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
         </div>
 
         {/* Active Slide Text & Photo Prompt Editor */}
-        <div className="p-6 md:p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-6">
+        <div className="p-6 md:p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.37),inset_0_1px_1px_rgba(255,255,255,0.1)] space-y-6">
           <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b border-white/5 pb-4">
             <div className="flex items-center gap-3">
               <span className="px-3 py-1 rounded-full bg-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest border border-purple-500/30">
@@ -888,7 +949,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
         </div>
 
         {/* Post Caption Card */}
-        <div className="p-6 md:p-8 rounded-[2.5rem] bg-white/[0.02] border border-white/5 space-y-4">
+        <div className="p-6 md:p-8 rounded-[2.5rem] bg-white/[0.03] border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.37),inset_0_1px_1px_rgba(255,255,255,0.1)] space-y-4">
           <div className="flex items-center justify-between border-b border-white/5 pb-4">
             <h3 className="text-base font-black uppercase tracking-wider text-white flex items-center gap-2">
               <Copy size={16} className="text-pink-400" />
@@ -911,6 +972,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white/90 leading-relaxed focus:border-purple-500/50 focus:outline-none transition-all resize-none custom-scrollbar"
           />
         </div>
+
 
       </div>
     </div>
