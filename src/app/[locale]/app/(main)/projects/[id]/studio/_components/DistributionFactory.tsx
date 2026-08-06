@@ -1014,7 +1014,6 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     { id: 'threads', label: 'Threads & FB', icon: Share2 },
     { id: 'linkedin', label: 'LinkedIn', icon: Monitor },
     { id: 'article', label: 'Longread Article', icon: Layers },
-    { id: 'carousel', label: 'Instagram Carousel', icon: Camera },
     { id: 'banner', label: 'YouTube Thumbnail', icon: ImageIcon },
   ];
 

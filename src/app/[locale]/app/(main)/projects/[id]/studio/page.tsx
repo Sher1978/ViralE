@@ -49,6 +49,7 @@ const AvatarHub = dynamic(() => import('@/components/production/AvatarHub'), { s
 const FusionPreview = dynamic(() => import('./_components/FusionPreview').then(m => m.FusionPreview), { ssr: false, loading: Spinner });
 const HeyGenAvatarFlow = dynamic(() => import('@/components/studio/HeyGenAvatarFlow'), { ssr: false, loading: Spinner });
 const ScriptEditorView = dynamic(() => import('./_components/ScriptEditorView').then(m => m.ScriptEditorView), { ssr: false, loading: Spinner });
+const InstaGalleryView = dynamic(() => import('./_components/InstaGalleryView').then(m => m.InstaGalleryView), { ssr: false, loading: Spinner });
 
 import { BottomNav } from '@/components/layout/BottomNav';
 
@@ -68,7 +69,7 @@ export default function StudioPage() {
   const [manifest, setManifest] = useState<ProductionManifest | null>(null);
   const [selectedSegmentId, setSelectedSegmentId] = useState<string | null>(null);
   const [activeIndex, setActiveIndex] = useState(0);
-  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch' | 'script_editor' | 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion' | 'avatar_hub' | 'fusion_preview' | 'heygen_avatar'>(initialTab);
+  const [activeTab, setActiveTab] = useState<'strategy' | 'teleprompter' | 'branch' | 'script_editor' | 'assembly' | 'knowledge' | 'assets' | 'concept' | 'post_record_branch' | 'timeline_lab' | 'fusion' | 'avatar_hub' | 'fusion_preview' | 'heygen_avatar' | 'insta_gallery'>(initialTab);
   
   const handleTabChange = useCallback((tab: any) => {
     setActiveTab(tab);
@@ -799,6 +800,10 @@ export default function StudioPage() {
                       setShowFaceless(false);
                       setIsVoiceOnly(false);
                       handleTabChange('heygen_avatar');
+                    } else if (type === 'insta-gallery') {
+                      setShowFaceless(false);
+                      setIsVoiceOnly(false);
+                      handleTabChange('insta_gallery');
                     }
                   }}
                   onBack={() => handleTabChange('concept')}
@@ -821,6 +826,29 @@ export default function StudioPage() {
                     // Go to video editor
                     handleTabChange('assembly');
                   }}
+                />
+              </div>
+            )}
+
+            {/* Insta Gallery Flow */}
+            {visitedTabs['insta_gallery'] && (
+              <div className={activeTab === 'insta_gallery' ? 'h-full w-full' : 'hidden'}>
+                <InstaGalleryView
+                  manifest={manifest}
+                  scriptText={
+                    customScript ||
+                    (manifest as any)?.customScript ||
+                    manifest?.segments?.map((s: any) => s.scriptText || s.text || '').filter(Boolean).join('\n\n') ||
+                    ''
+                  }
+                  projectId={projectId}
+                  locale={locale}
+                  projectTitle={project?.title}
+                  onUpdateManifest={(newManifest) => {
+                    setManifest(newManifest);
+                    projectService.updateLatestVersionManifest(projectId, newManifest);
+                  }}
+                  onBack={() => handleTabChange('branch')}
                 />
               </div>
             )}
