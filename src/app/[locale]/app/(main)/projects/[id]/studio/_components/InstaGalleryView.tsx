@@ -7,6 +7,7 @@ import {
   ChevronRight, ChevronLeft, RefreshCw, Wand2, ArrowLeft, X, Fingerprint
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import { parseScriptTextToPayload } from '@/lib/studio-utils';
 
 interface InstaGalleryViewProps {
   manifest: any;
@@ -36,7 +37,7 @@ const PALETTE_PRESETS: PalettePreset[] = [
     bg1: '#090814',
     bg2: '#1d0c36',
     textColor: '#ffffff',
-    accentColor: '#ffe600', // Vibrant Yellow as requested
+    accentColor: '#ffe600', // Vibrant Yellow
   },
   {
     id: 'emerald_biohack',
@@ -69,6 +70,23 @@ const safeAlert = (msg: string) => {
 const safeDocument = typeof globalThis !== 'undefined' ? (globalThis as any).document : null;
 const safeImage = typeof globalThis !== 'undefined' ? (globalThis as any).Image : null;
 
+// Helper to extract the actual Reels Script Hook instead of raw draft idea title
+const getReelsScriptHook = (scriptText: string, manifest: any): string => {
+  if (manifest?.customScript) {
+    const parsed = parseScriptTextToPayload(manifest.customScript);
+    if (parsed.hook) return parsed.hook;
+  }
+  if (scriptText) {
+    const parsed = parseScriptTextToPayload(scriptText);
+    if (parsed.hook) return parsed.hook;
+  }
+  if (manifest?.segments && manifest.segments.length > 0) {
+    const introSeg = manifest.segments.find((s: any) => s.type === 'intro_avatar' || s.type === 'hook') || manifest.segments[0];
+    if (introSeg?.scriptText) return introSeg.scriptText;
+  }
+  return '';
+};
+
 export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   manifest,
   scriptText,
@@ -99,6 +117,8 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const [customPostDescription, setCustomPostDescription] = useState<string>('');
   const [isExportingAll, setIsExportingAll] = useState<boolean>(false);
   const [isRegeneratingAll, setIsRegeneratingAll] = useState<boolean>(false);
+
+  const reelsHook = getReelsScriptHook(scriptText, manifest);
 
   const isAnyImageGenerating = Object.values(isGeneratingImages).some(Boolean);
   const isAnyGenerationActive = isGenerating || isRegeneratingAll || isAnyImageGenerating;
@@ -134,22 +154,26 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
     }
   }, [assets]);
 
-  // Generate Single Image via AI endpoint
+  // Generate Single Image via AI endpoint (/api/ai/image-gen)
   const generateSingleImage = async (prompt: string, aspectRatio: '1:1' | '9:16' | '16:9' | '4:5' = '4:5', key: string) => {
     setIsGeneratingImages(prev => ({ ...prev, [key]: true }));
     try {
-      const res = await fetch('/api/ai/image', {
+      const res = await fetch('/api/ai/image-gen', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           prompt,
-          aspectRatio,
+          aspect_ratio: aspectRatio,
           projectId,
-          stylePreset: 'digital_art'
+          provider: 'flux'
         })
       });
 
-      if (!res.ok) throw new Error('Image generation request failed');
+      if (!res.ok) {
+        const errorJson = await res.json().catch(() => ({}));
+        throw new Error(errorJson.error || `HTTP error ${res.status}`);
+      }
+
       const data = await res.json();
       if (data.url) {
         setImageResults(prev => ({ ...prev, [key]: data.url }));
@@ -168,14 +192,16 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const generateFullGalleryAtOnce = async () => {
     setIsRegeneratingAll(true);
     try {
-      // 1. Generate text structure and Slide 1 prompt from script text
+      const activeHook = getReelsScriptHook(scriptText, manifest);
+
+      // 1. Generate text structure and Slide 1 prompt from script text & reels hook
       const resText = await fetch('/api/ai/ig-carousel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ 
           scriptText, 
           projectId, 
-          ideaTitle: projectTitle || (manifest as any)?.ideaTitle || (manifest as any)?.title,
+          ideaTitle: activeHook || projectTitle || (manifest as any)?.ideaTitle,
           locale, 
           toneMode: 'mentor',
         })
@@ -203,7 +229,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
       // 2. Automatically generate Slide 1 Cover Photo in context
       const coverSlide = textData?.slides?.find((s: any) => s.slide_number === 1);
-      const coverPrompt = coverSlide?.image_prompt || `${projectTitle || 'Professional topic'}, cinematic 8k photography, ambient lighting --no text`;
+      const coverPrompt = coverSlide?.image_prompt || `${activeHook || 'Professional topic'}, cinematic 8k photography, ambient lighting --no text`;
 
       if (coverPrompt) {
         await generateSingleImage(coverPrompt, '4:5', 'carousel-0');
@@ -226,7 +252,6 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
     const words = text.split(/(\s+)/);
     return words.map((word, idx) => {
       const clean = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()""''«»]/g, "");
-      // Highlight uppercase words, words in quotes, or key emphasis words
       const isHighlighted = 
         word.startsWith('"') || word.endsWith('"') || 
         word.startsWith('«') || word.endsWith('»') ||
@@ -261,11 +286,10 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
       const drawContent = (img: any) => {
         const slideData = assets?.ig_carousel?.slides?.find((s: any) => s.slide_number === slideNum);
-        const textToDraw = customSlideTexts[slideNum] || slideData?.text_on_slide || (slideNum === 1 ? projectTitle || 'Хук вашей идеи' : `Тезис слайда ${slideNum}`);
+        const textToDraw = customSlideTexts[slideNum] || slideData?.text_on_slide || (slideNum === 1 ? reelsHook || 'Хук сценария рилса' : `Тезис слайда ${slideNum}`);
 
         if (slideNum === 1) {
           // --- SLIDE 1: COVER SLIDE (Exact screenshot replica) ---
-          // 1. Draw Full Background Image
           if (img) {
             const imgRatio = img.width / img.height;
             const canvasRatio = 1080 / 1350;
@@ -286,7 +310,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             ctx.fillRect(0, 0, 1080, 1350);
           }
 
-          // 2. Draw Bottom Dark Gradient Overlay ("подкладка" как на скриншоте)
+          // Bottom Dark Gradient Overlay ("подкладка" как на скриншоте)
           const bottomGrad = ctx.createLinearGradient(0, 500, 0, 1350);
           bottomGrad.addColorStop(0, 'rgba(0, 0, 0, 0)');
           bottomGrad.addColorStop(0.35, 'rgba(0, 0, 0, 0.7)');
@@ -295,7 +319,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.fillStyle = bottomGrad;
           ctx.fillRect(0, 500, 1080, 850);
 
-          // 3. Draw Title Text with Yellow Highlighted Keywords
+          // Draw Title Text with Yellow Highlighted Keywords
           ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
           ctx.shadowBlur = 20;
           ctx.shadowOffsetX = 0;
@@ -308,11 +332,10 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           const maxTextWidth = 940;
           const words = textToDraw.toUpperCase().split(' ');
           
-          // Wrap text lines
           let line = '';
           const lines: { text: string; words: { word: string; isYellow: boolean }[] }[] = [];
-          
           let currentLineWords: { word: string; isYellow: boolean }[] = [];
+
           for (let n = 0; n < words.length; n++) {
             const word = words[n];
             const clean = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()""''«»]/g, "");
@@ -337,7 +360,6 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
           lines.forEach((l, idx) => {
             const y = startY + (idx * 72);
-            // Calculate line width for center alignment
             let lineTotalWidth = 0;
             const wordWidths = l.words.map(w => {
               const width = ctx.measureText(w.word + ' ').width;
@@ -354,21 +376,19 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             });
           });
 
-          // 4. Draw Bottom Watermark (Left) + Fingerprint Logo (Center)
+          // Bottom Watermark & Fingerprint Logo
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
 
-          // Watermark on the left bottom
           ctx.fillStyle = 'rgba(255, 255, 255, 0.7)';
           ctx.font = 'bold 20px sans-serif';
           ctx.textAlign = 'left';
-          ctx.fillText(projectTitle || 'ViralEngine | экспертный контент', 70, 1260);
+          ctx.fillText('ViralEngine | экспертный контент', 70, 1260);
 
           ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
           ctx.font = '16px sans-serif';
           ctx.fillText('Качественно • По делу • Смысл', 70, 1288);
 
-          // Center Logo Icon / Badge
           ctx.fillStyle = '#FFE600';
           ctx.beginPath();
           ctx.arc(1080 / 2, 1270, 18, 0, Math.PI * 2);
@@ -391,14 +411,12 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
 
-          // Slide Badge Header
           ctx.fillStyle = carouselAccentColor || '#FFE600';
           ctx.font = '900 26px sans-serif';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
           ctx.fillText(`0${slideNum} / 06`, 100, 140);
 
-          // Single Thought Text (10-18 words max)
           ctx.fillStyle = carouselTextColor || '#ffffff';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
@@ -426,7 +444,6 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             ctx.fillText(lineText, 100, startY + (idx * 68));
           });
 
-          // Footer Watermark
           ctx.fillStyle = 'rgba(255, 255, 255, 0.35)';
           ctx.font = 'bold 22px sans-serif';
           ctx.textAlign = 'left';
@@ -702,7 +719,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                 const key = `carousel-${num - 1}`;
                 const url = imageResults[key];
                 const isGen = isGeneratingImages[key];
-                const textContent = customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || (num === 1 ? projectTitle || 'Хук вашей идеи' : `Тезис слайда ${num}`));
+                const textContent = customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || (num === 1 ? reelsHook || 'Хук вашего видео-сценария' : `Тезис слайда ${num}`));
 
                 return (
                   <div 
@@ -748,7 +765,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                           <div className="absolute bottom-4 inset-x-5 flex items-center justify-between z-10">
                             <div className="text-left space-y-0.5">
                               <p className="text-[7px] font-extrabold text-white/80 uppercase tracking-widest line-clamp-1">
-                                {projectTitle || 'ViralEngine'}
+                                ViralEngine | экспертный контент
                               </p>
                               <p className="text-[6px] font-bold text-white/40 uppercase tracking-widest">
                                 Экспертный Контент
@@ -829,10 +846,10 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="space-y-2">
               <label className="text-[9px] font-black uppercase tracking-widest text-purple-400">
-                📝 {currentSlideNum === 1 ? (isRu ? 'Заголовок на обложке' : 'Cover Headline Text') : (isRu ? 'Текст слайда (1 мысль, до 15 слов)' : 'Slide Thought Text')}
+                📝 {currentSlideNum === 1 ? (isRu ? 'Заголовок на обложке (из Хука сценария)' : 'Cover Headline Text') : (isRu ? 'Текст слайда (1 мысль, до 15 слов)' : 'Slide Thought Text')}
               </label>
               <textarea
-                value={customSlideTexts[currentSlideNum] !== undefined ? customSlideTexts[currentSlideNum] : (currentSlideData?.text_on_slide || '')}
+                value={customSlideTexts[currentSlideNum] !== undefined ? customSlideTexts[currentSlideNum] : (currentSlideData?.text_on_slide || (currentSlideNum === 1 ? reelsHook || 'Хук вашего видео-сценария' : ''))}
                 onChange={(e) => setCustomSlideTexts(prev => ({ ...prev, [currentSlideNum]: e.target.value }))}
                 rows={3}
                 className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white focus:border-purple-500/50 focus:outline-none transition-all resize-none"
@@ -847,7 +864,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                 {currentSlideNum === 1 && (
                   <button
                     onClick={() => {
-                      const prompt = customImagePrompts[1] || currentSlideData?.image_prompt;
+                      const prompt = customImagePrompts[1] || currentSlideData?.image_prompt || `${reelsHook || 'Professional topic'}, cinematic 8k photography, ambient lighting --no text`;
                       if (prompt) generateSingleImage(prompt, '4:5', 'carousel-0');
                     }}
                     disabled={isGeneratingImages['carousel-0']}
@@ -862,7 +879,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                 value={customImagePrompts[currentSlideNum] !== undefined ? customImagePrompts[currentSlideNum] : (currentSlideData?.image_prompt || '')}
                 onChange={(e) => setCustomImagePrompts(prev => ({ ...prev, [currentSlideNum]: e.target.value }))}
                 rows={3}
-                placeholder={currentSlideNum === 1 ? 'English image prompt for cover background...' : 'Pромпт не нужен для слайдов 2-6...'}
+                placeholder={currentSlideNum === 1 ? 'English image prompt for cover background...' : 'Промпт не нужен для слайдов 2-6...'}
                 disabled={currentSlideNum !== 1}
                 className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-[11px] text-white/80 focus:border-purple-500/50 focus:outline-none transition-all resize-none disabled:opacity-30"
               />

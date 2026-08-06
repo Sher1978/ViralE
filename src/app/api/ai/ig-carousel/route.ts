@@ -10,6 +10,8 @@ import { preprocessSubtitles } from '@/lib/utils/subtitle-preprocessor';
 import { hashText } from '@/lib/utils/hash';
 import { profileService } from '@/lib/services/profileService';
 
+import { parseScriptTextToPayload } from '@/lib/studio-utils';
+
 export const maxDuration = 60;
 export const runtime = 'nodejs';
 
