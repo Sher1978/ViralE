@@ -7,6 +7,8 @@ import * as groq from '@/lib/ai/groq';
 import fs from 'fs';
 import path from 'path';
 
+import { sortTrizIdeas } from '@/app/[locale]/app/(main)/projects/new/script/_components/TrizMatrix';
+
 export const maxDuration = 60; // Vercel limit
 
 export async function POST(req: Request) {
@@ -55,9 +57,21 @@ export async function POST(req: Request) {
       
       TASK: Generate a high-fidelity marketing matrix of 9 ideas (one for each of the 9 screens in the 9-screen TRIZ methodology). 
       Output MUST BE a strictly valid JSON array of exactly 9 objects.
+
+      CRITICAL ORDER OF THE 9 IDEAS IN THE ARRAY:
+      1. FIRST object MUST be: "Система - Настоящее" (System - Present)
+      2. Second object: "Система - Прошлое" (System - Past)
+      3. Third object: "Система - Будущее" (System - Future)
+      4. Fourth object: "Подсистема - Настоящее" (Subsystem - Present)
+      5. Fifth object: "Подсистема - Прошлое" (Subsystem - Past)
+      6. Sixth object: "Подсистема - Будущее" (Subsystem - Future)
+      7. Seventh object: "Надсистема - Настоящее" (Suprasystem - Present)
+      8. Eighth object: "Надсистема - Прошлое" (Suprasystem - Past)
+      9. Ninth object: "Надсистема - Будущее" (Suprasystem - Future)
+
       Each object must have the following keys:
-      - "level": string (e.g., "Надсистема - Настоящее")
-      - "goal": string (e.g., "Охват")
+      - "level": string (e.g., "Система - Настоящее")
+      - "goal": string (e.g., "Подписка и ядро")
       - "hook": string (The hook/angle)
       - "scenario": string (The brief 50-sec outline)
       - "cta": string (Call to action)
@@ -83,6 +97,9 @@ export async function POST(req: Request) {
     let trizData = [];
     try {
         trizData = JSON.parse(cleanJson);
+        if (Array.isArray(trizData)) {
+          trizData = sortTrizIdeas(trizData);
+        }
     } catch (e) {
         console.error('[TRIZ API] Failed to parse JSON:', cleanJson);
         // Fallback: wrap raw text in one item if parse fails
@@ -90,6 +107,7 @@ export async function POST(req: Request) {
     }
 
     return NextResponse.json({ success: true, ideas: trizData });
+
 
   } catch (error: any) {
     console.error('[TRIZ API] Error:', error);

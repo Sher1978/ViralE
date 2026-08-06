@@ -39,7 +39,8 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { ScriptPreviews } from './_components/ScriptPreviews';
 import { SingleScriptEditor } from './_components/SingleScriptEditor';
 import { ScenarioLegend } from './_components/ScenarioLegend';
-import { TrizMatrix } from './_components/TrizMatrix';
+import { TrizMatrix, sortTrizIdeas } from './_components/TrizMatrix';
+
 import { createInitialManifest, parseScriptTextToPayload } from '@/lib/studio-utils';
 import { idb } from '@/lib/idb';
 
@@ -642,7 +643,8 @@ export default function ScriptLabPage() {
         idea_title: idea.idea_title || idea.hook || '',
         rationale: idea.rationale || `${idea.goal ? `[${idea.goal}] ` : ''}${idea.scenario || ''}${idea.cta ? ` \nCTA: ${idea.cta}` : ''}`.trim()
       }));
-      setTrizIdeas(mappedIdeas);
+      setTrizIdeas(sortTrizIdeas(mappedIdeas));
+
     } catch (err: any) {
       setError(err.message || 'Error generating TRIZ matrix');
     } finally {

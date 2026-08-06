@@ -14,10 +14,57 @@ interface TrizMatrixProps {
   onBack: () => void;
 }
 
+export function sortTrizIdeas<T extends { screen_name?: string; level?: string }>(ideas: T[]): T[] {
+  if (!Array.isArray(ideas) || ideas.length === 0) return ideas;
+
+  const getRank = (idea: T): number => {
+    const level = ((idea as any).screen_name || (idea as any).level || '').toLowerCase();
+    
+    // Check if System (and NOT Subsystem or Suprasystem)
+    const isSystem = level.includes('система') && !level.includes('подсистема') && !level.includes('надсистема');
+    const isEnglishSystem = level.includes('system') && !level.includes('sub') && !level.includes('supra');
+
+    // 1. СИСТЕМА + НАСТОЯЩЕЕ (Rank 1)
+    if ((isSystem || isEnglishSystem) && (level.includes('настоящее') || level.includes('present'))) {
+      return 1;
+    }
+
+    // 2. СИСТЕМА (Прошлое, Будущее и остальные) (Ranks 2-4)
+    if (isSystem || isEnglishSystem) {
+      if (level.includes('прошлое') || level.includes('past')) return 2;
+      if (level.includes('будущее') || level.includes('future')) return 3;
+      return 4;
+    }
+
+    // 3. ПОДСИСТЕМА (Ranks 10-13)
+    const isSub = level.includes('подсистема') || (level.includes('sub') && level.includes('system'));
+    if (isSub) {
+      if (level.includes('настоящее') || level.includes('present')) return 10;
+      if (level.includes('прошлое') || level.includes('past')) return 11;
+      if (level.includes('будущее') || level.includes('future')) return 12;
+      return 13;
+    }
+
+    // 4. НАДСИСТЕМА (Ranks 20-23)
+    const isSupra = level.includes('надсистема') || level.includes('над') || level.includes('supra');
+    if (isSupra) {
+      if (level.includes('настоящее') || level.includes('present')) return 20;
+      if (level.includes('прошлое') || level.includes('past')) return 21;
+      if (level.includes('будущее') || level.includes('future')) return 22;
+      return 23;
+    }
+
+    return 99;
+  };
+
+  return [...ideas].sort((a, b) => getRank(a) - getRank(b));
+}
+
 export function TrizMatrix({ ideas, locale, onSelect, onBack }: TrizMatrixProps) {
   const [visibleCount, setVisibleCount] = useState(3);
 
-  const displayedIdeas = ideas.slice(0, visibleCount);
+  const sortedIdeas = sortTrizIdeas(ideas);
+  const displayedIdeas = sortedIdeas.slice(0, visibleCount);
 
   return (
     <div className="space-y-6 animate-fade-in slide-in-from-bottom-4">
@@ -27,8 +74,8 @@ export function TrizMatrix({ ideas, locale, onSelect, onBack }: TrizMatrixProps)
         </h3>
         <p className="text-xs text-white/50 uppercase tracking-widest font-bold">
           {locale === 'ru'
-            ? `${Math.min(visibleCount, ideas.length)} наиболее актуальных направления ТРИЗ`
-            : `${Math.min(visibleCount, ideas.length)} Most Relevant TRIZ Angles`}
+            ? `${Math.min(visibleCount, sortedIdeas.length)} наиболее актуальных направления ТРИЗ`
+            : `${Math.min(visibleCount, sortedIdeas.length)} Most Relevant TRIZ Angles`}
         </p>
       </div>
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -62,7 +109,7 @@ export function TrizMatrix({ ideas, locale, onSelect, onBack }: TrizMatrixProps)
           </motion.button>
         ))}
       </div>
-      {visibleCount < ideas.length && visibleCount < 9 && (
+      {visibleCount < sortedIdeas.length && visibleCount < 9 && (
         <div className="flex justify-center pt-2">
           <button
             onClick={() => setVisibleCount(prev => prev + 3)}
