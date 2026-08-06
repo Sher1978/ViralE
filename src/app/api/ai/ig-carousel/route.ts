@@ -304,8 +304,8 @@ export async function POST(req: Request) {
         if (typeof slideText !== 'string' || slideText.length < 3) {
           slideText = `Слайд ${i + 1}: ${scriptText.slice(0, 50)}...`;
         }
-        if (slideText.length > 180) {
-          slideText = slideText.slice(0, 177) + '...';
+        if (slideText.length > 140) {
+          slideText = slideText.slice(0, 140).trim();
         }
         
         let imgPrompt = rawSlide.image_prompt || rawSlide.prompt || '';

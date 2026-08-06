@@ -615,16 +615,6 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.restore();
 
           // 4. Two-Tier Text Structure (Thesis + Explanation) inside Glass Card
-          const { title: tierTitle, body: tierBody } = parseTwoTierSlideText(textToDraw);
-
-          const maxTextWidth = 900;
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-          ctx.shadowBlur = 14;
-          ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 2;
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-
           const wrapTextLines = (text: string, font: string): string[] => {
             if (!text) return [];
             ctx.font = font;
@@ -652,38 +642,30 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             return lines;
           };
 
-          // Dynamic Font Autoscaling so text NEVER overflows or gets truncated!
-          let titleFontSize = 46;
-          let bodyFontSize = 32;
-          const maxCardContentHeight = 880;
+          // Uniform Fixed Font Size Across All Body Slides (Slides 2-6)
+          const cleanTextToDraw = textToDraw.length > 140 ? textToDraw.slice(0, 140) : textToDraw;
+          const { title: tierTitle, body: tierBody } = parseTwoTierSlideText(cleanTextToDraw);
 
-          let titleFont = `800 ${titleFontSize}px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif`;
-          let bodyFont = `500 ${bodyFontSize}px Inter, system-ui, -apple-system, sans-serif`;
-          
-          let titleLineHeight = Math.round(titleFontSize * 1.35);
-          let bodyLineHeight = Math.round(bodyFontSize * 1.45);
+          const maxTextWidth = 900;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+          ctx.shadowBlur = 14;
+          ctx.shadowOffsetX = 0;
+          ctx.shadowOffsetY = 2;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
 
-          let titleLines = wrapTextLines((tierTitle || '').toUpperCase(), titleFont);
-          let bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
-          let gap = (titleLines.length > 0 && bodyLines.length > 0) ? 32 : 0;
-          let totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
+          const titleFontSize = 42;
+          const bodyFontSize = 28;
+          const titleFont = `800 ${titleFontSize}px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif`;
+          const bodyFont = `500 ${bodyFontSize}px Inter, system-ui, -apple-system, sans-serif`;
 
-          // If text height exceeds card content area, scale down font sizes proportionally!
-          if (totalTextHeight > maxCardContentHeight) {
-            const scale = Math.max(0.60, Math.min(0.95, maxCardContentHeight / totalTextHeight));
-            titleFontSize = Math.max(26, Math.round(titleFontSize * scale));
-            bodyFontSize = Math.max(18, Math.round(bodyFontSize * scale));
-            
-            titleFont = `800 ${titleFontSize}px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif`;
-            bodyFont = `500 ${bodyFontSize}px Inter, system-ui, -apple-system, sans-serif`;
-            titleLineHeight = Math.round(titleFontSize * 1.35);
-            bodyLineHeight = Math.round(bodyFontSize * 1.45);
+          const titleLineHeight = 58;
+          const bodyLineHeight = 42;
 
-            titleLines = wrapTextLines((tierTitle || '').toUpperCase(), titleFont);
-            bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
-            gap = (titleLines.length > 0 && bodyLines.length > 0) ? Math.round(32 * scale) : 0;
-            totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
-          }
+          const titleLines = wrapTextLines((tierTitle || '').toUpperCase(), titleFont);
+          const bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
+          const gap = (titleLines.length > 0 && bodyLines.length > 0) ? 28 : 0;
+          const totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
 
           let currentY = (cardY + cardH / 2) - (totalTextHeight / 2);
 
@@ -1330,8 +1312,8 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
             {(() => {
               const activeVal = customSlideTexts[currentSlideNum] !== undefined ? customSlideTexts[currentSlideNum] : (currentSlideData?.text_on_slide || (currentSlideNum === 1 ? reelsHook || 'Хук вашего видео-сценария' : ''));
-              const wordCount = activeVal.trim() ? activeVal.trim().split(/\s+/).length : 0;
               const charCount = activeVal.length;
+              const maxCharLimit = currentSlideNum === 1 ? 120 : 140;
 
               return (
                 <div className="space-y-2">
@@ -1341,17 +1323,21 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                     </label>
                     <span className={cn(
                       "px-2.5 py-0.5 rounded-full font-mono text-[8px] font-bold tracking-wider transition-all",
-                      wordCount <= 18 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
-                      wordCount <= 25 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
-                      "bg-red-500/20 text-red-400 border border-red-500/30 animate-pulse"
+                      charCount <= 110 ? "bg-emerald-500/20 text-emerald-400 border border-emerald-500/30" :
+                      charCount <= 135 ? "bg-amber-500/20 text-amber-400 border border-amber-500/30" :
+                      "bg-red-500/20 text-red-400 border border-red-500/30 font-black"
                     )}>
-                      {wordCount} {isRu ? 'слов' : 'words'} ({charCount} {isRu ? 'симв' : 'chars'})
-                      {wordCount > 20 && (isRu ? ' • Рекомендуется до 18 слов' : ' • Max 18 words recommended')}
+                      {charCount} / {maxCharLimit} {isRu ? 'символов' : 'chars'}
+                      {charCount >= maxCharLimit && (isRu ? ' • Лимит' : ' • Limit')}
                     </span>
                   </div>
                   <textarea
                     value={activeVal}
-                    onChange={(e) => setCustomSlideTexts(prev => ({ ...prev, [currentSlideNum]: e.target.value }))}
+                    onChange={(e) => {
+                      const val = e.target.value.slice(0, maxCharLimit);
+                      setCustomSlideTexts(prev => ({ ...prev, [currentSlideNum]: val }));
+                    }}
+                    maxLength={maxCharLimit}
                     rows={3}
                     className="w-full p-4 rounded-2xl bg-white/[0.02] border border-white/10 text-[12px] text-white focus:border-purple-500/50 focus:outline-none transition-all resize-none font-sans"
                   />
