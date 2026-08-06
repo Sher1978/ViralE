@@ -195,58 +195,60 @@ export async function POST(req: Request) {
 
       ИНСТРУКЦИИ ДЛЯ СЛАЙДОВ (Ровно 6 слайдов, AR 4:5):
       1. СЛАЙД 1 (ОБЛОЖКА):
-         - text_on_slide: ВАЖНО! Используй заголовок темы из матрицы идей: "${projectTitle || 'Хук вашей видео-идеи'}" (или его лаконичный выигрышный вариант).
-         - image_prompt: Сформируй визуальный промпт для обложки на английском языке (ТОЛЬКО ДЛЯ СЛАЙДА 1). Описание должно быть без текста, чистая смысловая пуля.
-      2. СЛАЙДЫ 2-6 (ОСНОВНЫЕ СЛАЙДЫ НА БАЗЕ СУБТИТРОВ):
-         - text_on_slide: Напиши четкие, глубокие тезисы/выводы строго на основе субтитров (15-25 слов на слайд).
-         - image_prompt: ОСТАВЬ ПУСТОЙ СТРОКОЙ (""). Основные слайды отрисовываются на однотонном или градиентном фоне без фоновых картинок.
+         - text_on_slide: Главный сочный заголовок темы из текста/скрипта ("${projectTitle || 'Хук вашей видео-идеи'}"). Сделай его ярким, интригующим и капсом. Ключевые слова выдели заглавными буквами или кавычками.
+         - image_prompt: Создай высококачественный, кинематографичный промпт на английском языке для генерации ФОТООБЛОЖКИ в контексте темы (например: "Cinematic portrait of a male professor in a lush pine forest touching a ancient tree trunk, natural sunlight filtering through green leaves, highly detailed 8k photography, bokeh background --no text").
+      2. СЛАЙДЫ 2-6 (ОСНОВНЫЕ СЛАЙДЫ — ОДИН СЛАЙД = ОДНА МЫСЛЬ):
+         - text_on_slide: ВАЖНО! Тексты слайдов 2-6 ДОЛЖНЫ БЫТЬ МАКСИМАЛЬНО ЛАКОНИЧНЫМИ (строго 10-18 слов на слайд). 1 слайд = 1 ключевая мысль/тезис! Никаких громоздких абзацев!
+         - image_prompt: ОСТАВЬ ПУСТОЙ СТРОКОЙ ("").
+      3. ОПИСАНИЕ ПОСТА (post_description):
+         - Создай вирусный текст поста для Instagram/TikTok: цепляющий хук в первой строчке, 3-4 ключевых тезиса с эмодзи, понятный призыв к действию (написать кодовое слово или сохранить пост) и 5-8 целевых хэштегов.
 
       ВЫДАЙ СТРОГИЙ JSON (БЕЗ MARKDOWN, ТОЛЬКО JSON):
       {
         "cta_word": "кодовое слово",
         "central_metaphor": "метафора обложки",
         "visual_style_prefix": "${stylePrefix}",
-        "post_description": "Яркое описание поста с эмодзи и буллет-поинтами...",
+        "post_description": "Яркий пост для Instagram/TikTok...",
         "slides": [
           {
             "slide_number": 1,
             "role": "hook",
-            "text_on_slide": "Заголовок из темы матрицы для Слайда 1",
-            "image_prompt": "Cover visual prompt for Slide 1...",
+            "text_on_slide": "Заголовок для Слайда 1",
+            "image_prompt": "Cinematic visual prompt for Slide 1 cover...",
             "metaphor_tag": "cover_concept"
           },
           {
             "slide_number": 2,
             "role": "problem",
-            "text_on_slide": "Текст Слайда 2 из субтитров",
+            "text_on_slide": "Одна мысль: Тезис 1 (до 15 слов)",
             "image_prompt": "",
             "metaphor_tag": ""
           },
           {
             "slide_number": 3,
             "role": "pivot",
-            "text_on_slide": "Текст Слайда 3 из субтитров",
+            "text_on_slide": "Одна мысль: Тезис 2 (до 15 слов)",
             "image_prompt": "",
             "metaphor_tag": ""
           },
           {
             "slide_number": 4,
             "role": "takeaway1",
-            "text_on_slide": "Текст Слайда 4 из субтитров",
+            "text_on_slide": "Одна мысль: Тезис 3 (до 15 слов)",
             "image_prompt": "",
             "metaphor_tag": ""
           },
           {
             "slide_number": 5,
             "role": "takeaway2",
-            "text_on_slide": "Текст Слайда 5 из субтитров",
+            "text_on_slide": "Одна мысль: Тезис 4 (до 15 слов)",
             "image_prompt": "",
             "metaphor_tag": ""
           },
           {
             "slide_number": 6,
             "role": "cta",
-            "text_on_slide": "Текст Слайда 6 с призывом написать кодовое слово",
+            "text_on_slide": "Призыв написать кодовое слово в комментариях",
             "image_prompt": "",
             "metaphor_tag": ""
           }
