@@ -166,16 +166,19 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
                   onSelect(styleKey, preview);
                 }}
                 disabled={isLoading}
-                className={`w-full mt-6 py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2 disabled:opacity-50
+                className={`w-full mt-6 py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2.5 relative overflow-hidden
                   ${isSelectedAndLoading 
-                    ? 'bg-purple-500/20 border-purple-500/40 text-purple-300 shadow-[0_0_15px_rgba(168,85,247,0.3)] animate-pulse' 
-                    : 'bg-white/5 border-white/10 hover:bg-white hover:text-black hover:border-transparent text-white active:scale-[0.98] hover:scale-[1.02]'
+                    ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 border-purple-400 text-white shadow-[0_0_30px_rgba(168,85,247,0.6)] animate-pulse scale-[1.02] opacity-100' 
+                    : 'bg-white/5 border-white/10 hover:bg-white hover:text-black hover:border-transparent text-white active:scale-[0.98] hover:scale-[1.02] disabled:opacity-40'
                   }`}
               >
                 {isSelectedAndLoading ? (
                   <>
-                    <span>{locale === 'ru' ? 'Создаем сценарий' : 'Generating script'}</span>
-                    <Loader2 size={12} className="animate-spin text-purple-400" />
+                    <Loader2 size={16} className="animate-spin text-white shrink-0" />
+                    <span className="text-white font-black text-[11px] tracking-[0.2em] animate-pulse">
+                      {locale === 'ru' ? 'СОЗДАЕМ СЦЕНАРИЙ...' : 'GENERATING SCRIPT...'}
+                    </span>
+                    <Sparkles size={16} className="animate-bounce text-yellow-300 shrink-0" />
                   </>
                 ) : (
                   <>
