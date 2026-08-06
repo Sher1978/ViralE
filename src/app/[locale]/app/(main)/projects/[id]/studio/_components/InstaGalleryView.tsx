@@ -103,7 +103,64 @@ const getReelsScriptHook = (scriptText: string, manifest: any): string => {
 };
 
 
+export const DEFAULT_SLIDE_FALLBACKS: Record<number, string> = {
+  2: "ПЕРВАЯ ПРИЧИНА ПРОВАЛА\nБольшинство экспертов теряют клиентов, потому что выстраивают хаотичный контент вместо системной воронки.",
+  3: "ОШИБКА В ПОЗИЦИОНИРОВАНИИ\nПопытка продавать всем подряд размывает экспертность и снижает конверсию ровно в 3 раза.",
+  4: "КЛЮЧЕВОЙ РЫЧАГ РОСТА\nФокусируйтесь на узкой боли аудитории и давайте 1 конкретное решение в каждом ролике.",
+  5: "СЕКРЕТ ВЫСОКИХ ПРОДАЖ\nСоздавайте легкий переход от просмотра короткого видео к получению полезного лид-магнита.",
+  6: "ЗАБЕРИТЕ ПОЛНУЮ СИСТЕМУ\nПишите кодовое слово в комментариях под этим постом, чтобы получить пошаговый разбор!"
+};
+
+export function parseTwoTierSlideText(rawText: string): { title: string; body: string } {
+  if (!rawText) return { title: '', body: '' };
+
+  const clean = rawText.trim();
+
+  // 1. Explicit newline break (\n or \n\n)
+  if (clean.includes('\n')) {
+    const parts = clean.split('\n').map(p => p.trim()).filter(Boolean);
+    return {
+      title: parts[0],
+      body: parts.slice(1).join(' ')
+    };
+  }
+
+  // 2. Colon separator (e.g. "ТЕЗИС: Подробное описание...")
+  if (clean.includes(':')) {
+    const idx = clean.indexOf(':');
+    const head = clean.substring(0, idx + 1).trim();
+    const rest = clean.substring(idx + 1).trim();
+    if (rest.length > 5) {
+      return { title: head, body: rest };
+    }
+  }
+
+  // 3. Sentence split (. ! ?)
+  const sentenceMatch = clean.match(/^([^.!?]+[.!?])\s*([\s\S]+)$/);
+  if (sentenceMatch && sentenceMatch[2]?.trim().length > 5) {
+    return {
+      title: sentenceMatch[1].trim(),
+      body: sentenceMatch[2].trim()
+    };
+  }
+
+
+  // 4. Fallback for longer phrases: first 4 words as title, rest as body
+  const words = clean.split(/\s+/);
+  if (words.length > 8) {
+    const titleWords = words.slice(0, 4).join(' ');
+    const bodyWords = words.slice(4).join(' ');
+    return { title: titleWords, body: bodyWords };
+  }
+
+  return {
+    title: clean,
+    body: ''
+  };
+}
+
 export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
+
   manifest,
   scriptText,
   projectId,
@@ -302,7 +359,9 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
       const drawContent = (img: any) => {
         const slideData = assets?.ig_carousel?.slides?.find((s: any) => s.slide_number === slideNum);
-        const textToDraw = customSlideTexts[slideNum] || slideData?.text_on_slide || (slideNum === 1 ? reelsHook || 'Хук сценария рилса' : `Тезис слайда ${slideNum}`);
+        const textToDraw = customSlideTexts[slideNum] || slideData?.text_on_slide || (slideNum === 1 ? reelsHook || 'Хук сценария рилса' : DEFAULT_SLIDE_FALLBACKS[slideNum] || `Тезис слайда ${slideNum}`);
+
+
 
         if (slideNum === 1) {
           // --- SLIDE 1: COVER SLIDE (Exact screenshot replica) ---
@@ -474,39 +533,67 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.fillText(`0${slideNum} / 06`, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
           ctx.restore();
 
-          // 4. Single Thought Text inside Glass Card (Vertically centered by height)
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-          ctx.shadowBlur = 12;
-          ctx.fillStyle = carouselTextColor || '#ffffff';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-          ctx.font = '600 42px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif';
+          // 4. Two-Tier Text Structure (Thesis + Explanation) inside Glass Card
+          const { title: tierTitle, body: tierBody } = parseTwoTierSlideText(textToDraw);
 
           const maxTextWidth = 900;
-          const words = textToDraw.split(' ');
-          let line = '';
-          const lines: string[] = [];
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+          ctx.shadowBlur = 12;
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
 
-          for (let n = 0; n < words.length; n++) {
-            const testLine = line + words[n] + ' ';
-            const metrics = ctx.measureText(testLine);
-            if (metrics.width > maxTextWidth && n > 0) {
-              lines.push(line.trim());
-              line = words[n] + ' ';
-            } else {
-              line = testLine;
+          const wrapTextLines = (text: string, font: string): string[] => {
+            ctx.font = font;
+            const words = text.split(/\s+/);
+            let line = '';
+            const lines: string[] = [];
+            for (let n = 0; n < words.length; n++) {
+              const testLine = line + words[n] + ' ';
+              const metrics = ctx.measureText(testLine);
+              if (metrics.width > maxTextWidth && n > 0) {
+                lines.push(line.trim());
+                line = words[n] + ' ';
+              } else {
+                line = testLine;
+              }
             }
-          }
-          lines.push(line.trim());
+            if (line.trim()) lines.push(line.trim());
+            return lines;
+          };
 
-          const lineHeight = 66;
-          const totalTextHeight = lines.length * lineHeight;
-          // Vertically centered inside glass card
-          const startY = (cardY + cardH / 2) - (totalTextHeight / 2);
+          const titleFont = '800 46px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif';
+          const titleLineHeight = 62;
+          const titleLines = wrapTextLines(tierTitle.toUpperCase(), titleFont);
 
-          lines.forEach((lineText, idx) => {
-            ctx.fillText(lineText, cardX + 50, startY + (idx * lineHeight));
+          const bodyFont = '500 32px Inter, system-ui, -apple-system, sans-serif';
+          const bodyLineHeight = 48;
+          const bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
+
+          const gap = tierBody ? 32 : 0;
+          const totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
+
+          let currentY = (cardY + cardH / 2) - (totalTextHeight / 2);
+
+          // Draw Tier 1 (Тезис - Bold Accent)
+          ctx.font = titleFont;
+          ctx.fillStyle = carouselAccentColor || '#FFE600';
+          titleLines.forEach((tLine) => {
+            ctx.fillText(tLine, cardX + 50, currentY);
+            currentY += titleLineHeight;
           });
+
+          currentY += gap;
+
+          // Draw Tier 2 (Пояснение - Regular Light Text)
+          if (bodyLines.length > 0) {
+            ctx.font = bodyFont;
+            ctx.fillStyle = carouselTextColor || '#FFFFFF';
+            bodyLines.forEach((bLine) => {
+              ctx.fillText(bLine, cardX + 50, currentY);
+              currentY += bodyLineHeight;
+            });
+          }
+
 
           // 5. Glass Footer Watermark
           ctx.shadowColor = 'transparent';
@@ -873,7 +960,8 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                 const key = `carousel-${num - 1}`;
                 const url = imageResults[key];
                 const isGen = isGeneratingImages[key];
-                const textContent = customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || (num === 1 ? reelsHook || 'Хук вашего видео-сценария' : `Тезис слайда ${num}`));
+                const textContent = customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || (num === 1 ? reelsHook || 'Хук вашего видео-сценария' : DEFAULT_SLIDE_FALLBACKS[num] || `Тезис слайда ${num}`));
+
 
                 return (
                   <div
@@ -936,11 +1024,30 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                               </span>
                             </div>
 
-                            <div className="my-auto py-2 text-left z-10 flex flex-col justify-center">
-                              <p className="font-semibold text-xs md:text-sm leading-relaxed tracking-normal drop-shadow-md" style={{ color: carouselTextColor }}>
-                                {textContent}
-                              </p>
+                            <div className="my-auto py-2 text-left z-10 flex flex-col justify-center space-y-2">
+                              {(() => {
+                                const { title: tHead, body: tBody } = parseTwoTierSlideText(textContent);
+                                return (
+                                  <>
+                                    <h4
+                                      className="font-extrabold text-xs md:text-[13px] leading-snug uppercase tracking-tight drop-shadow-md"
+                                      style={{ color: carouselAccentColor || '#FFE600' }}
+                                    >
+                                      {tHead}
+                                    </h4>
+                                    {tBody && (
+                                      <p
+                                        className="font-normal text-[10px] md:text-[11px] leading-relaxed opacity-95 drop-shadow-sm font-sans"
+                                        style={{ color: carouselTextColor || '#FFFFFF' }}
+                                      >
+                                        {tBody}
+                                      </p>
+                                    )}
+                                  </>
+                                );
+                              })()}
                             </div>
+
 
                             <div className="flex justify-between items-center z-10 text-[7px] font-medium opacity-50 uppercase tracking-widest pt-2 border-t border-white/10" style={{ color: carouselTextColor }}>
                               <span>@viral_engine</span>
