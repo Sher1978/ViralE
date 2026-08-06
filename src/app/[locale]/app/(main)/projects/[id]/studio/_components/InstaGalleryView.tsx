@@ -642,30 +642,49 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             return lines;
           };
 
-          // Uniform Fixed Font Size Across All Body Slides (Slides 2-6)
-          const cleanTextToDraw = textToDraw.length > 140 ? textToDraw.slice(0, 140) : textToDraw;
+          // Bold Large Typography Across All Body Slides (Slides 2-6)
+          const cleanTextToDraw = textToDraw.length > 220 ? textToDraw.slice(0, 220) : textToDraw;
           const { title: tierTitle, body: tierBody } = parseTwoTierSlideText(cleanTextToDraw);
 
           const maxTextWidth = 900;
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-          ctx.shadowBlur = 14;
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+          ctx.shadowBlur = 16;
           ctx.shadowOffsetX = 0;
-          ctx.shadowOffsetY = 2;
+          ctx.shadowOffsetY = 3;
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
 
-          const titleFontSize = 42;
-          const bodyFontSize = 28;
-          const titleFont = `800 ${titleFontSize}px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif`;
-          const bodyFont = `500 ${bodyFontSize}px Inter, system-ui, -apple-system, sans-serif`;
+          let titleFontSize = 54;
+          let bodyFontSize = 36;
+          const maxCardContentHeight = 940;
 
-          const titleLineHeight = 58;
-          const bodyLineHeight = 42;
+          let titleFont = `800 ${titleFontSize}px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif`;
+          let bodyFont = `500 ${bodyFontSize}px Inter, system-ui, -apple-system, sans-serif`;
 
-          const titleLines = wrapTextLines((tierTitle || '').toUpperCase(), titleFont);
-          const bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
-          const gap = (titleLines.length > 0 && bodyLines.length > 0) ? 28 : 0;
-          const totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
+          let titleLineHeight = Math.round(titleFontSize * 1.35);
+          let bodyLineHeight = Math.round(bodyFontSize * 1.45);
+
+          let titleLines = wrapTextLines((tierTitle || '').toUpperCase(), titleFont);
+          let bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
+          let gap = (titleLines.length > 0 && bodyLines.length > 0) ? 36 : 0;
+          let totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
+
+          // If text height exceeds card content area, scale down font sizes gracefully
+          if (totalTextHeight > maxCardContentHeight) {
+            const scale = Math.max(0.68, Math.min(0.95, maxCardContentHeight / totalTextHeight));
+            titleFontSize = Math.max(34, Math.round(titleFontSize * scale));
+            bodyFontSize = Math.max(22, Math.round(bodyFontSize * scale));
+
+            titleFont = `800 ${titleFontSize}px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif`;
+            bodyFont = `500 ${bodyFontSize}px Inter, system-ui, -apple-system, sans-serif`;
+            titleLineHeight = Math.round(titleFontSize * 1.35);
+            bodyLineHeight = Math.round(bodyFontSize * 1.45);
+
+            titleLines = wrapTextLines((tierTitle || '').toUpperCase(), titleFont);
+            bodyLines = tierBody ? wrapTextLines(tierBody, bodyFont) : [];
+            gap = (titleLines.length > 0 && bodyLines.length > 0) ? Math.round(36 * scale) : 0;
+            totalTextHeight = (titleLines.length * titleLineHeight) + gap + (bodyLines.length * bodyLineHeight);
+          }
 
           let currentY = (cardY + cardH / 2) - (totalTextHeight / 2);
 
@@ -690,13 +709,17 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           }
 
 
-          // 5. Glass Footer Watermark
+          // 5. Glass Footer Watermarks (Matching Preview Card 1:1)
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
           ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-          ctx.font = '500 20px Inter, system-ui, sans-serif';
+          ctx.font = '700 20px Inter, system-ui, sans-serif';
+
+          ctx.textAlign = 'left';
+          ctx.fillText('@viral_engine', cardX + 50, cardY + cardH - 50);
+
           ctx.textAlign = 'right';
-          ctx.fillText(`Слайд ${slideNum}`, cardX + cardW - 50, cardY + cardH - 50);
+          ctx.fillText(`СЛАЙД ${slideNum}`, cardX + cardW - 50, cardY + cardH - 50);
         }
 
 
@@ -1229,20 +1252,20 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                               </span>
                             </div>
 
-                            <div className="my-auto py-2 text-left z-10 flex flex-col justify-center space-y-2">
+                            <div className="my-auto py-3 text-left z-10 flex flex-col justify-center space-y-2.5">
                               {(() => {
                                 const { title: tHead, body: tBody } = parseTwoTierSlideText(textContent);
                                 return (
                                   <>
                                     <h4
-                                      className="font-extrabold text-xs md:text-[13px] leading-snug uppercase tracking-tight drop-shadow-md"
+                                      className="font-black text-sm md:text-base leading-snug uppercase tracking-tight drop-shadow-lg"
                                       style={{ color: carouselAccentColor || '#FFE600' }}
                                     >
                                       {tHead}
                                     </h4>
                                     {tBody && (
                                       <p
-                                        className="font-normal text-[10px] md:text-[11px] leading-relaxed opacity-95 drop-shadow-sm font-sans"
+                                        className="font-medium text-xs md:text-[13px] leading-relaxed opacity-95 drop-shadow-md font-sans"
                                         style={{ color: carouselTextColor || '#FFFFFF' }}
                                       >
                                         {tBody}
@@ -1253,10 +1276,10 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                               })()}
                             </div>
 
-
-                            <div className="flex justify-between items-center z-10 text-[7px] font-medium opacity-50 uppercase tracking-widest pt-2 border-t border-white/10" style={{ color: carouselTextColor }}>
+                            {/* Glass Footer Watermark (Matching Canvas 1:1) */}
+                            <div className="flex justify-between items-center z-10 text-[7.5px] font-bold uppercase tracking-widest opacity-50 font-sans" style={{ color: carouselTextColor || '#FFFFFF' }}>
                               <span>@viral_engine</span>
-                              <span>Слайд {num}</span>
+                              <span>СЛАЙД {num}</span>
                             </div>
                           </div>
                         </div>
@@ -1313,7 +1336,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             {(() => {
               const activeVal = customSlideTexts[currentSlideNum] !== undefined ? customSlideTexts[currentSlideNum] : (currentSlideData?.text_on_slide || (currentSlideNum === 1 ? reelsHook || 'Хук вашего видео-сценария' : ''));
               const charCount = activeVal.length;
-              const maxCharLimit = currentSlideNum === 1 ? 120 : 140;
+              const maxCharLimit = currentSlideNum === 1 ? 140 : 220;
 
               return (
                 <div className="space-y-2">
