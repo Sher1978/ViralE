@@ -409,30 +409,79 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
 
         } else {
-          // --- SLIDES 2-6: BODY SLIDES (Clean 2-Color Gradient + Typography) ---
+          // --- SLIDES 2-6: BODY SLIDES (EXPANDED GLASSMORPHISM CARD + GRADIENT BACKDROP) ---
+          // 1. Vibrant Gradient Backdrop
           const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
           bgGrad.addColorStop(0, carouselBg1);
           bgGrad.addColorStop(1, carouselBg2);
           ctx.fillStyle = bgGrad;
           ctx.fillRect(0, 0, 1080, 1350);
 
-          ctx.shadowColor = 'transparent';
-          ctx.shadowBlur = 0;
+          // Ambient Radial Light Highlight
+          const orbGrad = ctx.createRadialGradient(880, 200, 40, 880, 200, 650);
+          orbGrad.addColorStop(0, 'rgba(255, 255, 255, 0.18)');
+          orbGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
+          ctx.fillStyle = orbGrad;
+          ctx.fillRect(0, 0, 1080, 1350);
 
-          // Slide Badge Header (02 / 06)
+          // 2. Expanded Glassmorphism Card (Larger area: 1000px wide x 1250px tall)
+          const cardX = 40;
+          const cardY = 50;
+          const cardW = 1000;
+          const cardH = 1250;
+          const cardR = 44;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(cardX, cardY, cardW, cardH, cardR);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+          ctx.shadowBlur = 40;
+          ctx.shadowOffsetY = 16;
+          ctx.fill();
+
+          // Glossy Border Highlight
+          const glassBorder = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+          glassBorder.addColorStop(0, 'rgba(255, 255, 255, 0.45)');
+          glassBorder.addColorStop(0.5, 'rgba(255, 255, 255, 0.12)');
+          glassBorder.addColorStop(1, 'rgba(255, 255, 255, 0.28)');
+          ctx.lineWidth = 2.5;
+          ctx.strokeStyle = glassBorder;
+          ctx.stroke();
+          ctx.restore();
+
+          // 3. Glassmorphism Pill Badge for 02 / 06 inside card
+          const badgeX = cardX + 45;
+          const badgeY = cardY + 45;
+          const badgeW = 145;
+          const badgeH = 50;
+          const badgeR = 25;
+
+          ctx.save();
+          ctx.beginPath();
+          ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
+          ctx.fill();
+          ctx.lineWidth = 1.5;
+          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
+          ctx.stroke();
+
           ctx.fillStyle = carouselAccentColor || '#FFE600';
-          ctx.font = '700 26px Inter, "Space Grotesk", system-ui, sans-serif';
-          ctx.textAlign = 'left';
-          ctx.textBaseline = 'top';
-          ctx.fillText(`0${slideNum} / 06`, 100, 140);
+          ctx.font = '700 22px Inter, "Space Grotesk", system-ui, sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+          ctx.fillText(`0${slideNum} / 06`, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
+          ctx.restore();
 
-          // Single Thought Text (Vertically centered by height)
+          // 4. Single Thought Text inside Glass Card (Vertically centered by height)
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
+          ctx.shadowBlur = 12;
           ctx.fillStyle = carouselTextColor || '#ffffff';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
           ctx.font = '600 42px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif';
 
-          const maxTextWidth = 880;
+          const maxTextWidth = 900;
           const words = textToDraw.split(' ');
           let line = '';
           const lines: string[] = [];
@@ -449,23 +498,27 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           }
           lines.push(line.trim());
 
-          const lineHeight = 64;
+          const lineHeight = 66;
           const totalTextHeight = lines.length * lineHeight;
-          // Vertically centered between top badge (Y=200) and bottom watermark (Y=1200)
-          const startY = 700 - (totalTextHeight / 2);
+          // Vertically centered inside glass card
+          const startY = (cardY + cardH / 2) - (totalTextHeight / 2);
+
           lines.forEach((lineText, idx) => {
-            ctx.fillText(lineText, 100, startY + (idx * lineHeight));
+            ctx.fillText(lineText, cardX + 50, startY + (idx * lineHeight));
           });
 
-          // Footer Watermark
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
+          // 5. Glass Footer Watermark
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
           ctx.font = '500 20px Inter, system-ui, sans-serif';
           ctx.textAlign = 'left';
-          ctx.fillText('@viral_engine', 100, 1240);
+          ctx.fillText('@viral_engine', cardX + 50, cardY + cardH - 50);
 
           ctx.textAlign = 'right';
-          ctx.fillText(`Слайд ${slideNum}`, 980, 1240);
+          ctx.fillText(`Слайд ${slideNum}`, cardX + cardW - 50, cardY + cardH - 50);
         }
+
 
         try {
           const dataUrl = canvas.toDataURL('image/jpeg', 0.95);
@@ -811,29 +864,32 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
                         </>
                       ) : (
-                        /* SLIDES 2-6 (BODY SLIDES - CLEAN GRADIENT DESIGN) */
-                        <>
-                          <div className="flex justify-between items-center z-10">
-                            <span 
-                              className="text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border border-white/10 bg-black/30 backdrop-blur-md" 
-                              style={{ color: carouselAccentColor }}
-                            >
-                              0{num} / 06
-                            </span>
-                          </div>
+                        /* SLIDES 2-6 (BODY SLIDES - EXPANDED GLASSMORPHISM CARD DESIGN) */
+                        <div className="w-full h-full p-1">
+                          <div className="w-full h-full rounded-[1.4rem] bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.4)] p-3.5 flex flex-col justify-between relative overflow-hidden">
+                            <div className="flex justify-between items-center z-10">
+                              <span 
+                                className="text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md shadow-sm" 
+                                style={{ color: carouselAccentColor }}
+                              >
+                                0{num} / 06
+                              </span>
+                            </div>
 
-                          <div className="my-auto text-left z-10 space-y-2">
-                            <p className="font-semibold text-xs md:text-sm leading-relaxed tracking-normal" style={{ color: carouselTextColor }}>
-                              {textContent}
-                            </p>
-                          </div>
+                            <div className="my-auto py-2 text-left z-10 flex flex-col justify-center">
+                              <p className="font-semibold text-xs md:text-sm leading-relaxed tracking-normal drop-shadow-md" style={{ color: carouselTextColor }}>
+                                {textContent}
+                              </p>
+                            </div>
 
-                          <div className="flex justify-between items-center z-10 text-[7px] font-medium opacity-40 uppercase tracking-widest" style={{ color: carouselTextColor }}>
-                            <span>@viral_engine</span>
-                            <span>Слайд {num}</span>
+                            <div className="flex justify-between items-center z-10 text-[7px] font-medium opacity-50 uppercase tracking-widest pt-2 border-t border-white/10" style={{ color: carouselTextColor }}>
+                              <span>@viral_engine</span>
+                              <span>Слайд {num}</span>
+                            </div>
                           </div>
-                        </>
+                        </div>
                       )}
+
 
 
 
