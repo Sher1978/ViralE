@@ -185,7 +185,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const [carouselTextColor, setCarouselTextColor] = useState<string>(PALETTE_PRESETS[0].textColor);
   const [carouselAccentColor, setCarouselAccentColor] = useState<string>(PALETTE_PRESETS[0].accentColor);
   const [usePhotoBackdrop, setUsePhotoBackdrop] = useState<boolean>(true);
-  const [backdropDarkness, setBackdropDarkness] = useState<number>(75);
+  const [backdropDarkness, setBackdropDarkness] = useState<number>(60);
 
   // Gallery Data States
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
@@ -488,9 +488,15 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
 
         } else {
-          // --- SLIDES 2-6: BODY SLIDES (EXPANDED GLASSMORPHISM CARD + GRADIENT/PHOTO BACKDROP) ---
+          // --- SLIDES 2-6: BODY SLIDES (SHARP PHOTO EDGES + INNER CLIPPED GLASS CARD) ---
+          const cardX = 40;
+          const cardY = 50;
+          const cardW = 1000;
+          const cardH = 1250;
+          const cardR = 44;
+
           if (img && usePhotoBackdrop) {
-            // 1a. Photo Backdrop from Slide 1 with Blur & Controlled Darkening
+            // 1. Draw Full Canvas Sharp, Crisp, Unblurred Cover Photo
             const imgRatio = img.width / img.height;
             const canvasRatio = 1080 / 1350;
             let sx = 0, sy = 0, sw = img.width, sh = img.height;
@@ -502,34 +508,42 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
               sy = (img.height - sh) / 2;
             }
 
-            ctx.save();
-            if ('filter' in ctx) {
-              (ctx as any).filter = 'blur(24px) brightness(0.65)';
-              ctx.drawImage(img, sx, sy, sw, sh, -40, -40, 1160, 1430);
-              (ctx as any).filter = 'none';
-            } else {
-              ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1080, 1350);
-            }
-            ctx.restore();
+            // Draw full crisp image on canvas background (edges outside card remain 100% sharp & unblurred!)
+            ctx.drawImage(img, sx, sy, sw, sh, 0, 0, 1080, 1350);
 
-            // Controlled Dark Scrim Overlay for Guaranteed Contrast (>7:1 ratio)
-            const alpha = backdropDarkness / 100;
-            const scrimGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
-            scrimGrad.addColorStop(0, `rgba(5, 5, 12, ${alpha * 0.95})`);
-            scrimGrad.addColorStop(1, `rgba(15, 10, 25, ${alpha})`);
-            ctx.fillStyle = scrimGrad;
-            ctx.fillRect(0, 0, 1080, 1350);
+            // 2. Inner Glass Card Clipping with Moderate Blur (8px-10px) & Controlled Glass Scrim
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(cardX, cardY, cardW, cardH, cardR);
+            ctx.clip(); // Restrict blur and dark tint strictly INSIDE the card!
+
+            if ('filter' in ctx) {
+              // Moderate blur (9px) so the photo is strongly visible under the glass
+              (ctx as any).filter = 'blur(9px) brightness(0.85)';
+              ctx.drawImage(img, sx, sy, sw, sh, -20, -20, 1120, 1390);
+              (ctx as any).filter = 'none';
+            }
+
+            // Glass tint scrim inside card for text contrast
+            const alpha = (backdropDarkness / 100) * 0.65;
+            const cardScrim = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
+            cardScrim.addColorStop(0, `rgba(9, 8, 20, ${alpha * 0.95})`);
+            cardScrim.addColorStop(1, `rgba(18, 12, 32, ${alpha * 1.1})`);
+            ctx.fillStyle = cardScrim;
+            ctx.fillRect(cardX, cardY, cardW, cardH);
 
             // Subtle color tint from chosen palette
-            const colorBlend = ctx.createLinearGradient(0, 0, 1080, 1350);
+            const colorBlend = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
             colorBlend.addColorStop(0, carouselBg1);
             colorBlend.addColorStop(1, carouselBg2);
             ctx.globalCompositeOperation = 'screen';
-            ctx.globalAlpha = 0.22;
+            ctx.globalAlpha = 0.18;
             ctx.fillStyle = colorBlend;
-            ctx.fillRect(0, 0, 1080, 1350);
+            ctx.fillRect(cardX, cardY, cardW, cardH);
             ctx.globalCompositeOperation = 'source-over';
             ctx.globalAlpha = 1.0;
+
+            ctx.restore(); // Exit clipping
           } else {
             // 1b. Vibrant Gradient Backdrop Fallback
             const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
@@ -544,23 +558,23 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             orbGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
             ctx.fillStyle = orbGrad;
             ctx.fillRect(0, 0, 1080, 1350);
+
+            // Draw Card Fill for Gradient Fallback
+            ctx.save();
+            ctx.beginPath();
+            ctx.roundRect(cardX, cardY, cardW, cardH, cardR);
+            ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
+            ctx.fill();
+            ctx.restore();
           }
 
-          // 2. Expanded Glassmorphism Card (Larger area: 1000px wide x 1250px tall)
-          const cardX = 40;
-          const cardY = 50;
-          const cardW = 1000;
-          const cardH = 1250;
-          const cardR = 44;
-
+          // 3. Draw Card Outer Shadow & Glossy Border Stroke
           ctx.save();
           ctx.beginPath();
           ctx.roundRect(cardX, cardY, cardW, cardH, cardR);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.08)';
           ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
           ctx.shadowBlur = 40;
           ctx.shadowOffsetY = 16;
-          ctx.fill();
 
           // Glossy Border Highlight
           const glassBorder = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
@@ -1063,10 +1077,10 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                 />
                 <div className="space-y-0.5">
                   <span className="text-[10px] font-black uppercase tracking-wider text-white flex items-center gap-1.5">
-                    🖼️ {isRu ? 'Фото 1-го слайда как размытый фон (Glassmorphism)' : 'Slide 1 Photo as Blurred Backdrop'}
+                    🖼️ {isRu ? 'Четкое фото по краям + стекло карточки (Glassmorphism)' : 'Crisp Photo Edges + Glassmorphic Card'}
                   </span>
                   <span className="text-[8px] font-mono text-white/40 block">
-                    {isRu ? 'Использует арт с обложки в качестве объёмного фона под стеклом' : 'Uses cover photo as ambient backdrop under glass card'}
+                    {isRu ? 'Края слайда сочные и четкие, под карточкой умеренный blur и затемнение' : 'Sharp image margins outside card, moderate blur inside glass card'}
                   </span>
                 </div>
               </label>
@@ -1074,7 +1088,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
               {usePhotoBackdrop && (
                 <div className="flex items-center gap-3 shrink-0">
                   <span className="text-[9px] font-black uppercase tracking-widest text-purple-300">
-                    {isRu ? `Затемнение (Контраст): ${backdropDarkness}%` : `Darkness: ${backdropDarkness}%`}
+                    {isRu ? `Прозрачность стекла (Контраст): ${backdropDarkness}%` : `Glass Tint: ${backdropDarkness}%`}
                   </span>
                   <input
                     type="range"
@@ -1162,25 +1176,16 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
                         </>
                       ) : (
-                        /* SLIDES 2-6 (BODY SLIDES - EXPANDED GLASSMORPHISM CARD DESIGN WITH PHOTO BACKDROP) */
+                        /* SLIDES 2-6 (BODY SLIDES - SHARP PHOTO EDGES + CLIPPED INNER GLASS CARD) */
                         <div className="w-full h-full p-1 relative overflow-hidden rounded-[1.8rem]">
-                          {/* Photo Backdrop from Slide 1 with Blur & Controlled Scrim */}
+                          {/* Photo Backdrop from Slide 1 - Sharp & Unblurred Edges */}
                           {imageResults['carousel-0'] && usePhotoBackdrop ? (
-                            <>
-                              <img
-                                src={imageResults['carousel-0']}
-                                alt={`Slide ${num} Backdrop`}
-                                crossOrigin="anonymous"
-                                className="absolute inset-0 w-full h-full object-cover scale-125 blur-md brightness-75 opacity-70 pointer-events-none"
-                              />
-                              <div
-                                className="absolute inset-0 transition-opacity pointer-events-none"
-                                style={{
-                                  backgroundColor: `rgba(5, 5, 12, ${(backdropDarkness / 100) * 0.88})`,
-                                  backgroundImage: `linear-gradient(135deg, ${carouselBg1}44, ${carouselBg2}66)`
-                                }}
-                              />
-                            </>
+                            <img
+                              src={imageResults['carousel-0']}
+                              alt={`Slide ${num} Backdrop`}
+                              crossOrigin="anonymous"
+                              className="absolute inset-0 w-full h-full object-cover pointer-events-none"
+                            />
                           ) : (
                             <div
                               className="absolute inset-0 pointer-events-none"
@@ -1188,7 +1193,14 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                             />
                           )}
 
-                          <div className="relative z-10 w-full h-full rounded-[1.4rem] bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.4)] p-3.5 flex flex-col justify-between overflow-hidden">
+                          <div
+                            className="relative z-10 w-full h-full rounded-[1.4rem] border border-white/25 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.5)] p-3.5 flex flex-col justify-between overflow-hidden"
+                            style={{
+                              backgroundColor: usePhotoBackdrop ? `rgba(9, 8, 20, ${(backdropDarkness / 100) * 0.65})` : 'rgba(255, 255, 255, 0.08)',
+                              backdropFilter: 'blur(8px)',
+                              WebkitBackdropFilter: 'blur(8px)'
+                            }}
+                          >
                             <div className="flex justify-between items-center z-10">
                               <span
                                 className="text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md shadow-sm"
