@@ -2,7 +2,7 @@
 
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
-import { 
+import {
   Sparkles, Download, Copy, Check, Loader2, Image as ImageIcon,
   ChevronRight, ChevronLeft, RefreshCw, Wand2, ArrowLeft, X, Fingerprint
 } from 'lucide-react';
@@ -213,28 +213,28 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
       const resText = await fetch('/api/ai/ig-carousel', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          scriptText, 
-          projectId, 
+        body: JSON.stringify({
+          scriptText,
+          projectId,
           ideaTitle: activeHook || projectTitle || (manifest as any)?.ideaTitle,
-          locale, 
+          locale,
           toneMode: 'mentor',
         })
       });
-      
+
       if (!resText.ok) {
         const errorData = await resText.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to generate carousel texts');
       }
-      
+
       const textData = await resText.json();
       const newAssets = {
         ...(assets || {}),
         ig_carousel: textData
       } as any;
-      
+
       setAssets(newAssets);
-      
+
       if (onUpdateManifest) {
         onUpdateManifest({
           ...manifest,
@@ -252,8 +252,8 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
     } catch (err: any) {
       console.error('[Gallery Gen Error]:', err);
-      safeAlert(isRu 
-        ? `Ошибка генерации галереи: ${err.message || err}` 
+      safeAlert(isRu
+        ? `Ошибка генерации галереи: ${err.message || err}`
         : `Failed to generate gallery: ${err.message || err}`
       );
     } finally {
@@ -267,8 +267,8 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
     const words = text.split(/(\s+)/);
     return words.map((word, idx) => {
       const clean = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()""''«»]/g, "");
-      const isHighlighted = 
-        word.startsWith('"') || word.endsWith('"') || 
+      const isHighlighted =
+        word.startsWith('"') || word.endsWith('"') ||
         word.startsWith('«') || word.endsWith('»') ||
         (clean.length > 2 && clean === clean.toUpperCase() && !/^\d+$/.test(clean));
 
@@ -346,7 +346,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
           const maxTextWidth = 920;
           const words = textToDraw.toUpperCase().split(' ');
-          
+
           let line = '';
           const lines: { text: string; words: { word: string; isYellow: boolean }[] }[] = [];
           let currentLineWords: { word: string; isYellow: boolean }[] = [];
@@ -512,9 +512,6 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.shadowBlur = 0;
           ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
           ctx.font = '500 20px Inter, system-ui, sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText('@viral_engine', cardX + 50, cardY + cardH - 50);
-
           ctx.textAlign = 'right';
           ctx.fillText(`Слайд ${slideNum}`, cardX + cardW - 50, cardY + cardH - 50);
         }
@@ -530,36 +527,48 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
       const bgUrl = slideNum === 1 ? imageResults[`carousel-0`] : null;
       if (bgUrl) {
-        // Fetch external image as base64 dataUrl to prevent CORS canvas tainting
-        fetch(bgUrl)
-          .then(res => res.blob())
-          .then(blob => {
-            const reader = new FileReader();
-            reader.onloadend = () => {
+        if (bgUrl.startsWith('data:')) {
+          // Direct base64 dataUrl - draw directly onto canvas without calling fetch() in Safari
+          const img = safeImage ? new safeImage() : null;
+          if (img) {
+            img.onload = () => drawContent(img);
+            img.onerror = () => drawContent(null);
+            img.src = bgUrl;
+          } else {
+            drawContent(null);
+          }
+        } else {
+          // External http(s) URL -> fetch blob to prevent CORS canvas tainting
+          fetch(bgUrl)
+            .then(res => res.blob())
+            .then(blob => {
+              const reader = new FileReader();
+              reader.onloadend = () => {
+                const img = safeImage ? new safeImage() : null;
+                if (img) {
+                  img.onload = () => drawContent(img);
+                  img.onerror = () => drawContent(null);
+                  img.src = reader.result as string;
+                } else {
+                  drawContent(null);
+                }
+              };
+              reader.onerror = () => drawContent(null);
+              reader.readAsDataURL(blob);
+            })
+            .catch(() => {
+              // Fallback direct image load
               const img = safeImage ? new safeImage() : null;
               if (img) {
+                img.crossOrigin = 'anonymous';
                 img.onload = () => drawContent(img);
                 img.onerror = () => drawContent(null);
-                img.src = reader.result as string;
+                img.src = bgUrl;
               } else {
                 drawContent(null);
               }
-            };
-            reader.onerror = () => drawContent(null);
-            reader.readAsDataURL(blob);
-          })
-          .catch(() => {
-            // Fallback direct image load
-            const img = safeImage ? new safeImage() : null;
-            if (img) {
-              img.crossOrigin = 'anonymous';
-              img.onload = () => drawContent(img);
-              img.onerror = () => drawContent(null);
-              img.src = bgUrl;
-            } else {
-              drawContent(null);
-            }
-          });
+            });
+        }
       } else {
         drawContent(null);
       }
@@ -589,6 +598,56 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
     } catch (e) {
       console.error('[Slide Render Error]:', e);
       safeAlert(isRu ? 'Ошибка рендеринга слайда. Попробуйте еще раз.' : 'Error rendering slide.');
+    }
+  };
+
+  const handleShareSingleFile = async (dataUrl: string, slideNum: number) => {
+    try {
+      let blob: Blob;
+      if (dataUrl.startsWith('data:')) {
+        // Convert data URL to Blob directly without calling fetch() in Safari
+        const parts = dataUrl.split(',');
+        const mime = parts[0].match(/:(.*?);/)?.[1] || 'image/jpeg';
+        const bstr = atob(parts[1]);
+        let n = bstr.length;
+        const u8arr = new Uint8Array(n);
+        while (n--) {
+          u8arr[n] = bstr.charCodeAt(n);
+        }
+        blob = new Blob([u8arr], { type: mime });
+      } else {
+        const res = await fetch(dataUrl);
+        blob = await res.blob();
+      }
+
+      const fileName = `gallery_slide_${slideNum}.jpg`;
+      const file = new File([blob], fileName, { type: 'image/jpeg' });
+
+      const nav = globalThis.navigator as any;
+      if (nav?.share && nav?.canShare && nav.canShare({ files: [file] })) {
+        try {
+          await nav.share({
+            files: [file],
+            title: `Слайд #${slideNum}`,
+            text: `Слайд #${slideNum} карусели`
+          });
+          return;
+        } catch (err: any) {
+          if (err.name === 'AbortError') return;
+        }
+      }
+
+      // Fallback: direct download link
+      const link = safeDocument ? safeDocument.createElement('a') : null;
+      if (link) {
+        link.href = dataUrl;
+        link.download = fileName;
+        safeDocument.body.appendChild(link);
+        link.click();
+        safeDocument.body.removeChild(link);
+      }
+    } catch (err) {
+      console.error('[Share Single File Error]:', err);
     }
   };
 
@@ -645,7 +704,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   return (
     <div className="h-full flex flex-col overflow-y-auto bg-[#050508] p-4 md:p-8 custom-scrollbar">
       <div className="max-w-6xl mx-auto w-full space-y-8 animate-in fade-in duration-300">
-        
+
         {/* Header Navigation */}
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 p-6 rounded-[2.5rem] bg-white/[0.03] border border-white/10 backdrop-blur-2xl shadow-[0_8px_32px_rgba(0,0,0,0.37),inset_0_1px_1px_rgba(255,255,255,0.1)]">
           <div className="space-y-1.5">
@@ -723,12 +782,12 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                   onClick={() => handleSelectPalette(preset)}
                   className={cn(
                     "p-4 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between h-24 group",
-                    isSelected 
-                      ? "border-purple-500 bg-white/[0.08] backdrop-blur-xl ring-2 ring-purple-500/40 shadow-lg shadow-purple-500/10" 
+                    isSelected
+                      ? "border-purple-500 bg-white/[0.08] backdrop-blur-xl ring-2 ring-purple-500/40 shadow-lg shadow-purple-500/10"
                       : "border-white/10 bg-white/[0.02] hover:border-white/20 hover:bg-white/[0.05]"
                   )}
                 >
-                  <div 
+                  <div
                     className="absolute inset-0 opacity-25 group-hover:opacity-40 transition-opacity"
                     style={{ background: `linear-gradient(135deg, ${preset.bg1}, ${preset.bg2})` }}
                   />
@@ -757,36 +816,36 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           <div className="grid grid-cols-2 md:grid-cols-4 gap-3 pt-2">
             <div className="space-y-1">
               <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Градиент 1</label>
-              <input 
-                type="color" 
-                value={carouselBg1} 
+              <input
+                type="color"
+                value={carouselBg1}
                 onChange={(e) => setCarouselBg1(e.target.value)}
                 className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Градиент 2</label>
-              <input 
-                type="color" 
-                value={carouselBg2} 
+              <input
+                type="color"
+                value={carouselBg2}
                 onChange={(e) => setCarouselBg2(e.target.value)}
                 className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Цвет текста</label>
-              <input 
-                type="color" 
-                value={carouselTextColor} 
+              <input
+                type="color"
+                value={carouselTextColor}
                 onChange={(e) => setCarouselTextColor(e.target.value)}
                 className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
               />
             </div>
             <div className="space-y-1">
               <label className="text-[8px] font-black uppercase tracking-widest text-white/40">Акцент (Желтый)</label>
-              <input 
-                type="color" 
-                value={carouselAccentColor} 
+              <input
+                type="color"
+                value={carouselAccentColor}
                 onChange={(e) => setCarouselAccentColor(e.target.value)}
                 className="w-full h-8 rounded-lg bg-transparent border border-white/10 cursor-pointer"
               />
@@ -803,7 +862,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           </div>
 
           <div className="relative">
-            <div 
+            <div
               id="carousel-scroller"
               className="flex overflow-x-auto gap-4 pb-6 snap-x snap-mandatory scrollbar-none scroll-smooth px-1"
             >
@@ -816,18 +875,18 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                 const textContent = customSlideTexts[num] !== undefined ? customSlideTexts[num] : (slideData?.text_on_slide || (num === 1 ? reelsHook || 'Хук вашего видео-сценария' : `Тезис слайда ${num}`));
 
                 return (
-                  <div 
+                  <div
                     key={num}
                     onClick={() => setActiveSlideIndex(i)}
                     className={cn(
                       "w-[260px] md:w-[280px] shrink-0 snap-center transition-all duration-300 cursor-pointer p-1 rounded-[2rem]",
-                      activeSlideIndex === i 
-                        ? "scale-100 opacity-100 ring-2 ring-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.2)]" 
+                      activeSlideIndex === i
+                        ? "scale-100 opacity-100 ring-2 ring-purple-500/50 shadow-[0_0_25px_rgba(168,85,247,0.2)]"
                         : "scale-95 opacity-50 hover:opacity-80"
                     )}
                   >
                     {/* Visual Card Canvas */}
-                    <div 
+                    <div
                       className="relative w-full aspect-[4/5] rounded-[1.8rem] overflow-hidden border border-white/10 flex flex-col justify-between p-6 group/canvas shadow-2xl"
                       style={num === 1 ? {} : { background: `linear-gradient(135deg, ${carouselBg1}, ${carouselBg2})` }}
                     >
@@ -835,9 +894,9 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                       {num === 1 ? (
                         <>
                           {url ? (
-                            <img 
-                              src={url} 
-                              alt="Slide 1 Cover" 
+                            <img
+                              src={url}
+                              alt="Slide 1 Cover"
                               crossOrigin="anonymous"
                               className="absolute inset-0 w-full h-full object-cover transition-transform duration-700 group-hover/canvas:scale-105"
                             />
@@ -868,8 +927,8 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                         <div className="w-full h-full p-1">
                           <div className="w-full h-full rounded-[1.4rem] bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.4)] p-3.5 flex flex-col justify-between relative overflow-hidden">
                             <div className="flex justify-between items-center z-10">
-                              <span 
-                                className="text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md shadow-sm" 
+                              <span
+                                className="text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md shadow-sm"
                                 style={{ color: carouselAccentColor }}
                               >
                                 0{num} / 06
@@ -896,9 +955,9 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                       {/* Loading State Overlay */}
                       <AnimatePresence>
                         {isGen && (
-                          <motion.div 
-                            initial={{ opacity: 0 }} 
-                            animate={{ opacity: 1 }} 
+                          <motion.div
+                            initial={{ opacity: 0 }}
+                            animate={{ opacity: 1 }}
                             exit={{ opacity: 0 }}
                             className="absolute inset-0 bg-black/70 backdrop-blur-sm flex flex-col items-center justify-center gap-2 z-30"
                           >
@@ -1037,9 +1096,9 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                   {modalShareImages.map((img) => (
                     <div key={img.num} className="space-y-2 text-center">
                       <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-lg">
-                        <img 
-                          src={img.url} 
-                          alt={`Slide ${img.num}`} 
+                        <img
+                          src={img.url}
+                          alt={`Slide ${img.num}`}
                           className="w-full h-full object-cover select-all"
                         />
                       </div>
