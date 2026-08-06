@@ -4,8 +4,9 @@ import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import {
   Sparkles, Download, Copy, Check, Loader2, Image as ImageIcon,
-  ChevronRight, ChevronLeft, RefreshCw, Wand2, ArrowLeft, X, Fingerprint
+  ChevronRight, ChevronLeft, RefreshCw, Wand2, ArrowLeft, X, Fingerprint, Share2
 } from 'lucide-react';
+
 import { cn } from '@/lib/utils';
 import { parseScriptTextToPayload } from '@/lib/studio-utils';
 
@@ -1092,20 +1093,56 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                   </p>
                 </div>
 
-                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[55vh] overflow-y-auto custom-scrollbar p-1">
+                <div className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4 max-h-[58vh] overflow-y-auto custom-scrollbar p-1">
                   {modalShareImages.map((img) => (
-                    <div key={img.num} className="space-y-2 text-center">
+                    <div key={img.num} className="space-y-3 text-center bg-white/[0.03] border border-white/10 rounded-3xl p-3 flex flex-col justify-between">
                       <div className="relative aspect-[4/5] rounded-2xl overflow-hidden border border-white/10 bg-black/40 shadow-lg">
-                        <img
-                          src={img.url}
-                          alt={`Slide ${img.num}`}
-                          className="w-full h-full object-cover select-all"
+                        <img 
+                          src={img.url} 
+                          alt={`Slide ${img.num}`} 
+                          className="w-full h-full object-cover select-auto touch-auto cursor-pointer"
+                          style={{
+                            WebkitTouchCallout: 'default',
+                            WebkitUserSelect: 'auto',
+                            userSelect: 'auto',
+                            touchAction: 'manipulation'
+                          }}
                         />
                       </div>
-                      <span className="text-[9px] font-mono text-white/50">Слайд #{img.num}</span>
+
+                      <div className="space-y-2">
+                        <span className="text-[10px] font-mono text-white/50 font-bold block">Слайд #{img.num}</span>
+                        
+                        <div className="flex gap-2">
+                          <button
+                            onClick={() => handleShareSingleFile(img.url, img.num)}
+                            className="flex-1 py-2 px-2.5 rounded-xl bg-purple-500/20 border border-purple-500/30 hover:bg-purple-500/30 text-purple-300 text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all active:scale-95 shadow-md"
+                          >
+                            <Share2 size={12} />
+                            {isRu ? 'Поделиться' : 'Share'}
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              const link = safeDocument ? safeDocument.createElement('a') : null;
+                              if (link) {
+                                link.href = img.url;
+                                link.download = `gallery_slide_${img.num}.jpg`;
+                                safeDocument.body.appendChild(link);
+                                link.click();
+                                safeDocument.body.removeChild(link);
+                              }
+                            }}
+                            className="py-2 px-3 rounded-xl bg-white/10 border border-white/20 hover:bg-white/20 text-white text-[9px] font-black uppercase tracking-wider flex items-center justify-center gap-1 transition-all active:scale-95"
+                          >
+                            <Download size={12} />
+                          </button>
+                        </div>
+                      </div>
                     </div>
                   ))}
                 </div>
+
 
                 <button
                   onClick={() => setModalShareImages(null)}
