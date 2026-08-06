@@ -519,38 +519,19 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const downloadSingleRenderedSlide = async (slideNum: number) => {
     try {
       const dataUrl = await exportSlideToCanvas(slideNum);
-      const res = await fetch(dataUrl);
-      const blob = await res.blob();
       const fileName = `gallery_slide_${slideNum}.jpg`;
-      const file = new File([blob], fileName, { type: 'image/jpeg' });
 
-      const nav = globalThis.navigator as any;
-      if (nav?.share && nav?.canShare && nav.canShare({ files: [file] })) {
-        try {
-          await nav.share({
-            files: [file],
-            title: `Слайд #${slideNum}`,
-            text: `Слайд #${slideNum} карусели`
-          });
-          return;
-        } catch (err: any) {
-          if (err.name === 'AbortError') return;
-        }
-      }
-
-      // Fallback 1: Direct link download
+      // 1. Direct browser download trigger
       const link = safeDocument ? safeDocument.createElement('a') : null;
       if (link) {
-        const objectUrl = URL.createObjectURL(blob);
-        link.href = objectUrl;
+        link.href = dataUrl;
         link.download = fileName;
         safeDocument.body.appendChild(link);
         link.click();
         safeDocument.body.removeChild(link);
-        setTimeout(() => URL.revokeObjectURL(objectUrl), 10000);
       }
 
-      // Fallback 2: Display modal for long-press saving on mobile
+      // 2. Open in-app save modal so user can long-press to save to Photos without leaving page
       setModalShareImages([{ url: dataUrl, num: slideNum }]);
     } catch (e) {
       console.error('[Slide Render Error]:', e);
@@ -561,48 +542,25 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const downloadAllRenderedSlides = async () => {
     setIsExportingAll(true);
     try {
-      const allFiles: File[] = [];
       const allModalImages: { url: string; num: number }[] = [];
 
       for (let i = 1; i <= 6; i++) {
         const dataUrl = await exportSlideToCanvas(i);
-        const res = await fetch(dataUrl);
-        const blob = await res.blob();
-        const fileName = `gallery_slide_${i}.jpg`;
-        const file = new File([blob], fileName, { type: 'image/jpeg' });
-        allFiles.push(file);
         allModalImages.push({ url: dataUrl, num: i });
-      }
 
-      // 1. Try Native Web Share API with all 6 files at once (triggers iOS/Android native Share sheet)
-      const nav = globalThis.navigator as any;
-      if (nav?.share && nav?.canShare && nav.canShare({ files: allFiles })) {
-        try {
-          await nav.share({
-            files: allFiles,
-            title: 'Инстаграм Галерея (6 слайдов)',
-            text: '6 слайдов карусели для Instagram'
-          });
-          return;
-        } catch (err: any) {
-          if (err.name === 'AbortError') return;
-        }
-      }
-
-      // 2. Fallback: Download each link + show mobile save modal
-      for (let i = 0; i < allModalImages.length; i++) {
-        const item = allModalImages[i];
+        // Direct anchor download trigger
         const link = safeDocument ? safeDocument.createElement('a') : null;
         if (link) {
-          link.href = item.url;
-          link.download = `gallery_slide_${item.num}.jpg`;
+          link.href = dataUrl;
+          link.download = `gallery_slide_${i}.jpg`;
           safeDocument.body.appendChild(link);
           link.click();
           safeDocument.body.removeChild(link);
         }
-        await new Promise(r => setTimeout(r, 200));
+        await new Promise(r => setTimeout(r, 150));
       }
 
+      // Open in-app save modal with all 6 slides (stays 100% inside page without system context reset)
       setModalShareImages(allModalImages);
     } catch (err) {
       console.error('[Batch Export Error]:', err);
@@ -610,6 +568,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
       setIsExportingAll(false);
     }
   };
+
 
 
   const copyText = (text: string, id: string) => {
