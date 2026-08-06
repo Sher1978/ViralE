@@ -11,8 +11,8 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { useAppData } from '@/components/providers/AppDataProvider';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { AppOnboardingTour } from '@/components/ui/AppOnboardingTour';
-import { TelegramConnectBanner } from '@/components/ui/TelegramConnectBanner';
 import { HelpCircle } from 'lucide-react';
+
 
 const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
   "Hooks": { en: "Virality Hooks", ru: "Крючки виральности" },
@@ -272,15 +272,9 @@ export default function IdeasPage() {
         </p>
       </div>
 
-      {/* Telegram Connection Motivation Banner (+50 CR Reward) */}
-      {activeTab === 'new' && (
-        <TelegramConnectBanner 
-          userId={profile?.id}
-          telegramLinked={Boolean((profile as any)?.telegram_id)}
-        />
-      )}
 
       <AnimatePresence>
+
         {ideasError && (() => {
           const isDnaError = ideasError.includes('ДНК') || ideasError.includes('DNA') || ideasError.includes('brand DNA') || ideasError.includes('Brand DNA');
           if (isDnaError) {

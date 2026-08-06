@@ -466,7 +466,14 @@ export async function POST(req: NextRequest) {
           .single();
 
         if (profile) {
-          const alreadyLinked = Boolean(profile.telegram_id);
+          const { data: existingBonus } = await supabaseAdmin
+            .from('credit_transactions')
+            .select('id')
+            .eq('user_id', targetUserId)
+            .eq('transaction_type', 'telegram_connect_bonus')
+            .maybeSingle();
+
+          const alreadyRewarded = Boolean(profile.telegram_id) || Boolean(existingBonus);
           await supabaseAdmin
             .from('profiles')
             .update({
@@ -477,12 +484,17 @@ export async function POST(req: NextRequest) {
 
           let bonusText = '';
           const locale = user.language_code === 'ru' ? 'ru' : 'en';
-          if (!alreadyLinked) {
+          if (!alreadyRewarded) {
             await addCredits(supabaseAdmin, targetUserId, 50, 'telegram_connect_bonus');
             bonusText = locale === 'ru' 
               ? `\n\n🎁 *Вам зачислено +50 CR бонуса!* Наслаждайтесь созданием вирального контента.`
               : `\n\n🎁 *+50 CR Bonus credited to your account!* Enjoy creating viral content.`;
+          } else {
+            bonusText = locale === 'ru'
+              ? `\n\nℹ️ *Ваш аккаунт уже был подключен ранее (бонус +50 CR начисляется единоразово).*`
+              : `\n\nℹ️ *Your account was previously linked (the +50 CR bonus is granted once).*`;
           }
+
 
           const linkSuccessMsg = locale === 'ru'
             ? `🎉 *Аккаунт успешно подключен к Telegram!*${bonusText}\n\nТеперь вы будете получать автоматические трендовые сценарии и уведомления прямо сюда.`

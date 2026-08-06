@@ -26,8 +26,15 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
     }
 
-    // If telegram_id was already linked, don't re-grant bonus
-    const alreadyLinked = Boolean(profile.telegram_id);
+    // Check if telegram_id was already linked OR bonus transaction already exists
+    const { data: existingBonus } = await supabaseAdmin
+      .from('credit_transactions')
+      .select('id')
+      .eq('user_id', user.id)
+      .eq('transaction_type', 'telegram_connect_bonus')
+      .maybeSingle();
+
+    const alreadyRewarded = Boolean(profile.telegram_id) || Boolean(existingBonus);
 
     const { error: updateErr } = await supabaseAdmin
       .from('profiles')
@@ -43,14 +50,15 @@ export async function POST(req: Request) {
     }
 
     let creditsAdded = 0;
-    if (!alreadyLinked) {
-      // Award +50 CR bonus for connecting Telegram
+    if (!alreadyRewarded) {
+      // Award +50 CR bonus strictly ONCE for connecting Telegram
       await addCredits(supabaseAdmin, user.id, 50, 'telegram_connect_bonus', {
         reason: 'Bonus for linking Telegram bot',
         linked_at: new Date().toISOString()
       });
       creditsAdded = 50;
     }
+
 
     const { data: updatedProfile } = await supabaseAdmin
       .from('profiles')
