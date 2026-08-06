@@ -7,7 +7,8 @@ import * as groq from '@/lib/ai/groq';
 import fs from 'fs';
 import path from 'path';
 
-import { sortTrizIdeas } from '@/app/[locale]/app/(main)/projects/new/script/_components/TrizMatrix';
+import { sortTrizIdeas } from '@/lib/studio-utils';
+
 
 export const maxDuration = 60; // Vercel limit
 

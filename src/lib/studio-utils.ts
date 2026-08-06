@@ -23,6 +23,53 @@ export interface ScriptPayload {
   cta: string;
 }
 
+export function sortTrizIdeas<T extends { screen_name?: string; level?: string }>(ideas: T[]): T[] {
+  if (!Array.isArray(ideas) || ideas.length === 0) return ideas;
+
+  const getRank = (idea: T): number => {
+    const level = ((idea as any).screen_name || (idea as any).level || '').toLowerCase();
+    
+    // Check if System (and NOT Subsystem or Suprasystem)
+    const isSystem = level.includes('система') && !level.includes('подсистема') && !level.includes('надсистема');
+    const isEnglishSystem = level.includes('system') && !level.includes('sub') && !level.includes('supra');
+
+    // 1. СИСТЕМА + НАСТОЯЩЕЕ (Rank 1)
+    if ((isSystem || isEnglishSystem) && (level.includes('настоящее') || level.includes('present'))) {
+      return 1;
+    }
+
+    // 2. СИСТЕМА (Прошлое, Будущее и остальные) (Ranks 2-4)
+    if (isSystem || isEnglishSystem) {
+      if (level.includes('прошлое') || level.includes('past')) return 2;
+      if (level.includes('будущее') || level.includes('future')) return 3;
+      return 4;
+    }
+
+    // 3. ПОДСИСТЕМА (Ranks 10-13)
+    const isSub = level.includes('подсистема') || (level.includes('sub') && level.includes('system'));
+    if (isSub) {
+      if (level.includes('настоящее') || level.includes('present')) return 10;
+      if (level.includes('прошлое') || level.includes('past')) return 11;
+      if (level.includes('будущее') || level.includes('future')) return 12;
+      return 13;
+    }
+
+    // 4. НАДСИСТЕМА (Ranks 20-23)
+    const isSupra = level.includes('надсистема') || level.includes('над') || level.includes('supra');
+    if (isSupra) {
+      if (level.includes('настоящее') || level.includes('present')) return 20;
+      if (level.includes('прошлое') || level.includes('past')) return 21;
+      if (level.includes('будущее') || level.includes('future')) return 22;
+      return 23;
+    }
+
+    return 99;
+  };
+
+  return [...ideas].sort((a, b) => getRank(a) - getRank(b));
+}
+
+
 /**
  * Parses raw text containing script blocks into structured segments.
  * Supports both Russian and English headers.

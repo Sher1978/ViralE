@@ -39,9 +39,10 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { ScriptPreviews } from './_components/ScriptPreviews';
 import { SingleScriptEditor } from './_components/SingleScriptEditor';
 import { ScenarioLegend } from './_components/ScenarioLegend';
-import { TrizMatrix, sortTrizIdeas } from './_components/TrizMatrix';
+import { TrizMatrix } from './_components/TrizMatrix';
 
-import { createInitialManifest, parseScriptTextToPayload } from '@/lib/studio-utils';
+import { createInitialManifest, parseScriptTextToPayload, sortTrizIdeas } from '@/lib/studio-utils';
+
 import { idb } from '@/lib/idb';
 
 import { BottomNav } from '@/components/layout/BottomNav';
