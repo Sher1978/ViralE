@@ -70,22 +70,37 @@ const safeAlert = (msg: string) => {
 const safeDocument = typeof globalThis !== 'undefined' ? (globalThis as any).document : null;
 const safeImage = typeof globalThis !== 'undefined' ? (globalThis as any).Image : null;
 
-// Helper to extract the actual Reels Script Hook instead of raw draft idea title
+// Helper to extract a short, punchy Reels Script Hook snippet for Slide 1 cover title
+const cleanHeadlineSnippet = (text: string): string => {
+  if (!text) return '';
+  let cleaned = text
+    .replace(/^["'«\s]+|["'»\s]+$/g, '')
+    .replace(/^(?:ХУК|HOOK|ИНТРО|ЗАЦЕПКА):\s*/i, '')
+    .trim();
+  const firstSentence = cleaned.split(/[.!?\n]/)[0].trim();
+  const words = firstSentence.split(/\s+/);
+  if (words.length > 8) {
+    return words.slice(0, 8).join(' ');
+  }
+  return firstSentence;
+};
+
 const getReelsScriptHook = (scriptText: string, manifest: any): string => {
   if (manifest?.customScript) {
     const parsed = parseScriptTextToPayload(manifest.customScript);
-    if (parsed.hook) return parsed.hook;
+    if (parsed.hook) return cleanHeadlineSnippet(parsed.hook);
   }
   if (scriptText) {
     const parsed = parseScriptTextToPayload(scriptText);
-    if (parsed.hook) return parsed.hook;
+    if (parsed.hook) return cleanHeadlineSnippet(parsed.hook);
   }
   if (manifest?.segments && manifest.segments.length > 0) {
     const introSeg = manifest.segments.find((s: any) => s.type === 'intro_avatar' || s.type === 'hook') || manifest.segments[0];
-    if (introSeg?.scriptText) return introSeg.scriptText;
+    if (introSeg?.scriptText) return cleanHeadlineSnippet(introSeg.scriptText);
   }
   return '';
 };
+
 
 export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   manifest,
@@ -402,79 +417,30 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.fillText('V', 1080 / 2, 1271);
 
         } else {
-          // --- SLIDES 2-6: BODY SLIDES (GLASSMORPHISM CARD + GRADIENT BACKDROP) ---
-          // 1. Vibrant Gradient Backdrop
+          // --- SLIDES 2-6: BODY SLIDES (Clean 2-Color Gradient + Typography) ---
           const bgGrad = ctx.createLinearGradient(0, 0, 1080, 1350);
           bgGrad.addColorStop(0, carouselBg1);
           bgGrad.addColorStop(1, carouselBg2);
           ctx.fillStyle = bgGrad;
           ctx.fillRect(0, 0, 1080, 1350);
 
-          // Ambient Radial Light Highlight
-          const orbGrad = ctx.createRadialGradient(850, 250, 50, 850, 250, 600);
-          orbGrad.addColorStop(0, 'rgba(255, 255, 255, 0.15)');
-          orbGrad.addColorStop(1, 'rgba(255, 255, 255, 0)');
-          ctx.fillStyle = orbGrad;
-          ctx.fillRect(0, 0, 1080, 1350);
+          ctx.shadowColor = 'transparent';
+          ctx.shadowBlur = 0;
 
-          // 2. Glassmorphism Card (Centered Panel)
-          const cardX = 65;
-          const cardY = 85;
-          const cardW = 950;
-          const cardH = 1180;
-          const cardR = 48;
-
-          ctx.save();
-          ctx.beginPath();
-          ctx.roundRect(cardX, cardY, cardW, cardH, cardR);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.07)';
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-          ctx.shadowBlur = 40;
-          ctx.shadowOffsetY = 16;
-          ctx.fill();
-
-          // Glossy Border Highlight
-          const glassBorder = ctx.createLinearGradient(cardX, cardY, cardX + cardW, cardY + cardH);
-          glassBorder.addColorStop(0, 'rgba(255, 255, 255, 0.4)');
-          glassBorder.addColorStop(0.5, 'rgba(255, 255, 255, 0.1)');
-          glassBorder.addColorStop(1, 'rgba(255, 255, 255, 0.25)');
-          ctx.lineWidth = 2.5;
-          ctx.strokeStyle = glassBorder;
-          ctx.stroke();
-          ctx.restore();
-
-          // 3. Glassmorphism Pill Badge for 02 / 06
-          const badgeX = cardX + 50;
-          const badgeY = cardY + 50;
-          const badgeW = 145;
-          const badgeH = 52;
-          const badgeR = 26;
-
-          ctx.save();
-          ctx.beginPath();
-          ctx.roundRect(badgeX, badgeY, badgeW, badgeH, badgeR);
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.12)';
-          ctx.fill();
-          ctx.lineWidth = 1.5;
-          ctx.strokeStyle = 'rgba(255, 255, 255, 0.25)';
-          ctx.stroke();
-
+          // Slide Badge Header (02 / 06)
           ctx.fillStyle = carouselAccentColor || '#FFE600';
-          ctx.font = '700 22px Inter, "Space Grotesk", system-ui, sans-serif';
-          ctx.textAlign = 'center';
-          ctx.textBaseline = 'middle';
-          ctx.fillText(`0${slideNum} / 06`, badgeX + badgeW / 2, badgeY + badgeH / 2 + 1);
-          ctx.restore();
+          ctx.font = '700 26px Inter, "Space Grotesk", system-ui, sans-serif';
+          ctx.textAlign = 'left';
+          ctx.textBaseline = 'top';
+          ctx.fillText(`0${slideNum} / 06`, 100, 140);
 
-          // 4. Slide Thought Text inside Glass Card
-          ctx.shadowColor = 'rgba(0, 0, 0, 0.4)';
-          ctx.shadowBlur = 12;
+          // Single Thought Text (10-18 words max)
           ctx.fillStyle = carouselTextColor || '#ffffff';
           ctx.textAlign = 'left';
           ctx.textBaseline = 'top';
           ctx.font = '600 42px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif';
 
-          const maxTextWidth = 840;
+          const maxTextWidth = 880;
           const words = textToDraw.split(' ');
           let line = '';
           const lines: string[] = [];
@@ -491,22 +457,21 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           }
           lines.push(line.trim());
 
-          const startY = cardY + 220;
+          const startY = 320;
           lines.forEach((lineText, idx) => {
-            ctx.fillText(lineText, cardX + 55, startY + (idx * 66));
+            ctx.fillText(lineText, 100, startY + (idx * 64));
           });
 
-          // 5. Glass Footer Watermark
-          ctx.shadowColor = 'transparent';
-          ctx.shadowBlur = 0;
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
+          // Footer Watermark
+          ctx.fillStyle = 'rgba(255, 255, 255, 0.4)';
           ctx.font = '500 20px Inter, system-ui, sans-serif';
           ctx.textAlign = 'left';
-          ctx.fillText('@viral_engine', cardX + 55, cardY + cardH - 60);
+          ctx.fillText('@viral_engine', 100, 1240);
 
           ctx.textAlign = 'right';
-          ctx.fillText(`Слайд ${slideNum}`, cardX + cardW - 55, cardY + cardH - 60);
+          ctx.fillText(`Слайд ${slideNum}`, 980, 1240);
         }
+
 
 
 
@@ -835,11 +800,11 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                           </div>
                         </>
                       ) : (
-                        /* SLIDES 2-6 (BODY SLIDES - GLASSMORPHISM CARD DESIGN) */
-                        <div className="w-full h-full rounded-[1.3rem] bg-white/[0.08] backdrop-blur-xl border border-white/20 shadow-[inset_0_1px_1px_rgba(255,255,255,0.3),0_8px_32px_rgba(0,0,0,0.4)] p-4 flex flex-col justify-between relative overflow-hidden">
+                        /* SLIDES 2-6 (BODY SLIDES - CLEAN GRADIENT DESIGN) */
+                        <>
                           <div className="flex justify-between items-center z-10">
                             <span 
-                              className="text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full bg-white/10 border border-white/20 backdrop-blur-md shadow-sm" 
+                              className="text-[8px] font-bold uppercase tracking-widest px-2.5 py-1 rounded-full border border-white/10 bg-black/30 backdrop-blur-md" 
                               style={{ color: carouselAccentColor }}
                             >
                               0{num} / 06
@@ -847,17 +812,18 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                           </div>
 
                           <div className="my-auto text-left z-10 space-y-2">
-                            <p className="font-semibold text-xs md:text-sm leading-relaxed tracking-normal drop-shadow-md" style={{ color: carouselTextColor }}>
+                            <p className="font-semibold text-xs md:text-sm leading-relaxed tracking-normal" style={{ color: carouselTextColor }}>
                               {textContent}
                             </p>
                           </div>
 
-                          <div className="flex justify-between items-center z-10 text-[7px] font-medium opacity-50 uppercase tracking-widest pt-2 border-t border-white/10" style={{ color: carouselTextColor }}>
+                          <div className="flex justify-between items-center z-10 text-[7px] font-medium opacity-40 uppercase tracking-widest" style={{ color: carouselTextColor }}>
                             <span>@viral_engine</span>
                             <span>Слайд {num}</span>
                           </div>
-                        </div>
+                        </>
                       )}
+
 
 
                       {/* Loading State Overlay */}
