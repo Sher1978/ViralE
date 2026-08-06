@@ -338,26 +338,14 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
     }
   };
 
-  // Render text with Yellow Key Word Highlighting (exact screenshot match)
+  // Render cover text in full Accent Color (Yellow in default preset)
   const renderHighlightText = (text: string) => {
     if (!text) return null;
-    const words = text.split(/(\s+)/);
-    return words.map((word, idx) => {
-      const clean = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()""''«»]/g, "");
-      const isHighlighted =
-        word.startsWith('"') || word.endsWith('"') ||
-        word.startsWith('«') || word.endsWith('»') ||
-        (clean.length > 2 && clean === clean.toUpperCase() && !/^\d+$/.test(clean));
-
-      if (isHighlighted) {
-        return (
-          <span key={idx} className="text-[#ffe600] font-black drop-shadow-[0_2px_10px_rgba(0,0,0,0.8)]">
-            {word}
-          </span>
-        );
-      }
-      return word;
-    });
+    return (
+      <span style={{ color: carouselAccentColor || '#FFE600' }} className="font-extrabold drop-shadow-[0_2px_10px_rgba(0,0,0,0.9)]">
+        {text}
+      </span>
+    );
   };
 
   // Canvas Exporter (Exact replica of screenshot for Slide 1 + Gradient/Photo for Slides 2-6)
@@ -418,7 +406,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.fillStyle = bottomGrad;
           ctx.fillRect(0, 500, 1080, 850);
 
-          // 3. Draw Title Text with Yellow Highlighted Keywords
+          // 3. Draw Title Text on Cover Slide in Accent Color (Yellow in this preset)
           ctx.shadowColor = 'rgba(0, 0, 0, 0.95)';
           ctx.shadowBlur = 24;
           ctx.shadowOffsetX = 0;
@@ -427,53 +415,35 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.font = '800 48px Inter, "Space Grotesk", system-ui, -apple-system, sans-serif';
+          ctx.fillStyle = carouselAccentColor || '#FFE600';
 
           const maxTextWidth = 920;
           const words = textToDraw.toUpperCase().split(/\s+/);
 
           let line = '';
-          const lines: { text: string; words: { word: string; isYellow: boolean }[] }[] = [];
-          let currentLineWords: { word: string; isYellow: boolean }[] = [];
+          const lines: string[] = [];
 
           for (let n = 0; n < words.length; n++) {
             const word = words[n];
-            const clean = word.replace(/[.,\/#!$%\^&\*;:{}=\-_`~()""''«»]/g, "");
-            const isYellow = word.startsWith('"') || word.endsWith('"') || (clean.length > 2 && clean === clean.toUpperCase() && !/^\d+$/.test(clean));
-
             const testLine = line + word + ' ';
             const metrics = ctx.measureText(testLine);
             if (metrics.width > maxTextWidth && n > 0) {
-              lines.push({ text: line.trim(), words: currentLineWords });
+              lines.push(line.trim());
               line = word + ' ';
-              currentLineWords = [{ word, isYellow }];
             } else {
               line = testLine;
-              currentLineWords.push({ word, isYellow });
             }
           }
           if (line.trim()) {
-            lines.push({ text: line.trim(), words: currentLineWords });
+            lines.push(line.trim());
           }
 
           const lineHeight = 66;
           const startY = 1350 - 330 - ((lines.length - 1) * lineHeight) / 2;
 
-          lines.forEach((l, idx) => {
+          lines.forEach((lText, idx) => {
             const y = startY + (idx * lineHeight);
-            let lineTotalWidth = 0;
-            const wordWidths = l.words.map(w => {
-              const width = ctx.measureText(w.word + ' ').width;
-              lineTotalWidth += width;
-              return { ...w, width };
-            });
-
-            let currentX = (1080 - lineTotalWidth) / 2;
-            wordWidths.forEach(w => {
-              ctx.fillStyle = w.isYellow ? '#FFE600' : '#FFFFFF';
-              ctx.textAlign = 'left';
-              ctx.fillText(w.word + ' ', currentX, y);
-              currentX += w.width;
-            });
+            ctx.fillText(lText, 1080 / 2, y);
           });
 
           // Bottom Center Fingerprint Logo Icon
@@ -1204,7 +1174,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
                           {/* Main Title / Headline Text Overlaid on dark backdrop */}
                           <div className="relative z-10 mt-auto pb-10 space-y-2 text-center">
-                            <h3 className="text-white font-extrabold text-xs md:text-sm uppercase tracking-wide leading-relaxed drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] font-sans">
+                            <h3 style={{ color: carouselAccentColor || '#FFE600' }} className="font-extrabold text-xs md:text-sm uppercase tracking-wide leading-relaxed drop-shadow-[0_4px_16px_rgba(0,0,0,0.95)] font-sans">
                               {renderHighlightText(textContent)}
                             </h3>
                           </div>
