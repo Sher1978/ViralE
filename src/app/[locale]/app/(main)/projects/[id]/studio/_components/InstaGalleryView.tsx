@@ -392,18 +392,9 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
             });
           });
 
-          // Bottom Watermark & Fingerprint Logo
+          // Bottom Center Fingerprint Logo Icon
           ctx.shadowColor = 'transparent';
           ctx.shadowBlur = 0;
-
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.85)';
-          ctx.font = '600 20px Inter, system-ui, -apple-system, sans-serif';
-          ctx.textAlign = 'left';
-          ctx.fillText('ViralEngine | экспертный контент', 70, 1260);
-
-          ctx.fillStyle = 'rgba(255, 255, 255, 0.45)';
-          ctx.font = '400 16px Inter, system-ui, -apple-system, sans-serif';
-          ctx.fillText('Качественно • По делу • Смысл', 70, 1288);
 
           ctx.fillStyle = '#FFE600';
           ctx.beginPath();
@@ -415,6 +406,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
           ctx.textAlign = 'center';
           ctx.textBaseline = 'middle';
           ctx.fillText('V', 1080 / 2, 1271);
+
 
         } else {
           // --- SLIDES 2-6: BODY SLIDES (Clean 2-Color Gradient + Typography) ---
@@ -783,21 +775,13 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                             </h3>
                           </div>
 
-                          {/* Bottom Branding (Left: Watermark, Center: Fingerprint Logo) */}
-                          <div className="absolute bottom-4 inset-x-5 flex items-center justify-between z-10">
-                            <div className="text-left space-y-0.5">
-                              <p className="text-[7px] font-bold text-white/80 uppercase tracking-wider line-clamp-1">
-                                ViralEngine | экспертный контент
-                              </p>
-                              <p className="text-[6px] font-medium text-white/40 uppercase tracking-widest">
-                                Экспертный Контент
-                              </p>
-                            </div>
-                            
+                          {/* Bottom Center Fingerprint Logo Icon */}
+                          <div className="absolute bottom-4 left-1/2 -translate-x-1/2 z-10">
                             <div className="w-5 h-5 rounded-full bg-[#ffe600] flex items-center justify-center shadow-md">
                               <Fingerprint size={12} className="text-black" />
                             </div>
                           </div>
+
                         </>
                       ) : (
                         /* SLIDES 2-6 (BODY SLIDES - CLEAN GRADIENT DESIGN) */
