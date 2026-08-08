@@ -30,14 +30,17 @@ export function SingleScriptEditor({
   const [copied, setCopied] = useState(false);
   const [refineInput, setRefineInput] = useState('');
 
-  // Handle nested or flat extraction
+  // Handle nested or flat extraction safely
   const getBlockValue = (blockKey: string, subKey?: string) => {
     const block = scriptData?.[blockKey];
     if (!block) return '';
-    if (subKey) {
-      return block[subKey] || '';
+    if (typeof block === 'string') {
+      return subKey === 'words' || !subKey ? block : '';
     }
-    return typeof block === 'string' ? block : block.words || '';
+    if (subKey) {
+      return block[subKey] || (subKey === 'words' ? (block.words || block.text || block.content || '') : '');
+    }
+    return block.words || block.text || block.content || '';
   };
 
   const handleBlockChange = (blockKey: string, value: string, subKey?: string) => {

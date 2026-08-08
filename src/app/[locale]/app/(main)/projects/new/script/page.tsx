@@ -493,8 +493,6 @@ export default function ScriptLabPage() {
   };
 
   const handleApplyRefinement = async (instruction: string) => {
-    if (!projectIdParam || !versionIdParam) return;
-    
     // Threshold check
     if ((user?.credits_balance || 0) < 50 && user?.tier !== 'pro') {
       setLimitModalData({
@@ -516,8 +514,8 @@ export default function ScriptLabPage() {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          projectId: projectIdParam,
-          versionId: versionIdParam,
+          projectId: projectIdParam || currentProject?.id || undefined,
+          versionId: versionIdParam || currentVersion?.id || undefined,
           mode: 'refine',
           instruction,
           currentScript: scriptData,

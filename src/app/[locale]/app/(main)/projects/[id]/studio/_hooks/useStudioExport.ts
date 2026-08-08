@@ -90,43 +90,64 @@ export function useStudioExport({
         return;
       }
 
-      // 2. INSTANT LOCAL MOBILE WEB SHARE (0 seconds!)
-      if (lastRecordingUrl.startsWith('blob:') && isMobile && !isiOS && typeof globalThis.navigator !== 'undefined' && nav.share) {
-        try {
-          addSystemLog('Попытка мгновенного шеринга файла через Web Share API...');
-          let fileBlob = recordedBlobRef.current;
+      // 2. INSTANT LOCAL MOBILE WEB SHARE & DIRECT DOWNLOAD (0 seconds wait!)
+      if (lastRecordingUrl.startsWith('blob:') && isMobile) {
+        let fileBlob = recordedBlobRef.current;
 
-          // Fallback to IndexedDB (stable) instead of async fetch
-          if (!fileBlob) {
-            addSystemLog('Упреждающий шаг: recordedBlobRef пуст, достаем оригинал из IndexedDB...');
-            const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-            if (cached instanceof Blob) {
-              fileBlob = cached;
-              recordedBlobRef.current = cached; // Cache back to ref
+        // Fallback to IndexedDB (stable) instead of network fetch
+        if (!fileBlob) {
+          addSystemLog('Упреждающий шаг: recordedBlobRef пуст, достаем оригинал из IndexedDB...');
+          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+          if (cached instanceof Blob) {
+            fileBlob = cached;
+            recordedBlobRef.current = cached; // Cache back to ref
+          }
+        }
+
+        if (fileBlob) {
+          const fileMime = fileBlob.type || 'video/mp4';
+          const fileExt = fileMime.includes('webm') ? 'webm' : 'mp4';
+          const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.${fileExt}`, { type: fileMime });
+
+          // Try native OS Web Share API (Works on iOS Safari 15+ and Android Chrome)
+          if (typeof globalThis.navigator !== 'undefined' && nav.share && nav.canShare && nav.canShare({ files: [file] })) {
+            try {
+              addSystemLog('Запуск мгновенного системного меню "Поделиться" (Web Share API)...');
+              await nav.share({
+                files: [file],
+                title: 'Viral Engine Video',
+                text: 'Запись с Телесуфлёра'
+              });
+              addSystemLog('Файл успешно передан в системное меню.');
+              return;
+            } catch (shareErr: any) {
+              if (shareErr.name === 'AbortError') {
+                addSystemLog('Пользователь отменил шеринг.');
+                return;
+              }
+              addSystemLog(`Web Share не удался: ${shareErr.message || shareErr}. Переход к прямому скачиванию...`);
             }
           }
 
-          if (!fileBlob) {
-            throw new Error("Запись не найдена в памяти устройства (IndexedDB)");
-          }
-
-          addSystemLog(`Подготовка объекта File. Размер: ${(fileBlob.size / (1024 * 1024)).toFixed(2)} MB. Принудительный тип: video/mp4`);
-          const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.mp4`, { type: 'video/mp4' });
-
-          if (nav.canShare && nav.canShare({ files: [file] })) {
-            addSystemLog('Браузер подтвердил возможность передачи файла. Запуск Share Sheet...');
-            await nav.share({
-              files: [file],
-              title: 'Viral Engine Video',
-            });
-            addSystemLog('Share Sheet успешно закрыт пользователем.');
+          // Fallback: Instant direct Blob link download on mobile browser
+          try {
+            addSystemLog('Запуск прямого локального скачивания на мобильном устройстве...');
+            const blobUrl = URL.createObjectURL(fileBlob);
+            const doc = (globalThis as any).document;
+            if (doc) {
+              const a = doc.createElement('a');
+              a.href = blobUrl;
+              a.download = file.name;
+              doc.body.appendChild(a);
+              a.click();
+              doc.body.removeChild(a);
+              setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+            }
+            addSystemLog('Прямое скачивание локального файла выполнено.');
             return;
-          } else {
-            addSystemLog('Браузер сообщил, что не может поделиться этим типом файла.');
+          } catch (dlErr: any) {
+            addSystemLog(`Прямое скачивание не удалось: ${dlErr.message}`);
           }
-        } catch (shareErr: any) {
-          addSystemLog(`Локальный Web Share отклонен или завершился ошибкой: ${shareErr.message || shareErr}`);
-          console.warn('[useStudioExport] Synchronous mobile share failed, falling back to server-side flow:', shareErr);
         }
       }
 

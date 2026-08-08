@@ -161,6 +161,35 @@ export default function AdminDashboardPage() {
   const [tgMessage, setTgMessage] = useState('');
   const [submittingTg, setSubmittingTg] = useState(false);
 
+  // Tier Package User List Modal State
+  const [tierPackageModal, setTierPackageModal] = useState<string | null>(null);
+  const [tierPackageSearch, setTierPackageSearch] = useState('');
+  const [tierPackageUsers, setTierPackageUsers] = useState<UserItem[]>([]);
+  const [tierPackageLoading, setTierPackageLoading] = useState(false);
+
+  const fetchTierPackageUsers = useCallback(async (tier: string, search: string) => {
+    setTierPackageLoading(true);
+    try {
+      const params = new URLSearchParams({
+        page: '1',
+        limit: '100',
+        search: search,
+        tier: tier,
+        sortBy: 'created_at',
+        sortOrder: 'desc'
+      });
+      const res = await fetch(`/api/admin/users?${params.toString()}`);
+      if (res.ok) {
+        const data = await res.json();
+        setTierPackageUsers(data.users || []);
+      }
+    } catch (e) {
+      console.error('Failed to fetch tier package users:', e);
+    } finally {
+      setTierPackageLoading(false);
+    }
+  }, []);
+
   const [toast, setToast] = useState<{ msg: string; type: 'success' | 'error' } | null>(null);
 
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
@@ -729,9 +758,14 @@ export default function AdminDashboardPage() {
 
           {/* Tier Distribution Breakdown */}
           <div className="p-6 rounded-[2rem] bg-[#0c0c16]/90 border border-white/5 space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-white/60 flex items-center gap-2">
-              <Layers size={14} className="text-purple-400" /> Распределение пользователей по тарифам
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-widest text-white/60 flex items-center gap-2">
+                <Layers size={14} className="text-purple-400" /> Распределение пользователей по тарифам
+              </h3>
+              <span className="text-[9px] font-bold text-white/30 uppercase tracking-widest">
+                Нажмите на пакет для просмотра
+              </span>
+            </div>
             <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
               {[
                 { label: 'FREE', count: stats.tierCounts.free, color: 'from-gray-600 to-gray-400' },
@@ -739,16 +773,31 @@ export default function AdminDashboardPage() {
                 { label: 'PRO', count: stats.tierCounts.pro, color: 'from-purple-500 to-indigo-500' },
                 { label: 'SCALE', count: stats.tierCounts.scale, color: 'from-amber-500 to-yellow-500' }
               ].map(item => (
-                <div key={item.label} className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5">
+                <div
+                  key={item.label}
+                  onClick={() => {
+                    const tierName = item.label.toLowerCase();
+                    setTierPackageModal(tierName);
+                    setTierPackageSearch('');
+                    fetchTierPackageUsers(tierName, '');
+                  }}
+                  className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-purple-500/40 hover:bg-white/[0.05] cursor-pointer transition-all active:scale-95 group relative"
+                >
                   <div className="flex items-center justify-between mb-1">
-                    <span className="text-[9px] font-black tracking-widest text-white/40">{item.label}</span>
+                    <span className="text-[9px] font-black tracking-widest text-white/40 group-hover:text-purple-300 transition-colors">
+                      {item.label}
+                    </span>
                     <span className="text-sm font-black text-white">{item.count}</span>
                   </div>
-                  <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                  <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden mb-2">
                     <div
                       className={`h-full bg-gradient-to-r ${item.color}`}
                       style={{ width: `${Math.min(100, (item.count / (stats.totalUsers || 1)) * 100)}%` }}
                     />
+                  </div>
+                  <div className="text-[8px] font-black uppercase text-purple-400/70 group-hover:text-purple-300 flex items-center justify-end gap-1 opacity-70 group-hover:opacity-100 transition-all">
+                    <span>Посмотреть юзеров</span>
+                    <ChevronRight size={10} />
                   </div>
                 </div>
               ))}
@@ -1558,6 +1607,171 @@ export default function AdminDashboardPage() {
                   </div>
                 </div>
               ) : null}
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MODAL: TIER PACKAGE USERS LIST WITH SEARCH --- */}
+      <AnimatePresence>
+        {tierPackageModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-6 bg-black/85 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 20 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 20 }}
+              className="w-full max-w-3xl bg-[#0b0c16] border border-purple-500/30 rounded-[2.5rem] overflow-hidden shadow-2xl flex flex-col max-h-[85vh]"
+            >
+              {/* Header */}
+              <div className="p-6 border-b border-white/10 flex items-center justify-between bg-black/50">
+                <div className="flex items-center gap-3">
+                  <div className="w-12 h-12 rounded-2xl bg-gradient-to-br from-purple-500/20 to-indigo-500/20 border border-purple-500/30 flex items-center justify-center text-purple-300">
+                    <Crown size={24} />
+                  </div>
+                  <div>
+                    <h3 className="text-lg font-black text-white uppercase tracking-tight flex items-center gap-2">
+                      Пользователи тарифа: <span className="text-purple-400">{tierPackageModal.toUpperCase()}</span>
+                    </h3>
+                    <p className="text-[10px] text-white/40 font-medium">
+                      Найдено в фильтре: {tierPackageUsers.length} пользователей
+                    </p>
+                  </div>
+                </div>
+
+                <button
+                  onClick={() => setTierPackageModal(null)}
+                  className="p-2.5 rounded-full bg-white/5 border border-white/10 text-white/50 hover:text-white hover:bg-white/10 transition-all"
+                >
+                  <X size={18} />
+                </button>
+              </div>
+
+              {/* Realtime Search Input */}
+              <div className="p-4 border-b border-white/5 bg-white/[0.01]">
+                <div className="relative">
+                  <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+                  <input
+                    type="text"
+                    value={tierPackageSearch}
+                    onChange={(e) => {
+                      const val = (e.target as any).value;
+                      setTierPackageSearch(val);
+                      fetchTierPackageUsers(tierPackageModal, val);
+                    }}
+                    placeholder={`Поиск по списку тарифа ${tierPackageModal.toUpperCase()} (Email, Имя, Telegram ID)...`}
+                    className="w-full bg-black/60 border border-white/10 rounded-2xl pl-11 pr-4 py-3 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50 transition-all"
+                  />
+                </div>
+              </div>
+
+              {/* User List */}
+              <div className="flex-1 overflow-y-auto p-4 sm:p-6 space-y-3 custom-scrollbar">
+                {tierPackageLoading ? (
+                  <div className="py-12 flex justify-center">
+                    <Loader2 className="animate-spin text-purple-400" size={24} />
+                  </div>
+                ) : tierPackageUsers.length === 0 ? (
+                  <div className="py-12 text-center text-white/40 text-xs font-medium">
+                    На тарифе {tierPackageModal.toUpperCase()} нет пользователей{tierPackageSearch ? ' по вашему запросу' : ''}
+                  </div>
+                ) : (
+                  tierPackageUsers.map(u => (
+                    <div
+                      key={u.id}
+                      className="p-4 rounded-3xl bg-white/[0.02] border border-white/5 hover:border-purple-500/30 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3"
+                    >
+                      <div className="flex items-center gap-3 min-w-0">
+                        <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500/20 to-cyan-500/20 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                          {u.avatar_url ? (
+                            <img src={u.avatar_url} alt="" className="w-full h-full object-cover" />
+                          ) : (
+                            <User size={18} className="text-purple-400" />
+                          )}
+                        </div>
+
+                        <div className="min-w-0">
+                          <div className="flex items-center gap-2">
+                            <h4 className="text-xs font-black text-white truncate max-w-[200px]">
+                              {u.full_name || 'Творец'}
+                            </h4>
+                            <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase border ${tierBadgeStyle(u.tier)}`}>
+                              {u.tier || 'free'}
+                            </span>
+                          </div>
+                          <p className="text-[10px] text-white/40 font-mono truncate">{u.email}</p>
+                          {u.telegram_id && (
+                            <span className="text-[9px] text-blue-400 font-mono">TG: {u.telegram_id}</span>
+                          )}
+                        </div>
+                      </div>
+
+                      <div className="flex items-center justify-between sm:justify-end gap-3 shrink-0 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                        <div className="text-left sm:text-right">
+                          <div className="text-xs font-black text-cyan-400">{u.credits_balance} CR</div>
+                          <div className="text-[9px] text-white/30 font-medium">{new Date(u.created_at).toLocaleDateString()}</div>
+                        </div>
+
+                        <div className="flex items-center gap-1.5">
+                          <button
+                            onClick={() => {
+                              setTierPackageModal(null);
+                              setCreditModalUser(u);
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-cyan-500/10 border border-cyan-500/20 text-cyan-300 hover:bg-cyan-500/20 text-[9px] font-black uppercase tracking-wider transition-all"
+                            title="Начислить кредиты"
+                          >
+                            + CR
+                          </button>
+
+                          <button
+                            onClick={() => {
+                              setTierPackageModal(null);
+                              setTierModalUser(u);
+                              setSelectedTier(u.tier || 'pro');
+                              setSelectedSubStatus(u.subscription_status || 'active');
+                            }}
+                            className="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/20 text-purple-300 hover:bg-purple-500/20 text-[9px] font-black uppercase tracking-wider transition-all"
+                            title="Изменить тариф"
+                          >
+                            Тариф
+                          </button>
+
+                          <button
+                            onClick={() => handleOpenUserDetail(u)}
+                            className="p-1.5 rounded-xl bg-white/5 border border-white/10 text-white/60 hover:text-white hover:bg-white/10 transition-all"
+                            title="Полные детали"
+                          >
+                            <ChevronRight size={14} />
+                          </button>
+                        </div>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+
+              {/* Modal Footer */}
+              <div className="p-4 border-t border-white/10 bg-black/40 flex items-center justify-between">
+                <button
+                  onClick={() => {
+                    const currentTier = tierPackageModal;
+                    setTierPackageModal(null);
+                    setTierFilter(currentTier);
+                    setActiveTab('users');
+                    fetchUsers(1);
+                  }}
+                  className="text-xs font-black uppercase text-purple-400 hover:underline flex items-center gap-1"
+                >
+                  Открыть во вкладке Все Пользователи <ArrowUpRight size={12} />
+                </button>
+
+                <button
+                  onClick={() => setTierPackageModal(null)}
+                  className="px-6 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase tracking-wider transition-all"
+                >
+                  Закрыть
+                </button>
+              </div>
             </motion.div>
           </div>
         )}

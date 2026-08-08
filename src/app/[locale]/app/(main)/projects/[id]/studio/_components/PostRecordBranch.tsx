@@ -136,7 +136,7 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
                 onClick={onDownload}
                 className="py-3 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex flex-col items-center justify-center gap-1 shadow-lg min-h-[52px]"
               >
-                <span className="flex items-center gap-1">RAW <Download size={12} className="text-blue-400" /></span>
+                <span className="flex items-center gap-1">СКАЧАТЬ <Download size={12} className="text-blue-400" /></span>
                 {recordedSize && (
                   <span className="text-[7px] text-white/40 lowercase tracking-normal">
                     ({(recordedSize / (1024 * 1024)).toFixed(1)} MB)

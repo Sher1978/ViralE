@@ -586,8 +586,15 @@ export function useHardwareRecorder({
   // 9. Download or Share Raw/MP4 video via System Interface
   const shareOrSaveRawVideo = async () => {
     const nav = globalThis.navigator as any;
-    const blob = recordedBlobRef.current;
+    let blob = recordedBlobRef.current;
     
+    if (!blob && projectId) {
+      try {
+        const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+        if (cached instanceof Blob) blob = cached;
+      } catch (e) {}
+    }
+
     if (blob) {
       const ext = isVoiceOnly ? 'webm' : 'mp4';
       const mime = blob.type || (isVoiceOnly ? 'audio/webm' : 'video/mp4');
@@ -672,22 +679,55 @@ export function useHardwareRecorder({
       return;
     }
 
-    if (isBackgroundConverting) {
-      (globalThis as any).alert?.("Видео ещё кодируется в фоне для совместимости с iOS/AI. Пожалуйста, подождите еще несколько секунд...");
+    // Instant local fallback: if background MP4 is still converting on server,
+    // do NOT block user! Immediately share/download local recorded blob from memory/IndexedDB.
+    let localBlob = recordedBlobRef.current;
+    if (!localBlob && projectId) {
+      try {
+        const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+        if (cached instanceof Blob) localBlob = cached;
+      } catch (e) {}
+    }
+
+    if (localBlob) {
+      console.log('[useHardwareRecorder] Immediate local blob fallback for download/share');
+      const ext = isVoiceOnly ? 'webm' : 'mp4';
+      const mime = localBlob.type || (isVoiceOnly ? 'audio/webm' : 'video/mp4');
+      const file = new File([localBlob], `ViralEngine_Record_${Date.now()}.${ext}`, { type: mime });
+
+      if (nav?.share && nav?.canShare && nav.canShare({ files: [file] })) {
+        try {
+          await nav.share({
+            files: [file],
+            title: 'Запись с Телесуфлёра',
+            text: 'Запись с Телесуфлёра'
+          });
+          return;
+        } catch (err: any) {
+          if (err.name === 'AbortError') return;
+        }
+      }
+
+      const url = URL.createObjectURL(localBlob);
+      const doc = (globalThis as any).document;
+      if (doc) {
+        const a = doc.createElement('a');
+        a.href = url;
+        a.download = file.name;
+        doc.body.appendChild(a);
+        a.click();
+        doc.body.removeChild(a);
+        setTimeout(() => URL.revokeObjectURL(url), 10000);
+      }
       return;
     }
 
-    // Fallback if not started
-    if (recordedBlobRef.current) {
-      try {
-        (globalThis as any).alert?.("Запуск принудительного кодирования MP4. Пожалуйста, подождите...");
-        await startBackgroundMp4Conversion(recordedBlobRef.current);
-      } catch (err: any) {
-        (globalThis as any).alert?.("Не удалось запустить кодирование: " + err.message);
-      }
-    } else {
-      (globalThis as any).alert?.("Исходное видео не найдено в памяти.");
+    if (isBackgroundConverting) {
+      (globalThis as any).alert?.("Видео ещё кодируется в фоне. Пожалуйста, подождите еще несколько секунд...");
+      return;
     }
+
+    (globalThis as any).alert?.("Записанный файл не найден в памяти.");
   };
 
   // Cleanup on unmount

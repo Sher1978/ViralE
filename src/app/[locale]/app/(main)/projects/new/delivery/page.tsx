@@ -48,6 +48,7 @@ function DeliveryPageContent() {
   const [showShotstackModal, setShowShotstackModal] = useState(false);
   const [renderMode, setRenderMode] = useState<'shotstack' | 'ffmpeg'>('ffmpeg');
   const isLaunchingRenderRef = useRef(false);
+  const isCancelledRef = useRef(false);
   const ffmpegRef = useRef<any>(null);
 
   const statusStepsRu = [
@@ -161,6 +162,10 @@ function DeliveryPageContent() {
     addSystemLog(checked ? 'Субтитры включены' : 'Субтитры выключены');
     
     if (version && projectId) {
+      // Mark active render as cancelled so error handler ignores worker termination
+      isCancelledRef.current = true;
+      setError(null);
+
       const updatedManifest = {
         ...(version.script_data as any),
         showSubtitles: checked
@@ -263,7 +268,8 @@ function DeliveryPageContent() {
     if (clips.length === 0) return baseFilter;
     
     // Escape special chars for FFmpeg drawtext
-    const esc = (t: string) => t
+    const esc = (t: string) => (t || '')
+      .replace(/\r?\n|\r/g, ' ')
       .replace(/\\/g, '\\\\')
       .replace(/'/g, "\\\\'")  
       .replace(/:/g, '\\\\:')
@@ -441,6 +447,8 @@ function DeliveryPageContent() {
   const handleClientRender = async (ver: ProjectVersion) => {
     if (isLaunchingRenderRef.current) return;
     isLaunchingRenderRef.current = true;
+    isCancelledRef.current = false;
+    setError(null);
     
     const manifestData = ver.script_data as any;
     const shouldShowSubtitles = manifestData?.showSubtitles !== false;
@@ -488,6 +496,15 @@ function DeliveryPageContent() {
         setRenderProgress(p);
       });
 
+      const execWithTimeout = async (args: string[], timeoutMs = 60000): Promise<number> => {
+        return Promise.race([
+          ffmpeg.exec(args),
+          new Promise<number>((_, reject) =>
+            setTimeout(() => reject(new Error(`Превышено время ожидания FFmpeg (${timeoutMs / 1000} сек)`)), timeoutMs)
+          )
+        ]);
+      };
+
       const manifest = ver.script_data as any;
       const nav = globalThis.navigator as any;
       const isMobile = typeof nav !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(nav.userAgent);
@@ -511,7 +528,19 @@ function DeliveryPageContent() {
 
       setRenderStatus('Скачивание основного видео...');
       setRenderProgress(18);
-      const aRollData = await fetchFile(aRollUrl);
+      let aRollData: Uint8Array | null = null;
+      try {
+        aRollData = await fetchFile(aRollUrl);
+      } catch (fetchErr) {
+        console.warn('[Delivery] Direct A-Roll fetch failed, attempting IndexedDB fallback...', fetchErr);
+        const cachedVideo = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+        if (cachedVideo instanceof Blob) {
+          aRollData = await fetchFile(cachedVideo);
+        } else {
+          throw new Error('Не удалось загрузить исходное видео. Пожалуйста, попробуйте перезагрузить страницу.');
+        }
+      }
+
       await ffmpeg.writeFile('input_aroll.mp4', aRollData);
       setRenderProgress(28);
 
@@ -597,7 +626,7 @@ function DeliveryPageContent() {
         const clipEnd = typeof clip.endTime === 'number' && !isNaN(clip.endTime) ? clip.endTime : clipStart + 5;
         const duration = Math.max(0.1, clipEnd - clipStart);
 
-        await ffmpeg.exec(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', duration.toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
+        await execWithTimeout(['-i', name, '-ss', (clip.sourceStartTime || 0).toString(), '-t', duration.toString(), '-vf', scale, '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-an', '-sn', optName]);
         processedBrolls.push({ name: optName, clip: { ...clip, startTime: clipStart, endTime: clipEnd } });
         try { await ffmpeg.deleteFile(name); } catch(e) {}
       }
@@ -614,7 +643,7 @@ function DeliveryPageContent() {
         const clipEnd = typeof clip.endTime === 'number' && !isNaN(clip.endTime) ? clip.endTime : clipStart + 5;
         const duration = Math.max(0.1, clipEnd - clipStart);
 
-        await ffmpeg.exec([
+        await execWithTimeout([
           '-i', name,
           '-t', duration.toString(),
           '-vf', scale,
@@ -644,7 +673,7 @@ function DeliveryPageContent() {
           vfFilter = buildDrawtextFilter(subs, scale, isMobile ? 1280 : 1920, manifest);
         }
 
-        await ffmpeg.exec([
+        await execWithTimeout([
           '-i', currentInput,
           '-vf', vfFilter,
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
@@ -657,7 +686,7 @@ function DeliveryPageContent() {
       } else {
         setRenderStatus(`Масштабирование исходника...`);
         const scaledOutput = `temp_A.mp4`;
-        await ffmpeg.exec([
+        await execWithTimeout([
           '-i', currentInput,
           '-vf', scale,
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
@@ -678,7 +707,7 @@ function DeliveryPageContent() {
           setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
           
           const overlayFilter = `[1:v]scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
-          await ffmpeg.exec([
+          await execWithTimeout([
             '-i', currentInput,
             '-itsoffset', broll.clip.startTime.toString(),
             '-i', broll.name,
@@ -700,7 +729,7 @@ function DeliveryPageContent() {
           setRenderStatus(`Слой скетча ${i + 1} из ${processedWhiteboards.length}...`);
           
           const overlayFilter = `[0:v][1:v]overlay=x=0:y=0:enable='between(t,${wb.clip.startTime},${wb.clip.endTime})'[out]`;
-          await ffmpeg.exec([
+          await execWithTimeout([
             '-i', currentInput,
             '-itsoffset', wb.clip.startTime.toString(),
             '-i', wb.name,
@@ -719,7 +748,7 @@ function DeliveryPageContent() {
           const subOutput = currentInput === 'temp_A.mp4' ? `temp_B.mp4` : `temp_A.mp4`;
           const vfFilter = buildDrawtextFilter(subs, '', isMobile ? 1280 : 1920, manifest);
           
-          const exitCodeSub = await ffmpeg.exec([
+          const exitCodeSub = await execWithTimeout([
             '-i', currentInput,
             '-vf', vfFilter,
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
@@ -762,6 +791,10 @@ function DeliveryPageContent() {
       } catch (e) { /* ignore cleanup errors */ }
 
     } catch (err: any) {
+      if (isCancelledRef.current) {
+        console.log('[Delivery] Client render cancelled silently.');
+        return;
+      }
       console.error('[Delivery] Client render failed:', err);
       setError(err.message || 'Ошибка рендера FFmpeg');
     } finally {
