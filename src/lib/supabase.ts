@@ -32,6 +32,10 @@ export const supabase = (supabaseUrl && supabaseAnonKey)
 
 const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY || '';
 
+if (!serviceRoleKey && typeof window === 'undefined') {
+  console.warn('⚠️ [Supabase] SUPABASE_SERVICE_ROLE_KEY is missing in server environment. SuperAdmin database queries will be restricted by RLS.');
+}
+
 export const supabaseAdmin = (supabaseUrl && serviceRoleKey)
   ? createClient(supabaseUrl, serviceRoleKey, {
       auth: {
