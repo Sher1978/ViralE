@@ -22,7 +22,12 @@ export const monitoringService = {
       const res = await fetch('https://api.elevenlabs.io/v1/user/subscription', {
         headers: { 'xi-api-key': apiKey }
       });
-      if (!res.ok) throw new Error('ElevenLabs API failed');
+      if (!res.ok) {
+        if (res.status === 401 || res.status === 403) {
+          return { provider: 'ElevenLabs', remaining: 'Active (Restricted)', unit: 'API Key', status: 'ok' };
+        }
+        throw new Error('ElevenLabs API failed');
+      }
       const data = await res.json();
       
       const remaining = data.character_limit - data.character_count;
