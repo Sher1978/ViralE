@@ -2,9 +2,8 @@ name: Build Android Companion APK
 
 on:
   push:
-    paths:
-      - 'android-companion/**'
-      - '.github/workflows/build-apk.yml'
+    branches:
+      - main
   workflow_dispatch:
 
 jobs:
