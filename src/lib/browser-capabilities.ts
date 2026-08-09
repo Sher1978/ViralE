@@ -25,17 +25,7 @@ export const browserCapabilities = {
    * Suggests the best render mode based on capabilities.
    */
   suggestRenderMode(): 'shotstack' | 'ffmpeg' {
-    if (typeof navigator === 'undefined') return 'ffmpeg';
-
-    const isMobileDevice = this.isMobile();
-    const memory = (navigator as any).deviceMemory || (isMobileDevice ? 4 : 8);
-    const cores = navigator.hardwareConcurrency || (isMobileDevice ? 4 : 8);
-
-    const isWeakDevice = isMobileDevice || memory < 8 || cores <= 4;
-
-    if (isWeakDevice) {
-      return 'shotstack';
-    }
+    // Shotstack cloud rendering disabled per user request — always use local FFmpeg
     return 'ffmpeg';
   }
 };

@@ -1069,20 +1069,11 @@ function DeliveryPageContent() {
           return;
         }
 
-        // --- HYBRID RENDER LOGIC ---
-        const { browserCapabilities } = require('@/lib/browser-capabilities');
-        const recommendedMode = browserCapabilities.suggestRenderMode();
-        
-        if (recommendedMode === 'ffmpeg') {
-           addSystemLog('Устройство определено как мощное. Запуск локального FFmpeg сборщика...');
-           setRenderMode('ffmpeg');
-           handleClientRender(verData);
-        } else {
-           addSystemLog('Устройство слабое. Предлагаем облачный рендеринг Shotstack.');
-           setRenderMode('shotstack');
-           setShowShotstackModal(true);
-           setIsLoading(false);
-        }
+        // Shotstack cloud rendering disabled per user request — always use fast local FFmpeg engine
+        addSystemLog('Запуск локального FFmpeg сборщика...');
+        setRenderMode('ffmpeg');
+        setShowShotstackModal(false);
+        handleClientRender(verData);
 
       } catch (err: any) {
         console.error('[Delivery] Auto-launch failed:', err);
