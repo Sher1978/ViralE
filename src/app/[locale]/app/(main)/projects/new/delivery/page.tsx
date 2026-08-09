@@ -487,6 +487,19 @@ function DeliveryPageContent() {
 
       ffmpeg.on('log', ({ message }: any) => {
         console.log('[FFmpeg]', message);
+        if (typeof message === 'string') {
+          const timeMatch = message.match(/time=(\d+):(\d+):(\d+\.\d+)/);
+          if (timeMatch) {
+            const h = parseFloat(timeMatch[1]);
+            const m = parseFloat(timeMatch[2]);
+            const s = parseFloat(timeMatch[3]);
+            const timeSec = h * 3600 + m * 60 + s;
+            if (timeSec > 0) {
+              const p = Math.min(98, Math.max(60, 60 + Math.round((timeSec / 35) * 38)));
+              setRenderProgress(p);
+            }
+          }
+        }
       });
       
       ffmpeg.on('progress', ({ progress }: any) => {
@@ -496,7 +509,7 @@ function DeliveryPageContent() {
         setRenderProgress(p);
       });
 
-      const execWithTimeout = async (args: string[], timeoutMs = 60000): Promise<number> => {
+      const execWithTimeout = async (args: string[], timeoutMs = 180000): Promise<number> => {
         return Promise.race([
           ffmpeg.exec(args),
           new Promise<number>((_, reject) =>
@@ -509,7 +522,7 @@ function DeliveryPageContent() {
       const nav = globalThis.navigator as any;
       const isMobile = typeof nav !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(nav.userAgent);
       const res = isMobile ? '720:1280' : '1080:1920';
-      const scale = `scale=${res.replace(':', ':')}:force_original_aspect_ratio=increase,crop=${res.replace(':', ':')}`;
+      const scale = `setsar=1,scale=${res.replace(':', ':')}:force_original_aspect_ratio=increase,crop=${res.replace(':', ':')},setsar=1`;
       
       let aRollUrl = manifest?.aRollUrl ||
         manifest?.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
@@ -676,6 +689,7 @@ function DeliveryPageContent() {
         await execWithTimeout([
           '-i', currentInput,
           '-vf', vfFilter,
+          '-r', '30',
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
           '-c:a', 'aac', '-b:a', '128k',
           subOutput
@@ -689,6 +703,7 @@ function DeliveryPageContent() {
         await execWithTimeout([
           '-i', currentInput,
           '-vf', scale,
+          '-r', '30',
           '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
           '-c:a', 'aac', '-b:a', '128k',
           scaledOutput
@@ -714,6 +729,7 @@ function DeliveryPageContent() {
             '-filter_complex', overlayFilter,
             '-map', '[out]',
             '-map', '0:a',
+            '-r', '30',
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
           ]);
           try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
@@ -736,6 +752,7 @@ function DeliveryPageContent() {
             '-filter_complex', overlayFilter,
             '-map', '[out]',
             '-map', '0:a',
+            '-r', '30',
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
           ]);
           try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
@@ -751,6 +768,7 @@ function DeliveryPageContent() {
           const exitCodeSub = await execWithTimeout([
             '-i', currentInput,
             '-vf', vfFilter,
+            '-r', '30',
             '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
             '-c:a', 'copy',
             subOutput
