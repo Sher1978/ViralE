@@ -1,0 +1,87 @@
+<?xml version="1.0" encoding="utf-8"?>
+<LinearLayout xmlns:android="http://schemas.android.com/apk/res/android"
+    android:layout_width="match_parent"
+    android:layout_height="match_parent"
+    android:background="#0A0A14"
+    android:orientation="vertical"
+    android:padding="24dp">
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="ViralEngine Fold Companion"
+        android:textColor="#FFFFFF"
+        android:textSize="20sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="Принудительный запуск телесуфлёра на внешнем экране Honor Magic V2 при 180°"
+        android:textColor="#9CA3AF"
+        android:textSize="12sp" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:text="URL Телесуфлёра:"
+        android:textColor="#A855F7"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <EditText
+        android:id="@+id/editPrompterUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:background="#1F1F2E"
+        android:hint="https://viralengine.ru/app/studio"
+        android:padding="12dp"
+        android:textColor="#FFFFFF"
+        android:textColorHint="#6B7280"
+        android:textSize="13sp" />
+
+    <Button
+        android:id="@+id/btnSaveUrl"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="12dp"
+        android:backgroundTint="#9333EA"
+        android:text="Сохранить Ссылку"
+        android:textColor="#FFFFFF" />
+
+    <View
+        android:layout_width="match_parent"
+        android:layout_height="1dp"
+        android:layout_marginTop="24dp"
+        android:layout_marginBottom="24dp"
+        android:background="#1F1F2E" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:text="Быстрый запуск в Шторке Уведомлений:"
+        android:textColor="#FFFFFF"
+        android:textSize="14sp"
+        android:textStyle="bold" />
+
+    <TextView
+        android:layout_width="wrap_content"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="8dp"
+        android:text="1. Откройте шторку управления Honor MagicOS\n2. Нажмите 'Редактировать значки'\n3. Добавьте плитку 'Суфлёр 180°'"
+        android:textColor="#D1D5DB"
+        android:textSize="12sp" />
+
+    <Button
+        android:id="@+id/btnTestCover"
+        android:layout_width="match_parent"
+        android:layout_height="wrap_content"
+        android:layout_marginTop="24dp"
+        android:backgroundTint="#3B82F6"
+        android:text="Тест: Включить Внешний Экран (180°)"
+        android:textColor="#FFFFFF" />
+
+</LinearLayout>
