@@ -319,24 +319,41 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [ideas]);
 
+  const contextValue = React.useMemo(() => ({
+    profile,
+    dnaComplete,
+    hasStrategistAccess,
+    ideas,
+    archivedIdeas,
+    usedIdeas,
+    loadingIdeas,
+    loadingArchived,
+    loadingUsed,
+    ideasError,
+    clearIdeasError,
+    refreshIdeas: fetchIdeas,
+    updateProfile: updateProfileState,
+    moveIdeaLocally,
+    markIdeaAsUsed
+  }), [
+    profile,
+    dnaComplete,
+    hasStrategistAccess,
+    ideas,
+    archivedIdeas,
+    usedIdeas,
+    loadingIdeas,
+    loadingArchived,
+    loadingUsed,
+    ideasError,
+    clearIdeasError,
+    fetchIdeas,
+    moveIdeaLocally,
+    markIdeaAsUsed
+  ]);
+
   return (
-    <AppDataContext.Provider value={{
-      profile,
-      dnaComplete,
-      hasStrategistAccess,
-      ideas,
-      archivedIdeas,
-      usedIdeas,
-      loadingIdeas,
-      loadingArchived,
-      loadingUsed,
-      ideasError,
-      clearIdeasError,
-      refreshIdeas: fetchIdeas,
-      updateProfile: updateProfileState,
-      moveIdeaLocally,
-      markIdeaAsUsed
-    }}>
+    <AppDataContext.Provider value={contextValue}>
       {children}
     </AppDataContext.Provider>
   );

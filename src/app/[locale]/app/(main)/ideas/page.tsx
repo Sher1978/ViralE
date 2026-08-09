@@ -125,14 +125,23 @@ export default function IdeasPage() {
     });
   }, [groupedIdeas]);
 
+  const attemptedCategoriesRef = useRef<Set<string>>(new Set());
+
   const synthesizeNextCategory = useCallback(async () => {
     if (synthesisLoading || globalLoading || activeTab !== 'new') return;
-    const nextCat = CATEGORIES.find(cat => !groupedIdeas[cat] || groupedIdeas[cat].length === 0);
+    
+    const nextCat = CATEGORIES.find(cat => 
+      (!groupedIdeas[cat] || groupedIdeas[cat].length === 0) && !attemptedCategoriesRef.current.has(cat)
+    );
     
     if (nextCat) {
+      attemptedCategoriesRef.current.add(nextCat);
       setSynthesisLoading(true);
-      await refreshIdeas('new', nextCat);
-      setSynthesisLoading(false);
+      try {
+        await refreshIdeas('new', nextCat);
+      } finally {
+        setSynthesisLoading(false);
+      }
     }
   }, [synthesisLoading, globalLoading, activeTab, groupedIdeas, refreshIdeas]);
 
