@@ -6,6 +6,7 @@ import android.content.Intent
 import android.hardware.display.DisplayManager
 import android.net.Uri
 import android.os.Bundle
+import android.provider.Settings
 import android.view.Display
 import android.widget.Button
 import android.widget.EditText
@@ -40,8 +41,23 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnTest.setOnClickListener {
+            if (!Settings.canDrawOverlays(this)) {
+                Toast.makeText(this, "Пожалуйста, разрешите 'Отображение поверх других окон'", Toast.LENGTH_LONG).show()
+                val intent = Intent(
+                    Settings.ACTION_MANAGE_OVERLAY_PERMISSION,
+                    Uri.parse("package:$packageName")
+                )
+                startActivity(intent)
+                return@setOnClickListener
+            }
+
             val url = editUrl.text.toString().trim().ifEmpty { "https://virale.uno" }
             toggleTestCoverDisplay(url)
+        }
+
+        // Auto-check overlay permission on launch
+        if (!Settings.canDrawOverlays(this)) {
+            Toast.makeText(this, "Для включения экрана 180° включите 'Отображение поверх других окон'", Toast.LENGTH_LONG).show()
         }
     }
 
