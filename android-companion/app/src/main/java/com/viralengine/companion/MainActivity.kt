@@ -1,7 +1,10 @@
 package com.viralengine.companion
 
+import android.app.ActivityOptions
 import android.content.Context
+import android.content.Intent
 import android.hardware.display.DisplayManager
+import android.net.Uri
 import android.os.Bundle
 import android.view.Display
 import android.widget.Button
@@ -25,7 +28,7 @@ class MainActivity : AppCompatActivity() {
         btnTest = findViewById(R.id.btnTestCover)
 
         val prefs = getSharedPreferences("viral_companion_prefs", Context.MODE_PRIVATE)
-        val currentUrl = prefs.getString("prompter_url", "https://viralengine.ru")
+        val currentUrl = prefs.getString("prompter_url", "https://virale.uno")
         editUrl.setText(currentUrl)
 
         btnSave.setOnClickListener {
@@ -37,7 +40,7 @@ class MainActivity : AppCompatActivity() {
         }
 
         btnTest.setOnClickListener {
-            val url = editUrl.text.toString().trim().ifEmpty { "https://viralengine.ru" }
+            val url = editUrl.text.toString().trim().ifEmpty { "https://virale.uno" }
             toggleTestCoverDisplay(url)
         }
     }
@@ -52,21 +55,45 @@ class MainActivity : AppCompatActivity() {
         }
 
         val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        val displays = displayManager.displays
-        val coverDisplay = displays.firstOrNull { it.displayId != Display.DEFAULT_DISPLAY }
+        val coverDisplay = findCoverDisplay(displayManager)
 
-        if (coverDisplay == null) {
-            Toast.makeText(this, "Внешний экран не обнаружен. Проверьте устройство.", Toast.LENGTH_LONG).show()
-            return
+        if (coverDisplay != null) {
+            try {
+                testPresentation = CoverPresentation(this, coverDisplay, url)
+                testPresentation?.show()
+                btnTest.text = "Остановить Внешний Экран"
+                Toast.makeText(this, "Суфлёр запущен на внешнем экране!", Toast.LENGTH_SHORT).show()
+                return
+            } catch (e: Exception) {
+                // Fallback to Intent launch if presentation fails
+            }
         }
 
+        // Ultimate Honor Magic V2 Fallback: Direct Intent Launch on Display ID 1
         try {
-            testPresentation = CoverPresentation(this, coverDisplay, url)
-            testPresentation?.show()
-            btnTest.text = "Остановить Внешний Экран"
-            Toast.makeText(this, "Успешно запущен на внешнем экране (180°)!", Toast.LENGTH_SHORT).show()
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(url))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val options = ActivityOptions.makeBasic()
+            options.setLaunchDisplayId(1)
+            startActivity(intent, options.toBundle())
+            Toast.makeText(this, "Запуск на внешний экран (Display 1)...", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Ошибка запуска: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Не удалось запустить на Display 1: ${e.message}", Toast.LENGTH_LONG).show()
+        }
+    }
+
+    companion object {
+        fun findCoverDisplay(displayManager: DisplayManager): Display? {
+            // 1. Presentation Category Displays
+            val presentationDisplays = displayManager.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
+            if (presentationDisplays.isNotEmpty()) return presentationDisplays[0]
+
+            // 2. Any non-default display
+            val otherDisplay = displayManager.displays.firstOrNull { it.displayId != Display.DEFAULT_DISPLAY }
+            if (otherDisplay != null) return otherDisplay
+
+            // 3. Honor Magic V2 specific display IDs
+            return displayManager.getDisplay(1) ?: displayManager.getDisplay(2)
         }
     }
 }

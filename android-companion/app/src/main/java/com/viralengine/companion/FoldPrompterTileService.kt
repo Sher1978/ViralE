@@ -1,10 +1,12 @@
 package com.viralengine.companion
 
+import android.app.ActivityOptions
 import android.content.Context
+import android.content.Intent
 import android.hardware.display.DisplayManager
+import android.net.Uri
 import android.service.quicksettings.Tile
 import android.service.quicksettings.TileService
-import android.view.Display
 import android.widget.Toast
 
 class FoldPrompterTileService : TileService() {
@@ -26,32 +28,45 @@ class FoldPrompterTileService : TileService() {
 
     private fun launchOnCoverDisplay() {
         val displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
-        val displays = displayManager.displays
-
-        // Find secondary cover display (Display ID != 0)
-        val coverDisplay = displays.firstOrNull { it.displayId != Display.DEFAULT_DISPLAY }
-
-        if (coverDisplay == null) {
-            Toast.makeText(this, "Внешний экран не обнаружен на устройстве", Toast.LENGTH_LONG).show()
-            return
-        }
+        val coverDisplay = MainActivity.findCoverDisplay(displayManager)
 
         val prefs = getSharedPreferences("viral_companion_prefs", Context.MODE_PRIVATE)
-        val savedUrl = prefs.getString("prompter_url", "https://viralengine.ru") ?: "https://viralengine.ru"
+        val savedUrl = prefs.getString("prompter_url", "https://virale.uno") ?: "https://virale.uno"
 
+        if (coverDisplay != null) {
+            try {
+                currentPresentation?.dismiss()
+                currentPresentation = CoverPresentation(this, coverDisplay, savedUrl)
+                currentPresentation?.show()
+
+                qsTile?.apply {
+                    state = Tile.STATE_ACTIVE
+                    updateTile()
+                }
+
+                Toast.makeText(this, "Суфлёр запущен на внешнем экране (180°)!", Toast.LENGTH_SHORT).show()
+                return
+            } catch (e: Exception) {
+                // Fallback to Intent launch
+            }
+        }
+
+        // Direct Intent fallback targeting Display 1 on Honor MagicOS
         try {
-            currentPresentation?.dismiss()
-            currentPresentation = CoverPresentation(this, coverDisplay, savedUrl)
-            currentPresentation?.show()
+            val intent = Intent(Intent.ACTION_VIEW, Uri.parse(savedUrl))
+            intent.addFlags(Intent.FLAG_ACTIVITY_NEW_TASK)
+            val options = ActivityOptions.makeBasic()
+            options.setLaunchDisplayId(1)
+            startActivity(intent, options.toBundle())
 
             qsTile?.apply {
                 state = Tile.STATE_ACTIVE
                 updateTile()
             }
 
-            Toast.makeText(this, "Суфлёр запущен на внешнем экране (180°)!", Toast.LENGTH_SHORT).show()
+            Toast.makeText(this, "Суфлёр запущен на Display 1!", Toast.LENGTH_SHORT).show()
         } catch (e: Exception) {
-            Toast.makeText(this, "Ошибка запуска: ${e.message}", Toast.LENGTH_LONG).show()
+            Toast.makeText(this, "Не удалось запустить суфлёр: ${e.message}", Toast.LENGTH_LONG).show()
         }
     }
 
