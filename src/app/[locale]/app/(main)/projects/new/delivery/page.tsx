@@ -478,12 +478,16 @@ function DeliveryPageContent() {
         await projectService.updateProjectStatus(projectId, 'rendering');
       }
 
-      addSystemLog('[System] Инициализация FFmpeg ядра...');
+      setRenderProgress(5);
+      setRenderStatus('Инициализация видео ядра...');
+
       const ffmpeg = await getFFmpeg();
       ffmpegRef.current = ffmpeg;
 
-      setRenderProgress(10);
-      setRenderStatus('Проверка готовности WASM...');
+      setRenderProgress(12);
+      setRenderStatus('Загрузка исходников...');
+
+      let totalEstDuration = 30;
 
       ffmpeg.on('log', ({ message }: any) => {
         console.log('[FFmpeg]', message);
@@ -494,8 +498,9 @@ function DeliveryPageContent() {
             const m = parseFloat(timeMatch[2]);
             const s = parseFloat(timeMatch[3]);
             const timeSec = h * 3600 + m * 60 + s;
-            if (timeSec > 0) {
-              const p = Math.min(98, Math.max(60, 60 + Math.round((timeSec / 35) * 38)));
+            if (timeSec > 0 && totalEstDuration > 0) {
+              const fraction = Math.min(1, timeSec / totalEstDuration);
+              const p = Math.min(85, Math.max(20, 20 + Math.round(fraction * 65)));
               setRenderProgress(p);
             }
           }
@@ -504,8 +509,7 @@ function DeliveryPageContent() {
       
       ffmpeg.on('progress', ({ progress }: any) => {
         if (typeof progress !== 'number' || isNaN(progress) || progress < 0) return;
-        // Map FFmpeg execution progress smoothly from 60% to 98%
-        const p = Math.max(60, Math.min(98, 60 + Math.round(progress * 38)));
+        const p = Math.max(20, Math.min(85, 20 + Math.round(progress * 65)));
         setRenderProgress(p);
       });
 
@@ -690,7 +694,7 @@ function DeliveryPageContent() {
           '-i', currentInput,
           '-vf', vfFilter,
           '-r', '30',
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1',
           '-c:a', 'aac', '-b:a', '128k',
           subOutput
         ]);
@@ -704,7 +708,7 @@ function DeliveryPageContent() {
           '-i', currentInput,
           '-vf', scale,
           '-r', '30',
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1',
           '-c:a', 'aac', '-b:a', '128k',
           scaledOutput
         ]);
@@ -730,7 +734,7 @@ function DeliveryPageContent() {
             '-map', '[out]',
             '-map', '0:a',
             '-r', '30',
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
           ]);
           try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
           try { await ffmpeg.deleteFile(broll.name); } catch(e) {}
@@ -753,7 +757,7 @@ function DeliveryPageContent() {
             '-map', '[out]',
             '-map', '0:a',
             '-r', '30',
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
           ]);
           try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
           try { await ffmpeg.deleteFile(wb.name); } catch(e) {}
@@ -769,7 +773,7 @@ function DeliveryPageContent() {
             '-i', currentInput,
             '-vf', vfFilter,
             '-r', '30',
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-crf', '28', '-threads', '1',
+            '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1',
             '-c:a', 'copy',
             subOutput
           ]);
@@ -781,9 +785,13 @@ function DeliveryPageContent() {
         }
       }
 
+      setRenderStatus('Формирование финального MP4 файла...');
+      setRenderProgress(88);
       const finalData = await ffmpeg.readFile(currentInput);
       const videoBlob = new Blob([finalData as any], { type: 'video/mp4' });
       
+      setRenderStatus('Сохранение в память устройства...');
+      setRenderProgress(94);
       // PERSIST TO IDB
       await idb.set(cacheKey, videoBlob, 'MediaBuffer');
       

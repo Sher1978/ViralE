@@ -27,10 +27,11 @@ export const browserCapabilities = {
   suggestRenderMode(): 'shotstack' | 'ffmpeg' {
     if (typeof navigator === 'undefined') return 'ffmpeg';
 
-    const memory = (navigator as any).deviceMemory || 8; // Fallback if API not available
-    const cores = navigator.hardwareConcurrency || 4;
+    const isMobileDevice = this.isMobile();
+    const memory = (navigator as any).deviceMemory || (isMobileDevice ? 4 : 8);
+    const cores = navigator.hardwareConcurrency || (isMobileDevice ? 4 : 8);
 
-    const isWeakDevice = memory < 8 || cores <= 2;
+    const isWeakDevice = isMobileDevice || memory < 8 || cores <= 4;
 
     if (isWeakDevice) {
       return 'shotstack';
