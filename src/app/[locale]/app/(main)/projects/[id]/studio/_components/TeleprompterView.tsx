@@ -201,9 +201,9 @@ export const TeleprompterView = React.memo(({
   };
 
   return (
-    <div className="w-full h-full relative flex flex-col items-center justify-center overflow-hidden bg-black sm:rounded-[2.5rem] sm:border sm:border-white/10 shadow-2xl">
+    <div className="w-full h-full max-h-[100dvh] relative flex flex-col items-center justify-between overflow-hidden bg-black touch-none select-none sm:rounded-[2.5rem] sm:border sm:border-white/10 shadow-2xl">
       {/* 📹 Video Foundation - Full Opacity per request */}
-      <div className="absolute inset-0 z-0 bg-neutral-900">
+      <div className="absolute inset-0 z-0 bg-neutral-900 overflow-hidden">
         {isVoiceOnly ? (
           <div className="w-full h-full flex flex-col items-center justify-center bg-[#05050a] overflow-hidden">
             {/* 🌌 Animated Pulsating Background Layers */}
@@ -284,7 +284,12 @@ export const TeleprompterView = React.memo(({
             autoPlay 
             muted 
             playsInline
-            className={`w-full h-full object-cover opacity-100 will-change-transform transform-gpu ${isVideoMirrored ? 'scale-x-[-1]' : ''}`}
+            className="w-full h-full object-cover opacity-100 will-change-transform transform-gpu"
+            style={{
+              transform: `translate3d(0,0,0) ${isVideoMirrored ? 'scaleX(-1)' : ''}`,
+              backfaceVisibility: 'hidden',
+              WebkitBackfaceVisibility: 'hidden'
+            }}
           />
         ) : (
           <div className="w-full h-full flex flex-col items-center justify-center gap-4 px-10 text-center">

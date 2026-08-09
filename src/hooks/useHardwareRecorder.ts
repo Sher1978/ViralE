@@ -148,10 +148,13 @@ export function useHardwareRecorder({
   }, [activeTab, cameraStream, isLoading]);
 
   // 4. Init Camera helper
-  const initCamera = async (): Promise<MediaStream | null> => {
+  const initCamera = async (overrideFacingMode?: 'user' | 'environment', overrideDeviceId?: string): Promise<MediaStream | null> => {
     setCameraError(null);
     try {
-      console.log('[useHardwareRecorder] initCamera: Starting, isVoiceOnly:', isVoiceOnly);
+      const targetFacing = overrideFacingMode !== undefined ? overrideFacingMode : facingMode;
+      const targetDeviceId = overrideDeviceId !== undefined ? overrideDeviceId : selectedVideoDeviceId;
+
+      console.log('[useHardwareRecorder] initCamera: Starting, targetFacing:', targetFacing, 'targetDeviceId:', targetDeviceId, 'isVoiceOnly:', isVoiceOnly);
       
       const nav = globalThis.navigator as any;
       const isMobile = typeof globalThis.navigator !== 'undefined' && /iPhone|iPad|iPod|Android/i.test(nav.userAgent);
@@ -177,8 +180,8 @@ export function useHardwareRecorder({
       for (const res of resolutionsToTry) {
         const constraints: any = {
           video: isVoiceOnly ? false : {
-            deviceId: selectedVideoDeviceId ? { ideal: selectedVideoDeviceId } : undefined,
-            facingMode: (isMobile && !selectedVideoDeviceId) ? facingMode : undefined,
+            deviceId: targetDeviceId ? { ideal: targetDeviceId } : undefined,
+            facingMode: targetDeviceId ? undefined : { ideal: targetFacing },
             frameRate: recordingQuality === 'pro' ? { ideal: 60, max: 60, min: 30 } : { ideal: 30, max: 30 },
             aspectRatio: isMobile ? { ideal: 0.5625 } : undefined,
             advanced: [
@@ -730,6 +733,19 @@ export function useHardwareRecorder({
     (globalThis as any).alert?.("Записанный файл не найден в памяти.");
   };
 
+  // 10. Flip Camera helper (Switch between front selfie and rear environment camera)
+  const flipCamera = async () => {
+    const nextMode = facingMode === 'user' ? 'environment' : 'user';
+    setFacingMode(nextMode);
+    setSelectedVideoDeviceId('');
+    
+    addSystemLog(`Флип камеры: переключение с ${facingMode} на ${nextMode}...`);
+    stopCamera();
+    
+    // Allow state to settle and re-initialize camera hardware
+    return await initCamera(nextMode, '');
+  };
+
   // Cleanup on unmount
   useEffect(() => {
     return () => {
@@ -742,6 +758,7 @@ export function useHardwareRecorder({
     cameraStream,
     facingMode,
     setFacingMode,
+    flipCamera,
     isVideoMirrored,
     setIsVideoMirrored,
     videoDevices,

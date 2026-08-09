@@ -23,6 +23,7 @@ interface StudioSidebarProps {
   selectedAudioDeviceId: string;
   initCamera: () => Promise<MediaStream | null>;
   stopCamera: () => void;
+  flipCamera?: () => void;
   setFacingMode: (mode: any) => void;
   setIsVideoMirrored: (mirrored: boolean) => void;
   isVideoMirrored: boolean;
@@ -61,6 +62,7 @@ export const StudioSidebar = React.memo(({
   selectedAudioDeviceId,
   initCamera,
   stopCamera,
+  flipCamera,
   setFacingMode,
   setIsVideoMirrored,
   isVideoMirrored,
@@ -173,8 +175,12 @@ export const StudioSidebar = React.memo(({
                     <div className="grid grid-cols-2 gap-2">
                       <button 
                          onClick={() => {
-                           setFacingMode(facingMode === 'user' ? 'environment' : 'user');
-                           setTimeout(initCamera, 100);
+                           if (flipCamera) flipCamera();
+                           else {
+                             setFacingMode(facingMode === 'user' ? 'environment' : 'user');
+                             setSelectedVideoDeviceId('');
+                             setTimeout(initCamera, 100);
+                           }
                          }}
                          className="py-3 rounded-lg border border-white/5 bg-white/5 text-[8px] font-black uppercase text-white/40 hover:text-white hover:bg-white/10 transition-all flex items-center justify-center gap-2 shadow-inner"
                       >

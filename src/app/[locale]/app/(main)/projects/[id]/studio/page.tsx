@@ -143,6 +143,7 @@ export default function StudioPage() {
     cameraStream,
     facingMode,
     setFacingMode,
+    flipCamera,
     isVideoMirrored,
     setIsVideoMirrored,
     videoDevices,
@@ -693,6 +694,7 @@ export default function StudioPage() {
             selectedAudioDeviceId={selectedAudioDeviceId}
             initCamera={initCamera}
             stopCamera={stopCamera}
+            flipCamera={flipCamera}
             setFacingMode={setFacingMode}
             setIsVideoMirrored={setIsVideoMirrored}
             isVideoMirrored={isVideoMirrored}
@@ -854,7 +856,7 @@ export default function StudioPage() {
             )}
 
             {visitedTabs['teleprompter'] && (
-              <div className={activeTab === 'teleprompter' ? 'h-full w-full' : 'hidden'}>
+              <div className={activeTab === 'teleprompter' ? 'h-full max-h-[100dvh] w-full overflow-hidden flex flex-col' : 'hidden'}>
                 <TeleprompterView 
                   cameraStream={cameraStream}
                   cameraError={cameraError}
@@ -905,7 +907,7 @@ export default function StudioPage() {
                   onColorChange={(color) => setScriptColor(color)}
                   onBack={() => handleTabChange('branch')}
                   onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
-                  onFlipCamera={() => setFacingMode(prev => prev === 'user' ? 'environment' : 'user')}
+                  onFlipCamera={flipCamera}
                   onTextSizeChange={(size) => setTextSize(size)}
                   onOpacityChange={(op) => setScriptOpacity(op)}
                   scrollSpeed={scrollSpeed}
