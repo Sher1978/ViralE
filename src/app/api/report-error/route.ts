@@ -23,14 +23,19 @@ export async function POST(req: NextRequest) {
     }
 
     if (error) {
-      await notifyAdminError({
-        source: source || 'Client Session Error',
-        error,
-        userId,
-        userEmail,
-        url,
-        extra,
-      });
+      const errStr = typeof error === 'string' ? error : error?.message || String(error);
+      const isNetworkErr = errStr.includes('Failed to fetch') || errStr.includes('NetworkError') || errStr.includes('Load failed') || errStr.includes('AbortError');
+      
+      if (!isNetworkErr) {
+        await notifyAdminError({
+          source: source || 'Client Session Error',
+          error,
+          userId,
+          userEmail,
+          url,
+          extra,
+        });
+      }
     }
 
     return NextResponse.json({ ok: true });

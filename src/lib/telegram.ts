@@ -123,6 +123,18 @@ export async function notifyAdminError(details: {
     ? details.error 
     : details.error?.message || String(details.error);
 
+  const isNetworkDrop = 
+    errorMessage.includes('Failed to fetch') ||
+    errorMessage.includes('NetworkError') ||
+    errorMessage.includes('Load failed') ||
+    errorMessage.includes('Failed to fetch dynamically imported module') ||
+    errorMessage.includes('The user aborted a request') ||
+    errorMessage.includes('AbortError');
+
+  if (isNetworkDrop) {
+    return false;
+  }
+
   const isLimitEvent = 
     errorMessage.includes('INSUFFICIENT_CREDITS') ||
     errorMessage.includes('TRIAL_EXPIRED') ||

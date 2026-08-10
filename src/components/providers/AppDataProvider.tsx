@@ -90,7 +90,27 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         url += `&force=true`;
       }
       
-      const res = await fetch(url);
+      let res: Response | null = null;
+      let retries = 2;
+      let lastNetworkErr: any = null;
+
+      while (retries >= 0) {
+        try {
+          res = await fetch(url);
+          break;
+        } catch (fetchErr: any) {
+          lastNetworkErr = fetchErr;
+          retries--;
+          if (retries >= 0) {
+            await new Promise(resolve => setTimeout(resolve, 800));
+          }
+        }
+      }
+
+      if (!res) {
+        throw lastNetworkErr || new Error('Network error');
+      }
+
       if (res.ok) {
         const data = await res.json();
         const ideasList = Array.isArray(data) ? data : data.ideas || [];
@@ -147,20 +167,29 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     } catch (err: any) {
       console.error(`Failed to fetch ${status} ideas:`, err);
       if (status === 'new') {
-        const errorText = err?.message || (locale === 'ru' ? 'Ошибка сети при генерации идей' : 'Network error during idea generation');
+        const rawErr = err?.message || '';
+        const isNetworkErr = rawErr.includes('Failed to fetch') || rawErr.includes('NetworkError') || rawErr.includes('Load failed') || rawErr.includes('AbortError');
+        
+        const errorText = isNetworkErr
+          ? (locale === 'ru' ? 'Ошибка подключения к сети. Проверьте интернет-соединение.' : 'Network connection error. Please check your internet connection.')
+          : (rawErr || (locale === 'ru' ? 'Ошибка сети при генерации идей' : 'Network error during idea generation'));
+        
         setIdeasError(errorText);
-        const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
-        fetch('/api/report-error', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            source: 'Client Ideas Exception',
-            error: errorText,
-            url: win ? win.location.href : '',
-            userId: profile?.id,
-            userEmail: profile?.email,
-          }),
-        }).catch(() => {});
+        
+        if (!isNetworkErr) {
+          const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+          fetch('/api/report-error', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              source: 'Client Ideas Exception',
+              error: errorText,
+              url: win ? win.location.href : '',
+              userId: profile?.id,
+              userEmail: profile?.email,
+            }),
+          }).catch(() => {});
+        }
       }
     } finally {
       if (status === 'new') setLoadingIdeas(false);
@@ -177,6 +206,16 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const handleWindowError = (event: any) => {
       const errorMsg = event.error?.message || event.message || 'Unhandled Window Error';
       const stack = event.error?.stack;
+
+      if (errorMsg && (
+        errorMsg.includes('Failed to fetch') ||
+        errorMsg.includes('NetworkError') ||
+        errorMsg.includes('Load failed') ||
+        errorMsg.includes('AbortError') ||
+        errorMsg.includes('Script error')
+      )) {
+        return; // Ignore client network disconnects & browser noise
+      }
 
       fetch('/api/report-error', {
         method: 'POST',
@@ -195,6 +234,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const handleUnhandledRejection = (event: any) => {
       const reason = event.reason;
       const errorMsg = typeof reason === 'string' ? reason : reason?.message || JSON.stringify(reason);
+
+      if (errorMsg && (
+        errorMsg.includes('Failed to fetch') ||
+        errorMsg.includes('NetworkError') ||
+        errorMsg.includes('Load failed') ||
+        errorMsg.includes('AbortError')
+      )) {
+        return; // Ignore client network disconnects
+      }
 
       fetch('/api/report-error', {
         method: 'POST',
