@@ -1,5 +1,6 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 import { getModel } from './ai/gemini';
+import { safeJsonParse } from './utils';
 import fs from 'fs';
 import path from 'path';
 
@@ -178,30 +179,49 @@ export async function generateDailyIdeas(
   `;
 
   const fastModel = getModel('fast');
-  const result = await fastModel.generateContent(prompt);
-  const response = await result.response;
-  const text = response.text().trim();
-  
-  let jsonStr = text;
-  const jsonMatch = text.match(/\[\s*\{[\s\S]*\}\s*\]/);
-  if (jsonMatch) {
-    jsonStr = jsonMatch[0];
-  } else {
-    jsonStr = text.replace(/```json/g, '').replace(/```/g, '').trim();
+  let text = '';
+  let ideasArray: any[] = [];
+
+  // Try up to 2 attempts to generate valid JSON array
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const result = await fastModel.generateContent(
+        attempt === 1 
+          ? prompt 
+          : `${prompt}\n\nCRITICAL RETRY: Output ONLY raw valid JSON array. Do not wrap in markdown or explanatory text.`
+      );
+      const response = await result.response;
+      text = response.text().trim();
+      
+      const parsed = safeJsonParse<any>(text);
+      if (Array.isArray(parsed)) {
+        ideasArray = parsed;
+      } else if (parsed && typeof parsed === 'object') {
+        const candidateArray = parsed.ideas || parsed.topics || parsed.data || Object.values(parsed).find(Array.isArray);
+        if (Array.isArray(candidateArray)) {
+          ideasArray = candidateArray;
+        }
+      }
+
+      if (ideasArray.length > 0) {
+        break;
+      }
+    } catch (parseError) {
+      console.warn(`[generateDailyIdeas] Attempt ${attempt} failed to parse AI response as JSON.`, parseError);
+    }
   }
 
-  try {
-    const ideas = JSON.parse(jsonStr);
-    return ideas.map((i: any) => ({ 
-      topic_title: i.topic_title,
-      rationale: i.rationale,
-      viral_potential_score: i.viral_potential_score,
-      category: targetCategory 
-    }));
-  } catch (parseError) {
-    console.error('Failed to parse AI response as JSON:', text);
+  if (!ideasArray || ideasArray.length === 0) {
+    console.error('Failed to parse AI response as JSON after retries. Raw text:', text);
     throw new Error('AI generated invalid data format.');
   }
+
+  return ideasArray.map((i: any) => ({ 
+    topic_title: i.topic_title || 'Untitled Topic',
+    rationale: i.rationale || '',
+    viral_potential_score: typeof i.viral_potential_score === 'number' ? i.viral_potential_score : 85,
+    category: targetCategory 
+  }));
 }
 
 export async function saveIdeasToFeed(supabase: SupabaseClient, userId: string, ideas: IdeaSuggestion[]) {

@@ -19,26 +19,32 @@ export function safeJsonParse<T = any>(text: string): T {
 
   // 1. Clean markdown formatting
   let clean = text.trim();
-  if (clean.startsWith('```')) {
-    const lines = clean.split('\n');
-    if (lines[0].startsWith('```')) {
-      lines.shift();
-    }
-    if (lines[lines.length - 1].startsWith('```')) {
-      lines.pop();
-    }
-    clean = lines.join('\n').trim();
+  clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+
+  const lines = clean.split('\n');
+  if (lines[0].trim().startsWith('```')) {
+    lines.shift();
   }
+  if (lines.length > 0 && lines[lines.length - 1].trim().startsWith('```')) {
+    lines.pop();
+  }
+  clean = lines.join('\n').trim();
 
   // Remove potential BOM or other invisible junk
   clean = clean.replace(/^\uFEFF/, '');
 
-  // 2. Extract first matching JSON object if wrapped in explanatory text
+  // 2. Extract first matching JSON object/array if wrapped in explanatory text or trailing code fences
   if (!clean.startsWith('{') && !clean.startsWith('[')) {
     const jsonMatch = clean.match(/[\{\[]([\s\S]*)[\}\]]/);
     if (jsonMatch) {
       clean = jsonMatch[0];
     }
+  }
+
+  // Strip any trailing non-JSON characters after the last closing brace/bracket
+  const lastBrace = Math.max(clean.lastIndexOf('}'), clean.lastIndexOf(']'));
+  if (lastBrace !== -1 && lastBrace < clean.length - 1) {
+    clean = clean.substring(0, lastBrace + 1).trim();
   }
 
   // 3. Remove trailing commas before closing braces/brackets
