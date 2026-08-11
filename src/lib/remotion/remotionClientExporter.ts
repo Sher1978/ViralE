@@ -66,6 +66,9 @@ export async function renderRemotionInDevice({
   
   // Добавляем аудиодорожку из исходного видео
   const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
+  if (audioCtx.state === 'suspended') {
+    await audioCtx.resume().catch(() => {});
+  }
   const sourceNode = audioCtx.createMediaElementSource(videoEl);
   const destNode = audioCtx.createMediaStreamDestination();
   sourceNode.connect(destNode);
@@ -98,22 +101,54 @@ export async function renderRemotionInDevice({
   });
 
   recorder.start(100);
-  await videoEl.play();
+  await videoEl.play().catch((err) => console.warn('[RemotionExporter] videoEl.play warning:', err));
 
   let currentFrame = 0;
+  let lastTime = -1;
+  let sameTimeFrameCount = 0;
+  const startTime = Date.now();
+  const maxDurationMs = (durationSec + 5) * 1000;
 
   const cameraCuts = cutSheet?.cameraCuts || [];
   const bRollElements = cutSheet?.bRollElements || [];
 
   await new Promise<void>((resolve) => {
     const renderLoop = () => {
-      if (videoEl.ended || videoEl.currentTime >= durationSec) {
-        recorder.stop();
+      const currentTime = videoEl.currentTime;
+      currentFrame = Math.round(currentTime * fps);
+
+      // Track stalling (currentTime not advancing near the end)
+      if (currentTime === lastTime) {
+        sameTimeFrameCount++;
+      } else {
+        sameTimeFrameCount = 0;
+        lastTime = currentTime;
+      }
+
+      const isEnded = videoEl.ended;
+      const isTimeEnded = currentTime >= (durationSec - 0.15);
+      const isFrameEnded = currentFrame >= (totalFrames - 1);
+      const isStalledNearEnd = sameTimeFrameCount > 15 && (currentTime >= durationSec * 0.85 || currentFrame >= totalFrames - 5);
+      const isTimeout = (Date.now() - startTime) > maxDurationMs;
+
+      if (isEnded || isTimeEnded || isFrameEnded || isStalledNearEnd || isTimeout) {
+        log('Рендеринг завершен, финализация медиапотока...', 96);
+        if (recorder.state !== 'inactive') {
+          try {
+            recorder.stop();
+          } catch (e) {
+            console.warn('[RemotionExporter] recorder.stop error:', e);
+          }
+        }
+        try {
+          videoEl.pause();
+        } catch (e) {}
+        try {
+          audioCtx.close().catch(() => {});
+        } catch (e) {}
         resolve();
         return;
       }
-
-      currentFrame = Math.round(videoEl.currentTime * fps);
 
       // 1. Fill background with sleek dark slate gradient
       const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
@@ -310,8 +345,9 @@ export async function renderRemotionInDevice({
         ctx.restore();
       }
 
-      const progress = Math.min(95, 55 + Math.round((currentFrame / totalFrames) * 40));
-      log(`Рендеринг кадра ${currentFrame}/${totalFrames}...`, progress);
+      const displayedFrame = Math.min(currentFrame, totalFrames);
+      const progress = Math.min(95, 55 + Math.round((displayedFrame / totalFrames) * 40));
+      log(`Рендеринг кадра ${displayedFrame}/${totalFrames}...`, progress);
 
       requestAnimationFrame(renderLoop);
     };
@@ -336,7 +372,12 @@ function getVideoDuration(url: string): Promise<number> {
     const video = document.createElement('video');
     video.src = url;
     video.onloadedmetadata = () => {
-      resolve(video.duration || 15);
+      const d = video.duration;
+      if (d && isFinite(d) && d > 0) {
+        resolve(d);
+      } else {
+        resolve(15);
+      }
     };
     video.onerror = () => resolve(15);
   });
