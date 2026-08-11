@@ -1,5 +1,7 @@
 import { RemotionArchitectCutSheet, CameraCut, BRollElement, SoundCue, UserBrandDnaConfig } from '@/lib/types/remotionArchitect';
 import { STYLE_PRESETS, resolveUserBrandStyle } from '@/lib/remotion/stylePresets';
+import { buildFewShotRagPromptContext } from './videoScoreLibrary';
+import { getRotatedArtMedium, buildDynamicAssetPrompt } from './dynamicPrompting';
 
 export interface RunCinematicPipelineParams {
   transcriptData: Array<{ start?: number; end?: number; text?: string; scriptText?: string }>;
@@ -19,18 +21,19 @@ export async function runCinematicMultiAgentPipeline({
   const selectedStyle = resolveUserBrandStyle(presetKey, userBrandDna);
 
   const groqKey = process.env.GROQ_API_KEY;
-  const geminiKey = process.env.GEMINI_API_KEY;
+  const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
+  const openaiKey = process.env.OPENAI_API_KEY;
 
-  if (groqKey || geminiKey) {
+  if (groqKey || geminiKey || openaiKey) {
     try {
-      // 1. PASS 1: DIRECTOR AGENT (Semantic & Emotional Map)
-      const directorOutput = await runDirectorAgent(transcriptData, userIntent, groqKey || geminiKey!);
+      // 1. PASS 1: DIRECTOR AGENT (Semantic & Emotional Map + RAG Few-Shot Video Scores)
+      const directorOutput = await runDirectorAgent(transcriptData, userIntent, groqKey || geminiKey || openaiKey!);
 
-      // 2. PASS 2: ART DIRECTOR AGENT (Visual Concepts & Metaphors)
-      const artDirectorOutput = await runArtDirectorAgent(directorOutput, selectedStyle, userBrandDna, groqKey || geminiKey!);
+      // 2. PASS 2: ART DIRECTOR AGENT (Visual Concepts & Dynamic Medium Rotation)
+      const artDirectorOutput = await runArtDirectorAgent(directorOutput, selectedStyle, userBrandDna, groqKey || geminiKey || openaiKey!);
 
       // 3. PASS 3: REMOTION ANIMATOR AGENT (Frame-Accurate Hyperframes & Physics)
-      const cutSheet = await runAnimatorAgent(directorOutput, artDirectorOutput, selectedStyle, fps, groqKey || geminiKey!);
+      const cutSheet = await runAnimatorAgent(directorOutput, artDirectorOutput, selectedStyle, fps, groqKey || geminiKey || openaiKey!);
 
       if (cutSheet && cutSheet.cameraCuts && cutSheet.bRollElements) {
         return processAndEnrichCutSheet(cutSheet, selectedStyle, fps);
@@ -45,16 +48,20 @@ export async function runCinematicMultiAgentPipeline({
 }
 
 /**
- * PASS 1: Director Agent
+ * PASS 1: Director Agent (with RAG Video Score Library Context)
  */
 async function runDirectorAgent(transcript: any[], intent: string, apiKey: string): Promise<any> {
+  const fullScriptText = transcript.map(t => t.text || t.scriptText || '').join(' ');
+  const ragContext = buildFewShotRagPromptContext(fullScriptText);
+
   const prompt = `
 Ты — Агент-Режиссер монтажа (Director Agent) сервиса Virali AI.
 Проанализируй транскрипт видео и создай Драматургическую Карту.
 
 ### ВХОДНЫЕ ДАННЫЕ
-- Транскрипт: ${JSON.stringify(transcript.slice(0, 40))}
+- Транскрипт: ${JSON.stringify(transcript.slice(0, 150))}
 - Цель: ${intent}
+${ragContext}
 
 ### ТВОИ ЗАДАЧИ
 1. Выдели ХУК (первые 3-5 секунд).
@@ -76,9 +83,11 @@ async function runDirectorAgent(transcript: any[], intent: string, apiKey: strin
 }
 
 /**
- * PASS 2: Art Director Agent
+ * PASS 2: Art Director Agent (with Dynamic Medium Rotation)
  */
 async function runArtDirectorAgent(directorOutput: any, style: any, userDna: any, apiKey: string): Promise<any> {
+  const rotatedMedium = getRotatedArtMedium(Date.now());
+
   const prompt = `
 Ты — Агент Арт-Директор (Art Director Agent) сервиса Virali AI.
 На основе Драматургической Карты подбери идеальные графические элементы под бренд-бук пользователя.
@@ -87,6 +96,7 @@ async function runArtDirectorAgent(directorOutput: any, style: any, userDna: any
 - Название пресета: ${style.name} (${style.key})
 - Акцентный цвет: ${style.colors.accent}
 - Вторичный цвет: ${style.colors.secondary}
+- Динамический 3D-медиум: ${rotatedMedium.details.name} (${rotatedMedium.details.promptSuffix})
 - Режиссерская карта: ${JSON.stringify(directorOutput)}
 
 ### ТВОИ ЗАДАЧИ
@@ -96,7 +106,7 @@ async function runArtDirectorAgent(directorOutput: any, style: any, userDna: any
    - Перечисление факторов -> type: "list" (title, items)
    - Важная метрика -> type: "stat_callout" (statValue: "+350%", statLabel: "Рост продаж")
    - Иконка понятий -> type: "3d_icon" (iconName)
-2. Установи правила расположения элементов на экране.
+2. Установи правила расположения элементов на экране (Safe Zones: y > 0.65 для нижних плашек, y < 0.15 для верхних).
 
 Формат вывода STRICT JSON:
 {
