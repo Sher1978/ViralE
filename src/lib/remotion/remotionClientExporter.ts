@@ -47,8 +47,8 @@ export async function renderRemotionInDevice({
   log(`Продолжительность: ${durationSec.toFixed(1)}s (${totalFrames} кадров, пресет: ${activeStyle.name})...`, 25);
 
   const canvas = document.createElement('canvas');
-  canvas.width = 720;  // 720p mobile export resolution
-  canvas.height = 1280;
+  canvas.width = 1080;  // Native Full HD 1080x1920 9:16 vertical resolution
+  canvas.height = 1920;
   const ctx = canvas.getContext('2d');
 
   if (!ctx) {
@@ -62,7 +62,7 @@ export async function renderRemotionInDevice({
   videoEl.playsInline = true;
   await videoEl.load();
 
-  log('Запуск аппаратного кодировщика H.264 на устройстве...', 55);
+  log('Запуск аппаратного кодировщика H.264 (Full HD 1080p, 20Mbps) на устройстве...', 55);
 
   const stream = canvas.captureStream(fps);
   
@@ -84,7 +84,7 @@ export async function renderRemotionInDevice({
 
   const recorder = new MediaRecorder(stream, {
     mimeType,
-    videoBitsPerSecond: 6000000 // 6 Mbps
+    videoBitsPerSecond: 20000000 // 20 Mbps Ultra Crisp Broadcast Quality
   });
 
   const chunks: Blob[] = [];
@@ -242,24 +242,38 @@ export async function renderRemotionInDevice({
       }
 
       if (isCircle && radius > 5) {
-        // Strictly isolated circular clipping for speaker video only
+        // 1. Draw blurred full-screen video in background to eliminate flat dark boxes
         ctx.save();
+        ctx.globalAlpha = 0.4;
+        ctx.filter = 'blur(25px) brightness(0.7)';
+        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+        ctx.filter = 'none';
+        ctx.globalAlpha = 1.0;
+        ctx.restore();
+
+        // 2. Strictly isolated circular clipping for speaker video avatar
+        ctx.save();
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+        ctx.shadowBlur = 30;
+        ctx.shadowOffsetY = 10;
         ctx.beginPath();
         ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
         ctx.clip();
 
-        const vidW = canvas.width * targetScale;
-        const vidH = canvas.height * targetScale;
+        const vidW = canvas.width * targetScale * 1.5;
+        const vidH = canvas.height * targetScale * 1.5;
         const vidX = targetX - vidW / 2;
         const vidY = targetY - vidH / 2;
         ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
         ctx.restore();
 
-        // Stroke circle border outside clip
+        // 3. Glowing neon circle border outside clip
         ctx.save();
+        ctx.shadowColor = activeStyle.colors.accent;
+        ctx.shadowBlur = 20;
         ctx.beginPath();
         ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
-        ctx.lineWidth = 6;
+        ctx.lineWidth = 10;
         ctx.strokeStyle = activeStyle.colors.accent;
         ctx.stroke();
         ctx.restore();
@@ -439,6 +453,53 @@ export async function renderRemotionInDevice({
           ctx.fillText(elem.props.statLabel || 'Рост удержания', cardX + 24, cardY + 105);
         }
         ctx.restore();
+      }
+
+      // 4. Render Active Subtitle Overlay (Full HD 1080p Bold Typography)
+      const subtitles = cutSheet?.subtitles || cutSheet?.segments || [];
+      if (subtitles && Array.isArray(subtitles)) {
+        const activeSub = subtitles.find(
+          (s: any) => currentFrame >= (s.startFrame || 0) && currentFrame <= (s.endFrame || (s.startFrame || 0) + 30)
+        );
+
+        if (activeSub && (activeSub.text || activeSub.word)) {
+          const textToDraw = (activeSub.text || activeSub.word || '').toUpperCase();
+          ctx.save();
+          ctx.font = '900 56px "Outfit", "Roboto", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.textBaseline = 'middle';
+
+          const subX = canvas.width / 2;
+          const subY = canvas.height * 0.82;
+
+          // Glowing Subtitle Pill Background
+          const textMetrics = ctx.measureText(textToDraw);
+          const pillW = textMetrics.width + 60;
+          const pillH = 80;
+          const pillX = subX - pillW / 2;
+          const pillY = subY - pillH / 2;
+
+          ctx.shadowColor = 'rgba(0, 0, 0, 0.8)';
+          ctx.shadowBlur = 24;
+          ctx.shadowOffsetY = 8;
+
+          ctx.fillStyle = 'rgba(6, 6, 12, 0.85)';
+          ctx.strokeStyle = activeStyle.colors.accent;
+          ctx.lineWidth = 3;
+          ctx.roundRect(pillX, pillY, pillW, pillH, 20);
+          ctx.fill();
+          ctx.stroke();
+
+          // High Contrast Subtitle Text
+          ctx.lineWidth = 8;
+          ctx.strokeStyle = '#000000';
+          ctx.strokeText(textToDraw, subX, subY);
+
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillText(textToDraw, subX, subY);
+
+          ctx.restore();
+        }
       }
 
       const displayedFrame = Math.min(currentFrame, totalFrames);
