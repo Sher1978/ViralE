@@ -1,5 +1,6 @@
 import { RemotionArchitectCutSheet } from '@/lib/types/remotionArchitect';
 import { idb } from '@/lib/idb';
+import { resolveUserBrandStyle } from '@/lib/remotion/stylePresets';
 
 export interface RenderRemotionOptions {
   projectId: string;
@@ -21,7 +22,12 @@ export async function renderRemotionInDevice({
     if (onProgress) onProgress(p, msg);
   };
 
-  log('Инициализация Remotion ин-девайс движка...', 5);
+  log('Инициализация Remotion AI Cinematic Engine...', 5);
+
+  const activeStyle = resolveUserBrandStyle(
+    cutSheet?.renderSettings?.presetKey || cutSheet?.renderSettings?.stylePreset,
+    cutSheet?.renderSettings?.userBrandDna
+  );
 
   let sourceUrl = typeof speakerVideoBlobOrUrl === 'string' ? speakerVideoBlobOrUrl : '';
   if (speakerVideoBlobOrUrl instanceof Blob) {
@@ -34,15 +40,11 @@ export async function renderRemotionInDevice({
 
   log('Загрузка исходного медиапотока...', 15);
 
-  // Считываем продолжительность видео с помощью вспомогательного HTMLVideoElement
   const durationSec = await getVideoDuration(sourceUrl);
   const fps = cutSheet?.renderSettings?.fps || 30;
   const totalFrames = Math.ceil(durationSec * fps);
 
-  log(`Продолжительность: ${durationSec.toFixed(1)}s (${totalFrames} кадров)...`, 25);
-
-  // Для локальной сборки в браузере рендерим композицию в офскрин Canvas с WebCodecs или MediaRecorder
-  log('Синхронизация кадров и наложение инфографики...', 40);
+  log(`Продолжительность: ${durationSec.toFixed(1)}s (${totalFrames} кадров, пресет: ${activeStyle.name})...`, 25);
 
   const canvas = document.createElement('canvas');
   canvas.width = 720;  // 720p mobile export resolution
@@ -53,18 +55,16 @@ export async function renderRemotionInDevice({
     throw new Error('Не удалось инициализировать 2D контекст Canvas');
   }
 
-  // Создаем видеоэлемент для проигрывания кадров
   const videoEl = document.createElement('video');
   videoEl.src = sourceUrl;
   videoEl.muted = true;
   videoEl.playsInline = true;
   await videoEl.load();
 
-  log('Запуск аппаратного H.264 кодировщика на устройстве...', 55);
+  log('Запуск аппаратного кодировщика H.264 на устройстве...', 55);
 
   const stream = canvas.captureStream(fps);
   
-  // Добавляем аудиодорожку из исходного видео
   const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   if (audioCtx.state === 'suspended') {
     await audioCtx.resume().catch(() => {});
@@ -117,7 +117,6 @@ export async function renderRemotionInDevice({
       const currentTime = videoEl.currentTime;
       currentFrame = Math.round(currentTime * fps);
 
-      // Track stalling (currentTime not advancing near the end)
       if (currentTime === lastTime) {
         sameTimeFrameCount++;
       } else {
@@ -150,76 +149,95 @@ export async function renderRemotionInDevice({
         return;
       }
 
-      // 1. Fill background with sleek dark slate gradient
+      // 1. Fill background with active style gradient
       const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-      bgGrad.addColorStop(0, '#030712');
-      bgGrad.addColorStop(1, '#0f172a');
+      bgGrad.addColorStop(0, activeStyle.colors.background);
+      bgGrad.addColorStop(1, '#030712');
       ctx.fillStyle = bgGrad;
       ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      // 2. Camera Cuts Transformation for Speaker Video
+      // 2. Dynamic Z-Axis Live Camera Motion for Speaker Video
       const activeCut = cameraCuts.find(
         (c) => currentFrame >= c.startFrame && currentFrame < c.startFrame + c.durationFrames
       );
 
       ctx.save();
+
+      let targetScale = 1.0;
+      let targetX = 0;
+      let targetY = 0;
+      let isCircle = false;
+      let radius = 0;
+
       if (activeCut) {
         const cutElapsed = currentFrame - activeCut.startFrame;
-        const animProgress = Math.min(1, Math.max(0, cutElapsed / 10)); // smooth 10-frame transition
-        const ease = 1 - Math.pow(1 - animProgress, 3); // Ease-out cubic
+        const animProgress = Math.min(1, Math.max(0, cutElapsed / 10));
+        const ease = 1 - Math.pow(1 - animProgress, 3);
 
-        if (activeCut.action === 'scale_to_circle') {
-          const targetScale = 0.5 * ease + 1.0 * (1 - ease);
-          const targetX = (canvas.width * 0.28) * ease;
-          const targetY = (canvas.height * 0.5) * ease + (canvas.height * 0.5) * (1 - ease);
-          const radius = Math.min(canvas.width, canvas.height) * 0.22 * ease;
+        if (activeCut.action === 'micro_zoom') {
+          // Smooth continuous micro-zoom (1.0 -> 1.03) over speaking segment
+          const durationFr = activeCut.durationFrames || 100;
+          const microProgress = Math.min(1, cutElapsed / durationFr);
+          targetScale = 1.0 + 0.03 * microProgress;
 
-          if (radius > 5) {
-            ctx.beginPath();
-            ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
-            ctx.clip();
+        } else if (activeCut.action === 'punch_zoom') {
+          // Instant energetic punch zoom (1.12) on hook/punch words
+          const punchProgress = Math.min(1, Math.max(0, cutElapsed / 5));
+          targetScale = 1.0 + 0.12 * (1 - Math.pow(1 - punchProgress, 4));
 
-            // Glow border around speaker circle
-            ctx.lineWidth = 6;
-            ctx.strokeStyle = '#a855f7';
-            ctx.stroke();
-          }
-
-          const vidW = canvas.width * targetScale;
-          const vidH = canvas.height * targetScale;
-          ctx.drawImage(videoEl, targetX - vidW / 2, targetY - vidH / 2, vidW, vidH);
+        } else if (activeCut.action === 'scale_to_circle') {
+          targetScale = 0.5 * ease + 1.0 * (1 - ease);
+          targetX = (canvas.width * 0.28) * ease;
+          targetY = (canvas.height * 0.5) * ease + (canvas.height * 0.5) * (1 - ease);
+          radius = Math.min(canvas.width, canvas.height) * 0.22 * ease;
+          isCircle = true;
 
         } else if (activeCut.action === 'move_left') {
-          const targetScale = 0.75 * ease + 1.0 * (1 - ease);
-          const targetX = (-canvas.width * 0.15) * ease;
-          
-          const vidW = canvas.width * targetScale;
-          const vidH = canvas.height * targetScale;
-          const vidY = (canvas.height - vidH) / 2;
-
-          ctx.drawImage(videoEl, targetX, vidY, vidW, vidH);
+          targetScale = 0.75 * ease + 1.0 * (1 - ease);
+          targetX = (-canvas.width * 0.15) * ease;
 
         } else if (activeCut.action === 'pip_right') {
+          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
           const pipW = canvas.width * 0.4;
           const pipH = canvas.height * 0.4;
           const pipX = canvas.width - pipW - 30;
           const pipY = canvas.height - pipH - 40;
 
-          // Draw full video or PiP box
-          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-
           ctx.lineWidth = 4;
-          ctx.strokeStyle = '#38bdf8';
+          ctx.strokeStyle = activeStyle.colors.accent;
           ctx.strokeRect(pipX, pipY, pipW, pipH);
-        } else {
-          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
         }
+      } else {
+        // Default subtle continuous Z-axis breathing micro-zoom
+        const phase = (currentFrame / totalFrames) * Math.PI * 2;
+        targetScale = 1.0 + 0.015 * Math.sin(phase);
+      }
+
+      if (isCircle && radius > 5) {
+        ctx.beginPath();
+        ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
+        ctx.clip();
+
+        ctx.lineWidth = 6;
+        ctx.strokeStyle = activeStyle.colors.accent;
+        ctx.stroke();
+
+        const vidW = canvas.width * targetScale;
+        const vidH = canvas.height * targetScale;
+        ctx.drawImage(videoEl, targetX - vidW / 2, targetY - vidH / 2, vidW, vidH);
+      } else if (targetX !== 0 || targetY !== 0 || targetScale !== 1.0) {
+        const vidW = canvas.width * targetScale;
+        const vidH = canvas.height * targetScale;
+        const vidX = (canvas.width - vidW) / 2 + targetX;
+        const vidY = (canvas.height - vidH) / 2 + targetY;
+        ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
       } else {
         ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
       }
+
       ctx.restore();
 
-      // 3. Render Active Infographic Remotion Elements
+      // 3. Render Active Infographic Remotion Elements with Mathematical Jitter & Brand Colors
       const activeElements = bRollElements.filter(
         (e) => currentFrame >= e.startFrame && currentFrame <= e.endFrame
       );
@@ -230,30 +248,34 @@ export async function renderRemotionInDevice({
         const scaleAnim = 0.8 + 0.2 * elemAnim;
         const opacityAnim = elemAnim;
 
+        // Mathematical Seed Jitter: Angle between -4deg and +4deg
+        const seedJitter = (elem.visualSeed || 42) % 9 - 4;
+        const jitterRad = (seedJitter * activeStyle.jitterRangeDeg * Math.PI) / 180;
+
         ctx.save();
         ctx.globalAlpha = opacityAnim;
 
         if (elem.type === 'chart') {
-          // Glassmorphic Chart Overlay Card (Right side)
           const cardX = canvas.width * 0.48;
           const cardY = canvas.height * 0.25;
           const cardW = canvas.width * 0.46;
           const cardH = 340;
 
           ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
+          ctx.rotate(jitterRad);
           ctx.scale(scaleAnim, scaleAnim);
           ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
 
-          // Card BG
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.9)';
-          ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)';
+          // Card BG & Glassmorphism stroke using Brandbook colors
+          ctx.fillStyle = activeStyle.colors.cardBg;
+          ctx.strokeStyle = activeStyle.colors.cardBorder;
           ctx.lineWidth = 2;
           ctx.roundRect(cardX, cardY, cardW, cardH, 20);
           ctx.fill();
           ctx.stroke();
 
           // Title
-          ctx.fillStyle = '#f8fafc';
+          ctx.fillStyle = activeStyle.colors.text;
           ctx.font = 'bold 20px sans-serif';
           ctx.fillText(elem.props.title || 'Рост вовлеченности', cardX + 20, cardY + 40);
 
@@ -269,53 +291,52 @@ export async function renderRemotionInDevice({
             const by = cardY + cardH - 30 - barH;
 
             const barGrad = ctx.createLinearGradient(bx, by, bx, by + barH);
-            barGrad.addColorStop(0, '#38bdf8');
-            barGrad.addColorStop(1, '#8b5cf6');
+            barGrad.addColorStop(0, activeStyle.colors.accent);
+            barGrad.addColorStop(1, activeStyle.colors.secondary);
             ctx.fillStyle = barGrad;
             ctx.roundRect(bx, by, barWidth, barH, 8);
             ctx.fill();
 
             // Label
-            ctx.fillStyle = '#cbd5e1';
+            ctx.fillStyle = activeStyle.colors.text;
             ctx.font = 'bold 12px sans-serif';
             ctx.fillText(`${val}%`, bx + barWidth / 4, by - 6);
           });
 
-        } else if (elem.type === 'tweet_card') {
-          // Tweet Card Overlay (Top Center)
+        } else if (elem.type === 'tweet_card' || elem.type === 'kinetic_quote') {
           const cardX = canvas.width * 0.1;
           const cardY = canvas.height * 0.15;
           const cardW = canvas.width * 0.8;
           const cardH = 200;
 
           ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
+          ctx.rotate(jitterRad);
           ctx.scale(scaleAnim, scaleAnim);
           ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
 
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.95)';
-          ctx.strokeStyle = 'rgba(56, 189, 248, 0.4)';
+          ctx.fillStyle = activeStyle.colors.cardBg;
+          ctx.strokeStyle = activeStyle.colors.cardBorder;
           ctx.lineWidth = 2;
           ctx.roundRect(cardX, cardY, cardW, cardH, 24);
           ctx.fill();
           ctx.stroke();
 
-          // Author
-          ctx.fillStyle = '#ffffff';
-          ctx.font = 'bold 22px sans-serif';
-          ctx.fillText(elem.props.author || 'Virali AI Strategist', cardX + 24, cardY + 45);
+          // Author / Quote Mark
+          ctx.fillStyle = activeStyle.colors.accent;
+          ctx.font = 'bold 24px sans-serif';
+          ctx.fillText(elem.type === 'kinetic_quote' ? '“' : (elem.props.author || 'Virali AI Strategist'), cardX + 24, cardY + 45);
 
-          ctx.fillStyle = '#94a3b8';
+          ctx.fillStyle = activeStyle.colors.text;
           ctx.font = '16px sans-serif';
-          ctx.fillText(elem.props.handle || '@virali_ai', cardX + 24, cardY + 75);
+          ctx.fillText(elem.props.handle || `@${activeStyle.key}`, cardX + 24, cardY + 75);
 
-          // Tweet Body
-          ctx.fillStyle = '#f1f5f9';
+          // Body
+          ctx.fillStyle = activeStyle.colors.text;
           ctx.font = '18px sans-serif';
-          const tweetText = elem.props.text || 'High retention AI video scaling engine active.';
-          ctx.fillText(tweetText.substring(0, 70), cardX + 24, cardY + 125);
+          const bodyText = elem.props.text || elem.props.quote || 'High retention AI video scaling engine active.';
+          ctx.fillText(bodyText.substring(0, 70), cardX + 24, cardY + 125);
 
         } else if (elem.type === 'list') {
-          // Bullet List Overlay (Right Center)
           const cardX = canvas.width * 0.45;
           const cardY = canvas.height * 0.3;
           const cardW = canvas.width * 0.5;
@@ -326,21 +347,50 @@ export async function renderRemotionInDevice({
             const iy = cardY + idx * 75;
             const ix = cardX + (1 - itemProgress) * 40;
 
-            ctx.fillStyle = 'rgba(30, 41, 59, 0.92)';
-            ctx.strokeStyle = 'rgba(168, 85, 247, 0.4)';
+            ctx.translate(ix + cardW / 2, iy + 30);
+            ctx.rotate(jitterRad * 0.5);
+            ctx.translate(-(ix + cardW / 2), -(iy + 30));
+
+            ctx.fillStyle = activeStyle.colors.cardBg;
+            ctx.strokeStyle = activeStyle.colors.cardBorder;
             ctx.lineWidth = 2;
             ctx.roundRect(ix, iy, cardW, 60, 16);
             ctx.fill();
             ctx.stroke();
 
-            ctx.fillStyle = '#a855f7';
+            ctx.fillStyle = activeStyle.colors.accent;
             ctx.font = 'bold 24px sans-serif';
             ctx.fillText('✓', ix + 16, iy + 38);
 
-            ctx.fillStyle = '#ffffff';
+            ctx.fillStyle = activeStyle.colors.text;
             ctx.font = 'bold 18px sans-serif';
             ctx.fillText(item, ix + 48, iy + 38);
           });
+        } else if (elem.type === 'stat_callout') {
+          const cardX = canvas.width * 0.48;
+          const cardY = canvas.height * 0.35;
+          const cardW = canvas.width * 0.46;
+          const cardH = 180;
+
+          ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
+          ctx.rotate(jitterRad);
+          ctx.scale(scaleAnim, scaleAnim);
+          ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
+
+          ctx.fillStyle = activeStyle.colors.cardBg;
+          ctx.strokeStyle = activeStyle.colors.cardBorder;
+          ctx.lineWidth = 2;
+          ctx.roundRect(cardX, cardY, cardW, cardH, 20);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = activeStyle.colors.accent;
+          ctx.font = 'black 42px sans-serif';
+          ctx.fillText(elem.props.statValue || '+350%', cardX + 24, cardY + 70);
+
+          ctx.fillStyle = activeStyle.colors.text;
+          ctx.font = 'bold 16px sans-serif';
+          ctx.fillText(elem.props.statLabel || 'Рост удержания', cardX + 24, cardY + 120);
         }
         ctx.restore();
       }
@@ -382,3 +432,4 @@ function getVideoDuration(url: string): Promise<number> {
     video.onerror = () => resolve(15);
   });
 }
+

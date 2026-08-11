@@ -40,10 +40,25 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
     const spr = spring({
       frame: cutProgress,
       fps,
-      config: { mass: 0.8, damping: 12 }
+      config: { mass: 0.8, damping: 14 }
     });
 
-    if (activeCut.action === 'scale_to_circle') {
+    if (activeCut.action === 'micro_zoom') {
+      const targetS = activeCut.targetScale || 1.03;
+      const durationFr = Math.max(1, activeCut.durationFrames || 100);
+      const microScale = interpolate(cutProgress, [0, durationFr], [1.0, targetS], { extrapolateRight: 'clamp' });
+      videoStyle = {
+        ...videoStyle,
+        transform: `scale(${microScale})`
+      };
+    } else if (activeCut.action === 'punch_zoom') {
+      const targetS = activeCut.targetScale || 1.12;
+      const scale = interpolate(spr, [0, 1], [1.0, targetS]);
+      videoStyle = {
+        ...videoStyle,
+        transform: `scale(${scale})`
+      };
+    } else if (activeCut.action === 'scale_to_circle') {
       const scale = interpolate(spr, [0, 1], [1, 0.45]);
       const borderRadius = interpolate(spr, [0, 1], [0, 50]);
       const translateX = interpolate(spr, [0, 1], [0, -25]); // Сдвиг влево
