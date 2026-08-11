@@ -23,6 +23,8 @@ import { CaptionStyleSelector } from './CaptionStyleSelector';
 import { StudioModals } from './StudioModals';
 import BRollEditorModal, { BRollClipMeta } from '@/components/studio/BRollEditorModal';
 
+import { useStudioVisibilityGuard } from '@/hooks/useStudioVisibilityGuard';
+
 interface VideoEditorProps {
   projectId: string;
   aRollUrl: string;
@@ -67,6 +69,15 @@ export const VideoEditor = React.memo(({
     runTranscriptionAndPhrases, setRawFile, deleteBroll,
     manifest: activeManifest, setManifest
   } = useStudioState(projectId, manifest || null, propARollUrl);
+
+  // 🛡️ Tab Switching & Window Focus Protection Guard
+  useStudioVisibilityGuard({
+    videoRef,
+    isPlaying,
+    setIsPlaying,
+    currentTime,
+    setCurrentTime,
+  });
 
   const [selectedClip, setSelectedClip] = useState<{ id: string; type: 'aroll' | 'broll' | 'whiteboard' | 'subtitle'; } | null>(null);
 

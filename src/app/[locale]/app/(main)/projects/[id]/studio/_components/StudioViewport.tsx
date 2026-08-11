@@ -197,16 +197,23 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
     }
   }, [isPlaying, voiceoverUrl, isMuted, currentTime, videoRef]);
 
+  const scaleFactorRef = useRef<number>(1);
+
   const getScaleFactor = () => {
     const rect = (viewportRef.current as any)?.getBoundingClientRect();
-    if (!rect) return 1;
-    return 1080 / rect.width;
+    if (!rect || rect.width === 0 || rect.height === 0) {
+      return scaleFactorRef.current || 1;
+    }
+    const sf = 1080 / rect.width;
+    scaleFactorRef.current = sf;
+    return sf;
   };
-  // 🚀 High-frequency sync for smoother timeline (60fps)
+
+  // 🚀 High-frequency sync for smoother timeline (60fps) with background protection
   useEffect(() => {
     let frameId: number;
     const sync = () => {
-      if (videoRef.current && isPlaying) {
+      if (videoRef.current && isPlaying && !document.hidden) {
         setCurrentTime((videoRef.current as any).currentTime);
         frameId = requestAnimationFrame(sync);
       }

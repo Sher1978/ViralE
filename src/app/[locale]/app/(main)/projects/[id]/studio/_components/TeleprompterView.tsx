@@ -92,11 +92,33 @@ export const TeleprompterView = React.memo(({
   const interactionTimeout = React.useRef<NodeJS.Timeout | null>(null);
   const fileInputRef = React.useRef<HTMLInputElement>(null);
 
-  // 📹 Critical: Bind camera stream to video element
+  // 📹 Critical: Bind camera stream to video element & auto-recover on app switch
   React.useEffect(() => {
-    if (cameraStream && videoPreviewRef.current) {
-      (videoPreviewRef.current as any).srcObject = cameraStream;
-    }
+    const bindStream = () => {
+      if (cameraStream && videoPreviewRef.current) {
+        const v = videoPreviewRef.current as any;
+        if (v.srcObject !== cameraStream) {
+          v.srcObject = cameraStream;
+        }
+        v.play().catch(() => {});
+      }
+    };
+
+    bindStream();
+
+    const handleVisibilityChange = () => {
+      if (!document.hidden) {
+        bindStream();
+      }
+    };
+
+    document.addEventListener('visibilitychange', handleVisibilityChange);
+    window.addEventListener('focus', handleVisibilityChange);
+
+    return () => {
+      document.removeEventListener('visibilitychange', handleVisibilityChange);
+      window.removeEventListener('focus', handleVisibilityChange);
+    };
   }, [cameraStream, videoPreviewRef]);
 
   const scriptText = React.useMemo(() => {

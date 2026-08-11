@@ -112,25 +112,51 @@ export async function renderRemotionInDevice({
   const cameraCuts = cutSheet?.cameraCuts || [];
   const bRollElements = cutSheet?.bRollElements || [];
 
+  let backgroundedTimeMs = 0;
+  let lastBackgroundTime = 0;
+
+  const handleVisibility = () => {
+    if (document.hidden) {
+      lastBackgroundTime = Date.now();
+    } else {
+      if (lastBackgroundTime > 0) {
+        backgroundedTimeMs += Date.now() - lastBackgroundTime;
+        lastBackgroundTime = 0;
+      }
+      if (audioCtx.state === 'suspended') {
+        audioCtx.resume().catch(() => {});
+      }
+      if (videoEl.paused && !videoEl.ended) {
+        videoEl.play().catch(() => {});
+      }
+    }
+  };
+
+  document.addEventListener('visibilitychange', handleVisibility);
+
   await new Promise<void>((resolve) => {
     const renderLoop = () => {
       const currentTime = videoEl.currentTime;
       currentFrame = Math.round(currentTime * fps);
 
-      if (currentTime === lastTime) {
-        sameTimeFrameCount++;
-      } else {
-        sameTimeFrameCount = 0;
-        lastTime = currentTime;
+      if (!document.hidden) {
+        if (currentTime === lastTime) {
+          sameTimeFrameCount++;
+        } else {
+          sameTimeFrameCount = 0;
+          lastTime = currentTime;
+        }
       }
 
       const isEnded = videoEl.ended;
       const isTimeEnded = currentTime >= durationSec;
       const isFrameEnded = currentFrame >= totalFrames;
       const isStalledNearEnd = sameTimeFrameCount > 60 && currentTime >= (durationSec - 0.05);
-      const isTimeout = (Date.now() - startTime) > maxDurationMs;
+      const effectiveMaxDuration = maxDurationMs + backgroundedTimeMs;
+      const isTimeout = (Date.now() - startTime) > effectiveMaxDuration;
 
       if (isEnded || isTimeEnded || isFrameEnded || isStalledNearEnd || isTimeout) {
+        document.removeEventListener('visibilitychange', handleVisibility);
         log('Рендеринг завершен, финализация медиапотока...', 96);
         setTimeout(() => {
           if (recorder.state !== 'inactive') {
