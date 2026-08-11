@@ -39,6 +39,7 @@ function DeliveryPageContent() {
   const [renderStatus, setRenderStatus] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
+  const [showRemotion, setShowRemotion] = useState<boolean>(true);
   const [isMuted, setIsMuted] = useState(true);
   const videoRef = useRef<HTMLVideoElement>(null);
   const previewVideoRef = useRef<HTMLVideoElement>(null);
@@ -155,6 +156,9 @@ function DeliveryPageContent() {
       if (manifest.showSubtitles !== undefined) {
         setShowSubtitles(manifest.showSubtitles);
       }
+      if (manifest.useRemotion !== undefined) {
+        setShowRemotion(manifest.useRemotion);
+      }
     }
   }, [version]);
 
@@ -205,6 +209,54 @@ function DeliveryPageContent() {
       setRenderStatus(checked ? 'Перезапуск рендера с субтитрами...' : 'Перезапуск рендера без субтитров...');
 
       // Immediately trigger client render with updated version
+      setTimeout(() => {
+        handleClientRender(updatedVersion);
+      }, 150);
+    }
+  };
+
+  const handleToggleRemotion = async (checked: boolean) => {
+    setShowRemotion(checked);
+    addSystemLog(checked ? 'Remotion Engine включен' : 'Remotion Engine отключен (пересборка без инфографики)');
+    
+    if (version && projectId) {
+      isCancelledRef.current = true;
+      setError(null);
+
+      const updatedManifest = {
+        ...(version.script_data as any),
+        useRemotion: checked
+      };
+      
+      const updatedVersion: ProjectVersion = {
+        ...version,
+        script_data: updatedManifest
+      };
+
+      setVersion(updatedVersion);
+      
+      try {
+        await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+        addSystemLog('Настройки Remotion успешно сохранены в БД.');
+      } catch (err: any) {
+        console.error('Failed to update remotion flag:', err);
+        addSystemLog(`Ошибка сохранения настроек Remotion: ${err.message}`);
+      }
+
+      if (isLaunchingRenderRef.current) {
+        addSystemLog('Прерываем текущий рендеринг...');
+        try {
+          await resetFFmpeg();
+        } catch (e) {
+          console.warn('[Delivery] Reset FFmpeg error:', e);
+        }
+        isLaunchingRenderRef.current = false;
+      }
+
+      setJob(null);
+      setRenderProgress(0);
+      setRenderStatus(checked ? 'Перезапуск рендера через Remotion Engine...' : 'Перезапуск рендера без Remotion (FFmpeg)...');
+
       setTimeout(() => {
         handleClientRender(updatedVersion);
       }, 150);
@@ -471,7 +523,8 @@ function DeliveryPageContent() {
     } catch (e) { console.warn('[Delivery] Cache check failed:', e); }
 
     // 0.5. REMOTION ARCHITECT AUTO-ROUTING (Zero-Risk Branch)
-    if (manifestData?.remotionCutSheet) {
+    const isRemotionEnabled = manifestData?.useRemotion !== false;
+    if (manifestData?.remotionCutSheet && isRemotionEnabled) {
       try {
         setIsLoading(false);
         setRenderStatus('Запуск Remotion Motion Engine...');
@@ -1501,6 +1554,34 @@ function DeliveryPageContent() {
           />
         </button>
       </div>
+
+      {/* Remotion Motion Engine Toggle Switch Card */}
+      {manifest?.remotionCutSheet && (
+        <div className="max-w-[500px] mx-auto rounded-3xl p-5 bg-white/[0.02] border border-white/5 flex items-center justify-between shadow-lg mt-3">
+          <div className="flex flex-col text-left">
+            <span className="text-xs font-black text-white/80 uppercase tracking-wider flex items-center gap-2">
+              <span>{locale === 'ru' ? 'Remotion Motion Engine' : 'Remotion Motion Engine'}</span>
+              <span className="px-2 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/30">AI Visuals</span>
+            </span>
+            <span className="text-[9px] text-white/40 uppercase tracking-widest font-bold mt-1">
+              {locale === 'ru' ? 'Анимированная инфографика и наложения Remotion' : 'Animated Remotion infographics & overlays'}
+            </span>
+          </div>
+          <button
+            onClick={() => handleToggleRemotion(!showRemotion)}
+            className={`w-12 h-7 rounded-full p-1 transition-all duration-300 relative flex items-center shrink-0 ${
+              showRemotion ? 'bg-purple-600 shadow-[0_0_15px_rgba(168,85,247,0.4)]' : 'bg-white/10'
+            }`}
+          >
+            <motion.div
+              layout
+              className="w-5 h-5 rounded-full bg-white shadow-md cursor-pointer"
+              animate={{ x: showRemotion ? 20 : 0 }}
+              transition={{ type: 'spring', stiffness: 500, damping: 30 }}
+            />
+          </button>
+        </div>
+      )}
 
       {/* Distribution Factory - Main Area */}
       <section id="distribution-section" className="pt-10 space-y-6">
