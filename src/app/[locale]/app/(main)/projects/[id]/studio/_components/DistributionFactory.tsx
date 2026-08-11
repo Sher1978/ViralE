@@ -142,7 +142,8 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const [styleSeed, setStyleSeed] = useState<number>(() => Math.floor(Math.random() * 9999));
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
-  // 🚀 Auto-Posting via Late.dev Social API
+  // 🚀 Auto-Posting vs Manual Scenario Mode Switcher
+  const [distributionScenario, setDistributionScenario] = useState<'autopost' | 'manual'>('autopost');
   const [selectedSocials, setSelectedSocials] = useState<string[]>(['youtube', 'instagram', 'tiktok', 'telegram']);
   const [isPublishingSocials, setIsPublishingSocials] = useState<boolean>(false);
   const [socialPublishResults, setSocialPublishResults] = useState<any[] | null>(null);
@@ -1152,14 +1153,42 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
               className="w-full p-6 sm:p-8 relative z-10"
             >
               <div className="max-w-4xl mx-auto space-y-8 pb-10">
-                <div className="flex flex-col items-center text-center space-y-2 py-2">
+                <div className="flex flex-col items-center text-center space-y-4 py-2">
                   <span className="text-[10px] font-black tracking-[0.3em] uppercase text-purple-500">DIGITAL DNA SYNC</span>
                   <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">
                     {locale === 'ru' ? 'КАНАЛЫ ДИСТРИБУЦИИ' : 'DISTRIBUTION CHANNELS'}
                   </h3>
+
+                  {/* 🔀 DUAL SCENARIO SWITCHER TABS */}
+                  <div className="flex items-center gap-2 p-1.5 rounded-full bg-white/5 border border-white/10 shadow-inner">
+                    <button
+                      onClick={() => setDistributionScenario('autopost')}
+                      className={`px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
+                        distributionScenario === 'autopost'
+                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-600/30 scale-105'
+                          : 'text-white/40 hover:text-white'
+                      }`}
+                    >
+                      <Zap size={14} className={distributionScenario === 'autopost' ? 'text-yellow-400 fill-yellow-400 animate-pulse' : ''} />
+                      <span>{locale === 'ru' ? 'Новый: Авто-Постинг' : 'New: Auto-Posting'}</span>
+                    </button>
+
+                    <button
+                      onClick={() => setDistributionScenario('manual')}
+                      className={`px-6 py-2.5 rounded-full text-[10px] font-black uppercase tracking-widest flex items-center gap-2 transition-all ${
+                        distributionScenario === 'manual'
+                          ? 'bg-gradient-to-r from-purple-600 to-blue-600 text-white shadow-lg shadow-purple-600/30 scale-105'
+                          : 'text-white/40 hover:text-white'
+                      }`}
+                    >
+                      <Download size={14} />
+                      <span>{locale === 'ru' ? 'Старый: Скачать Материалы' : 'Manual: Download Pack'}</span>
+                    </button>
+                  </div>
                 </div>
 
-                {/* 🚀 AUTO-POSTING CONTROL PANEL (Late.dev API Integration) */}
+                {/* 🚀 SCENARIO 1: AUTO-POSTING CONTROL PANEL */}
+                {distributionScenario === 'autopost' ? (
                 <div className="w-full p-6 sm:p-8 rounded-[2rem] bg-gradient-to-br from-purple-950/40 via-black to-blue-950/40 border border-purple-500/20 shadow-2xl space-y-6">
                   <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
                     <div className="flex items-center gap-3">
@@ -1242,6 +1271,61 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                     </div>
                   )}
                 </div>
+                ) : (
+                /* 📥 SCENARIO 2: MANUAL DOWNLOAD MATERIAL PACK */
+                <div className="w-full p-6 sm:p-8 rounded-[2rem] bg-gradient-to-br from-neutral-900/60 to-black border border-white/10 shadow-2xl space-y-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-blue-500/10 border border-blue-500/20 flex items-center justify-center text-blue-400 shrink-0">
+                        <Download size={24} />
+                      </div>
+                      <div className="text-left">
+                        <h4 className="text-base font-black uppercase tracking-wider text-white">
+                          {locale === 'ru' ? 'Ручное Скачивание Материалов' : 'Manual Material Pack Download'}
+                        </h4>
+                        <p className="text-[10px] text-white/50 uppercase tracking-widest">
+                          {locale === 'ru' ? 'Выгрузите все исходники, ролики, обложки и слайды на ваше устройство' : 'Export all raw videos, covers, and slides to your device'}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Manual Material Download Actions Grid */}
+                  <div className="grid grid-cols-1 sm:grid-cols-3 gap-3 pt-2">
+                    <button
+                      onClick={downloadRenderedBanner}
+                      className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-500/40 text-left flex flex-col gap-2 transition-all hover:scale-[1.02] active:scale-95"
+                    >
+                      <ImageIcon size={20} className="text-purple-400" />
+                      <span className="text-xs font-black uppercase text-white tracking-wider">Обложка Видео (9:16)</span>
+                      <span className="text-[9px] text-white/40 uppercase">Скачать картинку обложки</span>
+                    </button>
+
+                    <button
+                      onClick={downloadAllRenderedSlides}
+                      disabled={isExportingAll}
+                      className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-blue-500/40 text-left flex flex-col gap-2 transition-all hover:scale-[1.02] active:scale-95 disabled:opacity-40"
+                    >
+                      {isExportingAll ? <Loader2 size={20} className="animate-spin text-blue-400" /> : <Layers size={20} className="text-blue-400" />}
+                      <span className="text-xs font-black uppercase text-white tracking-wider">Все Слайды Галереи (1-6)</span>
+                      <span className="text-[9px] text-white/40 uppercase">Скачать архив картинок</span>
+                    </button>
+
+                    <button
+                      onClick={() => {
+                        const caption = customPostDescription || assets?.sfv_description?.text || scriptText;
+                        navigator.clipboard.writeText(caption);
+                        safeAlert(locale === 'ru' ? 'Текст описания скопирован в буфер!' : 'Caption copied to clipboard!');
+                      }}
+                      className="p-4 rounded-2xl bg-white/5 border border-white/10 hover:border-green-500/40 text-left flex flex-col gap-2 transition-all hover:scale-[1.02] active:scale-95"
+                    >
+                      <Copy size={20} className="text-green-400" />
+                      <span className="text-xs font-black uppercase text-white tracking-wider">Копировать Описание</span>
+                      <span className="text-[9px] text-white/40 uppercase">Текст с тегами в буфер</span>
+                    </button>
+                  </div>
+                </div>
+                )}
 
                 {/* 1. Large Centralized Call-to-Action if pack is not generated yet */}
                 {!assets && (
