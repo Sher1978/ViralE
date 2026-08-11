@@ -688,34 +688,37 @@ export default function AdminDashboardPage() {
                 {(() => {
                   const maxCount = Math.max(1, ...stats.userGrowthTimeline.map(pt => pt.count));
                   return (
-                    <div className="grid grid-cols-14 gap-1 sm:gap-2 items-end h-44 px-2 pt-6 pb-2 bg-black/40 rounded-2xl border border-white/5 relative">
+                    <div 
+                      className="grid gap-1 sm:gap-2 items-end h-52 px-2 pt-6 pb-2 bg-black/40 rounded-2xl border border-white/5 relative"
+                      style={{ gridTemplateColumns: 'repeat(14, minmax(0, 1fr))' }}
+                    >
                       {/* Grid background lines */}
                       <div className="absolute inset-x-0 top-1/4 border-b border-white/[0.04] pointer-events-none" />
                       <div className="absolute inset-x-0 top-2/4 border-b border-white/[0.04] pointer-events-none" />
                       <div className="absolute inset-x-0 top-3/4 border-b border-white/[0.04] pointer-events-none" />
 
                       {stats.userGrowthTimeline.map((pt, idx) => {
-                        const heightPct = Math.max(8, Math.round((pt.count / maxCount) * 100));
+                        const heightPct = Math.max(12, Math.round((pt.count / maxCount) * 100));
                         const isPeak = pt.count > 0 && pt.count === maxCount;
 
                         return (
                           <div key={idx} className="flex flex-col items-center h-full justify-end group relative z-10">
                             {/* Value Label above bar */}
-                            <span className={`text-[9px] font-black mb-1 transition-all ${
+                            <span className={`text-[9.5px] font-black mb-1 transition-all ${
                               pt.count > 0 ? (isPeak ? 'text-amber-400 font-bold scale-110' : 'text-purple-300') : 'text-white/20 opacity-0 group-hover:opacity-100'
                             }`}>
                               {pt.count}
                             </span>
 
-                            {/* Column Bar */}
-                            <div className="w-full max-w-[28px] bg-white/5 rounded-t-xl overflow-hidden relative group-hover:scale-105 transition-all">
+                            {/* Column Bar Container with Explicit Height */}
+                            <div className="w-full max-w-[28px] h-28 bg-white/5 rounded-t-xl overflow-hidden relative flex items-end group-hover:scale-105 transition-all">
                               <motion.div
-                                initial={{ height: 0 }}
+                                initial={{ height: '0%' }}
                                 animate={{ height: `${heightPct}%` }}
-                                transition={{ duration: 0.5, delay: idx * 0.03 }}
+                                transition={{ duration: 0.6, delay: idx * 0.03, ease: 'easeOut' }}
                                 className={`w-full rounded-t-xl transition-all ${
                                   isPeak
-                                    ? 'bg-gradient-to-t from-amber-500 via-purple-500 to-cyan-400 shadow-[0_0_15px_rgba(245,158,11,0.5)]'
+                                    ? 'bg-gradient-to-t from-amber-500 via-purple-500 to-cyan-400 shadow-[0_0_15px_rgba(245,158,11,0.6)]'
                                     : pt.count > 0
                                       ? 'bg-gradient-to-t from-purple-700 via-purple-500 to-cyan-400'
                                       : 'bg-white/10'
