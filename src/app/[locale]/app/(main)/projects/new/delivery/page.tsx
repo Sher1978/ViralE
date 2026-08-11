@@ -39,8 +39,8 @@ function DeliveryPageContent() {
   const [renderStatus, setRenderStatus] = useState('');
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
-  const [showRemotion, setShowRemotion] = useState<boolean>(true);
-  const [activeEngine, setActiveEngine] = useState<'remotion' | 'ffmpeg'>('remotion');
+  const [showRemotion, setShowRemotion] = useState<boolean>(false);
+  const [activeEngine, setActiveEngine] = useState<'remotion' | 'ffmpeg'>('ffmpeg');
   const [remotionOutputUrl, setRemotionOutputUrl] = useState<string | null>(null);
   const [ffmpegOutputUrl, setFfmpegOutputUrl] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(true);
@@ -181,6 +181,9 @@ function DeliveryPageContent() {
       }
       if (manifest.useRemotion !== undefined) {
         setShowRemotion(manifest.useRemotion);
+        if (manifest.useRemotion) {
+          setActiveEngine('remotion');
+        }
       }
     }
   }, [version]);
@@ -542,7 +545,12 @@ function DeliveryPageContent() {
     }
 
     // Target variant not yet in memory/cache — launch rendering for it!
+    setJob({ id: `local-${targetEngine}-render`, status: 'processing', output_url: '', progress: 5 } as any);
+    setRenderProgress(5);
+    setRenderStatus(`Запуск сборки ${targetEngine === 'remotion' ? 'Remotion' : 'FFmpeg'}...`);
+
     isLaunchingRenderRef.current = false;
+    isCancelledRef.current = false;
     handleClientRender(version, targetEngine);
   };
 
@@ -558,6 +566,11 @@ function DeliveryPageContent() {
     
     const remotionCacheKey = `final_render_${projectId}_${ver.id}_remotion`;
     const ffmpegCacheKey = `final_render_${projectId}_${ver.id}_ffmpeg_${shouldShowSubtitles ? 'subs' : 'nosubs'}`;
+
+    setJob((prev: any) => {
+      if (prev?.status === 'completed' && prev?.output_url) return prev;
+      return { id: `local-${selectedEngine}-render`, status: 'processing', output_url: '', progress: 5 } as any;
+    });
     
     // 0. CHECK CACHE FOR SELECTED ENGINE
     try {
@@ -1689,6 +1702,11 @@ function DeliveryPageContent() {
           <button
             onClick={() => {
               if (version) {
+                if (activeEngine === 'remotion') setRemotionOutputUrl(null);
+                else setFfmpegOutputUrl(null);
+                setJob({ id: `local-${activeEngine}-render`, status: 'processing', output_url: '', progress: 5 } as any);
+                setRenderProgress(5);
+                setRenderStatus(`Перезапуск генерации (${activeEngine})...`);
                 isLaunchingRenderRef.current = false;
                 handleClientRender(version, activeEngine);
               }
