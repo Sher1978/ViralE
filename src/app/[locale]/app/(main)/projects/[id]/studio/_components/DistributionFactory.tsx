@@ -145,11 +145,47 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
   // 🚀 Auto-Posting vs Manual Scenario Mode Switcher
   const [distributionScenario, setDistributionScenario] = useState<'autopost' | 'manual'>('autopost');
-  const [selectedSocials, setSelectedSocials] = useState<string[]>(['youtube', 'instagram', 'tiktok', 'telegram']);
+  const [selectedSocials, setSelectedSocials] = useState<string[]>([]);
+  const [connectedPlatforms, setConnectedPlatforms] = useState<string[]>([]);
+  const [connectedAccounts, setConnectedAccounts] = useState<Record<string, string>>({}); // platform -> username
+  const [loadingAccounts, setLoadingAccounts] = useState<boolean>(true);
   const [instagramCollaborators, setInstagramCollaborators] = useState<string>('');
   const [isPublishingSocials, setIsPublishingSocials] = useState<boolean>(false);
   const [socialPublishResults, setSocialPublishResults] = useState<any[] | null>(null);
   const [lateModalOpen, setLateModalOpen] = useState<boolean>(false);
+
+  // Fetch user connected platforms from Late.dev
+  useEffect(() => {
+    async function loadConnectedAccounts() {
+      try {
+        const res = await fetch('/api/social/accounts');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.connectedPlatforms && Array.isArray(data.connectedPlatforms)) {
+            setConnectedPlatforms(data.connectedPlatforms);
+            // Default selected socials strictly to connected ones!
+            if (data.connectedPlatforms.length > 0) {
+              setSelectedSocials(data.connectedPlatforms);
+            }
+          }
+          if (data.accounts && Array.isArray(data.accounts)) {
+            const map: Record<string, string> = {};
+            data.accounts.forEach((acc: any) => {
+              if (acc.platform && (acc.username || acc.displayName)) {
+                map[acc.platform] = acc.username || acc.displayName;
+              }
+            });
+            setConnectedAccounts(map);
+          }
+        }
+      } catch (e) {
+        console.warn('[DistributionFactory] Failed to load connected social accounts:', e);
+      } finally {
+        setLoadingAccounts(false);
+      }
+    }
+    loadConnectedAccounts();
+  }, []);
 
   const toggleSocialPlatform = (plat: string) => {
     setSelectedSocials(prev => 
@@ -158,6 +194,16 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   };
 
   const handleAutoPostToSocials = async () => {
+    // 🛑 Check video readiness before auto-posting!
+    const targetVideoUrl = (manifest as any)?.final_video_url || (manifest as any)?.videoUrl || (manifest as any)?.aRollUrl;
+    if (!targetVideoUrl || targetVideoUrl.startsWith('blob:') || targetVideoUrl.startsWith('data:')) {
+      safeAlert(locale === 'ru' 
+        ? '⏳ Видео ролик еще не скомпилирован. Выполните «Завершить и рендерить» в монтажке перед авто-публикацией!' 
+        : '⏳ Video rendering is not completed yet. Please render final video before auto-posting!'
+      );
+      return;
+    }
+
     if (selectedSocials.length === 0) {
       safeAlert(locale === 'ru' ? 'Выберите хотя бы одну соцсеть!' : 'Select at least one platform!');
       return;
@@ -176,6 +222,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           projectId,
+          videoUrl: targetVideoUrl,
           title: projectTitle || (manifest as any)?.ideaTitle || 'Виральный ролик Virali AI',
           caption: customPostDescription || assets?.sfv_description?.text || scriptText,
           coverUrl: imageResults['banner'] || null,
@@ -1243,6 +1290,9 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                       { id: 'telegram', label: 'Telegram Канал', color: 'hover:border-blue-500/40 text-blue-400' },
                     ].map(p => {
                       const isSelected = selectedSocials.includes(p.id);
+                      const isConnected = connectedPlatforms.includes(p.id as any);
+                      const accountName = connectedAccounts[p.id];
+
                       return (
                         <button
                           key={p.id}
@@ -1250,11 +1300,28 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                           className={`px-4 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 ${
                             isSelected 
                               ? 'bg-white/10 border-purple-500/50 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
-                              : 'bg-black/30 border-white/10 text-white/30 hover:text-white/60'
+                              : isConnected
+                                ? 'bg-black/30 border-emerald-500/30 text-emerald-400/80 hover:text-white'
+                                : 'bg-black/30 border-white/10 text-white/30 hover:text-white/60'
                           }`}
                         >
-                          <div className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,1)]' : 'bg-white/20'}`} />
+                          <div className={`w-2.5 h-2.5 rounded-full ${
+                            isSelected 
+                              ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,1)]' 
+                              : isConnected
+                                ? 'bg-emerald-400 shadow-[0_0_6px_rgba(52,211,153,0.8)]'
+                                : 'bg-white/20'
+                          }`} />
                           <span>{p.label}</span>
+                          {accountName ? (
+                            <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[8px] font-mono normal-case">
+                              @{accountName}
+                            </span>
+                          ) : isConnected ? (
+                            <span className="px-1 py-0.2 rounded bg-emerald-500/20 text-emerald-300 text-[8px]">✓</span>
+                          ) : (
+                            <span className="text-[8px] text-white/30 font-normal normal-case italic">(не подсоединен)</span>
+                          )}
                         </button>
                       );
                     })}
