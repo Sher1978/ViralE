@@ -18,6 +18,7 @@ import { Suspense } from 'react';
 import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
 import { fetchFile } from '@ffmpeg/util';
 import { renderRemotionInDevice } from '@/lib/remotion/remotionClientExporter';
+import { RemotionArchitectCutSheet } from '@/lib/types/remotionArchitect';
 
 function DeliveryPageContent() {
   const t = useTranslations('delivery');
@@ -52,6 +53,7 @@ function DeliveryPageContent() {
   const [shotstackRealStatus, setShotstackRealStatus] = useState<string | null>(null);
   const [showShotstackModal, setShowShotstackModal] = useState(false);
   const [renderMode, setRenderMode] = useState<'shotstack' | 'ffmpeg'>('ffmpeg');
+  const [confirmEngineModal, setConfirmEngineModal] = useState<'remotion' | 'ffmpeg' | null>(null);
   const isLaunchingRenderRef = useRef(false);
   const isCancelledRef = useRef(false);
   const ffmpegRef = useRef<any>(null);
@@ -523,6 +525,26 @@ function DeliveryPageContent() {
     return baseFilter ? `${baseFilter},${drawtextChain}` : drawtextChain;
   };
 
+  const executeConfirmedGeneration = async (engine: 'remotion' | 'ffmpeg') => {
+    setConfirmEngineModal(null);
+    setActiveEngine(engine);
+    setShowRemotion(engine === 'remotion');
+    addSystemLog(`Запуск сборки роликов через ${engine === 'remotion' ? 'Remotion AI Cinematic Engine' : 'Standard FFmpeg'}...`);
+
+    if (!version) return;
+
+    if (engine === 'remotion') setRemotionOutputUrl(null);
+    else setFfmpegOutputUrl(null);
+
+    setJob({ id: `local-${engine}-render`, status: 'processing', output_url: '', progress: 5 } as any);
+    setRenderProgress(5);
+    setRenderStatus(`Запуск генерации через ${engine === 'remotion' ? 'Remotion AI Engine' : 'Standard FFmpeg'}...`);
+
+    isLaunchingRenderRef.current = false;
+    isCancelledRef.current = false;
+    handleClientRender(version, engine);
+  };
+
   const handleSwitchEngine = async (targetEngine: 'remotion' | 'ffmpeg') => {
     setActiveEngine(targetEngine);
     setShowRemotion(targetEngine === 'remotion');
@@ -598,31 +620,48 @@ function DeliveryPageContent() {
         setRenderStatus('Инициализация Remotion Engine...');
         setRenderProgress(5);
 
-        // Auto-generate cutSheet if missing
-        let cutSheet = manifestData?.remotionCutSheet;
-        if (!cutSheet) {
-          addSystemLog('Remotion: Запрос ИИ-схемы в /api/ai/remotion-architect...');
-          try {
-            const cutRes = await fetch('/api/ai/remotion-architect', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                transcriptData: manifestData?.subtitleClips || manifestData?.segments || [],
-                nicheProfile: { type: 'business' },
-                userIntent: 'High Retention dynamic motion edit'
-              })
-            });
-            if (cutRes.ok) {
-              const cutData = await cutRes.json();
-              if (cutData.cutSheet) {
-                cutSheet = cutData.cutSheet;
-                manifestData.remotionCutSheet = cutSheet;
-                addSystemLog('Remotion CutSheet успешно создан.');
+        // Always request fresh cutSheet from multi-agent pipeline when generating
+        let cutSheet: RemotionArchitectCutSheet | null = null;
+        addSystemLog('Remotion: Запуск мультиагентного конвейера (/api/ai/remotion-architect)...');
+        try {
+          const rawTranscript = manifestData?.subtitleClips || manifestData?.segments || manifestData?.transcriptData || [];
+          const transcriptData = rawTranscript.length > 0 ? rawTranscript : [
+            { start: 0, end: 15, text: manifestData?.scriptText || manifestData?.customScript || 'High retention AI video' }
+          ];
+
+          const userBrandDna = manifestData?.userBrandDna || {
+            accentColor: manifestData?.subtitleColor || '#38bdf8',
+            stylePreset: manifestData?.subtitleStylePreset || manifestData?.stylePreset || 'minimal_expert',
+            niche: 'business'
+          };
+
+          const cutRes = await fetch('/api/ai/remotion-architect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transcriptData,
+              presetKey: userBrandDna.stylePreset || 'minimal_expert',
+              userBrandDna,
+              userIntent: 'High Retention dynamic motion edit with Safe Zones'
+            })
+          });
+          if (cutRes.ok) {
+            const cutData = await cutRes.json();
+            if (cutData.cutSheet) {
+              cutSheet = cutData.cutSheet;
+              manifestData.remotionCutSheet = cutSheet;
+              addSystemLog('Remotion: Схема монтажа успешно создана Мультиагентским конвейером.');
+              if (projectId) {
+                projectService.updateLatestVersionManifest(projectId, manifestData).catch(() => {});
               }
             }
-          } catch (errCut) {
-            console.warn('[Delivery] Auto-cutSheet failed:', errCut);
           }
+        } catch (errCut) {
+          console.warn('[Delivery] Multi-agent cutSheet fetch failed:', errCut);
+        }
+
+        if (!cutSheet) {
+          cutSheet = manifestData?.remotionCutSheet || null;
         }
 
         let speakerBlob: Blob | string | null = manifestData?.aRollUrl || null;
@@ -1627,7 +1666,58 @@ function DeliveryPageContent() {
         </div>
       </div>
 
-      {/* Dual Engine Export Selection & Variant Multi-Export Panel */}
+      {/* Confirmation Modal for Engine Restart */}
+      <AnimatePresence>
+        {confirmEngineModal && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-center"
+            >
+              <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center mx-auto text-purple-300">
+                <RefreshCw size={24} className="animate-spin-slow" />
+              </div>
+
+              <h3 className="text-lg font-black text-white uppercase tracking-wider">
+                {locale === 'ru' ? 'Запустить сборку видео?' : 'Restart Video Generation?'}
+              </h3>
+
+              <p className="text-xs text-white/70 leading-relaxed font-medium">
+                {confirmEngineModal === 'remotion'
+                  ? (locale === 'ru'
+                    ? 'Будет запущен Мультиагентский конвейер Remotion AI (Режиссер ➔ Арт-Директор ➔ Аниматор) с бренд-буком и Z-камерой.'
+                    : 'Will launch Remotion AI Multi-Agent Pipeline.')
+                  : (locale === 'ru'
+                    ? 'Будет запущен быстрый движок Standard FFmpeg для генерации файла.'
+                    : 'Will launch Standard FFmpeg generation.')}
+              </p>
+
+              <div className="flex gap-3 pt-2">
+                <button
+                  onClick={() => setConfirmEngineModal(null)}
+                  className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 text-xs font-black uppercase tracking-wider transition-all"
+                >
+                  {locale === 'ru' ? 'Отмена' : 'Cancel'}
+                </button>
+                <button
+                  onClick={() => executeConfirmedGeneration(confirmEngineModal)}
+                  className={`flex-1 py-3 rounded-xl text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg ${
+                    confirmEngineModal === 'remotion'
+                      ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/30'
+                      : 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-500/30'
+                  }`}
+                >
+                  {locale === 'ru' ? 'Да, запустить' : 'Start Build'}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* Dual Engine Export Selection Panel - Clean 2 Engine Buttons */}
       <div className="max-w-[640px] mx-auto rounded-3xl p-6 bg-slate-900/60 border border-purple-500/20 backdrop-blur-xl shadow-2xl mt-4 space-y-5">
         <div className="flex items-center justify-between border-b border-white/10 pb-4">
           <div className="flex flex-col text-left">
@@ -1636,7 +1726,7 @@ function DeliveryPageContent() {
               <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/30">Dual-Engine</span>
             </h3>
             <p className="text-[10px] text-white/50 uppercase tracking-widest font-semibold mt-1">
-              {locale === 'ru' ? 'Выберите способ сборки видео или скачайте оба варианта' : 'Select rendering pipeline or generate both output variants'}
+              {locale === 'ru' ? 'Выберите способ сборки видео для запуск генерации' : 'Select rendering pipeline to launch generation'}
             </p>
           </div>
           
@@ -1650,95 +1740,35 @@ function DeliveryPageContent() {
           </button>
         </div>
 
-        {/* Engine Switcher Tabs */}
-        <div className="grid grid-cols-2 gap-3">
-          {/* Remotion Tab Button */}
+        {/* 2 Main Engine Choice Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* FFmpeg Engine Button */}
           <button
-            onClick={() => handleSwitchEngine('remotion')}
-            className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
-              activeEngine === 'remotion'
-                ? 'bg-purple-600/20 border-purple-500 shadow-[0_0_25px_rgba(168,85,247,0.2)] text-white'
-                : 'bg-white/[0.02] border-white/10 text-white/60 hover:border-white/20'
-            }`}
-          >
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-xs font-black uppercase tracking-wider">Remotion Engine ✨</span>
-              <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                remotionOutputUrl ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40'
-              }`}>
-                {remotionOutputUrl ? 'Готово ✨' : 'Не собрано'}
-              </span>
-            </div>
-            <p className="text-[9px] text-white/40 leading-relaxed font-medium">
-              Камера спикера, 3D иконки, графики, соцсети
-            </p>
-          </button>
-
-          {/* FFmpeg Tab Button */}
-          <button
-            onClick={() => handleSwitchEngine('ffmpeg')}
-            className={`p-4 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between ${
+            onClick={() => setConfirmEngineModal('ffmpeg')}
+            className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between group ${
               activeEngine === 'ffmpeg'
-                ? 'bg-cyan-600/20 border-cyan-500 shadow-[0_0_25px_rgba(6,182,212,0.2)] text-white'
-                : 'bg-white/[0.02] border-white/10 text-white/60 hover:border-white/20'
+                ? 'bg-cyan-600/20 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.25)] text-white'
+                : 'bg-white/[0.02] border-white/10 text-white/60 hover:border-white/20 hover:bg-white/[0.04]'
             }`}
           >
-            <div className="flex justify-between items-start mb-2">
-              <span className="text-xs font-black uppercase tracking-wider">Standard FFmpeg ⚡</span>
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                Standard FFmpeg ⚡
+              </span>
               <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
                 ffmpegOutputUrl ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40'
               }`}>
                 {ffmpegOutputUrl ? 'Готово ⚡' : 'Не собрано'}
               </span>
             </div>
-            <p className="text-[9px] text-white/40 leading-relaxed font-medium">
-              Анимированные субтитры, наложение B-roll
+            <p className="text-[9px] text-white/40 leading-relaxed font-medium mb-3">
+              Быстрая сборка, анимированные субтитры, B-roll
             </p>
-          </button>
-        </div>
-
-        {/* Action Controls for Regeneration & Multi-Variant Downloads */}
-        <div className="pt-2 flex flex-wrap items-center justify-between gap-3 border-t border-white/10">
-          <button
-            onClick={() => {
-              if (version) {
-                if (activeEngine === 'remotion') setRemotionOutputUrl(null);
-                else setFfmpegOutputUrl(null);
-                setJob({ id: `local-${activeEngine}-render`, status: 'processing', output_url: '', progress: 5 } as any);
-                setRenderProgress(5);
-                setRenderStatus(`Перезапуск генерации (${activeEngine})...`);
-                isLaunchingRenderRef.current = false;
-                handleClientRender(version, activeEngine);
-              }
-            }}
-            className="px-4 py-2.5 rounded-xl bg-white/5 border border-white/10 text-white/80 hover:text-white hover:bg-white/10 text-[10px] font-black uppercase tracking-widest transition-all"
-          >
-            🔄 Перегенерировать ({activeEngine === 'remotion' ? 'Remotion' : 'FFmpeg'})
-          </button>
-
-          <div className="flex gap-2">
-            {remotionOutputUrl && (
-              <button
-                onClick={() => {
-                  const doc = (globalThis as any).document;
-                  if (doc) {
-                    const a = doc.createElement('a');
-                    a.href = remotionOutputUrl;
-                    a.download = `ViralEngine_Remotion_${Date.now()}.mp4`;
-                    doc.body.appendChild(a);
-                    a.click();
-                    doc.body.removeChild(a);
-                  }
-                }}
-                className="px-4 py-2.5 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-200 hover:bg-purple-500/30 text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5"
-              >
-                <Download size={12} /> Remotion MP4
-              </button>
-            )}
 
             {ffmpegOutputUrl && (
-              <button
-                onClick={() => {
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
                   const doc = (globalThis as any).document;
                   if (doc) {
                     const a = doc.createElement('a');
@@ -1749,30 +1779,56 @@ function DeliveryPageContent() {
                     doc.body.removeChild(a);
                   }
                 }}
-                className="px-4 py-2.5 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 hover:bg-cyan-500/30 text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5"
+                className="mt-2 w-full py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 hover:bg-cyan-500/30 text-[9px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-1 transition-all"
               >
-                <Download size={12} /> FFmpeg MP4
-              </button>
+                <Download size={11} /> Скачать MP4
+              </div>
             )}
+          </button>
 
-            {!remotionOutputUrl && activeEngine === 'ffmpeg' && (
-              <button
-                onClick={() => handleSwitchEngine('remotion')}
-                className="px-4 py-2.5 rounded-xl bg-purple-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-purple-500 transition-all"
-              >
-                ✨ Сгенерировать Remotion вариант
-              </button>
-            )}
+          {/* Remotion Engine Button */}
+          <button
+            onClick={() => setConfirmEngineModal('remotion')}
+            className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between group ${
+              activeEngine === 'remotion'
+                ? 'bg-purple-600/20 border-purple-500 shadow-[0_0_30px_rgba(168,85,247,0.25)] text-white'
+                : 'bg-white/[0.02] border-white/10 text-white/60 hover:border-white/20 hover:bg-white/[0.04]'
+            }`}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                Remotion Engine ✨
+              </span>
+              <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                remotionOutputUrl ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40'
+              }`}>
+                {remotionOutputUrl ? 'Готово ✨' : 'Не собрано'}
+              </span>
+            </div>
+            <p className="text-[9px] text-white/40 leading-relaxed font-medium mb-3">
+              Мультиагентский монтаж, Z-камера, бренд-бук
+            </p>
 
-            {!ffmpegOutputUrl && activeEngine === 'remotion' && (
-              <button
-                onClick={() => handleSwitchEngine('ffmpeg')}
-                className="px-4 py-2.5 rounded-xl bg-cyan-600 text-white text-[10px] font-black uppercase tracking-widest hover:bg-cyan-500 transition-all"
+            {remotionOutputUrl && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const doc = (globalThis as any).document;
+                  if (doc) {
+                    const a = doc.createElement('a');
+                    a.href = remotionOutputUrl;
+                    a.download = `ViralEngine_Remotion_${Date.now()}.mp4`;
+                    doc.body.appendChild(a);
+                    a.click();
+                    doc.body.removeChild(a);
+                  }
+                }}
+                className="mt-2 w-full py-2 rounded-xl bg-purple-500/20 border border-purple-500/40 text-purple-200 hover:bg-purple-500/30 text-[9px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-1 transition-all"
               >
-                ⚡ Сгенерировать FFmpeg вариант
-              </button>
+                <Download size={11} /> Скачать MP4
+              </div>
             )}
-          </div>
+          </button>
         </div>
       </div>
 

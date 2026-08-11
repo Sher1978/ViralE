@@ -188,7 +188,7 @@ export async function renderRemotionInDevice({
         } else if (activeCut.action === 'scale_to_circle') {
           targetScale = 0.5 * ease + 1.0 * (1 - ease);
           targetX = (canvas.width * 0.28) * ease;
-          targetY = (canvas.height * 0.5) * ease + (canvas.height * 0.5) * (1 - ease);
+          targetY = (canvas.height * 0.45) * ease + (canvas.height * 0.5) * (1 - ease);
           radius = Math.min(canvas.width, canvas.height) * 0.22 * ease;
           isCircle = true;
 
@@ -197,12 +197,12 @@ export async function renderRemotionInDevice({
           targetX = (-canvas.width * 0.15) * ease;
 
         } else if (activeCut.action === 'pip_right') {
-          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
           const pipW = canvas.width * 0.4;
           const pipH = canvas.height * 0.4;
           const pipX = canvas.width - pipW - 30;
           const pipY = canvas.height - pipH - 40;
 
+          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
           ctx.lineWidth = 4;
           ctx.strokeStyle = activeStyle.colors.accent;
           ctx.strokeRect(pipX, pipY, pipW, pipH);
@@ -214,30 +214,43 @@ export async function renderRemotionInDevice({
       }
 
       if (isCircle && radius > 5) {
+        // Strictly isolated circular clipping for speaker video only
+        ctx.save();
         ctx.beginPath();
         ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
         ctx.clip();
 
+        const vidW = canvas.width * targetScale;
+        const vidH = canvas.height * targetScale;
+        const vidX = targetX - vidW / 2;
+        const vidY = targetY - vidH / 2;
+        ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
+        ctx.restore();
+
+        // Stroke circle border outside clip
+        ctx.save();
+        ctx.beginPath();
+        ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
         ctx.lineWidth = 6;
         ctx.strokeStyle = activeStyle.colors.accent;
         ctx.stroke();
+        ctx.restore();
 
-        const vidW = canvas.width * targetScale;
-        const vidH = canvas.height * targetScale;
-        ctx.drawImage(videoEl, targetX - vidW / 2, targetY - vidH / 2, vidW, vidH);
-      } else if (targetX !== 0 || targetY !== 0 || targetScale !== 1.0) {
-        const vidW = canvas.width * targetScale;
-        const vidH = canvas.height * targetScale;
-        const vidX = (canvas.width - vidW) / 2 + targetX;
-        const vidY = (canvas.height - vidH) / 2 + targetY;
-        ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
-      } else {
-        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+      } else if (activeCut?.action !== 'pip_right') {
+        if (targetX !== 0 || targetY !== 0 || targetScale !== 1.0) {
+          const vidW = canvas.width * targetScale;
+          const vidH = canvas.height * targetScale;
+          const vidX = (canvas.width - vidW) / 2 + targetX;
+          const vidY = (canvas.height - vidH) / 2 + targetY;
+          ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
+        } else {
+          ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
+        }
       }
 
       ctx.restore();
 
-      // 3. Render Active Infographic Remotion Elements with Mathematical Jitter & Brand Colors
+      // 3. Render Active Infographic Remotion Elements with Safe Zones & Brand Colors
       const activeElements = bRollElements.filter(
         (e) => currentFrame >= e.startFrame && currentFrame <= e.endFrame
       );
@@ -256,10 +269,12 @@ export async function renderRemotionInDevice({
         ctx.globalAlpha = opacityAnim;
 
         if (elem.type === 'chart') {
-          const cardX = canvas.width * 0.48;
-          const cardY = canvas.height * 0.25;
-          const cardW = canvas.width * 0.46;
-          const cardH = 340;
+          // Right side panel if circle cut active, otherwise Bottom Sheet (y = 0.68)
+          const isSidePanel = isCircle || (activeCut && (activeCut.action === 'scale_to_circle' || activeCut.action === 'move_left'));
+          const cardX = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.06;
+          const cardY = isSidePanel ? canvas.height * 0.25 : canvas.height * 0.68;
+          const cardW = isSidePanel ? canvas.width * 0.46 : canvas.width * 0.88;
+          const cardH = isSidePanel ? 340 : 220;
 
           ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
           ctx.rotate(jitterRad);
@@ -277,18 +292,18 @@ export async function renderRemotionInDevice({
           // Title
           ctx.fillStyle = activeStyle.colors.text;
           ctx.font = 'bold 20px sans-serif';
-          ctx.fillText(elem.props.title || 'Рост вовлеченности', cardX + 20, cardY + 40);
+          ctx.fillText(elem.props.title || 'Рост вовлеченности', cardX + 20, cardY + 36);
 
           // Bar Chart
           const values: number[] = elem.props.values || [40, 65, 80, 95];
           const barWidth = (cardW - 40 - (values.length - 1) * 12) / values.length;
-          const maxBarH = 200;
+          const maxBarH = isSidePanel ? 200 : 120;
 
           values.forEach((val, idx) => {
             const barProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 2) / 10));
             const barH = (val / 100) * maxBarH * barProgress;
             const bx = cardX + 20 + idx * (barWidth + 12);
-            const by = cardY + cardH - 30 - barH;
+            const by = cardY + cardH - 24 - barH;
 
             const barGrad = ctx.createLinearGradient(bx, by, bx, by + barH);
             barGrad.addColorStop(0, activeStyle.colors.accent);
@@ -304,10 +319,11 @@ export async function renderRemotionInDevice({
           });
 
         } else if (elem.type === 'tweet_card' || elem.type === 'kinetic_quote') {
-          const cardX = canvas.width * 0.1;
-          const cardY = canvas.height * 0.15;
-          const cardW = canvas.width * 0.8;
-          const cardH = 200;
+          // TOP BANNER (y = 0.05 / 64px top offset - safely above speaker face)
+          const cardX = canvas.width * 0.06;
+          const cardY = canvas.height * 0.05;
+          const cardW = canvas.width * 0.88;
+          const cardH = 140;
 
           ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
           ctx.rotate(jitterRad);
@@ -317,60 +333,62 @@ export async function renderRemotionInDevice({
           ctx.fillStyle = activeStyle.colors.cardBg;
           ctx.strokeStyle = activeStyle.colors.cardBorder;
           ctx.lineWidth = 2;
-          ctx.roundRect(cardX, cardY, cardW, cardH, 24);
+          ctx.roundRect(cardX, cardY, cardW, cardH, 20);
           ctx.fill();
           ctx.stroke();
 
           // Author / Quote Mark
           ctx.fillStyle = activeStyle.colors.accent;
-          ctx.font = 'bold 24px sans-serif';
-          ctx.fillText(elem.type === 'kinetic_quote' ? '“' : (elem.props.author || 'Virali AI Strategist'), cardX + 24, cardY + 45);
+          ctx.font = 'bold 20px sans-serif';
+          ctx.fillText(elem.type === 'kinetic_quote' ? '“' : (elem.props.author || 'Virali AI Strategist'), cardX + 20, cardY + 36);
 
           ctx.fillStyle = activeStyle.colors.text;
-          ctx.font = '16px sans-serif';
-          ctx.fillText(elem.props.handle || `@${activeStyle.key}`, cardX + 24, cardY + 75);
+          ctx.font = '14px sans-serif';
+          ctx.fillText(elem.props.handle || `@${activeStyle.key}`, cardX + 20, cardY + 60);
 
           // Body
           ctx.fillStyle = activeStyle.colors.text;
-          ctx.font = '18px sans-serif';
+          ctx.font = 'bold 16px sans-serif';
           const bodyText = elem.props.text || elem.props.quote || 'High retention AI video scaling engine active.';
-          ctx.fillText(bodyText.substring(0, 70), cardX + 24, cardY + 125);
+          ctx.fillText(bodyText.substring(0, 80), cardX + 20, cardY + 98);
 
         } else if (elem.type === 'list') {
-          const cardX = canvas.width * 0.45;
-          const cardY = canvas.height * 0.3;
-          const cardW = canvas.width * 0.5;
+          // BOTTOM SHEET (y = 0.68 / 870px top offset - safely below speaker chin)
+          const cardX = canvas.width * 0.06;
+          const cardY = canvas.height * 0.68;
+          const cardW = canvas.width * 0.88;
           const items: string[] = elem.props.items || ['Высокая динамика', 'Инфографика', 'Рост Retention'];
 
           items.forEach((item, idx) => {
             const itemProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 3) / 8));
-            const iy = cardY + idx * 75;
-            const ix = cardX + (1 - itemProgress) * 40;
+            const iy = cardY + idx * 60;
+            const ix = cardX + (1 - itemProgress) * 30;
 
-            ctx.translate(ix + cardW / 2, iy + 30);
-            ctx.rotate(jitterRad * 0.5);
-            ctx.translate(-(ix + cardW / 2), -(iy + 30));
+            ctx.translate(ix + cardW / 2, iy + 25);
+            ctx.rotate(jitterRad * 0.3);
+            ctx.translate(-(ix + cardW / 2), -(iy + 25));
 
             ctx.fillStyle = activeStyle.colors.cardBg;
             ctx.strokeStyle = activeStyle.colors.cardBorder;
             ctx.lineWidth = 2;
-            ctx.roundRect(ix, iy, cardW, 60, 16);
+            ctx.roundRect(ix, iy, cardW, 52, 14);
             ctx.fill();
             ctx.stroke();
 
             ctx.fillStyle = activeStyle.colors.accent;
-            ctx.font = 'bold 24px sans-serif';
-            ctx.fillText('✓', ix + 16, iy + 38);
+            ctx.font = 'bold 20px sans-serif';
+            ctx.fillText('✓', ix + 16, iy + 33);
 
             ctx.fillStyle = activeStyle.colors.text;
-            ctx.font = 'bold 18px sans-serif';
-            ctx.fillText(item, ix + 48, iy + 38);
+            ctx.font = 'bold 16px sans-serif';
+            ctx.fillText(item, ix + 45, iy + 33);
           });
         } else if (elem.type === 'stat_callout') {
-          const cardX = canvas.width * 0.48;
-          const cardY = canvas.height * 0.35;
-          const cardW = canvas.width * 0.46;
-          const cardH = 180;
+          // BOTTOM SHEET (y = 0.68 / 870px top offset - safely below speaker chin)
+          const cardX = canvas.width * 0.06;
+          const cardY = canvas.height * 0.68;
+          const cardW = canvas.width * 0.88;
+          const cardH = 150;
 
           ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
           ctx.rotate(jitterRad);
@@ -385,12 +403,12 @@ export async function renderRemotionInDevice({
           ctx.stroke();
 
           ctx.fillStyle = activeStyle.colors.accent;
-          ctx.font = 'black 42px sans-serif';
-          ctx.fillText(elem.props.statValue || '+350%', cardX + 24, cardY + 70);
+          ctx.font = 'black 36px sans-serif';
+          ctx.fillText(elem.props.statValue || '+350%', cardX + 24, cardY + 60);
 
           ctx.fillStyle = activeStyle.colors.text;
           ctx.font = 'bold 16px sans-serif';
-          ctx.fillText(elem.props.statLabel || 'Рост удержания', cardX + 24, cardY + 120);
+          ctx.fillText(elem.props.statLabel || 'Рост удержания', cardX + 24, cardY + 105);
         }
         ctx.restore();
       }

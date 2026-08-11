@@ -239,6 +239,41 @@ function processAndEnrichCutSheet(data: any, style: any, fps: number): RemotionA
     };
   });
 
+  // AUTO-COUPLING: Guarantee that when side-cards (chart/list) are active, the speaker video is shifted to the left circle!
+  bRollElements.forEach((elem) => {
+    if (elem.type === 'chart' || elem.type === 'list') {
+      const hasTransformCut = cameraCuts.some(
+        (c) => (c.action === 'scale_to_circle' || c.action === 'move_left' || c.action === 'pip_right') &&
+               c.startFrame <= elem.endFrame && (c.startFrame + c.durationFrames) >= elem.startFrame
+      );
+
+      if (!hasTransformCut) {
+        const newCut: CameraCut = {
+          startTime: elem.startTime,
+          startFrame: elem.startFrame,
+          duration: (elem.endFrame - elem.startFrame) / fps,
+          durationFrames: elem.endFrame - elem.startFrame,
+          action: 'scale_to_circle',
+          targetScale: 0.45
+        };
+
+        // Filter out conflicting non-transform cuts that start during this element
+        for (let i = cameraCuts.length - 1; i >= 0; i--) {
+          const c = cameraCuts[i];
+          if (c.action === 'micro_zoom' || c.action === 'punch_zoom') {
+            if (c.startFrame >= newCut.startFrame && c.startFrame < newCut.startFrame + newCut.durationFrames) {
+              cameraCuts.splice(i, 1);
+            }
+          }
+        }
+
+        cameraCuts.push(newCut);
+      }
+    }
+  });
+
+  cameraCuts.sort((a, b) => a.startFrame - b.startFrame);
+
   return {
     cameraCuts,
     bRollElements,
