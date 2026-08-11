@@ -36,10 +36,8 @@ export async function createRenderJob(
   
   const tier = profile?.tier || 'free';
 
-  // Render job configuration based on tier and type
-  const settings: RenderConfig = type === 'preview' 
-    ? { resolution: '720x1280', fps: 24, quality: 'draft' }
-    : { resolution: '1080x1920', fps: 30, quality: 'high' };
+  // Render job configuration based on tier and type (always 1080x1920 Full HD)
+  const settings: RenderConfig = { resolution: '1080x1920', fps: 30, quality: 'high' };
 
   // Explicit watermark logic: No watermark on any tier
   (settings as any).watermark = false;
