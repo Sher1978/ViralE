@@ -185,17 +185,24 @@ export function useHardwareRecorder({
             frameRate: recordingQuality === 'pro' ? { ideal: 60, max: 60, min: 30 } : { ideal: 30, max: 30 },
             aspectRatio: isMobile ? { ideal: 0.5625 } : undefined,
             advanced: [
+              { imageStabilization: 'cinematic-extended' },
+              { imageStabilization: 'cinematic' },
+              { imageStabilization: 'video' },
               { imageStabilization: 'on' },
+              { imageStabilizationMode: 'cinematic-extended' },
               { imageStabilizationMode: 'cinematic' },
-              { imageStabilizationMode: 'standard' }
+              { imageStabilizationMode: 'standard' },
+              { opticalImageStabilization: 'on' }
             ] as any,
             ...resMap[res]
           },
           audio: {
             deviceId: selectedAudioDeviceId ? { ideal: selectedAudioDeviceId } : undefined,
             echoCancellation: true,
-            noiseSuppression: true,
-            autoGainControl: true
+            noiseSuppression: false, // Disable aggressive suppression to prevent initial sound clipping/ducking
+            autoGainControl: false,  // Disable auto gain control to keep audio levels constant without stuttering
+            sampleRate: { ideal: 48000 },
+            sampleSize: { ideal: 16 }
           }
         };
 
@@ -207,10 +214,10 @@ export function useHardwareRecorder({
             const videoTrack = stream.getVideoTracks()[0];
             if (videoTrack && typeof videoTrack.applyConstraints === 'function') {
               const stabVariants = [
-                { advanced: [{ imageStabilization: 'on' }, { imageStabilizationMode: 'cinematic' }] },
-                { advanced: [{ imageStabilization: true }, { imageStabilizationMode: 'standard' }] },
-                { advanced: [{ imageStabilization: 'auto' }] },
-                { advanced: [{ imageStabilization: 'on' }] }
+                { advanced: [{ imageStabilization: 'cinematic-extended' }, { opticalImageStabilization: 'on' }] },
+                { advanced: [{ imageStabilization: 'cinematic' }, { imageStabilizationMode: 'cinematic' }] },
+                { advanced: [{ imageStabilization: 'on' }, { imageStabilizationMode: 'standard' }] },
+                { advanced: [{ imageStabilization: true }] }
               ];
 
               for (const variant of stabVariants) {

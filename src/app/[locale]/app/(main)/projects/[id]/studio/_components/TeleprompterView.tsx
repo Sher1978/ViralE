@@ -286,9 +286,11 @@ export const TeleprompterView = React.memo(({
             playsInline
             className="w-full h-full object-cover opacity-100 will-change-transform transform-gpu"
             style={{
-              transform: `translate3d(0,0,0) ${isVideoMirrored ? 'scaleX(-1)' : ''}`,
+              transform: `scale(1.04) translate3d(0,0,0) ${isVideoMirrored ? 'scaleX(-1)' : ''}`,
               backfaceVisibility: 'hidden',
-              WebkitBackfaceVisibility: 'hidden'
+              WebkitBackfaceVisibility: 'hidden',
+              transition: 'transform 0.1s cubic-bezier(0.25, 1, 0.5, 1)',
+              filter: 'contrast(1.02) saturate(1.03)'
             }}
           />
         ) : (

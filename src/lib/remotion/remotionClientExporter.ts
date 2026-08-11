@@ -57,7 +57,8 @@ export async function renderRemotionInDevice({
 
   const videoEl = document.createElement('video');
   videoEl.src = sourceUrl;
-  videoEl.muted = true;
+  videoEl.muted = false; // Must be false so WebAudio API extracts unmuted PCM audio buffers
+  videoEl.volume = 1.0;
   videoEl.playsInline = true;
   await videoEl.load();
 
@@ -71,8 +72,7 @@ export async function renderRemotionInDevice({
   }
   const sourceNode = audioCtx.createMediaElementSource(videoEl);
   const destNode = audioCtx.createMediaStreamDestination();
-  sourceNode.connect(destNode);
-  sourceNode.connect(audioCtx.destination);
+  sourceNode.connect(destNode); // Route ONLY to destination stream for recording (silent to speaker)
 
   destNode.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
 
