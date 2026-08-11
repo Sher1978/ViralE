@@ -2,6 +2,7 @@ import { RemotionArchitectCutSheet, CameraCut, BRollElement, SoundCue, UserBrand
 import { STYLE_PRESETS, resolveUserBrandStyle } from '@/lib/remotion/stylePresets';
 import { buildFewShotRagPromptContext } from './videoScoreLibrary';
 import { getRotatedArtMedium, buildDynamicAssetPrompt } from './dynamicPrompting';
+import { getRemotionPromptLibraryContext } from './remotionPromptLibrary';
 
 export interface RunCinematicPipelineParams {
   transcriptData: Array<{ start?: number; end?: number; text?: string; scriptText?: string }>;
@@ -129,8 +130,10 @@ async function runArtDirectorAgent(directorOutput: any, style: any, userDna: any
  */
 async function runAnimatorAgent(directorOutput: any, artOutput: any, style: any, fps: number, apiKey: string): Promise<any> {
   const prompt = `
-Ты — Агент Remotion Аниматор (Motion Engineer).
+Ты — Senior Motion Engineer в Remotion.
 Переведи выводы Режиссера и Арт-Директора в финальную схему монтажа с кадром упреждения.
+
+${getRemotionPromptLibraryContext()}
 
 ### ВХОДНЫЕ ДАННЫЕ
 - Режиссер: ${JSON.stringify(directorOutput)}
