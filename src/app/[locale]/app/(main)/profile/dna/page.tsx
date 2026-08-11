@@ -369,7 +369,7 @@ export default function DnaManagementPage() {
                   {locale === 'ru' ? 'ВИЗУАЛЬНЫЙ КОД' : 'VISUAL IDENTITY'}
                 </h2>
                 <p className="text-[9px] text-[#D4AF37] font-bold uppercase tracking-widest mt-1">
-                  {locale === 'ru' ? '6 Золотых Стилей Контента' : '6 Golden Content Styles'}
+                  {locale === 'ru' ? '7 Экспертных Пресетов Монтажа ИИ' : '7 Expert AI Motion Presets'}
                 </p>
               </div>
             </div>
@@ -377,37 +377,39 @@ export default function DnaManagementPage() {
 
           <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
             {[
-              { id: 'dubai_platinum', label: 'Dubai Platinum', sub: locale === 'ru' ? 'Премиальный успех' : 'Premium Success', icon: <Crown size={18} />, color: 'from-[#D4AF37] to-[#8B7355]' },
-              { id: 'tech_catalyst', label: 'Tech Catalyst', sub: locale === 'ru' ? 'Инновации и ИИ' : 'Innovation & AI', icon: <Cpu size={18} />, color: 'from-blue-500 to-cyan-400' },
-              { id: 'turbo_dynamics', label: 'Turbo Dynamics', sub: locale === 'ru' ? 'Авто и Движение' : 'Auto & Motion', icon: <Zap size={18} />, color: 'from-red-600 to-orange-500' },
-              { id: 'human_os', label: 'Human OS', sub: locale === 'ru' ? 'Психология и Дзен' : 'Psychology & Zen', icon: <Leaf size={18} />, color: 'from-emerald-500 to-teal-400' },
-              { id: 'shadow_audit', label: 'Shadow Audit', sub: locale === 'ru' ? 'Стратегия и Право' : 'Strategy & Law', icon: <Scale size={18} />, color: 'from-gray-400 to-slate-600' },
-              { id: 'startup_valley', label: 'Startup Valley', sub: locale === 'ru' ? 'Креатив и SMM' : 'Creative & SMM', icon: <Rocket size={18} />, color: 'from-purple-500 to-pink-500' },
+              { id: 'hormozi_bold', label: 'Hormozi High Energy', sub: locale === 'ru' ? 'Продажи & Мотивация' : 'High Retention & Sales', icon: <Zap size={18} />, color: 'from-amber-400 to-yellow-600' },
+              { id: 'minimal_expert', label: 'Минимализм & Эксперт', sub: locale === 'ru' ? 'Бизнес & Консалтинг' : 'Business & Analytics', icon: <Scale size={18} />, color: 'from-sky-400 to-indigo-600' },
+              { id: 'warm_empathic', label: 'Теплый Эмпатичный', sub: locale === 'ru' ? 'Психология & Коучинг' : 'Psychology & Coaching', icon: <Leaf size={18} />, color: 'from-rose-400 to-orange-500' },
+              { id: 'editorial_luxury', label: 'Премиум & Глянец', sub: locale === 'ru' ? 'Люкс & Недвижимость' : 'Luxury & Real Estate', icon: <Crown size={18} />, color: 'from-[#D4AF37] to-[#8B7355]' },
+              { id: 'cyberpunk_neon', label: 'Неоновый Киберпанк', sub: locale === 'ru' ? 'AI, Крипта & Web3' : 'AI, Web3 & Crypto', icon: <Cpu size={18} />, color: 'from-cyan-400 to-pink-600' },
+              { id: 'vibrant_creator', label: 'Поп-Креатор', sub: locale === 'ru' ? 'TikTok & Reels Влоги' : 'TikTok & Reels Vlog', icon: <Rocket size={18} />, color: 'from-rose-500 to-emerald-400' },
+              { id: 'tech_futuristic', label: 'Tech & High Arch', sub: locale === 'ru' ? 'IT-Продукты & Гаджеты' : 'IT Products & Tech', icon: <Activity size={18} />, color: 'from-purple-500 to-blue-600' },
             ].map((style) => (
               <button
                 key={style.id}
                 onClick={() => handleUpdateStyle(style.id)}
-                className={`relative group p-4 rounded-3xl border transition-all duration-500 text-left overflow-hidden ${
+                className={`relative group p-4 rounded-3xl border transition-all duration-500 text-left overflow-hidden active:scale-95 ${
                   selectedStyle === style.id 
-                    ? 'bg-white/10 border-white/20 shadow-2xl scale-[1.02]' 
-                    : 'bg-white/5 border-white/5 hover:border-white/10 hover:bg-white/[0.07]'
+                    ? 'bg-white/15 border-purple-500/50 shadow-2xl scale-[1.02] shadow-purple-500/20' 
+                    : 'bg-white/5 border-white/5 hover:border-white/20 hover:bg-white/[0.08]'
                 }`}
               >
                 {selectedStyle === style.id && (
                   <motion.div 
                     layoutId="activeGlow"
-                    className={`absolute inset-0 bg-gradient-to-br ${style.color} opacity-10 blur-xl`}
+                    className={`absolute inset-0 bg-gradient-to-br ${style.color} opacity-20 blur-xl`}
                   />
                 )}
-                <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${style.color} flex items-center justify-center mb-3 shadow-lg transform transition-transform group-hover:scale-110 group-hover:rotate-3`}>
+                <div className={`w-10 h-10 rounded-2xl bg-gradient-to-br ${style.color} flex items-center justify-center mb-3 shadow-lg transform transition-transform group-hover:scale-110 group-hover:rotate-3 text-white`}>
                   {style.icon}
                 </div>
                 <h4 className="text-[11px] font-black text-white uppercase tracking-tighter leading-none mb-1">{style.label}</h4>
-                <p className="text-[8px] font-bold text-white/30 uppercase tracking-widest">{style.sub}</p>
+                <p className="text-[8px] font-bold text-white/40 uppercase tracking-widest">{style.sub}</p>
                 
                 {selectedStyle === style.id && (
-                  <div className="absolute top-3 right-3">
-                    <div className="w-1.5 h-1.5 rounded-full bg-white animate-pulse" />
+                  <div className="absolute top-3 right-3 flex items-center gap-1">
+                    <span className="text-[7px] font-black uppercase tracking-widest text-purple-300">АКТИВЕН</span>
+                    <div className="w-2 h-2 rounded-full bg-green-400 animate-pulse shadow-[0_0_8px_rgba(74,222,128,1)]" />
                   </div>
                 )}
               </button>

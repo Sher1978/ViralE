@@ -33,10 +33,24 @@ export async function PATCH(req: Request) {
  
     // 1. If only updating visual style
     if (visualStyle && !newData) {
+      const { data: currentProfile } = await authorizedSupabase
+        .from('profiles')
+        .select('visual_dna_config')
+        .eq('id', userId)
+        .single();
+
+      const existingConfig = currentProfile?.visual_dna_config || {};
+      const updatedConfig = { ...existingConfig, stylePreset: visualStyle };
+
       const { error } = await authorizedSupabase
         .from('profiles')
-        .update({ visual_style: visualStyle })
+        .update({ 
+          visual_style: visualStyle,
+          visual_dna_config: updatedConfig,
+          updated_at: new Date().toISOString()
+        })
         .eq('id', userId);
+
       if (error) throw error;
       return NextResponse.json({ success: true, visualStyle });
     }
