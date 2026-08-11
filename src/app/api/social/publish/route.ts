@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import { publishToSocialPlatforms, SocialPlatform } from '@/lib/services/socialPostingService';
+import { getAuthContext } from '@/lib/auth';
 
 export async function POST(req: Request) {
   try {

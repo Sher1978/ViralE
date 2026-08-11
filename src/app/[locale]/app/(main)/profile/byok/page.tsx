@@ -17,6 +17,7 @@ export default function ByokSettingsPage() {
     groq: { hasKey: boolean; maskedKey: string | null };
     gemini: { hasKey: boolean; maskedKey: string | null };
     elevenlabs: { hasKey: boolean; maskedKey: string | null };
+    latedev?: { hasKey: boolean; maskedKey: string | null };
   }>({
     heygen: { hasKey: false, maskedKey: null },
     anthropic: { hasKey: false, maskedKey: null },
