@@ -76,22 +76,49 @@ export default function ProfilePage() {
 
   useEffect(() => {
     profileService.getOrCreateProfile().then(async p => {
-      setProfile(p);
-      if (p?.full_name) {
-        setEditName(p.full_name);
+      let activeProf = p;
+      
+      // Auto-heal missing avatar: check Google/Telegram auth metadata or uploaded user_photos
+      if (activeProf && !activeProf.avatar_url) {
+        try {
+          const { data: { user } } = await supabase.auth.getUser();
+          const metaAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.photo_url;
+          if (metaAvatar) {
+            activeProf = { ...activeProf, avatar_url: metaAvatar };
+            profileService.updateProfile(activeProf.id, { avatar_url: metaAvatar });
+          } else {
+            const { data: photos } = await supabase
+              .from('user_photos')
+              .select('photo_url')
+              .eq('user_id', activeProf.id)
+              .order('created_at', { ascending: false })
+              .limit(1);
+            if (photos && photos.length > 0 && photos[0].photo_url) {
+              activeProf = { ...activeProf, avatar_url: photos[0].photo_url };
+              profileService.updateProfile(activeProf.id, { avatar_url: photos[0].photo_url });
+            }
+          }
+        } catch (avatarErr) {
+          console.warn('[ProfilePage] Failed to resolve fallback avatar:', avatarErr);
+        }
+      }
+
+      setProfile(activeProf);
+      if (activeProf?.full_name) {
+        setEditName(activeProf.full_name);
       }
       
       // Load user StoryBrand text if exists
-      if (p && (p as any).storybrand_raw_content) {
-        setStoryBrandText((p as any).storybrand_raw_content);
+      if (activeProf && (activeProf as any).storybrand_raw_content) {
+        setStoryBrandText((activeProf as any).storybrand_raw_content);
       }
       
-      if (p?.id) {
+      if (activeProf?.id) {
         try {
           const { count, error } = await supabase
             .from('projects')
             .select('id', { count: 'exact', head: true })
-            .eq('user_id', p.id);
+            .eq('user_id', activeProf.id);
           
           if (!error && count !== null) {
             setProjectCount(count);

@@ -60,8 +60,8 @@ export const profileService = {
 
     const stableNum = parseInt(user.id.slice(0, 4), 16) % 10000;
     const defaultName = `Media Creator #${stableNum}`;
-    const googleName = user.user_metadata?.full_name;
-    const googleAvatar = user.user_metadata?.avatar_url;
+    const googleName = user.user_metadata?.full_name || user.user_metadata?.name;
+    const googleAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || user.user_metadata?.photo_url;
     const userRefCode = generateReferralCode(user.id);
 
     if (error && error.code === 'PGRST116') {
@@ -127,7 +127,7 @@ export const profileService = {
       return null;
     }
 
-    // Dynamic sync/back-fill for existing profiles missing referral_code
+    // Dynamic sync/back-fill for existing profiles missing referral_code or avatar
     let needsUpdate = false;
     const updates: Partial<Profile> = {};
 
@@ -141,7 +141,7 @@ export const profileService = {
       updates.full_name = googleName || defaultName;
       needsUpdate = true;
     }
-    // If profile is missing avatar URL but Google has one, sync it
+    // If profile is missing avatar URL but Google/Telegram has one, sync it
     if (!profile.avatar_url && googleAvatar) {
       updates.avatar_url = googleAvatar;
       needsUpdate = true;
