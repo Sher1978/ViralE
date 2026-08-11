@@ -411,6 +411,31 @@ export function useStudioExport({
         } : s)
       };
 
+      // Auto-generate Remotion Architect cutSheet if missing
+      if (!updatedManifest.remotionCutSheet) {
+        addSystemLog('Export: Auto-generating Remotion Architect cutSheet...');
+        try {
+          const cutSheetRes = await fetch('/api/ai/remotion-architect', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              transcriptData: subs || [],
+              nicheProfile: { type: 'business' },
+              userIntent: 'High Retention dynamic motion edit'
+            })
+          });
+          if (cutSheetRes.ok) {
+            const cutSheetData = await cutSheetRes.json();
+            if (cutSheetData.cutSheet) {
+              updatedManifest.remotionCutSheet = cutSheetData.cutSheet;
+              addSystemLog('Export: Remotion cutSheet successfully generated.');
+            }
+          }
+        } catch (csErr) {
+          console.warn('[useStudioExport] Auto cutSheet failed:', csErr);
+        }
+      }
+
       // Trigger background distribution asset generation
       fetch('/api/ai/distribution-assets', {
         method: 'POST',

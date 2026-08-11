@@ -197,7 +197,7 @@ export async function generateDailyIdeas(
       if (Array.isArray(parsed)) {
         ideasArray = parsed;
       } else if (parsed && typeof parsed === 'object') {
-        const candidateArray = parsed.ideas || parsed.topics || parsed.data || Object.values(parsed).find(Array.isArray);
+        const candidateArray = parsed.ideas || parsed.topics || parsed.data || parsed.results || Object.values(parsed).find(Array.isArray);
         if (Array.isArray(candidateArray)) {
           ideasArray = candidateArray;
         }

@@ -19,25 +19,41 @@ export function safeJsonParse<T = any>(text: string): T {
 
   // 1. Clean markdown formatting
   let clean = text.trim();
-  clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  const codeBlockMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
+  if (codeBlockMatch) {
+    clean = codeBlockMatch[1].trim();
+  } else {
+    clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-  const lines = clean.split('\n');
-  if (lines[0].trim().startsWith('```')) {
-    lines.shift();
+    const lines = clean.split('\n');
+    if (lines[0].trim().startsWith('```')) {
+      lines.shift();
+    }
+    if (lines.length > 0 && lines[lines.length - 1].trim().startsWith('```')) {
+      lines.pop();
+    }
+    clean = lines.join('\n').trim();
   }
-  if (lines.length > 0 && lines[lines.length - 1].trim().startsWith('```')) {
-    lines.pop();
-  }
-  clean = lines.join('\n').trim();
 
   // Remove potential BOM or other invisible junk
   clean = clean.replace(/^\uFEFF/, '');
 
-  // 2. Extract first matching JSON object/array if wrapped in explanatory text or trailing code fences
+  // 2. Extract first matching JSON object/array if wrapped in explanatory text
   if (!clean.startsWith('{') && !clean.startsWith('[')) {
-    const jsonMatch = clean.match(/[\{\[]([\s\S]*)[\}\]]/);
-    if (jsonMatch) {
-      clean = jsonMatch[0];
+    const startMatch = clean.match(/(?:\[\s*[\{\["']|\{\s*")/);
+    if (startMatch && startMatch.index !== undefined) {
+      const firstIdx = startMatch.index;
+      const lastSquare = clean.lastIndexOf(']');
+      const lastCurly = clean.lastIndexOf('}');
+      const lastIdx = Math.max(lastSquare, lastCurly);
+      if (lastIdx > firstIdx) {
+        clean = clean.substring(firstIdx, lastIdx + 1).trim();
+      }
+    } else {
+      const jsonMatch = clean.match(/[\{\[]([\s\S]*)[\}\]]/);
+      if (jsonMatch) {
+        clean = jsonMatch[0];
+      }
     }
   }
 
@@ -96,9 +112,22 @@ export function safeJsonParse<T = any>(text: string): T {
           repaired += char;
         } else {
           // We are in a string. Check if this is the closing quote of the string.
-          // In standard JSON, a closing quote must be followed by one of: ",", "}", "]", or ":" (for keys)
           const nextChar = getNextNonWhitespaceChar(clean, i + 1);
-          if (nextChar === ',' || nextChar === '}' || nextChar === ']' || nextChar === ':') {
+          let isClosing = false;
+
+          if (nextChar === ':') {
+            isClosing = true;
+          } else if (nextChar === '}' || nextChar === ']') {
+            isClosing = true;
+          } else if (nextChar === ',') {
+            const commaIdx = clean.indexOf(',', i + 1);
+            const charAfterComma = getNextNonWhitespaceChar(clean, commaIdx + 1);
+            if (charAfterComma === '"' || charAfterComma === '{' || charAfterComma === '[' || charAfterComma === '}' || charAfterComma === ']' || charAfterComma === '') {
+              isClosing = true;
+            }
+          }
+
+          if (isClosing) {
             inString = false;
             repaired += char;
           } else {
