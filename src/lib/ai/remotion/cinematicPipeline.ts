@@ -167,30 +167,84 @@ async function runAnimatorAgent(directorOutput: any, artOutput: any, style: any,
  */
 async function callLlmApi(systemPrompt: string, apiKey: string): Promise<any> {
   const groqKey = process.env.GROQ_API_KEY;
-  if (groqKey) {
-    const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
-      method: 'POST',
-      headers: {
-        'Authorization': `Bearer ${groqKey}`,
-        'Content-Type': 'application/json'
-      },
-      body: JSON.stringify({
-        model: 'llama-3.3-70b-versatile',
-        messages: [
-          { role: 'system', content: systemPrompt },
-          { role: 'user', content: 'Generate JSON now.' }
-        ],
-        response_format: { type: 'json_object' },
-        temperature: 0.3
-      })
-    });
+  const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || apiKey;
+  const openaiKey = process.env.OPENAI_API_KEY;
 
-    if (res.ok) {
-      const data = await res.json();
-      const text = data.choices?.[0]?.message?.content || '';
-      return JSON.parse(text);
+  if (groqKey) {
+    try {
+      const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${groqKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'llama-3.3-70b-versatile',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: 'Generate JSON now.' }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.3
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        return JSON.parse(text);
+      }
+    } catch (e) {
+      console.warn('[CinematicPipeline] Groq LLM call failed:', e);
     }
   }
+
+  if (geminiKey) {
+    try {
+      const { GoogleGenerativeAI } = await import('@google/generative-ai');
+      const genAI = new GoogleGenerativeAI(geminiKey);
+      const model = genAI.getGenerativeModel({
+        model: 'gemini-2.5-flash',
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.3 }
+      });
+      const result = await model.generateContent(systemPrompt);
+      const response = await result.response;
+      const text = response.text().trim();
+      if (text) return JSON.parse(text);
+    } catch (e) {
+      console.warn('[CinematicPipeline] Gemini LLM call failed, trying next provider:', e);
+    }
+  }
+
+  if (openaiKey) {
+    try {
+      const res = await fetch('https://api.openai.com/v1/chat/completions', {
+        method: 'POST',
+        headers: {
+          'Authorization': `Bearer ${openaiKey}`,
+          'Content-Type': 'application/json'
+        },
+        body: JSON.stringify({
+          model: 'gpt-4o-mini',
+          messages: [
+            { role: 'system', content: systemPrompt },
+            { role: 'user', content: 'Generate JSON now.' }
+          ],
+          response_format: { type: 'json_object' },
+          temperature: 0.3
+        })
+      });
+
+      if (res.ok) {
+        const data = await res.json();
+        const text = data.choices?.[0]?.message?.content || '';
+        return JSON.parse(text);
+      }
+    } catch (e) {
+      console.warn('[CinematicPipeline] OpenAI LLM call failed:', e);
+    }
+  }
+
   return null;
 }
 

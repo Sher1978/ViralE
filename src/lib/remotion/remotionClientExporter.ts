@@ -125,27 +125,29 @@ export async function renderRemotionInDevice({
       }
 
       const isEnded = videoEl.ended;
-      const isTimeEnded = currentTime >= (durationSec - 0.15);
-      const isFrameEnded = currentFrame >= (totalFrames - 1);
-      const isStalledNearEnd = sameTimeFrameCount > 15 && (currentTime >= durationSec * 0.85 || currentFrame >= totalFrames - 5);
+      const isTimeEnded = currentTime >= durationSec;
+      const isFrameEnded = currentFrame >= totalFrames;
+      const isStalledNearEnd = sameTimeFrameCount > 60 && currentTime >= (durationSec - 0.05);
       const isTimeout = (Date.now() - startTime) > maxDurationMs;
 
       if (isEnded || isTimeEnded || isFrameEnded || isStalledNearEnd || isTimeout) {
         log('Рендеринг завершен, финализация медиапотока...', 96);
-        if (recorder.state !== 'inactive') {
-          try {
-            recorder.stop();
-          } catch (e) {
-            console.warn('[RemotionExporter] recorder.stop error:', e);
+        setTimeout(() => {
+          if (recorder.state !== 'inactive') {
+            try {
+              recorder.stop();
+            } catch (e) {
+              console.warn('[RemotionExporter] recorder.stop error:', e);
+            }
           }
-        }
-        try {
-          videoEl.pause();
-        } catch (e) {}
-        try {
-          audioCtx.close().catch(() => {});
-        } catch (e) {}
-        resolve();
+          try {
+            videoEl.pause();
+          } catch (e) {}
+          try {
+            audioCtx.close().catch(() => {});
+          } catch (e) {}
+          resolve();
+        }, 150);
         return;
       }
 
