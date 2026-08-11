@@ -13,6 +13,7 @@ export interface SocialPublishPayload {
   caption: string;
   coverUrl?: string;
   platforms: SocialPlatform[];
+  collaborators?: string[];
   userTokenMap?: Partial<Record<SocialPlatform, string>>;
 }
 

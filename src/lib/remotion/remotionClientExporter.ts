@@ -413,7 +413,7 @@ export async function renderRemotionInDevice({
     }
 
     // 4. Render Active Subtitle Overlay (Full HD 1080p Bold Typography)
-    const subtitles = cutSheet?.subtitles || cutSheet?.segments || [];
+    const subtitles = (cutSheet as any)?.subtitles || (cutSheet as any)?.segments || [];
     if (subtitles && Array.isArray(subtitles)) {
       const activeSub = subtitles.find(
         (s: any) => currentFrame >= (s.startFrame || 0) && currentFrame <= (s.endFrame || (s.startFrame || 0) + 30)
