@@ -142,6 +142,48 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const [styleSeed, setStyleSeed] = useState<number>(() => Math.floor(Math.random() * 9999));
   const [showSettings, setShowSettings] = useState<boolean>(false);
 
+  // 🚀 Auto-Posting via Late.dev Social API
+  const [selectedSocials, setSelectedSocials] = useState<string[]>(['youtube', 'instagram', 'tiktok', 'telegram']);
+  const [isPublishingSocials, setIsPublishingSocials] = useState<boolean>(false);
+  const [socialPublishResults, setSocialPublishResults] = useState<any[] | null>(null);
+
+  const toggleSocialPlatform = (plat: string) => {
+    setSelectedSocials(prev => 
+      prev.includes(plat) ? prev.filter(p => p !== plat) : [...prev, plat]
+    );
+  };
+
+  const handleAutoPostToSocials = async () => {
+    if (selectedSocials.length === 0) {
+      safeAlert(locale === 'ru' ? 'Выберите хотя бы одну соцсеть!' : 'Select at least one platform!');
+      return;
+    }
+    setIsPublishingSocials(true);
+    setSocialPublishResults(null);
+    try {
+      const res = await fetch('/api/social/publish', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          projectId,
+          title: projectTitle || (manifest as any)?.ideaTitle || 'Виральный ролик Virali AI',
+          caption: customPostDescription || assets?.sfv_description?.text || scriptText,
+          coverUrl: imageResults['banner'] || null,
+          platforms: selectedSocials
+        })
+      });
+      const data = await res.json();
+      if (data.results) {
+        setSocialPublishResults(data.results);
+      }
+    } catch (err: any) {
+      console.error('[AutoPost Error]:', err);
+      safeAlert(locale === 'ru' ? `Ошибка авто-постинга: ${err.message}` : `Auto-post error: ${err.message}`);
+    } finally {
+      setIsPublishingSocials(false);
+    }
+  };
+
   // Instagram Gallery Studio specific states
   const [activeSlideIndex, setActiveSlideIndex] = useState<number>(0);
   const [activeTheme, setActiveTheme] = useState<'minimalist' | 'cyber' | 'business' | 'glow'>('minimalist');
@@ -1115,6 +1157,90 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                   <h3 className="text-2xl sm:text-3xl font-black uppercase tracking-tight text-white">
                     {locale === 'ru' ? 'КАНАЛЫ ДИСТРИБУЦИИ' : 'DISTRIBUTION CHANNELS'}
                   </h3>
+                </div>
+
+                {/* 🚀 AUTO-POSTING CONTROL PANEL (Late.dev API Integration) */}
+                <div className="w-full p-6 sm:p-8 rounded-[2rem] bg-gradient-to-br from-purple-950/40 via-black to-blue-950/40 border border-purple-500/20 shadow-2xl space-y-6">
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+                    <div className="flex items-center gap-3">
+                      <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center text-purple-400 shrink-0">
+                        <Zap size={24} className="animate-pulse" />
+                      </div>
+                      <div className="text-left">
+                        <h4 className="text-base font-black uppercase tracking-wider text-white">
+                          {locale === 'ru' ? 'Авто-Постинг в 1 Клик (Late.dev API)' : '1-Click Auto-Posting (Late.dev API)'}
+                        </h4>
+                        <p className="text-[10px] text-white/50 uppercase tracking-widest">
+                          {locale === 'ru' ? 'Мгновенная публикация ролика, обложки и описания во все соцсети' : 'Instant publication of video, cover & caption to all social media'}
+                        </p>
+                      </div>
+                    </div>
+
+                    <button
+                      onClick={handleAutoPostToSocials}
+                      disabled={isPublishingSocials || selectedSocials.length === 0}
+                      className="px-8 py-4 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-blue-600 text-white font-black uppercase text-[11px] tracking-[0.2em] shadow-xl shadow-purple-600/30 hover:scale-105 active:scale-95 transition-all disabled:opacity-40 flex items-center gap-3 shrink-0"
+                    >
+                      {isPublishingSocials ? (
+                        <>
+                          <Loader2 size={16} className="animate-spin text-white" />
+                          <span>{locale === 'ru' ? 'Публикация...' : 'Publishing...'}</span>
+                        </>
+                      ) : (
+                        <>
+                          <Zap size={16} className="text-yellow-400 fill-yellow-400 animate-pulse" />
+                          <span>{locale === 'ru' ? 'ОПУБЛИКОВАТЬ В 1 КЛИК' : 'PUBLISH ALL 1-CLICK'}</span>
+                        </>
+                      )}
+                    </button>
+                  </div>
+
+                  {/* Platform Toggles */}
+                  <div className="flex flex-wrap items-center justify-center sm:justify-start gap-2 pt-2 border-t border-white/5">
+                    {[
+                      { id: 'youtube', label: 'YouTube Shorts', color: 'hover:border-red-500/40 text-red-400' },
+                      { id: 'instagram', label: 'Instagram Reels', color: 'hover:border-pink-500/40 text-pink-400' },
+                      { id: 'tiktok', label: 'TikTok', color: 'hover:border-cyan-500/40 text-cyan-400' },
+                      { id: 'telegram', label: 'Telegram Канал', color: 'hover:border-blue-500/40 text-blue-400' },
+                    ].map(p => {
+                      const isSelected = selectedSocials.includes(p.id);
+                      return (
+                        <button
+                          key={p.id}
+                          onClick={() => toggleSocialPlatform(p.id)}
+                          className={`px-4 py-2.5 rounded-xl border text-[10px] font-black uppercase tracking-wider flex items-center gap-2 transition-all active:scale-95 ${
+                            isSelected 
+                              ? 'bg-white/10 border-purple-500/50 text-white shadow-[0_0_15px_rgba(168,85,247,0.3)]' 
+                              : 'bg-black/30 border-white/10 text-white/30 hover:text-white/60'
+                          }`}
+                        >
+                          <div className={`w-2.5 h-2.5 rounded-full ${isSelected ? 'bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,1)]' : 'bg-white/20'}`} />
+                          <span>{p.label}</span>
+                        </button>
+                      );
+                    })}
+                  </div>
+
+                  {/* Publish Results feedback */}
+                  {socialPublishResults && (
+                    <div className="mt-4 p-4 rounded-xl bg-purple-500/10 border border-purple-500/20 text-left space-y-2">
+                      <span className="text-[10px] font-black uppercase tracking-widest text-purple-400">Результаты публикации:</span>
+                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                        {socialPublishResults.map((res: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between p-2.5 rounded-lg bg-black/40 border border-white/5 text-[11px]">
+                            <span className="font-bold uppercase text-white/80">{res.platform}:</span>
+                            {res.success ? (
+                              <a href={res.postUrl} target="_blank" rel="noreferrer" className="text-green-400 font-bold hover:underline flex items-center gap-1">
+                                ✓ Опубликовано <ExternalLink size={12} />
+                              </a>
+                            ) : (
+                              <span className="text-red-400 font-bold">❌ {res.error}</span>
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
                 </div>
 
                 {/* 1. Large Centralized Call-to-Action if pack is not generated yet */}
