@@ -17,6 +17,7 @@ import DistributionFactory from '../../[id]/studio/_components/DistributionFacto
 import { Suspense } from 'react';
 import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
 import { fetchFile } from '@ffmpeg/util';
+import { renderRemotionInDevice } from '@/lib/remotion/remotionClientExporter';
 
 function DeliveryPageContent() {
   const t = useTranslations('delivery');
@@ -468,6 +469,44 @@ function DeliveryPageContent() {
         return;
       }
     } catch (e) { console.warn('[Delivery] Cache check failed:', e); }
+
+    // 0.5. REMOTION ARCHITECT AUTO-ROUTING (Zero-Risk Branch)
+    if (manifestData?.remotionCutSheet) {
+      try {
+        setIsLoading(false);
+        setRenderStatus('Запуск Remotion Motion Engine...');
+        setRenderProgress(5);
+
+        let speakerBlob: Blob | string | null = manifestData?.aRollUrl || null;
+        if (!speakerBlob || (typeof speakerBlob === 'string' && speakerBlob.startsWith('blob:'))) {
+          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+          if (cached instanceof Blob) speakerBlob = cached;
+        }
+
+        if (speakerBlob) {
+          const { videoBlob, videoUrl } = await renderRemotionInDevice({
+            projectId: projectId || 'demo',
+            versionId: ver.id,
+            speakerVideoBlobOrUrl: speakerBlob,
+            cutSheet: manifestData.remotionCutSheet,
+            onProgress: (p, msg) => {
+              setRenderProgress(p);
+              setRenderStatus(msg);
+            }
+          });
+
+          setJob({ id: 'local-remotion-render', status: 'completed', output_url: videoUrl, progress: 100 } as any);
+          setRenderProgress(100);
+          setRenderStatus('Готово (Remotion Motion Engine)!');
+          setIsLoading(false);
+          isLaunchingRenderRef.current = false;
+          return;
+        }
+      } catch (remotionErr: any) {
+        console.warn('[Delivery] Remotion render failed, safely falling back to standard FFmpeg pipeline:', remotionErr);
+        addSystemLog(`Remotion warning: ${remotionErr.message || remotionErr}. Восстановление через FFmpeg...`);
+      }
+    }
 
     setIsLoading(false);
     setRenderStatus('Подготовка движка FFmpeg...');
