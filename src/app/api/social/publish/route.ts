@@ -12,6 +12,23 @@ export async function POST(req: Request) {
 
     console.log(`[API /api/social/publish] Starting multi-platform auto-post for project ${projectId} to:`, platforms);
 
+    let userLateDevKey: string | undefined = undefined;
+    try {
+      const { user, supabase: authSupabase } = await getAuthContext();
+      if (user) {
+        const { data: profile } = await authSupabase
+          .from('profiles')
+          .select('latedev_api_key, user_api_keys')
+          .eq('id', user.id)
+          .single();
+
+        const userApiKeys = profile?.user_api_keys as Record<string, any> || {};
+        userLateDevKey = profile?.latedev_api_key || userApiKeys.latedev || undefined;
+      }
+    } catch (authErr) {
+      console.warn('[API /api/social/publish] Auth context warning, proceeding with fallback key:', authErr);
+    }
+
     const result = await publishToSocialPlatforms({
       projectId: projectId || 'demo',
       videoUrl: videoUrl || 'https://assets.mixkit.co/videos/preview/mixkit-vertical-portrait-of-a-woman-40228-large.mp4',
@@ -19,7 +36,7 @@ export async function POST(req: Request) {
       caption: caption || '#shorts #reels #viral',
       coverUrl,
       platforms: platforms as SocialPlatform[]
-    });
+    }, userLateDevKey);
 
     return NextResponse.json(result);
   } catch (err: any) {

@@ -10,6 +10,7 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
+import { LateDevInstructionModal } from '@/components/modals/LateDevInstructionModal';
 
 interface DistributionFactoryProps {
   manifest: any;
@@ -145,8 +146,10 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   // 🚀 Auto-Posting vs Manual Scenario Mode Switcher
   const [distributionScenario, setDistributionScenario] = useState<'autopost' | 'manual'>('autopost');
   const [selectedSocials, setSelectedSocials] = useState<string[]>(['youtube', 'instagram', 'tiktok', 'telegram']);
+  const [instagramCollaborators, setInstagramCollaborators] = useState<string>('');
   const [isPublishingSocials, setIsPublishingSocials] = useState<boolean>(false);
   const [socialPublishResults, setSocialPublishResults] = useState<any[] | null>(null);
+  const [lateModalOpen, setLateModalOpen] = useState<boolean>(false);
 
   const toggleSocialPlatform = (plat: string) => {
     setSelectedSocials(prev => 
@@ -161,6 +164,12 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     }
     setIsPublishingSocials(true);
     setSocialPublishResults(null);
+
+    const collaboratorsList = instagramCollaborators
+      .split(/[\s,]+/)
+      .map(c => c.trim().replace(/^@/, ''))
+      .filter(Boolean);
+
     try {
       const res = await fetch('/api/social/publish', {
         method: 'POST',
@@ -170,6 +179,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           title: projectTitle || (manifest as any)?.ideaTitle || 'Виральный ролик Virali AI',
           caption: customPostDescription || assets?.sfv_description?.text || scriptText,
           coverUrl: imageResults['banner'] || null,
+          collaborators: collaboratorsList,
           platforms: selectedSocials
         })
       });
@@ -1249,6 +1259,44 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                       );
                     })}
                   </div>
+
+                  {/* Instagram Collaborator Input Field */}
+                  {selectedSocials.includes('instagram') && (
+                    <div className="pt-3 border-t border-white/5 space-y-1.5 text-left">
+                      <label className="text-[10px] font-black uppercase tracking-wider text-pink-400 flex items-center justify-between">
+                        <span>🤝 Соавторы Instagram Reels (Collaborators):</span>
+                        <span className="text-[9px] text-white/30 font-normal lowercase">(через запятую: @username)</span>
+                      </label>
+                      <input
+                        type="text"
+                        value={instagramCollaborators}
+                        onChange={(e) => setInstagramCollaborators(e.target.value)}
+                        placeholder="@blogger, @brand_partner..."
+                        className="w-full bg-black/60 border border-pink-500/30 rounded-xl px-3.5 py-2.5 text-xs text-white placeholder:text-white/20 outline-none focus:border-pink-500 transition-all font-mono"
+                      />
+                      <p className="text-[9px] text-white/40 leading-relaxed">
+                        💡 Instagram отправит инвайт на совместное соавторство для указанного @username. После подтверждения ролик появится сразу на обоих аккаунтах!
+                      </p>
+                    </div>
+                  )}
+
+                  {/* Connect Personal API Key Trigger Link */}
+                  <div className="flex flex-col sm:flex-row items-center justify-between gap-2 pt-3 border-t border-white/5 text-[10px]">
+                    <span className="text-white/40">У каждого пользователя свой личный API Ключ Late.dev с привязанными соцсетями.</span>
+                    <button
+                      type="button"
+                      onClick={() => setLateModalOpen(true)}
+                      className="px-3 py-1.5 rounded-xl bg-purple-500/10 border border-purple-500/30 text-purple-300 hover:text-white hover:bg-purple-500/20 transition-all font-black uppercase tracking-wider flex items-center gap-1.5 shrink-0"
+                    >
+                      <span>⚙️ Привязать ваш Late.dev API Ключ</span>
+                    </button>
+                  </div>
+
+                  {/* Late.dev Step-by-Step Instructions Modal */}
+                  <LateDevInstructionModal
+                    isOpen={lateModalOpen}
+                    onClose={() => setLateModalOpen(false)}
+                  />
 
                   {/* Publish Results feedback */}
                   {socialPublishResults && (

@@ -34,8 +34,11 @@ const LATE_DEV_API_ENDPOINT = process.env.LATE_DEV_API_ENDPOINT || 'https://api.
 /**
  * Publishes video, caption, and cover to selected social media platforms
  */
-export async function publishToSocialPlatforms(payload: SocialPublishPayload): Promise<MultiPlatformPublishResponse> {
-  const apiKey = process.env.LATE_DEV_API_KEY || process.env.SOCIAL_POSTING_API_KEY;
+export async function publishToSocialPlatforms(
+  payload: SocialPublishPayload,
+  userApiKey?: string
+): Promise<MultiPlatformPublishResponse> {
+  const apiKey = userApiKey || process.env.LATE_DEV_API_KEY || process.env.SOCIAL_POSTING_API_KEY;
   const results: PlatformPublishResult[] = [];
 
   for (const platform of payload.platforms) {

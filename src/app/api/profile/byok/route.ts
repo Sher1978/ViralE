@@ -12,7 +12,7 @@ export async function GET() {
     
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('heygen_api_key, anthropic_api_key, groq_api_key, elevenlabs_api_key, synthetic_training_data, credits_balance')
+      .select('heygen_api_key, anthropic_api_key, groq_api_key, elevenlabs_api_key, latedev_api_key, user_api_keys, synthetic_training_data, credits_balance')
       .eq('id', user.id)
       .single();
  
@@ -22,7 +22,9 @@ export async function GET() {
       key ? `${key.substring(0, 4)}...${key.substring(key.length - 4)}` : null;
  
     const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
+    const userApiKeys = profile?.user_api_keys as Record<string, any> || {};
     const geminiKey = syntheticData.gemini_api_key || null;
+    const latedevKey = profile?.latedev_api_key || userApiKeys.latedev || null;
  
     return NextResponse.json({ 
       credits_balance: profile?.credits_balance || 0,
@@ -45,6 +47,10 @@ export async function GET() {
       elevenlabs: {
         hasKey: !!profile?.elevenlabs_api_key,
         maskedKey: mask(profile?.elevenlabs_api_key)
+      },
+      latedev: {
+        hasKey: !!latedevKey,
+        maskedKey: mask(latedevKey)
       }
     });
   } catch (error: any) {
@@ -56,16 +62,17 @@ export async function GET() {
 export async function POST(req: Request) {
   try {
     const user = await getAuthenticatedUser();
-    const { heygenKey, anthropicKey, groqKey, geminiKey, elevenlabsKey } = await req.json();
+    const { heygenKey, anthropicKey, groqKey, geminiKey, elevenlabsKey, latedevKey } = await req.json();
  
-    // Fetch existing synthetic_training_data first to preserve other properties
+    // Fetch existing synthetic_training_data and user_api_keys first to preserve other properties
     const { data: currentProfile } = await supabase
       .from('profiles')
-      .select('synthetic_training_data')
+      .select('synthetic_training_data, user_api_keys')
       .eq('id', user.id)
       .single();
 
     const currentSynthetic = currentProfile?.synthetic_training_data as Record<string, any> || {};
+    const currentApiKeys = currentProfile?.user_api_keys as Record<string, any> || {};
 
     const updates: any = {
       updated_at: new Date().toISOString()
@@ -76,6 +83,14 @@ export async function POST(req: Request) {
     if (groqKey !== undefined) updates.groq_api_key = groqKey;
     if (elevenlabsKey !== undefined) updates.elevenlabs_api_key = elevenlabsKey;
     
+    if (latedevKey !== undefined) {
+      updates.latedev_api_key = latedevKey;
+      updates.user_api_keys = {
+        ...currentApiKeys,
+        latedev: latedevKey
+      };
+    }
+
     if (geminiKey !== undefined) {
       updates.synthetic_training_data = {
         ...currentSynthetic,

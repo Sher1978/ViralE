@@ -5,6 +5,7 @@ import { useTranslations, useLocale } from 'next-intl';
 import { ChevronLeft, RefreshCw, Save, Key, Brain, ExternalLink, Zap, User, Sparkles } from 'lucide-react';
 import { Link } from '@/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
+import { LateDevInstructionModal } from '@/components/modals/LateDevInstructionModal';
 
 export default function ByokSettingsPage() {
   const t = useTranslations('profile');
@@ -21,7 +22,8 @@ export default function ByokSettingsPage() {
     anthropic: { hasKey: false, maskedKey: null },
     groq: { hasKey: false, maskedKey: null },
     gemini: { hasKey: false, maskedKey: null },
-    elevenlabs: { hasKey: false, maskedKey: null }
+    elevenlabs: { hasKey: false, maskedKey: null },
+    latedev: { hasKey: false, maskedKey: null }
   });
 
   const [form, setForm] = useState({
@@ -29,9 +31,11 @@ export default function ByokSettingsPage() {
     anthropicKey: '',
     groqKey: '',
     geminiKey: '',
-    elevenlabsKey: ''
+    elevenlabsKey: '',
+    latedevKey: ''
   });
 
+  const [lateModalOpen, setLateModalOpen] = useState(false);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
 
@@ -64,12 +68,13 @@ export default function ByokSettingsPage() {
           anthropicKey: form.anthropicKey || undefined,
           groqKey: form.groqKey || undefined,
           geminiKey: form.geminiKey || undefined,
-          elevenlabsKey: form.elevenlabsKey || undefined
+          elevenlabsKey: form.elevenlabsKey || undefined,
+          latedevKey: form.latedevKey || undefined
         })
       });
       if (res.ok) {
         await fetchKeys();
-        setForm({ heygenKey: '', anthropicKey: '', groqKey: '', geminiKey: '', elevenlabsKey: '' });
+        setForm({ heygenKey: '', anthropicKey: '', groqKey: '', geminiKey: '', elevenlabsKey: '', latedevKey: '' });
       }
     } catch (e: any) {
       console.error(e);
@@ -187,12 +192,42 @@ export default function ByokSettingsPage() {
             link="https://elevenlabs.io/app/settings/api-keys"
             delay={0.5}
           />
+
+          <div className="relative">
+            <KeySection
+              icon={<Zap className="w-4 h-4" />}
+              title="Late.dev / Zernio (1-Click Auto-Posting)"
+              hint="Каждый юзер привязывает свой API Ключ для автопостинга в YouTube, Instagram, TikTok & Telegram."
+              placeholder="Enter your Late.dev sk_... API key"
+              status={keys.latedev || { hasKey: false, maskedKey: null }}
+              value={form.latedevKey}
+              onChange={(val: string) => setForm({ ...form, latedevKey: val })}
+              accent="#A855F7"
+              link="https://late.dev"
+              delay={0.6}
+            />
+
+            <button
+              type="button"
+              onClick={() => setLateModalOpen(true)}
+              className="mt-2 text-[10px] font-bold text-purple-300 hover:text-purple-200 underline flex items-center gap-1.5 px-3 py-1 bg-purple-500/10 border border-purple-500/20 rounded-xl"
+            >
+              <span>❓ Как получить персональный API Ключ Late.dev / Zernio? (Инструкция)</span>
+            </button>
+          </div>
         </div>
       )}
 
+      {/* Late.dev Step-by-Step Instructions Modal */}
+      <LateDevInstructionModal
+        isOpen={lateModalOpen}
+        onClose={() => setLateModalOpen(false)}
+        onSavedSuccess={() => fetchKeys()}
+      />
+
       {/* Floating Action Button */}
       <AnimatePresence>
-        {(form.heygenKey || form.anthropicKey || form.groqKey || form.geminiKey || form.elevenlabsKey) && (
+        {(form.heygenKey || form.anthropicKey || form.groqKey || form.geminiKey || form.elevenlabsKey || form.latedevKey) && (
           <motion.div 
             initial={{ opacity: 0, y: 50, scale: 0.9 }}
             animate={{ opacity: 1, y: 0, scale: 1 }}
