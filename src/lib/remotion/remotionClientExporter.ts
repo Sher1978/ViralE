@@ -274,112 +274,160 @@ export async function renderRemotionInDevice({
 
       if (elem.type === 'chart') {
         const isSidePanel = isCircle || (activeCut && (activeCut.action === 'scale_to_circle' || activeCut.action === 'move_left'));
-        const cardX = isSidePanel ? canvas.width * 0.50 : canvas.width * 0.06;
-        const cardY = isSidePanel ? canvas.height * 0.22 : canvas.height * 0.68;
-        const cardW = isSidePanel ? canvas.width * 0.44 : canvas.width * 0.88;
-        const cardH = 380;
+        const cardX = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.06;
+        const cardY = isSidePanel ? canvas.height * 0.20 : canvas.height * 0.65;
+        const cardW = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.88;
+        const cardH = 440;
 
         ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
         ctx.rotate(jitterRad);
         ctx.scale(scaleAnim, scaleAnim);
         ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
 
-        ctx.fillStyle = activeStyle.colors.cardBg;
-        ctx.strokeStyle = activeStyle.colors.cardBorder;
-        ctx.lineWidth = 2;
-        safeRoundRect(cardX, cardY, cardW, cardH, 20);
+        ctx.fillStyle = activeStyle.colors.cardBg || 'rgba(15, 23, 42, 0.95)';
+        ctx.strokeStyle = activeStyle.colors.accent;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
+        ctx.shadowBlur = 20;
+        safeRoundRect(cardX, cardY, cardW, cardH, 24);
         ctx.fill();
         ctx.stroke();
 
+        ctx.shadowColor = 'transparent';
         ctx.fillStyle = activeStyle.colors.text;
-        ctx.font = 'bold 20px sans-serif';
-        ctx.fillText(elem.props.title || 'Рост вовлеченности', cardX + 20, cardY + 36);
+        ctx.font = '900 32px "Outfit", "Roboto", sans-serif';
+        ctx.fillText(elem.props.title || 'Рост удержания', cardX + 28, cardY + 52);
 
         const values: number[] = elem.props.values || [40, 65, 80, 95];
-        const barWidth = (cardW - 40 - (values.length - 1) * 12) / values.length;
-        const maxBarH = 240;
+        const barWidth = (cardW - 56 - (values.length - 1) * 16) / values.length;
+        const maxBarH = 260;
 
         values.forEach((val, idx) => {
           const barProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 2) / 10));
           const barH = (val / 100) * maxBarH * barProgress;
-          const bx = cardX + 20 + idx * (barWidth + 12);
-          const by = cardY + cardH - 24 - barH;
+          const bx = cardX + 28 + idx * (barWidth + 16);
+          const by = cardY + cardH - 32 - barH;
 
           const barGrad = ctx.createLinearGradient(bx, by, bx, by + barH);
           barGrad.addColorStop(0, activeStyle.colors.accent);
           barGrad.addColorStop(1, activeStyle.colors.secondary);
           ctx.fillStyle = barGrad;
-          safeRoundRect(bx, by, barWidth, barH, 8);
+          safeRoundRect(bx, by, barWidth, Math.max(10, barH), 10);
           ctx.fill();
 
-          ctx.fillStyle = activeStyle.colors.text;
-          ctx.font = 'bold 12px sans-serif';
-          ctx.fillText(`${val}%`, bx + barWidth / 4, by - 6);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = 'bold 22px "Outfit", sans-serif';
+          ctx.textAlign = 'center';
+          ctx.fillText(`${val}%`, bx + barWidth / 2, by - 10);
+          ctx.textAlign = 'left';
         });
 
       } else if (elem.type === 'list') {
         const isSidePanel = isCircle || (activeCut && (activeCut.action === 'scale_to_circle' || activeCut.action === 'move_left'));
-        const cardX = isSidePanel ? canvas.width * 0.50 : canvas.width * 0.06;
-        const cardY = isSidePanel ? canvas.height * 0.22 : canvas.height * 0.68;
-        const cardW = isSidePanel ? canvas.width * 0.44 : canvas.width * 0.88;
+        const cardX = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.06;
+        const cardY = isSidePanel ? canvas.height * 0.20 : canvas.height * 0.65;
+        const cardW = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.88;
         const items: string[] = elem.props.items || ['Высокая динамика', 'Инфографика', 'Рост Retention'];
 
+        // Title Header for List
+        if (elem.props.title) {
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = '900 32px "Outfit", "Roboto", sans-serif';
+          ctx.fillText(elem.props.title, cardX + 8, cardY - 16);
+        }
+
         items.forEach((item, idx) => {
-          ctx.save(); // Isolate individual list item transformation
+          ctx.save();
           const itemProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 4) / 12));
           const easeItem = 1 - Math.pow(1 - itemProgress, 3);
-          const iy = cardY + idx * 60;
-          const ix = cardX + (1 - easeItem) * 40;
+          const iy = cardY + idx * 82;
+          const ix = cardX + (1 - easeItem) * 50;
 
           ctx.globalAlpha = opacityAnim * easeItem;
 
-          ctx.translate(ix + cardW / 2, iy + 25);
+          ctx.translate(ix + cardW / 2, iy + 34);
           ctx.rotate(jitterRad * 0.3);
-          ctx.translate(-(ix + cardW / 2), -(iy + 25));
+          ctx.translate(-(ix + cardW / 2), -(iy + 34));
 
-          ctx.fillStyle = activeStyle.colors.cardBg;
-          ctx.strokeStyle = activeStyle.colors.cardBorder;
-          ctx.lineWidth = 2;
-          safeRoundRect(ix, iy, cardW, 52, 14);
+          ctx.fillStyle = activeStyle.colors.cardBg || 'rgba(15, 23, 42, 0.95)';
+          ctx.strokeStyle = activeStyle.colors.accent;
+          ctx.lineWidth = 3;
+          ctx.shadowColor = 'rgba(0,0,0,0.4)';
+          ctx.shadowBlur = 16;
+          safeRoundRect(ix, iy, cardW, 70, 18);
           ctx.fill();
           ctx.stroke();
 
+          ctx.shadowColor = 'transparent';
           ctx.fillStyle = activeStyle.colors.accent;
-          ctx.font = 'bold 20px sans-serif';
-          ctx.fillText('✓', ix + 16, iy + 33);
+          ctx.font = '900 30px sans-serif';
+          ctx.fillText('✓', ix + 24, iy + 45);
 
           ctx.fillStyle = activeStyle.colors.text;
-          ctx.font = 'bold 16px sans-serif';
-          ctx.fillText(item, ix + 45, iy + 33);
+          ctx.font = '900 26px "Outfit", "Roboto", sans-serif';
+          ctx.fillText(item, ix + 65, iy + 45);
           ctx.restore();
         });
 
       } else if (elem.type === 'stat_callout') {
         const cardX = canvas.width * 0.06;
-        const cardY = canvas.height * 0.68;
+        const cardY = canvas.height * 0.65;
         const cardW = canvas.width * 0.88;
-        const cardH = 150;
+        const cardH = 190;
 
         ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
         ctx.rotate(jitterRad);
         ctx.scale(scaleAnim, scaleAnim);
         ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
 
-        ctx.fillStyle = activeStyle.colors.cardBg;
-        ctx.strokeStyle = activeStyle.colors.cardBorder;
-        ctx.lineWidth = 2;
-        safeRoundRect(cardX, cardY, cardW, cardH, 20);
+        ctx.fillStyle = activeStyle.colors.cardBg || 'rgba(15, 23, 42, 0.95)';
+        ctx.strokeStyle = activeStyle.colors.accent;
+        ctx.lineWidth = 3;
+        ctx.shadowColor = activeStyle.colors.accent;
+        ctx.shadowBlur = 24;
+        safeRoundRect(cardX, cardY, cardW, cardH, 26);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.shadowColor = 'transparent';
+        ctx.fillStyle = activeStyle.colors.accent;
+        ctx.font = '900 68px "Outfit", "Roboto", sans-serif';
+        ctx.fillText(elem.props.statValue || '+350%', cardX + 32, cardY + 80);
+
+        ctx.fillStyle = activeStyle.colors.text;
+        ctx.font = '700 28px "Outfit", "Roboto", sans-serif';
+        ctx.fillText(elem.props.statLabel || 'Рост удержания зрителей', cardX + 32, cardY + 138);
+
+      } else if (elem.type === 'kinetic_quote' || elem.type === 'tweet_card') {
+        const cardX = canvas.width * 0.06;
+        const cardY = canvas.height * 0.65;
+        const cardW = canvas.width * 0.88;
+        const cardH = 210;
+
+        ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
+        ctx.rotate(jitterRad);
+        ctx.scale(scaleAnim, scaleAnim);
+        ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
+
+        ctx.fillStyle = 'rgba(15, 23, 42, 0.96)';
+        ctx.strokeStyle = activeStyle.colors.accent;
+        ctx.lineWidth = 3;
+        safeRoundRect(cardX, cardY, cardW, cardH, 24);
         ctx.fill();
         ctx.stroke();
 
         ctx.fillStyle = activeStyle.colors.accent;
-        ctx.font = 'black 36px sans-serif';
-        ctx.fillText(elem.props.statValue || '+350%', cardX + 24, cardY + 60);
+        ctx.font = '900 36px sans-serif';
+        ctx.fillText('“', cardX + 28, cardY + 54);
 
-        ctx.fillStyle = activeStyle.colors.text;
-        ctx.font = 'bold 16px sans-serif';
-        ctx.fillText(elem.props.statLabel || 'Рост удержания', cardX + 24, cardY + 105);
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = '900 28px "Outfit", "Roboto", sans-serif';
+        const quoteText = String(elem.props.text || elem.props.title || 'Главная мысль ролика').toUpperCase();
+        ctx.fillText(quoteText, cardX + 60, cardY + 54);
 
+        ctx.fillStyle = activeStyle.colors.accent;
+        ctx.font = 'bold 22px sans-serif';
+        ctx.fillText(`— ${elem.props.author || 'Virali AI Expert'}`, cardX + 60, cardY + 140);
       }
       ctx.restore();
     }
@@ -534,7 +582,7 @@ export async function renderRemotionInDevice({
     console.warn('[RemotionExporter] FFmpeg audio muxing fallback warning:', ffmpegErr);
   }
 
-  const cacheKey = `final_render_${projectId}_${versionId}_remotion_v4`;
+  const cacheKey = `final_render_${projectId}_${versionId}_remotion_v5`;
   await idb.set(cacheKey, finalBlob, 'MediaBuffer');
 
   // Clean up sourceUrl if created from Blob to prevent memory leak
