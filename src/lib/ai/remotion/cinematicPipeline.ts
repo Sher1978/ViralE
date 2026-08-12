@@ -175,6 +175,24 @@ ${getRemotionPromptLibraryContext()}
   return await callLlmApi(prompt, apiKey);
 }
 
+function cleanJsonResponse(raw: string): any {
+  if (!raw) return null;
+  let cleaned = raw.trim();
+  cleaned = cleaned.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
+  try {
+    return JSON.parse(cleaned);
+  } catch (e) {
+    const firstBrace = cleaned.indexOf('{');
+    const lastBrace = cleaned.lastIndexOf('}');
+    if (firstBrace !== -1 && lastBrace > firstBrace) {
+      try {
+        return JSON.parse(cleaned.substring(firstBrace, lastBrace + 1));
+      } catch (err) {}
+    }
+  }
+  return null;
+}
+
 /**
  * Call Groq/Gemini API helper
  */
@@ -198,14 +216,15 @@ async function callLlmApi(systemPrompt: string, apiKey: string): Promise<any> {
             { role: 'user', content: 'Generate JSON now.' }
           ],
           response_format: { type: 'json_object' },
-          temperature: 0.3
+          temperature: 0.4
         })
       });
 
       if (res.ok) {
         const data = await res.json();
         const text = data.choices?.[0]?.message?.content || '';
-        return JSON.parse(text);
+        const parsed = cleanJsonResponse(text);
+        if (parsed) return parsed;
       }
     } catch (e) {
       console.warn('[CinematicPipeline] Groq LLM call failed:', e);
@@ -218,12 +237,13 @@ async function callLlmApi(systemPrompt: string, apiKey: string): Promise<any> {
       const genAI = new GoogleGenerativeAI(geminiKey);
       const model = genAI.getGenerativeModel({
         model: 'gemini-2.5-flash',
-        generationConfig: { responseMimeType: 'application/json', temperature: 0.3 }
+        generationConfig: { responseMimeType: 'application/json', temperature: 0.4 }
       });
       const result = await model.generateContent(systemPrompt);
       const response = await result.response;
       const text = response.text().trim();
-      if (text) return JSON.parse(text);
+      const parsed = cleanJsonResponse(text);
+      if (parsed) return parsed;
     } catch (e) {
       console.warn('[CinematicPipeline] Gemini LLM call failed, trying next provider:', e);
     }
@@ -244,14 +264,15 @@ async function callLlmApi(systemPrompt: string, apiKey: string): Promise<any> {
             { role: 'user', content: 'Generate JSON now.' }
           ],
           response_format: { type: 'json_object' },
-          temperature: 0.3
+          temperature: 0.4
         })
       });
 
       if (res.ok) {
         const data = await res.json();
         const text = data.choices?.[0]?.message?.content || '';
-        return JSON.parse(text);
+        const parsed = cleanJsonResponse(text);
+        if (parsed) return parsed;
       }
     } catch (e) {
       console.warn('[CinematicPipeline] OpenAI LLM call failed:', e);
@@ -356,7 +377,19 @@ function processAndEnrichCutSheet(data: any, style: any, fps: number): RemotionA
 }
 
 function generateProceduralCinematicCutSheet(transcript: any[], style: any, fps: number): RemotionArchitectCutSheet {
-  const totalDuration = transcript[transcript.length - 1]?.end || 15;
+  const fullText = transcript.map(t => t.text || t.scriptText || '').join(' ').trim();
+
+  // Dynamically extract real sentences and keywords from transcriptData
+  const sentences = fullText.split(/[.!?]\s+/).filter(s => s.trim().length > 3);
+  const title1 = sentences[0] ? sentences[0].slice(0, 24) : 'Ключевые факты';
+  const item1 = sentences[1] ? sentences[1].slice(0, 32) : 'Главный тезис';
+  const item2 = sentences[2] ? sentences[2].slice(0, 32) : 'Практический вывод';
+  const item3 = sentences[3] ? sentences[3].slice(0, 32) : 'Целевой результат';
+
+  const numbersInText = fullText.match(/\d+%/g) || fullText.match(/\d+/g);
+  const statVal = numbersInText && numbersInText[0] 
+    ? (numbersInText[0].includes('%') ? numbersInText[0] : `+${numbersInText[0]}%`)
+    : '+100%';
 
   const sampleCameraCuts: CameraCut[] = [
     { startTime: "00:00.00", startFrame: 0, duration: 3.5, durationFrames: Math.round(3.5 * fps), action: "punch_zoom", targetScale: 1.12 },
@@ -367,29 +400,28 @@ function generateProceduralCinematicCutSheet(transcript: any[], style: any, fps:
   const sampleElements: BRollElement[] = [
     {
       id: "elem_proc_1",
-      type: "chart",
+      type: "list",
       startTime: "00:03.35",
       endTime: "00:08.20",
       startFrame: Math.round(3.35 * fps),
       endFrame: Math.round(8.20 * fps),
-      visualSeed: 42,
+      visualSeed: Math.floor(Math.random() * 100),
       props: {
-        title: "Рост удержания",
-        subtitle: "Динамический ИИ монтаж",
-        values: [35, 60, 85, 98]
+        title: title1,
+        items: [item1, item2, item3]
       }
     },
     {
       id: "elem_proc_2",
-      type: "list",
+      type: "stat_callout",
       startTime: "00:08.35",
       endTime: "00:13.00",
       startFrame: Math.round(8.35 * fps),
       endFrame: Math.round(13.00 * fps),
-      visualSeed: 77,
+      visualSeed: Math.floor(Math.random() * 100),
       props: {
-        title: "Факторы удержания",
-        items: ["Живая Z-камера", "Математический джиттер", "Бренд-бук субтитры"]
+        statValue: statVal,
+        statLabel: item1 || 'Ключевой показатель'
       }
     }
   ];

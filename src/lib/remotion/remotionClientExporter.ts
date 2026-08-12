@@ -133,7 +133,13 @@ export async function renderRemotionInDevice({
     // Seek to exact frame time and wait for GPU decode
     videoEl.currentTime = targetTime;
     await new Promise<void>((resolve) => {
-      videoEl.onseeked = () => resolve();
+      if ('requestVideoFrameCallback' in videoEl) {
+        (videoEl as any).requestVideoFrameCallback(() => resolve());
+      } else {
+        (videoEl as any).onseeked = () => {
+          setTimeout(resolve, 12);
+        };
+      }
     });
 
     // 1. Fill background with active style gradient
@@ -493,8 +499,16 @@ export async function renderRemotionInDevice({
       'canvas_video.mp4',
       '-i',
       'speaker_audio.mp4',
+      '-filter:v',
+      `setpts=N/(${fps}*TB)`,
+      '-r',
+      `${fps}`,
       '-c:v',
-      'copy',
+      'libx264',
+      '-preset',
+      'ultrafast',
+      '-crf',
+      '18',
       '-c:a',
       'aac',
       '-map',
@@ -520,7 +534,7 @@ export async function renderRemotionInDevice({
     console.warn('[RemotionExporter] FFmpeg audio muxing fallback warning:', ffmpegErr);
   }
 
-  const cacheKey = `final_render_${projectId}_${versionId}_remotion_v3`;
+  const cacheKey = `final_render_${projectId}_${versionId}_remotion_v4`;
   await idb.set(cacheKey, finalBlob, 'MediaBuffer');
 
   // Clean up sourceUrl if created from Blob to prevent memory leak
