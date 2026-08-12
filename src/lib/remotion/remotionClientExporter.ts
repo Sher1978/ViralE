@@ -7,7 +7,7 @@ export interface RenderRemotionOptions {
   versionId: string;
   speakerVideoBlobOrUrl: Blob | string;
   cutSheet: RemotionArchitectCutSheet;
-  onProgress?: (progress: number, statusMessage: string) => void;
+  onProgress?: (progress: number, statusMessage: string, stageIndex?: number) => void;
 }
 
 export async function renderRemotionInDevice({
@@ -17,12 +17,12 @@ export async function renderRemotionInDevice({
   cutSheet,
   onProgress
 }: RenderRemotionOptions): Promise<{ videoBlob: Blob; videoUrl: string }> {
-  const log = (msg: string, p: number) => {
-    console.log(`[RemotionExporter] (${p}%) ${msg}`);
-    if (onProgress) onProgress(p, msg);
+  const log = (msg: string, p: number, stageIndex: number = 4) => {
+    console.log(`[RemotionExporter] [Stage ${stageIndex}] (${p}%) ${msg}`);
+    if (onProgress) onProgress(p, msg, stageIndex);
   };
 
-  log('Инициализация Deterministic Remotion Engine (Full HD 1080p)...', 5);
+  log('Инициализация Deterministic Remotion Engine (Full HD 1080p)...', 5, 1);
 
   const activeStyle = resolveUserBrandStyle(
     cutSheet?.renderSettings?.presetKey || cutSheet?.renderSettings?.stylePreset,
@@ -38,13 +38,13 @@ export async function renderRemotionInDevice({
     throw new Error('Исходное видео не найдено для рендеринга Remotion.');
   }
 
-  log('Загрузка медиапотока...', 15);
+  log('Загрузка медиапотока...', 8, 1);
 
   const durationSec = await getVideoDuration(sourceUrl);
   const fps = cutSheet?.renderSettings?.fps || 30;
   const totalFrames = Math.ceil(durationSec * fps);
 
-  log(`Продолжительность: ${durationSec.toFixed(1)}s (${totalFrames} кадров, 1080p, пресет: ${activeStyle.name})...`, 25);
+  log(`Продолжительность: ${durationSec.toFixed(1)}s (${totalFrames} кадров, 1080p, пресет: ${activeStyle.name})...`, 10, 1);
 
   // Full HD 1080x1920 9:16 Canvas Setup
   const canvas = document.createElement('canvas');
@@ -82,30 +82,46 @@ export async function renderRemotionInDevice({
     videoEl.load();
   });
 
-  log('Запуск детерминированного покадрового кодировщика H.264 (20Mbps)...', 35);
+  log('Запуск детерминированного покадрового кодировщика H.264 (20Mbps)...', 40, 4);
 
   // Capture stream at 0 FPS for manual requestFrame pushing
   const stream = canvas.captureStream(0);
 
-  // Extract PCM audio from video using AudioContext for audio track muxing
+  // Robust PCM audio extraction for MediaRecorder stream muxing
   const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
   if (audioCtx.state === 'suspended') {
     await audioCtx.resume().catch(() => {});
   }
 
+  let hasAudioTrack = false;
   try {
-    const audioRes = await fetch(sourceUrl);
-    const audioArrayBuffer = await audioRes.arrayBuffer();
-    const audioBuffer = await audioCtx.decodeAudioData(audioArrayBuffer);
-    const bufferSource = audioCtx.createBufferSource();
-    bufferSource.buffer = audioBuffer;
+    let audioBlobData: Blob | null = null;
+    if (speakerVideoBlobOrUrl instanceof Blob) {
+      audioBlobData = speakerVideoBlobOrUrl;
+    } else {
+      const fetchRes = await fetch(sourceUrl);
+      if (fetchRes.ok) {
+        audioBlobData = await fetchRes.blob();
+      }
+    }
 
-    const destNode = audioCtx.createMediaStreamDestination();
-    bufferSource.connect(destNode);
-    destNode.stream.getAudioTracks().forEach((track) => stream.addTrack(track));
-    bufferSource.start(0);
+    if (audioBlobData) {
+      const audioArrayBuffer = await audioBlobData.arrayBuffer();
+      const audioBuffer = await audioCtx.decodeAudioData(audioArrayBuffer);
+      const bufferSource = audioCtx.createBufferSource();
+      bufferSource.buffer = audioBuffer;
+
+      const destNode = audioCtx.createMediaStreamDestination();
+      bufferSource.connect(destNode);
+      destNode.stream.getAudioTracks().forEach((track) => {
+        stream.addTrack(track);
+        hasAudioTrack = true;
+      });
+      bufferSource.start(0);
+      log('Звуковая дорожка успешно дешифрована и подключена к кодировщику.', 42, 4);
+    }
   } catch (audioErr) {
-    console.warn('[RemotionExporter] Audio extraction warning, using fallback audio stream:', audioErr);
+    console.warn('[RemotionExporter] Audio extraction warning:', audioErr);
   }
 
   const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
@@ -137,7 +153,10 @@ export async function renderRemotionInDevice({
   const cameraCuts = cutSheet?.cameraCuts || [];
   const bRollElements = cutSheet?.bRollElements || [];
 
-  // Deterministic Frame-by-Frame Seek Loop
+  const targetFrameDurationMs = 1000 / fps;
+  const renderStartTime = Date.now();
+
+  // Deterministic Frame-by-Frame Seek Loop with Wall-Clock Pacing for Audio-Video Sync
   for (let currentFrame = 0; currentFrame < totalFrames; currentFrame++) {
     const targetTime = currentFrame / fps;
 
@@ -154,10 +173,30 @@ export async function renderRemotionInDevice({
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Dynamic Z-Axis Live Camera Motion for Speaker Video
-    const activeCut = cameraCuts.find(
+    // 2. Determine active overlays and check if side panel layout is required
+    const activeElements = bRollElements.filter(
+      (e) => currentFrame >= e.startFrame && currentFrame <= e.endFrame
+    );
+    const hasActiveSideCard = activeElements.some(
+      (e) => e.type === 'chart' || e.type === 'list'
+    );
+
+    // 3. Dynamic Z-Axis Live Camera Motion for Speaker Video
+    let activeCut = cameraCuts.find(
       (c) => currentFrame >= c.startFrame && currentFrame < c.startFrame + c.durationFrames
     );
+
+    // Auto-coupling fallback: if side card is active, force scale_to_circle cut!
+    if (hasActiveSideCard && (!activeCut || (activeCut.action !== 'scale_to_circle' && activeCut.action !== 'move_left'))) {
+      activeCut = {
+        startTime: `${targetTime}s`,
+        startFrame: currentFrame,
+        duration: 3,
+        durationFrames: 90,
+        action: 'scale_to_circle',
+        targetScale: 0.45
+      };
+    }
 
     ctx.save();
 
@@ -182,7 +221,7 @@ export async function renderRemotionInDevice({
         targetScale = 1.0 + 0.12 * (1 - Math.pow(1 - punchProgress, 4));
 
       } else if (activeCut.action === 'scale_to_circle') {
-        targetScale = 0.5 * ease + 1.0 * (1 - ease);
+        targetScale = 0.45 * ease + 1.0 * (1 - ease);
         targetX = (canvas.width * 0.28) * ease;
         targetY = (canvas.height * 0.45) * ease + (canvas.height * 0.5) * (1 - ease);
         radius = Math.min(canvas.width, canvas.height) * 0.22 * ease;
@@ -209,7 +248,7 @@ export async function renderRemotionInDevice({
     }
 
     if (isCircle && radius > 5) {
-      // 1. Draw blurred full-screen video in background to eliminate flat dark boxes
+      // 1. Draw blurred full-screen video in background to eliminate dark empty gaps
       ctx.save();
       ctx.globalAlpha = 0.4;
       ctx.filter = 'blur(25px) brightness(0.7)';
@@ -218,7 +257,7 @@ export async function renderRemotionInDevice({
       ctx.globalAlpha = 1.0;
       ctx.restore();
 
-      // 2. Strictly isolated circular clipping for speaker video avatar
+      // 2. Strictly isolated circular clipping for speaker video avatar on the left
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
       ctx.shadowBlur = 30;
@@ -259,11 +298,7 @@ export async function renderRemotionInDevice({
 
     ctx.restore();
 
-    // 3. Render Active Infographic Remotion Elements with Safe Zones & Brand Colors
-    const activeElements = bRollElements.filter(
-      (e) => currentFrame >= e.startFrame && currentFrame <= e.endFrame
-    );
-
+    // 4. Render Active Infographic Remotion Elements with Strict Safe Zones
     for (const elem of activeElements) {
       const elemElapsed = currentFrame - elem.startFrame;
       const elemAnim = Math.min(1, Math.max(0, elemElapsed / 8));
@@ -278,10 +313,10 @@ export async function renderRemotionInDevice({
 
       if (elem.type === 'chart') {
         const isSidePanel = isCircle || (activeCut && (activeCut.action === 'scale_to_circle' || activeCut.action === 'move_left'));
-        const cardX = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.06;
-        const cardY = isSidePanel ? canvas.height * 0.25 : canvas.height * 0.68;
-        const cardW = isSidePanel ? canvas.width * 0.46 : canvas.width * 0.88;
-        const cardH = isSidePanel ? 340 : 220;
+        const cardX = isSidePanel ? canvas.width * 0.50 : canvas.width * 0.06;
+        const cardY = isSidePanel ? canvas.height * 0.22 : canvas.height * 0.68;
+        const cardW = isSidePanel ? canvas.width * 0.44 : canvas.width * 0.88;
+        const cardH = isSidePanel ? 380 : 220;
 
         ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
         ctx.rotate(jitterRad);
@@ -301,7 +336,7 @@ export async function renderRemotionInDevice({
 
         const values: number[] = elem.props.values || [40, 65, 80, 95];
         const barWidth = (cardW - 40 - (values.length - 1) * 12) / values.length;
-        const maxBarH = isSidePanel ? 200 : 120;
+        const maxBarH = isSidePanel ? 240 : 120;
 
         values.forEach((val, idx) => {
           const barProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 2) / 10));
@@ -323,7 +358,7 @@ export async function renderRemotionInDevice({
 
       } else if (elem.type === 'tweet_card' || elem.type === 'kinetic_quote') {
         const cardX = canvas.width * 0.06;
-        const cardY = canvas.height * 0.05;
+        const cardY = canvas.height * 0.06; // Top safe zone (above face)
         const cardW = canvas.width * 0.88;
         const cardH = 140;
 
@@ -353,9 +388,10 @@ export async function renderRemotionInDevice({
         ctx.fillText(bodyText.substring(0, 80), cardX + 20, cardY + 98);
 
       } else if (elem.type === 'list') {
-        const cardX = canvas.width * 0.06;
-        const cardY = canvas.height * 0.68;
-        const cardW = canvas.width * 0.88;
+        const isSidePanel = isCircle || (activeCut && (activeCut.action === 'scale_to_circle' || activeCut.action === 'move_left'));
+        const cardX = isSidePanel ? canvas.width * 0.50 : canvas.width * 0.06;
+        const cardY = isSidePanel ? canvas.height * 0.22 : canvas.height * 0.68;
+        const cardW = isSidePanel ? canvas.width * 0.44 : canvas.width * 0.88;
         const items: string[] = elem.props.items || ['Высокая динамика', 'Инфографика', 'Рост Retention'];
 
         items.forEach((item, idx) => {
@@ -412,7 +448,7 @@ export async function renderRemotionInDevice({
       ctx.restore();
     }
 
-    // 4. Render Active Subtitle Overlay (Full HD 1080p Bold Typography)
+    // 5. Render Active Subtitle Overlay (Full HD 1080p Bold Typography)
     const subtitles = (cutSheet as any)?.subtitles || (cutSheet as any)?.segments || [];
     if (subtitles && Array.isArray(subtitles)) {
       const activeSub = subtitles.find(
@@ -463,13 +499,24 @@ export async function renderRemotionInDevice({
       videoTrack.requestFrame();
     }
 
+    // Wall-clock pacing to synchronize video track timeline with MediaRecorder audio track
+    if (hasAudioTrack) {
+      const expectedElapsedTime = targetTime * 1000;
+      const actualElapsedTime = Date.now() - renderStartTime;
+      const pacingDelay = expectedElapsedTime - actualElapsedTime;
+      if (pacingDelay > 5 && pacingDelay < 500) {
+        await new Promise((r) => setTimeout(r, pacingDelay));
+      }
+    }
+
     if (currentFrame % 10 === 0) {
-      const progress = Math.min(95, 35 + Math.round((currentFrame / totalFrames) * 60));
-      log(`Обработка кадра ${currentFrame}/${totalFrames} (1080p)...`, progress);
+      // Stage 4 maps from 40% to 95%
+      const progress = Math.min(95, 40 + Math.round((currentFrame / totalFrames) * 55));
+      log(`Обработка кадра ${currentFrame}/${totalFrames} (1080p Canvas)...`, progress, 4);
     }
   }
 
-  log('Рендеринг кадров завершен. Финализация контейнера...', 96);
+  log('Рендеринг кадров завершен. Финализация контейнера MP4...', 98, 5);
   recorder.stop();
 
   try {
@@ -482,7 +529,7 @@ export async function renderRemotionInDevice({
   await idb.set(cacheKey, rawVideoBlob, 'MediaBuffer');
 
   const videoUrl = URL.createObjectURL(rawVideoBlob);
-  log('Успешно скомпилировано в 1080p Full HD!', 100);
+  log('Успешно скомпилировано в 1080p Full HD!', 100, 5);
 
   return { videoBlob: rawVideoBlob, videoUrl };
 }

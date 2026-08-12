@@ -12,7 +12,7 @@ export const ListOverlay: React.FC<ElementProps> = ({ props, visualSeed, globalJ
 
   return (
     <div
-      className="absolute right-6 top-1/4 w-[430px] p-6 bg-slate-900/90 backdrop-blur-2xl border border-amber-500/30 rounded-3xl shadow-2xl text-white font-sans"
+      className="absolute right-[5%] top-[22%] w-[44%] p-6 bg-slate-900/90 backdrop-blur-2xl border border-amber-500/30 rounded-3xl shadow-2xl text-white font-sans"
       style={{
         transform: `rotate(${randomRotation}deg)`
       }}

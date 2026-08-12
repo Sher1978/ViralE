@@ -31,7 +31,7 @@ export const DynamicChart: React.FC<ElementProps> = ({ props, visualSeed, global
 
   return (
     <div
-      className="absolute right-8 top-1/4 w-[420px] p-6 bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 rounded-3xl shadow-2xl text-white font-sans overflow-hidden"
+      className="absolute right-[5%] top-[22%] w-[44%] p-6 bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 rounded-3xl shadow-2xl text-white font-sans overflow-hidden"
       style={{
         transform: `scale(${scale}) rotate(${randomRotation}deg)`,
         opacity

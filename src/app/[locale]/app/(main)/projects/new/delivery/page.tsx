@@ -54,6 +54,32 @@ function DeliveryPageContent() {
   const [showShotstackModal, setShowShotstackModal] = useState(false);
   const [renderMode, setRenderMode] = useState<'shotstack' | 'ffmpeg'>('ffmpeg');
   const [confirmEngineModal, setConfirmEngineModal] = useState<'remotion' | 'ffmpeg' | null>(null);
+  const [currentStageIndex, setCurrentStageIndex] = useState<number>(1);
+
+  const REAL_STAGES_RU = [
+    'Этап 1 из 5: Инициализация и подготовка медиапотока',
+    'Этап 2 из 5: Мультиагентный ИИ-анализ сценария (Director, Art, Animator)',
+    'Этап 3 из 5: Валидация Safe Zones и нормализация схемы монтажа',
+    'Этап 4 из 5: Покадровый детерминированный Canvas-рендер 1080p',
+    'Этап 5 из 5: Финализация контейнера MP4 и сохранение в CDN'
+  ];
+
+  const sendTelegramErrorAlert = async (stageIdx: number, stageTitle: string, errorDetails: string) => {
+    try {
+      await fetch('/api/telegram/notify-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          stage: stageTitle,
+          stageIndex: stageIdx,
+          error: errorDetails,
+          projectId
+        })
+      });
+    } catch (e) {
+      console.warn('[Delivery] Failed to send Telegram alert:', e);
+    }
+  };
   const isLaunchingRenderRef = useRef(false);
   const isCancelledRef = useRef(false);
   const ffmpegRef = useRef<any>(null);
@@ -617,10 +643,16 @@ function DeliveryPageContent() {
     if (selectedEngine === 'remotion') {
       try {
         setIsLoading(false);
-        setRenderStatus('Инициализация Remotion Engine...');
+        // Stage 1: Media Initialization (0-10%)
+        setCurrentStageIndex(1);
         setRenderProgress(5);
+        setRenderStatus('Инициализация Remotion Engine и подгрузка видео-исходника...');
 
-        // Always request fresh cutSheet from multi-agent pipeline when generating
+        // Stage 2: Multi-agent AI Analysis (10-35%)
+        setCurrentStageIndex(2);
+        setRenderProgress(12);
+        setRenderStatus('Запуск Мультиагентного ИИ-анализа сценария (Director -> Art -> Animator)...');
+
         let cutSheet: RemotionArchitectCutSheet | null = null;
         addSystemLog('Remotion: Запуск мультиагентного конвейера (/api/ai/remotion-architect)...');
         try {
@@ -642,27 +674,55 @@ function DeliveryPageContent() {
               transcriptData,
               presetKey: userBrandDna.stylePreset || 'minimal_expert',
               userBrandDna,
+              projectId,
               userIntent: 'High Retention dynamic motion edit with Safe Zones'
             })
           });
-          if (cutRes.ok) {
-            const cutData = await cutRes.json();
-            if (cutData.cutSheet) {
-              cutSheet = cutData.cutSheet;
-              manifestData.remotionCutSheet = cutSheet;
-              addSystemLog('Remotion: Схема монтажа успешно создана Мультиагентским конвейером.');
-              if (projectId) {
-                projectService.updateLatestVersionManifest(projectId, manifestData).catch(() => {});
-              }
-            }
+
+          if (!cutRes.ok) {
+            const errData = await cutRes.json().catch(() => ({}));
+            const errorMsg = errData.error || `ОШИБКА ЭТАПА 2: Ошибка сервера ИИ (${cutRes.status} ${cutRes.statusText})`;
+            setError(errorMsg);
+            sendTelegramErrorAlert(2, REAL_STAGES_RU[1], errorMsg);
+            setIsLoading(false);
+            isLaunchingRenderRef.current = false;
+            return;
           }
-        } catch (errCut) {
+
+          const cutData = await cutRes.json();
+          if (cutData.cutSheet) {
+            cutSheet = cutData.cutSheet;
+            manifestData.remotionCutSheet = cutSheet;
+            addSystemLog('Remotion: Схема монтажа успешно создана Мультиагентским конвейером.');
+            if (projectId) {
+              projectService.updateLatestVersionManifest(projectId, manifestData).catch(() => {});
+            }
+          } else if (cutData.error) {
+            const errorMsg = cutData.error;
+            setError(errorMsg);
+            sendTelegramErrorAlert(2, REAL_STAGES_RU[1], errorMsg);
+            setIsLoading(false);
+            isLaunchingRenderRef.current = false;
+            return;
+          }
+        } catch (errCut: any) {
           console.warn('[Delivery] Multi-agent cutSheet fetch failed:', errCut);
+          const errorMsg = `ОШИБКА ЭТАПА 2: Не удалось получить ответ от нейросети. Детали: ${errCut.message || errCut}`;
+          setError(errorMsg);
+          sendTelegramErrorAlert(2, REAL_STAGES_RU[1], errorMsg);
+          setIsLoading(false);
+          isLaunchingRenderRef.current = false;
+          return;
         }
 
         if (!cutSheet) {
           cutSheet = manifestData?.remotionCutSheet || null;
         }
+
+        // Stage 3: Safe Zones Validation & Enrichment (35-40%)
+        setCurrentStageIndex(3);
+        setRenderProgress(35);
+        setRenderStatus('Проверка Safe Zones и обогащение схемы джиттером...');
 
         let speakerBlob: Blob | string | null = manifestData?.aRollUrl || null;
         if (!speakerBlob || (typeof speakerBlob === 'string' && speakerBlob.startsWith('blob:'))) {
@@ -670,18 +730,34 @@ function DeliveryPageContent() {
           if (cached instanceof Blob) speakerBlob = cached;
         }
 
+        if (!speakerBlob) {
+          const errorMsg = 'ОШИБКА ЭТАПА 1: Исходное видео спикера (A-Roll) не найдено в памяти устройства или БД.';
+          setError(errorMsg);
+          sendTelegramErrorAlert(1, REAL_STAGES_RU[0], errorMsg);
+          setIsLoading(false);
+          isLaunchingRenderRef.current = false;
+          return;
+        }
+
+        // Stage 4 & 5: Device Rendering (40-100%)
         if (speakerBlob && cutSheet) {
+          setCurrentStageIndex(4);
+          setRenderProgress(40);
+          setRenderStatus('Запуск покадрового рендеринга 1080p Canvas...');
+
           const { videoBlob, videoUrl } = await renderRemotionInDevice({
             projectId: projectId || 'demo',
             versionId: ver.id,
             speakerVideoBlobOrUrl: speakerBlob,
             cutSheet,
-            onProgress: (p, msg) => {
+            onProgress: (p, msg, sIdx) => {
               setRenderProgress(p);
               setRenderStatus(msg);
+              if (sIdx) setCurrentStageIndex(sIdx);
             }
           });
 
+          setCurrentStageIndex(5);
           setRemotionOutputUrl(videoUrl);
           setJob({ id: 'local-remotion-render', status: 'completed', output_url: videoUrl, progress: 100 } as any);
           setRenderProgress(100);
@@ -691,8 +767,13 @@ function DeliveryPageContent() {
           return;
         }
       } catch (remotionErr: any) {
-        console.warn('[Delivery] Remotion render failed, safely falling back to standard FFmpeg pipeline:', remotionErr);
-        addSystemLog(`Remotion warning: ${remotionErr.message || remotionErr}. Восстановление через FFmpeg...`);
+        const errorText = `ОШИБКА ЭТАПА ${currentStageIndex}: ${remotionErr.message || String(remotionErr)}`;
+        console.error('[Delivery] Remotion render failed:', remotionErr);
+        setError(errorText);
+        sendTelegramErrorAlert(currentStageIndex, REAL_STAGES_RU[currentStageIndex - 1] || 'Remotion Engine', errorText);
+        setIsLoading(false);
+        isLaunchingRenderRef.current = false;
+        return;
       }
     }
 
@@ -1297,11 +1378,37 @@ function DeliveryPageContent() {
           return;
         }
 
-        // Shotstack cloud rendering disabled per user request — always use fast local FFmpeg engine
-        addSystemLog('Запуск локального FFmpeg сборщика...');
-        setRenderMode('ffmpeg');
-        setShowShotstackModal(false);
-        handleClientRender(verData);
+        // Check if a completed render exists in cache first
+        const remotionCacheKey = `final_render_${projectId}_${verData.id}_remotion`;
+        const ffmpegCacheKey = `final_render_${projectId}_${verData.id}_ffmpeg_subs`;
+        
+        const cachedRemotion = await idb.get(remotionCacheKey, 'MediaBuffer');
+        const cachedFfmpeg = await idb.get(ffmpegCacheKey, 'MediaBuffer');
+        
+        if (cachedRemotion instanceof Blob) {
+          const url = URL.createObjectURL(cachedRemotion);
+          setRemotionOutputUrl(url);
+          setActiveEngine('remotion');
+          setShowRemotion(true);
+          setJob({ id: 'local-remotion-render', status: 'completed', output_url: url, progress: 100 } as any);
+          setRenderProgress(100);
+          setRenderStatus('Готово (Remotion Engine из кеша)!');
+          return;
+        } else if (cachedFfmpeg instanceof Blob) {
+          const url = URL.createObjectURL(cachedFfmpeg);
+          setFfmpegOutputUrl(url);
+          setActiveEngine('ffmpeg');
+          setShowRemotion(false);
+          setJob({ id: 'local-ffmpeg-render', status: 'completed', output_url: url, progress: 100 } as any);
+          setRenderProgress(100);
+          setRenderStatus('Готово (Standard FFmpeg из кеша)!');
+          return;
+        }
+
+        // NO AUTO-LAUNCH: Wait for explicit user engine selection!
+        addSystemLog('Ожидание выбора пользователем типа сборки...');
+        setRenderStatus('Выберите тип сборки видео для начала генерации');
+        setConfirmEngineModal('remotion'); // Prompt engine selection modal!
 
       } catch (err: any) {
         console.error('[Delivery] Auto-launch failed:', err);
@@ -1515,7 +1622,13 @@ function DeliveryPageContent() {
 
         <div className="text-4xl">{job?.status === 'completed' ? '🎬' : '⚡'}</div>
         <div>
-          <h1 className="text-2xl font-black tracking-tighter uppercase text-white min-h-[2rem]">
+          {job?.status !== 'completed' && (
+            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 font-black text-xs uppercase tracking-wider mb-2 shadow-lg drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]">
+              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+              <span>{REAL_STAGES_RU[currentStageIndex - 1] || REAL_STAGES_RU[0]}</span>
+            </div>
+          )}
+          <h1 className="text-lg font-bold tracking-tight uppercase text-white/90 min-h-[2rem]">
             {job?.status === 'completed' ? t('badge') : currentStatusMsg}
           </h1>
           <p className="text-[11px] text-white/40 mt-1 font-bold uppercase tracking-widest">
