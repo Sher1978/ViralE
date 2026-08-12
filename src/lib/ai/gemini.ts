@@ -143,7 +143,6 @@ export function getModel(
     "gemini-3.5-flash",
     "gemini-2.5-pro",
     "gemini-3.5-pro",
-    "gemini-2.0-flash",
   ];
 
   // Return a proxy to intercept calls and inject automatic fallbacks on API errors
