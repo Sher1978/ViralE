@@ -768,7 +768,7 @@ function DeliveryPageContent() {
         setRenderStatus('Проверка Safe Zones и авто-сдвиг спикера при оверлеях...');
 
         const { validateRemotionCutSheet } = await import('@/lib/diagnostics/remotionTestRunner');
-        const validationReport = validateRemotionCutSheet(cutSheet);
+        const validationReport = validateRemotionCutSheet(cutSheet!);
         
         setRenderProgress(38);
         setRenderStatus('Обогащение элементов математическим джиттером (visualSeed)...');
