@@ -26,18 +26,38 @@ export async function runCinematicMultiAgentPipeline({
   const openaiKey = process.env.OPENAI_API_KEY;
 
   if (groqKey || geminiKey || openaiKey) {
+    const activeKey = groqKey || geminiKey || openaiKey!;
     try {
-      // 1. PASS 1: DIRECTOR AGENT (Semantic & Emotional Map + RAG Few-Shot Video Scores)
-      const directorOutput = await runDirectorAgent(transcriptData, userIntent, groqKey || geminiKey || openaiKey!);
+      // 1. PASS 1: DIRECTOR AGENT
+      const directorOutput = await runDirectorAgent(transcriptData, userIntent, activeKey);
 
-      // 2. PASS 2: ART DIRECTOR AGENT (Visual Concepts & Dynamic Medium Rotation)
-      const artDirectorOutput = await runArtDirectorAgent(directorOutput, selectedStyle, userBrandDna, groqKey || geminiKey || openaiKey!);
+      let attempts = 0;
+      let finalCutSheet: any = null;
 
-      // 3. PASS 3: REMOTION ANIMATOR AGENT (Frame-Accurate Hyperframes & Physics)
-      const cutSheet = await runAnimatorAgent(directorOutput, artDirectorOutput, selectedStyle, fps, groqKey || geminiKey || openaiKey!);
+      while (attempts < 2) {
+        attempts++;
+        // 2. PASS 2: ART DIRECTOR AGENT
+        const artDirectorOutput = await runArtDirectorAgent(directorOutput, selectedStyle, userBrandDna, activeKey);
 
-      if (cutSheet && cutSheet.cameraCuts && cutSheet.bRollElements) {
-        return processAndEnrichCutSheet(cutSheet, selectedStyle, fps);
+        // 3. PASS 3: REMOTION ANIMATOR AGENT
+        const cutSheet = await runAnimatorAgent(directorOutput, artDirectorOutput, selectedStyle, fps, activeKey);
+
+        if (cutSheet && cutSheet.cameraCuts && cutSheet.bRollElements) {
+          // 4. PASS 4: QA INSPECTOR AGENT (Validation & Self-Correction)
+          const qaResult = await runQaInspectorAgent(cutSheet, transcriptData);
+          console.log(`[CinematicPipeline] Pass 4 QA Inspector Result (Attempt ${attempts}):`, qaResult);
+
+          if (qaResult.isValid || attempts >= 2) {
+            finalCutSheet = cutSheet;
+            break;
+          } else {
+            console.warn(`[CinematicPipeline] QA rejected cutSheet due to issues: ${qaResult.issues.join(', ')}. Retrying generation...`);
+          }
+        }
+      }
+
+      if (finalCutSheet) {
+        return processAndEnrichCutSheet(finalCutSheet, selectedStyle, fps);
       }
     } catch (err) {
       console.warn('[CinematicPipeline] Multi-agent execution failed, falling back to smart procedural generator:', err);
@@ -280,6 +300,61 @@ async function callLlmApi(systemPrompt: string, apiKey: string): Promise<any> {
   }
 
   return null;
+}
+
+/**
+ * PASS 4: QA Inspector Agent (Quality Assurance & Automatic Validation)
+ */
+async function runQaInspectorAgent(cutSheet: any, transcript: any[]): Promise<{ isValid: boolean; score: number; issues: string[] }> {
+  const issues: string[] = [];
+
+  if (!cutSheet || !Array.isArray(cutSheet.bRollElements)) {
+    return { isValid: false, score: 0, issues: ['Схема монтажа пуста или не содержит элементов'] };
+  }
+
+  // 1. Validate element content completeness
+  cutSheet.bRollElements.forEach((elem: any, idx: number) => {
+    if (elem.type === 'list') {
+      if (!elem.props?.items || !Array.isArray(elem.props.items) || elem.props.items.length === 0) {
+        issues.push(`Элемент #${idx + 1} (list) не содержит пунктов`);
+      }
+    } else if (elem.type === 'chart') {
+      if (!elem.props?.values || !Array.isArray(elem.props.values) || elem.props.values.length === 0) {
+        issues.push(`Элемент #${idx + 1} (chart) не содержит значений`);
+      }
+    } else if (elem.type === 'stat_callout') {
+      if (!elem.props?.statValue) {
+        issues.push(`Элемент #${idx + 1} (stat_callout) не содержит числового значения`);
+      }
+    } else if (elem.type === 'kinetic_quote' || elem.type === 'tweet_card') {
+      if (!elem.props?.text && !elem.props?.title) {
+        issues.push(`Элемент #${idx + 1} (quote) не содержит текста цитаты`);
+      }
+    }
+  });
+
+  // 2. Validate timing overlaps (no two full-screen elements at the exact same second)
+  for (let i = 0; i < cutSheet.bRollElements.length; i++) {
+    for (let j = i + 1; j < cutSheet.bRollElements.length; j++) {
+      const a = cutSheet.bRollElements[i];
+      const b = cutSheet.bRollElements[j];
+      const aStart = parseTimeToSeconds(a.startTime);
+      const aEnd = parseTimeToSeconds(a.endTime);
+      const bStart = parseTimeToSeconds(b.startTime);
+      const bEnd = parseTimeToSeconds(b.endTime);
+
+      if (Math.max(aStart, bStart) < Math.min(aEnd, bEnd)) {
+        issues.push(`Перекрытие по времени между элементами ${a.id || i} и ${b.id || j}`);
+      }
+    }
+  }
+
+  const score = Math.max(0, 100 - issues.length * 25);
+  return {
+    isValid: issues.length === 0,
+    score,
+    issues
+  };
 }
 
 /**
