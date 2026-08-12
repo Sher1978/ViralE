@@ -7,8 +7,20 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // [REVERSIBLE OVERRIDE] Set to true to route all Gemini calls to Groq
 const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
-export const FAST_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-exp";
-export const PRO_MODEL = process.env.GEMINI_MODEL || "gemini-2.0-flash-exp";
+export function normalizeModelName(rawName?: string): string {
+  if (!rawName || typeof rawName !== 'string') return 'gemini-2.0-flash-exp';
+  let name = rawName.trim();
+  if (name.startsWith('models/')) {
+    name = name.replace(/^models\//i, '');
+  }
+  if (!name.toLowerCase().startsWith('gemini-')) {
+    name = `gemini-${name}`;
+  }
+  return name;
+}
+
+export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.0-flash-exp");
+export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.0-flash-exp");
 
 export function getModel(
   tier: 'fast' | 'pro' = 'fast', 
@@ -132,18 +144,19 @@ export function getModel(
     } as any;
   }
 
-  const baseModelName = tier === 'fast' ? FAST_MODEL : PRO_MODEL;
+  const baseModelName = normalizeModelName(tier === 'fast' ? FAST_MODEL : PRO_MODEL);
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   
   // List of fallback models to try (preferring Flash family 3.5 -> 2.5 -> 2.0-flash-exp -> 1.5-flash)
-  const fallbackModels = Array.from(new Set([
+  const rawCandidates = [
     baseModelName,
     "gemini-3.5-flash",
     "gemini-2.5-flash",
     "gemini-2.0-flash-exp",
     "gemini-1.5-flash-latest",
     "gemini-1.5-flash"
-  ]));
+  ];
+  const fallbackModels = Array.from(new Set(rawCandidates.map(normalizeModelName)));
 
   // Return a proxy to intercept calls and inject automatic fallbacks on API errors
   const baseModel = client.getGenerativeModel({ 
