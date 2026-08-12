@@ -119,7 +119,7 @@ export async function POST(req: NextRequest) {
       genAIInstance: GoogleGenerativeAI,
       parts: any[]
     ) => {
-      const models = ['gemini-1.5-flash', 'gemini-1.5-pro'];
+      const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
       let lastError: any = null;
       for (const modelName of models) {
         try {
