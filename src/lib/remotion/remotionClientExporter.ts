@@ -468,15 +468,21 @@ export async function renderRemotionInDevice({
     }
   }
 
-  log('Рендеринг кадров Canvas завершен (95%). Начинаем сведение звука...', 96, 5);
+  log('Рендеринг кадров Canvas завершен. Финализация видео...', 96, 5);
   recorder.stop();
 
   const rawCanvasVideoBlob = await renderPromise;
 
   let finalBlob = rawCanvasVideoBlob;
   try {
-    log('Сведение оригинальной звуковой дорожки через FFmpeg...', 98, 5);
-    const ffmpeg = await getFFmpeg();
+    log('Сведение оригинальной звуковой дорожки через FFmpeg...', 97, 5);
+
+    // FFmpeg load with 60s timeout to prevent infinite hang at 97%
+    const ffmpegLoadPromise = getFFmpeg();
+    const ffmpegTimeoutPromise = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('FFmpeg load timeout (60s) — skipping audio mux')), 60000)
+    );
+    const ffmpeg = await Promise.race([ffmpegLoadPromise, ffmpegTimeoutPromise]);
     const fetchFile = await getFetchFile();
 
     const canvasVideoData = await fetchFile(rawCanvasVideoBlob);
@@ -485,30 +491,25 @@ export async function renderRemotionInDevice({
     await ffmpeg.writeFile('canvas_video.mp4', canvasVideoData);
     await ffmpeg.writeFile('speaker_audio.mp4', speakerAudioData);
 
-    await ffmpeg.exec([
-      '-i',
-      'canvas_video.mp4',
-      '-i',
-      'speaker_audio.mp4',
-      '-filter:v',
-      `setpts=N/(${fps}*TB)`,
-      '-r',
-      `${fps}`,
-      '-c:v',
-      'libx264',
-      '-preset',
-      'ultrafast',
-      '-crf',
-      '18',
-      '-c:a',
-      'aac',
-      '-map',
-      '0:v:0',
-      '-map',
-      '1:a:0',
+    // FFmpeg exec with 120s timeout
+    const execPromise = ffmpeg.exec([
+      '-i', 'canvas_video.mp4',
+      '-i', 'speaker_audio.mp4',
+      '-filter:v', `setpts=N/(${fps}*TB)`,
+      '-r', `${fps}`,
+      '-c:v', 'libx264',
+      '-preset', 'ultrafast',
+      '-crf', '18',
+      '-c:a', 'aac',
+      '-map', '0:v:0',
+      '-map', '1:a:0',
       '-shortest',
       'output_remotion.mp4'
     ]);
+    const execTimeout = new Promise<never>((_, reject) =>
+      setTimeout(() => reject(new Error('FFmpeg exec timeout (120s)')), 120000)
+    );
+    await Promise.race([execPromise, execTimeout]);
 
     const outData = await ffmpeg.readFile('output_remotion.mp4');
     if (outData && outData.byteLength > 0) {
@@ -522,7 +523,9 @@ export async function renderRemotionInDevice({
       await ffmpeg.deleteFile('output_remotion.mp4');
     } catch (e) {}
   } catch (ffmpegErr) {
-    console.warn('[RemotionExporter] FFmpeg audio muxing fallback warning:', ffmpegErr);
+    console.warn('[RemotionExporter] FFmpeg audio muxing skipped (timeout or error):', ffmpegErr);
+    log('Звук: FFmpeg недоступен — сохраняем видео без аудиомуксинга...', 98, 5);
+    // finalBlob remains rawCanvasVideoBlob — video still plays, just muxed differently
   }
 
   const cacheKey = `final_render_${projectId}_${versionId}_remotion_v6`;

@@ -131,7 +131,7 @@ function DeliveryPageContent() {
     setDisplayProgress(renderProgress);
   }, [renderProgress]);
 
-  // Smoothly increment visible progress between 30% and 92% to show the pipeline is alive
+  // Smoothly increment visible progress between 30% and 99% to show the pipeline is alive
   useEffect(() => {
     if (job?.status !== 'processing' && job?.status !== 'queued') {
       return;
@@ -139,8 +139,12 @@ function DeliveryPageContent() {
 
     const interval = setInterval(() => {
       setDisplayProgress(prev => {
+        // Slow down significantly above 95% to avoid false sense of completion
         if (prev >= 30 && prev < 92) {
-          return prev + 1; // Increment by 1%
+          return prev + 1;
+        }
+        if (prev >= 92 && prev < 99) {
+          return prev + 0.2; // Very slow crawl — FFmpeg/canvas encoding in progress
         }
         return prev;
       });
