@@ -149,102 +149,43 @@ export async function renderRemotionInDevice({
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-    // 2. Determine active overlays and check if side panel layout is required
-    const activeElements = bRollElements.filter(
-      (e) => currentFrame >= e.startFrame && currentFrame <= e.endFrame
-    );
-    const hasActiveSideCard = activeElements.some(
-      (e) => e.type === 'chart' || e.type === 'list'
-    );
+    // 2. Active Infographic Elements (with Strict Empty Content Validation)
+    const activeElements = bRollElements.filter((e) => {
+      if (currentFrame < e.startFrame || currentFrame > e.endFrame) return false;
+      if (e.type === 'list' && (!e.props?.items || !Array.isArray(e.props.items) || e.props.items.length === 0)) return false;
+      if (e.type === 'chart' && (!e.props?.values || !Array.isArray(e.props.values) || e.props.values.length === 0)) return false;
+      if (e.type === 'stat_callout' && !e.props?.statValue) return false;
+      if ((e.type === 'kinetic_quote' || e.type === 'tweet_card') && !e.props?.text && !e.props?.title) return false;
+      return true;
+    });
+
+    const hasActiveBRollSlide = activeElements.length > 0;
 
     // 3. Dynamic Z-Axis Live Camera Motion for Speaker Video
-    let activeCut = cameraCuts.find(
+    const activeCut = cameraCuts.find(
       (c) => currentFrame >= c.startFrame && currentFrame < c.startFrame + c.durationFrames
     );
-
-    // Auto-coupling fallback: if side card is active, force scale_to_circle cut!
-    const firstSideCard = activeElements.find(
-      (e) => e.type === 'chart' || e.type === 'list'
-    );
-    if (hasActiveSideCard && (!activeCut || (activeCut.action !== 'scale_to_circle' && activeCut.action !== 'move_left'))) {
-      activeCut = {
-        startTime: `${targetTime}s`,
-        startFrame: firstSideCard ? firstSideCard.startFrame : currentFrame,
-        duration: 3,
-        durationFrames: 90,
-        action: 'scale_to_circle',
-        targetScale: 0.45
-      };
-    }
 
     ctx.save();
 
     let targetScale = 1.0;
     let targetX = 0;
     let targetY = 0;
-    let isCircle = false;
-    let radius = 0;
-    let internalScale = 1.0;
 
-    if (activeCut) {
+    if (activeCut && !hasActiveBRollSlide) {
       const cutElapsed = currentFrame - activeCut.startFrame;
-      const animProgress = Math.min(1, Math.max(0, cutElapsed / 10));
-      const ease = 1 - Math.pow(1 - animProgress, 3);
-
       if (activeCut.action === 'micro_zoom') {
         const durationFr = activeCut.durationFrames || 100;
         const microProgress = Math.min(1, cutElapsed / durationFr);
         targetScale = 1.0 + 0.03 * microProgress;
-
       } else if (activeCut.action === 'punch_zoom') {
         const punchProgress = Math.min(1, Math.max(0, cutElapsed / 5));
         targetScale = 1.0 + 0.12 * (1 - Math.pow(1 - punchProgress, 4));
-
-      } else if (activeCut.action === 'scale_to_circle') {
-        targetScale = 0.45 * ease + 1.0 * (1 - ease);
-        targetX = (canvas.width * 0.28) * ease + (canvas.width * 0.5) * (1 - ease);
-        targetY = (canvas.height * 0.45) * ease + (canvas.height * 0.5) * (1 - ease);
-        const maxRadius = Math.max(canvas.width, canvas.height);
-        const finalRadius = Math.min(canvas.width, canvas.height) * 0.22;
-        radius = finalRadius * ease + maxRadius * (1 - ease);
-        internalScale = 1.0 + 0.5 * ease;
-        isCircle = true;
-
-      } else if (activeCut.action === 'move_left') {
-        targetScale = 0.6 * ease + 1.0 * (1 - ease);
-        targetX = (-canvas.width * 0.2) * ease;
       }
     }
 
-    // Render speaker video
-    if (isCircle && radius > 0) {
-      ctx.save();
-      const progress = Math.max(0, 1 - (radius / Math.min(canvas.width, canvas.height)));
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-      ctx.shadowBlur = 30 * progress;
-      ctx.shadowOffsetY = 10 * progress;
-      ctx.beginPath();
-      ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
-      ctx.clip();
-
-      const vidW = canvas.width * targetScale * internalScale;
-      const vidH = canvas.height * targetScale * internalScale;
-      const vidX = targetX - vidW / 2;
-      const vidY = targetY - vidH / 2;
-      ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
-      ctx.restore();
-
-      ctx.save();
-      ctx.shadowColor = activeStyle.colors.accent;
-      ctx.shadowBlur = 20 * progress;
-      ctx.beginPath();
-      ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
-      ctx.lineWidth = 10 * progress;
-      ctx.strokeStyle = activeStyle.colors.accent;
-      if (ctx.lineWidth > 0) ctx.stroke();
-      ctx.restore();
-
-    } else if (activeCut?.action !== 'pip_right') {
+    // Render Speaker Video (Full screen monologue)
+    if (!hasActiveBRollSlide) {
       if (targetX !== 0 || targetY !== 0 || targetScale !== 1.0) {
         const vidW = canvas.width * targetScale;
         const vidH = canvas.height * targetScale;
@@ -258,178 +199,180 @@ export async function renderRemotionInDevice({
 
     ctx.restore();
 
-    // 4. Render Active Infographic Remotion Elements with Strict Safe Zones
-    for (const elem of activeElements) {
-      const elemElapsed = currentFrame - elem.startFrame;
-      const elemAnim = Math.min(1, Math.max(0, elemElapsed / 15));
-      const easeElem = 1 - Math.pow(1 - elemAnim, 3);
-      const scaleAnim = 0.8 + 0.2 * easeElem;
-      const opacityAnim = easeElem;
+    // 4. FULL-SCREEN B-ROLL SLIDES ENGINE (Replaces Speaker during infographic moments)
+    if (hasActiveBRollSlide) {
+      for (const elem of activeElements) {
+        const elemElapsed = currentFrame - elem.startFrame;
+        const elemAnim = Math.min(1, Math.max(0, elemElapsed / 12));
+        const easeElem = 1 - Math.pow(1 - elemAnim, 3);
+        const scaleAnim = 0.85 + 0.15 * easeElem;
+        const opacityAnim = easeElem;
 
-      const seedJitter = (elem.visualSeed || 42) % 9 - 4;
-      const jitterRad = (seedJitter * activeStyle.jitterRangeDeg * Math.PI) / 180;
+        ctx.save();
+        ctx.globalAlpha = opacityAnim;
 
-      ctx.save();
-      ctx.globalAlpha = opacityAnim;
+        // Full-screen Cinematic Dark Background Overlay
+        const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+        bgGrad.addColorStop(0, 'rgba(7, 10, 18, 0.96)');
+        bgGrad.addColorStop(0.5, 'rgba(15, 23, 42, 0.98)');
+        bgGrad.addColorStop(1, 'rgba(3, 7, 18, 0.96)');
+        ctx.fillStyle = bgGrad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-      if (elem.type === 'chart') {
-        const isSidePanel = isCircle || (activeCut && (activeCut.action === 'scale_to_circle' || activeCut.action === 'move_left'));
-        const cardX = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.06;
-        const cardY = isSidePanel ? canvas.height * 0.20 : canvas.height * 0.65;
-        const cardW = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.88;
-        const cardH = 440;
-
-        ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
-        ctx.rotate(jitterRad);
-        ctx.scale(scaleAnim, scaleAnim);
-        ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
-
-        ctx.fillStyle = activeStyle.colors.cardBg || 'rgba(15, 23, 42, 0.95)';
+        // Accent Ambient Glow Ring
+        ctx.save();
+        ctx.shadowColor = activeStyle.colors.accent;
+        ctx.shadowBlur = 80;
+        ctx.beginPath();
+        ctx.arc(canvas.width / 2, canvas.height * 0.45, 280, 0, Math.PI * 2);
         ctx.strokeStyle = activeStyle.colors.accent;
-        ctx.lineWidth = 3;
-        ctx.shadowColor = 'rgba(0, 0, 0, 0.5)';
-        ctx.shadowBlur = 20;
-        safeRoundRect(cardX, cardY, cardW, cardH, 24);
-        ctx.fill();
+        ctx.lineWidth = 2;
         ctx.stroke();
+        ctx.restore();
 
-        ctx.shadowColor = 'transparent';
-        ctx.fillStyle = activeStyle.colors.text;
-        ctx.font = '900 32px "Outfit", "Roboto", sans-serif';
-        ctx.fillText(elem.props.title || 'Рост удержания', cardX + 28, cardY + 52);
+        const cardX = canvas.width * 0.08;
+        const cardW = canvas.width * 0.84;
 
-        const values: number[] = elem.props.values || [40, 65, 80, 95];
-        const barWidth = (cardW - 56 - (values.length - 1) * 16) / values.length;
-        const maxBarH = 260;
+        if (elem.type === 'chart') {
+          const cardY = canvas.height * 0.24;
+          const cardH = 680;
 
-        values.forEach((val, idx) => {
-          const barProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 2) / 10));
-          const barH = (val / 100) * maxBarH * barProgress;
-          const bx = cardX + 28 + idx * (barWidth + 16);
-          const by = cardY + cardH - 32 - barH;
+          ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
+          ctx.scale(scaleAnim, scaleAnim);
+          ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
 
-          const barGrad = ctx.createLinearGradient(bx, by, bx, by + barH);
-          barGrad.addColorStop(0, activeStyle.colors.accent);
-          barGrad.addColorStop(1, activeStyle.colors.secondary);
-          ctx.fillStyle = barGrad;
-          safeRoundRect(bx, by, barWidth, Math.max(10, barH), 10);
-          ctx.fill();
-
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = 'bold 22px "Outfit", sans-serif';
-          ctx.textAlign = 'center';
-          ctx.fillText(`${val}%`, bx + barWidth / 2, by - 10);
-          ctx.textAlign = 'left';
-        });
-
-      } else if (elem.type === 'list') {
-        const isSidePanel = isCircle || (activeCut && (activeCut.action === 'scale_to_circle' || activeCut.action === 'move_left'));
-        const cardX = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.06;
-        const cardY = isSidePanel ? canvas.height * 0.20 : canvas.height * 0.65;
-        const cardW = isSidePanel ? canvas.width * 0.48 : canvas.width * 0.88;
-        const items: string[] = elem.props.items || ['Высокая динамика', 'Инфографика', 'Рост Retention'];
-
-        // Title Header for List
-        if (elem.props.title) {
-          ctx.fillStyle = '#FFFFFF';
-          ctx.font = '900 32px "Outfit", "Roboto", sans-serif';
-          ctx.fillText(elem.props.title, cardX + 8, cardY - 16);
-        }
-
-        items.forEach((item, idx) => {
-          ctx.save();
-          const itemProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 4) / 12));
-          const easeItem = 1 - Math.pow(1 - itemProgress, 3);
-          const iy = cardY + idx * 82;
-          const ix = cardX + (1 - easeItem) * 50;
-
-          ctx.globalAlpha = opacityAnim * easeItem;
-
-          ctx.translate(ix + cardW / 2, iy + 34);
-          ctx.rotate(jitterRad * 0.3);
-          ctx.translate(-(ix + cardW / 2), -(iy + 34));
-
-          ctx.fillStyle = activeStyle.colors.cardBg || 'rgba(15, 23, 42, 0.95)';
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
           ctx.strokeStyle = activeStyle.colors.accent;
-          ctx.lineWidth = 3;
-          ctx.shadowColor = 'rgba(0,0,0,0.4)';
-          ctx.shadowBlur = 16;
-          safeRoundRect(ix, iy, cardW, 70, 18);
+          ctx.lineWidth = 4;
+          safeRoundRect(cardX, cardY, cardW, cardH, 32);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = activeStyle.colors.text;
+          ctx.font = '900 42px "Outfit", "Roboto", sans-serif';
+          ctx.fillText(elem.props.title || 'КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ', cardX + 36, cardY + 70);
+
+          const values: number[] = elem.props.values || [40, 65, 85, 98];
+          const barWidth = (cardW - 72 - (values.length - 1) * 20) / values.length;
+          const maxBarH = 420;
+
+          values.forEach((val, idx) => {
+            const barProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 2) / 10));
+            const barH = (val / 100) * maxBarH * barProgress;
+            const bx = cardX + 36 + idx * (barWidth + 20);
+            const by = cardY + cardH - 45 - barH;
+
+            const barGrad = ctx.createLinearGradient(bx, by, bx, by + barH);
+            barGrad.addColorStop(0, activeStyle.colors.accent);
+            barGrad.addColorStop(1, activeStyle.colors.secondary);
+            ctx.fillStyle = barGrad;
+            safeRoundRect(bx, by, barWidth, Math.max(12, barH), 14);
+            ctx.fill();
+
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '900 28px "Outfit", sans-serif';
+            ctx.textAlign = 'center';
+            ctx.fillText(`${val}%`, bx + barWidth / 2, by - 14);
+            ctx.textAlign = 'left';
+          });
+
+        } else if (elem.type === 'list') {
+          const cardY = canvas.height * 0.22;
+          const items: string[] = elem.props.items || [];
+
+          // List Header
+          if (elem.props.title) {
+            ctx.fillStyle = '#FFFFFF';
+            ctx.font = '900 44px "Outfit", "Roboto", sans-serif';
+            ctx.fillText(elem.props.title.toUpperCase(), cardX, cardY - 24);
+          }
+
+          items.forEach((item, idx) => {
+            ctx.save();
+            const itemProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 4) / 12));
+            const easeItem = 1 - Math.pow(1 - itemProgress, 3);
+            const iy = cardY + idx * 105;
+            const ix = cardX + (1 - easeItem) * 60;
+
+            ctx.globalAlpha = opacityAnim * easeItem;
+
+            ctx.translate(ix + cardW / 2, iy + 44);
+            ctx.scale(scaleAnim, scaleAnim);
+            ctx.translate(-(ix + cardW / 2), -(iy + 44));
+
+            ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+            ctx.strokeStyle = activeStyle.colors.accent;
+            ctx.lineWidth = 4;
+            safeRoundRect(ix, iy, cardW, 88, 24);
+            ctx.fill();
+            ctx.stroke();
+
+            ctx.fillStyle = activeStyle.colors.accent;
+            ctx.font = '900 36px sans-serif';
+            ctx.fillText('✓', ix + 32, iy + 56);
+
+            ctx.fillStyle = activeStyle.colors.text;
+            ctx.font = '900 32px "Outfit", "Roboto", sans-serif';
+            ctx.fillText(item, ix + 85, iy + 56);
+            ctx.restore();
+          });
+
+        } else if (elem.type === 'stat_callout') {
+          const cardY = canvas.height * 0.30;
+          const cardH = 420;
+
+          ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
+          ctx.scale(scaleAnim, scaleAnim);
+          ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
+
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
+          ctx.strokeStyle = activeStyle.colors.accent;
+          ctx.lineWidth = 4;
+          ctx.shadowColor = activeStyle.colors.accent;
+          ctx.shadowBlur = 32;
+          safeRoundRect(cardX, cardY, cardW, cardH, 36);
           ctx.fill();
           ctx.stroke();
 
           ctx.shadowColor = 'transparent';
           ctx.fillStyle = activeStyle.colors.accent;
-          ctx.font = '900 30px sans-serif';
-          ctx.fillText('✓', ix + 24, iy + 45);
+          ctx.font = '900 110px "Outfit", "Roboto", sans-serif';
+          ctx.fillText(elem.props.statValue || '+350%', cardX + 48, cardY + 160);
 
           ctx.fillStyle = activeStyle.colors.text;
-          ctx.font = '900 26px "Outfit", "Roboto", sans-serif';
-          ctx.fillText(item, ix + 65, iy + 45);
-          ctx.restore();
-        });
+          ctx.font = '900 38px "Outfit", "Roboto", sans-serif';
+          ctx.fillText(elem.props.statLabel || 'Главный результат', cardX + 48, cardY + 280);
 
-      } else if (elem.type === 'stat_callout') {
-        const cardX = canvas.width * 0.06;
-        const cardY = canvas.height * 0.65;
-        const cardW = canvas.width * 0.88;
-        const cardH = 190;
+        } else if (elem.type === 'kinetic_quote' || elem.type === 'tweet_card') {
+          const cardY = canvas.height * 0.28;
+          const cardH = 480;
 
-        ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
-        ctx.rotate(jitterRad);
-        ctx.scale(scaleAnim, scaleAnim);
-        ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
+          ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
+          ctx.scale(scaleAnim, scaleAnim);
+          ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
 
-        ctx.fillStyle = activeStyle.colors.cardBg || 'rgba(15, 23, 42, 0.95)';
-        ctx.strokeStyle = activeStyle.colors.accent;
-        ctx.lineWidth = 3;
-        ctx.shadowColor = activeStyle.colors.accent;
-        ctx.shadowBlur = 24;
-        safeRoundRect(cardX, cardY, cardW, cardH, 26);
-        ctx.fill();
-        ctx.stroke();
+          ctx.fillStyle = 'rgba(15, 23, 42, 0.96)';
+          ctx.strokeStyle = activeStyle.colors.accent;
+          ctx.lineWidth = 4;
+          safeRoundRect(cardX, cardY, cardW, cardH, 36);
+          ctx.fill();
+          ctx.stroke();
 
-        ctx.shadowColor = 'transparent';
-        ctx.fillStyle = activeStyle.colors.accent;
-        ctx.font = '900 68px "Outfit", "Roboto", sans-serif';
-        ctx.fillText(elem.props.statValue || '+350%', cardX + 32, cardY + 80);
+          ctx.fillStyle = activeStyle.colors.accent;
+          ctx.font = '900 72px sans-serif';
+          ctx.fillText('“', cardX + 40, cardY + 90);
 
-        ctx.fillStyle = activeStyle.colors.text;
-        ctx.font = '700 28px "Outfit", "Roboto", sans-serif';
-        ctx.fillText(elem.props.statLabel || 'Рост удержания зрителей', cardX + 32, cardY + 138);
+          ctx.fillStyle = '#FFFFFF';
+          ctx.font = '900 36px "Outfit", "Roboto", sans-serif';
+          const quoteText = String(elem.props.text || elem.props.title || 'КЛЮЧЕВАЯ ИДЕЯ').toUpperCase();
+          ctx.fillText(quoteText, cardX + 90, cardY + 90);
 
-      } else if (elem.type === 'kinetic_quote' || elem.type === 'tweet_card') {
-        const cardX = canvas.width * 0.06;
-        const cardY = canvas.height * 0.65;
-        const cardW = canvas.width * 0.88;
-        const cardH = 210;
-
-        ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
-        ctx.rotate(jitterRad);
-        ctx.scale(scaleAnim, scaleAnim);
-        ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
-
-        ctx.fillStyle = 'rgba(15, 23, 42, 0.96)';
-        ctx.strokeStyle = activeStyle.colors.accent;
-        ctx.lineWidth = 3;
-        safeRoundRect(cardX, cardY, cardW, cardH, 24);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = activeStyle.colors.accent;
-        ctx.font = '900 36px sans-serif';
-        ctx.fillText('“', cardX + 28, cardY + 54);
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = '900 28px "Outfit", "Roboto", sans-serif';
-        const quoteText = String(elem.props.text || elem.props.title || 'Главная мысль ролика').toUpperCase();
-        ctx.fillText(quoteText, cardX + 60, cardY + 54);
-
-        ctx.fillStyle = activeStyle.colors.accent;
-        ctx.font = 'bold 22px sans-serif';
-        ctx.fillText(`— ${elem.props.author || 'Virali AI Expert'}`, cardX + 60, cardY + 140);
+          ctx.fillStyle = activeStyle.colors.accent;
+          ctx.font = '900 28px sans-serif';
+          ctx.fillText(`— ${elem.props.author || 'Virali AI'}`, cardX + 90, cardY + 340);
+        }
+        ctx.restore();
       }
-      ctx.restore();
     }
 
     // 5. Render Active Subtitle Overlay (Full HD 1080p Bold Typography)
@@ -582,7 +525,7 @@ export async function renderRemotionInDevice({
     console.warn('[RemotionExporter] FFmpeg audio muxing fallback warning:', ffmpegErr);
   }
 
-  const cacheKey = `final_render_${projectId}_${versionId}_remotion_v5`;
+  const cacheKey = `final_render_${projectId}_${versionId}_remotion_v6`;
   await idb.set(cacheKey, finalBlob, 'MediaBuffer');
 
   // Clean up sourceUrl if created from Blob to prevent memory leak
