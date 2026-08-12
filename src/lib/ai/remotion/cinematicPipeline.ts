@@ -25,14 +25,18 @@ export async function runCinematicMultiAgentPipeline({
   const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
+  const startTime = Date.now();
+
   if (groqKey || geminiKey || openaiKey) {
     const activeKey = groqKey || geminiKey || openaiKey!;
+    const providerName = groqKey ? 'groq' : (geminiKey ? 'gemini' : 'openai');
     try {
       // 1. PASS 1: DIRECTOR AGENT
       const directorOutput = await runDirectorAgent(transcriptData, userIntent, activeKey);
 
       let attempts = 0;
       let finalCutSheet: any = null;
+      let lastQaResult: any = { isValid: true, score: 100, issues: [] };
 
       while (attempts < 2) {
         attempts++;
@@ -44,20 +48,29 @@ export async function runCinematicMultiAgentPipeline({
 
         if (cutSheet && cutSheet.cameraCuts && cutSheet.bRollElements) {
           // 4. PASS 4: QA INSPECTOR AGENT (Validation & Self-Correction)
-          const qaResult = await runQaInspectorAgent(cutSheet, transcriptData);
-          console.log(`[CinematicPipeline] Pass 4 QA Inspector Result (Attempt ${attempts}):`, qaResult);
+          lastQaResult = await runQaInspectorAgent(cutSheet, transcriptData);
+          console.log(`[CinematicPipeline] Pass 4 QA Inspector Result (${providerName.toUpperCase()}, Attempt ${attempts}):`, lastQaResult);
 
-          if (qaResult.isValid || attempts >= 2) {
+          if (lastQaResult.isValid || attempts >= 2) {
             finalCutSheet = cutSheet;
             break;
           } else {
-            console.warn(`[CinematicPipeline] QA rejected cutSheet due to issues: ${qaResult.issues.join(', ')}. Retrying generation...`);
+            console.warn(`[CinematicPipeline] QA rejected cutSheet due to issues: ${lastQaResult.issues.join(', ')}. Retrying generation...`);
           }
         }
       }
 
       if (finalCutSheet) {
-        return processAndEnrichCutSheet(finalCutSheet, selectedStyle, fps);
+        const enriched = processAndEnrichCutSheet(finalCutSheet, selectedStyle, fps);
+        enriched.qaDiagnostics = {
+          provider: providerName,
+          passed: lastQaResult.isValid,
+          score: lastQaResult.score,
+          attempts,
+          issues: lastQaResult.issues,
+          generationTimeMs: Date.now() - startTime
+        };
+        return enriched;
       }
     } catch (err) {
       console.warn('[CinematicPipeline] Multi-agent execution failed, falling back to smart procedural generator:', err);
@@ -65,7 +78,16 @@ export async function runCinematicMultiAgentPipeline({
   }
 
   // Fallback to high-quality procedural cinematic generation
-  return generateProceduralCinematicCutSheet(transcriptData, selectedStyle, fps);
+  const proceduralResult = generateProceduralCinematicCutSheet(transcriptData, selectedStyle, fps);
+  proceduralResult.qaDiagnostics = {
+    provider: 'procedural',
+    passed: true,
+    score: 100,
+    attempts: 1,
+    issues: [],
+    generationTimeMs: Date.now() - startTime
+  };
+  return proceduralResult;
 }
 
 /**

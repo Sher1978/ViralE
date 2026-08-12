@@ -85,10 +85,20 @@ export interface RemotionArchitectSettings {
   anticipationOffsetFrames?: number; // default -4 (150ms)
 }
 
+export interface QaDiagnostics {
+  provider: 'groq' | 'gemini' | 'openai' | 'procedural';
+  passed: boolean;
+  score: number;
+  attempts: number;
+  issues: string[];
+  generationTimeMs: number;
+}
+
 export interface RemotionArchitectCutSheet {
   cameraCuts: CameraCut[];
   bRollElements: BRollElement[];
   renderSettings: RemotionArchitectSettings;
   soundCues?: SoundCue[];
   semanticBeats?: SemanticBeat[];
+  qaDiagnostics?: QaDiagnostics;
 }
