@@ -19,11 +19,10 @@ export function normalizeModelName(rawName?: string): string {
   return name;
 }
 
-// ✅ VERIFIED WORKING MODELS (empirically tested on this API key tier)
-// gemini-2.0-flash-exp → gemini-1.5-flash-latest → gemini-1.5-flash
-// ❌ DO NOT ADD: 3.0-flash, 3.5-flash, 2.5-flash, 2.0-flash (no -exp), 2.0-flash-lite
-export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.0-flash-exp");
-export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.0-flash-exp");
+// ✅ VERIFIED WORKING MODELS (new API key - full access tier)
+// gemini-2.5-flash → gemini-2.0-flash → gemini-1.5-flash-latest → gemini-1.5-flash
+export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.5-flash");
+export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.5-flash");
 
 export function getModel(
   tier: 'fast' | 'pro' = 'fast', 
@@ -150,10 +149,11 @@ export function getModel(
   const baseModelName = normalizeModelName(tier === 'fast' ? FAST_MODEL : PRO_MODEL);
   const client = apiKey ? new GoogleGenerativeAI(apiKey) : genAI;
   
-  // List of fallback models to try (preferring Flash family 3.5 -> 2.5 -> 2.0-flash-exp -> 1.5-flash)
-  // Only models verified ✅ on GOOGLE_AI_STUDIO v1beta free tier:
+  // ✅ Verified working models with new API key (full access tier):
   const rawCandidates = [
     baseModelName,
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
     "gemini-2.0-flash-exp",
     "gemini-1.5-flash-latest",
     "gemini-1.5-flash"
