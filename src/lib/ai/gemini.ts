@@ -7,8 +7,8 @@ const genAI = new GoogleGenerativeAI(apiKey);
 // [REVERSIBLE OVERRIDE] Set to true to route all Gemini calls to Groq
 const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
-export const FAST_MODEL = "gemini-2.5-flash";
-export const PRO_MODEL = "gemini-2.5-pro";
+export const FAST_MODEL = "gemini-1.5-flash";
+export const PRO_MODEL = "gemini-1.5-pro";
 
 export function getModel(
   tier: 'fast' | 'pro' = 'fast', 
@@ -138,11 +138,8 @@ export function getModel(
   // List of fallback models to try if the main model experiences 503 or overload
   const fallbackModels = [
     baseModelName,
-    "gemini-2.5-flash",
-    "gemini-2.5-flash-lite",
-    "gemini-3.5-flash",
-    "gemini-2.5-pro",
-    "gemini-3.5-pro",
+    "gemini-1.5-flash",
+    "gemini-1.5-pro",
   ];
 
   // Return a proxy to intercept calls and inject automatic fallbacks on API errors
