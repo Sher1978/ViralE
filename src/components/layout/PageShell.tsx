@@ -55,7 +55,7 @@ export function PageShell({ children }: PageShellProps) {
         style={{
           maxWidth: isStudioMode ? '100%' : '500px',
           margin: '0 auto',
-          background: `
+          background: isStudioMode ? '#000000' : `
             radial-gradient(ellipse at 30% 0%, rgba(155, 95, 255, 0.07) 0%, transparent 55%),
             radial-gradient(ellipse at 70% 90%, rgba(0, 255, 204, 0.05) 0%, transparent 55%),
             radial-gradient(circle at 50% 50%, #0B1229 0%, #020408 100%)

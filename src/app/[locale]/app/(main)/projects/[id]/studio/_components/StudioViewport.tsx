@@ -228,7 +228,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
     <div className="w-full px-4 py-1.5 flex items-center justify-center bg-black h-[32vh] sm:h-[45vh] md:h-[50vh] lg:h-[55vh]">
       <div 
         ref={viewportRef}
-        className="relative h-full aspect-[9/16] bg-neutral-900 rounded-[20px] overflow-hidden shadow-2xl border border-white/5 group"
+        className="relative h-full aspect-[9/16] bg-black rounded-[20px] overflow-hidden shadow-2xl border border-white/5 group"
       >
         {aRollUrl ? (
           <div className="relative w-full h-full" onClick={togglePlay}>
@@ -237,7 +237,7 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               ref={videoRef} 
               src={aRollUrl}
               muted={isMuted} 
-              className="w-full h-full object-cover" 
+              className="w-full h-full object-cover bg-black" 
               playsInline 
               preload="auto"
               crossOrigin="anonymous"
@@ -261,13 +261,16 @@ export const StudioViewport: React.FC<StudioViewportProps> = ({
               }}
               onLoadedData={(e) => {
                 const target = e.currentTarget as any;
-                if (target.currentTime === 0) {
-                  console.log('[Studio LOG] Forcing video to seek to 0.001s to render poster frame');
-                  target.currentTime = 0.001;
+                if (target.currentTime < 0.01) {
+                  target.currentTime = 0.05;
                 }
               }}
               onLoadedMetadata={(e) => {
-                const dur = (e.currentTarget as any).duration;
+                const target = e.currentTarget as any;
+                if (target.currentTime < 0.01) {
+                  target.currentTime = 0.05;
+                }
+                const dur = target.duration;
                 if (typeof dur === 'number' && isFinite(dur) && dur > 0) {
                   console.log('[Studio LOG] Video metadata loaded. safe duration:', dur);
                   setARollDuration(dur);

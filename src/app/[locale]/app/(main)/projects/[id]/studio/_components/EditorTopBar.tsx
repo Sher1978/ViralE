@@ -36,7 +36,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
       </button>
 
       {/* Right: Quality + Export */}
-      <div className="flex items-center gap-3">
+      <div className="flex items-center gap-2.5 mr-14 sm:mr-16">
         <span className="text-[11px] font-bold text-white/40 tracking-[0.15em] uppercase">
           {quality}
         </span>
