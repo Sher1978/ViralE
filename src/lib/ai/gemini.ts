@@ -150,8 +150,6 @@ export function getModel(
   // List of fallback models to try (preferring Flash family 3.5 -> 2.5 -> 2.0-flash-exp -> 1.5-flash)
   const rawCandidates = [
     baseModelName,
-    "gemini-3.5-flash",
-    "gemini-2.5-flash",
     "gemini-2.0-flash-exp",
     "gemini-1.5-flash-latest",
     "gemini-1.5-flash"

@@ -120,13 +120,13 @@ export async function POST(req: NextRequest) {
       genAIInstance: GoogleGenerativeAI,
       parts: any[]
     ) => {
-      const models = ['gemini-3.5-flash', 'gemini-2.5-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
+      const models = ['gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
       let lastError: any = null;
-      for (const modelName of models) {
+      for (const rawModel of models) {
+        const modelName = normalizeModelName(rawModel);
         try {
-          const targetModelName = normalizeModelName(modelName);
-          console.log(`[Transcribe] Attempting transcription using model: ${targetModelName}...`);
-          const model = genAIInstance.getGenerativeModel({ model: targetModelName });
+          console.log(`[Transcribe] Attempting transcription using model: ${modelName}...`);
+          const model = genAIInstance.getGenerativeModel({ model: modelName });
           const result = await model.generateContent(parts);
           const text = result.response.text();
           if (text) {
