@@ -612,7 +612,7 @@ function DeliveryPageContent() {
     const manifestData = ver.script_data as any;
     const shouldShowSubtitles = manifestData?.showSubtitles !== false;
     
-    const remotionCacheKey = `final_render_${projectId}_${ver.id}_remotion`;
+    const remotionCacheKey = `final_render_${projectId}_${ver.id}_remotion_v2`;
     const ffmpegCacheKey = `final_render_${projectId}_${ver.id}_ffmpeg_${shouldShowSubtitles ? 'subs' : 'nosubs'}`;
 
     setJob((prev: any) => {
@@ -1379,7 +1379,7 @@ function DeliveryPageContent() {
         }
 
         // Check if a completed render exists in cache first
-        const remotionCacheKey = `final_render_${projectId}_${verData.id}_remotion`;
+        const remotionCacheKey = `final_render_${projectId}_${verData.id}_remotion_v2`;
         const ffmpegCacheKey = `final_render_${projectId}_${verData.id}_ffmpeg_subs`;
         
         const cachedRemotion = await idb.get(remotionCacheKey, 'MediaBuffer');

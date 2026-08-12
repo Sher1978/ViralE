@@ -444,6 +444,34 @@ export async function renderRemotionInDevice({
         ctx.fillStyle = activeStyle.colors.text;
         ctx.font = 'bold 16px sans-serif';
         ctx.fillText(elem.props.statLabel || 'Рост удержания', cardX + 24, cardY + 105);
+
+      } else if (elem.type === '3d_icon') {
+        const cardX = canvas.width * 0.74;
+        const cardY = canvas.height * 0.08;
+        const size = 120;
+
+        ctx.translate(cardX + size / 2, cardY + size / 2);
+        ctx.rotate(jitterRad);
+        ctx.scale(scaleAnim, scaleAnim);
+        ctx.translate(-(cardX + size / 2), -(cardY + size / 2));
+
+        const iconGrad = ctx.createLinearGradient(cardX, cardY, cardX + size, cardY + size);
+        iconGrad.addColorStop(0, activeStyle.colors.accent);
+        iconGrad.addColorStop(1, activeStyle.colors.secondary);
+
+        ctx.fillStyle = iconGrad;
+        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.arc(cardX + size / 2, cardY + size / 2, size / 2, 0, Math.PI * 2);
+        ctx.fill();
+        ctx.stroke();
+
+        ctx.fillStyle = '#FFFFFF';
+        ctx.font = 'bold 44px sans-serif';
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillText('⚡', cardX + size / 2, cardY + size / 2);
       }
       ctx.restore();
     }
@@ -525,7 +553,7 @@ export async function renderRemotionInDevice({
 
   const rawVideoBlob = await renderPromise;
 
-  const cacheKey = `final_render_${projectId}_${versionId}_remotion`;
+  const cacheKey = `final_render_${projectId}_${versionId}_remotion_v2`;
   await idb.set(cacheKey, rawVideoBlob, 'MediaBuffer');
 
   const videoUrl = URL.createObjectURL(rawVideoBlob);

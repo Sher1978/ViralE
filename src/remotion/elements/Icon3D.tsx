@@ -18,7 +18,7 @@ export const Icon3D: React.FC<ElementProps> = ({ props, visualSeed, globalJitter
 
   return (
     <div
-      className="absolute right-16 top-1/3 w-36 h-36 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full shadow-2xl flex items-center justify-center border-4 border-white/20"
+      className="absolute right-[8%] top-[8%] w-28 h-28 bg-gradient-to-tr from-purple-600 to-pink-500 rounded-full shadow-2xl flex items-center justify-center border-4 border-white/20 z-20"
       style={{
         transform: `translateY(${floatY}px) scale(${scale}) rotate(${rotation}deg)`
       }}
