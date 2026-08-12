@@ -8,7 +8,7 @@ const genAI = new GoogleGenerativeAI(apiKey);
 const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
 export const FAST_MODEL = "gemini-1.5-flash";
-export const PRO_MODEL = "gemini-1.5-pro";
+export const PRO_MODEL = "gemini-1.5-flash";
 
 export function getModel(
   tier: 'fast' | 'pro' = 'fast', 
@@ -139,7 +139,7 @@ export function getModel(
   const fallbackModels = [
     baseModelName,
     "gemini-1.5-flash",
-    "gemini-1.5-pro",
+    "gemini-1.5-flash-latest"
   ];
 
   // Return a proxy to intercept calls and inject automatic fallbacks on API errors
