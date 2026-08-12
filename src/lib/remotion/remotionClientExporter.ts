@@ -43,7 +43,16 @@ export async function renderRemotionInDevice({
 
   const durationSec = await getVideoDuration(sourceUrl);
   const fps = cutSheet?.renderSettings?.fps || 30;
-  const totalFrames = Math.ceil(durationSec * fps);
+  
+  // Calculate max end frame from b-roll elements and subtitles to prevent premature cut-off
+  const maxBRollFrame = (cutSheet?.bRollElements || []).reduce((max, e) => Math.max(max, e.endFrame || 0), 0);
+  const maxSubFrame = ((cutSheet as any)?.subtitles || (cutSheet as any)?.segments || (cutSheet as any)?.subtitleClips || []).reduce((max: number, s: any) => {
+    const ef = typeof s.endFrame === 'number' ? s.endFrame : Math.round((s.end ?? s.endTime ?? 0) * fps);
+    return Math.max(max, ef);
+  }, 0);
+
+  const baseFrames = Math.ceil(durationSec * fps);
+  const totalFrames = Math.max(baseFrames, maxBRollFrame, maxSubFrame);
 
   log(`Продолжительность: ${durationSec.toFixed(1)}s (${totalFrames} кадров, 1080p, пресет: ${activeStyle.name})...`, 10, 1);
 
@@ -148,10 +157,13 @@ export async function renderRemotionInDevice({
     );
 
     // Auto-coupling fallback: if side card is active, force scale_to_circle cut!
+    const firstSideCard = activeElements.find(
+      (e) => e.type === 'chart' || e.type === 'list'
+    );
     if (hasActiveSideCard && (!activeCut || (activeCut.action !== 'scale_to_circle' && activeCut.action !== 'move_left'))) {
       activeCut = {
         startTime: `${targetTime}s`,
-        startFrame: currentFrame,
+        startFrame: firstSideCard ? firstSideCard.startFrame : currentFrame,
         duration: 3,
         durationFrames: 90,
         action: 'scale_to_circle',
@@ -166,6 +178,7 @@ export async function renderRemotionInDevice({
     let targetY = 0;
     let isCircle = false;
     let radius = 0;
+    let internalScale = 1.0;
 
     if (activeCut) {
       const cutElapsed = currentFrame - activeCut.startFrame;
@@ -183,9 +196,12 @@ export async function renderRemotionInDevice({
 
       } else if (activeCut.action === 'scale_to_circle') {
         targetScale = 0.45 * ease + 1.0 * (1 - ease);
-        targetX = (canvas.width * 0.28) * ease;
+        targetX = (canvas.width * 0.28) * ease + (canvas.width * 0.5) * (1 - ease);
         targetY = (canvas.height * 0.45) * ease + (canvas.height * 0.5) * (1 - ease);
-        radius = Math.min(canvas.width, canvas.height) * 0.22 * ease;
+        const maxRadius = Math.max(canvas.width, canvas.height);
+        const finalRadius = Math.min(canvas.width, canvas.height) * 0.22;
+        radius = finalRadius * ease + maxRadius * (1 - ease);
+        internalScale = 1.0 + 0.5 * ease;
         isCircle = true;
 
       } else if (activeCut.action === 'move_left') {
@@ -197,15 +213,16 @@ export async function renderRemotionInDevice({
     // Render speaker video
     if (isCircle && radius > 0) {
       ctx.save();
+      const progress = Math.max(0, 1 - (radius / Math.min(canvas.width, canvas.height)));
       ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
-      ctx.shadowBlur = 30;
-      ctx.shadowOffsetY = 10;
+      ctx.shadowBlur = 30 * progress;
+      ctx.shadowOffsetY = 10 * progress;
       ctx.beginPath();
       ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
       ctx.clip();
 
-      const vidW = canvas.width * targetScale * 1.5;
-      const vidH = canvas.height * targetScale * 1.5;
+      const vidW = canvas.width * targetScale * internalScale;
+      const vidH = canvas.height * targetScale * internalScale;
       const vidX = targetX - vidW / 2;
       const vidY = targetY - vidH / 2;
       ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
@@ -213,12 +230,12 @@ export async function renderRemotionInDevice({
 
       ctx.save();
       ctx.shadowColor = activeStyle.colors.accent;
-      ctx.shadowBlur = 20;
+      ctx.shadowBlur = 20 * progress;
       ctx.beginPath();
       ctx.arc(targetX, targetY, radius, 0, Math.PI * 2);
-      ctx.lineWidth = 10;
+      ctx.lineWidth = 10 * progress;
       ctx.strokeStyle = activeStyle.colors.accent;
-      ctx.stroke();
+      if (ctx.lineWidth > 0) ctx.stroke();
       ctx.restore();
 
     } else if (activeCut?.action !== 'pip_right') {
@@ -238,9 +255,10 @@ export async function renderRemotionInDevice({
     // 4. Render Active Infographic Remotion Elements with Strict Safe Zones
     for (const elem of activeElements) {
       const elemElapsed = currentFrame - elem.startFrame;
-      const elemAnim = Math.min(1, Math.max(0, elemElapsed / 8));
-      const scaleAnim = 0.8 + 0.2 * elemAnim;
-      const opacityAnim = elemAnim;
+      const elemAnim = Math.min(1, Math.max(0, elemElapsed / 15));
+      const easeElem = 1 - Math.pow(1 - elemAnim, 3);
+      const scaleAnim = 0.8 + 0.2 * easeElem;
+      const opacityAnim = easeElem;
 
       const seedJitter = (elem.visualSeed || 42) % 9 - 4;
       const jitterRad = (seedJitter * activeStyle.jitterRangeDeg * Math.PI) / 180;
@@ -302,9 +320,12 @@ export async function renderRemotionInDevice({
 
         items.forEach((item, idx) => {
           ctx.save(); // Isolate individual list item transformation
-          const itemProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 3) / 8));
+          const itemProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 4) / 12));
+          const easeItem = 1 - Math.pow(1 - itemProgress, 3);
           const iy = cardY + idx * 60;
-          const ix = cardX + (1 - itemProgress) * 30;
+          const ix = cardX + (1 - easeItem) * 40;
+
+          ctx.globalAlpha = opacityAnim * easeItem;
 
           ctx.translate(ix + cardW / 2, iy + 25);
           ctx.rotate(jitterRad * 0.3);
@@ -380,12 +401,33 @@ export async function renderRemotionInDevice({
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
+        // Word wrap subtitles for 1080p canvas
+        const maxSubWidth = canvas.width * 0.85;
+        const words = textToDraw.split(' ');
+        const lines: string[] = [];
+        let currentLine = '';
+
+        for (const w of words) {
+          const testLine = currentLine ? `${currentLine} ${w}` : w;
+          const metrics = ctx.measureText(testLine);
+          if (metrics.width > maxSubWidth && currentLine) {
+            lines.push(currentLine);
+            currentLine = w;
+          } else {
+            currentLine = testLine;
+          }
+        }
+        if (currentLine) lines.push(currentLine);
+
+        const lineHeight = 64;
+        const totalTextHeight = lines.length * lineHeight;
+        const maxLineWidth = Math.max(...lines.map(l => ctx.measureText(l).width));
+
         const subX = canvas.width / 2;
         const subY = canvas.height * 0.82;
 
-        const textMetrics = ctx.measureText(textToDraw);
-        const pillW = textMetrics.width + 60;
-        const pillH = 80;
+        const pillW = maxLineWidth + 60;
+        const pillH = totalTextHeight + 30;
         const pillX = subX - pillW / 2;
         const pillY = subY - pillH / 2;
 
@@ -400,12 +442,17 @@ export async function renderRemotionInDevice({
         ctx.fill();
         ctx.stroke();
 
-        ctx.lineWidth = 8;
-        ctx.strokeStyle = '#000000';
-        ctx.strokeText(textToDraw, subX, subY);
+        ctx.shadowColor = 'transparent';
 
-        ctx.fillStyle = '#FFFFFF';
-        ctx.fillText(textToDraw, subX, subY);
+        lines.forEach((lineStr, lineIdx) => {
+          const ly = pillY + 15 + lineIdx * lineHeight + lineHeight / 2;
+          ctx.lineWidth = 8;
+          ctx.strokeStyle = '#000000';
+          ctx.strokeText(lineStr, subX, ly);
+
+          ctx.fillStyle = '#FFFFFF';
+          ctx.fillText(lineStr, subX, ly);
+        });
 
         ctx.restore();
       }
@@ -475,6 +522,11 @@ export async function renderRemotionInDevice({
 
   const cacheKey = `final_render_${projectId}_${versionId}_remotion_v3`;
   await idb.set(cacheKey, finalBlob, 'MediaBuffer');
+
+  // Clean up sourceUrl if created from Blob to prevent memory leak
+  if (speakerVideoBlobOrUrl instanceof Blob && sourceUrl) {
+    try { URL.revokeObjectURL(sourceUrl); } catch (e) {}
+  }
 
   const videoUrl = URL.createObjectURL(finalBlob);
   log('Успешно скомпилировано в 1080p Full HD с сочным звуком!', 100, 5);
