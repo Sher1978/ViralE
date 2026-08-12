@@ -1,6 +1,7 @@
 import { RemotionArchitectCutSheet } from '@/lib/types/remotionArchitect';
 import { idb } from '@/lib/idb';
 import { resolveUserBrandStyle } from '@/lib/remotion/stylePresets';
+import { getFFmpeg, getFetchFile } from '@/lib/ffmpeg-delivery';
 
 export interface RenderRemotionOptions {
   projectId: string;
@@ -87,43 +88,6 @@ export async function renderRemotionInDevice({
   // Capture stream at 0 FPS for manual requestFrame pushing
   const stream = canvas.captureStream(0);
 
-  // Robust PCM audio extraction for MediaRecorder stream muxing
-  const audioCtx = new (window.AudioContext || (window as any).webkitAudioContext)();
-  if (audioCtx.state === 'suspended') {
-    await audioCtx.resume().catch(() => {});
-  }
-
-  let hasAudioTrack = false;
-  try {
-    let audioBlobData: Blob | null = null;
-    if (speakerVideoBlobOrUrl instanceof Blob) {
-      audioBlobData = speakerVideoBlobOrUrl;
-    } else {
-      const fetchRes = await fetch(sourceUrl);
-      if (fetchRes.ok) {
-        audioBlobData = await fetchRes.blob();
-      }
-    }
-
-    if (audioBlobData) {
-      const audioArrayBuffer = await audioBlobData.arrayBuffer();
-      const audioBuffer = await audioCtx.decodeAudioData(audioArrayBuffer);
-      const bufferSource = audioCtx.createBufferSource();
-      bufferSource.buffer = audioBuffer;
-
-      const destNode = audioCtx.createMediaStreamDestination();
-      bufferSource.connect(destNode);
-      destNode.stream.getAudioTracks().forEach((track) => {
-        stream.addTrack(track);
-        hasAudioTrack = true;
-      });
-      bufferSource.start(0);
-      log('Звуковая дорожка успешно дешифрована и подключена к кодировщику.', 42, 4);
-    }
-  } catch (audioErr) {
-    console.warn('[RemotionExporter] Audio extraction warning:', audioErr);
-  }
-
   const mimeType = MediaRecorder.isTypeSupported('video/mp4;codecs=avc1')
     ? 'video/mp4;codecs=avc1'
     : MediaRecorder.isTypeSupported('video/mp4')
@@ -153,10 +117,7 @@ export async function renderRemotionInDevice({
   const cameraCuts = cutSheet?.cameraCuts || [];
   const bRollElements = cutSheet?.bRollElements || [];
 
-  const targetFrameDurationMs = 1000 / fps;
-  const renderStartTime = Date.now();
-
-  // Deterministic Frame-by-Frame Seek Loop with Wall-Clock Pacing for Audio-Video Sync
+  // Deterministic Frame-by-Frame Seek Loop
   for (let currentFrame = 0; currentFrame < totalFrames; currentFrame++) {
     const targetTime = currentFrame / fps;
 
@@ -228,36 +189,13 @@ export async function renderRemotionInDevice({
         isCircle = true;
 
       } else if (activeCut.action === 'move_left') {
-        targetScale = 0.75 * ease + 1.0 * (1 - ease);
-        targetX = (-canvas.width * 0.15) * ease;
-
-      } else if (activeCut.action === 'pip_right') {
-        const pipW = canvas.width * 0.4;
-        const pipH = canvas.height * 0.4;
-        const pipX = canvas.width - pipW - 30;
-        const pipY = canvas.height - pipH - 40;
-
-        ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-        ctx.lineWidth = 4;
-        ctx.strokeStyle = activeStyle.colors.accent;
-        ctx.strokeRect(pipX, pipY, pipW, pipH);
+        targetScale = 0.6 * ease + 1.0 * (1 - ease);
+        targetX = (-canvas.width * 0.2) * ease;
       }
-    } else {
-      const phase = (currentFrame / totalFrames) * Math.PI * 2;
-      targetScale = 1.0 + 0.015 * Math.sin(phase);
     }
 
-    if (isCircle && radius > 5) {
-      // 1. Draw blurred full-screen video in background to eliminate dark empty gaps
-      ctx.save();
-      ctx.globalAlpha = 0.4;
-      ctx.filter = 'blur(25px) brightness(0.7)';
-      ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
-      ctx.filter = 'none';
-      ctx.globalAlpha = 1.0;
-      ctx.restore();
-
-      // 2. Strictly isolated circular clipping for speaker video avatar on the left
+    // Render speaker video
+    if (isCircle && radius > 0) {
       ctx.save();
       ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
       ctx.shadowBlur = 30;
@@ -273,7 +211,6 @@ export async function renderRemotionInDevice({
       ctx.drawImage(videoEl, vidX, vidY, vidW, vidH);
       ctx.restore();
 
-      // 3. Glowing neon circle border outside clip
       ctx.save();
       ctx.shadowColor = activeStyle.colors.accent;
       ctx.shadowBlur = 20;
@@ -316,7 +253,7 @@ export async function renderRemotionInDevice({
         const cardX = isSidePanel ? canvas.width * 0.50 : canvas.width * 0.06;
         const cardY = isSidePanel ? canvas.height * 0.22 : canvas.height * 0.68;
         const cardW = isSidePanel ? canvas.width * 0.44 : canvas.width * 0.88;
-        const cardH = isSidePanel ? 380 : 220;
+        const cardH = 380;
 
         ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
         ctx.rotate(jitterRad);
@@ -336,7 +273,7 @@ export async function renderRemotionInDevice({
 
         const values: number[] = elem.props.values || [40, 65, 80, 95];
         const barWidth = (cardW - 40 - (values.length - 1) * 12) / values.length;
-        const maxBarH = isSidePanel ? 240 : 120;
+        const maxBarH = 240;
 
         values.forEach((val, idx) => {
           const barProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 2) / 10));
@@ -356,37 +293,6 @@ export async function renderRemotionInDevice({
           ctx.fillText(`${val}%`, bx + barWidth / 4, by - 6);
         });
 
-      } else if (elem.type === 'tweet_card' || elem.type === 'kinetic_quote') {
-        const cardX = canvas.width * 0.06;
-        const cardY = canvas.height * 0.06; // Top safe zone (above face)
-        const cardW = canvas.width * 0.88;
-        const cardH = 140;
-
-        ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
-        ctx.rotate(jitterRad);
-        ctx.scale(scaleAnim, scaleAnim);
-        ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
-
-        ctx.fillStyle = activeStyle.colors.cardBg;
-        ctx.strokeStyle = activeStyle.colors.cardBorder;
-        ctx.lineWidth = 2;
-        safeRoundRect(cardX, cardY, cardW, cardH, 20);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = activeStyle.colors.accent;
-        ctx.font = 'bold 20px sans-serif';
-        ctx.fillText(elem.type === 'kinetic_quote' ? '“' : (elem.props.author || 'Virali AI Strategist'), cardX + 20, cardY + 36);
-
-        ctx.fillStyle = activeStyle.colors.text;
-        ctx.font = '14px sans-serif';
-        ctx.fillText(elem.props.handle || `@${activeStyle.key}`, cardX + 20, cardY + 60);
-
-        ctx.fillStyle = activeStyle.colors.text;
-        ctx.font = 'bold 16px sans-serif';
-        const bodyText = elem.props.text || elem.props.quote || 'High retention AI video scaling engine active.';
-        ctx.fillText(bodyText.substring(0, 80), cardX + 20, cardY + 98);
-
       } else if (elem.type === 'list') {
         const isSidePanel = isCircle || (activeCut && (activeCut.action === 'scale_to_circle' || activeCut.action === 'move_left'));
         const cardX = isSidePanel ? canvas.width * 0.50 : canvas.width * 0.06;
@@ -395,6 +301,7 @@ export async function renderRemotionInDevice({
         const items: string[] = elem.props.items || ['Высокая динамика', 'Инфографика', 'Рост Retention'];
 
         items.forEach((item, idx) => {
+          ctx.save(); // Isolate individual list item transformation
           const itemProgress = Math.min(1, Math.max(0, (elemElapsed - idx * 3) / 8));
           const iy = cardY + idx * 60;
           const ix = cardX + (1 - itemProgress) * 30;
@@ -417,6 +324,7 @@ export async function renderRemotionInDevice({
           ctx.fillStyle = activeStyle.colors.text;
           ctx.font = 'bold 16px sans-serif';
           ctx.fillText(item, ix + 45, iy + 33);
+          ctx.restore();
         });
 
       } else if (elem.type === 'stat_callout') {
@@ -445,48 +353,30 @@ export async function renderRemotionInDevice({
         ctx.font = 'bold 16px sans-serif';
         ctx.fillText(elem.props.statLabel || 'Рост удержания', cardX + 24, cardY + 105);
 
-      } else if (elem.type === '3d_icon') {
-        const cardX = canvas.width * 0.74;
-        const cardY = canvas.height * 0.08;
-        const size = 120;
-
-        ctx.translate(cardX + size / 2, cardY + size / 2);
-        ctx.rotate(jitterRad);
-        ctx.scale(scaleAnim, scaleAnim);
-        ctx.translate(-(cardX + size / 2), -(cardY + size / 2));
-
-        const iconGrad = ctx.createLinearGradient(cardX, cardY, cardX + size, cardY + size);
-        iconGrad.addColorStop(0, activeStyle.colors.accent);
-        iconGrad.addColorStop(1, activeStyle.colors.secondary);
-
-        ctx.fillStyle = iconGrad;
-        ctx.strokeStyle = 'rgba(255, 255, 255, 0.4)';
-        ctx.lineWidth = 4;
-        ctx.beginPath();
-        ctx.arc(cardX + size / 2, cardY + size / 2, size / 2, 0, Math.PI * 2);
-        ctx.fill();
-        ctx.stroke();
-
-        ctx.fillStyle = '#FFFFFF';
-        ctx.font = 'bold 44px sans-serif';
-        ctx.textAlign = 'center';
-        ctx.textBaseline = 'middle';
-        ctx.fillText('⚡', cardX + size / 2, cardY + size / 2);
       }
       ctx.restore();
     }
 
     // 5. Render Active Subtitle Overlay (Full HD 1080p Bold Typography)
-    const subtitles = (cutSheet as any)?.subtitles || (cutSheet as any)?.segments || [];
+    const subtitles = (cutSheet as any)?.subtitles || 
+                      (cutSheet as any)?.segments || 
+                      (cutSheet as any)?.subtitleClips || [];
+
     if (subtitles && Array.isArray(subtitles)) {
-      const activeSub = subtitles.find(
-        (s: any) => currentFrame >= (s.startFrame || 0) && currentFrame <= (s.endFrame || (s.startFrame || 0) + 30)
-      );
+      const activeSub = subtitles.find((s: any) => {
+        const startFr = typeof s.startFrame === 'number'
+          ? s.startFrame
+          : Math.round((s.start ?? s.startTime ?? 0) * fps);
+        const endFr = typeof s.endFrame === 'number'
+          ? s.endFrame
+          : Math.round((s.end ?? s.endTime ?? (s.start ?? 0) + 2) * fps);
+        return currentFrame >= startFr && currentFrame <= endFr;
+      });
 
       if (activeSub && (activeSub.text || activeSub.word)) {
-        const textToDraw = (activeSub.text || activeSub.word || '').toUpperCase();
+        const textToDraw = String(activeSub.text || activeSub.word || '').toUpperCase();
         ctx.save();
-        ctx.font = '900 56px "Outfit", "Roboto", sans-serif';
+        ctx.font = '900 52px "Outfit", "Roboto", sans-serif';
         ctx.textAlign = 'center';
         ctx.textBaseline = 'middle';
 
@@ -527,16 +417,6 @@ export async function renderRemotionInDevice({
       videoTrack.requestFrame();
     }
 
-    // Wall-clock pacing to synchronize video track timeline with MediaRecorder audio track
-    if (hasAudioTrack) {
-      const expectedElapsedTime = targetTime * 1000;
-      const actualElapsedTime = Date.now() - renderStartTime;
-      const pacingDelay = expectedElapsedTime - actualElapsedTime;
-      if (pacingDelay > 5 && pacingDelay < 500) {
-        await new Promise((r) => setTimeout(r, pacingDelay));
-      }
-    }
-
     if (currentFrame % 10 === 0) {
       // Stage 4 maps from 40% to 95%
       const progress = Math.min(95, 40 + Math.round((currentFrame / totalFrames) * 55));
@@ -544,22 +424,62 @@ export async function renderRemotionInDevice({
     }
   }
 
-  log('Рендеринг кадров завершен. Финализация контейнера MP4...', 98, 5);
+  log('Рендеринг кадров Canvas завершен (95%). Начинаем сведение звука...', 96, 5);
   recorder.stop();
 
+  const rawCanvasVideoBlob = await renderPromise;
+
+  let finalBlob = rawCanvasVideoBlob;
   try {
-    audioCtx.close().catch(() => {});
-  } catch (e) {}
+    log('Сведение оригинальной звуковой дорожки через FFmpeg...', 98, 5);
+    const ffmpeg = await getFFmpeg();
+    const fetchFile = await getFetchFile();
 
-  const rawVideoBlob = await renderPromise;
+    const canvasVideoData = await fetchFile(rawCanvasVideoBlob);
+    const speakerAudioData = await fetchFile(speakerVideoBlobOrUrl);
 
-  const cacheKey = `final_render_${projectId}_${versionId}_remotion_v2`;
-  await idb.set(cacheKey, rawVideoBlob, 'MediaBuffer');
+    await ffmpeg.writeFile('canvas_video.mp4', canvasVideoData);
+    await ffmpeg.writeFile('speaker_audio.mp4', speakerAudioData);
 
-  const videoUrl = URL.createObjectURL(rawVideoBlob);
-  log('Успешно скомпилировано в 1080p Full HD!', 100, 5);
+    await ffmpeg.exec([
+      '-i',
+      'canvas_video.mp4',
+      '-i',
+      'speaker_audio.mp4',
+      '-c:v',
+      'copy',
+      '-c:a',
+      'aac',
+      '-map',
+      '0:v:0',
+      '-map',
+      '1:a:0',
+      '-shortest',
+      'output_remotion.mp4'
+    ]);
 
-  return { videoBlob: rawVideoBlob, videoUrl };
+    const outData = await ffmpeg.readFile('output_remotion.mp4');
+    if (outData && outData.byteLength > 0) {
+      finalBlob = new Blob([outData.buffer], { type: 'video/mp4' });
+      log('Звуковая дорожка успешно сведа с видеорядом!', 99, 5);
+    }
+
+    try {
+      await ffmpeg.deleteFile('canvas_video.mp4');
+      await ffmpeg.deleteFile('speaker_audio.mp4');
+      await ffmpeg.deleteFile('output_remotion.mp4');
+    } catch (e) {}
+  } catch (ffmpegErr) {
+    console.warn('[RemotionExporter] FFmpeg audio muxing fallback warning:', ffmpegErr);
+  }
+
+  const cacheKey = `final_render_${projectId}_${versionId}_remotion_v3`;
+  await idb.set(cacheKey, finalBlob, 'MediaBuffer');
+
+  const videoUrl = URL.createObjectURL(finalBlob);
+  log('Успешно скомпилировано в 1080p Full HD с сочным звуком!', 100, 5);
+
+  return { videoBlob: finalBlob, videoUrl };
 }
 
 function getVideoDuration(url: string): Promise<number> {
