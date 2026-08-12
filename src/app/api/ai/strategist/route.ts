@@ -218,15 +218,8 @@ export async function POST(req: Request) {
     // 4. Stream with AI Engine (Gemini or Groq Override)
     let engine;
     if (audioFile && !transcribed) {
-      console.log('[Strategist Agent] Whisper & Gemini transcription failed. Using gemini-1.5-flash for audio chat stream.');
-      const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
-      engine = client.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        systemInstruction: systemPrompt + "\n" + projectContext,
-        generationConfig: {
-          responseMimeType: "text/plain"
-        }
-      });
+      console.log('[Strategist Agent] Whisper & Gemini transcription failed. Using getModel fallback proxy for audio chat stream.');
+      engine = getModel('fast', locale, 'text', geminiApiKey, systemPrompt + "\n" + projectContext);
     } else {
       engine = getModel('fast', locale, 'text', geminiApiKey, systemPrompt + "\n" + projectContext);
     }

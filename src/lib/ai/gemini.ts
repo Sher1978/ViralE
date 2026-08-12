@@ -446,8 +446,7 @@ export async function distillSyntheticKnowledge(rawData: string, locale: string 
     ${rawData}
   `;
 
-  const textModelName = process.env.GEMINI_MODEL || FAST_MODEL;
-  const textModel = genAI.getGenerativeModel({ model: textModelName });
+  const textModel = getModel('fast', locale, 'text');
   const result = await textModel.generateContent(prompt);
   const response = await result.response;
   return response.text().trim();
@@ -478,9 +477,7 @@ export async function updateDnaPersona(oldPersona: string, newData: string, loca
     Output ONLY a clean, declarative paragraph.
   `;
 
-  // Note: For this one we don't need JSON response, just text
-  const textModelName = process.env.GEMINI_MODEL || FAST_MODEL;
-  const textModel = genAI.getGenerativeModel({ model: textModelName });
+  const textModel = getModel('fast', locale, 'text');
   const result = await textModel.generateContent(prompt);
   const response = await result.response;
   return response.text().trim();

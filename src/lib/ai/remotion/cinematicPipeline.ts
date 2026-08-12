@@ -306,12 +306,8 @@ async function callLlmApi(systemPrompt: string, apiKey: string): Promise<any> {
 
   if (geminiKey) {
     try {
-      const { GoogleGenerativeAI } = await import('@google/generative-ai');
-      const genAI = new GoogleGenerativeAI(geminiKey);
-      const model = genAI.getGenerativeModel({
-        model: 'gemini-1.5-flash',
-        generationConfig: { responseMimeType: 'application/json', temperature: 0.4 }
-      });
+      const { getModel } = await import('@/lib/ai/gemini');
+      const model = getModel('fast', 'en', 'json', geminiKey);
       const result = await model.generateContent(systemPrompt);
       const response = await result.response;
       const text = response.text().trim();

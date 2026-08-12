@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { GoogleGenerativeAI } from '@google/generative-ai';
+import { normalizeModelName } from '@/lib/ai/gemini';
 
 export const maxDuration = 120; // Large iOS videos need more time
 
@@ -123,8 +124,9 @@ export async function POST(req: NextRequest) {
       let lastError: any = null;
       for (const modelName of models) {
         try {
-          console.log(`[Transcribe] Attempting transcription using model: ${modelName}...`);
-          const model = genAIInstance.getGenerativeModel({ model: modelName });
+          const targetModelName = normalizeModelName(modelName);
+          console.log(`[Transcribe] Attempting transcription using model: ${targetModelName}...`);
+          const model = genAIInstance.getGenerativeModel({ model: targetModelName });
           const result = await model.generateContent(parts);
           const text = result.response.text();
           if (text) {
