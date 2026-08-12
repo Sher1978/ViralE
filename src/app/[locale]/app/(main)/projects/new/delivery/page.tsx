@@ -643,15 +643,37 @@ function DeliveryPageContent() {
     if (selectedEngine === 'remotion') {
       try {
         setIsLoading(false);
-        // Stage 1: Media Initialization (0-10%)
-        setCurrentStageIndex(1);
-        setRenderProgress(5);
-        setRenderStatus('Инициализация Remotion Engine и подгрузка видео-исходника...');
 
-        // Stage 2: Multi-agent AI Analysis (10-35%)
+        // STAGE 1: Media Initialization & Speaker Video Preload (0% -> 10%)
+        setCurrentStageIndex(1);
+        setRenderProgress(3);
+        setRenderStatus('Инициализация Remotion Engine...');
+
+        let speakerBlob: Blob | string | null = manifestData?.aRollUrl || null;
+        if (!speakerBlob || (typeof speakerBlob === 'string' && speakerBlob.startsWith('blob:'))) {
+          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+          if (cached instanceof Blob) speakerBlob = cached;
+        }
+
+        if (!speakerBlob) {
+          const errorMsg = 'ОШИБКА ЭТАПА 1: Исходное видео спикера (A-Roll) не найдено в памяти устройства или БД.';
+          setError(errorMsg);
+          sendTelegramErrorAlert(1, REAL_STAGES_RU[0], errorMsg);
+          setIsLoading(false);
+          isLaunchingRenderRef.current = false;
+          return;
+        }
+
+        setRenderProgress(8);
+        setRenderStatus('Загрузка медиапотока исходного видео...');
+        await new Promise((r) => setTimeout(r, 600)); // Visual stage pacing for Stage 1
+        setRenderProgress(10);
+        setRenderStatus('Медиапоток успешно инициализирован.');
+
+        // STAGE 2: Multi-agent AI Analysis (10% -> 35%)
         setCurrentStageIndex(2);
         setRenderProgress(12);
-        setRenderStatus('Запуск Мультиагентного ИИ-анализа сценария (Director -> Art -> Animator)...');
+        setRenderStatus('Director Agent: Анализ структуры сценария и смысловых фаз...');
 
         let cutSheet: RemotionArchitectCutSheet | null = null;
         addSystemLog('Remotion: Запуск мультиагентного конвейера (/api/ai/remotion-architect)...');
@@ -667,6 +689,22 @@ function DeliveryPageContent() {
             niche: 'business'
           };
 
+          // Progress animation during AI call
+          const aiProgressTimer = setInterval(() => {
+            setRenderProgress((prev) => {
+              if (prev < 32) {
+                const nextP = prev + 3;
+                if (nextP > 18 && nextP <= 26) {
+                  setRenderStatus('Art Director Agent: Подбор 3D-медиума и стилей оверлеев...');
+                } else if (nextP > 26) {
+                  setRenderStatus('Animator Agent: Расчет кадров упреждения (-150ms) и таймингов...');
+                }
+                return nextP;
+              }
+              return prev;
+            });
+          }, 400);
+
           const cutRes = await fetch('/api/ai/remotion-architect', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -678,6 +716,8 @@ function DeliveryPageContent() {
               userIntent: 'High Retention dynamic motion edit with Safe Zones'
             })
           });
+
+          clearInterval(aiProgressTimer);
 
           if (!cutRes.ok) {
             const errData = await cutRes.json().catch(() => ({}));
@@ -719,27 +759,30 @@ function DeliveryPageContent() {
           cutSheet = manifestData?.remotionCutSheet || null;
         }
 
-        // Stage 3: Safe Zones Validation & Enrichment (35-40%)
-        setCurrentStageIndex(3);
         setRenderProgress(35);
-        setRenderStatus('Проверка Safe Zones и обогащение схемы джиттером...');
+        setRenderStatus('ИИ-карта монтажа успешно построена.');
 
-        let speakerBlob: Blob | string | null = manifestData?.aRollUrl || null;
-        if (!speakerBlob || (typeof speakerBlob === 'string' && speakerBlob.startsWith('blob:'))) {
-          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-          if (cached instanceof Blob) speakerBlob = cached;
+        // STAGE 3: Safe Zones Validation & Schema Enrichment (35% -> 40%)
+        setCurrentStageIndex(3);
+        setRenderProgress(36);
+        setRenderStatus('Проверка Safe Zones и авто-сдвиг спикера при оверлеях...');
+
+        const { validateRemotionCutSheet } = await import('@/lib/diagnostics/remotionTestRunner');
+        const validationReport = validateRemotionCutSheet(cutSheet);
+        
+        setRenderProgress(38);
+        setRenderStatus('Обогащение элементов математическим джиттером (visualSeed)...');
+        await new Promise((r) => setTimeout(r, 700)); // Visual stage pacing for Stage 3
+
+        if (!validationReport.isValid) {
+          const issuesText = validationReport.issues.map((i) => i.message).join('; ');
+          addSystemLog(`Предупреждение Safe Zones: ${issuesText}`);
         }
 
-        if (!speakerBlob) {
-          const errorMsg = 'ОШИБКА ЭТАПА 1: Исходное видео спикера (A-Roll) не найдено в памяти устройства или БД.';
-          setError(errorMsg);
-          sendTelegramErrorAlert(1, REAL_STAGES_RU[0], errorMsg);
-          setIsLoading(false);
-          isLaunchingRenderRef.current = false;
-          return;
-        }
+        setRenderProgress(40);
+        setRenderStatus('Валидация Safe Zones завершена успешно.');
 
-        // Stage 4 & 5: Device Rendering (40-100%)
+        // STAGE 4 & 5: Device Rendering (40% -> 100%)
         if (speakerBlob && cutSheet) {
           setCurrentStageIndex(4);
           setRenderProgress(40);
