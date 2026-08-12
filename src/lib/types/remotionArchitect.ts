@@ -18,6 +18,7 @@ export interface CameraCut {
 
 export type BRollElementType =
   | 'chart'
+  | 'glassmorphic_chart'
   | '3d_icon'
   | 'list'
   | 'tweet_card'
@@ -36,6 +37,9 @@ export interface BRollElementProps {
   avatarUrl?: string;
   text?: string;
   quote?: string;
+  quoteText?: string;
+  quoteWords?: string[];
+  highlightKeywords?: string[];
   statValue?: string;
   statLabel?: string;
 }

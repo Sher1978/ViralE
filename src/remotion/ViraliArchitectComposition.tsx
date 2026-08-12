@@ -5,6 +5,8 @@ import { DynamicChart } from './elements/DynamicChart';
 import { TweetCard } from './elements/TweetCard';
 import { ListOverlay } from './elements/ListOverlay';
 import { Icon3D } from './elements/Icon3D';
+import { KineticQuote } from './components/new/KineticQuote';
+import { GlassmorphicChart } from './components/new/GlassmorphicChart';
 
 export interface ViraliCompositionProps {
   speakerVideoUrl: string;
@@ -129,8 +131,12 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
 
 const RenderElement: React.FC<{ element: BRollElement; globalJitter: number }> = ({ element, globalJitter }) => {
   switch (element.type) {
+    case 'kinetic_quote':
+      return <KineticQuote props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+    case 'glassmorphic_chart':
+      return <GlassmorphicChart props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
     case 'chart':
-      return <DynamicChart props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+      return <GlassmorphicChart props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
     case 'tweet_card':
       return <TweetCard props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
     case 'list':
