@@ -1,5 +1,6 @@
 import { supabase } from '../supabase';
 import { marketingService } from './marketingService';
+import { storageService } from './storageService';
 
 export interface RenderJob {
   id: string;
@@ -130,37 +131,18 @@ export const renderService = {
       throw new Error(`ArrayBuffer пустой (${arrayBuffer.byteLength} байт). Похоже, blob:URL был отозван до загрузки. Пожалуйста, сделайте запись заново.`);
     }
 
-    // 1. Upload to Storage (with 60s timeout for large mobile videos)
-    console.log(`[renderService LOG] Initiating Supabase upload to bucket "media"...`);
+    // 1. Upload to Storage (Cloudflare R2 primary, Supabase fallback)
+    console.log(`[renderService LOG] Initiating Cloudflare R2 / Storage upload for "${fileName}"...`);
     const tUploadStart = performance.now();
-    const uploadPromise = supabase.storage
-      .from('media')
-      .upload(filePath, arrayBuffer, {
-        contentType,
-        contentDisposition: 'attachment',
-        upsert: true
-      });
 
-    const timeoutPromise = new Promise<never>((_, reject) =>
-      setTimeout(() => reject(new Error('Upload timeout after 60s — check network connection')), 60000)
-    );
+    const fileToUpload = new File([arrayBuffer], fileName, { type: contentType });
+    const publicUrl = await storageService.uploadFile(fileToUpload, fileName, 'media');
 
-    const { data: uploadData, error: uploadError } = await Promise.race([
-      uploadPromise,
-      timeoutPromise as any
-    ]) as any;
-
-    if (uploadError) {
-      console.error(`[renderService LOG] Supabase upload failed after ${(performance.now() - tUploadStart).toFixed(0)} ms. Error details:`, uploadError);
-      throw uploadError;
+    if (!publicUrl) {
+      console.error(`[renderService LOG] Storage upload failed after ${(performance.now() - tUploadStart).toFixed(0)} ms.`);
+      throw new Error('Не удалось загрузить файл в хранилище. Попробуйте еще раз.');
     }
-    console.log(`[renderService LOG] Supabase upload successful! Time taken: ${(performance.now() - tUploadStart).toFixed(0)} ms.`);
-
-    // 2. Get Public URL
-    const { data: { publicUrl } } = supabase.storage
-      .from('media')
-      .getPublicUrl(filePath);
-    console.log(`[renderService LOG] Generated public URL: "${publicUrl}"`);
+    console.log(`[renderService LOG] Storage upload successful! Public URL: "${publicUrl}". Time taken: ${(performance.now() - tUploadStart).toFixed(0)} ms.`);
 
     // 3. Register Asset
     console.log(`[renderService LOG] Registering media asset in Database...`);
