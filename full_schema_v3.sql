@@ -142,12 +142,19 @@ ALTER TABLE public.ideas ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ideation_feed ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credits_transactions ENABLE ROW LEVEL SECURITY;
 
--- 11. Create RLS Policies
+-- 11. Create RLS Policies & Security Hardening
 DO $$ 
 BEGIN
-    -- Profiles
+    -- Profiles (Strict SELECT & UPDATE split)
     DROP POLICY IF EXISTS "Users can view own profile" ON public.profiles;
-    CREATE POLICY "Users can view own profile" ON public.profiles FOR ALL USING (auth.uid() = id);
+    DROP POLICY IF EXISTS "Users can view their own profile" ON public.profiles;
+    DROP POLICY IF EXISTS "Users can update their own profile" ON public.profiles;
+    
+    CREATE POLICY "Users can view own profile" ON public.profiles 
+      FOR SELECT USING (auth.uid() = id);
+
+    CREATE POLICY "Users can update own profile" ON public.profiles 
+      FOR UPDATE USING (auth.uid() = id) WITH CHECK (auth.uid() = id);
 
     -- Projects
     DROP POLICY IF EXISTS "Users can manage own projects" ON public.projects;
@@ -194,7 +201,28 @@ BEGIN
     FOR ALL USING (user_id = auth.uid());
 END $$;
 
--- 12. Automatically Create Profile on Auth Signup
+-- 12. HARDENED SECURITY TRIGGER: PREVENT CLIENT CREDITS TAMPERING
+CREATE OR REPLACE FUNCTION public.prevent_client_credits_tampering()
+RETURNS TRIGGER AS $$
+BEGIN
+  -- If request originates from normal user (not backend service_role)
+  IF (auth.role() = 'authenticated') THEN
+    NEW.credits_balance := OLD.credits_balance;
+    NEW.tier := OLD.tier;
+    NEW.subscription_status := OLD.subscription_status;
+    NEW.subscription_expires_at := OLD.subscription_expires_at;
+  END IF;
+  RETURN NEW;
+END;
+$$ LANGUAGE plpgsql SECURITY DEFINER;
+
+DROP TRIGGER IF EXISTS tr_prevent_client_credits_tampering ON public.profiles;
+CREATE TRIGGER tr_prevent_client_credits_tampering
+  BEFORE UPDATE ON public.profiles
+  FOR EACH ROW
+  EXECUTE FUNCTION public.prevent_client_credits_tampering();
+
+-- 13. Automatically Create Profile on Auth Signup
 CREATE OR REPLACE FUNCTION public.handle_new_user()
 RETURNS trigger AS $$
 BEGIN
