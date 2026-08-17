@@ -105,6 +105,19 @@ CREATE TABLE IF NOT EXISTS public.ideas (
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
+-- 8.1 Create Ideation Feed Table
+CREATE TABLE IF NOT EXISTS public.ideation_feed (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID REFERENCES auth.users(id) ON DELETE CASCADE,
+    topic_title TEXT NOT NULL,
+    rationale TEXT,
+    viral_potential_score INTEGER DEFAULT 85,
+    status TEXT DEFAULT 'new' CHECK (status IN ('new', 'used', 'dismissed', 'archived')),
+    category TEXT,
+    metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
 -- 9. Create Credits Transactions Table
 CREATE TABLE IF NOT EXISTS public.credits_transactions (
     id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
@@ -126,6 +139,7 @@ ALTER TABLE public.media_assets ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.render_jobs ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.feature_access ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.ideas ENABLE ROW LEVEL SECURITY;
+ALTER TABLE public.ideation_feed ENABLE ROW LEVEL SECURITY;
 ALTER TABLE public.credits_transactions ENABLE ROW LEVEL SECURITY;
 
 -- 11. Create RLS Policies
@@ -167,6 +181,11 @@ BEGIN
     -- Ideas
     DROP POLICY IF EXISTS "Users can manage own ideas" ON public.ideas;
     CREATE POLICY "Users can manage own ideas" ON public.ideas 
+    FOR ALL USING (user_id = auth.uid());
+
+    -- Ideation Feed
+    DROP POLICY IF EXISTS "Users can manage own ideation feed" ON public.ideation_feed;
+    CREATE POLICY "Users can manage own ideation feed" ON public.ideation_feed 
     FOR ALL USING (user_id = auth.uid());
 
     -- Credits Transactions
