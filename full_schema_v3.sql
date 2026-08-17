@@ -239,8 +239,6 @@ BEGIN
   IF (auth.role() = 'authenticated') THEN
     NEW.credits_balance := OLD.credits_balance;
     NEW.tier := OLD.tier;
-    NEW.subscription_status := OLD.subscription_status;
-    NEW.subscription_expires_at := OLD.subscription_expires_at;
   END IF;
   RETURN NEW;
 END;
