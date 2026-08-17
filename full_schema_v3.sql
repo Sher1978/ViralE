@@ -6,6 +6,7 @@ CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
     email TEXT,
     full_name TEXT,
+    avatar_url TEXT,
     credits_balance INTEGER DEFAULT 100,
     tier TEXT DEFAULT 'free',
     digital_shadow_prompt TEXT,
