@@ -4,8 +4,13 @@
 -- 1. Create Profiles Table (links to auth.users)
 CREATE TABLE IF NOT EXISTS public.profiles (
     id UUID PRIMARY KEY REFERENCES auth.users(id) ON DELETE CASCADE,
+    email TEXT,
+    full_name TEXT,
     credits_balance INTEGER DEFAULT 100,
     tier TEXT DEFAULT 'free',
+    digital_shadow_prompt TEXT,
+    industry_context TEXT,
+    knowledge_base_json JSONB DEFAULT '{}'::jsonb,
     updated_at TIMESTAMPTZ DEFAULT now(),
     subscription_expires_at TIMESTAMPTZ,
     anthropic_api_key TEXT,
@@ -127,6 +132,18 @@ CREATE TABLE IF NOT EXISTS public.credits_transactions (
     description TEXT,
     project_id UUID REFERENCES public.projects(id) ON DELETE SET NULL,
     metadata JSONB DEFAULT '{}'::jsonb,
+    created_at TIMESTAMPTZ DEFAULT now()
+);
+
+-- 9.1 Create Promo Codes Table
+CREATE TABLE IF NOT EXISTS public.promo_codes (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    code TEXT UNIQUE NOT NULL,
+    tier TEXT NOT NULL DEFAULT 'scale',
+    credits_bonus INTEGER NOT NULL DEFAULT 50000,
+    is_used BOOLEAN DEFAULT false,
+    used_by UUID REFERENCES auth.users(id) ON DELETE SET NULL,
+    used_at TIMESTAMPTZ,
     created_at TIMESTAMPTZ DEFAULT now()
 );
 
