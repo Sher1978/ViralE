@@ -5,6 +5,7 @@ import { AppDataProvider } from '@/components/providers/AppDataProvider';
 import { cookies } from 'next/headers';
 
 import { SubscriptionWarning } from '@/components/ui/SubscriptionWarning';
+import { TelegramGateModal } from '@/components/ui/TelegramGateModal';
 
 export default async function MainLayout({
   children,
@@ -29,6 +30,7 @@ export default async function MainLayout({
 
   return (
     <AppDataProvider>
+      <TelegramGateModal />
       <SubscriptionWarning />
       {children}
     </AppDataProvider>

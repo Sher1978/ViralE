@@ -6,6 +6,7 @@ export interface Profile {
   email: string;
   full_name: string | null;
   avatar_url: string | null;
+  telegram_id?: string | number | null;
   credits_balance: number;
   digital_shadow_prompt: string | null;
   industry_context: string | null;
