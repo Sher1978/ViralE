@@ -110,20 +110,40 @@ export function getSystemPrompt(digitalShadow: string, locale: string = 'en', br
   }
 
   return `
-    You are an ELITE AI STRATEGIST, NEUROMARKETER, AND VIRAL CONTENT SCRIPTWRITER. 
+    You are an ELITE BRAND CONTENT ARCHITECT, NEUROMARKETER, AND VIRAL CONTENT SCRIPTWRITER. 
     Your mission: Generate high-conversion scripts, posts, and ideas that break banner blindness and turn viewers into loyal clients.
     
     SYSTEM CONTEXT:
     - Industry: ${industry}
-    - Brand/User DNA: ${persona}
+    - Brand/User DNA & Persona: ${persona}
     - Deep Knowledge Base: ${knowledgeBase}
     
-    CONTENT GENERATION ALGORITHM (5 STEPS):
-    STEP 1: Sense Calibration (Brand DNA) - Analyze Tone of Voice and role model. Choose one specific pain point or false belief of the Target Avatar.
-    STEP 2: Viral Packaging Choice (Content Lego) - Analyze script formulas. Select the structure that best reveals the chosen pain (e.g., Contradiction, Case Study, Breakdown, List).
-    STEP 3: Hook Engineering (Attention Capture) - Create a synchronized hook (Visual + Screen Text + Voice). Must contain strong contrast and curiosity loops.
-    STEP 4: Body Scripting (Retention) - Write in "Staccato" rhythm (short punchy phrases). Use re-hooks every 20-30 seconds. Apply "Useful Find Wrapper" (paradoxically positive assessment of weaknesses).
-    STEP 5: Call to Action (CTA) - Use lead-magnet protocols. Integrate natively at the end.
+    3-STEP BRAND CONTENT ARCHITECT WORKFLOW:
+    
+    STEP 1: INGESTION (Brand DNA & StoryBrand 2-Way Synthesis)
+    - Synthesize Brand DNA (niche, product, target audience, expertise, unfair advantage) and Donald Miller's StoryBrand (Hero, Enemy/Problem, Guide, Plan, Success, Disaster).
+    - If only one document is available, logically infer the missing nodes (e.g. Hero = Target Audience, Enemy = Inner Pain, Guide = Author/Expertise, Plan = Product/Methodology, Success = Desired Result, Disaster = Risk of Inaction).
+    
+    STEP 2: PRE-GENERATION (Hook & Payoff Matrix Formulation)
+    Construct and maintain in internal context a 4x4 Hook & Payoff Matrix:
+    Hook Archetypes:
+    1. Myth Buster (Enemy/Problem): "Перестаньте [типичное действие из ДНК], если не хотите [Катастрофа из StoryBrand]."
+    2. Paradox / Unfair Advantage (Expertise/DNA): "Почему 90% в [Ниша] проигрывают тем, кто использует [Нечестное преимущество]?"
+    3. Hero Identification (Hero + Pain): "Если вы [Тип клиента из ДНК] и до сих пор сталкиваетесь с [Внутренняя проблема из StoryBrand], досмотрите до конца."
+    4. Counter-intuitive Choice (Plan/Guide): "Единственная причина, почему у вас нет [Желанный результат из StoryBrand] — это не [Ложный факт], а [Настоящий фактор из Плана]."
+    Micro-Payoffs:
+    - Payoff A (Aha-Moment): Unexpected paradigm shift in the first 15 seconds.
+    - Payoff B (Guilt Relief): Explanation of why past failures are not the Hero's fault.
+    - Payoff C (1-2-3 Algorithm): Clear step-by-step action without fluff.
+    - Payoff D (30s Tool/Template): Ready-to-use solution in 30 seconds.
+    
+    STEP 3: EXECUTION (Script Construction)
+    For each scenario/topic:
+    1. Pick the best matching (Hook Archetype + Micro-Payoff) pair from the matrix.
+    2. Opening Hook (0-5s): Apply formula from selected Hook Archetype.
+    3. Micro-Payoff (5-15s): Deliver promised Payoff A/B/C/D.
+    4. Main Body / TRIZ (15-45s): Unpack through Guide & Plan lens with staccato rhythm, scientific proof, and re-hooks.
+    5. CTA (45-60s): End with clear Call To Action leading to Success or avoiding Disaster.
     
     CORE RULES:
     - NEVER use generic greetings or clichéd phrases. Start directly with the essence.
@@ -152,7 +172,7 @@ export async function generateScript(
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
   const userPrompt = `
-    Based on this idea: "${coreIdea}", generate 6 distinct viral video scripts (scenarios) based on the CONTENT LEGO methodology.
+    Based on this idea: "${coreIdea}", generate 6 distinct viral video scripts (scenarios) based on the BRAND CONTENT ARCHITECT & CONTENT LEGO methodology.
     
     ${trizMatrix ? `
     --- STRATEGIC TRIZ 9-SCREEN MATRIX BLUEPRINT ---
@@ -166,10 +186,13 @@ export async function generateScript(
     
     CRITICAL: Each block (1-4) MUST contain FULL, READY-TO-SPEAK TEXT. No placeholders. No "abstract theses". No descriptions of what to say. ONLY the final words the actor will dictate.
     
+    STRUCTURE RULES FOR EACH SCENARIO:
+    0. matrix_pair: Explicitly name the pair used from Hook & Payoff Matrix (e.g. "Архетип Хука 1 (Разрушение мифа) + Payoff A (Аха-момент)").
     1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
-    2. body: Context & Agitation (15-20s dictation). Focus on "Thought Narration". MUST use a short, diverse, natural conversational transition at the beginning (e.g. "Look...", "Actually...", "Here is the catch...", "Смотрите...", "На самом деле...", "Тут фишка в чём...", "Глядите..."). NEVER use formal, technical or bookish language like "Let me explain" or "Позвольте объяснить". MUST be detailed, rich in specifics (avoid minimalism), and must reference facts, scientific proof, or statistics (e.g., "Scientists proved...", "Recent studies show...", "According to statistics...", "Ученые доказали...", "Последние исследования...").
-    3. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato. STYLE: Empathetic researcher conducting a mini-investigation to find an unobvious fact. MUST be highly detailed, deep, and cite research/data to back up the claim.
-    4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: A natural, short conversational call (e.g. "So...", "If you want...", "Поэтому...", "Так что если хотите..."). Call to leave a KEYWORD in comments.
+    2. micro_payoff: Promised Micro-Reward (5-15s dictation). Delivers Payoff A (Aha-moment), B (Guilt relief), C (1-2-3 Algorithm), or D (30s Tool/Template).
+    3. body: Context & Agitation (15-20s dictation). Focus on "Thought Narration". MUST use a short, diverse, natural conversational transition at the beginning (e.g. "Look...", "Actually...", "Here is the catch...", "Смотрите...", "На самом деле...", "Тут фишка в чём...", "Глядите..."). NEVER use formal, technical or bookish language like "Let me explain" or "Позвольте объяснить". MUST be detailed, rich in specifics (avoid minimalism), and must reference facts, scientific proof, or statistics (e.g., "Scientists proved...", "Recent studies show...", "According to statistics...", "Ученые доказали...", "Последние исследования...").
+    4. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". Unpack main body through Guide & Plan lens in Staccato rhythm. STYLE: Empathetic researcher conducting a mini-investigation to find an unobvious fact. MUST be highly detailed, deep, and cite research/data to back up the claim.
+    5. cta: Native CTA (15-20s dictation). ENTRY PHRASE: A natural, short conversational call (e.g. "So...", "If you want...", "Поэтому...", "Так что если хотите..."). Call to leave a KEYWORD in comments, leading to Success or steering away from Disaster.
 
     STYLES to generate for the idea:
     1. controversial (The Contrarian): Attacking popular myths.
@@ -177,13 +200,15 @@ export async function generateScript(
     3. evergreen (Case Study): Desire-based breakdown of results.
     4. trends (The Listicle): Dynamic value list (weakest to strongest). MUST ALWAYS be formatted as a listicle ("3 способа...", "5 ошибок...", "4 секрета...", "Вот 5 лайфхаков как...").
     5. detective (Investigative Detective): Mini-investigation by an empathetic researcher. Structure: 1. Hook by topic, 2. Body: take a real fact from the internet/studies and reference it, 3. TRIZ: contradiction using transitions ("однако выяснилось...", "Однако неочевидная сторона вопроса...", "есть и другой взгляд...", "но это также означает..."), 4. CTA: call to leave a comment to find out more.
-    6. napkin_explainer (Marker & Board — Whiteboard Explainer): Slow-paced whiteboard animation script at 130 words/min. TOTAL WORD BUDGET: max 160 words across ALL 4 blocks (target 60-second video). Per-block word limits: hook.words ≤ 20 words | body.words ≤ 50 words | triz_inversion.words ≤ 60 words | cta.words ≤ 30 words. STRICT BLOCK-LEVEL RULES (MUST NOT cross-contaminate blocks — each block uses a DIFFERENT image/metaphor): hook.words = One single rhetorical question OR visual spatial riddle using a physical-world metaphor (labyrinth, lever, bridge, scales). MUST be max 2 sentences. MUST NOT contain the answer or any explanation. body.words = SWITCH to a completely DIFFERENT real-world analogy (NOT the one used in hook). Describe the problem as a physical process being drawn on a whiteboard. Cite one real stat or study. NO repetition of hook metaphor. triz_inversion.words = Decompose the SOLUTION into EXACTLY 3 numbered steps ("1. ... 2. ... 3. ..."). Each step is a concrete micro-action, not a concept. CTA must not reference a spatial metaphor — use a direct question to the viewer.
+    6. napkin_explainer (Marker & Board — Whiteboard Explainer): Slow-paced whiteboard animation script at 130 words/min. TOTAL WORD BUDGET: max 160 words across ALL blocks (target 60-second video). Per-block word limits: hook.words ≤ 20 words | body.words ≤ 50 words | triz_inversion.words ≤ 60 words | cta.words ≤ 30 words. STRICT BLOCK-LEVEL RULES (MUST NOT cross-contaminate blocks — each block uses a DIFFERENT image/metaphor): hook.words = One single rhetorical question OR visual spatial riddle using a physical-world metaphor (labyrinth, lever, bridge, scales). MUST be max 2 sentences. MUST NOT contain the answer or any explanation. body.words = SWITCH to a completely DIFFERENT real-world analogy (NOT the one used in hook). Describe the problem as a physical process being drawn on a whiteboard. Cite one real stat or study. NO repetition of hook metaphor. triz_inversion.words = Decompose the SOLUTION into EXACTLY 3 numbered steps ("1. ... 2. ... 3. ..."). Each step is a concrete micro-action, not a concept. CTA must not reference a spatial metaphor — use a direct question to the viewer.
 
     CRITICAL SPOKEN SPEECH RULE: Output ONLY direct first-person spoken words by the speaker (talking head / говорящая голова). Strictly NO scene descriptions, visual cues, camera instructions, B-roll remarks, or bracketed notes across any of the script blocks.
 
     Structure for EACH scenario (style):
     - style_name: controversial | edutainment | evergreen | trends | detective | napkin_explainer
+    - matrix_pair: "Архетип Хука N + Payoff X"
     - hook: { visual: "...", screen_text: "...", words: "..." }
+    - micro_payoff: { words: "..." }
     - body: { words: "..." }
     - triz_inversion: { words: "..." }
     - cta: { words: "..." }
@@ -359,11 +384,13 @@ export async function generateFullScript(
     1. Respond EXCLUSIVELY in the active language: ${languageName.toUpperCase()}.
     2. All generated content, hooks, body, triz_inversion, cta, broll descriptions, and social posts MUST be strictly in ${languageName.toUpperCase()}!
     
-    CRITICAL STRUCTURE RULES (4 BLOCKS):
+    CRITICAL STRUCTURE RULES (4-5 BLOCKS):
+    0. matrix_pair: Explicitly name the pair used from Hook & Payoff Matrix (e.g. "Архетип Хука 1 (Разрушение мифа) + Payoff A (Аха-момент)").
     1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
-    2. body: Context & Agitation (15-20s dictation). Focus on "Thought Narration". MUST use a short, diverse, natural conversational transition at the beginning (e.g. "Look...", "Actually...", "Here is the catch...", "Смотрите...", "На самом деле...", "Тут фишка в чём...", "Глядите..."). NEVER use formal, technical or bookish language like "Let me explain" or "Позвольте объяснить". MUST be detailed, rich in specifics (avoid minimalism), and must reference facts, scientific proof, or statistics (e.g., "Scientists proved...", "Recent studies show...", "According to statistics...").
-    3. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". RHYTHM: Staccato. STYLE: Empathetic researcher conducting a mini-investigation to find an unobvious fact. MUST be highly detailed, deep, and cite research/data to back up the claim.
-    4. cta: Native CTA (15-20s dictation). ENTRY PHRASE: A natural, short conversational call (e.g. "So...", "If you want...", "Поэтому...", "Так что если хотите..."). Call to leave a KEYWORD in comments.
+    2. micro_payoff: Promised Micro-Reward (5-15s dictation). Delivers Payoff A (Aha-moment), B (Guilt relief), C (1-2-3 Algorithm), or D (30s Tool/Template).
+    3. body: Context & Agitation (15-20s dictation). Focus on "Thought Narration". MUST use a short, diverse, natural conversational transition at the beginning (e.g. "Look...", "Actually...", "Here is the catch...", "Смотрите...", "На самом деле...", "Тут фишка в чём...", "Глядите..."). NEVER use formal, technical or bookish language like "Let me explain" or "Позвольте объяснить". MUST be detailed, rich in specifics (avoid minimalism), and must reference facts, scientific proof, or statistics (e.g., "Scientists proved...", "Recent studies show...", "According to statistics...").
+    4. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". Unpack main body through Guide & Plan lens in Staccato rhythm. STYLE: Empathetic researcher conducting a mini-investigation to find an unobvious fact. MUST be highly detailed, deep, and cite research/data to back up the claim.
+    5. cta: Native CTA (15-20s dictation). ENTRY PHRASE: A natural, short conversational call (e.g. "So...", "If you want...", "Поэтому...", "Так что если хотите..."). Call to leave a KEYWORD in comments, leading to Success or steering away from Disaster.
     
     STYLE-SPECIFIC DIRECTIVES:
     - controversial: Attack popular myths, create hard cognitive dissonance.
@@ -375,7 +402,80 @@ export async function generateFullScript(
     
     Output MUST BE valid JSON format:
     {
+      "matrix_pair": "Архетип Хука N + Payoff X",
       "hook": { "visual": "...", "screen_text": "...", "words": "..." },
+      "micro_payoff": { "words": "..." },
+      "body": { "words": "..." },
+      "triz_inversion": { "words": "..." },
+      "cta": { "words": "..." },
+      "broll_prompt": "Action-semantic description of B-roll (5s) for the visual hook scene",
+      "visual_hook": "Detailed cover image prompt for Midjourney/Flux representing the script's visual metaphor",
+      "social_post": "Caption with 3 emojis + 3 tags"
+    }
+  `;
+
+  const modelName = (process.env.ANTHROPIC_MODEL || DEFAULT_MODEL).toLowerCase();
+  const response = await createAnthropicMessage(anthropic, {
+    model: modelName,
+    max_tokens: 2048,
+    system: systemPrompt,
+    messages: [
+      { role: "user", content: userPrompt }
+    ],
+  });
+
+  const content = response.content[0];
+  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  
+  const text = content.text.trim();
+  const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+  return JSON.parse(jsonStr);
+}
+
+export async function generateTurboScript(
+  coreIdea: string,
+  digitalShadow: string,
+  locale: string = 'en',
+  apiKey?: string,
+  brandDna?: any,
+  systemPromptBase?: string
+) {
+  const anthropic = getAnthropicClient(apiKey);
+  const systemPrompt = getSystemPrompt(digitalShadow, locale, brandDna, systemPromptBase);
+  const languageName = locale === 'ru' ? 'Russian' : 'English';
+
+  const userPrompt = `
+    TASK: Execute 1-CLICK TURBO GENERATION for the following core idea using Claude AI.
+    Analyze the speaker's Brand DNA, niche, target audience, and main pain points, then automatically choose the single best Hook Archetype, Micro-Payoff, and Narrative Style to synthesize a complete 50-second viral script.
+    
+    ORIGINAL CORE IDEA: "${coreIdea}"
+    
+    AUTOMATED DECISION ENGINE (INTERNAL STEP):
+    1. Hook Archetype: Auto-select from Myth Buster, Paradox/Unfair Advantage, Hero Identification, or Counter-intuitive Choice.
+    2. Micro-Payoff: Auto-select Payoff A (Aha-moment), B (Guilt relief), C (1-2-3 Algorithm), or D (30s Tool/Template).
+    3. Style: Auto-select controversial, edutainment, evergreen, trends, detective, or napkin_explainer.
+    
+    CRITICAL LANGUAGE RULES:
+    1. Respond EXCLUSIVELY in the active language: ${languageName.toUpperCase()}.
+    2. All generated content, hooks, body, triz_inversion, cta, broll descriptions, and social posts MUST be strictly in ${languageName.toUpperCase()}!
+    
+    CRITICAL STRUCTURE RULES (100% SPOKEN DICTATION TEXT):
+    - matrix_pair: Name the chosen pair (e.g. "Архетип Хука 1 (Разрушение мифа) + Payoff A (Аха-момент)").
+    - selected_style: Name the auto-chosen style (e.g. "edutainment").
+    - hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words.
+    - micro_payoff: Promised Micro-Reward (5-15s dictation).
+    - body: Context & Agitation (15-20s dictation) with natural conversational transition.
+    - triz_inversion: Re-Hook & Meat (15-20s dictation) starting with contrast word ("BUT..." / "Однако...") in Staccato rhythm.
+    - cta: Native CTA (15-20s dictation) with keyword call to action.
+    
+    CRITICAL SPOKEN SPEECH RULE: Output ONLY direct first-person spoken words by the speaker (talking head / говорящая голова). Strictly NO scene descriptions, visual cues, camera instructions, B-roll remarks, or bracketed notes across any of the script blocks.
+    
+    Output MUST BE valid JSON format:
+    {
+      "matrix_pair": "Архетип Хука N + Payoff X",
+      "selected_style": "controversial | edutainment | evergreen | trends | detective | napkin_explainer",
+      "hook": { "visual": "...", "screen_text": "...", "words": "..." },
+      "micro_payoff": { "words": "..." },
       "body": { "words": "..." },
       "triz_inversion": { "words": "..." },
       "cta": { "words": "..." },

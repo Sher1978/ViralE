@@ -263,3 +263,41 @@ export async function generateFullScript(
       return gemini.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
   }
 }
+
+export async function generateTurboScript(
+  coreIdea: string,
+  digitalShadow: string,
+  options: GenerationOptions = {}
+) {
+  const { engine = 'groq', locale = 'en', anthropicApiKey, geminiApiKey, groqApiKey, brandDna } = options;
+  let systemPromptBase = options.systemPromptBase;
+  if (!systemPromptBase) {
+    try {
+      const promptPath = path.join(process.cwd(), 'Bible_SOT', 'AI_prompts', 'General_script.md');
+      if (fs.existsSync(promptPath)) {
+        systemPromptBase = fs.readFileSync(promptPath, 'utf-8');
+      }
+    } catch (err) {
+      console.warn('[Factory] Failed to read General_script.md', err);
+    }
+  }
+
+  switch (engine) {
+    case 'claude':
+    case 'claude-byok':
+      try {
+        return await anthropic.generateTurboScript(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Claude generateTurboScript failed, falling back...', err.message);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          return await groq.generateTurboScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+        }
+        return await gemini.generateTurboScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      }
+    case 'groq':
+      return groq.generateTurboScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+    case 'gemini':
+    default:
+      return gemini.generateTurboScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+  }
+}

@@ -13,11 +13,12 @@ interface MatrixScrollerProps {
   subtitle?: string;
   ideas: Idea[];
   onToScript: (topic: string, rationale?: string, ideaId?: string) => void;
+  onTurboScript?: (topic: string, rationale?: string, ideaId?: string) => void;
   onToggleArchive: (id: string, status: string) => void;
   onRefresh?: (force?: boolean) => Promise<void>;
 }
 
-export default function MatrixScroller({ title, subtitle, ideas, onToScript, onToggleArchive, onRefresh }: MatrixScrollerProps) {
+export default function MatrixScroller({ title, subtitle, ideas, onToScript, onTurboScript, onToggleArchive, onRefresh }: MatrixScrollerProps) {
   const locale = useLocale();
   const [isRefreshing, setIsRefreshing] = useState(false);
 
@@ -104,6 +105,7 @@ export default function MatrixScroller({ title, subtitle, ideas, onToScript, onT
                   index={i}
                   locale={locale}
                   onToScript={onToScript}
+                  onTurboScript={onTurboScript}
                   onToggleArchive={onToggleArchive}
                   isProcessing={false}
                 />

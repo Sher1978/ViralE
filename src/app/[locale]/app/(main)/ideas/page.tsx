@@ -182,6 +182,50 @@ export default function IdeasPage() {
     router.push(url);
   };
 
+  const handleTurboToScript = async (content: string, rationale?: string, ideaId?: string) => {
+    if (ideaId) {
+      await markIdeaAsUsed(ideaId);
+    }
+
+    const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+    if (globalObj && typeof globalObj.document !== 'undefined') {
+      globalObj.document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+
+    let finalContent = content;
+    if (rationale && rationale.length > 3) {
+      const cleanRationale = rationale.replace(/^\(.*\)\s*/, '');
+      finalContent = `${content}\n\n${cleanRationale}`;
+    }
+
+    try {
+      setSynthesisLoading(true);
+      const res = await fetch('/api/script/generate', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          coreIdea: finalContent,
+          mode: 'turbo',
+          locale
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Turbo script generation failed');
+
+      if (data.projectId) {
+        router.push(`/app/projects/${data.projectId}/studio?tab=script_editor`);
+      }
+    } catch (err: any) {
+      console.error('[IdeasPage] Turbo generation failed:', err);
+      // Fallback to standard script lab if turbo API fails
+      let url = `/app/projects/new/script?topic=${encodeURIComponent(finalContent)}&ideaTitle=${encodeURIComponent(content)}`;
+      router.push(url);
+    } finally {
+      setSynthesisLoading(false);
+    }
+  };
+
   const handleToggleArchive = async (ideaId: string, currentStatus: string) => {
     try {
       setProcessingId(ideaId);
@@ -461,6 +505,7 @@ export default function IdeasPage() {
                   subtitle={locale === 'ru' ? 'Стратегические инсайты' : 'Strategic Insights'}
                   ideas={groupedIdeas[cat] || []}
                   onToScript={(topic, rationale, ideaId) => handleToScript(topic, rationale, ideaId)}
+                  onTurboScript={(topic, rationale, ideaId) => handleTurboToScript(topic, rationale, ideaId)}
                   onToggleArchive={handleToggleArchive}
                   onRefresh={(force) => refreshIdeas('new', cat, force)}
                 />

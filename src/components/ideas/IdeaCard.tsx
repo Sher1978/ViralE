@@ -1,6 +1,6 @@
 'use client';
 import { useState } from 'react';
-import { Star, ArrowRight, Loader2, Sparkles } from 'lucide-react';
+import { Star, ArrowRight, Loader2, Sparkles, Zap } from 'lucide-react';
 import { useTranslations } from 'next-intl';
 import { motion } from 'framer-motion';
 
@@ -21,6 +21,7 @@ interface IdeaCardProps {
   isProcessing: boolean;
   onToggleArchive: (id: string, status: string) => void;
   onToScript: (topic: string, rationale?: string, ideaId?: string) => void;
+  onTurboScript?: (topic: string, rationale?: string, ideaId?: string) => void;
 }
 
 export default function IdeaCard({ 
@@ -29,14 +30,16 @@ export default function IdeaCard({
   locale, 
   isProcessing, 
   onToggleArchive, 
-  onToScript 
+  onToScript,
+  onTurboScript
 }: IdeaCardProps) {
   const t = useTranslations('ideas');
   const [isTransferring, setIsTransferring] = useState(false);
+  const [isTurboing, setIsTurboing] = useState(false);
 
   const handleTransfer = async (e: React.MouseEvent) => {
     e.stopPropagation();
-    if (isTransferring) return;
+    if (isTransferring || isTurboing) return;
     
     setIsTransferring(true);
     
@@ -50,6 +53,24 @@ export default function IdeaCard({
     await new Promise(resolve => setTimeout(resolve, 800));
     
     onToScript(idea.topic_title, idea.rationale, idea.id);
+  };
+
+  const handleTurbo = async (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (isTransferring || isTurboing) return;
+    
+    setIsTurboing(true);
+    
+    const win = (globalThis as any).window;
+    if (win && win.navigator?.vibrate) {
+      win.navigator.vibrate([70, 40, 70]);
+    }
+    
+    if (onTurboScript) {
+      onTurboScript(idea.topic_title, idea.rationale, idea.id);
+    } else {
+      onToScript(idea.topic_title, idea.rationale, idea.id);
+    }
   };
 
   const getCategoryTheme = (category?: string) => {
@@ -165,10 +186,42 @@ export default function IdeaCard({
       </p>
 
       {/* Actions */}
-      <div className="flex items-center justify-end pt-2 relative z-20">
+      <div className="flex items-center justify-end gap-2 pt-2 relative z-20">
+        {/* Turbo Button (1-Click Automated Script) */}
+        <motion.button
+          onClick={handleTurbo}
+          disabled={isTransferring || isTurboing}
+          animate={isTurboing ? {
+            scale: [1, 0.95, 1.05],
+            boxShadow: [
+              "0px 0px 20px rgba(245,158,11,0.4)",
+              "0px 0px 35px rgba(245,158,11,0.8)",
+              "0px 0px 45px rgba(245,158,11,1)"
+            ]
+          } : {}}
+          transition={{ duration: 0.8, repeat: isTurboing ? Infinity : 0 }}
+          className={`group flex items-center gap-2 pl-4 pr-1.5 py-1.5 rounded-[1.5rem] font-black text-[9px] uppercase tracking-[0.15em] transition-all duration-300 relative overflow-hidden border ${
+            isTurboing
+              ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black border-amber-300'
+              : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-gradient-to-r hover:from-amber-500 hover:to-yellow-400 hover:text-black hover:scale-105 active:scale-95'
+          }`}
+          title={locale === 'ru' ? 'Сгенерировать готовый сценарий в 1 клик' : 'Generate full script in 1 click'}
+        >
+          <span className="relative z-10 transition-all duration-300 flex items-center gap-1">
+            <Zap className="w-3 h-3 text-amber-400 group-hover:text-black fill-current" />
+            {isTurboing 
+              ? (locale === 'ru' ? 'ТУРБО СБОРКА...' : 'TURBO GEN...') 
+              : (locale === 'ru' ? 'Турбо' : 'Turbo')}
+          </span>
+          <div className="w-6 h-6 rounded-lg bg-black/20 flex items-center justify-center">
+            {isTurboing ? <Loader2 className="w-3 h-3 animate-spin text-black" /> : <Sparkles className="w-3 h-3" />}
+          </div>
+        </motion.button>
+
+        {/* Step-by-Step Script Button */}
         <motion.button
           onClick={handleTransfer}
-          disabled={isTransferring}
+          disabled={isTransferring || isTurboing}
           animate={isTransferring ? {
             scale: [1, 0.9, 1.05],
             boxShadow: [
@@ -178,7 +231,7 @@ export default function IdeaCard({
             ]
           } : {}}
           transition={{ duration: 0.8, ease: "easeInOut" }}
-          className={`group flex items-center gap-4 pl-6 pr-1.5 py-1.5 rounded-[1.5rem] font-black text-[9px] uppercase tracking-[0.2em] transition-all duration-300 relative overflow-hidden ${
+          className={`group flex items-center gap-3 pl-4 pr-1.5 py-1.5 rounded-[1.5rem] font-black text-[9px] uppercase tracking-[0.15em] transition-all duration-300 relative overflow-hidden ${
             isTransferring 
               ? 'bg-purple-600 text-white border border-purple-400/50' 
               : 'bg-white text-black hover:bg-purple-600 hover:text-white hover:scale-105 active:scale-95'
@@ -196,23 +249,23 @@ export default function IdeaCard({
 
           <span className="relative z-10 transition-all duration-300">
             {isTransferring 
-              ? (locale === 'ru' ? 'ПЕРЕНОС В СТУДИЮ...' : 'ROUTING TO STUDIO...') 
+              ? (locale === 'ru' ? 'ПЕРЕНОС...' : 'ROUTING...') 
               : t('btnScript')}
           </span>
           
           <motion.div 
             animate={isTransferring ? { rotate: 360 } : {}}
             transition={isTransferring ? { repeat: Infinity, duration: 1.5, ease: "linear" } : {}}
-            className={`w-8 h-8 rounded-xl flex items-center justify-center transition-all duration-300 ${
+            className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all duration-300 ${
               isTransferring 
                 ? 'bg-white text-purple-600' 
                 : 'bg-black text-white group-hover:bg-white group-hover:text-black'
             }`}
           >
             {isTransferring ? (
-              <Loader2 className="w-4 h-4" />
+              <Loader2 className="w-3.5 h-3.5" />
             ) : (
-              <ArrowRight className="w-4 h-4" />
+              <ArrowRight className="w-3.5 h-3.5" />
             )}
           </motion.div>
         </motion.button>

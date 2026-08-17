@@ -38,6 +38,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { ScriptPreviews } from './_components/ScriptPreviews';
 import { SingleScriptEditor } from './_components/SingleScriptEditor';
+import { ContentMatrix } from './_components/ContentMatrix';
 import { ScenarioLegend } from './_components/ScenarioLegend';
 import { TrizMatrix } from './_components/TrizMatrix';
 
@@ -69,6 +70,7 @@ export default function ScriptLabPage() {
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
   const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('groq');
   
+  const [viewMode, setViewMode] = useState<'editor' | 'matrix'>('editor');
   const [trizIdeas, setTrizIdeas] = useState<any[] | null>(null);
   const [isGeneratingTriz, setIsGeneratingTriz] = useState(false);
   const [isAiLocked, setIsAiLocked] = useState(false);
@@ -1514,6 +1516,33 @@ export default function ScriptLabPage() {
         </div>
       )}
 
+      {allScenarios && scriptData && (scriptData.hook?.words || typeof scriptData.hook === 'string') && (
+        <div className="flex justify-center mb-6">
+          <div className="p-1 bg-[#0d0d1a] border border-white/10 rounded-2xl flex gap-2 shadow-xl">
+            <button
+              onClick={() => setViewMode('editor')}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                viewMode === 'editor' 
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25' 
+                  : 'text-white/40 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {locale === 'ru' ? '📝 Сценарий' : '📝 Script Editor'}
+            </button>
+            <button
+              onClick={() => setViewMode('matrix')}
+              className={`px-5 py-2.5 rounded-xl text-xs font-black uppercase tracking-wider transition-all ${
+                viewMode === 'matrix' 
+                  ? 'bg-purple-600 text-white shadow-lg shadow-purple-500/25' 
+                  : 'text-white/40 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              {locale === 'ru' ? '🧩 Контент-Лего Матрица (4 блока)' : '🧩 Content Lego Matrix'}
+            </button>
+          </div>
+        </div>
+      )}
+
       {scriptPreviews && (!scriptData || !scriptData.hook || (!scriptData.hook.words && typeof scriptData.hook !== 'string')) ? (
         <ScriptPreviews 
           previews={scriptPreviews}
@@ -1522,19 +1551,46 @@ export default function ScriptLabPage() {
           isLoading={isLoading}
         />
       ) : scriptData && (scriptData.hook?.words || typeof scriptData.hook === 'string') ? (
-        <SingleScriptEditor 
-          scriptData={scriptData}
-          locale={locale}
-          selectedStyle={selectedStyle}
-          onUpdate={setScriptData}
-          onRefine={handleApplyRefinement}
-          onAccept={async () => {
-            handleApprove(scriptData);
-          }}
-          onCopy={handleCopyToClipboard}
-          isSaving={isSaving}
-          isGenerating={isRefining || isLoading}
-        />
+        viewMode === 'matrix' && allScenarios ? (
+          <ContentMatrix 
+            blocks={[
+              { id: 'hook', label: locale === 'ru' ? '1. ХУК (0-5s)' : '1. HOOK (0-5s)' },
+              { id: 'body', label: locale === 'ru' ? '2. МИКРО-PAYOFF (5-15s)' : '2. MICRO-PAYOFF (5-15s)' },
+              { id: 'triz_inversion', label: locale === 'ru' ? '3. ОСНОВНОЙ БЛОК / МЯСО (15-45s)' : '3. MEAT / MAIN BODY (15-45s)' },
+              { id: 'cta', label: locale === 'ru' ? '4. СТА / ПРИЗЫВ (45-60s)' : '4. CTA (45-60s)' }
+            ]}
+            scenarios={scenarios}
+            selectionSources={selectionSources}
+            allScenarios={allScenarios}
+            scriptData={scriptData}
+            locale={locale}
+            t={t}
+            onBlockSelect={handleBlockSelect}
+            onBlockUpdate={handleBlockUpdate}
+            onRefine={handleApplyRefinement}
+            onAccept={async () => {
+              const combinedText = getFinalText();
+              handleApprove(combinedText);
+            }}
+            onCopy={handleCopyToClipboard}
+            isSaving={isSaving}
+            isGenerating={isRefining || isLoading}
+          />
+        ) : (
+          <SingleScriptEditor 
+            scriptData={scriptData}
+            locale={locale}
+            selectedStyle={selectedStyle}
+            onUpdate={setScriptData}
+            onRefine={handleApplyRefinement}
+            onAccept={async () => {
+              handleApprove(scriptData);
+            }}
+            onCopy={handleCopyToClipboard}
+            isSaving={isSaving}
+            isGenerating={isRefining || isLoading}
+          />
+        )
       ) : null}
 
       <StrategistChat 

@@ -220,6 +220,16 @@ export async function POST(req: Request) {
           geminiApiKey,
           brandDna
         });
+      } else if (mode === 'turbo') {
+        console.log(`[ScriptGen] Executing TURBO generation [Engine: ${engine}] for idea: ${coreIdea}`);
+        scriptJson = await factory.generateTurboScript(coreIdea, digitalShadow, {
+          engine,
+          locale,
+          anthropicApiKey,
+          groqApiKey,
+          geminiApiKey,
+          brandDna
+        });
       } else if (mode === 'refine') {
         console.log(`[ScriptGen] Refining script [Engine: ${engine}] with instruction: ${instruction}`);
         scriptJson = await factory.refineScript(currentScript, instruction, digitalShadow, {
