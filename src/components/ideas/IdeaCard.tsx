@@ -185,8 +185,8 @@ export default function IdeaCard({
         {idea.rationale}
       </p>
 
-      {/* Actions */}
-      <div className="flex items-center justify-end gap-2 pt-2 relative z-20">
+      {/* Actions: Equal size 50/50 responsive layout */}
+      <div className="grid grid-cols-2 gap-2.5 pt-2 relative z-20">
         {/* Turbo Button (1-Click Automated Script) */}
         <motion.button
           onClick={handleTurbo}
@@ -200,22 +200,23 @@ export default function IdeaCard({
             ]
           } : {}}
           transition={{ duration: 0.8, repeat: isTurboing ? Infinity : 0 }}
-          className={`group flex items-center gap-2 pl-4 pr-1.5 py-1.5 rounded-[1.5rem] font-black text-[9px] uppercase tracking-[0.15em] transition-all duration-300 relative overflow-hidden border ${
+          className={`w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all duration-300 relative overflow-hidden border cursor-pointer select-none ${
             isTurboing
-              ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black border-amber-300'
-              : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-gradient-to-r hover:from-amber-500 hover:to-yellow-400 hover:text-black hover:scale-105 active:scale-95'
+              ? 'bg-gradient-to-r from-amber-500 to-yellow-400 text-black border-amber-300 shadow-lg shadow-amber-500/30'
+              : 'bg-amber-500/10 border-amber-500/30 text-amber-400 hover:bg-gradient-to-r hover:from-amber-500 hover:to-yellow-400 hover:text-black hover:scale-[1.02] active:scale-95'
           }`}
           title={locale === 'ru' ? 'Сгенерировать готовый сценарий в 1 клик' : 'Generate full script in 1 click'}
         >
-          <span className="relative z-10 transition-all duration-300 flex items-center gap-1">
-            <Zap className="w-3 h-3 text-amber-400 group-hover:text-black fill-current" />
+          {isTurboing ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0" />
+          ) : (
+            <Zap className="w-3.5 h-3.5 text-amber-400 group-hover:text-black fill-current shrink-0" />
+          )}
+          <span className="truncate">
             {isTurboing 
-              ? (locale === 'ru' ? 'ТУРБО СБОРКА...' : 'TURBO GEN...') 
-              : (locale === 'ru' ? 'Турбо' : 'Turbo')}
+              ? (locale === 'ru' ? 'ТУРБО...' : 'TURBO...') 
+              : (locale === 'ru' ? '⚡ ТУРБО' : '⚡ TURBO')}
           </span>
-          <div className="w-6 h-6 rounded-lg bg-black/20 flex items-center justify-center">
-            {isTurboing ? <Loader2 className="w-3 h-3 animate-spin text-black" /> : <Sparkles className="w-3 h-3" />}
-          </div>
         </motion.button>
 
         {/* Step-by-Step Script Button */}
@@ -231,43 +232,24 @@ export default function IdeaCard({
             ]
           } : {}}
           transition={{ duration: 0.8, ease: "easeInOut" }}
-          className={`group flex items-center gap-3 pl-4 pr-1.5 py-1.5 rounded-[1.5rem] font-black text-[9px] uppercase tracking-[0.15em] transition-all duration-300 relative overflow-hidden ${
+          className={`w-full flex items-center justify-center gap-1.5 px-3 py-2.5 rounded-2xl font-black text-[10px] uppercase tracking-wider transition-all duration-300 relative overflow-hidden border cursor-pointer select-none ${
             isTransferring 
-              ? 'bg-purple-600 text-white border border-purple-400/50' 
-              : 'bg-white text-black hover:bg-purple-600 hover:text-white hover:scale-105 active:scale-95'
+              ? 'bg-purple-600 text-white border-purple-400/50 shadow-lg shadow-purple-500/30' 
+              : 'bg-white text-black border-white hover:bg-purple-600 hover:text-white hover:border-purple-500 hover:scale-[1.02] active:scale-95'
           }`}
         >
-          {/* Dynamic Laser Light sweeping across */}
-          {isTransferring && (
-            <motion.div 
-              initial={{ left: "-100%" }}
-              animate={{ left: "100%" }}
-              transition={{ duration: 0.8, repeat: Infinity, ease: "linear" }}
-              className="absolute top-0 bottom-0 w-1/2 bg-gradient-to-r from-transparent via-white/40 to-transparent pointer-events-none"
-            />
+          {isTransferring ? (
+            <Loader2 className="w-3.5 h-3.5 animate-spin shrink-0 text-white" />
+          ) : (
+            <ArrowRight className="w-3.5 h-3.5 shrink-0" />
           )}
-
-          <span className="relative z-10 transition-all duration-300">
+          <span className="truncate">
             {isTransferring 
               ? (locale === 'ru' ? 'ПЕРЕНОС...' : 'ROUTING...') 
               : t('btnScript')}
           </span>
-          
-          <motion.div 
-            animate={isTransferring ? { rotate: 360 } : {}}
-            transition={isTransferring ? { repeat: Infinity, duration: 1.5, ease: "linear" } : {}}
-            className={`w-7 h-7 rounded-xl flex items-center justify-center transition-all duration-300 ${
-              isTransferring 
-                ? 'bg-white text-purple-600' 
-                : 'bg-black text-white group-hover:bg-white group-hover:text-black'
-            }`}
-          >
-            {isTransferring ? (
-              <Loader2 className="w-3.5 h-3.5" />
-            ) : (
-              <ArrowRight className="w-3.5 h-3.5" />
-            )}
-          </motion.div>
+        </motion.button>
+      </div>   </motion.div>
         </motion.button>
       </div>
     </div>
