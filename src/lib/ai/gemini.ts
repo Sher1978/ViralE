@@ -195,6 +195,24 @@ export function getModel(
               }
             }
           }
+
+          // 🔥 Alert Telegram Bot @Viralengin_bot of Gemini Failure
+          try {
+            const { notifyAdminError } = await import('@/lib/telegram');
+            notifyAdminError({
+              source: 'Gemini AI Model Failure',
+              error: lastError || new Error('Gemini generation failed on all candidate models.'),
+              extra: {
+                location: 'gemini.ts:getModel:generateContent',
+                engine: 'gemini',
+                attemptedCandidates: fallbackModels,
+                customApiKeyUsed: !!apiKey,
+                tier,
+                locale,
+                stack: lastError?.stack
+              }
+            }).catch(() => {});
+          } catch (e) {}
           
           throw lastError || new Error("Gemini generation failed on all fallback candidates.");
         };

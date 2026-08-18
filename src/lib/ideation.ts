@@ -216,20 +216,22 @@ export async function generateDailyIdeas(
       }
     }
 
-    // Try Groq AI failover if Gemini returned empty results
-    if (ideasArray.length === 0 && (profile?.groq_api_key || process.env.GROQ_API_KEY)) {
+    if (ideasArray.length === 0) {
+      // Notify Telegram Bot of Gemini Ideation Failure
       try {
-        console.log(`[generateDailyIdeas:${targetCategory}] Executing Groq Llama 3.3 AI failover for pure AI ideation...`);
-        const { generateDailyIdeas: generateDailyIdeasGroq } = await import('./ai/groq');
-        const groqKey = profile?.groq_api_key || process.env.GROQ_API_KEY;
-        const groqIdeas = await generateDailyIdeasGroq(prompt, locale, groqKey);
-        if (Array.isArray(groqIdeas) && groqIdeas.length > 0) {
-          ideasArray = groqIdeas;
-          console.log(`[generateDailyIdeas:${targetCategory}] Successfully generated ${ideasArray.length} ideas via Groq AI.`);
-        }
-      } catch (groqErr: any) {
-        console.warn(`[generateDailyIdeas:${targetCategory}] Groq AI failover exception:`, groqErr?.message || groqErr);
-      }
+        const { notifyAdminError } = await import('@/lib/telegram');
+        notifyAdminError({
+          source: 'Gemini Ideation Generator',
+          error: new Error(`Gemini ideation returned no items for category ${targetCategory}`),
+          userId,
+          extra: {
+            location: 'ideation.ts:generateDailyIdeas',
+            category: targetCategory,
+            locale,
+            botTarget: '@Viralengin_bot'
+          }
+        }).catch(() => {});
+      } catch (e) {}
     }
 
     if (ideasArray.length > 0) {
