@@ -17,7 +17,7 @@ export function TelegramConnectBanner({ userId, telegramLinked, onDismiss }: Tel
 
   if (telegramLinked || dismissed) return null;
 
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || 'Viralengin_bot';
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || 'ViralE_bot';
   const connectUrl = `https://t.me/${botUsername}?start=link_${userId || ''}`;
 
   const handleConnect = () => {

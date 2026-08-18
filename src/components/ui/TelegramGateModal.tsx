@@ -45,7 +45,7 @@ export function TelegramGateModal() {
     return null;
   }
 
-  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'Viralengin_bot';
+  const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || 'ViralE_bot';
   const telegramLinkUrl = `https://t.me/${botUsername}?start=link_${profile.id}`;
 
   return (

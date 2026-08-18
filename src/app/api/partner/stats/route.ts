@@ -62,7 +62,7 @@ export async function GET() {
     const hasPaidPackage = profile.tier === 'creator' || profile.tier === 'pro' || profile.tier === 'starter' || profile.tier === 'scale';
     const withdrawalEligible = partnerBalanceUsd >= 100 && hasPaidPackage;
 
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'Viralengin_bot';
+    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || 'ViralE_bot';
 
     return NextResponse.json({
       referralCode,

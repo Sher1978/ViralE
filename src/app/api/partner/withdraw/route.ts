@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     // 4. Send Telegram Admin Alert to Superadmin
     const ADMIN_CHAT_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
     const botToken = process.env.TELEGRAM_BOT_TOKEN;
-    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || 'Viralengin_bot';
+    const botUsername = process.env.NEXT_PUBLIC_TELEGRAM_BOT_USERNAME || process.env.NEXT_PUBLIC_TELEGRAM_BOT_NAME || 'ViralE_bot';
 
     if (botToken) {
       const adminMessage = 
