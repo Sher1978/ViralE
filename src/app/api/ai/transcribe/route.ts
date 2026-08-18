@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { normalizeModelName } from '@/lib/ai/gemini';
 
 export const maxDuration = 120; // Large iOS videos need more time
@@ -114,21 +114,23 @@ export async function POST(req: NextRequest) {
 
     // ── FALLBACK PATH: Gemini (For large files or if Whisper fails) ─────────
     console.log('[Transcribe] Falling back to Gemini...');
-    const genAI = new GoogleGenerativeAI(apiKey);
+    const aiClient = new GoogleGenAI({ apiKey });
 
     const tryGenerateContent = async (
-      genAIInstance: GoogleGenerativeAI,
+      client: GoogleGenAI,
       parts: any[]
     ) => {
-      const models = ['gemini-2.5-flash', 'gemini-2.5-pro'];
+      const models = ['gemini-3.6-flash', 'gemini-3.1-flash', 'gemini-2.5-flash'];
       let lastError: any = null;
       for (const rawModel of models) {
         const modelName = normalizeModelName(rawModel);
         try {
           console.log(`[Transcribe] Attempting transcription using model: ${modelName}...`);
-          const model = genAIInstance.getGenerativeModel({ model: modelName });
-          const result = await model.generateContent(parts);
-          const text = result.response.text();
+          const result = await client.models.generateContent({
+            model: modelName,
+            contents: parts
+          });
+          const text = result.text || '';
           if (text) {
             console.log(`[Transcribe] Success with model: ${modelName}`);
             return { text, model: modelName };
@@ -146,7 +148,7 @@ export async function POST(req: NextRequest) {
       try {
         const buffer = Buffer.from(await file.arrayBuffer());
         const base64 = buffer.toString('base64');
-        const result = await tryGenerateContent(genAI, [
+        const result = await tryGenerateContent(aiClient, [
           { text: TRANSCRIPTION_PROMPT },
           { inlineData: { mimeType: geminiMime, data: base64 } },
         ]);
@@ -192,7 +194,7 @@ export async function POST(req: NextRequest) {
             if (stateData.state === 'ACTIVE') break;
             attempts++;
           }
-          const result = await tryGenerateContent(genAI, [
+          const result = await tryGenerateContent(aiClient, [
             { text: TRANSCRIPTION_PROMPT },
             { fileData: { mimeType: geminiMime, fileUri } }
           ]);

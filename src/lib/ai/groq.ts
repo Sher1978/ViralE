@@ -71,7 +71,7 @@ export async function generateDailyIdeas(
       messages: [
         { 
           role: "system", 
-          content: `You are the "Viral Engine" Strategic Consultant. Generate high-density, sharp, non-cliché video topic ideas. Respond EXCLUSIVELY in ${languageName.toUpperCase()}. Return ONLY a valid JSON array of 5 idea objects with fields topic_title, rationale, viral_potential_score (85-99), category.` 
+          content: `You are the "Viral Engine" Strategic Consultant. Generate high-density, sharp, non-cliché video topic ideas. Respond EXCLUSIVELY in ${languageName.toUpperCase()}. Return ONLY a valid JSON object with key "ideas" containing 5 idea objects with fields topic_title, rationale, viral_potential_score (number 85-99), category.` 
         },
         { role: "user", content: prompt }
       ],
@@ -90,9 +90,11 @@ export async function generateDailyIdeas(
   const content = data.choices[0].message.content || '';
   const parsed = safeJsonParse(content);
   if (Array.isArray(parsed)) return parsed;
-  if (parsed && typeof parsed === 'object') {
-    const arr = parsed.ideas || parsed.topics || parsed.data || Object.values(parsed).find(v => Array.isArray(v));
+  if (parsed && typeof parsed === 'object' && parsed !== null) {
+    const arr = parsed.ideas || parsed.topics || parsed.data || parsed.results || parsed.items || parsed.suggestions || Object.values(parsed).find(v => Array.isArray(v));
     if (Array.isArray(arr)) return arr;
+    const values = Object.values(parsed).filter((v: any) => v && typeof v === 'object' && (v.topic_title || v.title));
+    if (values.length > 0) return values;
   }
   return [];
 }

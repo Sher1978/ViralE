@@ -1,5 +1,5 @@
 import { NextResponse } from 'next/server';
-import { GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI } from '@google/genai';
 import { notifyAdminError } from '@/lib/telegram';
 
 export const maxDuration = 15;
@@ -27,16 +27,17 @@ export async function GET(req: Request) {
     }, { status: 500 });
   }
 
-  const candidateModels = ['gemini-3.7-flash', 'gemini-3.1-pro', 'gemini-2.5-flash'];
+  const candidateModels = ['gemini-3.6-flash', 'gemini-3.1-flash', 'gemini-2.5-flash'];
   let lastError: any = null;
 
   for (const modelCandidate of candidateModels) {
     try {
-      const genAI = new GoogleGenerativeAI(apiKey);
-      const model = genAI.getGenerativeModel({ model: modelCandidate });
-      const result = await model.generateContent('Health check ping. Output single word: OK');
-      const response = await result.response;
-      const text = response.text().trim();
+      const ai = new GoogleGenAI({ apiKey });
+      const result = await ai.models.generateContent({
+        model: modelCandidate,
+        contents: 'Health check ping. Output single word: OK'
+      });
+      const text = (result.text || '').trim();
       const latencyMs = Date.now() - startTime;
 
       console.log(`[Gemini Health Sentinel] Healthy response from ${modelCandidate} in ${latencyMs}ms`);

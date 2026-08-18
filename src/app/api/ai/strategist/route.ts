@@ -1,5 +1,5 @@
 import { getModel, normalizeModelName } from '@/lib/ai/gemini';
-import { SchemaType, FunctionCallingMode, GoogleGenerativeAI } from '@google/generative-ai';
+import { GoogleGenAI, Type } from '@google/genai';
 import { strategistService } from '@/lib/services/strategistService';
 import { strategistServerService } from '@/lib/services/strategistServerService';
 import { getAuthContext } from '@/lib/auth';
@@ -177,20 +177,22 @@ export async function POST(req: Request) {
           const arrayBuffer = await audioFile.arrayBuffer();
           const base64 = Buffer.from(arrayBuffer).toString('base64');
           
-          const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
-          const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-pro'];
+          const aiClient = new GoogleGenAI({ apiKey: geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "" });
+          const modelsToTry = ['gemini-3.6-flash', 'gemini-3.1-flash', 'gemini-2.5-flash'];
           let text = '';
           
           for (const rawModelName of modelsToTry) {
             const modelName = normalizeModelName(rawModelName);
             try {
               console.log(`[Strategist Agent] Trying model ${modelName} for transcription...`);
-              const transModel = client.getGenerativeModel({ model: modelName });
-              const result = await transModel.generateContent([
-                { text: "Transcribe the spoken audio precisely. Return ONLY the transcribed text. Do not add any explanation or note." },
-                { inlineData: { mimeType: audioFile.type || 'audio/webm', data: base64 } }
-              ]);
-              text = result.response.text();
+              const result = await aiClient.models.generateContent({
+                model: modelName,
+                contents: [
+                  { text: "Transcribe the spoken audio precisely. Return ONLY the transcribed text. Do not add any explanation or note." },
+                  { inlineData: { mimeType: audioFile.type || 'audio/webm', data: base64 } }
+                ]
+              });
+              text = result.text || '';
               if (text && text.trim()) {
                 console.log(`[Strategist Agent] Gemini Transcription success with ${modelName}: "${text}"`);
                 currentMessage = text.trim();
@@ -249,10 +251,10 @@ export async function POST(req: Request) {
             name: "update_brand_dna",
             description: "Updates the user's permanent Brand DNA/Digital Shadow with new information synthesized from the conversation.",
             parameters: {
-              type: SchemaType.OBJECT,
+              type: Type.OBJECT,
               properties: {
                 new_info: {
-                  type: SchemaType.STRING,
+                  type: Type.STRING,
                   description: "The new facts, style preferences, or audience insights to add to the DNA."
                 }
               },
@@ -263,65 +265,65 @@ export async function POST(req: Request) {
             name: "update_storybrand",
             description: "Updates the user's structured 7-element StoryBrand framework document in Supabase when new elements are collected during the interview.",
             parameters: {
-              type: SchemaType.OBJECT,
+              type: Type.OBJECT,
               properties: {
                 storybrand_markdown: {
-                  type: SchemaType.STRING,
+                  type: Type.STRING,
                   description: "The full updated Markdown document containing the 7 StoryBrand elements: Hero, Problem, Guide, Plan, Call to Action, Success, Failure."
                 },
                 storybrand_answers: {
-                  type: SchemaType.OBJECT,
+                  type: Type.OBJECT,
                   description: "The structured JSON object containing the answers for each of the 7 StoryBrand sections.",
                   properties: {
                     hero: {
-                      type: SchemaType.OBJECT,
+                      type: Type.OBJECT,
                       properties: {
-                        description: { type: SchemaType.STRING, description: "Who is the ideal customer?" },
-                        desire: { type: SchemaType.STRING, description: "What do they want?" }
+                        description: { type: Type.STRING, description: "Who is the ideal customer?" },
+                        desire: { type: Type.STRING, description: "What do they want?" }
                       }
                     },
                     problem: {
-                      type: SchemaType.OBJECT,
+                      type: Type.OBJECT,
                       properties: {
-                        external: { type: SchemaType.STRING, description: "Physical/tangible obstacle." },
-                        internal: { type: SchemaType.STRING, description: "How the obstacle makes the customer feel." },
-                        philosophical: { type: SchemaType.STRING, description: "Why it is fundamentally wrong/unfair." }
+                        external: { type: Type.STRING, description: "Physical/tangible obstacle." },
+                        internal: { type: Type.STRING, description: "How the obstacle makes the customer feel." },
+                        philosophical: { type: Type.STRING, description: "Why it is fundamentally wrong/unfair." }
                       }
                     },
                     guide: {
-                      type: SchemaType.OBJECT,
+                      type: Type.OBJECT,
                       properties: {
-                        empathy: { type: SchemaType.STRING, description: "Expressing understanding of their pain." },
-                        authority: { type: SchemaType.STRING, description: "Emphasizing competency, testimonials, stats, etc." }
+                        empathy: { type: Type.STRING, description: "Expressing understanding of their pain." },
+                        authority: { type: Type.STRING, description: "Emphasizing competency, testimonials, stats, etc." }
                       }
                     },
                     plan: {
-                      type: SchemaType.OBJECT,
+                      type: Type.OBJECT,
                       properties: {
                         steps: { 
-                          type: SchemaType.ARRAY, 
-                          items: { type: SchemaType.STRING },
+                          type: Type.ARRAY, 
+                          items: { type: Type.STRING },
                           description: "3-4 step process to work together." 
                         },
-                        agreement: { type: SchemaType.STRING, description: "Guarantee or risk reduction policy." }
+                        agreement: { type: Type.STRING, description: "Guarantee or risk reduction policy." }
                       }
                     },
                     cta: {
-                      type: SchemaType.OBJECT,
+                      type: Type.OBJECT,
                       properties: {
-                        direct: { type: SchemaType.STRING, description: "Clear direct action (e.g. Buy Now)." },
-                        transitional: { type: SchemaType.STRING, description: "Nurturing option (e.g. Free checklist)." }
+                        direct: { type: Type.STRING, description: "Clear direct action (e.g. Buy Now)." },
+                        transitional: { type: Type.STRING, description: "Nurturing option (e.g. Free checklist)." }
                       }
                     },
                     failure: {
-                      type: SchemaType.STRING,
+                      type: Type.STRING,
                       description: "What negative outcomes are avoided."
                     },
                     success: {
-                      type: SchemaType.OBJECT,
+                      type: Type.OBJECT,
                       properties: {
-                        results: { type: SchemaType.STRING, description: "Tangible positive outcomes." },
-                        transformation: { type: SchemaType.STRING, description: "Before vs After character change." }
+                        results: { type: Type.STRING, description: "Tangible positive outcomes." },
+                        transformation: { type: Type.STRING, description: "Before vs After character change." }
                       }
                     }
                   }
@@ -334,7 +336,7 @@ export async function POST(req: Request) {
       }] : undefined,
       toolConfig: isInterviewMode ? {
         functionCallingConfig: {
-          mode: FunctionCallingMode.AUTO
+          mode: 'AUTO' as any
         }
       } : undefined
     });

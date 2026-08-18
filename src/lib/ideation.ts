@@ -166,15 +166,17 @@ export async function generateDailyIdeas(
       - If "Fast Sales": Sharp CTAs and urgent value.
       - If "Trends": Hook onto current viral formats suited to the brand DNA niche (do NOT mention cars or Dubai unless explicitly in user DNA).
 
-      OUTPUT FORMAT: JSON array of 5 objects
-      [
-        {
-          "topic_title": "Short, punchy title",
-          "rationale": "Strategic reason why this works for this category",
-          "viral_potential_score": 85-99,
-          "category": "${targetCategory}"
-        }
-      ]
+      OUTPUT FORMAT: JSON object containing an "ideas" array of 5 objects
+      {
+        "ideas": [
+          {
+            "topic_title": "Short, punchy title",
+            "rationale": "Strategic reason why this works for this category",
+            "viral_potential_score": 92,
+            "category": "${targetCategory}"
+          }
+        ]
+      }
     `;
 
     const syntheticData = (profile?.synthetic_training_data as Record<string, any>) || {};
@@ -184,13 +186,13 @@ export async function generateDailyIdeas(
     let text = '';
     let ideasArray: any[] = [];
 
-    // Try up to 2 attempts to generate valid JSON array
+    // Try up to 2 attempts to generate valid JSON array/object
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
         const result = await fastModel.generateContent(
           attempt === 1 
             ? prompt 
-            : `${prompt}\n\nCRITICAL RETRY: Output ONLY raw valid JSON array. Do not wrap in markdown or explanatory text.`
+            : `${prompt}\n\nCRITICAL RETRY: Output ONLY raw valid JSON object with key "ideas". Do not wrap in markdown or explanatory text.`
         );
         const response = await result.response;
         text = response.text().trim();
@@ -198,10 +200,25 @@ export async function generateDailyIdeas(
         const parsed = safeJsonParse<any>(text);
         if (Array.isArray(parsed)) {
           ideasArray = parsed;
-        } else if (parsed && typeof parsed === 'object') {
-          const candidateArray = parsed.ideas || parsed.topics || parsed.data || parsed.results || Object.values(parsed).find((val: any) => Array.isArray(val));
+        } else if (parsed && typeof parsed === 'object' && parsed !== null) {
+          const candidateArray = 
+            parsed.ideas || 
+            parsed.topics || 
+            parsed.data || 
+            parsed.results || 
+            parsed.items || 
+            parsed.suggestions ||
+            parsed[targetCategory] ||
+            parsed[targetCategory.toLowerCase()] ||
+            Object.values(parsed).find((val: any) => Array.isArray(val));
+
           if (Array.isArray(candidateArray)) {
             ideasArray = candidateArray;
+          } else {
+            const values = Object.values(parsed).filter((v: any) => v && typeof v === 'object' && (v.topic_title || v.title));
+            if (values.length > 0) {
+              ideasArray = values;
+            }
           }
         }
 
@@ -233,27 +250,9 @@ export async function generateDailyIdeas(
       }
     }
 
-    if (ideasArray.length === 0) {
-      // Notify Telegram Bot of AI Ideation Failure only if ALL providers failed
-      try {
-        const { notifyAdminError } = await import('@/lib/telegram');
-        notifyAdminError({
-          source: 'AI Ideation Generator',
-          error: new Error(`Ideation returned no items for category ${targetCategory}`),
-          userId,
-          extra: {
-            location: 'ideation.ts:generateDailyIdeas',
-            category: targetCategory,
-            locale,
-            botTarget: '@Viralengin_bot'
-          }
-        }).catch(() => {});
-      } catch (e) {}
-    }
-
     if (ideasArray.length > 0) {
       return ideasArray.map((i: any) => ({ 
-        topic_title: i.topic_title || (locale === 'ru' ? 'Виральная идея' : 'Viral Topic Idea'),
+        topic_title: i.topic_title || i.title || (locale === 'ru' ? 'Виральная идея' : 'Viral Topic Idea'),
         rationale: i.rationale || '',
         viral_potential_score: typeof i.viral_potential_score === 'number' ? i.viral_potential_score : 88,
         category: targetCategory 
@@ -281,6 +280,23 @@ export async function generateDailyIdeas(
 
   console.warn(`[generateDailyIdeas:${targetCategory}] Returning dynamic DNA-tailored fallback ideas for user ${userId}.`);
   
+  if (targetCategory === "Hooks" || targetCategory === "Хуки") {
+    return [
+      {
+        topic_title: locale === 'ru' ? `Перестаньте делать это в сферах «${sphere}», если не хотите потерять всё` : `Stop doing this in "${sphere}" if you don't want to lose everything`,
+        rationale: locale === 'ru' ? `Виральный хук-разрушитель мифов для темы: ${sphere}` : `Viral myth buster hook for niche: ${sphere}`,
+        viral_potential_score: 97,
+        category: targetCategory
+      },
+      {
+        topic_title: locale === 'ru' ? `Почему 90% экспертов в «${sphere}» проигрывают в 2026 году?` : `Why 90% of specialists in "${sphere}" fail in 2026?`,
+        rationale: locale === 'ru' ? `Провокационный хук идентификации болей аудитории` : `Provocative audience pain identification hook`,
+        viral_potential_score: 95,
+        category: targetCategory
+      }
+    ];
+  }
+
   if (targetCategory === "Problem" || targetCategory === "Зеркало болей") {
     return [
       {
@@ -310,6 +326,23 @@ export async function generateDailyIdeas(
         topic_title: locale === 'ru' ? `Пошаговый алгоритм безопасности в «${sphere}»` : `Step-by-step security framework in "${sphere}"`,
         rationale: locale === 'ru' ? 'Структурированное экспертное решение для аудитории' : 'High value structured authority offer',
         viral_potential_score: 91,
+        category: targetCategory
+      }
+    ];
+  }
+
+  if (targetCategory === "Trends" || targetCategory === "Тренды") {
+    return [
+      {
+        topic_title: locale === 'ru' ? `Топ-3 тренда в «${sphere}», которые сработают в этом месяце` : `Top 3 trends in "${sphere}" working right now`,
+        rationale: locale === 'ru' ? `Адаптация трендовых форматов под нишу: ${sphere}` : `Trend adaptation for brand niche: ${sphere}`,
+        viral_potential_score: 94,
+        category: targetCategory
+      },
+      {
+        topic_title: locale === 'ru' ? `Главный тренд 2026 года в «${sphere}»` : `The #1 2026 trend in "${sphere}"`,
+        rationale: locale === 'ru' ? 'Высокорезонансный трендовый формат' : 'High resonance trend breakdown',
+        viral_potential_score: 93,
         category: targetCategory
       }
     ];

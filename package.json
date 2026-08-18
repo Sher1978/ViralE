@@ -19,7 +19,7 @@
     "@ffmpeg/core": "^0.12.6",
     "@ffmpeg/ffmpeg": "^0.12.15",
     "@ffmpeg/util": "^0.12.2",
-    "@google/generative-ai": "^0.24.1",
+    "@google/genai": "^2.17.1",
     "@remotion/media-utils": "^4.0.507",
     "@remotion/player": "^4.0.507",
     "@supabase/supabase-js": "^2.103.3",
