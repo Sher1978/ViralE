@@ -127,7 +127,8 @@ export function getModel(
               { role: "user", content: textPrompt }
             ],
             response_format: { type: "json_object" },
-            temperature: 0.1
+            temperature: 0.75,
+            top_p: 0.9
           })
         });
         
