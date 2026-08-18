@@ -7,8 +7,7 @@ export async function GET(request: Request) {
   const code = searchParams.get('code');
   const next = searchParams.get('next') ?? '/app/projects';
 
-  const isLocalhost = origin.includes('localhost') || origin.includes('127.0.0.1');
-  const canonicalOrigin = isLocalhost ? origin : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno');
+  const canonicalOrigin = (origin && origin !== 'null') ? origin : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno');
 
   if (code) {
     const cookieStore = await cookies();
@@ -108,14 +107,12 @@ export async function GET(request: Request) {
               document.cookie = cookieName + "=" + accessToken + "; path=/; max-age=604800; SameSite=Lax; Secure";
             }
             // Delay redirect slightly to ensure iOS Safari persists the cookie before context unload
-            const isLocal = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1');
-            const targetOrigin = isLocal ? window.location.origin : "${process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno'}";
+            const targetOrigin = window.location.origin;
             setTimeout(function() {
               window.location.replace(targetOrigin + next + hash);
             }, 100);
           } else {
-            const isLocal = window.location.origin.includes('localhost') || window.location.origin.includes('127.0.0.1');
-            const targetOrigin = isLocal ? window.location.origin : "${process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno'}";
+            const targetOrigin = window.location.origin;
             window.location.replace(targetOrigin + "/auth?error=auth-failure");
           }
         })();

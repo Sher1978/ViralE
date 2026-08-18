@@ -29,8 +29,7 @@ export default function LoginButtons() {
       const localizedNext = activeLocale === 'ru' ? `/ru${redirectPath}` : redirectPath;
       
       const win = (globalThis as any).window;
-      const isLocalhost = win && (win.location.hostname.includes('localhost') || win.location.hostname.includes('127.0.0.1'));
-      const canonicalOrigin = isLocalhost ? win.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno');
+      const canonicalOrigin = win ? win.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno');
 
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
