@@ -248,21 +248,21 @@ export function useStudioExport({
     }
   };
 
-  // 2. Share raw recorded video link via Telegram share intent
+  // 2. Share raw recorded video link via Telegram bot or Telegram share intent
   const sendRawToTelegram = async () => {
     if (!lastRecordingUrl) return;
-    addSystemLog('Начало отправки видео в Telegram...');
+    addSystemLog('Начало отправки видео в Telegram бот @Viralengin_bot...');
 
     let urlToShare = lastRecordingUrl;
 
     if (lastRecordingUrl.startsWith('blob:')) {
       try {
-        addSystemLog('Видео еще не загружено на сервер. Начинаем фоновую загрузку в облако для Telegram...');
-        (globalThis as any).alert?.("Загружаем видео в облако для отправки в Telegram... Пожалуйста, подождите несколько секунд.");
+        addSystemLog('Начало загрузки в облако для Telegram...');
+        (globalThis as any).alert?.("Подготовка видео для Telegram... Пожалуйста, подождите 2-3 секунды.");
 
         let blob = recordedBlobRef.current;
         if (!blob) {
-          addSystemLog('Восстановление blob из IndexedDB для загрузки...');
+          addSystemLog('Восстановление blob из IndexedDB...');
           const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
           if (cached instanceof Blob) {
             blob = cached;
@@ -276,7 +276,7 @@ export function useStudioExport({
         const uploadResult = await renderService.uploadMedia(projectId, blob, 'video');
         if (uploadResult && uploadResult.publicUrl) {
           urlToShare = uploadResult.publicUrl;
-          addSystemLog(`Видео загружено успешно. URL для шаринга: ${urlToShare}`);
+          addSystemLog(`Видео загружено в облако: ${urlToShare}`);
         } else {
           throw new Error("Не удалось загрузить видео на сервер.");
         }
@@ -288,12 +288,40 @@ export function useStudioExport({
     }
 
     const descriptionText = (manifest as any)?.scriptText || manifest?.segments?.map((s: any) => s.scriptText).filter(Boolean).join('\n\n') || '';
-    const shareText = descriptionText ? descriptionText.substring(0, 1000) : 'Мое новое видео из Viral Engine!';
-    const tgUrl = `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent(shareText)}`;
-    addSystemLog(`Открытие ссылки Telegram Share: ${tgUrl}`);
+    const shareText = descriptionText ? `🎥 Запись с Телесуфлёра (Viral Engine):\n\n${descriptionText.substring(0, 800)}` : '🎥 Запись с Телесуфлёра Viral Engine!';
 
-    if (typeof (globalThis as any).window !== 'undefined') {
-      (globalThis as any).window.open(tgUrl, '_blank');
+    try {
+      addSystemLog('Отправка запроса в API бота Telegram...');
+      const exportRes = await fetch('/api/telegram/export-video', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          videoUrl: urlToShare,
+          caption: shareText,
+          projectId
+        })
+      });
+
+      const exportData = await exportRes.json();
+      if (exportData.deliveredDirectly) {
+        addSystemLog('Видео отправлено прямо в личный чат Telegram!');
+        (globalThis as any).alert?.('🚀 Видео отправлено прямо в ваш чат с ботом @Viralengin_bot!');
+        return;
+      }
+
+      // Fallback if not linked directly yet
+      const shareUrl = exportData.shareUrl || `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent(shareText)}`;
+      addSystemLog(`Открытие окна отправки Telegram: ${shareUrl}`);
+
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).window.open(shareUrl, '_blank');
+      }
+    } catch (err: any) {
+      addSystemLog(`Ошибка при вызове Telegram API: ${err.message}`);
+      const fallbackTgUrl = `https://t.me/share/url?url=${encodeURIComponent(urlToShare)}&text=${encodeURIComponent(shareText)}`;
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).window.open(fallbackTgUrl, '_blank');
+      }
     }
   };
 

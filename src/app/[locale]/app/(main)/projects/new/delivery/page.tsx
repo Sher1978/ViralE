@@ -1291,8 +1291,43 @@ function DeliveryPageContent() {
     setIsExporting(true);
     try {
       if (target === 'telegram') {
-        if (typeof (globalThis as any).window !== 'undefined') {
-          (globalThis as any).window.open('https://t.me/ViralEngine_Bot', '_blank');
+        addSystemLog('Отправка сгенерированного видео в Telegram бот @Viralengin_bot...');
+        const videoUrl = job?.output_url || backgroundMp4Url || (manifest as any)?.videoUrl;
+        if (!videoUrl) {
+          throw new Error('Видео еще не сформировано.');
+        }
+
+        const captionText = `🚀 Финальный видео-ролик готов (Viral Engine)!\n\n${project?.title || ''}`;
+
+        try {
+          const exportRes = await fetch('/api/telegram/export-video', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              videoUrl,
+              caption: captionText,
+              projectId
+            })
+          });
+
+          const exportData = await exportRes.json();
+          if (exportData.deliveredDirectly) {
+            addSystemLog('Видео успешно доставлено прямо в личные сообщения бота Telegram!');
+            (globalThis as any).alert?.('🚀 Видео отправлено прямо в ваш чат с ботом @Viralengin_bot!');
+            return;
+          }
+
+          const shareUrl = exportData.shareUrl || `https://t.me/share/url?url=${encodeURIComponent(videoUrl)}&text=${encodeURIComponent(captionText)}`;
+          addSystemLog(`Открытие ссылки Telegram: ${shareUrl}`);
+          if (typeof (globalThis as any).window !== 'undefined') {
+            (globalThis as any).window.open(shareUrl, '_blank');
+          }
+        } catch (err: any) {
+          addSystemLog(`Ошибка вызова API Telegram: ${err.message}`);
+          const fallbackUrl = `https://t.me/share/url?url=${encodeURIComponent(videoUrl)}&text=${encodeURIComponent(captionText)}`;
+          if (typeof (globalThis as any).window !== 'undefined') {
+            (globalThis as any).window.open(fallbackUrl, '_blank');
+          }
         }
       } else {
         addSystemLog('Загрузка видео на ваш Google Диск...');

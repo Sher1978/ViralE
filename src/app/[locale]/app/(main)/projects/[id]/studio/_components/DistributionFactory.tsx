@@ -1139,7 +1139,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       if (urls[platform]) {
         if (safeWindow && safeWindow.open) safeWindow.open(urls[platform], '_blank');
       } else {
-        if (safeWindow && safeWindow.open) safeWindow.open('https://t.me/ViralEngine_Bot', '_blank');
+        if (safeWindow && safeWindow.open) safeWindow.open('https://t.me/Viralengin_bot', '_blank');
       }
     }
   };
