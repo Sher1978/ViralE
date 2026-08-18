@@ -200,10 +200,13 @@ export async function generateDailyIdeas(
         }
 
         if (ideasArray.length > 0) {
+          console.log(`[generateDailyIdeas:${targetCategory}] Successfully generated ${ideasArray.length} ideas on attempt ${attempt}.`);
           break;
+        } else {
+          console.warn(`[generateDailyIdeas:${targetCategory}] Attempt ${attempt} returned no ideas. Raw text snippet:`, text.slice(0, 250));
         }
-      } catch (parseError) {
-        console.warn(`[generateDailyIdeas] Attempt ${attempt} failed to parse AI response as JSON.`, parseError);
+      } catch (parseError: any) {
+        console.warn(`[generateDailyIdeas:${targetCategory}] Attempt ${attempt} exception: ${parseError?.message || parseError}. Raw text snippet: "${text.slice(0, 250)}"`);
       }
     }
 
@@ -216,9 +219,15 @@ export async function generateDailyIdeas(
       }));
     }
   } catch (outerErr: any) {
-    console.warn(`[generateDailyIdeas] Caught exception during generation for ${targetCategory}:`, outerErr?.message || outerErr);
+    console.warn(`[generateDailyIdeas:${targetCategory}] Caught outer exception during generation for user ${userId}:`, {
+      message: outerErr?.message || String(outerErr),
+      stack: outerErr?.stack,
+      category: targetCategory,
+      locale
+    });
   }
 
+  console.warn(`[generateDailyIdeas:${targetCategory}] Returning high-converting fallback ideas for user ${userId}.`);
   // Universal high-converting fallback ideas if AI fails or throws exception
   return [
     {
@@ -260,9 +269,11 @@ export async function saveIdeasToFeed(supabase: SupabaseClient, userId: string, 
         }))
       );
     if (error) {
-      console.error('[saveIdeasToFeed] Database insertion error:', error);
+      console.error('[saveIdeasToFeed] Database insertion error for user', userId, ':', error);
+    } else {
+      console.log(`[saveIdeasToFeed] Saved ${ideas.length} ideas for user ${userId}.`);
     }
-  } catch (e) {
-    console.error('[saveIdeasToFeed] Exception saving ideas to database:', e);
+  } catch (e: any) {
+    console.error('[saveIdeasToFeed] Exception saving ideas to database:', { userId, message: e?.message, stack: e?.stack });
   }
 }

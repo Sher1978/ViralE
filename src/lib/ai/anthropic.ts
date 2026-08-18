@@ -240,13 +240,19 @@ export async function generateScript(
   });
 
   const content = response.content[0];
-  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  if (content.type !== 'text') throw new Error("[Anthropic:generateScript] Unexpected content type from Anthropic");
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
   const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
   if (parsed) return parsed;
-  return JSON.parse(jsonStr);
+  
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e: any) {
+    console.warn(`[Anthropic:generateScript] JSON parse failed. Raw snippet: "${text.slice(0, 250)}"`);
+    throw new Error(`[Anthropic:generateScript] Invalid JSON response: ${e.message}`);
+  }
 }
 
 export async function refineScript(
@@ -289,13 +295,19 @@ export async function refineScript(
   });
 
   const content = response.content[0];
-  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  if (content.type !== 'text') throw new Error("[Anthropic:refineScript] Unexpected content type from Anthropic");
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
   const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
   if (parsed) return parsed;
-  return JSON.parse(jsonStr);
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e: any) {
+    console.warn(`[Anthropic:refineScript] JSON parse failed. Raw snippet: "${text.slice(0, 250)}"`);
+    throw new Error(`[Anthropic:refineScript] Invalid JSON response: ${e.message}`);
+  }
 }
 
 export async function generatePreviews(
@@ -354,13 +366,19 @@ export async function generatePreviews(
   });
 
   const content = response.content[0];
-  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  if (content.type !== 'text') throw new Error("[Anthropic:generatePreviews] Unexpected content type from Anthropic");
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
   const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
   if (parsed) return parsed;
-  return JSON.parse(jsonStr);
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e: any) {
+    console.warn(`[Anthropic:generatePreviews] JSON parse failed. Raw snippet: "${text.slice(0, 250)}"`);
+    throw new Error(`[Anthropic:generatePreviews] Invalid JSON response: ${e.message}`);
+  }
 }
 
 export async function generateFullScript(
@@ -432,13 +450,19 @@ export async function generateFullScript(
   });
 
   const content = response.content[0];
-  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  if (content.type !== 'text') throw new Error("[Anthropic:generateFullScript] Unexpected content type from Anthropic");
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
   const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
   if (parsed) return parsed;
-  return JSON.parse(jsonStr);
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e: any) {
+    console.warn(`[Anthropic:generateFullScript] JSON parse failed. Raw snippet: "${text.slice(0, 250)}"`);
+    throw new Error(`[Anthropic:generateFullScript] Invalid JSON response: ${e.message}`);
+  }
 }
 
 export async function generateTurboScript(
@@ -505,11 +529,17 @@ export async function generateTurboScript(
   });
 
   const content = response.content[0];
-  if (content.type !== 'text') throw new Error("Unexpected content type from Anthropic");
+  if (content.type !== 'text') throw new Error("[Anthropic:generateTurboScript] Unexpected content type from Anthropic");
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
   const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
   if (parsed) return parsed;
-  return JSON.parse(jsonStr);
+
+  try {
+    return JSON.parse(jsonStr);
+  } catch (e: any) {
+    console.warn(`[Anthropic:generateTurboScript] JSON parse failed. Raw snippet: "${text.slice(0, 250)}"`);
+    throw new Error(`[Anthropic:generateTurboScript] Invalid JSON response: ${e.message}`);
+  }
 }

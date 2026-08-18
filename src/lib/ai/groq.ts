@@ -127,10 +127,11 @@ export async function generateScript(
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
+  const content = data.choices[0].message.content || '';
   const parsed = safeJsonParse(content);
   if (parsed) return parsed;
-  throw new Error(locale === 'ru' ? 'Ошибка формата ответа Groq.' : 'Groq returned invalid JSON structure.');
+  console.warn(`[Groq:generateScript] JSON parse failed. Raw snippet: "${content.slice(0, 250)}"`);
+  throw new Error(locale === 'ru' ? '[Groq:generateScript] Ошибка формата ответа Groq.' : '[Groq:generateScript] Groq returned invalid JSON structure.');
 }
 
 export async function refineScript(
@@ -191,10 +192,11 @@ export async function refineScript(
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
+  const content = data.choices[0].message.content || '';
   const parsed = safeJsonParse(content);
   if (parsed) return parsed;
-  throw new Error(locale === 'ru' ? 'Ошибка формата при редактировании.' : 'Groq returned invalid JSON structure during refinement.');
+  console.warn(`[Groq:refineScript] JSON parse failed. Raw snippet: "${content.slice(0, 250)}"`);
+  throw new Error(locale === 'ru' ? '[Groq:refineScript] Ошибка формата при редактировании.' : '[Groq:refineScript] Groq returned invalid JSON structure during refinement.');
 }
 
 export async function generatePreviews(
@@ -266,10 +268,11 @@ export async function generatePreviews(
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
+  const content = data.choices[0].message.content || '';
   const parsed = safeJsonParse(content);
   if (parsed) return parsed;
-  throw new Error(locale === 'ru' ? 'Ошибка формата превью.' : 'Groq returned invalid previews format.');
+  console.warn(`[Groq:generatePreviews] JSON parse failed. Raw snippet: "${content.slice(0, 250)}"`);
+  throw new Error(locale === 'ru' ? '[Groq:generatePreviews] Ошибка формата превью.' : '[Groq:generatePreviews] Groq returned invalid previews format.');
 }
 
 export async function generateFullScript(
@@ -354,10 +357,11 @@ export async function generateFullScript(
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
+  const content = data.choices[0].message.content || '';
   const parsed = safeJsonParse(content);
   if (parsed) return parsed;
-  throw new Error(locale === 'ru' ? 'Ошибка формата сценария.' : 'Groq returned invalid script format.');
+  console.warn(`[Groq:generateFullScript] JSON parse failed. Raw snippet: "${content.slice(0, 250)}"`);
+  throw new Error(locale === 'ru' ? '[Groq:generateFullScript] Ошибка формата сценария.' : '[Groq:generateFullScript] Groq returned invalid script format.');
 }
 
 export async function generateTurboScript(
@@ -437,8 +441,9 @@ export async function generateTurboScript(
   }
 
   const data = await response.json();
-  const content = data.choices[0].message.content;
+  const content = data.choices[0].message.content || '';
   const parsed = safeJsonParse(content);
   if (parsed) return parsed;
-  throw new Error(locale === 'ru' ? 'Ошибка формата турбо-сценария.' : 'Groq returned invalid turbo script format.');
+  console.warn(`[Groq:generateTurboScript] JSON parse failed. Raw snippet: "${content.slice(0, 250)}"`);
+  throw new Error(locale === 'ru' ? '[Groq:generateTurboScript] Ошибка формата турбо-сценария.' : '[Groq:generateTurboScript] Groq returned invalid turbo script format.');
 }

@@ -143,14 +143,22 @@ export async function notifyAdminError(details: {
     errorMessage.includes('Free trial limit');
 
   const stack = typeof details.error === 'object' && details.error?.stack 
-    ? details.error.stack.split('\n').slice(0, 4).join('\n') 
-    : '';
+    ? details.error.stack.split('\n').slice(0, 6).join('\n') 
+    : (details.extra?.stack || '');
 
   const resolvedEmail = await resolveUserEmail(details.userId, details.userEmail);
   const displayEmail = resolvedEmail || 'Не указан / Unauthenticated';
 
+  // Extract explicit diagnostic fields from extra context if available
+  const extra = details.extra || {};
+  const location = extra.location || extra.functionName || '';
+  const engine = extra.engine || extra.model || '';
+  const category = extra.category || extra.mode || '';
+  const locale = extra.locale || '';
+  const rawPreview = extra.rawOutputPreview || extra.rawTextSnippet || '';
+
   // Deduplicate identical error notifications within 60s
-  const signature = `${details.source}:${errorMessage}:${details.url || ''}:${resolvedEmail || ''}`;
+  const signature = `${details.source}:${location}:${errorMessage}:${details.url || ''}:${resolvedEmail || ''}`;
   const now = Date.now();
   const lastSent = recentErrorSignatures.get(signature);
   if (lastSent && now - lastSent < 60000) {
@@ -169,6 +177,7 @@ export async function notifyAdminError(details: {
   if (isLimitEvent) {
     text = `💳 <b>ДОСТИГНУТ ЛИМИТ ТАРИФА / ПЭЙВОЛЛ</b> 💳\n\n` +
       `<b>📍 Сценарий:</b> <code>${escapeHtml(details.source)}</code>\n` +
+      (location ? `<b>🎯 Вызов/Локация:</b> <code>${escapeHtml(location)}</code>\n` : '') +
       `<b>📧 Email:</b> <code>${escapeHtml(displayEmail)}</code>\n` +
       (details.url ? `<b>🌐 URL:</b> <code>${escapeHtml(details.url)}</code>\n` : '') +
       (details.userId ? `<b>👤 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` : '') +
@@ -177,12 +186,17 @@ export async function notifyAdminError(details: {
   } else {
     text = `🚨 <b>VIRAL ENGINE USER ERROR ALERT</b> 🚨\n\n` +
       `<b>📍 Source:</b> <code>${escapeHtml(details.source)}</code>\n` +
+      (location ? `<b>🎯 Location:</b> <code>${escapeHtml(location)}</code>\n` : '') +
+      (engine ? `<b>🤖 Engine/Model:</b> <code>${escapeHtml(engine)}</code>\n` : '') +
+      (category ? `<b>🏷️ Category/Mode:</b> <code>${escapeHtml(category)}</code>\n` : '') +
+      (locale ? `<b>🌐 Locale:</b> <code>${escapeHtml(locale)}</code>\n` : '') +
       `<b>📧 Email:</b> <code>${escapeHtml(displayEmail)}</code>\n` +
       (details.url ? `<b>🌐 URL:</b> <code>${escapeHtml(details.url)}</code>\n` : '') +
       (details.userId ? `<b>👤 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` : '') +
       `<b>💥 Error:</b> <code>${escapeHtml(errorMessage.slice(0, 500))}</code>\n` +
-      (stack ? `<b>📜 Stack:</b>\n<pre>${escapeHtml(stack.slice(0, 400))}</pre>\n` : '') +
-      (details.extra ? `<b>ℹ️ Context:</b>\n<pre>${escapeHtml(JSON.stringify(details.extra, null, 2).slice(0, 300))}</pre>\n` : '') +
+      (rawPreview ? `<b>📝 Raw Output Preview:</b>\n<pre>${escapeHtml(rawPreview.slice(0, 350))}</pre>\n` : '') +
+      (stack ? `<b>📜 Stack:</b>\n<pre>${escapeHtml(stack.slice(0, 500))}</pre>\n` : '') +
+      (Object.keys(extra).length > 0 ? `<b>ℹ️ Diagnostic Context:</b>\n<pre>${escapeHtml(JSON.stringify(extra, null, 2).slice(0, 400))}</pre>\n` : '') +
       `<b>⏰ Time:</b> ${new Date().toISOString()}`;
   }
 

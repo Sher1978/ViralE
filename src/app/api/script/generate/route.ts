@@ -315,7 +315,14 @@ export async function POST(req: Request) {
     });
 
   } catch (error: any) {
-    console.error('[ScriptGen] CRITICAL ERROR:', error);
+    console.error('[ScriptGen] CRITICAL ERROR:', {
+      message: error?.message,
+      stack: error?.stack,
+      userId: user?.id,
+      projectId,
+      mode,
+      engine
+    });
     try {
       const { notifyAdminError } = await import('@/lib/telegram');
       notifyAdminError({
@@ -323,7 +330,15 @@ export async function POST(req: Request) {
         error,
         userId: user?.id,
         userEmail: user?.email,
-        extra: { projectId, mode, coreIdea }
+        extra: {
+          location: 'api/script/generate/route.ts:POST',
+          engine,
+          mode,
+          locale,
+          projectId,
+          coreIdeaSnippet: coreIdea ? coreIdea.slice(0, 150) : '',
+          stack: error?.stack
+        }
       }).catch(() => {});
     } catch (e) {
       console.error('Failed to notify admin of ScriptGen error:', e);

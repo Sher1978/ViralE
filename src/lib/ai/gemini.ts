@@ -409,21 +409,21 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
       const response = await result.response;
       const text = response.text().trim();
 
-      const parsed = safeJsonParse(text);
-      if (parsed && typeof parsed === 'object') {
-        return parsed;
+        if (parsed && typeof parsed === 'object') {
+          return parsed;
+        }
+        console.warn(`[Gemini:generateScript] Attempt ${attempt} returned invalid JSON format. Raw snippet: "${text.slice(0, 250)}"`);
+      } catch (e: any) {
+        console.warn(`[Gemini:generateScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
       }
-    } catch (e) {
-      console.warn(`[Gemini generateScript] Attempt ${attempt} failed:`, e);
     }
-  }
 
-  throw new Error(
-    locale === 'ru'
-      ? 'Не удалось сформировать сценарий в формате JSON. Пожалуйста, повторите попытку.'
-      : 'AI returned invalid script format. Please try again.'
-  );
-}
+    throw new Error(
+      locale === 'ru'
+        ? '[Gemini:generateScript] Не удалось сформировать сценарий в формате JSON. Пожалуйста, повторите попытку.'
+        : '[Gemini:generateScript] AI returned invalid script format. Please try again.'
+    );
+  }
 
 export async function synthesizeDigitalShadow(rawInputs: any, locale: string = 'en') {
   const languageName = locale === 'ru' ? 'Russian' : 'English';
@@ -561,15 +561,16 @@ export async function refineScript(
 
       const parsed = safeJsonParse(text);
       if (parsed && typeof parsed === 'object') return parsed;
-    } catch (e) {
-      console.warn(`[Gemini refineScript] Attempt ${attempt} failed:`, e);
+      console.warn(`[Gemini:refineScript] Attempt ${attempt} returned invalid JSON structure. Raw snippet: "${text.slice(0, 250)}"`);
+    } catch (e: any) {
+      console.warn(`[Gemini:refineScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
     }
   }
 
   throw new Error(
     locale === 'ru'
-      ? 'Ошибка формата при редактировании сценария. Попробуйте еще раз.'
-      : 'AI returned invalid data format during refinement.'
+      ? '[Gemini:refineScript] Ошибка формата при редактировании сценария. Попробуйте еще раз.'
+      : '[Gemini:refineScript] AI returned invalid data format during refinement.'
   );
 }
 
@@ -637,15 +638,16 @@ export async function generatePreviews(
 
       const parsed = safeJsonParse(text);
       if (parsed && typeof parsed === 'object') return parsed;
-    } catch (e) {
-      console.warn(`[Gemini generatePreviews] Attempt ${attempt} failed:`, e);
+      console.warn(`[Gemini:generatePreviews] Attempt ${attempt} returned invalid JSON structure. Raw snippet: "${text.slice(0, 250)}"`);
+    } catch (e: any) {
+      console.warn(`[Gemini:generatePreviews] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
     }
   }
 
   throw new Error(
     locale === 'ru'
-      ? 'Ошибка формата превью сценария. Повторите попытку.'
-      : 'AI returned invalid previews format. Please try again.'
+      ? '[Gemini:generatePreviews] Ошибка формата превью сценария. Повторите попытку.'
+      : '[Gemini:generatePreviews] AI returned invalid previews format. Please try again.'
   );
 }
 
@@ -719,15 +721,16 @@ export async function generateFullScript(
 
       const parsed = safeJsonParse(text);
       if (parsed && typeof parsed === 'object') return parsed;
-    } catch (e) {
-      console.warn(`[Gemini generateFullScript] Attempt ${attempt} failed:`, e);
+      console.warn(`[Gemini:generateFullScript] Attempt ${attempt} returned invalid JSON structure. Raw snippet: "${text.slice(0, 250)}"`);
+    } catch (e: any) {
+      console.warn(`[Gemini:generateFullScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
     }
   }
 
   throw new Error(
     locale === 'ru'
-      ? 'Ошибка формата сценария. Попробуйте снова.'
-      : 'AI returned invalid script format. Please try again.'
+      ? '[Gemini:generateFullScript] Ошибка формата сценария. Попробуйте снова.'
+      : '[Gemini:generateFullScript] AI returned invalid script format. Please try again.'
   );
 }
 
@@ -796,14 +799,15 @@ export async function generateTurboScript(
 
       const parsed = safeJsonParse(text);
       if (parsed && typeof parsed === 'object') return parsed;
-    } catch (e) {
-      console.warn(`[Gemini generateTurboScript] Attempt ${attempt} failed:`, e);
+      console.warn(`[Gemini:generateTurboScript] Attempt ${attempt} returned invalid JSON structure. Raw snippet: "${text.slice(0, 250)}"`);
+    } catch (e: any) {
+      console.warn(`[Gemini:generateTurboScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
     }
   }
 
   throw new Error(
     locale === 'ru'
-      ? 'Ошибка формата турбо-сценария. Попробуйте еще раз.'
-      : 'AI returned invalid turbo script format. Please try again.'
+      ? '[Gemini:generateTurboScript] Ошибка формата турбо-сценария. Попробуйте еще раз.'
+      : '[Gemini:generateTurboScript] AI returned invalid turbo script format. Please try again.'
   );
 }

@@ -139,14 +139,29 @@ export async function GET(req: Request) {
     if (error?.message === 'Unauthorized' || error?.status === 401) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
     }
-    console.error('Ideas API Error:', error);
+    console.error('[Ideas API Error] Critical failure:', {
+      message: error?.message,
+      stack: error?.stack,
+      userId: user?.id,
+      url: req.url
+    });
     try {
+      const { searchParams } = new URL(req.url);
       const { notifyAdminError } = await import('@/lib/telegram');
       notifyAdminError({
         source: 'Ideas Generation API',
         error,
         userId: user?.id,
         userEmail: user?.email,
+        url: req.url,
+        extra: {
+          location: 'api/ideas/route.ts:GET',
+          status: searchParams.get('status') || 'new',
+          category: searchParams.get('category') || 'all',
+          locale: searchParams.get('locale') || 'en',
+          force: searchParams.get('force') === 'true',
+          stack: error?.stack
+        }
       }).catch(() => {});
     } catch (e) {}
     return NextResponse.json({ error: error.message || 'Internal Error' }, { status: 500 });
