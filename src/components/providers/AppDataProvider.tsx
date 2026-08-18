@@ -143,24 +143,27 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
             if (text) errorMsg = text;
           } catch (e2) {}
         }
-        console.error(`[AppDataProvider] Error fetching ${status} ideas:`, errorMsg);
-        if (status === 'new') {
-          setIdeasError(errorMsg);
-          const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
-          // Only report system errors to admin, not expected UX validation errors
-          const isDnaValidation = errorMsg.includes('ДНК') || errorMsg.includes('DNA') || errorMsg.includes('brand DNA');
-          if (!isDnaValidation) {
-            fetch('/api/report-error', {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                source: 'Client Ideas Generation',
-                error: errorMsg,
-                url: win ? win.location.href : '',
-                userId: profile?.id,
-                userEmail: profile?.email,
-              }),
-            }).catch(() => {});
+        const isAuthErr = res.status === 401 || errorMsg === 'Unauthorized';
+        if (!isAuthErr) {
+          console.error(`[AppDataProvider] Error fetching ${status} ideas:`, errorMsg);
+          if (status === 'new') {
+            setIdeasError(errorMsg);
+            const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
+            // Only report system errors to admin, not expected UX validation errors
+            const isDnaValidation = errorMsg.includes('ДНК') || errorMsg.includes('DNA') || errorMsg.includes('brand DNA');
+            if (!isDnaValidation) {
+              fetch('/api/report-error', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  source: 'Client Ideas Generation',
+                  error: errorMsg,
+                  url: win ? win.location.href : '',
+                  userId: profile?.id,
+                  userEmail: profile?.email,
+                }),
+              }).catch(() => {});
+            }
           }
         }
       }
