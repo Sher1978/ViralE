@@ -29,10 +29,13 @@ export default function LoginButtons() {
       const localizedNext = activeLocale === 'ru' ? `/ru${redirectPath}` : redirectPath;
       
       const win = (globalThis as any).window;
+      const isLocalhost = win && (win.location.hostname.includes('localhost') || win.location.hostname.includes('127.0.0.1'));
+      const canonicalOrigin = isLocalhost ? win.location.origin : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno');
+
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
         options: {
-          redirectTo: `${win ? win.location.origin : ''}/api/auth/callback?next=${encodeURIComponent(localizedNext)}`,
+          redirectTo: `${canonicalOrigin}/api/auth/callback?next=${encodeURIComponent(localizedNext)}`,
           queryParams: {
             access_type: 'offline',
             prompt: 'consent',

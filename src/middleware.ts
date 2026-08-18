@@ -54,7 +54,10 @@ export function middleware(request: NextRequest) {
       : (pathname.startsWith('/en') 
         ? 'en' 
         : (cookieLocale === 'ru' ? 'ru' : 'en'));
-    const redirectUrl = new URL(`/${locale}/app/projects`, request.url);
+    
+    const isLocalhost = request.nextUrl.hostname.includes('localhost') || request.nextUrl.hostname.includes('127.0.0.1');
+    const canonicalOrigin = isLocalhost ? request.nextUrl.origin : (process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno');
+    const redirectUrl = new URL(`/${locale}/app/projects`, canonicalOrigin);
     return NextResponse.redirect(redirectUrl);
   }
 
