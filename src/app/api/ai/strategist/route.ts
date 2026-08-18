@@ -178,7 +178,7 @@ export async function POST(req: Request) {
           const base64 = Buffer.from(arrayBuffer).toString('base64');
           
           const client = new GoogleGenerativeAI(geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
-          const modelsToTry = ['gemini-2.5-flash', 'gemini-2.0-flash', 'gemini-2.0-flash-exp', 'gemini-1.5-flash-latest', 'gemini-1.5-flash'];
+          const modelsToTry = ['gemini-2.5-flash', 'gemini-2.5-pro'];
           let text = '';
           
           for (const rawModelName of modelsToTry) {
