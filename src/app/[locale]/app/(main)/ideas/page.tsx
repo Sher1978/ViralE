@@ -101,6 +101,86 @@ export default function IdeasPage() {
     }
   };
 
+  const sentinelRef = useRef<HTMLDivElement>(null);
+
+  const ideas = activeTab === 'new' ? allNewIdeas : activeTab === 'archived' ? archivedIdeas : usedIdeas;
+  const globalLoading = activeTab === 'new' ? loadingIdeas : activeTab === 'archived' ? loadingArchived : loadingUsed;
+
+  const groupedIdeas = useMemo(() => {
+    const groups: Record<string, Idea[]> = {};
+    ideas.forEach(idea => {
+      const cat = idea.category || (idea as any).metadata?.category || "General";
+      if (!groups[cat]) groups[cat] = [];
+      groups[cat].push(idea);
+    });
+    return groups;
+  }, [ideas]);
+
+  const displayCategories = useMemo(() => {
+    return [...CATEGORIES].sort((a, b) => {
+      const countA = (groupedIdeas[a] || []).length;
+      const countB = (groupedIdeas[b] || []).length;
+      if (countA > 0 && countB === 0) return -1;
+      if (countA === 0 && countB > 0) return 1;
+      return 0;
+    });
+  }, [groupedIdeas]);
+
+  const attemptedCategoriesRef = useRef<Set<string>>(new Set());
+
+  const synthesizeNextCategory = useCallback(async () => {
+    if (synthesisLoading || globalLoading || activeTab !== 'new') return;
+    
+    const nextCat = CATEGORIES.find(cat => 
+      (!groupedIdeas[cat] || groupedIdeas[cat].length === 0) && !attemptedCategoriesRef.current.has(cat)
+    );
+    
+    if (nextCat) {
+      attemptedCategoriesRef.current.add(nextCat);
+      setSynthesisLoading(true);
+      try {
+        await refreshIdeas('new', nextCat);
+      } finally {
+        setSynthesisLoading(false);
+      }
+    }
+  }, [synthesisLoading, globalLoading, activeTab, groupedIdeas, refreshIdeas]);
+
+  useEffect(() => {
+    if (!sentinelRef.current) return;
+    const Obs = typeof globalThis !== 'undefined' ? (globalThis as any).IntersectionObserver : null;
+    if (!Obs) return;
+    const observer = new Obs((entries: any[]) => {
+      if (entries[0].isIntersecting) {
+        synthesizeNextCategory();
+      }
+    }, { threshold: 0.1 });
+    observer.observe(sentinelRef.current);
+    return () => observer.disconnect();
+  }, [synthesizeNextCategory]);
+
+  const handleToScript = async (content: string, rationale?: string, ideaId?: string) => {
+    if (ideaId) {
+      await markIdeaAsUsed(ideaId);
+    }
+    
+    const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+    if (globalObj && typeof globalObj.document !== 'undefined') {
+      globalObj.document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
+    }
+    if (globalObj && typeof globalObj.window !== 'undefined') {
+      globalObj.window.localStorage.setItem('NEXT_LOCALE', locale);
+    }
+
+    let finalContent = content;
+    if (rationale && rationale.length > 3) {
+      const cleanRationale = rationale.replace(/^\(.*\)\s*/, '');
+      finalContent = `${content}\n\n${cleanRationale}`;
+    }
+    let url = `/app/projects/new/script?topic=${encodeURIComponent(finalContent)}&ideaTitle=${encodeURIComponent(content)}`;
+    router.push(url);
+  };
+
   const handleTurboToScript = async (content: string, rationale?: string, ideaId?: string) => {
     if (ideaId) {
       await markIdeaAsUsed(ideaId);
