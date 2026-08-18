@@ -2,12 +2,9 @@ import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { monitoringService } from '@/lib/services/monitoringService';
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8738398927:AAGzIEb_0cW73KC2LrzHz8qre4b4kgvAgMk';
 
 export async function POST(req: NextRequest) {
-  if (!TELEGRAM_BOT_TOKEN) {
-    return NextResponse.json({ error: 'Bot token not configured' }, { status: 500 });
-  }
 
   try {
     const body = await req.json();

@@ -3,7 +3,7 @@
  * Used for sending production results and notifications to users.
  */
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8738398927:AAGzIEb_0cW73KC2LrzHz8qre4b4kgvAgMk';
 const API_URL = `https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}`;
 
 export interface TelegramResponse {
