@@ -244,6 +244,7 @@ export async function POST(req: Request) {
           geminiApiKey,
           brandDna
         });
+      }
     } catch (error: any) {
       console.error('[ScriptGen] AI Generation failed:', error);
       const isCreditDepleted = error?.message?.includes('prepayment credits are depleted') || error?.message?.includes('429');
