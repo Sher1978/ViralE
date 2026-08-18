@@ -124,7 +124,6 @@ export async function generateScript(
  
   // TRIZ step is now handled interactively in the frontend via /api/script/triz
   const trizMatrix = '';
- 
   // 2. Execute Step 2: Feed into the scriptwriter
   switch (engine) {
     case 'claude':
@@ -134,15 +133,39 @@ export async function generateScript(
       } catch (err: any) {
         console.warn('[Factory] Claude generation failed, attempting automatic fallback...', err.message);
         if (groqApiKey || process.env.GROQ_API_KEY) {
-          return await groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, trizMatrix, systemPromptBase);
+          try {
+            return await groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, trizMatrix, systemPromptBase);
+          } catch (groqErr) {}
         }
         return await gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role, trizMatrix, systemPromptBase);
       }
     case 'groq':
-      return groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, trizMatrix, systemPromptBase);
+      try {
+        return await groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, trizMatrix, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Groq generation failed, attempting fallback to Gemini...', err.message);
+        return await gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role, trizMatrix, systemPromptBase);
+      }
     case 'gemini':
     default:
-      return gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role, trizMatrix, systemPromptBase);
+      try {
+        return await gemini.generateScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, hook, role, trizMatrix, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Gemini generation failed, attempting automatic fallback...', err?.message || err);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          try {
+            return await groq.generateScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, trizMatrix, systemPromptBase);
+          } catch (groqErr: any) {
+            console.warn('[Factory] Groq fallback failed, attempting Claude fallback...', groqErr?.message || groqErr);
+          }
+        }
+        if (anthropicApiKey || process.env.ANTHROPIC_API_KEY) {
+          try {
+            return await anthropic.generateScript(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, trizMatrix, systemPromptBase);
+          } catch (anthropicErr) {}
+        }
+        throw err;
+      }
   }
 }
 
@@ -174,15 +197,39 @@ export async function refineScript(
       } catch (err: any) {
         console.warn('[Factory] Claude refineScript failed, falling back...', err.message);
         if (groqApiKey || process.env.GROQ_API_KEY) {
-          return await groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          try {
+            return await groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          } catch (groqErr) {}
         }
         return await gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
       }
     case 'groq':
-      return groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+      try {
+        return await groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Groq refineScript failed, falling back to Gemini...', err.message);
+        return await gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      }
     case 'gemini':
     default:
-      return gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      try {
+        return await gemini.refineScript(currentScript, instruction, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Gemini refineScript failed, attempting automatic fallback...', err?.message || err);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          try {
+            return await groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          } catch (groqErr: any) {
+            console.warn('[Factory] Groq fallback failed for refineScript...', groqErr?.message || groqErr);
+          }
+        }
+        if (anthropicApiKey || process.env.ANTHROPIC_API_KEY) {
+          try {
+            return await anthropic.refineScript(currentScript, instruction, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+          } catch (anthropicErr) {}
+        }
+        throw err;
+      }
   }
 }
 
@@ -212,15 +259,39 @@ export async function generatePreviews(
       } catch (err: any) {
         console.warn('[Factory] Claude generatePreviews failed, falling back...', err.message);
         if (groqApiKey || process.env.GROQ_API_KEY) {
-          return await groq.generatePreviews(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          try {
+            return await groq.generatePreviews(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          } catch (groqErr) {}
         }
         return await gemini.generatePreviews(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
       }
     case 'groq':
-      return groq.generatePreviews(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+      try {
+        return await groq.generatePreviews(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Groq generatePreviews failed, falling back to Gemini...', err.message);
+        return await gemini.generatePreviews(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      }
     case 'gemini':
     default:
-      return gemini.generatePreviews(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      try {
+        return await gemini.generatePreviews(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Gemini generatePreviews failed, attempting automatic fallback...', err?.message || err);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          try {
+            return await groq.generatePreviews(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          } catch (groqErr: any) {
+            console.warn('[Factory] Groq fallback failed for generatePreviews...', groqErr?.message || groqErr);
+          }
+        }
+        if (anthropicApiKey || process.env.ANTHROPIC_API_KEY) {
+          try {
+            return await anthropic.generatePreviews(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+          } catch (anthropicErr) {}
+        }
+        throw err;
+      }
   }
 }
 
@@ -252,15 +323,39 @@ export async function generateFullScript(
       } catch (err: any) {
         console.warn('[Factory] Claude generateFullScript failed, falling back...', err.message);
         if (groqApiKey || process.env.GROQ_API_KEY) {
-          return await groq.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          try {
+            return await groq.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          } catch (groqErr) {}
         }
         return await gemini.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
       }
     case 'groq':
-      return groq.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+      try {
+        return await groq.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Groq generateFullScript failed, falling back to Gemini...', err.message);
+        return await gemini.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      }
     case 'gemini':
     default:
-      return gemini.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      try {
+        return await gemini.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Gemini generateFullScript failed, attempting automatic fallback...', err?.message || err);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          try {
+            return await groq.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          } catch (groqErr: any) {
+            console.warn('[Factory] Groq fallback failed for generateFullScript...', groqErr?.message || groqErr);
+          }
+        }
+        if (anthropicApiKey || process.env.ANTHROPIC_API_KEY) {
+          try {
+            return await anthropic.generateFullScript(coreIdea, selectedStyle, selectedPreview, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+          } catch (anthropicErr) {}
+        }
+        throw err;
+      }
   }
 }
 
@@ -290,14 +385,39 @@ export async function generateTurboScript(
       } catch (err: any) {
         console.warn('[Factory] Claude generateTurboScript failed, falling back...', err.message);
         if (groqApiKey || process.env.GROQ_API_KEY) {
-          return await groq.generateTurboScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          try {
+            return await groq.generateTurboScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          } catch (groqErr) {}
         }
         return await gemini.generateTurboScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
       }
     case 'groq':
-      return groq.generateTurboScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+      try {
+        return await groq.generateTurboScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Groq generateTurboScript failed, falling back to Gemini...', err.message);
+        return await gemini.generateTurboScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      }
     case 'gemini':
     default:
-      return gemini.generateTurboScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      try {
+        return await gemini.generateTurboScript(coreIdea, digitalShadow, locale, geminiApiKey, brandDna, systemPromptBase);
+      } catch (err: any) {
+        console.warn('[Factory] Gemini generateTurboScript failed, attempting automatic fallback...', err?.message || err);
+        if (groqApiKey || process.env.GROQ_API_KEY) {
+          try {
+            return await groq.generateTurboScript(coreIdea, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+          } catch (groqErr: any) {
+            console.warn('[Factory] Groq fallback failed for generateTurboScript...', groqErr?.message || groqErr);
+          }
+        }
+        if (anthropicApiKey || process.env.ANTHROPIC_API_KEY) {
+          try {
+            return await anthropic.generateTurboScript(coreIdea, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
+          } catch (anthropicErr) {}
+        }
+        throw err;
+      }
   }
+}
 }

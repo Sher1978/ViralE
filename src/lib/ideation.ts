@@ -217,12 +217,29 @@ export async function generateDailyIdeas(
     }
 
     if (ideasArray.length === 0) {
-      // Notify Telegram Bot of Gemini Ideation Failure
+      // Fallback to Groq if configured
+      const groqApiKey = profile?.groq_api_key || process.env.GROQ_API_KEY || undefined;
+      if (groqApiKey) {
+        try {
+          const { generateDailyIdeas: generateGroqIdeas } = await import('./ai/groq');
+          const groqIdeas = await generateGroqIdeas(prompt, locale, groqApiKey);
+          if (Array.isArray(groqIdeas) && groqIdeas.length > 0) {
+            ideasArray = groqIdeas;
+            console.log(`[generateDailyIdeas:${targetCategory}] Groq fallback successfully generated ${ideasArray.length} ideas.`);
+          }
+        } catch (groqErr) {
+          console.warn(`[generateDailyIdeas:${targetCategory}] Groq fallback failed:`, groqErr);
+        }
+      }
+    }
+
+    if (ideasArray.length === 0) {
+      // Notify Telegram Bot of AI Ideation Failure only if ALL providers failed
       try {
         const { notifyAdminError } = await import('@/lib/telegram');
         notifyAdminError({
-          source: 'Gemini Ideation Generator',
-          error: new Error(`Gemini ideation returned no items for category ${targetCategory}`),
+          source: 'AI Ideation Generator',
+          error: new Error(`Ideation returned no items for category ${targetCategory}`),
           userId,
           extra: {
             location: 'ideation.ts:generateDailyIdeas',

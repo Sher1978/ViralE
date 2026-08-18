@@ -20,9 +20,9 @@ export function normalizeModelName(rawName?: string): string {
   return name;
 }
 
-// ✅ AUGUST 2026 GEMINI MODEL LINEUP (Gemini 3.x / 2.5)
-export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-3.7-flash");
-export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL_PRO || "gemini-3.1-pro");
+// ✅ AUGUST 2026 GEMINI MODEL LINEUP (Gemini 2.5 / 2.0 / 1.5)
+export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.5-flash");
+export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL_PRO || "gemini-2.5-pro");
 
 export function getModel(
   tier: 'fast' | 'pro' = 'fast', 
@@ -151,15 +151,14 @@ export function getModel(
   
   const rawCandidates = tier === 'pro' ? [
     baseModelName,
-    "gemini-3.1-pro",
     "gemini-2.5-pro",
-    "gemini-3.7-flash"
+    "gemini-1.5-pro",
+    "gemini-2.5-flash"
   ] : [
     baseModelName,
-    "gemini-3.7-flash",
-    "gemini-3.6-flash",
-    "gemini-3.5-flash",
-    "gemini-2.5-flash"
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-flash"
   ];
   const fallbackModels = Array.from(new Set(rawCandidates.map(normalizeModelName)));
 

@@ -244,10 +244,16 @@ export async function POST(req: Request) {
           geminiApiKey,
           brandDna
         });
-      }
     } catch (error: any) {
       console.error('[ScriptGen] AI Generation failed:', error);
-      throw new Error(locale === 'ru' ? `Ошибка ИИ: ${error.message}` : `AI Error: ${error.message}`);
+      const isCreditDepleted = error?.message?.includes('prepayment credits are depleted') || error?.message?.includes('429');
+      let userFriendlyMsg = error?.message || 'Unknown generation error';
+      if (isCreditDepleted) {
+        userFriendlyMsg = locale === 'ru'
+          ? 'Превышен лимит запросов или исчерпан баланс Gemini API (ошибка 429). Пополните баланс в Google AI Studio или добавьте ключ Groq / Claude в Профиль -> Digital Connectors.'
+          : 'Gemini API quota limit reached or prepayment credits depleted (Error 429). Please top up in Google AI Studio or add a Groq/Claude key in Profile -> Digital Connectors.';
+      }
+      throw new Error(locale === 'ru' ? `Ошибка ИИ: ${userFriendlyMsg}` : `AI Error: ${userFriendlyMsg}`);
     }
 
     // 5. Save Version
