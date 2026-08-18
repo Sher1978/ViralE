@@ -128,9 +128,14 @@ export const profileService = {
       return null;
     }
 
-    // Dynamic sync/back-fill for existing profiles missing referral_code or avatar
+    // Dynamic sync/back-fill for existing profiles missing email, referral_code or avatar
     let needsUpdate = false;
     const updates: Partial<Profile> = {};
+
+    if (user.email && (!profile.email || profile.email.includes('anon_') || profile.email !== user.email)) {
+      updates.email = user.email;
+      needsUpdate = true;
+    }
 
     if (!profile.referral_code) {
       updates.referral_code = userRefCode;

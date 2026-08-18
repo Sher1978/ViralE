@@ -19,10 +19,10 @@ export async function POST(req: Request) {
 
     console.log('[Onboarding] Updating profile for user:', userId, 'Traffic Data:', trafficData);
     
-    // Fetch existing credits & onboarding state to award welcome bonus on first onboarding completion
+    // Fetch existing credits, tier & onboarding state to award welcome bonus on first onboarding completion
     const { data: existingProf } = await authorizedSupabase
       .from('profiles')
-      .select('credits_balance, onboarding_completed')
+      .select('credits_balance, onboarding_completed, tier, email')
       .eq('id', userId)
       .single();
 
@@ -32,12 +32,14 @@ export async function POST(req: Request) {
     const newBalance = isFirstTimeOnboarding ? (currentBalance + 100) : currentBalance;
 
     const discoverySource = answers?.discoverySource || null;
+    const activeEmail = user.email || existingProf?.email || `anon_${userId}@viral.engine`;
+    const activeTier = existingProf?.tier || 'free';
 
     const { data, error } = await authorizedSupabase
       .from('profiles')
       .upsert({
         id: userId,
-        email: user.email || `anon_${userId}@viral.engine`,
+        email: activeEmail,
         full_name: user.user_metadata?.full_name || `Media Creator #${parseInt(userId.slice(0, 4), 16) % 10000}`,
         avatar_url: user.user_metadata?.avatar_url || null,
         digital_shadow_prompt: masterPrompt || null,
@@ -50,7 +52,7 @@ export async function POST(req: Request) {
         dna_answers: answers || null,
         onboarding_completed: true,
         credits_balance: newBalance,
-        tier: 'free',
+        tier: activeTier,
         subscription_status: 'active'
       })
       .select()
