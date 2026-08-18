@@ -1,79 +1,33 @@
-import { NextResponse } from 'next/server';
-import { getAuthContext } from '@/lib/auth';
+import { NextRequest, NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
-import { addCredits } from '@/lib/credits';
 
-export async function POST(req: Request) {
+export const runtime = 'nodejs';
+
+export async function GET(req: NextRequest) {
   try {
-    const { user } = await getAuthContext();
-    if (!user) {
-      return new NextResponse('Unauthorized', { status: 401 });
+    const { searchParams } = new URL(req.url);
+    const userId = searchParams.get('userId');
+
+    if (!userId) {
+      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
     }
 
-    const { telegramId, username } = await req.json();
-    if (!telegramId) {
-      return NextResponse.json({ error: 'Missing telegramId' }, { status: 400 });
-    }
-
-    // Fetch existing profile
-    const { data: profile, error: profErr } = await supabaseAdmin
+    const { data: profile, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, telegram_id, credits_balance')
-      .eq('id', user.id)
-      .single();
-
-    if (profErr || !profile) {
-      return NextResponse.json({ error: 'Profile not found' }, { status: 404 });
-    }
-
-    // Check if telegram_id was already linked OR bonus transaction already exists
-    const { data: existingBonus } = await supabaseAdmin
-      .from('credit_transactions')
-      .select('id')
-      .eq('user_id', user.id)
-      .eq('transaction_type', 'telegram_connect_bonus')
+      .select('id, telegram_id')
+      .eq('id', userId)
       .maybeSingle();
 
-    const alreadyRewarded = Boolean(profile.telegram_id) || Boolean(existingBonus);
-
-    const { error: updateErr } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        telegram_id: parseInt(String(telegramId), 10),
-        username: username || null,
-        updated_at: new Date().toISOString()
-      })
-      .eq('id', user.id);
-
-    if (updateErr) {
-      throw updateErr;
+    if (error) {
+      console.error('[LinkTelegram API] Fetch error:', error);
+      return NextResponse.json({ error: error.message }, { status: 500 });
     }
-
-    let creditsAdded = 0;
-    if (!alreadyRewarded) {
-      // Award +50 CR bonus strictly ONCE for connecting Telegram
-      await addCredits(supabaseAdmin, user.id, 50, 'telegram_connect_bonus', {
-        reason: 'Bonus for linking Telegram bot',
-        linked_at: new Date().toISOString()
-      });
-      creditsAdded = 50;
-    }
-
-
-    const { data: updatedProfile } = await supabaseAdmin
-      .from('profiles')
-      .select('credits_balance')
-      .eq('id', user.id)
-      .single();
 
     return NextResponse.json({
-      success: true,
-      telegramLinked: true,
-      creditsAdded,
-      newBalance: updatedProfile?.credits_balance || (profile.credits_balance + creditsAdded)
+      telegram_id: profile?.telegram_id || null
     });
-  } catch (error: any) {
-    console.error('[LinkTelegram API Error]:', error);
-    return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 500 });
+  } catch (err: any) {
+    console.error('[LinkTelegram API] Exception:', err);
+    return NextResponse.json({ error: err.message }, { status: 500 });
   }
 }
