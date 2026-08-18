@@ -1,4 +1,5 @@
 import { getSystemPrompt } from "./gemini"; // Use the same rules as Gemini
+import { safeJsonParse } from "../utils";
  
 const DEFAULT_MODEL = "llama-3.3-70b-versatile";
 
@@ -127,6 +128,8 @@ export async function generateScript(
 
   const data = await response.json();
   const content = data.choices[0].message.content;
+  const parsed = safeJsonParse(content);
+  if (parsed) return parsed;
   return JSON.parse(content);
 }
 
@@ -189,6 +192,8 @@ export async function refineScript(
 
   const data = await response.json();
   const content = data.choices[0].message.content;
+  const parsed = safeJsonParse(content);
+  if (parsed) return parsed;
   return JSON.parse(content);
 }
 
@@ -262,6 +267,8 @@ export async function generatePreviews(
 
   const data = await response.json();
   const content = data.choices[0].message.content;
+  const parsed = safeJsonParse(content);
+  if (parsed) return parsed;
   return JSON.parse(content);
 }
 
@@ -348,6 +355,8 @@ export async function generateFullScript(
 
   const data = await response.json();
   const content = data.choices[0].message.content;
+  const parsed = safeJsonParse(content);
+  if (parsed) return parsed;
   return JSON.parse(content);
 }
 
@@ -429,5 +438,7 @@ export async function generateTurboScript(
 
   const data = await response.json();
   const content = data.choices[0].message.content;
+  const parsed = safeJsonParse(content);
+  if (parsed) return parsed;
   return JSON.parse(content);
 }

@@ -1,4 +1,5 @@
 import Anthropic from "@anthropic-ai/sdk";
+import { safeJsonParse } from "../utils";
  
 const DEFAULT_MODEL = "claude-3-5-sonnet-20241022";
 
@@ -243,6 +244,8 @@ export async function generateScript(
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+  const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
+  if (parsed) return parsed;
   return JSON.parse(jsonStr);
 }
 
@@ -290,6 +293,8 @@ export async function refineScript(
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+  const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
+  if (parsed) return parsed;
   return JSON.parse(jsonStr);
 }
 
@@ -353,6 +358,8 @@ export async function generatePreviews(
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+  const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
+  if (parsed) return parsed;
   return JSON.parse(jsonStr);
 }
 
@@ -429,6 +436,8 @@ export async function generateFullScript(
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+  const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
+  if (parsed) return parsed;
   return JSON.parse(jsonStr);
 }
 
@@ -500,5 +509,7 @@ export async function generateTurboScript(
   
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
+  const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
+  if (parsed) return parsed;
   return JSON.parse(jsonStr);
 }
