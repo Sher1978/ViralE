@@ -67,7 +67,7 @@ async function handleTelegramAuth(userData: any, hash: string) {
     targetUser = newUser;
   } else {
     // Ensure password matches current HMAC secret key for existing users
-    await supabaseAdmin.auth.admin.updateUserById(targetUser.id, { password, email_confirm: true }).catch(err => {
+    await supabaseAdmin.auth.admin.updateUserById(targetUser.id, { password, email_confirm: true }).catch((err: any) => {
       console.warn('[Telegram Auth] Could not update password for existing user:', err);
     });
   }
