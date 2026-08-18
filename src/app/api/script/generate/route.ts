@@ -13,7 +13,7 @@ export async function POST(req: Request) {
   let projectId: string | undefined = undefined;
   let mode: string = 'initial';
   let coreIdea: string = '';
-  let engine: string = 'gemini';
+  let engine: any = 'gemini';
   let locale: string = 'en';
 
   try {
