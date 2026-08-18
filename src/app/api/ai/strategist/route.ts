@@ -341,7 +341,74 @@ export async function POST(req: Request) {
       } : undefined
     });
 
-    const result = await chat.sendMessageStream(currentParts);
+    let result: any = null;
+    try {
+      result = await chat.sendMessageStream(currentParts);
+    } catch (geminiErr: any) {
+      console.warn('[Strategist Agent] Gemini streaming failed:', geminiErr?.message || geminiErr);
+      const groqKey = process.env.GROQ_API_KEY || '';
+      if (groqKey) {
+        console.log('[Strategist Agent] Falling back to Groq stream...');
+        const groqRes = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+          method: 'POST',
+          headers: {
+            'Authorization': `Bearer ${groqKey}`,
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify({
+            model: 'llama-3.3-70b-versatile',
+            stream: true,
+            messages: [
+              { role: 'system', content: systemPrompt + "\n" + projectContext },
+              ...chatHistory.map((h: any) => ({
+                role: h.role === 'model' ? 'assistant' : 'user',
+                content: typeof h.parts === 'string' ? h.parts : h.parts?.[0]?.text || ''
+              })),
+              { role: 'user', content: currentMessage }
+            ],
+            temperature: 0.7
+          })
+        });
+
+        if (groqRes.ok && groqRes.body) {
+          const reader = groqRes.body.getReader();
+          const decoder = new TextDecoder();
+          const encoder = new TextEncoder();
+          const stream = new ReadableStream({
+            async start(controller) {
+              let buffer = '';
+              while (true) {
+                const { done, value } = await reader.read();
+                if (done) break;
+                buffer += decoder.decode(value, { stream: true });
+                const lines = buffer.split('\n');
+                buffer = lines.pop() || '';
+                for (const line of lines) {
+                  if (line.startsWith('data: ')) {
+                    const data = line.slice(6).trim();
+                    if (data === '[DONE]') continue;
+                    try {
+                      const json = JSON.parse(data);
+                      const content = json.choices?.[0]?.delta?.content || '';
+                      if (content) controller.enqueue(encoder.encode(content));
+                    } catch (e) {}
+                  }
+                }
+              }
+              controller.close();
+            }
+          });
+
+          return new Response(stream, {
+            headers: {
+              'Content-Type': 'text/plain; charset=utf-8',
+              'Transfer-Encoding': 'chunked',
+            },
+          });
+        }
+      }
+      throw geminiErr;
+    }
     
     // Create a streaming response that also handles function calls
     const stream = new ReadableStream({
@@ -408,33 +475,31 @@ export async function POST(req: Request) {
                       const model = getModel('fast', 'ru', 'text', geminiApiKey || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "");
                       const extractPrompt = `
                         You are an expert AI Persona Architect. 
-                        Your goal is to distill the following StoryBrand document into a beautiful, high-density, authoritative, and declarative "Digital Shadow DNA" (Master Prompt) in Russian (if the input is primarily Russian) or English.
-                        Describe the expert's tone of voice, unique methodology, area of expertise, core worldview, and target audience.
-                        Output ONLY the final declarative, cohesive paragraph (max 300 words). No introduction, no markdown blocks, no bullet points.
+                        Extract and summarize the core business identity, target audience pain points, positioning, guide persona, and call to action from this StoryBrand document.
+                        Output a dense, high-performance Brand DNA / Digital Shadow system prompt (max 300 words).
                         
-                        USER STORYBRAND DOCUMENT:
+                        STORYBRAND DOCUMENT:
                         ${storybrand_markdown}
                       `;
-                      const result = await model.generateContent(extractPrompt);
-                      const response = await result.response;
-                      digitalShadowPrompt = response.text().trim();
-                    } catch (e) {
-                      console.warn('[Strategist Agent] Failed to distill StoryBrand document:', e);
+                      const res = await model.generateContent(extractPrompt);
+                      digitalShadowPrompt = res.response.text().trim();
+                    } catch (err: any) {
+                      console.warn('Failed to summarize StoryBrand into Digital Shadow prompt via AI:', err);
+                      digitalShadowPrompt = `Target Audience & Persona distilled from 7-element StoryBrand framework.\n\nSummary:\n${storybrand_markdown.slice(0, 800)}`;
                     }
 
-                    const { error } = await authorizedSupabase
+                    const { error: sbErr } = await authorizedSupabase
                       .from('profiles')
                       .update({ 
-                        storybrand_raw_content: storybrand_markdown,
-                        storybrand_updated_at: new Date().toISOString(),
-                        ...(storybrand_answers && { storybrand_answers }),
-                        ...(digitalShadowPrompt && { digital_shadow_prompt: digitalShadowPrompt }),
+                        storybrand_framework: storybrand_answers,
+                        storybrand_markdown: storybrand_markdown,
+                        digital_shadow_prompt: digitalShadowPrompt,
                         updated_at: new Date().toISOString()
                       })
                       .eq('id', user.id);
                     
-                    if (!error) {
-                      controller.enqueue(new TextEncoder().encode("\n\n*(System Note: StoryBrand DNA and Digital Shadow successfully updated with new insights)*"));
+                    if (!sbErr) {
+                      controller.enqueue(new TextEncoder().encode("\n\n*(System Note: 7-Element StoryBrand Framework & Brand DNA updated in profile)*"));
                     }
                   } catch (e) {
                     console.error('Failed to auto-update StoryBrand:', e);

@@ -313,6 +313,46 @@ export function getModel(
           }
         }
       }
+
+      // Emergency Fallback: If Gemini quota is depleted (429/RESOURCE_EXHAUSTED/Prepayment depleted) or all candidates fail, fall back to Groq
+      const groqKey = process.env.GROQ_API_KEY || '';
+      if (groqKey) {
+        try {
+          console.warn('[Gemini client] All Gemini candidate models failed or depleted. Triggering emergency Groq fallback (llama-3.3-70b)...');
+          const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${groqKey}`,
+              "Content-Type": "application/json"
+            },
+            body: JSON.stringify({
+              model: "llama-3.3-70b-versatile",
+              messages: [
+                { 
+                  role: "system", 
+                  content: systemInstruction || "You are a professional content strategist AI. Output strictly valid content as requested." 
+                },
+                { role: "user", content: textPrompt }
+              ],
+              response_format: mimeType === 'json' ? { type: "json_object" } : undefined,
+              temperature: 0.7
+            })
+          });
+          
+          if (response.ok) {
+            const data = await response.json();
+            const textContent = data.choices?.[0]?.message?.content || "";
+            return {
+              response: {
+                text: () => textContent
+              }
+            };
+          }
+        } catch (groqErr: any) {
+          console.error('[Gemini client] Emergency Groq fallback failed:', groqErr?.message || groqErr);
+        }
+      }
+
       throw lastError || new Error("Gemini generation failed on all fallback candidates.");
     },
 
