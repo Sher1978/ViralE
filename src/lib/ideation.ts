@@ -216,6 +216,22 @@ export async function generateDailyIdeas(
       }
     }
 
+    // Try Groq AI failover if Gemini returned empty results
+    if (ideasArray.length === 0 && (profile?.groq_api_key || process.env.GROQ_API_KEY)) {
+      try {
+        console.log(`[generateDailyIdeas:${targetCategory}] Executing Groq Llama 3.3 AI failover for pure AI ideation...`);
+        const { generateDailyIdeas: generateDailyIdeasGroq } = await import('./ai/groq');
+        const groqKey = profile?.groq_api_key || process.env.GROQ_API_KEY;
+        const groqIdeas = await generateDailyIdeasGroq(prompt, locale, groqKey);
+        if (Array.isArray(groqIdeas) && groqIdeas.length > 0) {
+          ideasArray = groqIdeas;
+          console.log(`[generateDailyIdeas:${targetCategory}] Successfully generated ${ideasArray.length} ideas via Groq AI.`);
+        }
+      } catch (groqErr: any) {
+        console.warn(`[generateDailyIdeas:${targetCategory}] Groq AI failover exception:`, groqErr?.message || groqErr);
+      }
+    }
+
     if (ideasArray.length > 0) {
       return ideasArray.map((i: any) => ({ 
         topic_title: i.topic_title || (locale === 'ru' ? 'Виральная идея' : 'Viral Topic Idea'),

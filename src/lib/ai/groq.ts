@@ -31,6 +31,48 @@ export async function generateTrizText(prompt: string, apiKey?: string): Promise
   return data.choices[0].message.content || "";
 }
 
+export async function generateDailyIdeas(
+  prompt: string,
+  locale: string = 'en',
+  apiKey?: string
+): Promise<any[]> {
+  const authKey = apiKey || process.env.GROQ_API_KEY || "";
+  if (!authKey) throw new Error("Groq API key not configured");
+
+  const languageName = locale === 'ru' ? 'Russian' : 'English';
+
+  const response = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+    method: "POST",
+    headers: {
+      "Authorization": `Bearer ${authKey}`,
+      "Content-Type": "application/json"
+    },
+    body: JSON.stringify({
+      model: DEFAULT_MODEL,
+      messages: [
+        { role: "system", content: `You are the "Viral Engine" Strategic Consultant. Respond EXCLUSIVELY in ${languageName.toUpperCase()}. Return ONLY a JSON array.` },
+        { role: "user", content: prompt }
+      ],
+      response_format: { type: "json_object" }
+    })
+  });
+
+  if (!response.ok) {
+    const err = await response.json();
+    throw new Error(err.error?.message || "Groq idea generation failed");
+  }
+
+  const data = await response.json();
+  const content = data.choices[0].message.content || '';
+  const parsed = safeJsonParse(content);
+  if (Array.isArray(parsed)) return parsed;
+  if (parsed && typeof parsed === 'object') {
+    const arr = parsed.ideas || parsed.topics || parsed.data || Object.values(parsed).find(v => Array.isArray(v));
+    if (Array.isArray(arr)) return arr;
+  }
+  return [];
+}
+
 
 export async function generateScript(
   coreIdea: string, 
