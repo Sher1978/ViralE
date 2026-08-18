@@ -1291,13 +1291,13 @@ function DeliveryPageContent() {
     setIsExporting(true);
     try {
       if (target === 'telegram') {
-        addSystemLog('Отправка сгенерированного видео в Telegram бот @Viralengin_bot...');
-        const videoUrl = job?.output_url || backgroundMp4Url || (manifest as any)?.videoUrl;
+        const scriptData = (version?.script_data as any) || {};
+        const videoUrl = job?.output_url || scriptData.videoUrl || scriptData.aRollUrl;
         if (!videoUrl) {
           throw new Error('Видео еще не сформировано.');
         }
 
-        const captionText = `🚀 Финальный видео-ролик готов (Viral Engine)!\n\n${project?.title || ''}`;
+        const captionText = `🚀 Финальный видео-ролик готов (Viral Engine)!\n\n${scriptData.title || scriptData.ideaTitle || ''}`;
 
         try {
           const exportRes = await fetch('/api/telegram/export-video', {
