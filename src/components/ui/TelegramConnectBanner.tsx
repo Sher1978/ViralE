@@ -59,8 +59,8 @@ export function TelegramConnectBanner({ userId, telegramLinked, onDismiss }: Tel
 
             <p className="text-[11px] text-white/60 font-medium leading-relaxed max-w-lg">
               {locale === 'ru' 
-                ? 'Получайте новые виральные сценарии прямо в Telegram + мгновенно получите +50 CR бонуса на ваш счет.' 
-                : 'Receive viral script digests directly in Telegram + instantly claim +50 CR welcome bonus.'}
+                ? 'Получите +50 CR бонуса прямо на счет для создания вашего первого вирусного Reels + получать сценарии в Telegram.' 
+                : 'Get +50 CR bonus directly to your account to create your first viral Reels + receive script digests in Telegram.'}
             </p>
           </div>
         </div>

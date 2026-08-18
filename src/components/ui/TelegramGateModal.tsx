@@ -95,7 +95,9 @@ export function TelegramGateModal() {
               {locale === 'ru' ? '🎁 Бонус за подключение: +50 CR' : '🎁 Linking Bonus: +50 CR'}
             </div>
             <div className="text-[11px] text-cyan-300/70 font-medium">
-              {locale === 'ru' ? 'Кредиты зачислятся автоматически после привязки.' : 'Credits will be automatically added upon linking.'}
+              {locale === 'ru' 
+                ? 'Вам зачислится +50 кредитов для создания вашего первого вирусного Reels!' 
+                : '+50 credits will be added to create your first viral Reels video!'}
             </div>
           </div>
         </div>
