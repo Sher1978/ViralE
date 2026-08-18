@@ -1,5 +1,6 @@
 import { GoogleGenerativeAI } from "@google/generative-ai";
 import * as groq from "./groq";
+import { safeJsonParse } from "../utils";
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
 const genAI = new GoogleGenerativeAI(apiKey);
@@ -403,10 +404,14 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
   let text = response.text().trim();
   
   try {
+    const parsed = safeJsonParse(text);
+    if (parsed) return parsed;
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}');
     if (jsonStart !== -1 && jsonEnd !== -1) {
-      text = text.substring(jsonStart, jsonEnd + 1);
+      const sliced = text.substring(jsonStart, jsonEnd + 1);
+      const parsedSliced = safeJsonParse(sliced);
+      if (parsedSliced) return parsedSliced;
     }
     return JSON.parse(text);
   } catch (e) {
@@ -544,10 +549,14 @@ export async function refineScript(
   let text = response.text().trim();
   
   try {
+    const parsed = safeJsonParse(text);
+    if (parsed) return parsed;
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}');
     if (jsonStart !== -1 && jsonEnd !== -1) {
-      text = text.substring(jsonStart, jsonEnd + 1);
+      const sliced = text.substring(jsonStart, jsonEnd + 1);
+      const parsedSliced = safeJsonParse(sliced);
+      if (parsedSliced) return parsedSliced;
     }
     return JSON.parse(text);
   } catch (e) {
@@ -613,10 +622,14 @@ export async function generatePreviews(
   let text = response.text().trim();
   
   try {
+    const parsed = safeJsonParse(text);
+    if (parsed) return parsed;
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}');
     if (jsonStart !== -1 && jsonEnd !== -1) {
-      text = text.substring(jsonStart, jsonEnd + 1);
+      const sliced = text.substring(jsonStart, jsonEnd + 1);
+      const parsedSliced = safeJsonParse(sliced);
+      if (parsedSliced) return parsedSliced;
     }
     return JSON.parse(text);
   } catch (e) {
@@ -688,10 +701,14 @@ export async function generateFullScript(
   let text = response.text().trim();
   
   try {
+    const parsed = safeJsonParse(text);
+    if (parsed) return parsed;
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}');
     if (jsonStart !== -1 && jsonEnd !== -1) {
-      text = text.substring(jsonStart, jsonEnd + 1);
+      const sliced = text.substring(jsonStart, jsonEnd + 1);
+      const parsedSliced = safeJsonParse(sliced);
+      if (parsedSliced) return parsedSliced;
     }
     return JSON.parse(text);
   } catch (e) {
@@ -758,10 +775,14 @@ export async function generateTurboScript(
   let text = response.text().trim();
   
   try {
+    const parsed = safeJsonParse(text);
+    if (parsed) return parsed;
     const jsonStart = text.indexOf('{');
     const jsonEnd = text.lastIndexOf('}');
     if (jsonStart !== -1 && jsonEnd !== -1) {
-      text = text.substring(jsonStart, jsonEnd + 1);
+      const sliced = text.substring(jsonStart, jsonEnd + 1);
+      const parsedSliced = safeJsonParse(sliced);
+      if (parsedSliced) return parsedSliced;
     }
     return JSON.parse(text);
   } catch (e) {

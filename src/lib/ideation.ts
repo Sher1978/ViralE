@@ -110,7 +110,11 @@ export async function generateDailyIdeas(
   }
 
   if (!isDnaComplete) {
-    throw new Error(locale === 'ru' ? 'Заполните ДНК бренда перед генерацией матрицы идей.' : 'Please complete your Brand DNA before generating the idea matrix.');
+    console.log(`User ${userId} has no custom Brand DNA. Using universal expert DNA context for idea generation.`);
+    dnaContext = locale === 'ru'
+      ? `🧬 BRAND IDENTITY (Универсальный эксперт):\n- Ниша: Экспертный бизнес, маркетинг, виральный контент и продажи.\n- ЦА: Предприниматели, фрилансеры и авторы контента, желающие вырасти в просмотрах и доходе.\n- Тон: Авторитетный, убедительный, с фокусом на глубокое удержание.`
+      : `🧬 BRAND IDENTITY (Universal Expert):\n- Niche: Expert business, digital marketing, viral content, and conversion sales.\n- Target Audience: Entrepreneurs, creators, and professionals aiming to scale views and revenue.\n- Tone: Authoritative, persuasive, high-retention.`;
+    isDnaComplete = true;
   }
 
   // Load Content Lego and General Script for ideation constraints

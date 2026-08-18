@@ -10,9 +10,10 @@ export interface AccessStatus {
 // Only methods that don't use node:fs or node:path
 
 export const strategistService = {
-  async getAccessStatus(userId: string): Promise<AccessStatus> {
+  async getAccessStatus(userId: string, client?: any): Promise<AccessStatus> {
+    const db = client || supabase;
     try {
-      const { data: profile } = await supabase
+      const { data: profile } = await db
         .from('profiles')
         .select('tier, subscription_status')
         .eq('id', userId)
@@ -25,7 +26,7 @@ export const strategistService = {
         }
       }
 
-      const { data, error } = await supabase
+      const { data, error } = await db
         .from('feature_access')
         .select('trial_started_at, is_subscribed')
         .eq('user_id', userId)
@@ -53,8 +54,9 @@ export const strategistService = {
     }
   },
 
-  async activateTrial(userId: string): Promise<boolean> {
-    const { error } = await supabase
+  async activateTrial(userId: string, client?: any): Promise<boolean> {
+    const db = client || supabase;
+    const { error } = await db
       .from('feature_access')
       .upsert({
         user_id: userId,
@@ -62,6 +64,27 @@ export const strategistService = {
         trial_started_at: new Date().toISOString(),
         updated_at: new Date().toISOString()
       });
-    return !error;
+
+    if (!error) return true;
+
+    console.warn('[StrategistService] Standard trial activation failed, trying admin client fallback...', error);
+    try {
+      const { supabaseAdmin } = await import('../supabase');
+      if (supabaseAdmin) {
+        const { error: adminErr } = await supabaseAdmin
+          .from('feature_access')
+          .upsert({
+            user_id: userId,
+            feature_id: 'strategist_pilot',
+            trial_started_at: new Date().toISOString(),
+            updated_at: new Date().toISOString()
+          });
+        return !adminErr;
+      }
+    } catch (e) {
+      console.error('[StrategistService] Admin fallback trial activation error:', e);
+    }
+    return false;
   }
 };
+
