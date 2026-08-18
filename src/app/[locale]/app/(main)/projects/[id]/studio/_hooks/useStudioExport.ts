@@ -58,96 +58,62 @@ export function useStudioExport({
       const isiOS = typeof (globalThis as any).navigator !== 'undefined' && /iPhone|iPad|iPod/i.test(nav?.userAgent || '');
       addSystemLog(`Параметры окружения: Мобильный=${isMobile}, iOS=${isiOS}, TelegramWebApp=${isTelegram}`);
 
-      // 1. INSTANT LOCAL DESKTOP DOWNLOAD (0 seconds!)
-      if (lastRecordingUrl.startsWith('blob:') && !isMobile && !isTelegram) {
-        addSystemLog('Запущено локальное скачивание на ПК из Blob URL...');
-        let url = lastRecordingUrl;
-
-        // If the current blob URL is broken or invalid, make a fresh one from IDB!
-        try {
-          const check = await fetch(lastRecordingUrl, { method: 'HEAD' });
-          if (!check.ok) throw new Error("Revoked");
-        } catch (e) {
-          addSystemLog('Упреждающий шаг: Blob URL аннулирован, восстанавливаем из IDB...');
-          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-          if (cached instanceof Blob) {
-            url = URL.createObjectURL(cached);
-            addSystemLog(`Создана новая Blob-ссылка: ${url}`);
-          }
+      // 1. INSTANT LOCAL DOWNLOAD (Desktop & Mobile - 0 seconds wait!)
+      let fileBlob = recordedBlobRef.current;
+      if (!fileBlob) {
+        addSystemLog('Достаем записанный дубль из локальной памяти IndexedDB...');
+        const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
+        if (cached instanceof Blob) {
+          fileBlob = cached;
+          recordedBlobRef.current = cached;
         }
-
-        addSystemLog('Эмуляция клика по ссылке для скачивания...');
-        const doc = (globalThis as any).document;
-        if (doc) {
-          const a = doc.createElement('a');
-          a.href = url;
-          a.download = `ViralEngine_Raw_${Date.now()}.webm`;
-          doc.body.appendChild(a);
-          a.click();
-          doc.body.removeChild(a);
-        }
-        addSystemLog('Запрос на скачивание успешно отправлен браузеру ПК.');
-        return;
       }
 
-      // 2. INSTANT LOCAL MOBILE WEB SHARE & DIRECT DOWNLOAD (0 seconds wait!)
-      if (lastRecordingUrl.startsWith('blob:') && isMobile) {
-        let fileBlob = recordedBlobRef.current;
+      if (fileBlob) {
+        addSystemLog(`Найден локальный файл (${(fileBlob.size / (1024 * 1024)).toFixed(2)} MB). Запуск мгновенного скачивания...`);
+        const fileMime = fileBlob.type || 'video/mp4';
+        const fileExt = fileMime.includes('webm') ? 'webm' : 'mp4';
+        const fileName = `ViralEngine_Raw_${projectId}_${Date.now()}.${fileExt}`;
+        const file = new File([fileBlob], fileName, { type: fileMime });
 
-        // Fallback to IndexedDB (stable) instead of network fetch
-        if (!fileBlob) {
-          addSystemLog('Упреждающий шаг: recordedBlobRef пуст, достаем оригинал из IndexedDB...');
-          const cached = await idb.get(`video_file_${projectId}`, 'MediaBuffer');
-          if (cached instanceof Blob) {
-            fileBlob = cached;
-            recordedBlobRef.current = cached; // Cache back to ref
+        // Native OS Web Share API for Mobile (iOS & Android)
+        if (isMobile && typeof globalThis.navigator !== 'undefined' && nav.share && nav.canShare && nav.canShare({ files: [file] })) {
+          try {
+            addSystemLog('Запуск системного меню "Поделиться / Сохранить" (Web Share API)...');
+            await nav.share({
+              files: [file],
+              title: 'Viral Engine Video',
+              text: 'Запись с Телесуфлёра'
+            });
+            addSystemLog('Файл сохранен через системное меню.');
+            return;
+          } catch (shareErr: any) {
+            if (shareErr.name === 'AbortError') {
+              addSystemLog('Пользователь отменил сохранение.');
+              return;
+            }
+            addSystemLog(`Web Share fallback: ${shareErr.message || shareErr}`);
           }
         }
 
-        if (fileBlob) {
-          const fileMime = fileBlob.type || 'video/mp4';
-          const fileExt = fileMime.includes('webm') ? 'webm' : 'mp4';
-          const file = new File([fileBlob], `ViralEngine_Raw_${Date.now()}.${fileExt}`, { type: fileMime });
-
-          // Try native OS Web Share API (Works on iOS Safari 15+ and Android Chrome)
-          if (typeof globalThis.navigator !== 'undefined' && nav.share && nav.canShare && nav.canShare({ files: [file] })) {
-            try {
-              addSystemLog('Запуск мгновенного системного меню "Поделиться" (Web Share API)...');
-              await nav.share({
-                files: [file],
-                title: 'Viral Engine Video',
-                text: 'Запись с Телесуфлёра'
-              });
-              addSystemLog('Файл успешно передан в системное меню.');
-              return;
-            } catch (shareErr: any) {
-              if (shareErr.name === 'AbortError') {
-                addSystemLog('Пользователь отменил шеринг.');
-                return;
-              }
-              addSystemLog(`Web Share не удался: ${shareErr.message || shareErr}. Переход к прямому скачиванию...`);
-            }
+        // Direct Browser Blob Download (Desktop & Mobile Safari/Chrome)
+        try {
+          const blobUrl = URL.createObjectURL(fileBlob);
+          const doc = (globalThis as any).document;
+          if (doc) {
+            const a = doc.createElement('a');
+            a.href = blobUrl;
+            a.download = fileName;
+            a.style.display = 'none';
+            doc.body.appendChild(a);
+            a.click();
+            doc.body.removeChild(a);
+            setTimeout(() => URL.revokeObjectURL(blobUrl), 15000);
           }
-
-          // Fallback: Instant direct Blob link download on mobile browser
-          try {
-            addSystemLog('Запуск прямого локального скачивания на мобильном устройстве...');
-            const blobUrl = URL.createObjectURL(fileBlob);
-            const doc = (globalThis as any).document;
-            if (doc) {
-              const a = doc.createElement('a');
-              a.href = blobUrl;
-              a.download = file.name;
-              doc.body.appendChild(a);
-              a.click();
-              doc.body.removeChild(a);
-              setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
-            }
-            addSystemLog('Прямое скачивание локального файла выполнено.');
-            return;
-          } catch (dlErr: any) {
-            addSystemLog(`Прямое скачивание не удалось: ${dlErr.message}`);
-          }
+          addSystemLog('Мгновенное скачивание файла выполнено на устройстве.');
+          return;
+        } catch (dlErr: any) {
+          addSystemLog(`Прямое локальное скачивание не удалось: ${dlErr.message}`);
         }
       }
 
