@@ -52,6 +52,7 @@ const ScriptEditorView = dynamic(() => import('./_components/ScriptEditorView').
 const InstaGalleryView = dynamic(() => import('./_components/InstaGalleryView').then(m => m.InstaGalleryView), { ssr: false, loading: Spinner });
 
 import { BottomNav } from '@/components/layout/BottomNav';
+import { StatusStepper } from '@/components/ui/StatusStepper';
 
 
 
@@ -725,6 +726,15 @@ export default function StudioPage() {
         )}
 
         <main className="flex-1 relative flex flex-col min-w-0 overflow-hidden bg-[#050508]">
+          {/* Top Flow Indicator Bar */}
+          <div className="px-4 pt-2.5 pb-1 bg-[#050508]/80 border-b border-white/5 backdrop-blur-sm z-30">
+            <StatusStepper currentStep={
+              activeTab === 'assembly' || activeTab === 'fusion' ? 'render' :
+              activeTab === 'teleprompter' || activeTab === 'timeline_lab' || activeTab === 'avatar_hub' ? 'storyboard' :
+              activeTab === 'script_editor' || activeTab === 'strategy' ? 'script' :
+              activeTab === 'insta_gallery' ? 'done' : 'storyboard'
+            } />
+          </div>
           {/* Persistence Status Indicator */}
           <AnimatePresence>
             {isSaving && (

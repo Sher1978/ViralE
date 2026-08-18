@@ -14,6 +14,8 @@ import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { AppOnboardingTour } from '@/components/ui/AppOnboardingTour';
 import { HelpCircle } from 'lucide-react';
 
+import { StatusStepper } from '@/components/ui/StatusStepper';
+
 const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
   "Hooks": { en: "Virality Hooks", ru: "Крючки виральности" },
   "Roles": { en: "Persona Masks", ru: "Маски личности" },
@@ -276,10 +278,8 @@ export default function IdeasPage() {
       />
 
       {/* Onboarding Feature Tour Modal */}
-      <AppOnboardingTour 
-        isOpen={showTour} 
-        onClose={() => setShowTour(false)} 
-      />
+      {/* Top flow indicator */}
+      <StatusStepper currentStep="idea" />
 
       <div className="flex flex-col gap-1">
         <div className="flex items-center justify-between">

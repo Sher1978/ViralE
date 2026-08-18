@@ -1657,36 +1657,38 @@ function DeliveryPageContent() {
       {/* 1. Stepper line indicator placed at the very top */}
       <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'render'} />
 
-      {/* 2. Central Status Card with built-in navigation button */}
-      <div className="rounded-3xl p-6 text-center space-y-4 bg-white/[0.02] border border-white/5 relative pt-12">
-        {/* Back to Studio button elegantly placed in top-left corner */}
-        <button 
-          onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
-          className="absolute top-4 left-4 flex items-center justify-center gap-1.5 px-4 py-2 rounded-xl bg-white/5 border border-white/10 text-white/50 text-[9px] font-black uppercase tracking-widest hover:text-white hover:bg-[#8b5cf6]/20 hover:border-[#8b5cf6]/30 active:scale-95 transition-all shadow-lg"
-        >
-          <ArrowLeft size={12} /> {locale === 'ru' ? 'В МОНТАЖКУ' : 'BACK TO STUDIO'}
-        </button>
+      {/* 2. Compact Status Header without lightning icon */}
+      <div className="rounded-2xl p-3 px-4 text-center space-y-2 bg-white/[0.02] border border-white/5 relative">
+        <div className="flex items-center justify-between gap-2">
+          {/* Back to Studio button */}
+          <button 
+            onClick={() => router.push(`/app/projects/${projectId}/studio?tab=assembly`)} 
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg bg-white/5 border border-white/10 text-white/50 text-[9px] font-black uppercase tracking-widest hover:text-white hover:bg-[#8b5cf6]/20 hover:border-[#8b5cf6]/30 active:scale-95 transition-all"
+          >
+            <ArrowLeft size={11} /> {locale === 'ru' ? 'В МОНТАЖКУ' : 'BACK'}
+          </button>
 
-        <div className="text-4xl">{job?.status === 'completed' ? '🎬' : '⚡'}</div>
-        <div>
           {job?.status !== 'completed' && (
-            <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/20 border border-purple-500/40 text-purple-300 font-black text-xs uppercase tracking-wider mb-2 shadow-lg drop-shadow-[0_0_10px_rgba(168,85,247,0.3)]">
-              <span className="w-2 h-2 rounded-full bg-purple-400 animate-pulse" />
+            <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-purple-500/15 border border-purple-500/30 text-purple-300 font-bold text-[9px] uppercase tracking-wider">
+              <span className="w-1.5 h-1.5 rounded-full bg-purple-400 animate-pulse" />
               <span>{REAL_STAGES_RU[currentStageIndex - 1] || REAL_STAGES_RU[0]}</span>
             </div>
           )}
-          <h1 className="text-lg font-bold tracking-tight uppercase text-white/90 min-h-[2rem]">
+        </div>
+
+        <div>
+          <h1 className="text-xs font-semibold tracking-tight uppercase text-white/80 line-clamp-1">
             {job?.status === 'completed' ? t('badge') : currentStatusMsg}
           </h1>
-          <p className="text-[11px] text-white/40 mt-1 font-bold uppercase tracking-widest">
-            {job?.status === 'completed' ? t('statusSub') : `Пожалуйста, подождите. Прогресс: ${Math.round(displayProgress)}%`}
+          <p className="text-[9px] text-white/40 mt-0.5 font-medium uppercase tracking-widest">
+            {job?.status === 'completed' ? t('statusSub') : `ПОЖАЛУЙСТА, ПОДОЖДИТЕ. ПРОГРЕСС: ${Math.round(displayProgress)}%`}
           </p>
         </div>
 
         {job?.status !== 'completed' && (
-          <div className="w-full bg-white/5 h-2 rounded-full overflow-hidden border border-white/5 shadow-inner mt-2">
+          <div className="w-full bg-white/5 h-1.5 rounded-full overflow-hidden border border-white/5 shadow-inner mt-1">
             <motion.div 
-                className="h-full bg-gradient-to-r from-purple-600 to-blue-500 shadow-[0_0_15px_rgba(168,85,247,0.5)]" 
+                className="h-full bg-gradient-to-r from-purple-600 to-blue-500 shadow-[0_0_10px_rgba(168,85,247,0.5)]" 
                 initial={{ width: 0 }} 
                 animate={{ width: `${Math.max(0, Math.min(100, displayProgress))}%` }} 
                 transition={{ type: 'spring', damping: 25, stiffness: 50 }}
