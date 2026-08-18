@@ -25,8 +25,9 @@ export async function POST(req: NextRequest) {
     if (error) {
       const errStr = typeof error === 'string' ? error : error?.message || String(error);
       const isNetworkErr = errStr.includes('Failed to fetch') || errStr.includes('NetworkError') || errStr.includes('Load failed') || errStr.includes('AbortError');
+      const isAuthErr = errStr.includes('Unauthorized') || errStr.includes('401') || errStr.includes('User personality not found');
       
-      if (!isNetworkErr) {
+      if (!isNetworkErr && !isAuthErr) {
         await notifyAdminError({
           source: source || 'Client Session Error',
           error,
