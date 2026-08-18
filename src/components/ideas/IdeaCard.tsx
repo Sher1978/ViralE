@@ -249,8 +249,6 @@ export default function IdeaCard({
               : t('btnScript')}
           </span>
         </motion.button>
-      </div>   </motion.div>
-        </motion.button>
       </div>
     </div>
   );
