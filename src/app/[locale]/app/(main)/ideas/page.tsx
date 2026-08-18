@@ -7,12 +7,12 @@ import IdeaCard, { Idea } from '@/components/ideas/IdeaCard';
 import DNABlock from '@/components/ideas/DNABlock';
 import MatrixScroller from '@/components/ideas/MatrixScroller';
 import TopicInput from '@/components/ideas/TopicInput';
+import TurboLoadingOverlay from '@/components/ideas/TurboLoadingOverlay';
 import { motion, AnimatePresence } from 'framer-motion';
 import { useAppData } from '@/components/providers/AppDataProvider';
 import { InfoTooltip } from '@/components/ui/InfoTooltip';
 import { AppOnboardingTour } from '@/components/ui/AppOnboardingTour';
 import { HelpCircle } from 'lucide-react';
-
 
 const CATEGORY_LABELS: Record<string, { en: string, ru: string }> = {
   "Hooks": { en: "Virality Hooks", ru: "Крючки виральности" },
@@ -74,9 +74,10 @@ export default function IdeasPage() {
   const [showDnaEditor, setShowDnaEditor] = useState(false);
   const [showWelcome, setShowWelcome] = useState(true);
   const [showTour, setShowTour] = useState(false);
+  const [turboLoadingTopic, setTurboLoadingTopic] = useState<string | null>(null);
   
   const [forcedLoading, setForcedLoading] = useState(true);
-  
+
   useEffect(() => {
     const timer = setTimeout(() => setForcedLoading(false), 4000);
     const win = typeof globalThis !== 'undefined' ? (globalThis as any).window : null;
@@ -99,88 +100,6 @@ export default function IdeasPage() {
       win.localStorage.setItem('hideWelcomeIdeas', 'true');
     }
   };
-  
-  const sentinelRef = useRef<HTMLDivElement>(null);
-
-  const ideas = activeTab === 'new' ? allNewIdeas : activeTab === 'archived' ? archivedIdeas : usedIdeas;
-  const globalLoading = activeTab === 'new' ? loadingIdeas : activeTab === 'archived' ? loadingArchived : loadingUsed;
-
-  const groupedIdeas = useMemo(() => {
-    const groups: Record<string, Idea[]> = {};
-    ideas.forEach(idea => {
-      const cat = idea.category || (idea as any).metadata?.category || "General";
-      if (!groups[cat]) groups[cat] = [];
-      groups[cat].push(idea);
-    });
-    return groups;
-  }, [ideas]);
-
-  const displayCategories = useMemo(() => {
-    return [...CATEGORIES].sort((a, b) => {
-      const countA = (groupedIdeas[a] || []).length;
-      const countB = (groupedIdeas[b] || []).length;
-      if (countA > 0 && countB === 0) return -1;
-      if (countA === 0 && countB > 0) return 1;
-      return 0;
-    });
-  }, [groupedIdeas]);
-
-  const attemptedCategoriesRef = useRef<Set<string>>(new Set());
-
-  const synthesizeNextCategory = useCallback(async () => {
-    if (synthesisLoading || globalLoading || activeTab !== 'new') return;
-    
-    const nextCat = CATEGORIES.find(cat => 
-      (!groupedIdeas[cat] || groupedIdeas[cat].length === 0) && !attemptedCategoriesRef.current.has(cat)
-    );
-    
-    if (nextCat) {
-      attemptedCategoriesRef.current.add(nextCat);
-      setSynthesisLoading(true);
-      try {
-        await refreshIdeas('new', nextCat);
-      } finally {
-        setSynthesisLoading(false);
-      }
-    }
-  }, [synthesisLoading, globalLoading, activeTab, groupedIdeas, refreshIdeas]);
-
-  useEffect(() => {
-    if (!sentinelRef.current) return;
-    const Obs = typeof globalThis !== 'undefined' ? (globalThis as any).IntersectionObserver : null;
-    if (!Obs) return;
-    const observer = new Obs((entries: any[]) => {
-      if (entries[0].isIntersecting) {
-        synthesizeNextCategory();
-      }
-    }, { threshold: 0.1 });
-    observer.observe(sentinelRef.current);
-    return () => observer.disconnect();
-  }, [synthesizeNextCategory]);
-
-  const handleToScript = async (content: string, rationale?: string, ideaId?: string) => {
-    if (ideaId) {
-      await markIdeaAsUsed(ideaId);
-    }
-    
-    // Explicitly set the cookie so that the middleware recognizes the current locale during the navigation
-    const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
-    if (globalObj && typeof globalObj.document !== 'undefined') {
-      globalObj.document.cookie = `NEXT_LOCALE=${locale}; path=/; max-age=31536000; SameSite=Lax`;
-    }
-    if (globalObj && typeof globalObj.window !== 'undefined') {
-      globalObj.window.localStorage.setItem('NEXT_LOCALE', locale);
-    }
-
-    let finalContent = content;
-    if (rationale && rationale.length > 3) {
-      // Clean up rationale if it's just repeating the category or contains parenthetical noise
-      const cleanRationale = rationale.replace(/^\(.*\)\s*/, '');
-      finalContent = `${content}\n\n${cleanRationale}`;
-    }
-    let url = `/app/projects/new/script?topic=${encodeURIComponent(finalContent)}&ideaTitle=${encodeURIComponent(content)}`;
-    router.push(url);
-  };
 
   const handleTurboToScript = async (content: string, rationale?: string, ideaId?: string) => {
     if (ideaId) {
@@ -199,7 +118,7 @@ export default function IdeasPage() {
     }
 
     try {
-      setSynthesisLoading(true);
+      setTurboLoadingTopic(content);
       const res = await fetch('/api/script/generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -222,7 +141,10 @@ export default function IdeasPage() {
       let url = `/app/projects/new/script?topic=${encodeURIComponent(finalContent)}&ideaTitle=${encodeURIComponent(content)}`;
       router.push(url);
     } finally {
-      setSynthesisLoading(false);
+      // Smooth fade out after router navigation initiates
+      setTimeout(() => {
+        setTurboLoadingTopic(null);
+      }, 1500);
     }
   };
 
@@ -266,6 +188,13 @@ export default function IdeasPage() {
 
   return (
     <div className="flex flex-col gap-8 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+1rem))] pb-32 animate-fade-in relative">
+      {/* Turbo Generation Fullscreen Overlay */}
+      <TurboLoadingOverlay 
+        isOpen={!!turboLoadingTopic} 
+        topicTitle={turboLoadingTopic || ''} 
+        locale={locale} 
+      />
+
       {/* Onboarding Feature Tour Modal */}
       <AppOnboardingTour 
         isOpen={showTour} 
