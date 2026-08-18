@@ -12,69 +12,124 @@ export function cn(...inputs: ClassValue[]) {
  * 3. Literal unescaped newlines inside string values
  * 4. Trailing commas before closing braces/brackets
  */
-export function safeJsonParse<T = any>(text: string): T {
-  if (!text) {
-    throw new Error("Cannot parse empty or null string as JSON");
-  }
-
-  // 1. Clean markdown formatting
+/**
+ * Extracts the first balanced JSON object {...} or array [...] from string.
+ * Avoids matching pseudo-headers like '[Hooks]:' by ensuring valid JSON start tokens.
+ */
+export function extractJsonSubstring(text: string): string | null {
+  if (!text) return null;
   let clean = text.trim();
+  
+  // 1. Remove markdown code block wrappers if present
   const codeBlockMatch = clean.match(/```(?:json)?\s*([\s\S]*?)\s*```/i);
   if (codeBlockMatch) {
     clean = codeBlockMatch[1].trim();
-  } else {
-    clean = clean.replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
-
-    const lines = clean.split('\n');
-    if (lines[0].trim().startsWith('```')) {
-      lines.shift();
-    }
-    if (lines.length > 0 && lines[lines.length - 1].trim().startsWith('```')) {
-      lines.pop();
-    }
-    clean = lines.join('\n').trim();
   }
 
-  // Remove potential BOM or other invisible junk
-  clean = clean.replace(/^\uFEFF/, '');
+  // 2. Find first true JSON start: either '{' or '['
+  let startIdx = -1;
+  let isArray = false;
 
-  // 2. Extract first matching JSON object/array if wrapped in explanatory text
-  if (!clean.startsWith('{') && !clean.startsWith('[')) {
-    const startMatch = clean.match(/(?:\[\s*[\{\["']|\{\s*")/);
-    if (startMatch && startMatch.index !== undefined) {
-      const firstIdx = startMatch.index;
-      const lastSquare = clean.lastIndexOf(']');
-      const lastCurly = clean.lastIndexOf('}');
-      const lastIdx = Math.max(lastSquare, lastCurly);
-      if (lastIdx > firstIdx) {
-        clean = clean.substring(firstIdx, lastIdx + 1).trim();
-      }
-    } else {
-      const jsonMatch = clean.match(/[\{\[]([\s\S]*)[\}\]]/);
-      if (jsonMatch) {
-        clean = jsonMatch[0];
+  for (let i = 0; i < clean.length; i++) {
+    const char = clean[i];
+    if (char === '{') {
+      startIdx = i;
+      isArray = false;
+      break;
+    } else if (char === '[') {
+      const rest = clean.slice(i + 1).trimStart();
+      if (/^[\{\[\"\d\]]/.test(rest)) {
+        startIdx = i;
+        isArray = true;
+        break;
       }
     }
   }
 
-  // Strip any trailing non-JSON characters after the last closing brace/bracket
+  if (startIdx === -1) return null;
+
+  // 3. Track bracket depth to find matching closing bracket
+  let depth = 0;
+  let inString = false;
+  let escaped = false;
+  const openChar = isArray ? '[' : '{';
+  const closeChar = isArray ? ']' : '}';
+
+  for (let i = startIdx; i < clean.length; i++) {
+    const char = clean[i];
+
+    if (escaped) {
+      escaped = false;
+      continue;
+    }
+
+    if (char === '\\') {
+      escaped = true;
+      continue;
+    }
+
+    if (char === '"') {
+      inString = !inString;
+      continue;
+    }
+
+    if (!inString) {
+      if (char === openChar) {
+        depth++;
+      } else if (char === closeChar) {
+        depth--;
+        if (depth === 0) {
+          return clean.substring(startIdx, i + 1);
+        }
+      }
+    }
+  }
+
+  // If unclosed (e.g. truncated JSON), return from startIdx to end
+  return clean.substring(startIdx);
+}
+
+/**
+ * Safely parses JSON strings returned by LLMs, robustly repairing common syntax issues:
+ * 1. Surrounding markdown code fences (```json ... ```)
+ * 2. Prefix/suffix conversational text and pseudo-headers (e.g. "[Hooks]:")
+ * 3. Unescaped double quotes inside string values
+ * 4. Literal unescaped newlines inside string values
+ * 5. Trailing commas before closing braces/brackets
+ * 6. Truncated JSON structures (auto-closes unclosed strings, braces, and brackets)
+ */
+export function safeJsonParse<T = any>(text: string): T | null {
+  if (!text || typeof text !== 'string') {
+    return null;
+  }
+
+  // 1. Clean invisible characters / BOM
+  let clean = text.replace(/^\uFEFF/, '').trim();
+  if (!clean) return null;
+
+  // 2. Extract structured JSON substring
+  const extracted = extractJsonSubstring(clean);
+  if (extracted) {
+    clean = extracted;
+  }
+
+  // 3. Strip trailing non-JSON characters
   const lastBrace = Math.max(clean.lastIndexOf('}'), clean.lastIndexOf(']'));
   if (lastBrace !== -1 && lastBrace < clean.length - 1) {
     clean = clean.substring(0, lastBrace + 1).trim();
   }
 
-  // 3. Remove trailing commas before closing braces/brackets
+  // 4. Remove trailing commas before closing braces/brackets
   clean = clean.replace(/,\s*([}\]])/g, '$1');
 
-  // Try standard JSON parse first. If it succeeds, return the parsed object!
+  // Try standard JSON parse first
   try {
     return JSON.parse(clean) as T;
   } catch (e) {
-    // If standard parsing fails, proceed to character-by-character repair
-    console.warn("[safeJsonParse] Standard JSON.parse failed. Proceeding with robust character-by-character repair...", e);
+    // Standard parse failed, proceed with repair
   }
 
-  // 4. Character-by-character parsing and repair
+  // 5. Character-by-character parsing and repair
   let repaired = '';
   let inString = false;
   
@@ -94,7 +149,6 @@ export function safeJsonParse<T = any>(text: string): T {
     const char = clean[i];
 
     if (char === '"') {
-      // Count backslashes preceding the quote to check if it's already escaped
       let backslashes = 0;
       let k = i - 1;
       while (k >= 0 && clean[k] === '\\') {
@@ -107,11 +161,9 @@ export function safeJsonParse<T = any>(text: string): T {
         repaired += char;
       } else {
         if (!inString) {
-          // Entering a string value/key
           inString = true;
           repaired += char;
         } else {
-          // We are in a string. Check if this is the closing quote of the string.
           const nextChar = getNextNonWhitespaceChar(clean, i + 1);
           let isClosing = false;
 
@@ -131,28 +183,67 @@ export function safeJsonParse<T = any>(text: string): T {
             inString = false;
             repaired += char;
           } else {
-            // Unescaped nested quote inside a string value! Escape it!
             repaired += '\\"';
           }
         }
       }
     } else if (char === '\n' && inString) {
-      // Escape raw newlines inside string values
       repaired += '\\n';
     } else if (char === '\r' && inString) {
-      // Skip carriage returns inside strings
+      // Skip carriage returns in string literals
     } else {
       repaired += char;
     }
   }
 
-  // Final attempt to parse the repaired JSON
+  // Remove trailing commas after character repair
+  repaired = repaired.replace(/,\s*([}\]])/g, '$1');
+
   try {
     return JSON.parse(repaired) as T;
-  } catch (err: any) {
-    console.error("[safeJsonParse] Repair failed to yield valid JSON. Original text preview:", text.substring(0, 200));
-    console.error("[safeJsonParse] Repaired text preview:", repaired.substring(0, 200));
-    throw new Error(`Failed to parse repaired JSON: ${err.message}`);
+  } catch (err) {
+    // 6. Attempt truncated JSON completion if needed
+    try {
+      let completion = repaired;
+      if (inString) {
+        completion += '"';
+      }
+      
+      // Balance brackets/braces
+      let openCurly = 0;
+      let openSquare = 0;
+      let strState = false;
+      let escState = false;
+
+      for (let i = 0; i < completion.length; i++) {
+        const c = completion[i];
+        if (escState) { escState = false; continue; }
+        if (c === '\\') { escState = true; continue; }
+        if (c === '"') { strState = !strState; continue; }
+        if (!strState) {
+          if (c === '{') openCurly++;
+          else if (c === '}') openCurly = Math.max(0, openCurly - 1);
+          else if (c === '[') openSquare++;
+          else if (c === ']') openSquare = Math.max(0, openSquare - 1);
+        }
+      }
+
+      // Close open structures
+      completion = completion.replace(/,\s*$/, '');
+      while (openCurly > 0) {
+        completion += '}';
+        openCurly--;
+      }
+      while (openSquare > 0) {
+        completion += ']';
+        openSquare--;
+      }
+
+      return JSON.parse(completion) as T;
+    } catch (completionErr) {
+      console.warn('[safeJsonParse] Could not parse or repair JSON text. Returning null.', { preview: text.substring(0, 150) });
+      return null;
+    }
   }
 }
 

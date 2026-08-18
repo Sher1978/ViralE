@@ -57,7 +57,7 @@ describe('generateDailyIdeas', () => {
     expect(ideas[0].topic_title).toBe('Test Idea');
   });
 
-  it('should throw error if profile is missing', async () => {
+  it('should fallback to universal expert DNA and return ideas when profile is missing', async () => {
     mockSupabase.from.mockImplementation((table: string) => {
       if (table === 'ideation_feed') {
         return {
@@ -75,8 +75,10 @@ describe('generateDailyIdeas', () => {
       };
     });
 
-    await expect(generateDailyIdeas(mockSupabase, 'wrong-user', 'en'))
-      .rejects.toThrow('User personality not found');
+    const ideas = await generateDailyIdeas(mockSupabase, 'wrong-user', 'en');
+    expect(ideas).toBeDefined();
+    expect(Array.isArray(ideas)).toBe(true);
+    expect(ideas.length).toBeGreaterThan(0);
   });
 
   it('should successfully parse AI output with unescaped nested quotes and markdown wrappers', async () => {

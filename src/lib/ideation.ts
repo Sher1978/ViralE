@@ -188,18 +188,12 @@ export async function generateDailyIdeas(
         );
         const response = await result.response;
         text = response.text().trim();
-        
-        let cleanText = text.replace(/```json/gi, '').replace(/```/g, '').trim();
-        const match = cleanText.match(/\[[\s\S]*\]/);
-        if (match) {
-          cleanText = match[0];
-        }
 
-        const parsed = safeJsonParse<any>(cleanText) || safeJsonParse<any>(text);
+        const parsed = safeJsonParse<any>(text);
         if (Array.isArray(parsed)) {
           ideasArray = parsed;
         } else if (parsed && typeof parsed === 'object') {
-          const candidateArray = parsed.ideas || parsed.topics || parsed.data || parsed.results || Object.values(parsed).find(Array.isArray);
+          const candidateArray = parsed.ideas || parsed.topics || parsed.data || parsed.results || Object.values(parsed).find((val: any) => Array.isArray(val));
           if (Array.isArray(candidateArray)) {
             ideasArray = candidateArray;
           }

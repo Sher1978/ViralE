@@ -399,25 +399,30 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     }
   `;
 
-  const result = await targetModel.generateContent([systemPrompt, userPrompt]);
-  const response = await result.response;
-  let text = response.text().trim();
-  
-  try {
-    const parsed = safeJsonParse(text);
-    if (parsed) return parsed;
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      const sliced = text.substring(jsonStart, jsonEnd + 1);
-      const parsedSliced = safeJsonParse(sliced);
-      if (parsedSliced) return parsedSliced;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const promptToUse = attempt === 1 
+        ? userPrompt 
+        : `${userPrompt}\n\nCRITICAL RETRY: Output ONLY raw valid JSON matching the exact object structure requested. No markdown fences or preamble.`;
+      
+      const result = await targetModel.generateContent([systemPrompt, promptToUse]);
+      const response = await result.response;
+      const text = response.text().trim();
+
+      const parsed = safeJsonParse(text);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
+      }
+    } catch (e) {
+      console.warn(`[Gemini generateScript] Attempt ${attempt} failed:`, e);
     }
-    return JSON.parse(text);
-  } catch (e) {
-    console.error('[Gemini] JSON Parse Error. Raw Text:', text);
-    throw new Error('AI returned invalid data format. Please try again.');
   }
+
+  throw new Error(
+    locale === 'ru'
+      ? 'Не удалось сформировать сценарий в формате JSON. Пожалуйста, повторите попытку.'
+      : 'AI returned invalid script format. Please try again.'
+  );
 }
 
 export async function synthesizeDigitalShadow(rawInputs: any, locale: string = 'en') {
@@ -544,25 +549,28 @@ export async function refineScript(
     Output ONLY valid JSON in the same structure.
   `;
 
-  const result = await targetModel.generateContent([systemPrompt, userPrompt]);
-  const response = await result.response;
-  let text = response.text().trim();
-  
-  try {
-    const parsed = safeJsonParse(text);
-    if (parsed) return parsed;
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      const sliced = text.substring(jsonStart, jsonEnd + 1);
-      const parsedSliced = safeJsonParse(sliced);
-      if (parsedSliced) return parsedSliced;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const promptToUse = attempt === 1 
+        ? userPrompt 
+        : `${userPrompt}\n\nCRITICAL RETRY: Output ONLY raw valid JSON. Do not wrap in markdown or explanatory text.`;
+
+      const result = await targetModel.generateContent([systemPrompt, promptToUse]);
+      const response = await result.response;
+      const text = response.text().trim();
+
+      const parsed = safeJsonParse(text);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (e) {
+      console.warn(`[Gemini refineScript] Attempt ${attempt} failed:`, e);
     }
-    return JSON.parse(text);
-  } catch (e) {
-    console.error('[Gemini] JSON Refinement Parse Error. Raw Text:', text);
-    throw new Error('AI returned invalid data format during refinement.');
   }
+
+  throw new Error(
+    locale === 'ru'
+      ? 'Ошибка формата при редактировании сценария. Попробуйте еще раз.'
+      : 'AI returned invalid data format during refinement.'
+  );
 }
 
 export async function generateText(prompt: string, customApiKey?: string): Promise<string> {
@@ -617,25 +625,28 @@ export async function generatePreviews(
     }
   `;
 
-  const result = await targetModel.generateContent([systemPrompt, userPrompt]);
-  const response = await result.response;
-  let text = response.text().trim();
-  
-  try {
-    const parsed = safeJsonParse(text);
-    if (parsed) return parsed;
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      const sliced = text.substring(jsonStart, jsonEnd + 1);
-      const parsedSliced = safeJsonParse(sliced);
-      if (parsedSliced) return parsedSliced;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const promptToUse = attempt === 1 
+        ? userPrompt 
+        : `${userPrompt}\n\nCRITICAL RETRY: Output ONLY raw valid JSON object with the requested keys.`;
+
+      const result = await targetModel.generateContent([systemPrompt, promptToUse]);
+      const response = await result.response;
+      const text = response.text().trim();
+
+      const parsed = safeJsonParse(text);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (e) {
+      console.warn(`[Gemini generatePreviews] Attempt ${attempt} failed:`, e);
     }
-    return JSON.parse(text);
-  } catch (e) {
-    console.error('[Gemini Previews] JSON Parse Error. Raw Text:', text);
-    throw new Error('AI returned invalid previews format. Please try again.');
   }
+
+  throw new Error(
+    locale === 'ru'
+      ? 'Ошибка формата превью сценария. Повторите попытку.'
+      : 'AI returned invalid previews format. Please try again.'
+  );
 }
 
 export async function generateFullScript(
@@ -696,25 +707,28 @@ export async function generateFullScript(
     }
   `;
 
-  const result = await targetModel.generateContent([systemPrompt, userPrompt]);
-  const response = await result.response;
-  let text = response.text().trim();
-  
-  try {
-    const parsed = safeJsonParse(text);
-    if (parsed) return parsed;
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      const sliced = text.substring(jsonStart, jsonEnd + 1);
-      const parsedSliced = safeJsonParse(sliced);
-      if (parsedSliced) return parsedSliced;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const promptToUse = attempt === 1 
+        ? userPrompt 
+        : `${userPrompt}\n\nCRITICAL RETRY: Output ONLY raw valid JSON object. No markdown fences or intro text.`;
+
+      const result = await targetModel.generateContent([systemPrompt, promptToUse]);
+      const response = await result.response;
+      const text = response.text().trim();
+
+      const parsed = safeJsonParse(text);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (e) {
+      console.warn(`[Gemini generateFullScript] Attempt ${attempt} failed:`, e);
     }
-    return JSON.parse(text);
-  } catch (e) {
-    console.error('[Gemini FullScript] JSON Parse Error. Raw Text:', text);
-    throw new Error('AI returned invalid script format. Please try again.');
   }
+
+  throw new Error(
+    locale === 'ru'
+      ? 'Ошибка формата сценария. Попробуйте снова.'
+      : 'AI returned invalid script format. Please try again.'
+  );
 }
 
 export async function generateTurboScript(
@@ -770,23 +784,26 @@ export async function generateTurboScript(
     }
   `;
 
-  const result = await targetModel.generateContent([systemPrompt, userPrompt]);
-  const response = await result.response;
-  let text = response.text().trim();
-  
-  try {
-    const parsed = safeJsonParse(text);
-    if (parsed) return parsed;
-    const jsonStart = text.indexOf('{');
-    const jsonEnd = text.lastIndexOf('}');
-    if (jsonStart !== -1 && jsonEnd !== -1) {
-      const sliced = text.substring(jsonStart, jsonEnd + 1);
-      const parsedSliced = safeJsonParse(sliced);
-      if (parsedSliced) return parsedSliced;
+  for (let attempt = 1; attempt <= 2; attempt++) {
+    try {
+      const promptToUse = attempt === 1 
+        ? userPrompt 
+        : `${userPrompt}\n\nCRITICAL RETRY: Output ONLY raw valid JSON object matching the requested schema.`;
+
+      const result = await targetModel.generateContent([systemPrompt, promptToUse]);
+      const response = await result.response;
+      const text = response.text().trim();
+
+      const parsed = safeJsonParse(text);
+      if (parsed && typeof parsed === 'object') return parsed;
+    } catch (e) {
+      console.warn(`[Gemini generateTurboScript] Attempt ${attempt} failed:`, e);
     }
-    return JSON.parse(text);
-  } catch (e) {
-    console.error('[Gemini TurboScript] JSON Parse Error. Raw Text:', text);
-    throw new Error('AI returned invalid turbo script format. Please try again.');
   }
+
+  throw new Error(
+    locale === 'ru'
+      ? 'Ошибка формата турбо-сценария. Попробуйте еще раз.'
+      : 'AI returned invalid turbo script format. Please try again.'
+  );
 }
