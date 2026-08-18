@@ -399,6 +399,7 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
     }
   `;
 
+  let text = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const promptToUse = attempt === 1 
@@ -409,13 +410,14 @@ export async function generateScript(coreIdea: string, digitalShadow: string, lo
       const response = await result.response;
       const text = response.text().trim();
 
-        if (parsed && typeof parsed === 'object') {
-          return parsed;
-        }
-        console.warn(`[Gemini:generateScript] Attempt ${attempt} returned invalid JSON format. Raw snippet: "${text.slice(0, 250)}"`);
-      } catch (e: any) {
-        console.warn(`[Gemini:generateScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
+      const parsed = safeJsonParse(text);
+      if (parsed && typeof parsed === 'object') {
+        return parsed;
       }
+      console.warn(`[Gemini:generateScript] Attempt ${attempt} returned invalid JSON format. Raw snippet: "${text.slice(0, 250)}"`);
+    } catch (e: any) {
+      console.warn(`[Gemini:generateScript] Attempt ${attempt} exception: ${e?.message || e}`);
+    }
     }
 
     throw new Error(
@@ -549,6 +551,7 @@ export async function refineScript(
     Output ONLY valid JSON in the same structure.
   `;
 
+  let text = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const promptToUse = attempt === 1 
@@ -557,13 +560,13 @@ export async function refineScript(
 
       const result = await targetModel.generateContent([systemPrompt, promptToUse]);
       const response = await result.response;
-      const text = response.text().trim();
+      text = response.text().trim();
 
       const parsed = safeJsonParse(text);
       if (parsed && typeof parsed === 'object') return parsed;
       console.warn(`[Gemini:refineScript] Attempt ${attempt} returned invalid JSON structure. Raw snippet: "${text.slice(0, 250)}"`);
     } catch (e: any) {
-      console.warn(`[Gemini:refineScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
+      console.warn(`[Gemini:refineScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text.slice(0, 250)}"`);
     }
   }
 
@@ -626,6 +629,7 @@ export async function generatePreviews(
     }
   `;
 
+  let text = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const promptToUse = attempt === 1 
@@ -634,13 +638,13 @@ export async function generatePreviews(
 
       const result = await targetModel.generateContent([systemPrompt, promptToUse]);
       const response = await result.response;
-      const text = response.text().trim();
+      text = response.text().trim();
 
       const parsed = safeJsonParse(text);
       if (parsed && typeof parsed === 'object') return parsed;
       console.warn(`[Gemini:generatePreviews] Attempt ${attempt} returned invalid JSON structure. Raw snippet: "${text.slice(0, 250)}"`);
     } catch (e: any) {
-      console.warn(`[Gemini:generatePreviews] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
+      console.warn(`[Gemini:generatePreviews] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text.slice(0, 250)}"`);
     }
   }
 
@@ -709,6 +713,7 @@ export async function generateFullScript(
     }
   `;
 
+  let text = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const promptToUse = attempt === 1 
@@ -717,13 +722,13 @@ export async function generateFullScript(
 
       const result = await targetModel.generateContent([systemPrompt, promptToUse]);
       const response = await result.response;
-      const text = response.text().trim();
+      text = response.text().trim();
 
       const parsed = safeJsonParse(text);
       if (parsed && typeof parsed === 'object') return parsed;
       console.warn(`[Gemini:generateFullScript] Attempt ${attempt} returned invalid JSON structure. Raw snippet: "${text.slice(0, 250)}"`);
     } catch (e: any) {
-      console.warn(`[Gemini:generateFullScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
+      console.warn(`[Gemini:generateFullScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text.slice(0, 250)}"`);
     }
   }
 
@@ -787,6 +792,7 @@ export async function generateTurboScript(
     }
   `;
 
+  let text = '';
   for (let attempt = 1; attempt <= 2; attempt++) {
     try {
       const promptToUse = attempt === 1 
@@ -795,13 +801,13 @@ export async function generateTurboScript(
 
       const result = await targetModel.generateContent([systemPrompt, promptToUse]);
       const response = await result.response;
-      const text = response.text().trim();
+      text = response.text().trim();
 
       const parsed = safeJsonParse(text);
       if (parsed && typeof parsed === 'object') return parsed;
       console.warn(`[Gemini:generateTurboScript] Attempt ${attempt} returned invalid JSON structure. Raw snippet: "${text.slice(0, 250)}"`);
     } catch (e: any) {
-      console.warn(`[Gemini:generateTurboScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text?.slice?.(0, 250) || 'N/A'}"`);
+      console.warn(`[Gemini:generateTurboScript] Attempt ${attempt} exception: ${e?.message || e}. Raw snippet: "${text.slice(0, 250)}"`);
     }
   }
 

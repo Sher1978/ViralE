@@ -13,6 +13,8 @@ export async function POST(req: Request) {
   let projectId: string | undefined = undefined;
   let mode: string = 'initial';
   let coreIdea: string = '';
+  let engine: string = 'gemini';
+  let locale: string = 'en';
 
   try {
     const authContext = await getAuthContext();
@@ -23,8 +25,10 @@ export async function POST(req: Request) {
     projectId = body.projectId;
     coreIdea = body.coreIdea || '';
     mode = body.mode || 'initial';
+    engine = body.engine || 'gemini';
+    locale = body.locale || 'en';
     
-    let { ideaTitle, locale = 'en', instruction, currentScript, versionId: targetVersionId, engine = 'gemini', hook, role, selectedStyle, selectedPreview } = body;
+    let { ideaTitle, instruction, currentScript, versionId: targetVersionId, hook, role, selectedStyle, selectedPreview } = body;
 
     console.log(`[ScriptGen] Mode: ${mode}, Locale: ${locale}, Engine: ${engine}, ProjectID: ${projectId || 'NEW'}`);
 
