@@ -9,7 +9,7 @@ const genAI = new GoogleGenerativeAI(apiKey);
 const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
 export function normalizeModelName(rawName?: string): string {
-  if (!rawName || typeof rawName !== 'string') return 'gemini-2.0-flash-exp';
+  if (!rawName || typeof rawName !== 'string') return 'gemini-2.5-flash';
   let name = rawName.trim();
   if (name.startsWith('models/')) {
     name = name.replace(/^models\//i, '');
@@ -20,7 +20,7 @@ export function normalizeModelName(rawName?: string): string {
   return name;
 }
 
-// ✅ AUGUST 2026 GEMINI MODEL LINEUP (Gemini 2.5 / 2.0 / 1.5)
+// ✅ AUGUST 2026 GEMINI MODEL LINEUP (Gemini 2.5 / 2.0)
 export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.5-flash");
 export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL_PRO || "gemini-2.5-pro");
 
@@ -153,13 +153,13 @@ export function getModel(
   const rawCandidates = tier === 'pro' ? [
     baseModelName,
     "gemini-2.5-pro",
-    "gemini-1.5-pro",
-    "gemini-2.5-flash"
+    "gemini-2.5-flash",
+    "gemini-2.0-flash"
   ] : [
     baseModelName,
     "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-flash"
+    "gemini-2.5-flash-lite",
+    "gemini-2.0-flash"
   ];
   const fallbackModels = Array.from(new Set(rawCandidates.map(normalizeModelName)));
 
