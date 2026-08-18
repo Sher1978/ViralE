@@ -1,33 +1,29 @@
-import { NextRequest, NextResponse } from 'next/server';
+import { NextResponse } from 'next/server';
 import { supabaseAdmin } from '@/lib/supabase';
 
-export const runtime = 'nodejs';
-
-export async function GET(req: NextRequest) {
+export async function GET(request: Request) {
   try {
-    const { searchParams } = new URL(req.url);
+    const { searchParams } = new URL(request.url);
     const userId = searchParams.get('userId');
 
     if (!userId) {
-      return NextResponse.json({ error: 'userId is required' }, { status: 400 });
+      return NextResponse.json({ error: 'Missing userId parameter' }, { status: 400 });
     }
 
     const { data: profile, error } = await supabaseAdmin
       .from('profiles')
-      .select('id, telegram_id')
+      .select('telegram_id')
       .eq('id', userId)
-      .maybeSingle();
+      .single();
 
-    if (error) {
-      console.error('[LinkTelegram API] Fetch error:', error);
+    if (error && error.code !== 'PGRST116') {
+      console.error('[Link Telegram API Error]:', error);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
-    return NextResponse.json({
-      telegram_id: profile?.telegram_id || null
-    });
+    return NextResponse.json({ telegram_id: profile?.telegram_id || null });
   } catch (err: any) {
-    console.error('[LinkTelegram API] Exception:', err);
-    return NextResponse.json({ error: err.message }, { status: 500 });
+    console.error('[Link Telegram GET Error]:', err);
+    return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
   }
 }

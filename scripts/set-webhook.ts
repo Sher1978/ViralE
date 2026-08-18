@@ -1,18 +1,27 @@
-const token = "8738398927:AAGzIEb_0cW73KC2LrzHz8qre4b4kgvAgMk"; // From .env
-const url = process.argv[2];
+import dotenv from 'dotenv';
+dotenv.config({ path: '.env.local' });
 
-if (!url) {
-  console.log("Usage: npx tsx scripts/set-webhook.ts <your-app-url>");
-  console.log("Example: npx tsx scripts/set-webhook.ts https://viral-engine.com");
-  process.exit(1);
-}
+const token = process.env.TELEGRAM_BOT_TOKEN || "8738398927:AAGzIEb_0cW73KC2LrzHz8qre4b4kgvAgMk";
+const url = process.argv[2] || "https://www.virale.uno";
 
 const webhookUrl = `${url}/api/bot`;
+const allowedUpdates = ["message", "callback_query", "pre_checkout_query", "chat_member", "my_chat_member"];
 
 async function setWebhook() {
   console.log(`Setting webhook to: ${webhookUrl}`);
+  console.log(`Allowed updates:`, allowedUpdates);
   try {
-    const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook?url=${encodeURIComponent(webhookUrl)}`);
+    // Delete existing webhook first to ensure allowed_updates are updated
+    await fetch(`https://api.telegram.org/bot${token}/deleteWebhook`);
+
+    const response = await fetch(`https://api.telegram.org/bot${token}/setWebhook`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        url: webhookUrl,
+        allowed_updates: allowedUpdates
+      })
+    });
     const data = await response.json();
     console.log("Response from Telegram:", data);
   } catch (error) {

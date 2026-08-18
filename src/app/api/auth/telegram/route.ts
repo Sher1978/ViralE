@@ -31,11 +31,24 @@ async function handleTelegramAuth(userData: any, hash: string) {
   const password = crypto.createHmac('sha256', serviceRoleKey).update(telegramId).digest('hex');
 
   // 3. Upsert User
-  let { data: { user: targetUser } } = await supabaseAdmin.auth.admin.getUserById(telegramId).catch(() => ({ data: { user: null } }));
-  
+  let targetUser: any = null;
+
+  // First check if profile exists with this telegram_id or email
+  const { data: existingProfileData } = await supabaseAdmin
+    .from('profiles')
+    .select('id, email, telegram_id, full_name, avatar_url')
+    .or(`telegram_id.eq.${telegramId},email.eq.${email}`)
+    .maybeSingle();
+
+  if (existingProfileData?.id) {
+    const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(existingProfileData.id).catch(() => ({ data: { user: null } }));
+    targetUser = user;
+  }
+
   if (!targetUser) {
-    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers();
-    targetUser = users.find((u: any) => u.email === email) || null;
+    // Fallback: search auth users list in case profile is missing or delayed
+    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }).catch(() => ({ data: { users: [] } }));
+    targetUser = users?.find((u: any) => u.email === email) || null;
   }
 
   if (!targetUser) {
@@ -52,6 +65,11 @@ async function handleTelegramAuth(userData: any, hash: string) {
     });
     if (createError) throw createError;
     targetUser = newUser;
+  } else {
+    // Ensure password matches current HMAC secret key for existing users
+    await supabaseAdmin.auth.admin.updateUserById(targetUser.id, { password, email_confirm: true }).catch(err => {
+      console.warn('[Telegram Auth] Could not update password for existing user:', err);
+    });
   }
 
   // 4. Create Session
