@@ -22,8 +22,8 @@ export function normalizeModelName(rawName?: string): string {
 
 // ✅ VERIFIED WORKING MODELS (new API key - full access tier)
 // gemini-2.5-flash → gemini-2.0-flash → gemini-1.5-flash-latest → gemini-1.5-flash
-export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.5-flash");
-export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.5-flash");
+export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-1.5-flash");
+export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-1.5-flash");
 
 export function getModel(
   tier: 'fast' | 'pro' = 'fast', 
@@ -153,10 +153,8 @@ export function getModel(
   // ✅ Verified working models with new API key (full access tier):
   const rawCandidates = [
     baseModelName,
-    "gemini-2.5-flash",
     "gemini-2.0-flash",
     "gemini-2.0-flash-exp",
-    "gemini-1.5-flash-latest",
     "gemini-1.5-flash"
   ];
   const fallbackModels = Array.from(new Set(rawCandidates.map(normalizeModelName)));

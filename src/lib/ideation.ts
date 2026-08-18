@@ -38,6 +38,7 @@ export async function generateDailyIdeas(
   const targetCategory = category || "General";
   const languageName = locale === 'ru' ? 'Russian' : 'English';
 
+  let profile: any = null;
   try {
     // 0. Check total idea count for user
     const { count: totalIdeas } = await supabase
@@ -51,11 +52,13 @@ export async function generateDailyIdeas(
     }
     
     // 1. Fetch user persona DNA, answers, storybrand content and tier
-    const { data: profile } = await supabase
+    const { data: fetchedProfile } = await supabase
       .from('profiles')
-      .select('digital_shadow_prompt, storybrand_raw_content, industry_context, dna_answers, tier')
+      .select('digital_shadow_prompt, storybrand_raw_content, industry_context, dna_answers, synthetic_training_data, tier')
       .eq('id', userId)
       .single();
+
+    profile = fetchedProfile;
 
     const userFilePath = path.join(process.cwd(), 'Bible_SOT', 'users', userId, 'Brand_DNA.md');
     const hasFileStrategy = fs.existsSync(userFilePath);
@@ -174,7 +177,10 @@ export async function generateDailyIdeas(
       ]
     `;
 
-    const fastModel = getModel('fast');
+    const syntheticData = (profile?.synthetic_training_data as Record<string, any>) || {};
+    const geminiApiKey = syntheticData.gemini_api_key || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || undefined;
+
+    const fastModel = getModel('fast', locale, 'json', geminiApiKey);
     let text = '';
     let ideasArray: any[] = [];
 
@@ -227,24 +233,63 @@ export async function generateDailyIdeas(
     });
   }
 
-  console.warn(`[generateDailyIdeas:${targetCategory}] Returning high-converting fallback ideas for user ${userId}.`);
-  // Universal high-converting fallback ideas if AI fails or throws exception
+  // Smart Dynamic Fallback: Construct persona-specific, non-repeating ideas directly from user's StoryBrand / Brand DNA
+  const dnaAnswers = profile?.dna_answers || {};
+  let sphere = (dnaAnswers.sphere || dnaAnswers.niche || profile?.industry_context || 'жизни и бизнесе в ЮВА').split(',')[0].split('.')[0].trim();
+  if (sphere.length > 45) sphere = sphere.slice(0, 42) + '...';
+  
+  let pain = (dnaAnswers.painPoint || dnaAnswers.pain_points || 'безопасности и риска скама').split(',')[0].split('.')[0].trim();
+  if (pain.length > 45) pain = pain.slice(0, 42) + '...';
+
+  let advantage = (dnaAnswers.advantage || dnaAnswers.approach || 'экосистеме безопасности').split(',')[0].split('.')[0].trim();
+  if (advantage.length > 45) advantage = advantage.slice(0, 42) + '...';
+
+  console.warn(`[generateDailyIdeas:${targetCategory}] Returning dynamic DNA-tailored fallback ideas for user ${userId}.`);
+  
+  if (targetCategory === "Problem" || targetCategory === "Зеркало болей") {
+    return [
+      {
+        topic_title: locale === 'ru' ? `Главные риски в сфере «${sphere}»: Как не потерять ресурсы` : `Top risks in "${sphere}": How to protect your assets`,
+        rationale: locale === 'ru' ? `Закрывает ключевую боль аудитории: ${pain}` : `Addresses primary audience struggle: ${pain}`,
+        viral_potential_score: 94,
+        category: targetCategory
+      },
+      {
+        topic_title: locale === 'ru' ? `3 скрытые схемы обмана, о которых молчат в «${sphere}»` : `3 hidden scam schemes nobody talks about in "${sphere}"`,
+        rationale: locale === 'ru' ? 'Остросоциальный разоблачительный триггер высокой кликабельности' : 'Highly viral investigative provocative hook',
+        viral_potential_score: 96,
+        category: targetCategory
+      }
+    ];
+  }
+
+  if (targetCategory === "Solution" || targetCategory === "Решения") {
+    return [
+      {
+        topic_title: locale === 'ru' ? `Как гарантированно решить проблему: ${pain}` : `How to solve "${pain}" with certainty`,
+        rationale: locale === 'ru' ? `Пошаговый разбор метода: ${advantage}` : `Step-by-step breakdown of proprietary framework`,
+        viral_potential_score: 93,
+        category: targetCategory
+      },
+      {
+        topic_title: locale === 'ru' ? `Пошаговый алгоритм безопасности в «${sphere}»` : `Step-by-step security framework in "${sphere}"`,
+        rationale: locale === 'ru' ? 'Структурированное экспертное решение для аудитории' : 'High value structured authority offer',
+        viral_potential_score: 91,
+        category: targetCategory
+      }
+    ];
+  }
+
   return [
     {
-      topic_title: locale === 'ru' ? 'Главная ошибка 90% экспертов в 2026 году' : 'The #1 Mistake 90% of Experts Make in 2026',
-      rationale: locale === 'ru' ? 'Высокий retention за счет триггера упущенной выгоды' : 'High retention hook triggering FOMO and curiosity',
+      topic_title: locale === 'ru' ? `Главная ошибка в «${sphere}» в 2026 году` : `The #1 critical mistake in "${sphere}" in 2026`,
+      rationale: locale === 'ru' ? `Основано на нише бренда: ${sphere}` : `Tailored to user's specific niche: ${sphere}`,
       viral_potential_score: 92,
       category: targetCategory
     },
     {
-      topic_title: locale === 'ru' ? 'Пошаговый алгоритм: Как гарантированно вырасти в 3 раза' : 'Step-by-step framework to 3X your growth',
-      rationale: locale === 'ru' ? 'Структурированный оффер, вызывающий доверие аудитории' : 'Actionable breakdown building strong authority',
-      viral_potential_score: 89,
-      category: targetCategory
-    },
-    {
-      topic_title: locale === 'ru' ? 'Перестаньте делать это, если хотите стабильный поток клиентов' : 'Stop doing this if you want consistent client flow',
-      rationale: locale === 'ru' ? 'Отрицательное позиционирование с высокой кликабельностью' : 'Negative positioning hook with massive CTR',
+      topic_title: locale === 'ru' ? `Как построить надежную систему в «${sphere}»` : `How to establish systemic safety in "${sphere}"`,
+      rationale: locale === 'ru' ? `Основано на преимуществе: ${advantage}` : `Based on brand advantage: ${advantage}`,
       viral_potential_score: 95,
       category: targetCategory
     }
