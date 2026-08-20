@@ -117,14 +117,14 @@ export async function POST(req: NextRequest) {
         .eq('telegram_id', telegramId)
         .single();
 
-      // Fallback: search by username
-      if ((findError || !profile) && username) {
-        const { data: profileByUsername } = await supabaseAdmin
-          .from('profiles')
-          .select('*')
-          .eq('username', username)
-          .single();
-        profile = profileByUsername;
+      // Fallback: search auth users list by metadata or email if profile not found by telegram_id
+      if (findError || !profile) {
+        const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }).catch(() => ({ data: { users: [] } }));
+        const matchedUser = users?.find((u: any) => String(u.user_metadata?.telegram_id) === String(telegramId) || u.user_metadata?.username === username);
+        if (matchedUser) {
+          const { data: p } = await supabaseAdmin.from('profiles').select('*').eq('id', matchedUser.id).maybeSingle();
+          profile = p;
+        }
       }
 
       if (!profile) {

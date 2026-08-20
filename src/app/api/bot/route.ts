@@ -474,8 +474,7 @@ export async function POST(req: NextRequest) {
           await supabaseAdmin
             .from('profiles')
             .update({
-              telegram_id: user.id,
-              username: user.username || null
+              telegram_id: String(user.id),
             })
             .eq('id', targetUserId);
 
@@ -532,8 +531,7 @@ export async function POST(req: NextRequest) {
           await supabaseAdmin
             .from('profiles')
             .update({
-              telegram_id: user.id,
-              username: user.username || null
+              telegram_id: String(user.id),
             })
             .eq('id', targetUserId);
         }

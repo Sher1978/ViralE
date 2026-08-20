@@ -128,12 +128,17 @@ export const profileService = {
       return null;
     }
 
-    // Dynamic sync/back-fill for existing profiles missing email, referral_code or avatar
+    // Dynamic sync/back-fill for existing profiles missing email, referral_code, avatar, or telegram_id
     let needsUpdate = false;
     const updates: Partial<Profile> = {};
 
     if (user.email && (!profile.email || profile.email.includes('anon_') || profile.email !== user.email)) {
       updates.email = user.email;
+      needsUpdate = true;
+    }
+
+    if (user.user_metadata?.telegram_id && !profile.telegram_id) {
+      updates.telegram_id = String(user.user_metadata.telegram_id);
       needsUpdate = true;
     }
 

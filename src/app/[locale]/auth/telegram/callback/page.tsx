@@ -34,12 +34,21 @@ export default function TelegramCallbackPage({ params }: { params: { locale: str
         }
 
         const { session } = await response.json();
+        
+        // Ensure auth token cookie is explicitly set in document.cookie for immediate server-side validation
+        const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+        const projectRef = supabaseUrl.split('.')[0].split('//')[1];
+        if (projectRef && session?.access_token) {
+          const cookieName = `sb-${projectRef}-auth-token`;
+          document.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
+        }
+
         const { error: sessionError } = await supabase.auth.setSession(session);
         
         if (sessionError) throw sessionError;
 
-        // Redirect to app
-        router.replace(`/${locale}/app`);
+        // Hard navigation ensures server components reload with valid cookie
+        window.location.href = `/${locale}/app/projects`;
       } catch (error) {
         console.error('Auth finalization error:', error);
         router.replace(`/${locale}/auth?error=auth_failed`);
@@ -47,7 +56,7 @@ export default function TelegramCallbackPage({ params }: { params: { locale: str
     }
 
     finalizeAuth();
-  }, [searchParams, router, supabase, locale]);
+  }, [searchParams, router, locale]);
 
   return (
     <div className="flex flex-col items-center justify-center min-h-screen bg-[#0A0A0A] text-white">

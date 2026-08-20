@@ -16,12 +16,18 @@ export async function GET(request: Request) {
       .eq('id', userId)
       .single();
 
-    if (error && error.code !== 'PGRST116') {
-      console.error('[Link Telegram API Error]:', error);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    let telegramId = profile?.telegram_id || null;
+
+    // Fallback: check auth user metadata if telegram_id is not in profile yet
+    if (!telegramId) {
+      const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId).catch(() => ({ data: { user: null } }));
+      if (user?.user_metadata?.telegram_id) {
+        telegramId = String(user.user_metadata.telegram_id);
+        await supabaseAdmin.from('profiles').update({ telegram_id: telegramId }).eq('id', userId).catch(() => {});
+      }
     }
 
-    return NextResponse.json({ telegram_id: profile?.telegram_id || null });
+    return NextResponse.json({ telegram_id: telegramId });
   } catch (err: any) {
     console.error('[Link Telegram GET Error]:', err);
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });

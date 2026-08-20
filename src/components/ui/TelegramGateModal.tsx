@@ -29,15 +29,24 @@ export function TelegramGateModal() {
     }
   }, [profile?.id, updateProfile]);
 
-  // Polling every 3.5 seconds to auto-close modal as soon as user links bot in Telegram
+  // Polling every 3.5 seconds and on window focus to auto-close modal as soon as user links bot in Telegram
   useEffect(() => {
     if (!profile || profile.telegram_id) return;
 
+    // Check immediately when user switches back to browser tab after clicking bot in Telegram
+    const handleFocus = () => {
+      checkTelegramStatus();
+    };
+
+    window.addEventListener('focus', handleFocus);
     const interval = setInterval(() => {
       checkTelegramStatus();
     }, 3500);
 
-    return () => clearInterval(interval);
+    return () => {
+      window.removeEventListener('focus', handleFocus);
+      clearInterval(interval);
+    };
   }, [profile, checkTelegramStatus]);
 
   // If profile is not loaded or user already has telegram_id linked, do not show modal

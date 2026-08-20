@@ -60,7 +60,6 @@ async function handleTelegramAuth(userData: any, hash: string) {
         telegram_id: telegramId,
         full_name: `${userData.first_name || ''} ${userData.last_name || ''}`.trim(),
         avatar_url: userData.photo_url,
-        username: userData.username
       }
     });
     if (createError) throw createError;
@@ -96,10 +95,10 @@ async function handleTelegramAuth(userData: any, hash: string) {
     const { error: updateError } = await supabaseAdmin
       .from('profiles')
       .update({
-        telegram_id: parseInt(telegramId),
+        telegram_id: String(telegramId),
+        email,
         full_name: fullName,
-        avatar_url: avatarUrl,
-        username: userData.username
+        avatar_url: avatarUrl
       })
       .eq('id', targetUser!.id);
     if (updateError) throw updateError;
@@ -109,10 +108,9 @@ async function handleTelegramAuth(userData: any, hash: string) {
       .insert({
         id: targetUser!.id,
         email,
-        telegram_id: parseInt(telegramId),
+        telegram_id: String(telegramId),
         full_name: fullName,
         avatar_url: avatarUrl,
-        username: userData.username,
         credits_balance: 0,
         tier: 'free',
         subscription_status: 'active',
@@ -129,7 +127,21 @@ export async function POST(request: Request) {
     const data = await request.json();
     const { hash, ...userData } = data;
     const result = await handleTelegramAuth(userData, hash);
-    return NextResponse.json(result);
+
+    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
+    const projectRef = supabaseUrl.split('.')[0].split('//')[1] || '';
+    const cookieName = projectRef ? `sb-${projectRef}-auth-token` : '';
+
+    const response = NextResponse.json(result);
+    if (cookieName && result.session?.access_token) {
+      response.cookies.set(cookieName, result.session.access_token, {
+        maxAge: 604800,
+        path: '/',
+        sameSite: 'lax',
+        httpOnly: false,
+      });
+    }
+    return response;
   } catch (error: any) {
     console.error('Telegram POST Auth Error:', error);
     return NextResponse.json({ error: error.message || 'Internal Server Error' }, { status: 400 });
