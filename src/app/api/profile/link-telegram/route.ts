@@ -20,10 +20,14 @@ export async function GET(request: Request) {
 
     // Fallback: check auth user metadata if telegram_id is not in profile yet
     if (!telegramId) {
-      const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId).catch(() => ({ data: { user: null } }));
-      if (user?.user_metadata?.telegram_id) {
-        telegramId = String(user.user_metadata.telegram_id);
-        await supabaseAdmin.from('profiles').update({ telegram_id: telegramId }).eq('id', userId).catch(() => {});
+      try {
+        const { data: { user } } = await supabaseAdmin.auth.admin.getUserById(userId);
+        if (user?.user_metadata?.telegram_id) {
+          telegramId = String(user.user_metadata.telegram_id);
+          await supabaseAdmin.from('profiles').update({ telegram_id: telegramId }).eq('id', userId);
+        }
+      } catch (fallbackErr) {
+        console.warn('[Link Telegram API] Fallback metadata check failed:', fallbackErr);
       }
     }
 

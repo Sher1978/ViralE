@@ -236,10 +236,14 @@ export const renderService = {
     if (error) throw error;
     
     // 4. Update project status
-    await supabase
-      .from('projects')
-      .update({ status: 'rendering' })
-      .eq('id', projectId).catch((e: any) => console.error("Update status error", e));
+    try {
+      await supabase
+        .from('projects')
+        .update({ status: 'rendering' })
+        .eq('id', projectId);
+    } catch (e: any) {
+      console.error("Update status error", e);
+    }
 
     // 5. Trigger Marketing Package if requested
     if (options.includeMarketingPackage) {
