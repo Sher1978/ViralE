@@ -61,15 +61,38 @@ export async function GET(req: Request) {
 
 // POST — generate TTS audio
 export async function POST(req: Request) {
-  const authHeader = req.headers.get('authorization');
-  const apiKey = await getElevenLabsKey(authHeader);
-
   try {
-    const { text, voice_id = 'EXAVITQu4vr4xnSDxMaL', model_id = 'eleven_multilingual_v2' } = await req.json();
+    const { getAuthContext } = await import('@/lib/auth');
+    const { deductCredits, CREDIT_COSTS } = await import('@/lib/credits');
+    const { user, supabase: authorizedSupabase } = await getAuthContext();
+
+    const authHeader = req.headers.get('authorization');
+    const { data: profile } = await authorizedSupabase
+      .from('profiles')
+      .select('elevenlabs_api_key')
+      .eq('id', user.id)
+      .single();
+
+    const userHasByok = !!(profile?.elevenlabs_api_key && profile.elevenlabs_api_key.trim() !== '');
+    const apiKey = userHasByok ? profile.elevenlabs_api_key.trim() : process.env.ELEVENLABS_API_KEY;
+
+    const { text, voice_id = 'EXAVITQu4vr4xnSDxMaL', model_id = 'eleven_multilingual_v2', projectId } = await req.json();
     if (!text) return NextResponse.json({ error: 'Text is required' }, { status: 400 });
 
     if (!apiKey) {
       return NextResponse.json({ error: 'ElevenLabs API key not configured' }, { status: 400 });
+    }
+
+    // Deduct credits if using system platform key
+    if (!userHasByok) {
+      try {
+        await deductCredits(authorizedSupabase as any, user.id, CREDIT_COSTS.RENDER_PREVIEW, 'TTS_GEN', projectId);
+      } catch (e: any) {
+        if (e.message === 'INSUFFICIENT_CREDITS') {
+          return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
+        }
+        throw e;
+      }
     }
 
     const response = await fetch(`https://api.elevenlabs.io/v1/text-to-speech/${voice_id}`, {

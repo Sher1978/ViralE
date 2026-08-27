@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getModel } from '@/lib/ai/gemini';
-import { getAuthenticatedUser } from '@/lib/auth';
+import { getAuthContext } from '@/lib/auth';
+import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
 
 export const runtime = 'nodejs';
 
@@ -24,9 +25,19 @@ interface SceneConcept {
 
 export async function POST(req: NextRequest) {
   try {
-    const { subtitles } = await req.json();
+    const { user, supabase: authorizedSupabase } = await getAuthContext();
+    const { subtitles, projectId } = await req.json();
     if (!subtitles || !Array.isArray(subtitles)) {
       return NextResponse.json({ error: 'Subtitles array is required' }, { status: 400 });
+    }
+
+    try {
+      await deductCredits(authorizedSupabase as any, user.id, CREDIT_COSTS.REGENERATE_BLOCK, 'AUTO_WHITEBOARD', projectId);
+    } catch (e: any) {
+      if (e.message === 'INSUFFICIENT_CREDITS') {
+        return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
+      }
+      throw e;
     }
 
     const totalDuration = subtitles.reduce((max: number, s: any) => {

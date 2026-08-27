@@ -5,6 +5,8 @@ import { supabaseAdmin } from '@/lib/supabase';
 import { exec } from 'child_process';
 import { promisify } from 'util';
 import { getModel } from '@/lib/ai/gemini';
+import { getAuthContext } from '@/lib/auth';
+import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
 import fs from 'fs';
 import path from 'path';
 import os from 'os';
@@ -331,6 +333,7 @@ async function createDrawingVideo(
 // ---------------------------------------------------------------------------
 export async function POST(req: NextRequest) {
   try {
+    const { user, supabase: authorizedSupabase } = await getAuthContext();
     const { clipId, projectId, prompt, duration = 4.0 } = await req.json();
 
     if (!prompt) {
@@ -338,6 +341,16 @@ export async function POST(req: NextRequest) {
     }
     if (!process.env.FAL_KEY) {
       return NextResponse.json({ error: 'Fal.ai API key is missing' }, { status: 500 });
+    }
+
+    // Deduct Credits for Whiteboard generation
+    try {
+      await deductCredits(authorizedSupabase as any, user.id, CREDIT_COSTS.ANIMATION_STANDARD, 'WHITEBOARD_GEN', projectId);
+    } catch (e: any) {
+      if (e.message === 'INSUFFICIENT_CREDITS') {
+        return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
+      }
+      throw e;
     }
 
     // Check FFmpeg availability

@@ -3,6 +3,8 @@ import { v4 as uuidv4 } from 'uuid';
 import { fal } from "@fal-ai/client";
 import { VISUAL_STYLES, GlobalStyleAnchor } from '@/lib/ai/visual-generator';
 import { supabaseAdmin } from '@/lib/supabase';
+import { getAuthContext } from '@/lib/auth';
+import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
 
 export const runtime = 'nodejs';
 export const maxDuration = 60;
@@ -55,10 +57,21 @@ async function uploadToSupabase(externalUrl: string): Promise<string> {
 
 export async function POST(req: Request) {
   try {
+    const { user, supabase: authorizedSupabase } = await getAuthContext();
     const { prompt, style_prefix = '', visual_style, aspect_ratio = '9:16', provider = 'flux', seed } = await req.json();
 
     if (!prompt) {
       return NextResponse.json({ error: 'Prompt is required' }, { status: 400 });
+    }
+
+    // Deduct Credits for Image Generation
+    try {
+      await deductCredits(authorizedSupabase as any, user.id, CREDIT_COSTS.AI_LOOK_POLISH, 'IMAGE_GEN');
+    } catch (e: any) {
+      if (e.message === 'INSUFFICIENT_CREDITS') {
+        return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
+      }
+      throw e;
     }
 
     const isGrokRequested = provider === 'grok' || provider === 'flux';

@@ -65,11 +65,6 @@ export async function deductCredits(
 
   if (fetchError) throw fetchError;
 
-  // Bypass credit deduction entirely for free tier users (renders with watermark) unless forceDeduct is true
-  if (profile?.tier === 'free' && !forceDeduct) {
-    console.log(`[Credits] User ${userId} is on FREE tier, bypassing credit deduction of ${amount} credits.`);
-    return true;
-  }
 
   const currentBalance = profile?.credits_balance || 0;
 
