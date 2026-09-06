@@ -27,7 +27,10 @@ import {
   Lock,
   Smartphone,
   Crown,
-  DollarSign
+  DollarSign,
+  Trash2,
+  AlertTriangle,
+  ShieldAlert
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
@@ -54,6 +57,12 @@ export default function ProfilePage() {
   const [uploading, setUploading] = useState(false);
   const [saving, setSaving] = useState(false);
   const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  
+  // Account Deletion States (GDPR Art. 17)
+  const [showDeleteModal, setShowDeleteModal] = useState(false);
+  const [deleteConfirmInput, setDeleteConfirmInput] = useState('');
+  const [isDeletingAccount, setIsDeletingAccount] = useState(false);
+  const [deleteAccountError, setDeleteAccountError] = useState<string | null>(null);
   
   // StoryBrand and dynamic routing states
   const [projectCount, setProjectCount] = useState(0);
@@ -1164,11 +1173,56 @@ export default function ProfilePage() {
         ))}
       </div>
 
-      {/* Logout & Footer */}
+  const handleConfirmDeleteAccount = async () => {
+    if (deleteConfirmInput.trim().toUpperCase() !== 'DELETE') return;
+    setIsDeletingAccount(true);
+    setDeleteAccountError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const res = await fetch('/api/user/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          userId: profile?.id,
+          accessToken
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete account');
+      }
+
+      await supabase.auth.signOut().catch(() => {});
+      const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
+      if (globalObj.window) {
+        globalObj.window.location.href = '/auth';
+      }
+    } catch (err: any) {
+      setDeleteAccountError(err.message || 'Error executing account deletion');
+      setIsDeletingAccount(false);
+    }
+  };
+
+  return (
+    <motion.div 
+      variants={containerVariants as any}
+      initial="hidden"
+      animate="visible"
+      className="space-y-6 pb-24 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+1rem))]"
+    >
+      {/* ... Profile Content ... */}
+
+      {/* Logout & Danger Zone Footer */}
       <motion.div variants={itemVariants as any} className="px-1 space-y-6">
         <button
           onClick={handleLogout}
-          className="w-full flex items-center justify-center gap-3 py-5 rounded-[2rem] text-sm font-black transition-all hover:bg-[#FF4D6D]/10 active:scale-95 group"
+          className="w-full flex items-center justify-center gap-3 py-5 rounded-[2rem] text-sm font-black transition-all hover:bg-[#FF4D6D]/10 active:scale-95 group cursor-pointer"
           style={{
             background: 'rgba(255,77,109,0.05)',
             border: '1px solid rgba(255,77,109,0.15)',
@@ -1178,6 +1232,98 @@ export default function ProfilePage() {
           <LogOut size={18} className="group-hover:rotate-12 transition-transform" />
           {commonT('logout').toUpperCase()}
         </button>
+
+        {/* Danger Zone: GDPR Right to Erasure */}
+        <div className="p-6 rounded-[2rem] bg-red-950/20 border border-red-500/20 backdrop-blur-xl text-left space-y-3">
+          <div className="flex items-center gap-2 text-red-400 font-bold text-xs uppercase tracking-wider">
+            <ShieldAlert size={16} />
+            <span>Danger Zone · Personal Data Protection</span>
+          </div>
+          <p className="text-xs text-white/50 leading-relaxed font-medium">
+            Under GDPR Article 17 (&quot;Right to Erasure&quot;) and the Law of Ukraine No. 2297-VI, you may permanently purge your account, profile, scripts, video renders, and credit history.
+          </p>
+          <button
+            onClick={() => {
+              setDeleteConfirmInput('');
+              setDeleteAccountError(null);
+              setShowDeleteModal(true);
+            }}
+            className="w-full py-3 px-4 rounded-xl bg-red-500/10 border border-red-500/30 text-red-400 font-bold text-xs uppercase tracking-wider hover:bg-red-500/20 active:scale-98 transition-all flex items-center justify-center gap-2 cursor-pointer"
+          >
+            <Trash2 size={14} /> Delete Account & Purge Data (GDPR Art. 17)
+          </button>
+        </div>
+
+        {/* Confirmation Modal */}
+        <AnimatePresence>
+          {showDeleteModal && (
+            <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="w-full max-w-md bg-neutral-900 border border-red-500/40 rounded-3xl p-6 shadow-2xl text-left space-y-5 relative overflow-hidden"
+              >
+                <div className="flex items-center gap-3 text-red-400 font-black text-lg">
+                  <div className="w-10 h-10 rounded-2xl bg-red-500/10 border border-red-500/30 flex items-center justify-center shrink-0">
+                    <AlertTriangle size={22} />
+                  </div>
+                  <div>
+                    <h3>Permanent Account Erasure</h3>
+                    <p className="text-[10px] text-white/40 font-mono uppercase tracking-widest">GDPR Art. 17 Compliance</p>
+                  </div>
+                </div>
+
+                <p className="text-xs text-neutral-300 font-medium leading-relaxed">
+                  This action is <strong>irreversible</strong>. All your projects, AI video renders, Digital DNA settings, credit balance, and personal metadata will be <strong>permanently purged</strong> from our servers and database.
+                </p>
+
+                <div className="space-y-2">
+                  <label htmlFor="delete-confirm-input" className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                    Type <span className="text-red-400 font-mono">DELETE</span> to confirm:
+                  </label>
+                  <input
+                    id="delete-confirm-input"
+                    type="text"
+                    value={deleteConfirmInput}
+                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                    placeholder="DELETE"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-mono uppercase focus:outline-none focus:border-red-500/60"
+                  />
+                </div>
+
+                {deleteAccountError && (
+                  <p className="text-xs text-red-400 font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                    {deleteAccountError}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={isDeletingAccount}
+                    className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs uppercase tracking-wider hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmDeleteAccount}
+                    disabled={deleteConfirmInput.trim().toUpperCase() !== 'DELETE' || isDeletingAccount}
+                    className="flex-1 py-3.5 rounded-xl bg-red-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-red-600/30"
+                  >
+                    {isDeletingAccount ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Trash2 size={14} /> Purge Everything
+                      </>
+                    )}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
         <div className="text-center space-y-2 pb-8">
           <div className="flex items-center justify-center gap-2 opacity-20">
@@ -1194,3 +1340,4 @@ export default function ProfilePage() {
     </motion.div>
   );
 }
+

@@ -68,6 +68,7 @@ export const viewport: Viewport = {
 
 import { Providers } from "@/components/Providers";
 import { TrafficTrackerComponent } from "@/components/analytics/TrafficTrackerComponent";
+import { CookieBanner } from "@/components/ui/CookieBanner";
 
 export default async function LocaleLayout({
   children,
@@ -249,6 +250,7 @@ export default async function LocaleLayout({
           <NextIntlClientProvider locale={locale} messages={messages}>
             <SessionSync />
             <FFmpegPreloader />
+            <CookieBanner />
             
             {/* Decorative Orbs (Global) */}
             <div className="orb orb-gold" />

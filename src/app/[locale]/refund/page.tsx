@@ -1,7 +1,7 @@
 'use client';
 
 import React from 'react';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
+import { ArrowLeft, RefreshCw, ShieldCheck } from 'lucide-react';
 import { useRouter } from '@/navigation';
 
 export default function RefundPage() {
@@ -10,77 +10,91 @@ export default function RefundPage() {
   return (
     <div className="min-h-screen bg-[#050505] text-[#F5F0E8] font-sans selection:bg-purple-500/30 py-20 px-5 md:px-10 relative overflow-hidden">
       {/* Decorative Orbs */}
-      <div className="absolute top-[-10%] right-[-10%] w-[300px] h-[300px] rounded-full bg-purple-500/5 filter blur-[80px] pointer-events-none" />
-      <div className="absolute bottom-[-10%] left-[-10%] w-[300px] h-[300px] rounded-full bg-cyan-500/5 filter blur-[80px] pointer-events-none" />
+      <div className="absolute top-[-10%] right-[-10%] w-[400px] h-[400px] rounded-full bg-purple-500/5 filter blur-[100px] pointer-events-none" />
+      <div className="absolute bottom-[-10%] left-[-10%] w-[400px] h-[400px] rounded-full bg-cyan-500/5 filter blur-[100px] pointer-events-none" />
 
-      <div className="max-w-3xl mx-auto space-y-10 relative z-10">
+      <div className="max-w-4xl mx-auto space-y-10 relative z-10">
         {/* Back Button */}
         <button
           onClick={() => router.push('/')}
-          className="flex items-center gap-2 text-white/40 hover:text-white text-xs font-black uppercase tracking-widest transition-colors"
+          className="flex items-center gap-2 text-white/40 hover:text-white text-xs font-black uppercase tracking-widest transition-colors cursor-pointer"
         >
-          <ArrowLeft size={16} /> На главную
+          <ArrowLeft size={16} /> Return to Main Page
         </button>
 
         {/* Header */}
-        <div className="flex items-center gap-4 border-b border-white/10 pb-8">
-          <div className="w-12 h-12 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
-            <RefreshCw size={24} className="text-purple-400" />
+        <div className="flex items-center gap-5 border-b border-white/10 pb-8">
+          <div className="w-14 h-14 rounded-2xl bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shrink-0">
+            <RefreshCw size={28} className="text-purple-400" />
           </div>
           <div>
-            <h1 className="text-4xl font-black uppercase tracking-tight">Refund Policy</h1>
-            <p className="text-xs font-black uppercase tracking-[0.2em] text-white/30 mt-1">Правила возврата средств</p>
+            <h1 className="text-3xl md:text-4xl font-black uppercase tracking-tight">Refund & Cancellation Policy</h1>
+            <p className="text-xs font-black uppercase tracking-[0.2em] text-purple-400/80 mt-1">
+              Viral Studio / virale.uno · Merchant Refund Terms
+            </p>
           </div>
         </div>
 
         {/* Content */}
-        <div className="space-y-8 text-sm text-white/70 leading-relaxed font-medium">
+        <div className="space-y-10 text-sm text-white/70 leading-relaxed font-medium">
           <section className="space-y-3">
-            <h2 className="text-lg font-black uppercase tracking-wide text-white">1. Core Policy</h2>
+            <h2 className="text-lg font-black uppercase tracking-wide text-white">1. Overview</h2>
             <p>
-              We want you to be fully satisfied with the premium video automation capabilities of Viral Studio. Because our rendering engine, AI script synthesis, and custom video avatar features consume high-performance GPU resources immediately upon generation, we offer refunds under the specific guidelines detailed below.
+              We want you to be completely confident in the AI content creation capabilities of Viral Studio. Because our rendering engine, ElevenLabs voice cloning, HeyGen avatars, and Fal.ai GPU pipelines consume real-time high-performance cloud resources upon generation, refunds are granted according to the fair criteria below.
             </p>
           </section>
 
-          <section className="space-y-3">
-            <h2 className="text-lg font-black uppercase tracking-wide text-white">2. Eligible Subscription Refunds</h2>
+          <section className="space-y-3 border-l-2 border-purple-500/50 pl-5">
+            <h2 className="text-lg font-black uppercase tracking-wide text-white">2. 14-Day Subscription Refund Policy</h2>
             <p>
-              We provide a full <strong>14-day refund window</strong> for billing cycles if:
+              We provide a <strong>full 14-day refund guarantee</strong> for subscription purchases under the following conditions:
             </p>
-            <ul className="list-disc pl-5 space-y-2 text-white/60">
-              <li>The account has not synthesized, generated, or rendered any AI video credits or custom avatars during the billing period.</li>
-              <li>A payment was charged automatically on a recurring cycle and you contact support within 48 hours of renewal to cancel and refund.</li>
+            <ul className="list-disc pl-5 space-y-2 text-white/70">
+              <li>You request a refund within 14 calendar days of the initial subscription transaction date.</li>
+              <li>Your account has <strong>not consumed AI video credits</strong> or performed custom avatar renderings during the current billing cycle.</li>
+              <li>For automatic recurring renewals, you notify customer support within 48 hours of charge.</li>
             </ul>
           </section>
 
           <section className="space-y-3">
-            <h2 className="text-lg font-black uppercase tracking-wide text-white">3. Non-Refundable Items</h2>
+            <h2 className="text-lg font-black uppercase tracking-wide text-white">3. Non-Refundable Scenarios</h2>
             <p>
-              Due to substantial cloud GPU processing fees charged by our AI API pipelines:
+              To prevent abuse of cloud computing resources:
             </p>
             <ul className="list-disc pl-5 space-y-2 text-white/60">
-              <li>Synthesized AI avatars, voice cloned audio clips, and final rendered videos are non-refundable once the synthesis has initiated.</li>
-              <li>Subscription tiers where credit generation has already been consumed are not eligible for a prorated refund.</li>
+              <li>Individual credit top-up packages where credit generation has already commenced are non-refundable.</li>
+              <li>Synthesized AI avatars, custom voice models, and rendered MP4 video downloads cannot be refunded once processing is completed.</li>
+              <li>Accounts terminated due to violations of our Acceptable Use Policy forfeit eligibility for refunds.</li>
             </ul>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-lg font-black uppercase tracking-wide text-white">4. Secure Processing via Paddle</h2>
             <p>
-              All refund requests are processed securely through <strong>Paddle</strong>, our Merchant of Record. Approved refunds are returned back to your original payment method (Credit Card, PayPal, Apple Pay) within 5 to 10 business days depending on your bank's clear times.
+              All subscription order refunds are executed through our Merchant of Record, <strong>Paddle.com</strong>. Upon approval, funds are returned directly to your original payment method (Visa, Mastercard, PayPal, Apple Pay) within 5 to 10 business days.
             </p>
           </section>
 
           <section className="space-y-3">
             <h2 className="text-lg font-black uppercase tracking-wide text-white">5. How to Request a Refund</h2>
             <p>
-              To request a refund, please contact our dedicated billing and customer operations team directly by sending an email to <span className="text-purple-400">billing@virale.uno</span> with your account registration email and Paddle transaction receipt ID. We answer all refund inquiries within 24 hours.
+              To request a refund, please send an email to <span className="text-purple-400 font-mono font-bold">billing@virale.uno</span> with:
+            </p>
+            <ol className="list-decimal pl-5 space-y-1 text-white/70">
+              <li>Your account login email or Telegram handle.</li>
+              <li>Your Paddle order transaction receipt ID.</li>
+            </ol>
+            <p className="text-xs text-white/50 mt-2">
+              Our support team reviews and resolves all billing and refund requests within 24 hours.
             </p>
           </section>
 
-          <section className="space-y-3 border-t border-white/10 pt-8">
-            <p className="text-xs text-white/40">
-              Last updated: May 31, 2026. Viral Studio / virale.uno.
+          <section className="space-y-3 border-t border-white/10 pt-8 text-xs text-white/40">
+            <p>
+              Viral Studio / virale.uno · Merchant of Record: Paddle.com Market Ltd.
+            </p>
+            <p>
+              Last Updated: September 6, 2026.
             </p>
           </section>
         </div>
