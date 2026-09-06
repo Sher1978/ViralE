@@ -2,8 +2,14 @@ import { NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { supabaseAdmin } from '@/lib/supabase';
 import { cookies } from 'next/headers';
+import { isTelegramIdBlocked } from '@/lib/blockedUsers';
 
 async function handleTelegramAuth(userData: any, hash: string) {
+  const telegramId = userData?.id?.toString();
+  if (isTelegramIdBlocked(telegramId)) {
+    throw new Error('This account is blocked from accessing the system.');
+  }
+
   const botToken = process.env.TELEGRAM_BOT_TOKEN;
   if (!botToken) {
     throw new Error('Telegram Bot Token not configured');
@@ -22,7 +28,6 @@ async function handleTelegramAuth(userData: any, hash: string) {
     throw new Error('Invalid hash');
   }
 
-  const telegramId = userData.id.toString();
   const email = `tg_${telegramId}@telegram.local`;
   
   // Deterministic password based on service role key and telegram ID

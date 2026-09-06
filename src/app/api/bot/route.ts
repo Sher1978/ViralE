@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import crypto from 'crypto';
 import { monitoringService } from '@/lib/services/monitoringService';
+import { isTelegramIdBlocked } from '@/lib/blockedUsers';
 
 const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8738398927:AAGzIEb_0cW73KC2LrzHz8qre4b4kgvAgMk';
 
@@ -8,6 +9,13 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
+
+    // Check if user is blocked
+    const senderId = body?.message?.from?.id || body?.callback_query?.from?.id || body?.chat_member?.new_chat_member?.user?.id;
+    if (senderId && isTelegramIdBlocked(senderId)) {
+      console.warn(`[Telegram Bot] Blocked user ${senderId} attempted interaction. Ignoring.`);
+      return NextResponse.json({ ok: true });
+    }
 
     // 0. Handle chat_member (channel membership updates for VIP channel tracking)
     if (body.chat_member) {
