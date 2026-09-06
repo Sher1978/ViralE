@@ -460,6 +460,42 @@ export default function ProfilePage() {
     }
   };
 
+  const handleConfirmDeleteAccount = async () => {
+    if (deleteConfirmInput.trim().toUpperCase() !== 'DELETE') return;
+    setIsDeletingAccount(true);
+    setDeleteAccountError(null);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      const accessToken = session?.access_token;
+
+      const res = await fetch('/api/user/delete-account', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
+        },
+        body: JSON.stringify({
+          userId: profile?.id,
+          accessToken
+        })
+      });
+
+      const data = await res.json();
+      if (!res.ok) {
+        throw new Error(data.error || 'Failed to delete account');
+      }
+
+      await supabase.auth.signOut().catch(() => {});
+      const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
+      if (globalObj.window) {
+        globalObj.window.location.href = '/auth';
+      }
+    } catch (err: any) {
+      setDeleteAccountError(err.message || 'Error executing account deletion');
+      setIsDeletingAccount(false);
+    }
+  };
+
   const [imgErr, setImgErr] = useState(false);
 
   const isHeyGenLocked = !profile || (profile.tier !== 'creator' && profile.tier !== 'pro');
@@ -1172,51 +1208,6 @@ export default function ProfilePage() {
           </motion.div>
         ))}
       </div>
-
-  const handleConfirmDeleteAccount = async () => {
-    if (deleteConfirmInput.trim().toUpperCase() !== 'DELETE') return;
-    setIsDeletingAccount(true);
-    setDeleteAccountError(null);
-    try {
-      const { data: { session } } = await supabase.auth.getSession();
-      const accessToken = session?.access_token;
-
-      const res = await fetch('/api/user/delete-account', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {})
-        },
-        body: JSON.stringify({
-          userId: profile?.id,
-          accessToken
-        })
-      });
-
-      const data = await res.json();
-      if (!res.ok) {
-        throw new Error(data.error || 'Failed to delete account');
-      }
-
-      await supabase.auth.signOut().catch(() => {});
-      const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : {};
-      if (globalObj.window) {
-        globalObj.window.location.href = '/auth';
-      }
-    } catch (err: any) {
-      setDeleteAccountError(err.message || 'Error executing account deletion');
-      setIsDeletingAccount(false);
-    }
-  };
-
-  return (
-    <motion.div 
-      variants={containerVariants as any}
-      initial="hidden"
-      animate="visible"
-      className="space-y-6 pb-24 pt-[max(3rem,calc(env(safe-area-inset-top,0px)+1rem))]"
-    >
-      {/* ... Profile Content ... */}
 
       {/* Logout & Danger Zone Footer */}
       <motion.div variants={itemVariants as any} className="px-1 space-y-6">
