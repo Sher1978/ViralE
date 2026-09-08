@@ -16,10 +16,7 @@ import { useLocale } from 'next-intl';
 import { ProductionManifest } from '@/lib/types/studio';
 import { projectService } from '@/lib/services/projectService';
 import { renderService } from '@/lib/services/renderService';
-
-
-
-// ── Types ──────────────────────────────────────────────────────────────────
+import { TokenConfirmModal } from '@/components/ui/TokenConfirmModal';// ── Types ──────────────────────────────────────────────────────────────────
 
 interface Scene {
   id: string;
@@ -71,6 +68,28 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   const [voices, setVoices] = useState<any[]>([]);
   const [selectedVoice, setSelectedVoice] = useState('EXAVITQu4vr4xnSDxMaL');
   const [defaultVoiceId, setDefaultVoiceId] = useState('EXAVITQu4vr4xnSDxMaL');
+
+  const [tokenModal, setTokenModal] = useState<{isOpen: boolean, cost: number, balance: number, title: string, description: string, onConfirm: () => void}>({
+    isOpen: false, cost: 0, balance: 0, title: '', description: '', onConfirm: () => {}
+  });
+
+  const checkBalanceAndConfirm = async (cost: number, title: string, description: string, onConfirm: () => void) => {
+    try {
+      const res = await fetch('/api/profile/byok');
+      const data = await res.json();
+      setTokenModal({
+        isOpen: true,
+        cost,
+        balance: data.credits_balance || 0,
+        title,
+        description,
+        onConfirm
+      });
+    } catch (e) {
+      console.error('Balance check failed:', e);
+      (globalThis as any).alert?.('Ошибка проверки баланса. Проверьте интернет-соединение.');
+    }
+  };
 
   const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
   const [audioUrl, setAudioUrl] = useState<string | null>(null);
@@ -424,55 +443,97 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
 
   // ── Stage 2: Generate All Images ──
   const generateAllImages = async () => {
-    setGeneratingImages(true);
-    setImagesProgress(0);
-    setImageGenError(null);
-    const updated = [...scenes];
-    let errorCount = 0;
-    let lastErrorMsg = '';
+    const ungeneratedCount = scenes.filter(s => !s.imageUrl).length;
+    if (ungeneratedCount === 0) return;
+    
+    checkBalanceAndConfirm(
+      ungeneratedCount * 10,
+      'Генерация изображений',
+      `Сгенерировать ${ungeneratedCount} кадров за ${ungeneratedCount * 10} токенов?`,
+      async () => {
+        setGeneratingImages(true);
+        setImagesProgress(0);
+        setImageGenError(null);
+        const updated = [...scenes];
+        let errorCount = 0;
+        let lastErrorMsg = '';
 
-    for (let i = 0; i < updated.length; i++) {
-      if (updated[i].imageUrl) continue;
-      updated[i] = { ...updated[i], generating: true };
-      setScenes([...updated]);
-      try {
-        const res = await fetch('/api/ai/image-gen', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ 
-            prompt: updated[i].imagePrompt, 
-            visual_style: visualStyle || 'startup_valley', 
-            aspect_ratio: '9:16' 
-          }),
-        });
-        const data = await res.json();
-        
-        if (!res.ok) {
-          throw new Error(data.error || data.detail || `API Error ${res.status}`);
+        for (let i = 0; i < updated.length; i++) {
+          if (updated[i].imageUrl) continue;
+          updated[i] = { ...updated[i], generating: true };
+          setScenes([...updated]);
+          try {
+            const res = await fetch('/api/ai/image-gen', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ 
+                prompt: updated[i].imagePrompt, 
+                visual_style: visualStyle || 'startup_valley', 
+                aspect_ratio: '9:16' 
+              }),
+            });
+            const data = await res.json();
+            
+            if (!res.ok) {
+              throw new Error(data.error || data.detail || `API Error ${res.status}`);
+            }
+            
+            updated[i] = { ...updated[i], imageUrl: data.url, generating: false };
+          } catch (e: any) {
+            errorCount++;
+            lastErrorMsg = e.message || 'Unknown error';
+            updated[i] = { ...updated[i], generating: false };
+          }
+          setScenes([...updated]);
+          setImagesProgress(Math.round(((i + 1) / updated.length) * 100));
         }
-        
-        updated[i] = { ...updated[i], imageUrl: data.url, generating: false };
-      } catch (e: any) {
-        errorCount++;
-        lastErrorMsg = e.message || 'Unknown error';
-        updated[i] = { ...updated[i], generating: false };
-      }
-      setScenes([...updated]);
-      setImagesProgress(Math.round(((i + 1) / updated.length) * 100));
-    }
 
-    if (errorCount > 0) {
-      setImageGenError(`Ошибка генерации (${errorCount} кадров): ${lastErrorMsg}`);
-    }
-    setGeneratingImages(false);
+        if (errorCount > 0) {
+          setImageGenError(`Ошибка генерации (${errorCount} кадров): ${lastErrorMsg}`);
+        }
+        setGeneratingImages(false);
+      }
+    );
   };
 
   const regenerateScene = async (sceneId: string) => {
     const idx = scenes.findIndex(s => s.id === sceneId);
     if (idx === -1) return;
-    const updated = [...scenes];
-    updated[idx] = { ...updated[idx], generating: true };
-    setScenes(updated);
+    
+    checkBalanceAndConfirm(
+      10,
+      'Перегенерация кадра',
+      'Генерация нового варианта кадра спишет 10 токенов.',
+      async () => {
+        const updated = [...scenes];
+        updated[idx] = { ...updated[idx], generating: true };
+        setScenes(updated);
+        setImageGenError(null);
+        try {
+          const res = await fetch('/api/ai/image-gen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ 
+              prompt: updated[idx].imagePrompt, 
+              visual_style: visualStyle || 'startup_valley', 
+              aspect_ratio: '9:16' 
+            }),
+          });
+          const data = await res.json();
+          
+          if (!res.ok) {
+            throw new Error(data.error || data.detail || `API Error ${res.status}`);
+          }
+          
+          updated[idx] = { ...updated[idx], imageUrl: data.url, generating: false };
+          setScenes([...updated]);
+        } catch (e: any) {
+          setImageGenError(e.message || 'Ошибка генерации кадра');
+          setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, generating: false } : s));
+        }
+      }
+    );
+  };
     setImageGenError(null);
     try {
       const res = await fetch('/api/ai/image-gen', {

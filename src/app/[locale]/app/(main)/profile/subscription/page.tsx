@@ -220,21 +220,21 @@ export default function SubscriptionPage() {
       icon: Zap,
       color: 'from-slate-400 to-slate-600',
       features: {
-        ru: ['400 кредитов /мес', 'Доступ к монтажу', 'Стандартная раскадровка', 'Telegram-оповещения'],
-        en: ['400 credits /mo', 'Studio editing access', 'Standard Storyboard', 'Telegram Alerts']
+        ru: ['400 токенов /мес (~20 видео)', 'Генерация идей и сценариев', 'Телесуфлер, монтажка, экспорт', 'Без генерации ИИ-видео'],
+        en: ['400 tokens /mo (~20 videos)', 'Idea & script generation', 'Teleprompter, editor, export', 'No AI-video generation']
       },
       popular: false
     },
     {
       id: 'pro',
       name: 'Pro',
-      price: '$39.90',
-      stars: '2000 Stars',
+      price: '$49.90',
+      stars: '2500 Stars',
       icon: Sparkles,
       color: 'from-purple-500 to-indigo-600',
       features: {
-        ru: ['1000 кредитов /мес', 'Полный ИИ монтаж сценариев', 'Регенерация кадров', 'Приоритетный рендер'],
-        en: ['1000 credits /mo', 'Full AI script editing', 'Smart Storyboard regeneration', 'Priority Rendering']
+        ru: ['1000 токенов /мес (~50 видео)', 'Полный ИИ монтаж сценариев', 'Регенерация скетчей и обложек', 'Приоритетный рендер'],
+        en: ['1000 tokens /mo (~50 videos)', 'Full AI script editing', 'Smart sketch & cover generation', 'Priority Rendering']
       },
       popular: true
     },
@@ -246,8 +246,8 @@ export default function SubscriptionPage() {
       icon: Rocket,
       color: 'from-amber-400 to-orange-600',
       features: {
-        ru: ['3000 кредитов /мес', 'Поддержка своих API ключей', 'Кросспостинг в соцсети', 'Выделенный ИИ-стратег'],
-        en: ['3000 credits /mo', 'Bring Your Own Key support', 'Automated cross-posting', 'Dedicated Pilot Strategist']
+        ru: ['3000 токенов /мес (~150 видео)', 'Поддержка своих API ключей', 'Кросспостинг в соцсети', 'Выделенный ИИ-стратег'],
+        en: ['3000 tokens /mo (~150 videos)', 'Bring Your Own Key support', 'Automated cross-posting', 'Dedicated Pilot Strategist']
       },
       popular: false
     }

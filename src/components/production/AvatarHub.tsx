@@ -253,6 +253,22 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig, 
 
   return (
     <div className="h-full w-full flex flex-col bg-[#050508] relative">
+      {/* MAINTENANCE OVERLAY */}
+      <div className="absolute inset-0 z-[999] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="w-16 h-16 text-yellow-500 mb-4" />
+        <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-2">
+          {common('locale') === 'ru' ? 'Функция временно недоступна' : 'Feature temporarily unavailable'}
+        </h2>
+        <p className="text-white/60">
+          {common('locale') === 'ru' ? 'Тяжелые генерации видео и лиц отключены на время технических работ и оптимизации биллинга.' : 'Heavy video and face generation are disabled during maintenance and billing optimization.'}
+        </p>
+        {onBack && (
+          <button onClick={onBack} className="mt-8 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl uppercase tracking-widest font-black text-xs transition-all">
+            {common('locale') === 'ru' ? 'Вернуться назад' : 'Go Back'}
+          </button>
+        )}
+      </div>
+
       {/* Premium Header */}
       <div className="p-8 pb-4 flex items-center justify-between">
         <div>

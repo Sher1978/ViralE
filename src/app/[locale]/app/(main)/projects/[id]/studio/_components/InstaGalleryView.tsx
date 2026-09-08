@@ -10,6 +10,8 @@ import {
 
 
 import { cn } from '@/lib/utils';
+import { supabase } from '@/lib/supabase';
+import { TokenConfirmModal } from '@/components/ui/TokenConfirmModal';
 import { parseScriptTextToPayload } from '@/lib/studio-utils';
 
 interface InstaGalleryViewProps {
@@ -200,6 +202,31 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const [isExportingAll, setIsExportingAll] = useState<boolean>(false);
   const [isRegeneratingAll, setIsRegeneratingAll] = useState<boolean>(false);
 
+  const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
+
+  // Token Confirm Modal
+  const [tokenModal, setTokenModal] = useState<{isOpen: boolean, cost: number, balance: number, title: string, description: string, onConfirm: () => void}>({
+    isOpen: false, cost: 0, balance: 0, title: '', description: '', onConfirm: () => {}
+  });
+
+  const checkBalanceAndConfirm = async (cost: number, title: string, description: string, onConfirm: () => void) => {
+    try {
+      const res = await fetch('/api/profile/byok');
+      const data = await res.json();
+      setTokenModal({
+        isOpen: true,
+        cost,
+        balance: data.credits_balance || 0,
+        title,
+        description,
+        onConfirm
+      });
+    } catch (e) {
+      console.error('Balance check failed:', e);
+      safeAlert(isRu ? 'Ошибка проверки баланса' : 'Balance check failed');
+    }
+  };
+
   const reelsHook = getReelsScriptHook(scriptText, manifest);
 
   const isAnyImageGenerating = Object.values(isGeneratingImages).some(Boolean);
@@ -281,6 +308,15 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
   const [activeFormatStyle, setActiveFormatStyle] = useState<string>('standard');
 
   // Full Unified Generation Action
+  const generateFullGalleryAtOnceWrapper = (formatStyle: 'standard' | 'numbered_list' | 'storytelling' | 'provocation' = 'standard') => {
+    checkBalanceAndConfirm(
+      10,
+      'Генерация галереи',
+      'Генерация текстов и обложки для карусели спишет 10 токенов.',
+      () => generateFullGalleryAtOnce(formatStyle)
+    );
+  };
+
   const generateFullGalleryAtOnce = async (formatStyle: 'standard' | 'numbered_list' | 'storytelling' | 'provocation' = 'standard') => {
     setIsRegeneratingAll(true);
     setActiveFormatStyle(formatStyle);
@@ -906,7 +942,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
 
           <div className="flex flex-wrap items-center gap-3">
             <button
-              onClick={() => generateFullGalleryAtOnce(activeFormatStyle as any)}
+              onClick={() => generateFullGalleryAtOnceWrapper(activeFormatStyle as any)}
               disabled={isAnyGenerationActive}
               className={cn(
                 "px-6 py-4 rounded-2xl text-[10px] font-black uppercase tracking-[0.15em] flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg border border-white/10 disabled:opacity-50",
@@ -962,7 +998,7 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
               return (
                 <button
                   key={fmt.id}
-                  onClick={() => generateFullGalleryAtOnce(fmt.id as any)}
+                  onClick={() => generateFullGalleryAtOnceWrapper(fmt.id as any)}
                   disabled={isAnyGenerationActive}
                   className={cn(
                     "p-3.5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between h-20 group active:scale-98 disabled:opacity-50",
@@ -1352,7 +1388,14 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
                   <button
                     onClick={() => {
                       const prompt = customImagePrompts[1] || currentSlideData?.image_prompt || `${reelsHook || 'Professional topic'}, cinematic 8k photography, ambient lighting --no text`;
-                      if (prompt) generateSingleImage(prompt, '4:5', 'carousel-0');
+                      if (prompt) {
+                        checkBalanceAndConfirm(
+                          10,
+                          'Перегенерация фото',
+                          'Генерация нового варианта обложки спишет 10 токенов.',
+                          () => generateSingleImage(prompt, '4:5', 'carousel-0')
+                        );
+                      }
                     }}
                     disabled={isGeneratingImages['carousel-0']}
                     className="text-[8px] font-black uppercase tracking-widest text-purple-400 hover:text-purple-300 flex items-center gap-1"
@@ -1489,6 +1532,15 @@ export const InstaGalleryView: React.FC<InstaGalleryViewProps> = ({
         </AnimatePresence>
 
       </div>
+      <TokenConfirmModal 
+        isOpen={tokenModal.isOpen}
+        onClose={() => setTokenModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={tokenModal.onConfirm}
+        cost={tokenModal.cost}
+        balance={tokenModal.balance}
+        title={tokenModal.title}
+        description={tokenModal.description}
+      />
     </div>
   );
 };

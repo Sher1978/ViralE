@@ -386,7 +386,21 @@ export default function HeyGenAvatarFlow({
   const canProceedStep3 = !!selectedVoice && editedScript.trim().length > 5 && !hasInsufficientBalance;
 
   return (
-    <div className="h-full w-full flex flex-col bg-[#020205] text-white overflow-hidden">
+    <div className="h-full w-full flex flex-col bg-[#020205] text-white overflow-hidden relative">
+      {/* MAINTENANCE OVERLAY */}
+      <div className="absolute inset-0 z-[999] bg-black/80 backdrop-blur-md flex flex-col items-center justify-center p-8 text-center">
+        <AlertCircle className="w-16 h-16 text-yellow-500 mb-4" />
+        <h2 className="text-2xl font-black text-white uppercase tracking-wider mb-2">
+          Функция временно недоступна
+        </h2>
+        <p className="text-white/60">
+          Тяжелые генерации видео и лиц отключены на время технических работ и оптимизации биллинга.
+        </p>
+        <button onClick={onBack} className="mt-8 px-6 py-3 bg-white/10 hover:bg-white/20 text-white rounded-xl uppercase tracking-widest font-black text-xs transition-all">
+          Вернуться назад
+        </button>
+      </div>
+
       <audio ref={audioRef as any} onEnded={() => setPlayingPreview(null)} />
 
       {/* ── Header ── */}

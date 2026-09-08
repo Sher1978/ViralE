@@ -22,6 +22,7 @@ import { EditorCaptionEditor } from './EditorCaptionEditor';
 import { CaptionStyleSelector } from './CaptionStyleSelector';
 import { StudioModals } from './StudioModals';
 import BRollEditorModal, { BRollClipMeta } from '@/components/studio/BRollEditorModal';
+import { TokenConfirmModal } from '@/components/ui/TokenConfirmModal';
 
 import { useStudioVisibilityGuard } from '@/hooks/useStudioVisibilityGuard';
 
@@ -267,6 +268,28 @@ export const VideoEditor = React.memo(({
   const [isExporting, setIsExporting] = useState(false);
   const [isSpeechContextCollapsed, setIsSpeechContextCollapsed] = useState(true);
 
+  const [tokenModal, setTokenModal] = useState<{isOpen: boolean, cost: number, balance: number, title: string, description: string, onConfirm: () => void}>({
+    isOpen: false, cost: 0, balance: 0, title: '', description: '', onConfirm: () => {}
+  });
+
+  const checkBalanceAndConfirm = async (cost: number, title: string, description: string, onConfirm: () => void) => {
+    try {
+      const res = await fetch('/api/profile/byok');
+      const data = await res.json();
+      setTokenModal({
+        isOpen: true,
+        cost,
+        balance: data.credits_balance || 0,
+        title,
+        description,
+        onConfirm
+      });
+    } catch (e) {
+      console.error('Balance check failed:', e);
+      (globalThis as any).alert?.('Ошибка проверки баланса. Проверьте интернет-соединение.');
+    }
+  };
+
   const editingWhiteboardClip = useMemo(() => {
     if (!editingWhiteboardClipId) return null;
     const clip = whiteboardClips.find(c => c.id === editingWhiteboardClipId);
@@ -391,46 +414,54 @@ export const VideoEditor = React.memo(({
       }
 
       setWhiteboardClips(placeholders as any[]);
-      setAutoGenProgress('Генерация скетчей...');
+      setAutoGenProgress('');
       setIsAutoGeneratingWhiteboard(false);
 
-      // Trigger background generation for each placeholder
-      placeholders.forEach(async (clip: any) => {
-        try {
-          setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'generating' } : c));
-          const genRes = await fetch('/api/ai/whiteboard-gen', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              clipId: clip.id,
-              projectId,
-              prompt: clip.prompt,
-              duration: clip.endTime - clip.startTime,
-              speed: 1.0
-            })
+      const totalCost = placeholders.length * 10;
+      checkBalanceAndConfirm(
+        totalCost,
+        'Массовая генерация скетчей',
+        `ИИ запланировал ${placeholders.length} скетчей. Начать генерацию?`,
+        () => {
+          // Trigger background generation for each placeholder
+          placeholders.forEach(async (clip: any) => {
+            try {
+              setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { ...c, status: 'generating' } : c));
+              const genRes = await fetch('/api/ai/whiteboard-gen', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  clipId: clip.id,
+                  projectId,
+                  prompt: clip.prompt,
+                  duration: clip.endTime - clip.startTime,
+                  speed: 1.0
+                })
+              });
+              const genData = await genRes.json();
+              if (!genRes.ok) {
+                throw new Error(genData.error || 'API failed');
+              }
+              setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
+                ...c,
+                url: genData.videoUrl || '',
+                imageUrl: genData.imageUrl,
+                status: 'completed',
+                errorMsg: genData.warning || undefined
+              } : c));
+            } catch (err: any) {
+              const errorMsg = err.message || String(err);
+              console.error(`[Auto-Whiteboard] Background gen failed for clip ${clip.id}:`, errorMsg);
+              (globalThis as any).addSystemLog?.(`[Ошибка Скетча] Сбой генерации: ${errorMsg}`);
+              setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { 
+                ...c, 
+                status: 'failed',
+                errorMsg
+              } : c));
+            }
           });
-          const genData = await genRes.json();
-          if (!genRes.ok) {
-            throw new Error(genData.error || 'API failed');
-          }
-          setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? {
-            ...c,
-            url: genData.videoUrl || '',
-            imageUrl: genData.imageUrl,
-            status: 'completed',
-            errorMsg: genData.warning || undefined
-          } : c));
-        } catch (err: any) {
-          const errorMsg = err.message || String(err);
-          console.error(`[Auto-Whiteboard] Background gen failed for clip ${clip.id}:`, errorMsg);
-          (globalThis as any).addSystemLog?.(`[Ошибка Скетча] Сбой генерации: ${errorMsg}`);
-          setWhiteboardClips(prev => prev.map(c => c.id === clip.id ? { 
-            ...c, 
-            status: 'failed',
-            errorMsg
-          } : c));
         }
-      });
+      );
     } catch (err: any) {
       console.error('[Auto-Whiteboard] Failed:', err);
       (globalThis as any).alert(`Ошибка автогенерации скетчей: ${err.message || err}`);
@@ -1440,68 +1471,75 @@ export const VideoEditor = React.memo(({
 
               <div className="flex gap-4 pt-2">
                 <button 
-                  onClick={async () => {
-                    const clipId = editingWhiteboardClip.id;
-                    const finalPrompt = `${editingWhiteboardClip.prompt}${editingWhiteboardClip.userPromptAddition ? `, user addition: ${editingWhiteboardClip.userPromptAddition}` : ''}`;
-                    const clipSpeed = editingWhiteboardClip.speed || 1.0;
-                    
-                    setWhiteboardClips(prev => prev.map(c => c.id === clipId ? { 
-                      ...c, 
-                      url: '',
-                      imageUrl: '',
-                      userPromptAddition: editingWhiteboardClip.userPromptAddition,
-                      speed: clipSpeed,
-                      status: 'generating',
-                      errorMsg: undefined
-                    } : c));
-                    
-                    try {
-                      const res = await fetch('/api/ai/whiteboard-gen', {
-                        method: 'POST',
-                        headers: { 'Content-Type': 'application/json' },
-                        body: JSON.stringify({
-                          clipId,
-                          projectId,
-                          prompt: finalPrompt,
-                          duration: editingWhiteboardClip.endTime - editingWhiteboardClip.startTime,
-                          speed: clipSpeed
-                        })
-                      });
-                      
-                      const text = await res.text();
-                      let data: any;
-                      try {
-                        data = JSON.parse(text);
-                      } catch {
-                        if (!res.ok) {
-                          throw new Error(`Server returned error ${res.status}: ${text.slice(0, 100) || res.statusText}`);
-                        } else {
-                          throw new Error(`Failed to parse response: ${text.slice(0, 100)}`);
+                  onClick={() => {
+                    checkBalanceAndConfirm(
+                      10,
+                      'Генерация скетча',
+                      'Создание ИИ-скетча спишет 10 токенов.',
+                      async () => {
+                        const clipId = editingWhiteboardClip.id;
+                        const finalPrompt = `${editingWhiteboardClip.prompt}${editingWhiteboardClip.userPromptAddition ? `, user addition: ${editingWhiteboardClip.userPromptAddition}` : ''}`;
+                        const clipSpeed = editingWhiteboardClip.speed || 1.0;
+                        
+                        setWhiteboardClips(prev => prev.map(c => c.id === clipId ? { 
+                          ...c, 
+                          url: '',
+                          imageUrl: '',
+                          userPromptAddition: editingWhiteboardClip.userPromptAddition,
+                          speed: clipSpeed,
+                          status: 'generating',
+                          errorMsg: undefined
+                        } : c));
+                        
+                        try {
+                          const res = await fetch('/api/ai/whiteboard-gen', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                              clipId,
+                              projectId,
+                              prompt: finalPrompt,
+                              duration: editingWhiteboardClip.endTime - editingWhiteboardClip.startTime,
+                              speed: clipSpeed
+                            })
+                          });
+                          
+                          const text = await res.text();
+                          let data: any;
+                          try {
+                            data = JSON.parse(text);
+                          } catch {
+                            if (!res.ok) {
+                              throw new Error(`Server returned error ${res.status}: ${text.slice(0, 100) || res.statusText}`);
+                            } else {
+                              throw new Error(`Failed to parse response: ${text.slice(0, 100)}`);
+                            }
+                          }
+                          
+                          if (!res.ok) {
+                            throw new Error(data.error || `Server error: ${res.status}`);
+                          }
+                          
+                          setWhiteboardClips(prev => prev.map(c => c.id === clipId ? {
+                            ...c,
+                            url: data.videoUrl || '',
+                            imageUrl: data.imageUrl,
+                            speed: clipSpeed,
+                            status: 'completed',
+                            errorMsg: data.warning || undefined
+                          } : c));
+                        } catch (err: any) {
+                          const errorMsg = err.message || String(err);
+                          console.error('Whiteboard gen failed:', errorMsg);
+                          (globalThis as any).addSystemLog?.(`[Ошибка Скетча] Сбой ручной генерации: ${errorMsg}`);
+                          setWhiteboardClips(prev => prev.map(c => c.id === clipId ? { 
+                            ...c, 
+                            status: 'failed',
+                            errorMsg
+                          } : c));
                         }
                       }
-                      
-                      if (!res.ok) {
-                        throw new Error(data.error || `Server error: ${res.status}`);
-                      }
-                      
-                      setWhiteboardClips(prev => prev.map(c => c.id === clipId ? {
-                        ...c,
-                        url: data.videoUrl || '',
-                        imageUrl: data.imageUrl,
-                        speed: clipSpeed,
-                        status: 'completed',
-                        errorMsg: data.warning || undefined
-                      } : c));
-                    } catch (err: any) {
-                      const errorMsg = err.message || String(err);
-                      console.error('Whiteboard gen failed:', errorMsg);
-                      (globalThis as any).addSystemLog?.(`[Ошибка Скетча] Сбой ручной генерации: ${errorMsg}`);
-                      setWhiteboardClips(prev => prev.map(c => c.id === clipId ? { 
-                        ...c, 
-                        status: 'failed',
-                        errorMsg
-                      } : c));
-                    }
+                    );
                   }}
                   className="flex-1 py-4 bg-purple-500 rounded-2xl font-black text-xs uppercase tracking-widest hover:scale-105 active:scale-95 transition-all text-white flex items-center justify-center gap-2"
                 >
@@ -1527,6 +1565,15 @@ export const VideoEditor = React.memo(({
           </motion.div>
         )}
       </AnimatePresence>
+      <TokenConfirmModal 
+        isOpen={tokenModal.isOpen}
+        onClose={() => setTokenModal(prev => ({ ...prev, isOpen: false }))}
+        onConfirm={tokenModal.onConfirm}
+        cost={tokenModal.cost}
+        balance={tokenModal.balance}
+        title={tokenModal.title}
+        description={tokenModal.description}
+      />
     </div>
   );
 });

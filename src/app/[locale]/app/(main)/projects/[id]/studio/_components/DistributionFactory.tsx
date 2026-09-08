@@ -11,6 +11,7 @@ import {
 import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { LateDevInstructionModal } from '@/components/modals/LateDevInstructionModal';
+import { TokenConfirmModal } from '@/components/ui/TokenConfirmModal';
 
 interface DistributionFactoryProps {
   manifest: any;
@@ -142,6 +143,29 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const [userBrief, setUserBrief] = useState<string>('');
   const [styleSeed, setStyleSeed] = useState<number>(() => Math.floor(Math.random() * 9999));
   const [showSettings, setShowSettings] = useState<boolean>(false);
+
+  // Token Confirm Modal
+  const [tokenModal, setTokenModal] = useState<{isOpen: boolean, cost: number, balance: number, title: string, description: string, onConfirm: () => void}>({
+    isOpen: false, cost: 0, balance: 0, title: '', description: '', onConfirm: () => {}
+  });
+
+  const checkBalanceAndConfirm = async (cost: number, title: string, description: string, onConfirm: () => void) => {
+    try {
+      const res = await fetch('/api/profile/byok');
+      const data = await res.json();
+      setTokenModal({
+        isOpen: true,
+        cost,
+        balance: data.credits_balance || 0,
+        title,
+        description,
+        onConfirm
+      });
+    } catch (e) {
+      console.error('Balance check failed:', e);
+      safeAlert(locale === 'ru' ? 'Ошибка проверки баланса' : 'Balance check failed');
+    }
+  };
 
   // 🚀 Auto-Posting vs Manual Scenario Mode Switcher
   const [distributionScenario, setDistributionScenario] = useState<'autopost' | 'manual'>('autopost');
@@ -409,6 +433,15 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
       }
     }
   }, [assets]);
+
+  const generateFullGalleryAtOnceWrapper = () => {
+    checkBalanceAndConfirm(
+      10,
+      'Генерация галереи',
+      'Генерация текстов и обложки для карусели спишет 10 токенов.',
+      generateFullGalleryAtOnce
+    );
+  };
 
   const generateFullGalleryAtOnce = async () => {
     setIsRegeneratingAll(true);
@@ -935,6 +968,15 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     } finally {
       setIsGenerating(false);
     }
+  };
+
+  const generateCoverImageWrapper = () => {
+    checkBalanceAndConfirm(
+      10,
+      'Генерация обложки',
+      'Генерация изображения спишет 10 токенов.',
+      generateCoverImage
+    );
   };
 
   const generateCoverImage = async () => {
@@ -1820,7 +1862,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                           
                             <div className="flex flex-wrap gap-3">
                               <button
-                                onClick={generateFullGalleryAtOnce}
+                                onClick={generateFullGalleryAtOnceWrapper}
                                 disabled={isAnyGenerationActive}
                                 className={cn(
                                   "px-3 sm:px-6 py-2.5 sm:py-4 rounded-2xl sm:rounded-3xl text-[8px] sm:text-[10px] font-black uppercase tracking-wider sm:tracking-[0.2em] flex items-center gap-2 hover:scale-[1.02] active:scale-[0.98] transition-all shadow-lg disabled:opacity-50 border border-white/10",
@@ -2049,7 +2091,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
                               {/* ONE Main Unified Generation Action in the Upper Right Corner */}
                               <button
-                                onClick={generateFullGalleryAtOnce}
+                                onClick={generateFullGalleryAtOnceWrapper}
                                 disabled={isAnyGenerationActive}
                                 className={cn(
                                   "px-4 py-2.5 rounded-xl text-[9px] font-black uppercase tracking-widest transition-all flex items-center justify-center gap-1.5 shadow-md active:scale-95 disabled:opacity-50",
@@ -2432,7 +2474,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
 
                           <div className="flex flex-col gap-3 pt-4">
                             <button 
-                              onClick={generateCoverImage}
+                              onClick={generateCoverImageWrapper}
                               disabled={isAnyGenerationActive}
                               className="w-full flex items-center justify-center gap-3 py-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-[11px] font-black uppercase tracking-[0.2em] shadow-xl hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-40 cursor-pointer"
                             >
@@ -2705,7 +2747,16 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             {locale === 'ru' ? 'Предпросмотр обложки' : 'Video Cover Preview'}
           </div>
         </div>
-      )}
+        <TokenConfirmModal 
+          isOpen={tokenModal.isOpen}
+          onClose={() => setTokenModal(prev => ({ ...prev, isOpen: false }))}
+          onConfirm={tokenModal.onConfirm}
+          cost={tokenModal.cost}
+          balance={tokenModal.balance}
+          title={tokenModal.title}
+          description={tokenModal.description}
+        />
+      </div>
     </div>
   );
 }
