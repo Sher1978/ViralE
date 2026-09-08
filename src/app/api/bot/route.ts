@@ -3,7 +3,7 @@ import crypto from 'crypto';
 import { monitoringService } from '@/lib/services/monitoringService';
 import { isTelegramIdBlocked } from '@/lib/blockedUsers';
 
-const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '8738398927:AAGzIEb_0cW73KC2LrzHz8qre4b4kgvAgMk';
+const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN || '';
 
 export async function POST(req: NextRequest) {
 

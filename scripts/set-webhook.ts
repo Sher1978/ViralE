@@ -1,7 +1,7 @@
 import dotenv from 'dotenv';
 dotenv.config({ path: '.env.local' });
 
-const token = process.env.TELEGRAM_BOT_TOKEN || "8738398927:AAGzIEb_0cW73KC2LrzHz8qre4b4kgvAgMk";
+const token = process.env.TELEGRAM_BOT_TOKEN;
 const url = process.argv[2] || "https://www.virale.uno";
 
 const webhookUrl = `${url}/api/bot`;
