@@ -1,0 +1,216 @@
+'use client';
+
+import { useState } from 'react';
+import { motion, AnimatePresence } from 'framer-motion';
+import { X, ShieldCheck, FileText, Lock, RefreshCw, Cpu, ExternalLink } from 'lucide-react';
+
+interface LegalDocumentReaderModalProps {
+  isOpen: boolean;
+  onClose: () => void;
+  initialTab?: 'terms' | 'privacy' | 'refund' | 'subprocessors';
+}
+
+export default function LegalDocumentReaderModal({
+  isOpen,
+  onClose,
+  initialTab = 'terms'
+}: LegalDocumentReaderModalProps) {
+  const [activeTab, setActiveTab] = useState<'terms' | 'privacy' | 'refund' | 'subprocessors'>(initialTab);
+
+  if (!isOpen) return null;
+
+  return (
+    <AnimatePresence>
+      <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4 sm:p-6 md:p-10 bg-black/80 backdrop-blur-2xl">
+        <motion.div
+          initial={{ opacity: 0, scale: 0.95, y: 20 }}
+          animate={{ opacity: 1, scale: 1, y: 0 }}
+          exit={{ opacity: 0, scale: 0.95, y: 20 }}
+          className="relative w-full max-w-4xl max-h-[90vh] bg-[#0A0A0E] border border-white/10 rounded-3xl shadow-2xl flex flex-col overflow-hidden text-white"
+        >
+          {/* Header */}
+          <div className="px-6 py-5 border-b border-white/10 flex items-center justify-between bg-white/[0.02]">
+            <div className="flex items-center gap-3">
+              <div className="w-10 h-10 rounded-xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center text-purple-400">
+                <ShieldCheck size={20} />
+              </div>
+              <div>
+                <h3 className="font-bold text-lg text-white">Legal & Compliance Documentation</h3>
+                <p className="text-xs text-gray-400 font-medium">GDPR & Law of Ukraine No. 2297-VI Transparency Center</p>
+              </div>
+            </div>
+
+            <button
+              onClick={onClose}
+              className="w-9 h-9 rounded-xl bg-white/5 hover:bg-white/10 flex items-center justify-center text-gray-400 hover:text-white transition-colors"
+            >
+              <X size={18} />
+            </button>
+          </div>
+
+          {/* Navigation Tabs */}
+          <div className="flex border-b border-white/10 bg-black/40 px-6 gap-2 overflow-x-auto no-scrollbar">
+            <button
+              onClick={() => setActiveTab('terms')}
+              className={`flex items-center gap-2 px-4 py-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
+                activeTab === 'terms'
+                  ? 'border-purple-500 text-purple-400 bg-purple-500/10'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              <FileText size={14} /> Terms of Service
+            </button>
+
+            <button
+              onClick={() => setActiveTab('privacy')}
+              className={`flex items-center gap-2 px-4 py-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
+                activeTab === 'privacy'
+                  ? 'border-purple-500 text-purple-400 bg-purple-500/10'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              <Lock size={14} /> Privacy Policy
+            </button>
+
+            <button
+              onClick={() => setActiveTab('subprocessors')}
+              className={`flex items-center gap-2 px-4 py-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
+                activeTab === 'subprocessors'
+                  ? 'border-purple-500 text-purple-400 bg-purple-500/10'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              <Cpu size={14} /> Subprocessor Registry
+            </button>
+
+            <button
+              onClick={() => setActiveTab('refund')}
+              className={`flex items-center gap-2 px-4 py-3 text-xs font-bold transition-all border-b-2 whitespace-nowrap ${
+                activeTab === 'refund'
+                  ? 'border-purple-500 text-purple-400 bg-purple-500/10'
+                  : 'border-transparent text-gray-400 hover:text-white'
+              }`}
+            >
+              <RefreshCw size={14} /> Refund Policy
+            </button>
+          </div>
+
+          {/* Content Area */}
+          <div className="flex-1 overflow-y-auto p-6 space-y-6 text-sm text-gray-300 leading-relaxed font-normal">
+            {activeTab === 'terms' && (
+              <div className="space-y-4">
+                <h4 className="text-base font-bold text-white">1. Terms of Service & Acceptable Use</h4>
+                <p>
+                  Welcome to <strong>ViralEngine (Virali AI)</strong>. By creating an account or accessing our services, you agree to these Terms of Service.
+                </p>
+                <h5 className="font-semibold text-white">1.1 AI Content Generation Disclaimer</h5>
+                <p>
+                  Content generated by our AI models (scripts, visual prompts, avatars, audio) is provided on an &quot;as-is&quot; basis. You retain full copyright ownership of final media assets generated under your active account subscription.
+                </p>
+                <h5 className="font-semibold text-white">1.2 Acceptable Use Policy</h5>
+                <p>
+                  You agree NOT to use ViralEngine to generate deepfakes without explicit consent, defamatory content, illegal material, political disinformation, or automated spam across social media networks.
+                </p>
+                <h5 className="font-semibold text-white">1.3 Account Termination</h5>
+                <p>
+                  We reserve the right to suspend or terminate accounts that violate these terms or engage in fraudulent activity.
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'privacy' && (
+              <div className="space-y-4">
+                <h4 className="text-base font-bold text-white">2. Privacy Policy & Data Processing Notice</h4>
+                <p>
+                  This Privacy Policy outlines how your personal data is collected, processed, and protected under the <strong>Law of Ukraine &quot;On Protection of Personal Data&quot; (No. 2297-VI)</strong> and the <strong>EU General Data Protection Regulation (GDPR)</strong>.
+                </p>
+                <h5 className="font-semibold text-white">2.1 Collected Data</h5>
+                <ul className="list-disc pl-5 space-y-1">
+                  <li>Account Identifiers: Email address, full name, Google/Telegram ID, IP address.</li>
+                  <li>User Media & Prompts: Brand context, synthetic voice audio clips, video script drafts.</li>
+                  <li>Billing Data: Merchant of Record transaction references (handled by Paddle/Stripe/Tribute).</li>
+                </ul>
+                <h5 className="font-semibold text-white">2.2 Data Subject Rights (GDPR Art. 15-22 & Law No. 2297-VI Art. 8)</h5>
+                <p>
+                  You have the right to access, rectify, restrict processing, or request full account and data erasure (&quot;Right to Erasure&quot; / Right to be Forgotten). You can execute self-service account deletion at any time via Profile Settings.
+                </p>
+              </div>
+            )}
+
+            {activeTab === 'subprocessors' && (
+              <div className="space-y-4">
+                <h4 className="text-base font-bold text-white">3. Register of Data Subprocessors</h4>
+                <p>
+                  We engage trusted third-party infrastructure and AI processors to deliver our services. All processors adhere to strict confidentiality and security standards:
+                </p>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-2">
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                    <div className="font-bold text-white text-xs">Supabase Inc.</div>
+                    <div className="text-[11px] text-gray-400">Database & User Authentication</div>
+                    <div className="text-[10px] text-purple-400">EU / US Servers (TLS & RLS Protected)</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                    <div className="font-bold text-white text-xs">Google LLC (Gemini API)</div>
+                    <div className="text-[11px] text-gray-400">AI Script & Prompt Generation</div>
+                    <div className="text-[10px] text-purple-400">Stateless API Processing</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                    <div className="font-bold text-white text-xs">OpenAI / Groq Inc.</div>
+                    <div className="text-[11px] text-gray-400">AI Language & Reasoning Models</div>
+                    <div className="text-[10px] text-purple-400">Stateless Zero-Retention API</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                    <div className="font-bold text-white text-xs">Stripe / Tribute / Paddle</div>
+                    <div className="text-[11px] text-gray-400">Merchant of Record & Payments</div>
+                    <div className="text-[10px] text-purple-400">PCI-DSS Level 1 Compliant</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                    <div className="font-bold text-white text-xs">Cloudflare Inc. (R2 Storage)</div>
+                    <div className="text-[11px] text-gray-400">Encrypted Media Storage</div>
+                    <div className="text-[10px] text-purple-400">Global CDN & AES-256 Storage</div>
+                  </div>
+                  <div className="p-3 rounded-xl bg-white/5 border border-white/10 space-y-1">
+                    <div className="font-bold text-white text-xs">Telegram Messenger LLP</div>
+                    <div className="text-[11px] text-gray-400">Bot Auth & Notifications</div>
+                    <div className="text-[10px] text-purple-400">Encrypted Telegram Webhook API</div>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {activeTab === 'refund' && (
+              <div className="space-y-4">
+                <h4 className="text-base font-bold text-white">4. Refund & Subscription Policy</h4>
+                <p>
+                  We offer a 14-day refund window for subscriptions provided no AI video renders or export credits have been consumed. Refunds are processed directly via our Merchant of Record partners.
+                </p>
+                <p className="text-xs text-gray-400">
+                  To request a manual refund, contact our DPO & Support desk at <strong>billing@virale.uno</strong> with your transaction reference ID.
+                </p>
+              </div>
+            )}
+          </div>
+
+          {/* Footer Action */}
+          <div className="px-6 py-4 border-t border-white/10 flex items-center justify-between bg-white/[0.02]">
+            <a
+              href={`/${activeTab}`}
+              target="_blank"
+              rel="noopener noreferrer"
+              className="text-xs text-purple-400 hover:text-purple-300 font-semibold flex items-center gap-1 transition-colors"
+            >
+              Open Full Document in New Tab <ExternalLink size={12} />
+            </a>
+
+            <button
+              onClick={onClose}
+              className="px-6 py-2.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white font-bold text-xs transition-all shadow-lg shadow-purple-600/30"
+            >
+              Close & Return
+            </button>
+          </div>
+        </motion.div>
+      </div>
+    </AnimatePresence>
+  );
+}

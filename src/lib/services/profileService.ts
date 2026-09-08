@@ -35,6 +35,11 @@ export interface Profile {
   youtube_token?: string | null;
   visual_style?: string | null;
   preferred_language?: string | null;
+
+  // Legal Consent & GDPR Compliance Metadata
+  consent_given_at?: string | null;
+  legal_consent_version?: string | null;
+  legal_consents?: Record<string, any> | null;
 }
 
 export function generateReferralCode(userId: string): string {

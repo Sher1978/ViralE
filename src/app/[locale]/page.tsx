@@ -781,6 +781,7 @@ const Footer = () => {
             <Link href="/install" className="font-jetbrains text-[11px] text-virale-gold/90 hover:text-virale-gold transition-colors uppercase tracking-wider">★ Install PWA App</Link>
             <Link href="/privacy" className="font-jetbrains text-[11px] text-virale-text-muted/60 hover:text-virale-gold transition-colors uppercase tracking-wider">Privacy Policy</Link>
             <Link href="/terms" className="font-jetbrains text-[11px] text-virale-text-muted/60 hover:text-virale-gold transition-colors uppercase tracking-wider">Terms of Service</Link>
+            <Link href="/subprocessors" className="font-jetbrains text-[11px] text-virale-text-muted/60 hover:text-virale-gold transition-colors uppercase tracking-wider">Subprocessor Registry</Link>
             <Link href="/refund" className="font-jetbrains text-[11px] text-virale-text-muted/60 hover:text-virale-gold transition-colors uppercase tracking-wider">Refund Policy</Link>
           </div>
 

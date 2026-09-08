@@ -5,8 +5,8 @@ import { useTranslations, useLocale } from 'next-intl';
 import { supabase } from '@/lib/supabase';
 import { motion } from 'framer-motion';
 import { useSearchParams } from 'next/navigation';
-import { Link } from '@/navigation';
-import { Wrench, ShieldAlert, CheckSquare, Square, Lock } from 'lucide-react';
+import { Wrench, ShieldCheck, CheckSquare, Square, Lock, ExternalLink, Info } from 'lucide-react';
+import LegalDocumentReaderModal from './LegalDocumentReaderModal';
 
 export default function LoginButtons() {
   const t = useTranslations('auth');
@@ -14,17 +14,64 @@ export default function LoginButtons() {
   const searchParams = useSearchParams();
   const next = searchParams.get('next') ?? '/app/projects';
   const [isLoading, setIsLoading] = useState<string | null>(null);
-  
-  // Mandatory Consent state for Personal Data Processing under Law of Ukraine No. 2297-VI
-  const [isConsentChecked, setIsConsentChecked] = useState(false);
 
-  // Technical Maintenance Mode toggle (Blocks login for all users as requested)
-  const isMaintenanceActive = process.env.NEXT_PUBLIC_MAINTENANCE_MODE !== 'false';
+  // Reader Modal State
+  const [readerTab, setReaderTab] = useState<'terms' | 'privacy' | 'refund' | 'subprocessors' | null>(null);
+
+  // 4 Mandatory Opt-In Checkboxes (Law of Ukraine No. 2297-VI & GDPR)
+  const [consents, setConsents] = useState({
+    termsPrivacy: false,
+    personalData: false,
+    aiSubprocessors: false,
+    telegramBot: false,
+  });
+
+  // Check if all mandatory consents are accepted
+  const isAllConsentsAccepted = Object.values(consents).every(Boolean);
+
+  const toggleConsent = (key: keyof typeof consents) => {
+    setConsents((prev) => ({ ...prev, [key]: !prev[key] }));
+  };
+
+  const handleAcceptAll = () => {
+    setConsents({
+      termsPrivacy: true,
+      personalData: true,
+      aiSubprocessors: true,
+      telegramBot: true,
+    });
+  };
+
+  // Technical Maintenance Mode toggle (Defaults to FALSE unless explicitly set to 'true')
+  const isMaintenanceActive = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
+
+  const saveConsentMetadataToProfile = async () => {
+    try {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (user) {
+        await supabase
+          .from('profiles')
+          .update({
+            consent_given_at: new Date().toISOString(),
+            legal_consent_version: '2026.1',
+            legal_consents: {
+              ...consents,
+              timestamp: new Date().toISOString(),
+              user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
+            }
+          })
+          .eq('id', user.id);
+      }
+    } catch (e) {
+      console.warn('[AuthConsent] Failed to record consent metadata:', e);
+    }
+  };
 
   const handleGoogleLogin = async () => {
-    if (isMaintenanceActive || !isConsentChecked) return;
+    if (isMaintenanceActive || !isAllConsentsAccepted) return;
     setIsLoading('google');
     try {
+      await saveConsentMetadataToProfile();
       const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
       let activeLocale = locale;
       if (globalObj && globalObj.window) {
@@ -58,9 +105,10 @@ export default function LoginButtons() {
   };
 
   const handleTelegramLogin = async () => {
-    if (isMaintenanceActive || !isConsentChecked) return;
+    if (isMaintenanceActive || !isAllConsentsAccepted) return;
     setIsLoading('telegram');
     try {
+      await saveConsentMetadataToProfile();
       const configRes = await fetch('/api/auth/telegram/config');
       const { botUsername } = await configRes.json();
       
@@ -78,8 +126,17 @@ export default function LoginButtons() {
   };
 
   return (
-    <div className="space-y-6">
-      {/* Technical Maintenance Banner */}
+    <div className="space-y-5">
+      {/* Document Reader Modal */}
+      {readerTab && (
+        <LegalDocumentReaderModal
+          isOpen={!!readerTab}
+          initialTab={readerTab}
+          onClose={() => setReaderTab(null)}
+        />
+      )}
+
+      {/* Technical Maintenance Banner (if activated) */}
       {isMaintenanceActive && (
         <motion.div 
           initial={{ opacity: 0, y: -10 }}
@@ -91,52 +148,128 @@ export default function LoginButtons() {
             <span>Technical Maintenance in Progress</span>
           </div>
           <div className="text-xs text-amber-200/80 font-medium leading-relaxed">
-            Ведутся Технические работы. Вход и регистрация временно приостановлены в связи с плановым обновлением системы.
+            Ведутся технические работы. Вход и регистрация временно приостановлены.
           </div>
           <div className="text-[10px] uppercase font-bold tracking-widest text-amber-400/60 pt-1 flex items-center gap-1">
-            <Lock size={12} /> Login Screen Locked
+            <Lock size={12} /> Login Locked
           </div>
         </motion.div>
       )}
 
-      {/* Mandatory Personal Data Processing Consent Checkbox (Law of Ukraine No. 2297-VI) */}
-      <div className="p-3.5 rounded-xl bg-white/[0.03] border border-white/10 text-left space-y-2">
-        <label htmlFor="consent-checkbox" className="flex items-start gap-3 cursor-pointer select-none">
-          <input
-            id="consent-checkbox"
-            type="checkbox"
-            checked={isConsentChecked}
-            onChange={(e) => setIsConsentChecked(e.target.checked)}
-            disabled={isMaintenanceActive}
-            className="mt-1 w-4 h-4 rounded border-white/20 bg-black/40 text-purple-500 focus:ring-purple-500/40 shrink-0 cursor-pointer disabled:opacity-40"
-          />
-          <span className="text-xs text-gray-300 font-medium leading-normal">
-            I consent to the processing of my personal data under the <strong>Law of Ukraine &quot;On Protection of Personal Data&quot; (No. 2297-VI)</strong> and agree to the{' '}
-            <Link 
-              href="/privacy" 
-              target="_blank" 
-              className="text-purple-400 underline hover:text-purple-300 transition-colors font-bold"
+      {/* Mandatory GDPR & Law No. 2297-VI Legal Consent Box */}
+      <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 text-left space-y-3.5 shadow-xl">
+        <div className="flex items-center justify-between border-b border-white/10 pb-2.5">
+          <div className="flex items-center gap-2 font-bold text-xs text-purple-300 uppercase tracking-wider">
+            <ShieldCheck size={16} className="text-purple-400" />
+            <span>Legal Consent & GDPR Compliance</span>
+          </div>
+          {!isAllConsentsAccepted && !isMaintenanceActive && (
+            <button
+              onClick={handleAcceptAll}
+              className="text-[11px] font-bold text-purple-400 hover:text-purple-300 transition-colors bg-purple-500/10 hover:bg-purple-500/20 px-2.5 py-1 rounded-lg border border-purple-500/30"
             >
-              Privacy Policy
-            </Link>.
-          </span>
-        </label>
-        {!isConsentChecked && !isMaintenanceActive && (
-          <p className="text-[10px] text-purple-400/70 font-semibold pl-7">
-            * Check box to enable sign-in options.
-          </p>
+              Select All
+            </button>
+          )}
+        </div>
+
+        <div className="space-y-2.5 text-xs text-gray-300 font-medium">
+          {/* Checkbox 1: Terms & Privacy */}
+          <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+            <input
+              type="checkbox"
+              checked={consents.termsPrivacy}
+              onChange={() => toggleConsent('termsPrivacy')}
+              disabled={isMaintenanceActive}
+              className="mt-0.5 w-4 h-4 rounded border-white/20 bg-black/40 text-purple-500 focus:ring-purple-500/40 shrink-0 cursor-pointer disabled:opacity-40"
+            />
+            <span className="leading-snug">
+              I accept the{' '}
+              <button
+                type="button"
+                onClick={() => setReaderTab('terms')}
+                className="text-purple-400 underline font-bold hover:text-purple-300 transition-colors"
+              >
+                Terms of Service
+              </button>{' '}
+              and{' '}
+              <button
+                type="button"
+                onClick={() => setReaderTab('privacy')}
+                className="text-purple-400 underline font-bold hover:text-purple-300 transition-colors"
+              >
+                Privacy Policy
+              </button>.
+            </span>
+          </label>
+
+          {/* Checkbox 2: Personal Data Processing (Law No. 2297-VI) */}
+          <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+            <input
+              type="checkbox"
+              checked={consents.personalData}
+              onChange={() => toggleConsent('personalData')}
+              disabled={isMaintenanceActive}
+              className="mt-0.5 w-4 h-4 rounded border-white/20 bg-black/40 text-purple-500 focus:ring-purple-500/40 shrink-0 cursor-pointer disabled:opacity-40"
+            />
+            <span className="leading-snug text-gray-300/90">
+              I grant explicit consent for processing my personal data under the <strong>Law of Ukraine &quot;On Protection of Personal Data&quot; (No. 2297-VI)</strong> & GDPR Art. 6/7.
+            </span>
+          </label>
+
+          {/* Checkbox 3: AI Data & Subprocessors */}
+          <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+            <input
+              type="checkbox"
+              checked={consents.aiSubprocessors}
+              onChange={() => toggleConsent('aiSubprocessors')}
+              disabled={isMaintenanceActive}
+              className="mt-0.5 w-4 h-4 rounded border-white/20 bg-black/40 text-purple-500 focus:ring-purple-500/40 shrink-0 cursor-pointer disabled:opacity-40"
+            />
+            <span className="leading-snug text-gray-300/90">
+              I consent to input processing via secure AI APIs & third-party infrastructure listed in our{' '}
+              <button
+                type="button"
+                onClick={() => setReaderTab('subprocessors')}
+                className="text-purple-400 underline font-bold hover:text-purple-300 transition-colors"
+              >
+                Subprocessor Registry
+              </button>.
+            </span>
+          </label>
+
+          {/* Checkbox 4: Telegram Bot Integration */}
+          <label className="flex items-start gap-2.5 cursor-pointer select-none group">
+            <input
+              type="checkbox"
+              checked={consents.telegramBot}
+              onChange={() => toggleConsent('telegramBot')}
+              disabled={isMaintenanceActive}
+              className="mt-0.5 w-4 h-4 rounded border-white/20 bg-black/40 text-purple-500 focus:ring-purple-500/40 shrink-0 cursor-pointer disabled:opacity-40"
+            />
+            <span className="leading-snug text-gray-300/90">
+              I agree to Telegram bot authentication, notification data handling, and account erasure rules.
+            </span>
+          </label>
+        </div>
+
+        {!isAllConsentsAccepted && !isMaintenanceActive && (
+          <div className="pt-1 flex items-center gap-1.5 text-[11px] text-amber-400/90 font-semibold">
+            <Info size={13} className="shrink-0" />
+            <span>Check all boxes (or click &quot;Select All&quot;) to unlock sign-in options.</span>
+          </div>
         )}
       </div>
 
       {/* Buttons */}
-      <div className="space-y-4">
+      <div className="space-y-3.5">
         {/* Google Button */}
         <motion.button
-          whileHover={!isMaintenanceActive && isConsentChecked ? { scale: 1.02 } : {}}
-          whileTap={!isMaintenanceActive && isConsentChecked ? { scale: 0.98 } : {}}
+          whileHover={!isMaintenanceActive && isAllConsentsAccepted ? { scale: 1.02 } : {}}
+          whileTap={!isMaintenanceActive && isAllConsentsAccepted ? { scale: 0.98 } : {}}
           onClick={handleGoogleLogin}
-          disabled={isMaintenanceActive || !isConsentChecked || isLoading !== null}
-          className="w-full h-14 bg-white text-black font-semibold rounded-2xl flex items-center justify-center gap-3 transition-all hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          disabled={isMaintenanceActive || !isAllConsentsAccepted || isLoading !== null}
+          className="w-full h-14 bg-white text-black font-semibold rounded-2xl flex items-center justify-center gap-3 transition-all hover:bg-gray-100 disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg"
         >
           {isLoading === 'google' ? (
             <div className="w-5 h-5 border-2 border-black/20 border-t-black rounded-full animate-spin" />
@@ -167,11 +300,11 @@ export default function LoginButtons() {
 
         {/* Telegram Button */}
         <motion.button
-          whileHover={!isMaintenanceActive && isConsentChecked ? { scale: 1.02 } : {}}
-          whileTap={!isMaintenanceActive && isConsentChecked ? { scale: 0.98 } : {}}
+          whileHover={!isMaintenanceActive && isAllConsentsAccepted ? { scale: 1.02 } : {}}
+          whileTap={!isMaintenanceActive && isAllConsentsAccepted ? { scale: 0.98 } : {}}
           onClick={handleTelegramLogin}
-          disabled={isMaintenanceActive || !isConsentChecked || isLoading !== null}
-          className="w-full h-14 bg-[#24A1DE] text-white font-semibold rounded-2xl flex items-center justify-center gap-3 transition-all hover:bg-[#208fca] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer"
+          disabled={isMaintenanceActive || !isAllConsentsAccepted || isLoading !== null}
+          className="w-full h-14 bg-[#24A1DE] text-white font-semibold rounded-2xl flex items-center justify-center gap-3 transition-all hover:bg-[#208fca] disabled:opacity-40 disabled:cursor-not-allowed cursor-pointer shadow-lg"
         >
           {isLoading === 'telegram' ? (
             <div className="w-5 h-5 border-2 border-white/20 border-t-white rounded-full animate-spin" />

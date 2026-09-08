@@ -6,6 +6,7 @@ import { cookies } from 'next/headers';
 
 import { SubscriptionWarning } from '@/components/ui/SubscriptionWarning';
 import { TelegramGateModal } from '@/components/ui/TelegramGateModal';
+import LegalConsentGate from '@/components/auth/LegalConsentGate';
 
 export default async function MainLayout({
   children,
@@ -30,9 +31,11 @@ export default async function MainLayout({
 
   return (
     <AppDataProvider>
-      <TelegramGateModal />
-      <SubscriptionWarning />
-      {children}
+      <LegalConsentGate>
+        <TelegramGateModal />
+        <SubscriptionWarning />
+        {children}
+      </LegalConsentGate>
     </AppDataProvider>
   );
 }

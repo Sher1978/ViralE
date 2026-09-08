@@ -28,6 +28,20 @@ export async function POST(req: NextRequest) {
 
     console.log(`🗑️ [Self-Service Delete Account] User ${userId} requested permanent data purge under GDPR Art. 17...`);
 
+    // 1.5 Fetch profile to check for linked Telegram ID before purge
+    const { data: userProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('telegram_id')
+      .eq('id', userId)
+      .single();
+
+    if (userProfile?.telegram_id) {
+      console.log(`🚫 Adding revoked Telegram ID ${userProfile.telegram_id} to blocklist...`);
+      await supabaseAdmin.from('blocked_telegram_ids').insert([
+        { telegram_id: String(userProfile.telegram_id), reason: 'GDPR Art. 17 User Consent Revocation & Erasure' }
+      ]).catch((err: any) => console.warn('Could not insert to blocked_telegram_ids table (ignoring if schema not created):', err?.message));
+    }
+
     // 2. Cascade delete all user records across tables
     await supabaseAdmin.from('projects').delete().eq('user_id', userId).catch(() => {});
     await supabaseAdmin.from('video_renders').delete().eq('user_id', userId).catch(() => {});
