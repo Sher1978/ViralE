@@ -186,14 +186,19 @@ export async function generateDailyIdeas(
     let text = '';
     let ideasArray: any[] = [];
 
-    // Try up to 2 attempts to generate valid JSON array/object
+    // Try up to 2 attempts to generate valid JSON array/object (with 12s per-attempt timeout)
     for (let attempt = 1; attempt <= 2; attempt++) {
       try {
-        const result = await fastModel.generateContent(
+        const generationPromise = fastModel.generateContent(
           attempt === 1 
             ? prompt 
             : `${prompt}\n\nCRITICAL RETRY: Output ONLY raw valid JSON object with key "ideas". Do not wrap in markdown or explanatory text.`
         );
+        const timeoutPromise = new Promise<never>((_, reject) =>
+          setTimeout(() => reject(new Error('AI generation timed out after 12 seconds')), 12000)
+        );
+
+        const result: any = await Promise.race([generationPromise, timeoutPromise]);
         const response = await result.response;
         text = response.text().trim();
 

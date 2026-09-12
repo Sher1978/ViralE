@@ -32,10 +32,10 @@ export async function GET(req: Request) {
 
     // Handle Archive filtering
     if (requestedStatus === 'archived') {
-      query = query.eq('metadata->archived', true);
+      query = query.eq('metadata->>archived', 'true');
     } else {
       query = query.eq('status', requestedStatus)
-                   .or('metadata->archived.is.null,metadata->archived.eq.false');
+                   .or('metadata->>archived.is.null,metadata->>archived.eq.false');
     }
 
     if (categoryParam) {
@@ -59,7 +59,7 @@ export async function GET(req: Request) {
           .delete()
           .eq('user_id', userId)
           .eq('status', 'new')
-          .or('metadata->archived.is.null,metadata->archived.eq.false');
+          .or('metadata->>archived.is.null,metadata->>archived.eq.false');
         
         if (categoryParam) {
           deleteQuery = deleteQuery.eq('category', categoryParam);

@@ -90,13 +90,21 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
         url += `&force=true`;
       }
       
+      // Get current auth session token if available to prevent OAuth redirect race conditions
+      const sessionRes = await supabase.auth.getSession();
+      const accessToken = sessionRes.data.session?.access_token;
+      const headers: Record<string, string> = {};
+      if (accessToken) {
+        headers['Authorization'] = `Bearer ${accessToken}`;
+      }
+
       let res: Response | null = null;
       let retries = 2;
       let lastNetworkErr: any = null;
 
       while (retries >= 0) {
         try {
-          res = await fetch(url);
+          res = await fetch(url, { headers });
           break;
         } catch (fetchErr: any) {
           lastNetworkErr = fetchErr;
@@ -133,16 +141,21 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       } else {
         let errorMsg = locale === 'ru' ? 'Не удалось сгенерировать идеи' : 'Failed to generate ideas';
         try {
-          const errData = await res.json();
-          if (errData && errData.error) {
-            errorMsg = errData.error;
+          const rawText = await res.text();
+          if (rawText) {
+            try {
+              const errData = JSON.parse(rawText);
+              if (errData && errData.error) {
+                errorMsg = errData.error;
+              } else {
+                errorMsg = rawText;
+              }
+            } catch {
+              errorMsg = rawText;
+            }
           }
-        } catch (e) {
-          try {
-            const text = await res.text();
-            if (text) errorMsg = text;
-          } catch (e2) {}
-        }
+        } catch (e) {}
+
         const isAuthErr = res.status === 401 || errorMsg === 'Unauthorized';
         if (!isAuthErr) {
           console.error(`[AppDataProvider] Error fetching ${status} ideas:`, errorMsg);

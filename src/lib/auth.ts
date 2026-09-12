@@ -1,5 +1,5 @@
 import { createClient } from '@supabase/supabase-js';
-import { cookies } from 'next/headers';
+import { cookies, headers } from 'next/headers';
 
 import { notifyNewUserRegistration } from '@/lib/telegram';
 
@@ -9,6 +9,7 @@ import { notifyNewUserRegistration } from '@/lib/telegram';
  */
 export async function getAuthContext({ skipProfileCheck = false }: { skipProfileCheck?: boolean } = {}) {
   const cookieStore = await cookies();
+  const headerStore = await headers();
   
   // Extract project ref from URL for cookie naming
   const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
@@ -20,9 +21,17 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
   }
   
   const cookieName = projectRef ? `sb-${projectRef}-auth-token` : '';
-  const token = cookieName 
+  let token = cookieName 
     ? (cookieStore.get(cookieName)?.value || cookieStore.get(`${cookieName}.0`)?.value)
     : undefined;
+
+  // Fallback to Bearer token in Authorization header if cookie isn't available yet
+  if (!token) {
+    const authHeader = headerStore.get('authorization') || headerStore.get('Authorization');
+    if (authHeader && authHeader.toLowerCase().startsWith('bearer ')) {
+      token = authHeader.slice(7).trim();
+    }
+  }
 
   const schema = process.env.NEXT_PUBLIC_SUPABASE_SCHEMA || 'public';
 
@@ -48,7 +57,7 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
   let authError: any = null;
 
   if (!token) {
-    console.warn('[Auth] No token found in cookies:', cookieName);
+    console.warn('[Auth] No token found in cookies or Authorization header:', cookieName);
   } else {
     try {
       const { data: { user: foundUser }, error } = await supabase.auth.getUser(token);
