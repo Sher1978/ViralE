@@ -525,13 +525,18 @@ export async function POST(req: Request) {
   } catch (error: any) {
     console.error('Strategist API error:', error);
     try {
-      const { notifyAdminError } = await import('@/lib/telegram');
-      notifyAdminError({
-        source: 'Strategist AI Agent API',
-        error,
-        userId: user?.id,
-        userEmail: user?.email,
-      }).catch(() => {});
+      const errorMsg = error?.message || String(error);
+      const isRateLimit = errorMsg.includes('429') || errorMsg.includes('Quota exceeded') || errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('rate-limits');
+      
+      if (!isRateLimit) {
+        const { notifyAdminError } = await import('@/lib/telegram');
+        notifyAdminError({
+          source: 'Strategist AI Agent API',
+          error,
+          userId: user?.id,
+          userEmail: user?.email,
+        }).catch(() => {});
+      }
     } catch (e) {}
     return new Response(JSON.stringify({ error: error.message || 'Internal server error' }), { status: 500 });
   }

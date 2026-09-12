@@ -357,31 +357,123 @@ export function getModel(
     },
 
     startChat: (chatConfig: any) => {
-      const chatModel = fallbackModels[0];
-      const chatSession = client.chats.create({
-        model: chatModel,
-        config: {
-          systemInstruction: systemInstruction || chatConfig?.systemInstruction,
-          responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
-          ...chatConfig
-        }
-      });
-
       return {
         sendMessageStream: async (parts: any[]) => {
           const messageText = parts.map(p => typeof p === 'string' ? p : p.text || JSON.stringify(p)).join('\n');
-          const responseStream = await chatSession.sendMessageStream({ message: messageText });
+          let lastChatErr: any = null;
 
-          return {
-            stream: (async function* () {
-              for await (const chunk of responseStream) {
-                yield {
-                  text: () => chunk.text || '',
-                  functionCalls: () => []
+          // 1. Try candidate Gemini models sequentially
+          for (const modelCandidate of fallbackModels) {
+            try {
+              console.log(`[Gemini chat client] Initializing chat stream on candidate model: ${modelCandidate}`);
+              const chatSession = client.chats.create({
+                model: modelCandidate,
+                config: {
+                  systemInstruction: systemInstruction || chatConfig?.systemInstruction,
+                  responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
+                  ...chatConfig
+                }
+              });
+
+              const responseStream = await chatSession.sendMessageStream({ message: messageText });
+
+              return {
+                stream: (async function* () {
+                  for await (const chunk of responseStream) {
+                    let functionCallsFn = () => [];
+                    if ((chunk as any).functionCalls) {
+                      functionCallsFn = () => (chunk as any).functionCalls();
+                    } else if (chunk.candidates?.[0]?.content?.parts) {
+                      const calls = chunk.candidates[0].content.parts
+                        .filter((p: any) => p.functionCall)
+                        .map((p: any) => p.functionCall);
+                      if (calls.length > 0) {
+                        functionCallsFn = () => calls;
+                      }
+                    }
+
+                    yield {
+                      text: () => chunk.text || '',
+                      functionCalls: functionCallsFn,
+                      candidates: chunk.candidates
+                    };
+                  }
+                })()
+              };
+            } catch (err: any) {
+              lastChatErr = err;
+              const errMsg = err.message || String(err);
+              console.warn(`[Gemini chat client] Chat stream model ${modelCandidate} failed: ${errMsg}. Trying next candidate...`);
+              if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota exceeded')) {
+                await new Promise(r => setTimeout(r, 400));
+              }
+            }
+          }
+
+          // 2. Emergency Groq Fallback if all Gemini models hit rate limits / quota errors
+          const groqKey = process.env.GROQ_API_KEY || '';
+          if (groqKey) {
+            try {
+              console.warn('[Gemini chat client] All Gemini candidate models failed for chat stream. Triggering emergency Groq stream fallback...');
+              const groqRes = await fetch("https://api.groq.com/openai/v1/chat/completions", {
+                method: "POST",
+                headers: {
+                  "Authorization": `Bearer ${groqKey}`,
+                  "Content-Type": "application/json"
+                },
+                body: JSON.stringify({
+                  model: "llama-3.3-70b-versatile",
+                  messages: [
+                    { 
+                      role: "system", 
+                      content: systemInstruction || chatConfig?.systemInstruction || "You are a professional strategist AI assistant." 
+                    },
+                    ...(chatConfig?.history || []).map((h: any) => ({
+                      role: h.role === 'model' ? 'assistant' : 'user',
+                      content: typeof h.parts === 'string' ? h.parts : h.parts?.[0]?.text || ''
+                    })),
+                    { role: "user", content: messageText }
+                  ],
+                  temperature: 0.7,
+                  stream: true
+                })
+              });
+
+              if (groqRes.ok && groqRes.body) {
+                const reader = groqRes.body.getReader();
+                const decoder = new TextDecoder();
+                return {
+                  stream: (async function* () {
+                    let buffer = '';
+                    while (true) {
+                      const { done, value } = await reader.read();
+                      if (done) break;
+                      buffer += decoder.decode(value, { stream: true });
+                      const lines = buffer.split('\n');
+                      buffer = lines.pop() || '';
+                      for (const line of lines) {
+                        if (line.startsWith('data: ')) {
+                          const data = line.slice(6).trim();
+                          if (data === '[DONE]') continue;
+                          try {
+                            const json = JSON.parse(data);
+                            const chunkContent = json.choices?.[0]?.delta?.content || '';
+                            if (chunkContent) {
+                              yield { text: () => chunkContent, functionCalls: () => [] };
+                            }
+                          } catch (e) {}
+                        }
+                      }
+                    }
+                  })()
                 };
               }
-            })()
-          };
+            } catch (groqErr: any) {
+              console.error('[Gemini chat client] Emergency Groq chat fallback failed:', groqErr?.message || groqErr);
+            }
+          }
+
+          throw lastChatErr || new Error("Gemini chat stream failed on all fallback candidates.");
         }
       };
     }
