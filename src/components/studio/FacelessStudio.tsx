@@ -534,30 +534,6 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       }
     );
   };
-    setImageGenError(null);
-    try {
-      const res = await fetch('/api/ai/image-gen', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ 
-          prompt: updated[idx].imagePrompt, 
-          visual_style: visualStyle || 'startup_valley', 
-          aspect_ratio: '9:16' 
-        }),
-      });
-      const data = await res.json();
-      
-      if (!res.ok) {
-        throw new Error(data.error || data.detail || `API Error ${res.status}`);
-      }
-      
-      updated[idx] = { ...updated[idx], imageUrl: data.url, generating: false };
-      setScenes([...updated]);
-    } catch (e: any) {
-      setImageGenError(e.message || 'Ошибка генерации кадра');
-      setScenes(prev => prev.map(s => s.id === sceneId ? { ...s, generating: false } : s));
-    }
-  };
 
 
   // ── Audio sync ──

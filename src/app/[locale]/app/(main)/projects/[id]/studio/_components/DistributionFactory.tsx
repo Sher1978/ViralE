@@ -2747,6 +2747,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             {locale === 'ru' ? 'Предпросмотр обложки' : 'Video Cover Preview'}
           </div>
         </div>
+      )}
         <TokenConfirmModal 
           isOpen={tokenModal.isOpen}
           onClose={() => setTokenModal(prev => ({ ...prev, isOpen: false }))}
