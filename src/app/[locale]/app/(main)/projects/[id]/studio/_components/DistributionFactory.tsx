@@ -2757,7 +2757,6 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           title={tokenModal.title}
           description={tokenModal.description}
         />
-      </div>
     </div>
   );
 }

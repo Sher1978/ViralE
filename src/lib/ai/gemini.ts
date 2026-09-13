@@ -380,7 +380,7 @@ export function getModel(
               return {
                 stream: (async function* () {
                   for await (const chunk of responseStream) {
-                    let functionCallsFn = () => [];
+                    let functionCallsFn: () => any[] = () => [];
                     if ((chunk as any).functionCalls) {
                       functionCallsFn = () => (chunk as any).functionCalls();
                     } else if (chunk.candidates?.[0]?.content?.parts) {
