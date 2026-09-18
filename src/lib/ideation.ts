@@ -274,16 +274,52 @@ export async function generateDailyIdeas(
 
   // Smart Dynamic Fallback: Construct persona-specific, non-repeating ideas directly from user's StoryBrand / Brand DNA
   const dnaAnswers = profile?.dna_answers || {};
-  let sphere = (dnaAnswers.sphere || dnaAnswers.niche || profile?.industry_context || 'жизни и бизнесе в ЮВА').split(',')[0].split('.')[0].trim();
-  if (sphere.length > 45) sphere = sphere.slice(0, 42) + '...';
-  
-  let pain = (dnaAnswers.painPoint || dnaAnswers.pain_points || 'безопасности и риска скама').split(',')[0].split('.')[0].trim();
-  if (pain.length > 45) pain = pain.slice(0, 42) + '...';
+  const sbText = profile?.storybrand_raw_content || '';
+  const dsText = profile?.digital_shadow_prompt || '';
+  const fullContextText = `${sbText}\n${dsText}\n${profile?.industry_context || ''}`;
 
-  let advantage = (dnaAnswers.advantage || dnaAnswers.approach || 'экосистеме безопасности').split(',')[0].split('.')[0].trim();
+  let sphere = (dnaAnswers.sphere || dnaAnswers.niche || profile?.industry_context || '').split(',')[0].split('.')[0].trim();
+  let pain = (dnaAnswers.painPoint || dnaAnswers.pain_points || '').split(',')[0].split('.')[0].trim();
+  let advantage = (dnaAnswers.advantage || dnaAnswers.approach || '').split(',')[0].split('.')[0].trim();
+
+  if (!sphere && fullContextText.trim().length > 10) {
+    if (fullContextText.includes('локального') || fullContextText.includes('Google Maps') || fullContextText.includes('HoReCa') || fullContextText.includes('Revo')) {
+      sphere = locale === 'ru' ? 'локальном бизнесе, Google Maps и HoReCa' : 'local offline business and Google Maps SEO';
+    } else if (fullContextText.includes('недвижимост')) {
+      sphere = locale === 'ru' ? 'недвижимости и инвестициях' : 'real estate and property investments';
+    } else if (fullContextText.includes('крипто') || fullContextText.includes('трейдинг')) {
+      sphere = locale === 'ru' ? 'трейдинге и криптовалютах' : 'crypto trading and investments';
+    } else {
+      const firstLine = fullContextText.split('\n').find(l => l.trim().length > 10) || '';
+      sphere = firstLine.replace(/^[^a-zA-Zа-яА-Я0-9]+/, '').slice(0, 40).trim();
+    }
+  }
+
+  if (!pain && fullContextText.trim().length > 10) {
+    if (fullContextText.includes('комисси') || fullContextText.includes('агрегатор')) {
+      pain = locale === 'ru' ? 'кабальных комиссий агрегаторов (25-35%) и слива бюджета на SMM' : 'high aggregator fees (25-35%) and wasted SMM budgets';
+    } else {
+      pain = locale === 'ru' ? 'высокой конкуренции и потери клиентов' : 'high competition and lost client leads';
+    }
+  }
+
+  if (!advantage && fullContextText.trim().length > 10) {
+    if (fullContextText.includes('Revo') || fullContextText.includes('автопостинг') || fullContextText.includes('Dynamic Engine')) {
+      advantage = locale === 'ru' ? 'системе Revo Dynamic Engine и автопилоте Google Maps' : 'Revo Dynamic Engine and Google Maps autopilot';
+    } else {
+      advantage = locale === 'ru' ? 'уникальной ИИ-системе локального доминирования' : 'unique AI local dominance framework';
+    }
+  }
+
+  if (!sphere) sphere = locale === 'ru' ? 'экспертном бизнесе и маркетинге' : 'expert business and marketing';
+  if (!pain) pain = locale === 'ru' ? 'привлечения платящих клиентов' : 'acquiring paying clients';
+  if (!advantage) advantage = locale === 'ru' ? 'автоматизированной ИИ-системе' : 'automated AI strategy';
+
+  if (sphere.length > 45) sphere = sphere.slice(0, 42) + '...';
+  if (pain.length > 45) pain = pain.slice(0, 42) + '...';
   if (advantage.length > 45) advantage = advantage.slice(0, 42) + '...';
 
-  console.warn(`[generateDailyIdeas:${targetCategory}] Returning dynamic DNA-tailored fallback ideas for user ${userId}.`);
+  console.warn(`[generateDailyIdeas:${targetCategory}] Returning dynamic StoryBrand/DNA-tailored fallback ideas for user ${userId}.`);
   
   if (targetCategory === "Hooks" || targetCategory === "Хуки") {
     return [

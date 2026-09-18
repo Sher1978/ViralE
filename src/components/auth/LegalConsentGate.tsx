@@ -30,24 +30,28 @@ export default function LegalConsentGate({ children }: { children: React.ReactNo
           return;
         }
 
-        // 1. Check client-side persistent storage first for instant response
-        const localConsent = typeof window !== 'undefined'
-          ? localStorage.getItem(`viral_engine_legal_consent_${user.id}`)
-          : null;
+        // 1. Check client-side persistent storage and cookies first
+        if (typeof window !== 'undefined') {
+          const localUserConsent = localStorage.getItem(`viral_engine_legal_consent_${user.id}`);
+          const localGlobalConsent = localStorage.getItem('virale_legal_consent_done');
+          const hasCookie = document.cookie.includes('virale_legal_consent=true');
 
-        if (localConsent === 'true') {
-          setNeedsConsentGate(false);
-          setHasCheckedConsent(true);
-          return;
+          if (localUserConsent === 'true' || localGlobalConsent === 'true' || hasCookie) {
+            setNeedsConsentGate(false);
+            setHasCheckedConsent(true);
+            return;
+          }
         }
 
-        // 2. Query consent status from DB API
+        // 2. Query consent status from DB API (Server-side validation)
         const res = await fetch('/api/profile/consent');
         if (res.ok) {
           const data = await res.json();
           if (data.hasConsent) {
             if (typeof window !== 'undefined') {
               localStorage.setItem(`viral_engine_legal_consent_${user.id}`, 'true');
+              localStorage.setItem('virale_legal_consent_done', 'true');
+              document.cookie = 'virale_legal_consent=true; path=/; max-age=31536000; SameSite=Lax';
             }
             setNeedsConsentGate(false);
             setHasCheckedConsent(true);
@@ -65,6 +69,8 @@ export default function LegalConsentGate({ children }: { children: React.ReactNo
         if (profile?.consent_given_at) {
           if (typeof window !== 'undefined') {
             localStorage.setItem(`viral_engine_legal_consent_${user.id}`, 'true');
+            localStorage.setItem('virale_legal_consent_done', 'true');
+            document.cookie = 'virale_legal_consent=true; path=/; max-age=31536000; SameSite=Lax';
           }
           setNeedsConsentGate(false);
         } else {
@@ -99,9 +105,13 @@ export default function LegalConsentGate({ children }: { children: React.ReactNo
     try {
       const { data: { user } } = await supabase.auth.getUser();
       
-      // Instantly mark consent as granted locally so modal disappears immediately
-      if (user && typeof window !== 'undefined') {
-        localStorage.setItem(`viral_engine_legal_consent_${user.id}`, 'true');
+      // Instantly mark consent as granted locally via localStorage and Cookie
+      if (typeof window !== 'undefined') {
+        if (user) {
+          localStorage.setItem(`viral_engine_legal_consent_${user.id}`, 'true');
+        }
+        localStorage.setItem('virale_legal_consent_done', 'true');
+        document.cookie = 'virale_legal_consent=true; path=/; max-age=31536000; SameSite=Lax';
       }
       setNeedsConsentGate(false);
 

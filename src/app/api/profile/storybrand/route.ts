@@ -57,7 +57,7 @@ export async function POST(req: Request) {
       console.warn('[StoryBrand API] Failed to extract Digital Shadow persona from StoryBrand:', e);
     }
 
-    let updateResult = await authorizedSupabase
+    let updateResult = await supabaseAdmin
       .from('profiles')
       .update({
         storybrand_raw_content: text,
@@ -81,7 +81,7 @@ export async function POST(req: Request) {
 
         console.log('[StoryBrand API] Auto-migration applied successfully! Retrying profile update...');
         
-        updateResult = await authorizedSupabase
+        updateResult = await supabaseAdmin
           .from('profiles')
           .update({
             storybrand_raw_content: text,
@@ -98,7 +98,14 @@ export async function POST(req: Request) {
       }
     }
 
-    console.log(`[StoryBrand API] Saved successfully!`);
+    // 🔥 CLEAR OLD CACHED IDEAS FEED so Idea Matrix generates 100% fresh ideas tailored to the new StoryBrand
+    await supabaseAdmin
+      .from('ideation_feed')
+      .delete()
+      .eq('user_id', userId)
+      .eq('status', 'new');
+
+    console.log(`[StoryBrand API] Saved successfully! Cleared old ideation_feed for user ${userId}.`);
     return NextResponse.json({ success: true });
 
   } catch (err: any) {
