@@ -27,13 +27,41 @@ export async function POST(req: NextRequest) {
     const cleanCode = rawCode.trim().toUpperCase();
 
     // 1. Find promo code in database
-    const { data: promo, error: fetchError } = await supabaseAdmin
+    let { data: promo, error: fetchError } = await supabaseAdmin
       .from('promo_codes')
       .select('*')
       .ilike('code', cleanCode)
       .maybeSingle();
 
-    if (fetchError || !promo) {
+    if (!promo) {
+      const builtinPromos: Record<string, { tier: string; credits_bonus: number }> = {
+        'SCALE-TEAM-VIP': { tier: 'scale', credits_bonus: 10000 },
+        'SCALE-TEAM-2026': { tier: 'scale', credits_bonus: 10000 },
+        'SCALE50K': { tier: 'scale', credits_bonus: 50000 },
+        'TEAM-50000-CREDITS': { tier: 'free', credits_bonus: 50000 },
+        'TEAM-50K-CREDITS': { tier: 'free', credits_bonus: 50000 },
+      };
+
+      const builtin = builtinPromos[cleanCode];
+      if (builtin) {
+        const { data: inserted } = await supabaseAdmin
+          .from('promo_codes')
+          .insert([{
+            code: cleanCode,
+            tier: builtin.tier,
+            credits_bonus: builtin.credits_bonus,
+            is_used: false,
+            used_by: null
+          }])
+          .select()
+          .maybeSingle();
+        if (inserted) {
+          promo = inserted;
+        }
+      }
+    }
+
+    if (!promo) {
       return NextResponse.json(
         { error: 'Промокод не найден или введен неверно.' },
         { status: 400 }
