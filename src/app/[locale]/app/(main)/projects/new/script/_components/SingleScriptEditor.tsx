@@ -248,33 +248,7 @@ export function SingleScriptEditor({
               1. {locale === 'ru' ? 'ХУК' : 'HOOK'} (0 - 5s)
             </span>
             
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">
-                  {locale === 'ru' ? 'Кадр / Визуал' : 'Visual Scene Metaphor'}
-                </label>
-                <input
-                  type="text"
-                  value={getBlockValue('hook', 'visual')}
-                  onChange={(e) => handleBlockChange('hook', (e.target as any).value, 'visual')}
-                  className="w-full bg-[#07070f] border border-white/10 rounded-xl px-4 py-3 text-xs text-white/80 focus:outline-none focus:border-purple-500/35 focus:bg-white/[0.02] transition-all"
-                  placeholder={locale === 'ru' ? 'Опишите визуальный ряд...' : 'Describe visual action...'}
-                />
-              </div>
 
-              <div className="space-y-1.5">
-                <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">
-                  {locale === 'ru' ? 'Текст на экране' : 'On-Screen Text'}
-                </label>
-                <input
-                  type="text"
-                  value={getBlockValue('hook', 'screen_text')}
-                  onChange={(e) => handleBlockChange('hook', (e.target as any).value, 'screen_text')}
-                  className="w-full bg-[#07070f] border border-white/10 rounded-xl px-4 py-3 text-xs text-white/80 focus:outline-none focus:border-purple-500/35 focus:bg-white/[0.02] transition-all font-bold"
-                  placeholder={locale === 'ru' ? '3-5 крупных слов...' : '3-5 bold words...'}
-                />
-              </div>
-            </div>
 
             <div className="space-y-1.5">
               <label className="text-[9px] font-bold text-white/40 uppercase tracking-widest">

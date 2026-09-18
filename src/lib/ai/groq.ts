@@ -133,7 +133,7 @@ export async function generateScript(
     
     STRUCTURE RULES FOR EACH SCENARIO:
     0. matrix_pair: Explicitly name the pair used from Hook & Payoff Matrix (e.g. "Архетип Хука 1 (Разрушение мифа) + Payoff A (Аха-момент)").
-    1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
+    1. hook: Hook (0-5s). ONLY spoken words. Ends with a Curiosity Loop.
     2. micro_payoff: Promised Micro-Reward (5-15s dictation). Delivers Payoff A (Aha-moment), B (Guilt relief), C (1-2-3 Algorithm), or D (30s Tool/Template).
     3. body: Context & Agitation (15-20s dictation). Focus on "Thought Narration". MUST use a short, diverse, natural conversational transition at the beginning (e.g. "Look...", "Actually...", "Here is the catch...", "Смотрите...", "На самом деле...", "Тут фишка в чём...", "Глядите..."). NEVER use formal, technical or bookish language like "Let me explain" or "Позвольте объяснить". MUST be detailed, rich in specifics (avoid minimalism), and must reference facts, scientific proof, or statistics.
     4. triz_inversion: Re-Hook & Meat (15-20s dictation). ENTRY PHRASE (Must be a contrast word): "BUT..." or "However..." or "The truth is...". Unpack main body through Guide & Plan lens in Staccato rhythm. STYLE: Empathetic researcher conducting a mini-investigation to find an unobvious fact. MUST be highly detailed, deep, and cite research/data to back up the claim.
@@ -152,7 +152,7 @@ export async function generateScript(
     Structure for EACH scenario:
     - style_name: controversial | edutainment | evergreen | trends | detective | napkin_explainer
     - matrix_pair: "Архетип Хука N + Payoff X"
-    - hook: { "visual": "...", "screen_text": "...", "words": "..." }
+    - hook: { "words": "..." }
     - micro_payoff: { "words": "..." }
     - body: { "words": "..." }
     - triz_inversion: { "words": "..." }
@@ -375,7 +375,7 @@ export async function generateFullScript(
     
     CRITICAL STRUCTURE RULES (4-5 BLOCKS):
     0. matrix_pair: Explicitly name the pair used from Hook & Payoff Matrix (e.g. "Архетип Хука 1 (Разрушение мифа) + Payoff A (Аха-момент)").
-    1. hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words. Ends with a Curiosity Loop.
+    1. hook: Hook (0-5s). ONLY spoken words. Ends with a Curiosity Loop.
     2. micro_payoff: Promised Micro-Reward (5-15s dictation). Delivers Payoff A, B, C, or D.
     3. body: Context & Agitation (15-20s dictation). Focus on "Thought Narration". Natural conversational transition at start. Detailed, rich in specifics and real stats.
     4. triz_inversion: Re-Hook & Meat (15-20s dictation). Starts with contrast word ("BUT..." / "Однако..."). Staccato rhythm. High detail.
@@ -384,7 +384,7 @@ export async function generateFullScript(
     Output MUST BE valid JSON format:
     {
       "matrix_pair": "Архетип Хука N + Payoff X",
-      "hook": { "visual": "...", "screen_text": "...", "words": "..." },
+      "hook": { "words": "..." },
       "micro_payoff": { "words": "..." },
       "body": { "words": "..." },
       "triz_inversion": { "words": "..." },
@@ -459,7 +459,7 @@ export async function generateTurboScript(
     CRITICAL STRUCTURE RULES:
     - matrix_pair: Name the chosen pair (e.g. "Архетип Хука 1 (Разрушение мифа) + Payoff A (Аха-момент)").
     - selected_style: Name the auto-chosen style (e.g. "edutainment").
-    - hook: Triple Hook (0-5s). Visual description + On-screen text (3-5 words) + Spoken words.
+    - hook: Hook (0-5s). ONLY spoken words.
     - micro_payoff: Promised Micro-Reward (5-15s dictation).
     - body: Context & Agitation (15-20s dictation) with natural conversational transition and real stats/facts.
     - triz_inversion: Re-Hook & Meat (15-20s dictation) starting with contrast word ("BUT..." / "Однако...") in Staccato rhythm.
@@ -469,7 +469,7 @@ export async function generateTurboScript(
     {
       "matrix_pair": "Архетип Хука N + Payoff X",
       "selected_style": "controversial | edutainment | evergreen | trends | detective | napkin_explainer",
-      "hook": { "visual": "...", "screen_text": "...", "words": "..." },
+      "hook": { "words": "..." },
       "micro_payoff": { "words": "..." },
       "body": { "words": "..." },
       "triz_inversion": { "words": "..." },
