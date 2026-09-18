@@ -30,13 +30,44 @@ export default function LegalConsentGate({ children }: { children: React.ReactNo
           return;
         }
 
+        // 1. Check client-side persistent storage first for instant response
+        const localConsent = typeof window !== 'undefined'
+          ? localStorage.getItem(`viral_engine_legal_consent_${user.id}`)
+          : null;
+
+        if (localConsent === 'true') {
+          setNeedsConsentGate(false);
+          setHasCheckedConsent(true);
+          return;
+        }
+
+        // 2. Query consent status from DB API
+        const res = await fetch('/api/profile/consent');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.hasConsent) {
+            if (typeof window !== 'undefined') {
+              localStorage.setItem(`viral_engine_legal_consent_${user.id}`, 'true');
+            }
+            setNeedsConsentGate(false);
+            setHasCheckedConsent(true);
+            return;
+          }
+        }
+
+        // Fallback profile check
         const { data: profile } = await supabase
           .from('profiles')
-          .select('consent_given_at, legal_consent_version')
+          .select('consent_given_at')
           .eq('id', user.id)
-          .single();
+          .maybeSingle();
 
-        if (!profile || !profile.consent_given_at) {
+        if (profile?.consent_given_at) {
+          if (typeof window !== 'undefined') {
+            localStorage.setItem(`viral_engine_legal_consent_${user.id}`, 'true');
+          }
+          setNeedsConsentGate(false);
+        } else {
           setNeedsConsentGate(true);
         }
       } catch (err) {
@@ -67,21 +98,22 @@ export default function LegalConsentGate({ children }: { children: React.ReactNo
     setIsSubmitting(true);
     try {
       const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({
-            consent_given_at: new Date().toISOString(),
-            legal_consent_version: '2026.1',
-            legal_consents: {
-              ...consents,
-              timestamp: new Date().toISOString(),
-              user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
-            }
-          })
-          .eq('id', user.id);
+      
+      // Instantly mark consent as granted locally so modal disappears immediately
+      if (user && typeof window !== 'undefined') {
+        localStorage.setItem(`viral_engine_legal_consent_${user.id}`, 'true');
       }
       setNeedsConsentGate(false);
+
+      // Persist to database via server API endpoint with service-role permissions
+      await fetch('/api/profile/consent', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          consents,
+          legal_consent_version: '2026.1'
+        })
+      });
     } catch (e) {
       console.error('[LegalConsentGate] Failed to record consent:', e);
     } finally {

@@ -223,7 +223,7 @@ export async function POST(req: NextRequest) {
       }
 
       const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
-      if (fromId === String(ADMIN_ID) && data.startsWith('admin_')) {
+      if (fromId === String(ADMIN_ID) && (data.startsWith('admin_') || data.startsWith('promo_'))) {
         const { getAdminOverviewStats, getAdminUsersList, getAdminPaymentsLog, getAdminTrafficSourcesReport } = await import('@/lib/admin');
         const { monitoringService } = await import('@/lib/services/monitoringService');
 
@@ -238,10 +238,184 @@ export async function POST(req: NextRequest) {
             { text: '💳 Оплаты', callback_data: 'admin_payments' }
           ],
           [
-            { text: '🛠 API Балансы', callback_data: 'admin_balances' },
+            { text: '🎟 Создать промокод', callback_data: 'admin_promo_create' },
+            { text: '🛠 API Балансы', callback_data: 'admin_balances' }
+          ],
+          [
             { text: '🌐 Веб-Панель', url: 'https://www.virale.uno/ru/app/admin' }
           ]
         ];
+
+        if (data === 'admin_promo_create') {
+          const promoTierKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '🎁 FREE', callback_data: 'promo_tier:free' },
+                { text: '⚡ CREATOR', callback_data: 'promo_tier:creator' }
+              ],
+              [
+                { text: '🔥 PRO', callback_data: 'promo_tier:pro' },
+                { text: '🚀 SCALE (МАКС)', callback_data: 'promo_tier:scale' }
+              ],
+              [
+                { text: '🔙 В Главное меню', callback_data: 'admin_menu' }
+              ]
+            ]
+          };
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: cb.message.chat.id,
+              text: `🎟 *Конструктор Разовых Промокодов (Шаг 1 из 3)*\n\nВыберите *Тарифный Пакет*, который откроется пользователю при активации:`,
+              parse_mode: 'Markdown',
+              reply_markup: promoTierKeyboard
+            })
+          });
+          return NextResponse.json({ ok: true });
+        }
+
+        if (data.startsWith('promo_tier:')) {
+          const selectedTier = data.split(':')[1];
+          const promoCredKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '1,000 CR', callback_data: `promo_cred:${selectedTier}:1000` },
+                { text: '5,000 CR', callback_data: `promo_cred:${selectedTier}:5000` }
+              ],
+              [
+                { text: '10,000 CR (Стандарт)', callback_data: `promo_cred:${selectedTier}:10000` },
+                { text: '50,000 CR (Макс)', callback_data: `promo_cred:${selectedTier}:50000` }
+              ],
+              [
+                { text: '100,000 CR (VIP)', callback_data: `promo_cred:${selectedTier}:100000` },
+                { text: 'Без бонуса (0 CR)', callback_data: `promo_cred:${selectedTier}:0` }
+              ],
+              [
+                { text: '🔙 Назад к выбору пакета', callback_data: 'admin_promo_create' }
+              ]
+            ]
+          };
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: cb.message.chat.id,
+              text: `🎟 *Конструктор Разовых Промокодов (Шаг 2 из 3)*\n\nВыбран пакет: *${selectedTier.toUpperCase()}*\n\nТеперь выберите количество начисляемых *Кредитов (Токенов)*:`,
+              parse_mode: 'Markdown',
+              reply_markup: promoCredKeyboard
+            })
+          });
+          return NextResponse.json({ ok: true });
+        }
+
+        if (data.startsWith('promo_cred:')) {
+          const [, selectedTier, selectedCreds] = data.split(':');
+          const promoDurKeyboard = {
+            inline_keyboard: [
+              [
+                { text: '7 Дней', callback_data: `promo_dur:${selectedTier}:${selectedCreds}:7` },
+                { text: '30 Дней', callback_data: `promo_dur:${selectedTier}:${selectedCreds}:30` }
+              ],
+              [
+                { text: '90 Дней', callback_data: `promo_dur:${selectedTier}:${selectedCreds}:90` },
+                { text: '1 Год (365 Дней)', callback_data: `promo_dur:${selectedTier}:${selectedCreds}:365` }
+              ],
+              [
+                { text: '♾️ Навсегда (Бессрочно)', callback_data: `promo_dur:${selectedTier}:${selectedCreds}:forever` }
+              ],
+              [
+                { text: '🔙 Назад к кредитам', callback_data: `promo_tier:${selectedTier}` }
+              ]
+            ]
+          };
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: cb.message.chat.id,
+              text: `🎟 *Конструктор Разовых Промокодов (Шаг 3 из 3)*\n\nПакет: *${selectedTier.toUpperCase()}*\nКредиты: *+${parseInt(selectedCreds, 10).toLocaleString()} CR*\n\nВыберите *Срок Действия* тарифного пакета:`,
+              parse_mode: 'Markdown',
+              reply_markup: promoDurKeyboard
+            })
+          });
+          return NextResponse.json({ ok: true });
+        }
+
+        if (data.startsWith('promo_dur:')) {
+          const [, selectedTier, selectedCreds, durStr] = data.split(':');
+          const credsNum = parseInt(selectedCreds, 10) || 0;
+          
+          // Generate unique single-use promo code
+          const randHex = crypto.randomBytes(3).toString('hex').toUpperCase();
+          const generatedCode = `${selectedTier.toUpperCase()}-${credsNum >= 1000 ? Math.round(credsNum / 1000) + 'K' : credsNum}-${randHex}`;
+
+          const { supabaseAdmin } = await import('@/lib/supabase');
+          
+          let durLabel = 'Бессрочно (Навсегда)';
+          if (durStr !== 'forever') {
+            const days = parseInt(durStr, 10) || 30;
+            const expDate = new Date(Date.now() + days * 24 * 60 * 60 * 1000);
+            durLabel = `${days} Дней (до ${expDate.toLocaleDateString('ru-RU')})`;
+          }
+
+          const { error: insertErr } = await supabaseAdmin
+            .from('promo_codes')
+            .insert([{
+              code: generatedCode,
+              tier: selectedTier,
+              credits_bonus: credsNum,
+              is_used: false,
+              used_by: null,
+              created_at: new Date().toISOString()
+            }]);
+
+          if (insertErr) {
+            console.error('[Bot Admin Promo] Failed to insert promo code:', insertErr);
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: cb.message.chat.id,
+                text: `❌ *Ошибка при создании промокода в БД:* ${insertErr.message}`,
+                parse_mode: 'Markdown'
+              })
+            });
+            return NextResponse.json({ ok: true });
+          }
+
+          const successText = `🎉 *РАЗОВЫЙ ПРОМОКОД УСПЕШНО СОЗДАН!*\n\n` +
+            `🔑 *Промокод:* \`${generatedCode}\`\n\n` +
+            `📦 *Пакет:* \`${selectedTier.toUpperCase()}\`\n` +
+            `⚡ *Токены/Кредиты:* \`+${credsNum.toLocaleString()} CR\`\n` +
+            `⏰ *Срок действия:* \`${durLabel}\`\n` +
+            `🔒 *Ограничение:* \`Одноразовый (1 активация)\`\n\n` +
+            `💡 _Нажмите на код выше, чтобы скопировать его и отправьте пользователю. Он активируется на странице Профиль -> Активация промокода._`;
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: cb.message.chat.id,
+              text: successText,
+              parse_mode: 'Markdown',
+              reply_markup: {
+                inline_keyboard: [
+                  [
+                    { text: '🎟 Создать ещё промокод', callback_data: 'admin_promo_create' }
+                  ],
+                  [
+                    { text: '🔙 В Главное меню', callback_data: 'admin_menu' }
+                  ]
+                ]
+              }
+            })
+          });
+          return NextResponse.json({ ok: true });
+        }
 
         if (data === 'admin_menu') {
           text = `👑 *Панель Суперадминистратора*\n\nВыберите нужный раздел или перейдите в полную веб-версию:`;
@@ -720,7 +894,10 @@ export async function POST(req: NextRequest) {
           { text: '💳 Оплаты', callback_data: 'admin_payments' }
         ],
         [
-          { text: '🛠 API Балансы', callback_data: 'admin_balances' },
+          { text: '🎟 Создать промокод', callback_data: 'admin_promo_create' },
+          { text: '🛠 API Балансы', callback_data: 'admin_balances' }
+        ],
+        [
           { text: '🌐 Открыть Веб-Панель', url: 'https://www.virale.uno/ru/app/admin' }
         ]
       ];
@@ -735,6 +912,90 @@ export async function POST(req: NextRequest) {
           reply_markup: { inline_keyboard: inlineKeyboard }
         })
       });
+    } else if (text.startsWith('/promo')) {
+      const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+      if (String(user.id) !== String(ADMIN_ID)) {
+        return NextResponse.json({ ok: true });
+      }
+
+      const parts = text.split(' ').filter(Boolean);
+      if (parts.length < 3) {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: `⚠️ *Формат команды:* \`/promo <пакет> <кредиты> [дней]\`\n\n` +
+                  `Примеры:\n` +
+                  `• \`/promo scale 10000\` — пакет SCALE, 10,000 CR бессрочно\n` +
+                  `• \`/promo pro 5000 30\` — пакет PRO, 5,000 CR на 30 дней\n` +
+                  `• \`/promo creator 1000 7\` — пакет CREATOR, 1,000 CR на 7 дней`,
+            parse_mode: 'Markdown'
+          })
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      const tierInput = parts[1].toLowerCase();
+      const creditsInput = parseInt(parts[2], 10) || 0;
+      const daysInput = parts[3] ? parseInt(parts[3], 10) : null;
+
+      const validTiers = ['free', 'creator', 'pro', 'scale'];
+      const tier = validTiers.includes(tierInput) ? tierInput : 'scale';
+
+      const randHex = crypto.randomBytes(3).toString('hex').toUpperCase();
+      const generatedCode = `${tier.toUpperCase()}-${creditsInput >= 1000 ? Math.round(creditsInput / 1000) + 'K' : creditsInput}-${randHex}`;
+
+      const { supabaseAdmin } = await import('@/lib/supabase');
+      
+      let durLabel = 'Бессрочно (Навсегда)';
+      if (daysInput && !isNaN(daysInput) && daysInput > 0) {
+        const expDate = new Date(Date.now() + daysInput * 24 * 60 * 60 * 1000);
+        durLabel = `${daysInput} Дней (до ${expDate.toLocaleDateString('ru-RU')})`;
+      }
+
+      const { error: insertErr } = await supabaseAdmin
+        .from('promo_codes')
+        .insert([{
+          code: generatedCode,
+          tier: tier,
+          credits_bonus: creditsInput,
+          is_used: false,
+          used_by: null,
+          created_at: new Date().toISOString()
+        }]);
+
+      if (insertErr) {
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: chatId,
+            text: `❌ *Ошибка при создании промокода в БД:* ${insertErr.message}`,
+            parse_mode: 'Markdown'
+          })
+        });
+        return NextResponse.json({ ok: true });
+      }
+
+      const successText = `🎉 *РАЗОВЫЙ ПРОМОКОД УСПЕШНО СОЗДАН!*\n\n` +
+        `🔑 *Промокод:* \`${generatedCode}\`\n\n` +
+        `📦 *Пакет:* \`${tier.toUpperCase()}\`\n` +
+        `⚡ *Токены/Кредиты:* \`+${creditsInput.toLocaleString()} CR\`\n` +
+        `⏰ *Срок действия:* \`${durLabel}\`\n` +
+        `🔒 *Ограничение:* \`Одноразовый (1 активация)\`\n\n` +
+        `💡 _Скопируйте код кликом и отправьте пользователю. Он активируется в разделе Профиль -> Активация промокода._`;
+
+      await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: chatId,
+          text: successText,
+          parse_mode: 'Markdown'
+        })
+      });
+      return NextResponse.json({ ok: true });
     } else if (text.startsWith('/grant')) {
       const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
       if (String(user.id) !== String(ADMIN_ID)) {

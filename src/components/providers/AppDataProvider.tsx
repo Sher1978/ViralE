@@ -221,16 +221,22 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
 
     const handleWindowError = (event: any) => {
       const errorMsg = event.error?.message || event.message || 'Unhandled Window Error';
-      const stack = event.error?.stack;
+      const stack = event.error?.stack || '';
 
-      if (errorMsg && (
-        errorMsg.includes('Failed to fetch') ||
-        errorMsg.includes('NetworkError') ||
-        errorMsg.includes('Load failed') ||
-        errorMsg.includes('AbortError') ||
-        errorMsg.includes('Script error')
-      )) {
-        return; // Ignore client network disconnects & browser noise
+      if (
+        (errorMsg && (
+          errorMsg.includes('Failed to fetch') ||
+          errorMsg.includes('NetworkError') ||
+          errorMsg.includes('Load failed') ||
+          errorMsg.includes('AbortError') ||
+          errorMsg.includes('Script error') ||
+          errorMsg.includes('MetaMask') ||
+          errorMsg.includes('ethereum')
+        )) ||
+        stack.includes('chrome-extension://') ||
+        stack.includes('moz-extension://')
+      ) {
+        return; // Ignore client network disconnects & browser extension noise
       }
 
       fetch('/api/report-error', {
@@ -250,14 +256,23 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     const handleUnhandledRejection = (event: any) => {
       const reason = event.reason;
       const errorMsg = typeof reason === 'string' ? reason : reason?.message || JSON.stringify(reason);
+      const stack = reason?.stack || '';
 
-      if (errorMsg && (
-        errorMsg.includes('Failed to fetch') ||
-        errorMsg.includes('NetworkError') ||
-        errorMsg.includes('Load failed') ||
-        errorMsg.includes('AbortError')
-      )) {
-        return; // Ignore client network disconnects
+      if (
+        (errorMsg && (
+          errorMsg.includes('Failed to fetch') ||
+          errorMsg.includes('NetworkError') ||
+          errorMsg.includes('Load failed') ||
+          errorMsg.includes('AbortError') ||
+          errorMsg.includes('MetaMask') ||
+          errorMsg.includes('ethereum') ||
+          errorMsg.includes('User rejected') ||
+          errorMsg.includes('User denied')
+        )) ||
+        stack.includes('chrome-extension://') ||
+        stack.includes('moz-extension://')
+      ) {
+        return; // Ignore client network disconnects & wallet extension noise
       }
 
       fetch('/api/report-error', {
