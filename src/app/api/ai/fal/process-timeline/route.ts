@@ -103,9 +103,10 @@ export async function POST(req: NextRequest) {
       try {
         const { user, supabase: authClient } = await getAuthContext();
         const { data: profile } = await authClient.from('profiles').select('tier').eq('id', user.id).single();
-        if (profile?.tier !== 'pro') {
+        const isAllowed = profile?.tier === 'pro' || profile?.tier === 'scale' || profile?.tier === 'superadmin' || (profile as any)?.role === 'superadmin';
+        if (!isAllowed) {
           return NextResponse.json({ 
-            error: '🔒 Опция Фейс Свап (Face Swap) доступна ТОЛЬКО в премиум-пакете SCALE ($79.90/мес). Пожалуйста, обновите ваш подписочный план.' 
+            error: '🔒 Опция Фейс Свап (Face Swap) доступна в пакетах PRO ($39.90/мес) и SCALE ($79.90/мес). Пожалуйста, обновите ваш подписочный план.' 
           }, { status: 403 });
         }
       } catch (authErr) {

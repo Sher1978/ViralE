@@ -204,7 +204,9 @@ export default function AvatarStudioPage() {
     { id: 'stock_8', name: 'Sofia', url: 'https://images.unsplash.com/photo-1580489944761-15a19d654956?q=80&w=1000&h=1000&auto=format&fit=facearea&facepad=2' }
   ];
 
-  if (profile !== null && profile.tier !== 'creator' && profile.tier !== 'pro') {
+  const isAllowedTier = profile !== null && (profile.tier === 'pro' || profile.tier === 'scale' || profile.tier === 'superadmin' || (profile as any).role === 'superadmin');
+
+  if (profile !== null && !isAllowedTier) {
     return (
       <div className="min-h-screen bg-[#050508] text-white flex flex-col">
         {/* Header */}
@@ -239,21 +241,21 @@ export default function AvatarStudioPage() {
               <Lock size={28} className="animate-pulse" />
             </div>
 
-            <h3 className="text-2xl font-black italic uppercase tracking-tight text-white mb-2">HeyGen Avatar Studio</h3>
-            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-yellow-500 mb-6">PREMIUM PIPELINE REQUIRED</p>
+            <h3 className="text-2xl font-black italic uppercase tracking-tight text-white mb-2">Avatar & FaceSwap Studio</h3>
+            <p className="text-[9px] font-black uppercase tracking-[0.2em] text-yellow-500 mb-6">PRO & SCALE PIPELINE REQUIRED</p>
 
             <p className="text-xs text-white/60 leading-relaxed font-bold uppercase tracking-widest mb-8">
-              Создание цифровых аватаров и анимация портретов с помощью интеграции HeyGen доступны только для тарифов <span className="text-purple-400">Creator</span> и <span className="text-purple-400">Pro</span>.<br/><br/>
-              Обновите подписку прямо сейчас, чтобы оживлять свои фото, использовать официальные модели и подключать собственные API ключи!
+              Создание цифровых аватаров, анимация портретов и FaceSwap (смена лиц) доступны эксклюзивно для тарифов <span className="text-purple-400">Pro</span> и <span className="text-purple-400">Scale</span>.<br/><br/>
+              Обновите подписку прямо сейчас, чтобы оживлять свои фото, использовать нейро-модели и подключать собственные API ключи!
             </p>
 
             <button
               onClick={() => {
-                router.push('/profile/subscription');
+                router.push('/app/billing');
               }}
               className="w-full py-5 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-black uppercase tracking-[0.2em] text-xs rounded-[2rem] shadow-xl shadow-yellow-500/10 active:scale-[0.98] transition-all"
             >
-              Активировать Creator / Pro
+              Активировать Pro / Scale
             </button>
           </div>
         </div>

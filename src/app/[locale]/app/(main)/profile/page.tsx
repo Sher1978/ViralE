@@ -498,7 +498,7 @@ export default function ProfilePage() {
 
   const [imgErr, setImgErr] = useState(false);
 
-  const isHeyGenLocked = !profile || (profile.tier !== 'creator' && profile.tier !== 'pro');
+  const isHeyGenLocked = !profile || (profile.tier !== 'pro' && profile.tier !== 'scale' && profile.tier !== 'superadmin' && (profile as any).role !== 'superadmin');
 
   const isSuperAdminUser = Boolean(
     profile && (

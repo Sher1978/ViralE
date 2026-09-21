@@ -13,7 +13,7 @@ export interface Profile {
   onboarding_completed: boolean;
   synthetic_training_data?: string;
   knowledge_base_json?: any;
-  tier: 'free' | 'creator' | 'pro';
+  tier: 'free' | 'starter' | 'creator' | 'pro' | 'scale' | 'superadmin' | string;
   subscription_status: string;
   subscription_expires_at: string | null;
   heygen_api_key?: string | null;
