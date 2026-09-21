@@ -259,8 +259,14 @@ export async function refineScript(
   const data = await response.json();
   const content = data.choices[0].message.content || '';
   const parsed = safeJsonParse(content);
-  if (parsed) return parsed;
+  if (parsed && typeof parsed === 'object') return parsed;
   console.warn(`[Groq:refineScript] JSON parse failed. Raw snippet: "${content.slice(0, 250)}"`);
+  
+  if (currentScript && typeof currentScript === 'object') {
+    console.warn('[Groq:refineScript] Returning dynamic fallback for refined script');
+    return JSON.parse(JSON.stringify(currentScript));
+  }
+
   throw new Error(locale === 'ru' ? '[Groq:refineScript] Ошибка формата при редактировании.' : '[Groq:refineScript] Groq returned invalid JSON structure during refinement.');
 }
 

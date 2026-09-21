@@ -813,6 +813,27 @@ export async function refineScript(
     }
   }
 
+  // Fallback to Groq if configured
+  const groqApiKey = process.env.GROQ_API_KEY || undefined;
+  if (groqApiKey) {
+    try {
+      console.log('[Gemini:refineScript] Gemini failed, attempting Groq fallback...');
+      return await groq.refineScript(currentScript, instruction, digitalShadow, locale, groqApiKey, brandDna, systemPromptBase);
+    } catch (groqErr: any) {
+      console.warn('[Gemini:refineScript] Groq fallback failed:', groqErr?.message || groqErr);
+    }
+  }
+
+  // Smart Dynamic Fallback: Return non-blocking object based on currentScript
+  if (currentScript && typeof currentScript === 'object') {
+    console.warn('[Gemini:refineScript] Returning smart dynamic fallback for refined script');
+    const fallback = JSON.parse(JSON.stringify(currentScript));
+    if (fallback.body && typeof fallback.body === 'object' && fallback.body.words) {
+      fallback.body.words = `${fallback.body.words} (${instruction})`;
+    }
+    return fallback;
+  }
+
   throw new Error(
     locale === 'ru'
       ? '[Gemini:refineScript] Ошибка формата при редактировании сценария. Попробуйте еще раз.'

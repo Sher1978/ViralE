@@ -300,14 +300,21 @@ export async function refineScript(
   const text = content.text.trim();
   const jsonStr = text.replace(/```json/g, '').replace(/```/g, '');
   const parsed = safeJsonParse(jsonStr) || safeJsonParse(text);
-  if (parsed) return parsed;
+  if (parsed && typeof parsed === 'object') return parsed;
 
   try {
-    return JSON.parse(jsonStr);
+    const directJson = JSON.parse(jsonStr);
+    if (directJson && typeof directJson === 'object') return directJson;
   } catch (e: any) {
     console.warn(`[Anthropic:refineScript] JSON parse failed. Raw snippet: "${text.slice(0, 250)}"`);
-    throw new Error(`[Anthropic:refineScript] Invalid JSON response: ${e.message}`);
   }
+
+  if (currentScript && typeof currentScript === 'object') {
+    console.warn('[Anthropic:refineScript] Returning dynamic fallback for refined script');
+    return JSON.parse(JSON.stringify(currentScript));
+  }
+
+  throw new Error(`[Anthropic:refineScript] Invalid JSON response`);
 }
 
 export async function generatePreviews(

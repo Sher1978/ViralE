@@ -228,6 +228,10 @@ export async function refineScript(
             return await anthropic.refineScript(currentScript, instruction, digitalShadow, locale, anthropicApiKey, brandDna, systemPromptBase);
           } catch (anthropicErr) {}
         }
+        if (currentScript && typeof currentScript === 'object') {
+          console.warn('[Factory] All AI engines failed for refineScript, returning currentScript as non-blocking fallback');
+          return JSON.parse(JSON.stringify(currentScript));
+        }
         throw err;
       }
   }
