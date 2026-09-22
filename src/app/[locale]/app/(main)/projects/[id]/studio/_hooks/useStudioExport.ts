@@ -409,6 +409,9 @@ export function useStudioExport({
       if (!updatedManifest.remotionCutSheet) {
         addSystemLog('Export: Auto-generating Remotion Architect cutSheet...');
         try {
+          const controller = new AbortController();
+          const timeoutId = setTimeout(() => controller.abort(), 5000);
+
           const cutSheetRes = await fetch('/api/ai/remotion-architect', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -416,8 +419,10 @@ export function useStudioExport({
               transcriptData: subs || [],
               nicheProfile: { type: 'business' },
               userIntent: 'High Retention dynamic motion edit'
-            })
+            }),
+            signal: controller.signal
           });
+          clearTimeout(timeoutId);
           if (cutSheetRes.ok) {
             const cutSheetData = await cutSheetRes.json();
             if (cutSheetData.cutSheet) {
@@ -426,7 +431,7 @@ export function useStudioExport({
             }
           }
         } catch (csErr) {
-          console.warn('[useStudioExport] Auto cutSheet failed:', csErr);
+          console.warn('[useStudioExport] Auto cutSheet failed or timed out:', csErr);
         }
       }
 

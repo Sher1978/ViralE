@@ -305,11 +305,15 @@ export function getModel(
           lastError = err;
           const errMsg = err.message || '';
           console.warn(`[Gemini client] Model ${modelCandidate} failed: ${errMsg}. Trying next candidate...`);
-          if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED')) {
-            await new Promise(r => setTimeout(r, 400));
-          }
           if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('key is invalid')) {
             break;
+          }
+          if (errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+            // If free tier quota is depleted across the project, stop iterating all candidate models
+            if (fallbackModels.indexOf(modelCandidate) >= 1) {
+              console.warn('[Gemini client] Quota exhausted on multiple models, breaking candidate loop to trigger fallback...');
+              break;
+            }
           }
         }
       }

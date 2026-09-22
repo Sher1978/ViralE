@@ -65,6 +65,20 @@ export async function runCinematicMultiAgentPipeline({
       // 1. PASS 1: DIRECTOR AGENT
       const directorOutput = await runDirectorAgent(transcriptData, userIntent, activeKey);
 
+      if (!directorOutput) {
+        console.warn('[CinematicPipeline] Director Agent returned null (AI rate-limited or unavailable). Falling back to procedural cutSheet.');
+        const proceduralResult = generateProceduralCinematicCutSheet(transcriptData, selectedStyle, fps);
+        proceduralResult.qaDiagnostics = {
+          provider: 'procedural',
+          passed: true,
+          score: 100,
+          attempts: 1,
+          issues: ['AI rate-limited or returned null'],
+          generationTimeMs: Date.now() - startTime
+        };
+        return proceduralResult;
+      }
+
       let attempts = 0;
       let finalCutSheet: any = null;
       let lastQaResult: any = { isValid: true, score: 100, issues: [] };
