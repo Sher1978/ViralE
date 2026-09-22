@@ -72,6 +72,56 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig, 
   const [isGeneratingPrompt, setIsGeneratingPrompt] = useState(false);
   const [generatedPrompt, setGeneratedPrompt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
+
+  // BYOK State
+  const [heygenKey, setHeygenKey] = useState('');
+  const [isSavingKey, setIsSavingKey] = useState(false);
+  const [saveSuccess, setSaveSuccess] = useState(false);
+
+  useEffect(() => {
+    if (profile?.heygen_api_key) {
+      setHeygenKey(profile.heygen_api_key);
+    } else {
+      // Fetch from API just in case it's not in profile
+      fetch('/api/profile/byok')
+        .then(res => res.json())
+        .then(data => {
+           if (data.heygen?.hasKey && data.heygen.maskedKey) {
+             setHeygenKey(data.heygen.maskedKey); // Using masked as placeholder or real key if returned
+           }
+        })
+        .catch(console.error);
+    }
+  }, [profile]);
+
+  const handleSaveHeygenKey = async () => {
+    setIsSavingKey(true);
+    setSaveSuccess(false);
+    setError(null);
+    try {
+      // Attempt using /api/profile/byok as it seems to be the unified BYOK endpoint for HeyGen
+      const res = await fetch('/api/profile/byok', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ heygenKey: heygenKey })
+      });
+      if (!res.ok) {
+        // Fallback to /api/profile/heygen if byok endpoint fails
+        const fallbackRes = await fetch('/api/profile/heygen', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ apiKey: heygenKey })
+        });
+        if (!fallbackRes.ok) throw new Error('Failed to save key');
+      }
+      setSaveSuccess(true);
+      setTimeout(() => setSaveSuccess(false), 3000);
+    } catch (err: any) {
+      setError(err.message);
+    } finally {
+      setIsSavingKey(false);
+    }
+  };
   
   const fileInputRef = useRef<any>(null);
 
@@ -418,6 +468,8 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig, 
                         type="password"
                         autoComplete="new-password"
                         placeholder="sk_..."
+                        value={heygenKey}
+                        onChange={(e) => setHeygenKey((e.target as any).value)}
                         className="w-full bg-black/40 border border-white/5 rounded-2xl p-5 text-white placeholder:text-white/10 focus:outline-none focus:ring-1 focus:ring-purple-500/50 transition-all font-mono text-sm shadow-inner"
                       />
                       <div className="absolute right-4 top-1/2 -translate-y-1/2 px-3 py-1 rounded-lg bg-purple-500/10 text-purple-400 text-[8px] font-black uppercase tracking-widest border border-purple-500/20">
@@ -428,6 +480,20 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig, 
                       <Info className="w-4 h-4 text-purple-500/40" />
                       <span>Cost per render: 0 Credits (Billed via HeyGen)</span>
                     </div>
+
+                    <button 
+                      onClick={handleSaveHeygenKey}
+                      disabled={isSavingKey || !heygenKey}
+                      className={clsx(
+                        "w-full py-4 mt-4 rounded-[2rem] text-[10px] font-black uppercase tracking-widest transition-all active:scale-[0.98] flex items-center justify-center gap-2",
+                        saveSuccess 
+                          ? "bg-green-500 text-white shadow-lg shadow-green-500/20" 
+                          : "bg-white/10 hover:bg-white/20 text-white border border-white/10"
+                      )}
+                    >
+                      {isSavingKey ? <Loader2 className="animate-spin" size={16} /> : saveSuccess ? <CheckCircle2 size={16} /> : <Key size={16} />}
+                      {saveSuccess ? 'Сохранено' : 'Сохранить ключ'}
+                    </button>
                   </div>
                 </div>
               </div>
