@@ -380,10 +380,7 @@ export async function generateFullScript(
     3. Use sharp conversational transitions and specific research/data references.
     
     CRITICAL CONVERSION RULE: 
-    Do NOT just copy the text from the preview. You must expand the preview concept into natural, high-density, rich spoken dictation text for the final video.
-    
-    CRITICAL STRUCTURE RULES (4-5 BLOCKS):
-    0. matrix_pair: Explicitly name the pair used from Hook & Payoff Matrix (e.g. "Архетип Хука 1 (Разрушение мифа) + Payoff A (Аха-момент)").
+    Do NOT just copy the text from the preview. You MUST conceptualize and write the entire 50-second speech as ONE continuous, seamless, flowing narrative. The end of one block must flow perfectly and logically into the start of the next block. Once you have written this seamless narrative, ONLY THEN split it across the JSON fields (hook, micro_payoff, body, triz_inversion, cta).
     1. hook: Hook (0-5s). ONLY spoken words. Ends with a Curiosity Loop.
     2. micro_payoff: Promised Micro-Reward (5-15s dictation). Delivers Payoff A, B, C, or D.
     3. body: Context & Agitation (15-20s dictation). Focus on "Thought Narration". Natural conversational transition at start. Detailed, rich in specifics and real stats.

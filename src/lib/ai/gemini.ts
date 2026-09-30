@@ -969,45 +969,27 @@ export async function generatePreviews(
   return {
     controversial: {
       title: locale === 'ru' ? `Разрушение мифов: ${cleanTitle.slice(0, 35)}` : `Myth Bashing: ${cleanTitle.slice(0, 35)}`,
-      hook: locale === 'ru' ? `Перестаньте делать это в 2026 году!` : `Stop doing this in 2026!`,
-      reveal: locale === 'ru' ? `90% экспертов делают ключевую ошибку.` : `90% of specialists make a critical mistake.`,
-      meat: locale === 'ru' ? `Результат дает выверенная структура.` : `Results come from solid methodology.`,
-      cta: locale === 'ru' ? `Напишите слово СТУДИЯ в комментариях` : `Comment STUDIO for full framework`
+      concept: locale === 'ru' ? `Разрушение популярного мифа: почему привычные действия ведут к ошибкам и как структура меняет результат.` : `Breaking a popular myth: why common actions lead to mistakes and how structure changes results.`
     },
     edutainment: {
       title: locale === 'ru' ? `Экспертный разбор: ${cleanTitle.slice(0, 35)}` : `Expert breakdown: ${cleanTitle.slice(0, 35)}`,
-      hook: locale === 'ru' ? `Смотрите, в чем настоящая фишка.` : `Look at what really works.`,
-      reveal: locale === 'ru' ? `Секретный ингредиент вашей ниши.` : `The secret factor of your niche.`,
-      meat: locale === 'ru' ? `3 простых шага для роста.` : `3 simple steps for scaling.`,
-      cta: locale === 'ru' ? `Сохраните это видео.` : `Save this video.`
+      concept: locale === 'ru' ? `Ироничный разбор неочевидных фактов с 3 простыми шагами для роста.` : `Ironic breakdown of non-obvious facts with 3 simple steps for scaling.`
     },
     evergreen: {
       title: locale === 'ru' ? `Вечнозеленый гайд: ${cleanTitle.slice(0, 35)}` : `Evergreen guide: ${cleanTitle.slice(0, 35)}`,
-      hook: locale === 'ru' ? `Как построить надежную систему.` : `How to build a reliable system.`,
-      reveal: locale === 'ru' ? `Главные рычаги влияния в нише.` : `Core levers of influence in your niche.`,
-      meat: locale === 'ru' ? `Фундаментальный алгоритм работы.` : `Fundamental working algorithm.`,
-      cta: locale === 'ru' ? `Переходите по ссылке в профиле` : `Check link in bio`
+      concept: locale === 'ru' ? `Спокойный гайд по построению фундаментальных алгоритмов и надежных систем.` : `Calm guide on building fundamental algorithms and reliable systems.`
     },
     trends: {
       title: locale === 'ru' ? `Топ-3 ошибки: ${cleanTitle.slice(0, 35)}` : `Top 3 mistakes: ${cleanTitle.slice(0, 35)}`,
-      hook: locale === 'ru' ? `Вот 3 главные ошибки в 2026 году.` : `Here are top 3 mistakes in 2026.`,
-      reveal: locale === 'ru' ? `Ошибка №1 стоит вам 80% охватов.` : `Mistake #1 costs 80% of reach.`,
-      meat: locale === 'ru' ? `Как исправить за 5 минут.` : `How to fix in 5 minutes.`,
-      cta: locale === 'ru' ? `Пишите слово ТРЕНД в директ` : `DM the word TREND`
+      concept: locale === 'ru' ? `Динамичный список: 3 главные ошибки этого года и как их исправить за 5 минут.` : `Dynamic listicle: top 3 mistakes this year and how to fix them in 5 minutes.`
     },
     detective: {
       title: locale === 'ru' ? `Расследование: ${cleanTitle.slice(0, 35)}` : `Investigation: ${cleanTitle.slice(0, 35)}`,
-      hook: locale === 'ru' ? `Почему никто не говорит правду об этом?` : `Why does nobody speak the truth about this?`,
-      reveal: locale === 'ru' ? `Мы проверили статистику рынка.` : `We analyzed market data.`,
-      meat: locale === 'ru' ? `Неочевидный вывод исследования.` : `Non-obvious research insight.`,
-      cta: locale === 'ru' ? `Обсудим в комментариях?` : `Let's discuss in comments`
+      concept: locale === 'ru' ? `Мини-расследование о скрытой правде, которую большинство игнорирует.` : `Mini-investigation about the hidden truth that most people ignore.`
     },
     napkin_explainer: {
       title: locale === 'ru' ? `Наглядно на пальцах: ${cleanTitle.slice(0, 35)}` : `Whiteboard Breakdown: ${cleanTitle.slice(0, 35)}`,
-      hook: locale === 'ru' ? `Представьте рычаг и балансир.` : `Imagine a lever and scales.`,
-      reveal: locale === 'ru' ? `Схема процесса шаг за шагом.` : `Process diagram step by step.`,
-      meat: locale === 'ru' ? `1. Фокус. 2. Алгоритм. 3. Результат.` : `1. Focus. 2. Algorithm. 3. Result.`,
-      cta: locale === 'ru' ? `Заберите шаблон в профиле` : `Get the template in profile`
+      concept: locale === 'ru' ? `Визуальное объяснение сложного механизма через простые пространственные метафоры.` : `Visual explanation of a complex mechanism through simple spatial metaphors.`
     }
   };
 }
@@ -1041,10 +1023,7 @@ export async function generateFullScript(
     2. All generated content, hooks, body, triz_inversion, cta, broll descriptions, and social posts MUST be strictly in ${languageName.toUpperCase()}!
     
     CRITICAL CONVERSION RULE: 
-    Do NOT just copy the text from the preview. You must expand the preview concept into natural, high-density, rich spoken dictation text for the final video.
-    
-    CRITICAL STRUCTURE RULES (4-5 BLOCKS):
-    0. matrix_pair: Explicitly name the pair used from Hook & Payoff Matrix (e.g. "Архетип Хука 1 (Разрушение мифа) + Payoff A (Аха-момент)").
+    Do NOT just copy the text from the preview. You MUST conceptualize and write the entire 50-second speech as ONE continuous, seamless, flowing narrative. The end of one block must flow perfectly and logically into the start of the next block. Once you have written this seamless narrative, ONLY THEN split it across the JSON fields (hook, micro_payoff, body, triz_inversion, cta).
     1. hook: Hook (0-5s). ONLY spoken words. Ends with a Curiosity Loop.
     2. micro_payoff: Promised Micro-Reward (5-15s dictation). Delivers Payoff A (Aha-moment), B (Guilt relief), C (1-2-3 Algorithm), or D (30s Tool/Template).
     3. body: Context & Agitation (15-20s dictation). Focus on "Thought Narration". MUST use a short, diverse, natural conversational transition at the beginning (e.g. "Look...", "Actually...", "Here is the catch...", "Смотрите...", "На самом деле...", "Тут фишка в чём...", "Глядите..."). NEVER use formal, technical or bookish language like "Let me explain" or "Позвольте объяснить". MUST be detailed, rich in specifics (avoid minimalism), and must reference facts, scientific proof, or statistics (e.g., "Scientists proved...", "Recent studies show...", "According to statistics...").

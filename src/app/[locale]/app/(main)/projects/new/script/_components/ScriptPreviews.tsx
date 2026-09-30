@@ -6,10 +6,7 @@ import { Zap, Sparkles, AlertTriangle, Cpu, HelpCircle, ArrowRight, Loader2 } fr
 
 export interface PreviewData {
   title: string;
-  hook: string;
-  reveal: string;
-  meat: string;
-  cta: string;
+  concept: string;
 }
 
 interface ScriptPreviewsProps {
@@ -69,7 +66,7 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
           {locale === 'ru' ? 'Выберите концепцию видео' : 'Choose Video Concept'}
         </h2>
         <p className="text-xs text-white/50 uppercase tracking-widest font-bold">
-          {locale === 'ru' 
+          {locale === 'ru'
             ? 'ИИ подготовил 6 unique направлений подачи. Выберите наиболее подходящий вариант для полной генерации.'
             : 'AI prepared 6 unique presentation styles. Choose the best fit to write the full script.'}
         </p>
@@ -101,7 +98,7 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
               <div className="relative z-10 space-y-4 flex-1 flex flex-col">
                 <div className="flex items-center justify-between border-b border-white/5 pb-4">
                   <div className="flex items-center gap-2">
-                    <span 
+                    <span
                       className="w-2.5 h-2.5 rounded-full shadow-[0_0_10px_currentcolor] animate-pulse"
                       style={{ backgroundColor: config.color, color: config.color }}
                     />
@@ -124,37 +121,10 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
                 <div className="space-y-4 py-2 flex-1 text-xs border-t border-white/5 mt-2">
                   <div className="space-y-1">
                     <span className="text-[8px] font-black text-purple-400/50 uppercase tracking-widest block">
-                      {locale === 'ru' ? 'ХУК' : 'HOOK'}
+                      {locale === 'ru' ? 'СУТЬ СЦЕНАРИЯ' : 'SCENARIO CONCEPT'}
                     </span>
                     <p className="text-white/80 font-medium leading-relaxed italic text-[11px]">
-                      "{preview.hook}"
-                    </p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[8px] font-black text-purple-400/50 uppercase tracking-widest block">
-                      {locale === 'ru' ? 'РАСКРЫТИЕ' : 'REVEAL'}
-                    </span>
-                    <p className="text-white/80 font-medium leading-relaxed italic text-[11px]">
-                      {preview.reveal}
-                    </p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[8px] font-black text-purple-400/50 uppercase tracking-widest block">
-                      {locale === 'ru' ? 'МЯСО' : 'MEAT'}
-                    </span>
-                    <p className="text-white/80 font-medium leading-relaxed italic text-[11px]">
-                      {preview.meat}
-                    </p>
-                  </div>
-
-                  <div className="space-y-1">
-                    <span className="text-[8px] font-black text-purple-400/50 uppercase tracking-widest block">
-                      {locale === 'ru' ? 'CTA' : 'CTA'}
-                    </span>
-                    <p className="text-white/80 font-medium leading-relaxed italic text-[11px]">
-                      {preview.cta}
+                      {preview.concept || preview.hook}
                     </p>
                   </div>
                 </div>
@@ -167,8 +137,8 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
                 }}
                 disabled={isLoading}
                 className={`w-full mt-6 py-4 rounded-2xl border text-[10px] font-black uppercase tracking-widest transition-all duration-300 flex items-center justify-center gap-2.5 relative overflow-hidden
-                  ${isSelectedAndLoading 
-                    ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 border-purple-400 text-white shadow-[0_0_30px_rgba(168,85,247,0.6)] animate-pulse scale-[1.02] opacity-100' 
+                  ${isSelectedAndLoading
+                    ? 'bg-gradient-to-r from-purple-600 via-fuchsia-600 to-indigo-600 border-purple-400 text-white shadow-[0_0_30px_rgba(168,85,247,0.6)] animate-pulse scale-[1.02] opacity-100'
                     : 'bg-white/5 border-white/10 hover:bg-white hover:text-black hover:border-transparent text-white active:scale-[0.98] hover:scale-[1.02] disabled:opacity-40'
                   }`}
               >
