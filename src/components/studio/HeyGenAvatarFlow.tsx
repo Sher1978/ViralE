@@ -114,11 +114,12 @@ export default function HeyGenAvatarFlow({
   useEffect(() => {
     const checkKey = async () => {
       try {
-        const res = await fetch('/api/profile/byok');
+        const res = await fetch('/api/profile/byok', { cache: 'no-store' });
         const data = await res.json();
         if (data.heygen?.hasKey) {
           setHasKey(true);
           setMaskedKey(data.heygen.maskedKey);
+          setStep(2); // Automatically jump to step 2
         }
         if (data.credits_balance !== undefined) {
           setUserBalance(data.credits_balance);
