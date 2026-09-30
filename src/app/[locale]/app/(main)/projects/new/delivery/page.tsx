@@ -1487,15 +1487,10 @@ function DeliveryPageContent() {
           return;
         }
 
-        // NO AUTO-LAUNCH FOR REMOTION, ONLY FFMPEG!
-        addSystemLog('Запуск стандартной сборки видео (FFmpeg)...');
-        setActiveEngine('ffmpeg');
-        setShowRemotion(false);
-        setRenderStatus('Запуск сборки FFmpeg...');
-        
-        setTimeout(() => {
-          handleClientRender(verData, 'ffmpeg');
-        }, 150);
+        // NO AUTO-LAUNCH: Wait for explicit user engine selection!
+        addSystemLog('Ожидание выбора пользователем типа сборки...');
+        setRenderStatus('Выберите тип сборки видео для начала генерации');
+        // Do not auto-launch anything, let user pick from the UI below.
 
       } catch (err: any) {
         console.error('[Delivery] Auto-launch failed:', err);
@@ -1919,7 +1914,101 @@ function DeliveryPageContent() {
         )}
       </AnimatePresence>
 
-      {/* Dual Engine Export Selection Panel Removed */}
+      {/* Dual Engine Export Selection Panel */}
+      <div className="max-w-[640px] mx-auto rounded-3xl p-6 bg-slate-900/60 border border-purple-500/20 backdrop-blur-xl shadow-2xl mt-4 space-y-5">
+        <div className="flex items-center justify-between border-b border-white/10 pb-4">
+          <div className="flex flex-col text-left">
+            <h3 className="text-sm font-black text-white uppercase tracking-wider flex items-center gap-2">
+              <span>{locale === 'ru' ? 'Выбор движка сборки' : 'Rendering Engine Mode'}</span>
+              <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/30">Dual-Engine</span>
+            </h3>
+            <p className="text-[10px] text-white/50 uppercase tracking-widest font-semibold mt-1">
+              {locale === 'ru' ? 'Выберите способ сборки видео для запуска генерации' : 'Select rendering pipeline to launch generation'}
+            </p>
+          </div>
+          
+          <button
+            onClick={() => handleToggleSubtitles(!showSubtitles)}
+            className={`px-3 py-1.5 rounded-xl border text-[10px] font-black uppercase tracking-wider transition-all flex items-center gap-2 ${
+              showSubtitles ? 'bg-purple-600/30 border-purple-500/50 text-purple-300' : 'bg-white/5 border-white/10 text-white/40'
+            }`}
+          >
+            <span>{showSubtitles ? 'Титры ON' : 'Титры OFF'}</span>
+          </button>
+        </div>
+
+        {/* 2 Main Engine Choice Cards */}
+        <div className="grid grid-cols-2 gap-4">
+          {/* Cloud Engine Button */}
+          <button
+            onClick={() => {
+              if (version) {
+                setShowShotstackModal(false);
+                setIsLoading(true);
+                executeShotstackRender(version);
+              }
+            }}
+            className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between group ${
+              !activeEngine || activeEngine === 'shotstack'
+                ? 'bg-purple-600/20 border-purple-500 shadow-[0_0_30px_rgba(168,85,247,0.25)] text-white'
+                : 'bg-white/[0.02] border-white/10 text-white/60 hover:border-white/20 hover:bg-white/[0.04]'
+            }`}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                Cloud Render 🚀
+              </span>
+            </div>
+            <p className="text-[9px] text-white/40 leading-relaxed font-medium mb-3">
+              {locale === 'ru' ? 'Сверхбыстрая сборка в облаке, высокое качество. 5-10 сек.' : 'Ultra-fast cloud rendering, high quality. 5-10 sec.'}
+            </p>
+          </button>
+
+          {/* FFmpeg Engine Button */}
+          <button
+            onClick={() => setConfirmEngineModal('ffmpeg')}
+            className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between group ${
+              activeEngine === 'ffmpeg'
+                ? 'bg-cyan-600/20 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.25)] text-white'
+                : 'bg-white/[0.02] border-white/10 text-white/60 hover:border-white/20 hover:bg-white/[0.04]'
+            }`}
+          >
+            <div className="flex justify-between items-start mb-3">
+              <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
+                Local FFmpeg 🐢
+              </span>
+              <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
+                ffmpegOutputUrl ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40'
+              }`}>
+                {ffmpegOutputUrl ? 'Готово ⚡' : 'В браузере'}
+              </span>
+            </div>
+            <p className="text-[9px] text-white/40 leading-relaxed font-medium mb-3">
+              {locale === 'ru' ? 'Сборка силами вашего устройства. Может занять 3-10 мин.' : 'Rendered locally on your device. Can take 3-10 min.'}
+            </p>
+
+            {ffmpegOutputUrl && (
+              <div
+                onClick={(e) => {
+                  e.stopPropagation();
+                  const doc = (globalThis as any).document;
+                  if (doc) {
+                    const a = doc.createElement('a');
+                    a.href = ffmpegOutputUrl;
+                    a.download = `ViralEngine_FFmpeg_${Date.now()}.mp4`;
+                    doc.body.appendChild(a);
+                    a.click();
+                    doc.body.removeChild(a);
+                  }
+                }}
+                className="mt-2 w-full py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 hover:bg-cyan-500/30 text-[9px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-1 transition-all"
+              >
+                <Download size={11} /> Скачать MP4
+              </div>
+            )}
+          </button>
+        </div>
+      </div>
 
       {/* Distribution Factory - Main Area */}
       <section id="distribution-section" className="pt-10 space-y-6">
