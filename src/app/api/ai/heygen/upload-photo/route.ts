@@ -36,73 +36,37 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: 'Missing photoUrl' }, { status: 400 });
     }
 
-    console.log(`[HeyGen Upload] Starting Smart Scanner for photoUrl: ${photoUrl}`);
-    
-    const tryFetch = async (url: string) => {
-      const res = await fetch(url, {
-        method: 'POST',
-        headers: { 
-          'X-Api-Key': apiKey!,
-          'Authorization': `Bearer ${apiKey}`,
-          'Content-Type': 'application/json',
-          'Accept': 'application/json',
-          'User-Agent': 'Mozilla/5.0'
-        },
-        body: JSON.stringify({ file_type: 'jpg' })
-      });
-      const text = await res.text();
-      return { res, text };
-    };
-
-    const endpoints = [
-      `${HEYGEN_API_URL}/v2/talking_photo/upload`,
-      `${HEYGEN_API_URL}/v2/upload/photo`,
-      `https://api.us.heygen.com/v2/upload/photo`,
-      `https://api.us.heygen.com/v2/talking_photo/upload`,
-      `${HEYGEN_API_URL}/v2/video/upload/photo`,
-      `${HEYGEN_API_URL}/v1/talking_photo/upload_url`
-    ];
-
-    let finalRes: Response | null = null;
-    let finalText = '';
-
-    for (const url of endpoints) {
-      const { res, text } = await tryFetch(url);
-      if (res.status === 200 || res.status === 201) {
-        finalRes = res;
-        finalText = text;
-        break;
-      }
-    }
-
-    if (!finalRes) {
-      throw new Error('All endpoints failed. Check if API key has upload permissions.');
-    }
-    
-    const json = JSON.parse(finalText);
-    const upload_url = json.data?.upload_url || json.data?.url;
-    const talking_photo_id = json.data?.talking_photo_id || json.data?.id;
-    
-    if (!upload_url || !talking_photo_id) {
-       throw new Error(`Invalid response structure: ${finalText.substring(0, 100)}`);
-    }
-    
-    // Step 2: Download from Supabase
+    // Step 1: Download from Supabase
+    console.log(`[HeyGen Upload] Downloading image from ${photoUrl}`);
     const imageRes = await fetch(photoUrl);
     if (!imageRes.ok) throw new Error(`Failed to download image from ${photoUrl}`);
     const imageBuffer = await imageRes.arrayBuffer();
 
-    // Step 3: Binary PUT to HeyGen S3
-    const putRes = await fetch(upload_url, {
-      method: 'PUT',
-      headers: { 'Content-Type': 'image/jpeg' },
+    // Step 2: Upload to HeyGen Assets API
+    console.log(`[HeyGen Upload] Uploading to HeyGen Assets API`);
+    const uploadRes = await fetch('https://upload.heygen.com/v1/asset', {
+      method: 'POST',
+      headers: {
+        'X-Api-Key': apiKey,
+        'Authorization': `Bearer ${apiKey}`,
+        'Content-Type': 'image/jpeg'
+      },
       body: imageBuffer
     });
-
-    if (!putRes.ok) {
-       throw new Error(`Step 3 (S3 PUT) failed: ${putRes.status}`);
+    
+    const uploadText = await uploadRes.text();
+    if (!uploadRes.ok) {
+       throw new Error(`HeyGen Upload Failed (${uploadRes.status}): ${uploadText}`);
     }
-
+    
+    const json = JSON.parse(uploadText);
+    const talking_photo_id = json.data?.id;
+    
+    if (!talking_photo_id) {
+       throw new Error(`Invalid response from HeyGen Assets API: ${uploadText.substring(0, 100)}`);
+    }
+    
+    console.log(`[HeyGen Upload] Success! Asset ID / Talking Photo ID: ${talking_photo_id}`);
     return NextResponse.json({ talking_photo_id, success: true });
 
   } catch (e: any) {
