@@ -856,7 +856,7 @@ function DeliveryPageContent() {
             if (timeSec > 0 && totalEstDuration > 0) {
               const fraction = Math.min(1, timeSec / totalEstDuration);
               const p = Math.min(85, Math.max(20, 20 + Math.round(fraction * 65)));
-              setRenderProgress(p);
+              setRenderProgress((prev: number) => Math.max(prev, p));
             }
           }
         }
@@ -865,7 +865,7 @@ function DeliveryPageContent() {
       ffmpeg.on('progress', ({ progress }: any) => {
         if (typeof progress !== 'number' || isNaN(progress) || progress < 0) return;
         const p = Math.max(20, Math.min(85, 20 + Math.round(progress * 65)));
-        setRenderProgress(p);
+        setRenderProgress((prev: number) => Math.max(prev, p));
       });
 
       const execWithTimeout = async (args: string[], timeoutMs = 180000): Promise<number> => {

@@ -282,38 +282,56 @@ export function getModel(
 
       let lastError: any = null;
       for (const modelCandidate of fallbackModels) {
-        try {
-          console.log(`[Gemini client] Executing query on candidate model: ${modelCandidate}`);
-          const response = await client.models.generateContent({
-            model: modelCandidate,
-            contents: textPrompt,
-            config: {
-              systemInstruction: systemInstruction || config?.systemInstruction,
-              responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
-              temperature: 0.7,
-              ...config
+        let retries = 3;
+        let success = false;
+        
+        while (retries > 0 && !success) {
+          try {
+            console.log(`[Gemini client] Executing query on candidate model: ${modelCandidate} (Retries left: ${retries - 1})`);
+            const response = await client.models.generateContent({
+              model: modelCandidate,
+              contents: textPrompt,
+              config: {
+                systemInstruction: systemInstruction || config?.systemInstruction,
+                responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
+                temperature: 0.7,
+                ...config
+              }
+            });
+            return {
+              response: {
+                text: () => response.text || ""
+              }
+            };
+          } catch (err: any) {
+            lastError = err;
+            const errMsg = err.message || '';
+            
+            if (errMsg.includes('503') || errMsg.includes('HIGH DEMAND') || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE')) {
+              retries--;
+              if (retries > 0) {
+                console.warn(`[Gemini client] 503 High Demand for ${modelCandidate}. Retrying in 2 seconds...`);
+                await new Promise(r => setTimeout(r, 2000));
+                continue;
+              }
             }
-          });
-          return {
-            response: {
-              text: () => response.text || ""
+            
+            console.warn(`[Gemini client] Model ${modelCandidate} failed: ${errMsg}. Trying next candidate...`);
+            if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('key is invalid')) {
+              retries = 0;
             }
-          };
-        } catch (err: any) {
-          lastError = err;
-          const errMsg = err.message || '';
-          console.warn(`[Gemini client] Model ${modelCandidate} failed: ${errMsg}. Trying next candidate...`);
-          if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('key is invalid')) {
-            break;
-          }
-          if (errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
-            // If free tier quota is depleted across the project, stop iterating all candidate models
-            if (fallbackModels.indexOf(modelCandidate) >= 1) {
-              console.warn('[Gemini client] Quota exhausted on multiple models, breaking candidate loop to trigger fallback...');
-              break;
+            if (errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
+              // If free tier quota is depleted across the project, stop iterating all candidate models
+              if (fallbackModels.indexOf(modelCandidate) >= 1) {
+                console.warn('[Gemini client] Quota exhausted on multiple models, breaking candidate loop to trigger fallback...');
+                retries = 0;
+              }
             }
+            break; // Break the while loop to move to the next model candidate
           }
         }
+        if (lastError?.message?.includes('API_KEY_INVALID') || lastError?.message?.includes('key is invalid')) break;
+        if ((lastError?.message?.includes('Quota exceeded') || lastError?.message?.includes('RESOURCE_EXHAUSTED')) && fallbackModels.indexOf(modelCandidate) >= 1) break;
       }
 
       // Emergency Fallback: If Gemini quota is depleted (429/RESOURCE_EXHAUSTED/Prepayment depleted) or all candidates fail, fall back to Groq
@@ -366,50 +384,74 @@ export function getModel(
 
           // 1. Try candidate Gemini models sequentially
           for (const modelCandidate of fallbackModels) {
-            try {
-              console.log(`[Gemini chat client] Initializing chat stream on candidate model: ${modelCandidate}`);
-              const chatSession = client.chats.create({
-                model: modelCandidate,
-                config: {
-                  systemInstruction: systemInstruction || chatConfig?.systemInstruction,
-                  responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
-                  ...chatConfig
-                }
-              });
-
-              const responseStream = await chatSession.sendMessageStream({ message: messageText });
-
-              return {
-                stream: (async function* () {
-                  for await (const chunk of responseStream) {
-                    let functionCallsFn: () => any[] = () => [];
-                    if ((chunk as any).functionCalls) {
-                      functionCallsFn = () => (chunk as any).functionCalls();
-                    } else if (chunk.candidates?.[0]?.content?.parts) {
-                      const calls = chunk.candidates[0].content.parts
-                        .filter((p: any) => p.functionCall)
-                        .map((p: any) => p.functionCall);
-                      if (calls.length > 0) {
-                        functionCallsFn = () => calls;
-                      }
-                    }
-
-                    yield {
-                      text: () => chunk.text || '',
-                      functionCalls: functionCallsFn,
-                      candidates: chunk.candidates
-                    };
+            let retries = 3;
+            let success = false;
+            
+            while (retries > 0 && !success) {
+              try {
+                console.log(`[Gemini chat client] Initializing chat stream on candidate model: ${modelCandidate} (Retries left: ${retries - 1})`);
+                const chatSession = client.chats.create({
+                  model: modelCandidate,
+                  config: {
+                    systemInstruction: systemInstruction || chatConfig?.systemInstruction,
+                    responseMimeType: mimeType === 'json' ? "application/json" : "text/plain",
+                    ...chatConfig
                   }
-                })()
-              };
-            } catch (err: any) {
-              lastChatErr = err;
-              const errMsg = err.message || String(err);
-              console.warn(`[Gemini chat client] Chat stream model ${modelCandidate} failed: ${errMsg}. Trying next candidate...`);
-              if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota exceeded')) {
-                await new Promise(r => setTimeout(r, 400));
+                });
+
+                const responseStream = await chatSession.sendMessageStream({ message: messageText });
+
+                return {
+                  stream: (async function* () {
+                    for await (const chunk of responseStream) {
+                      let functionCallsFn: () => any[] = () => [];
+                      if ((chunk as any).functionCalls) {
+                        functionCallsFn = () => (chunk as any).functionCalls();
+                      } else if (chunk.candidates?.[0]?.content?.parts) {
+                        const calls = chunk.candidates[0].content.parts
+                          .filter((p: any) => p.functionCall)
+                          .map((p: any) => p.functionCall);
+                        if (calls.length > 0) {
+                          functionCallsFn = () => calls;
+                        }
+                      }
+
+                      yield {
+                        text: () => chunk.text || '',
+                        functionCalls: functionCallsFn,
+                        candidates: chunk.candidates
+                      };
+                    }
+                  })()
+                };
+              } catch (err: any) {
+                lastChatErr = err;
+                const errMsg = err.message || String(err);
+                
+                if (errMsg.includes('503') || errMsg.includes('HIGH DEMAND') || errMsg.includes('high demand') || errMsg.includes('UNAVAILABLE')) {
+                  retries--;
+                  if (retries > 0) {
+                    console.warn(`[Gemini chat client] 503 High Demand for ${modelCandidate}. Retrying in 2 seconds...`);
+                    await new Promise(r => setTimeout(r, 2000));
+                    continue;
+                  }
+                }
+                
+                console.warn(`[Gemini chat client] Chat stream model ${modelCandidate} failed: ${errMsg}. Trying next candidate...`);
+                if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('key is invalid')) {
+                  retries = 0;
+                }
+                if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota exceeded')) {
+                  if (fallbackModels.indexOf(modelCandidate) >= 1) {
+                    console.warn('[Gemini chat client] Quota exhausted on multiple models, breaking candidate loop to trigger fallback...');
+                    retries = 0;
+                  }
+                }
+                break; // Break the while loop to try the next model candidate
               }
             }
+            if (lastChatErr?.message?.includes('API_KEY_INVALID') || lastChatErr?.message?.includes('key is invalid')) break;
+            if ((lastChatErr?.message?.includes('Quota exceeded') || lastChatErr?.message?.includes('RESOURCE_EXHAUSTED') || lastChatErr?.message?.includes('429')) && fallbackModels.indexOf(modelCandidate) >= 1) break;
           }
 
           // 2. Emergency Groq Fallback if all Gemini models hit rate limits / quota errors
