@@ -161,55 +161,6 @@ export default function SubscriptionPage() {
     }
   };
 
-  const handleTributePayment = () => {
-    if (!selectedTier) return;
-    
-    // Get corresponding Tribute link from client config/env variables
-    let tributeUrl = '';
-    if (selectedTier === 'starter') {
-      tributeUrl = process.env.NEXT_PUBLIC_TRIBUTE_SUB_URL_STARTER || '';
-    } else if (selectedTier === 'pro') {
-      tributeUrl = process.env.NEXT_PUBLIC_TRIBUTE_SUB_URL_PRO || '';
-    } else if (selectedTier === 'scale') {
-      tributeUrl = process.env.NEXT_PUBLIC_TRIBUTE_SUB_URL_SCALE || '';
-    }
-
-    if (!tributeUrl) {
-      (globalThis as any).alert?.(locale === 'ru' ? 'Ссылка на подписку Tribute не настроена' : 'Tribute link not configured');
-      return;
-    }
-
-    const tg = (globalThis as any).window?.Telegram?.WebApp;
-    if (tg && typeof tg.openTelegramLink === 'function') {
-      tg.openTelegramLink(tributeUrl);
-    } else {
-      (globalThis as any).window?.open(tributeUrl, '_blank');
-    }
-
-    // Set status to processing and wait for webhook or user confirmation
-    setPaymentStatus('processing');
-    
-    // Check balance / tier updates in background
-    const initialTier = profile?.tier;
-    let attempts = 0;
-    
-    if (pollingRef.current) clearInterval(pollingRef.current);
-    
-    pollingRef.current = setInterval(async () => {
-      attempts++;
-      if (attempts > 40) { // 2 minutes
-        clearInterval(pollingRef.current);
-        setPaymentStatus('idle');
-        return;
-      }
-      const u = await profileService.getOrCreateProfile();
-      if (u && u.tier === selectedTier && u.subscription_status === 'active') {
-        setProfile(u);
-        setPaymentStatus('success');
-        clearInterval(pollingRef.current);
-      }
-    }, 4000);
-  };
 
   const PLANS_CONFIG = [
     {
@@ -468,56 +419,16 @@ export default function SubscriptionPage() {
                      </h3>
                   </div>
 
-                  {/* STEP-BY-STEP EXPLANATION BOX */}
-                  <div className="p-3.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 space-y-2">
-                    <p className="text-[10px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
-                      <Sparkles className="w-3.5 h-3.5 text-yellow-400" />
-                      {locale === 'ru' ? 'Как устроена оплата подписки (3 шага):' : 'How subscription payment works (3 steps):'}
-                    </p>
-                    <ol className="text-[10px] text-white/70 space-y-1.5 list-decimal list-inside leading-relaxed">
-                      <li>
+                  <div className="space-y-4">
+                    <div className="p-4 rounded-2xl bg-amber-500/10 border border-amber-500/20 text-center space-y-2">
+                      <Coins className="w-8 h-8 text-amber-400 mx-auto" />
+                      <p className="text-xs font-black text-white">{locale === 'ru' ? 'Оплата через Звёзды Telegram' : 'Pay with Telegram Stars'}</p>
+                      <p className="text-[10px] text-white/60 leading-relaxed">
                         {locale === 'ru' 
-                          ? <span>При выборе <b>Tribute</b> откроется бот <code>@subscribeappbot</code> (сервис оплаты Telegram).</span>
-                          : <span>Selecting <b>Tribute</b> opens <code>@subscribeappbot</code> (Telegram's official payment bot).</span>}
-                      </li>
-                      <li>
-                        {locale === 'ru'
-                          ? <span>Оплатите подписку картой МИР/Visa/Mastercard или Stars и <b>вступите в закрытый VIP-канал</b>.</span>
-                          : <span>Pay with card/Stars and <b>join the private VIP channel</b>.</span>}
-                      </li>
-                      <li>
-                        {locale === 'ru'
-                          ? <span>Студия <b>автоматически активирует</b> ваш тариф и начислит кредиты в личном кабинете!</span>
-                          : <span>The Studio <b>automatically grants access</b> and credits your account instantly!</span>}
-                      </li>
-                    </ol>
-                  </div>
-
-                  <div className="space-y-2.5">
-                    {/* Tribute Method (Primary Recommended) */}
-                    <button
-                      onClick={() => {
-                        setPaymentMethod('tribute');
-                        handleTributePayment();
-                      }}
-                      className="w-full flex items-center justify-between p-4 bg-purple-600 hover:bg-purple-500 border border-purple-400/40 rounded-2xl transition-all group active:scale-[0.98] shadow-lg shadow-purple-900/30"
-                    >
-                      <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center text-white">
-                          <QrCode className="w-5 h-5" />
-                        </div>
-                        <div className="text-left">
-                          <p className="text-xs font-black text-white">{locale === 'ru' ? 'Подписка через Tribute Bot' : 'Tribute Bot Subscription'}</p>
-                          <p className="text-[9px] text-white/80">{locale === 'ru' ? 'Карты РФ/СНГ/Мир · @subscribeappbot' : 'Russian/Global Cards · @subscribeappbot'}</p>
-                        </div>
-                      </div>
-                      <div className="text-right">
-                        <span className="text-xs font-black text-white block">
-                          {PLANS_CONFIG.find(p => p.id === selectedTier)?.price} / mo
-                        </span>
-                        <span className="text-[8px] font-black uppercase text-yellow-300">Рекомендуется</span>
-                      </div>
-                    </button>
+                          ? 'Это самый безопасный и быстрый способ оплаты внутри Telegram. Пакет будет активирован мгновенно.' 
+                          : 'The safest and fastest native Telegram payment. Your plan will be activated instantly.'}
+                      </p>
+                    </div>
 
                     {/* Stars Method */}
                     <button
@@ -525,27 +436,17 @@ export default function SubscriptionPage() {
                         setPaymentMethod('stars');
                         startStarsPayment();
                       }}
-                      className="w-full flex items-center justify-between p-4 bg-white/5 border border-white/10 hover:bg-white/10 rounded-2xl transition-all group active:scale-[0.98]"
+                      className="w-full flex items-center justify-between p-5 bg-gradient-to-r from-purple-600 to-blue-600 text-white rounded-2xl transition-all group active:scale-[0.98] shadow-xl shadow-purple-500/20"
                     >
                       <div className="flex items-center gap-3">
-                        <div className="w-10 h-10 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center text-amber-400">
-                          <Coins className="w-5 h-5" />
-                        </div>
                         <div className="text-left">
-                          <p className="text-xs font-black text-white">{locale === 'ru' ? 'Звёзды Telegram (Stars)' : 'Telegram Stars'}</p>
-                          <p className="text-[9px] text-white/40">{locale === 'ru' ? 'Прямая оплата внутри Telegram Mini App' : 'Instant in-app checkout via Telegram'}</p>
+                          <p className="text-sm font-black uppercase tracking-wider">{locale === 'ru' ? 'Оплатить' : 'Pay'}</p>
                         </div>
                       </div>
-                      <span className="text-xs font-black text-amber-400">
-                        {PLANS_CONFIG.find(p => p.id === selectedTier)?.stars}
+                      <span className="text-lg font-black text-yellow-300 flex items-center gap-1.5">
+                        {PLANS_CONFIG.find(p => p.id === selectedTier)?.stars} <Coins size={16} />
                       </span>
                     </button>
-
-                    <p className="text-[9px] text-white/40 text-center pt-2">
-                      {locale === 'ru'
-                        ? 'При подписке на Tribute доступ активируется после вашего вступления в приватный канал.' 
-                        : 'For Tribute, access will be granted immediately upon joining the private VIP channel.'}
-                    </p>
                   </div>
                 </div>
               )}
