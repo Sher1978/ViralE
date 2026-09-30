@@ -100,7 +100,8 @@ export default function HeyGenAvatarFlow({
   const [selectedLang, setSelectedLang] = useState('ru');
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
   const [playingPreview, setPlayingPreview] = useState<string | null>(null);
-  const audioRef = useRef<any>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
+  const [audioError, setAudioError] = useState<string | null>(null);
   const [showPhotoWarning, setShowPhotoWarning] = useState(false);
 
   // Step 4 — Generation
@@ -317,24 +318,62 @@ export default function HeyGenAvatarFlow({
   }, [step, selectedLang, loadVoices]);
 
   const playVoicePreview = (audioUrl: string, voiceId: string) => {
-    const audio = audioRef.current as HTMLAudioElement;
+    setAudioError(null);
+
+    if (!audioUrl) {
+      setAudioError('Аудио превью недоступно для этого голоса');
+      return;
+    }
+
+    let audio = audioRef.current;
+    if (!audio) {
+      audio = new Audio();
+      audioRef.current = audio;
+    }
+
     if (playingPreview === voiceId) {
-      audio?.pause();
+      audio.pause();
+      audio.currentTime = 0;
       setPlayingPreview(null);
       return;
     }
-    if (audio) {
-      audio.pause();
-      audio.src = audioUrl;
-      audio.load();
-      audio.play().then(() => {
-        setPlayingPreview(voiceId);
-      }).catch((err) => {
-        console.error('[HeyGenFlow] Audio play error:', err);
-        setPlayingPreview(null);
-        alert('Не удалось воспроизвести аудио превью (возможно формат не поддерживается браузером)');
-      });
+
+    audio.pause();
+    audio.onended = () => {
+      setPlayingPreview(null);
+    };
+    audio.onerror = () => {
+      setPlayingPreview(null);
+    };
+
+    let cleanUrl = audioUrl;
+    if (cleanUrl.startsWith('http://')) {
+      cleanUrl = cleanUrl.replace(/^http:\/\//i, 'https://');
     }
+
+    const proxyUrl = `/api/media/proxy?url=${encodeURIComponent(audioUrl)}`;
+
+    const attemptPlay = (src: string, isFallback: boolean) => {
+      audio.src = src;
+      audio.load();
+      audio
+        .play()
+        .then(() => {
+          setPlayingPreview(voiceId);
+        })
+        .catch((err) => {
+          console.warn(`[HeyGenFlow] Audio play attempt (src=${src}) failed:`, err);
+          if (!isFallback) {
+            console.log('[HeyGenFlow] Retrying playback via server media proxy...');
+            attemptPlay(proxyUrl, true);
+          } else {
+            setPlayingPreview(null);
+            setAudioError('Не удалось воспроизвести превью (ошибка браузера или формата)');
+          }
+        });
+    };
+
+    attemptPlay(cleanUrl, false);
   };
 
   // ─── Step 4: Generate ───────────────────────────────────────────────────────
@@ -868,6 +907,17 @@ export default function HeyGenAvatarFlow({
                 <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-1.5">
                   <Mic size={12} /> Голос ({voices.length}/10)
                 </label>
+                {audioError && (
+                  <div className="p-3 rounded-xl bg-amber-500/10 border border-amber-500/20 text-amber-300 text-xs flex items-center justify-between">
+                    <span className="flex items-center gap-2">
+                      <AlertCircle size={14} />
+                      {audioError}
+                    </span>
+                    <button onClick={() => setAudioError(null)} className="text-amber-300/60 hover:text-amber-300">
+                      <X size={14} />
+                    </button>
+                  </div>
+                )}
                 {isLoadingVoices ? (
                   <div className="flex items-center gap-3 p-4 text-white/30">
                     <Loader2 size={16} className="animate-spin text-purple-400" />

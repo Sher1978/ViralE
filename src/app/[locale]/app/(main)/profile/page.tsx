@@ -30,7 +30,8 @@ import {
   DollarSign,
   Trash2,
   AlertTriangle,
-  ShieldAlert
+  ShieldAlert,
+  Mail
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { CreditBadge } from '@/components/ui/CreditBadge';
@@ -80,50 +81,66 @@ export default function ProfilePage() {
   const [promoError, setPromoError] = useState<string | null>(null);
   const [promoSuccess, setPromoSuccess] = useState<string | null>(null);
   
+  const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyBrandInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
-    profileService.getOrCreateProfile().then(async p => {
-      let activeProf = p;
-      
-      // Auto-heal missing avatar: check Google/Telegram auth metadata or uploaded user_photos
-      if (activeProf && !activeProf.avatar_url) {
-        try {
-          const { data: { user } } = await supabase.auth.getUser();
-          const metaAvatar = user?.user_metadata?.avatar_url || user?.user_metadata?.picture || user?.user_metadata?.photo_url;
-          if (metaAvatar) {
-            activeProf = { ...activeProf, avatar_url: metaAvatar };
-            profileService.updateProfile(activeProf.id, { avatar_url: metaAvatar });
-          } else {
-            const { data: photos } = await supabase
-              .from('user_photos')
-              .select('photo_url')
-              .eq('user_id', activeProf.id)
-              .order('created_at', { ascending: false })
-              .limit(1);
-            if (photos && photos.length > 0 && photos[0].photo_url) {
-              activeProf = { ...activeProf, avatar_url: photos[0].photo_url };
-              profileService.updateProfile(activeProf.id, { avatar_url: photos[0].photo_url });
-            }
-          }
-        } catch (avatarErr) {
-          console.warn('[ProfilePage] Failed to resolve fallback avatar:', avatarErr);
+    const loadProfileAndAuth = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (user?.email) {
+          setAuthUserEmail(user.email);
         }
-      }
 
-      setProfile(activeProf);
-      if (activeProf?.full_name) {
-        setEditName(activeProf.full_name);
-      }
-      
-      // Load user StoryBrand text if exists
-      if (activeProf && (activeProf as any).storybrand_raw_content) {
-        setStoryBrandText((activeProf as any).storybrand_raw_content);
-      }
-      
-      if (activeProf?.id) {
-        try {
+        let p = await profileService.getOrCreateProfile();
+        let activeProf = p;
+
+        if (activeProf && user) {
+          const metaAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || user.user_metadata?.photo_url;
+          const userEmail = user.email;
+
+          let updates: any = {};
+          if (metaAvatar && !activeProf.avatar_url) {
+            activeProf = { ...activeProf, avatar_url: metaAvatar };
+            updates.avatar_url = metaAvatar;
+          }
+          if (userEmail && (!activeProf.email || activeProf.email.includes('anon_') || activeProf.email !== userEmail)) {
+            activeProf = { ...activeProf, email: userEmail };
+            updates.email = userEmail;
+          }
+
+          if (Object.keys(updates).length > 0) {
+            profileService.updateProfile(activeProf.id, updates).catch(() => {});
+          }
+        }
+
+        // Auto-heal missing avatar: check uploaded user_photos if still missing
+        if (activeProf && !activeProf.avatar_url) {
+          const { data: photos } = await supabase
+            .from('user_photos')
+            .select('photo_url')
+            .eq('user_id', activeProf.id)
+            .order('created_at', { ascending: false })
+            .limit(1);
+          if (photos && photos.length > 0 && photos[0].photo_url) {
+            activeProf = { ...activeProf, avatar_url: photos[0].photo_url };
+            profileService.updateProfile(activeProf.id, { avatar_url: photos[0].photo_url }).catch(() => {});
+          }
+        }
+
+        setProfile(activeProf);
+        if (activeProf?.full_name) {
+          setEditName(activeProf.full_name);
+        }
+        
+        // Load user StoryBrand text if exists
+        if (activeProf && (activeProf as any).storybrand_raw_content) {
+          setStoryBrandText((activeProf as any).storybrand_raw_content);
+        }
+        
+        if (activeProf?.id) {
           const { count, error } = await supabase
             .from('projects')
             .select('id', { count: 'exact', head: true })
@@ -132,12 +149,15 @@ export default function ProfilePage() {
           if (!error && count !== null) {
             setProjectCount(count);
           }
-        } catch (e) {
-          console.warn('[ProfilePage] Failed to fetch project count:', e);
         }
+      } catch (e) {
+        console.warn('[ProfilePage] Error loading profile/auth:', e);
+      } finally {
+        setLoadingCount(false);
       }
-      setLoadingCount(false);
-    });
+    };
+
+    loadProfileAndAuth();
   }, []);
 
   const toggleTheme = () => {
@@ -618,8 +638,13 @@ export default function ProfilePage() {
     visible: { y: 0, opacity: 1 }
   };
 
+  const displayEmail = authUserEmail || (profile?.email && !profile.email.includes('anon_') ? profile.email : null) || profile?.email || '';
+
   // Determine fallback initial letter
-  const defaultInitial = profile?.full_name ? profile.full_name.charAt(0).toUpperCase() : 'M';
+  const defaultInitial = (profile?.full_name && !profile.full_name.includes('Creator #')) 
+    ? profile.full_name.charAt(0).toUpperCase() 
+    : (displayEmail ? displayEmail.charAt(0).toUpperCase() : 'M');
+
   // Determine stable number in case full_name is missing
   const stableNum = profile ? parseInt(profile.id.slice(0, 4), 16) % 10000 : 0;
   const defaultName = locale === 'ru' ? `Медиа Криейтор #${stableNum}` : `Media Creator #${stableNum}`;
@@ -747,7 +772,10 @@ export default function ProfilePage() {
                 )}
               </AnimatePresence>
 
-              <p className="text-xs text-white/40 font-medium">{profile?.email || 'creator@virale.io'}</p>
+              <p className="text-xs text-[#00FFCC]/90 font-mono flex items-center gap-1.5 pt-0.5 font-bold">
+                <Mail size={12} className="text-[#00FFCC]" />
+                <span>{displayEmail || 'authenticated_user'}</span>
+              </p>
               
               <div className="flex items-center gap-2 pt-1">
                 {/* Dynamically Styled Tier Badge */}

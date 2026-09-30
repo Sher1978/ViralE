@@ -95,15 +95,24 @@ export async function GET(req: NextRequest) {
     // Limit to 9 (avatar's own voice will be the 10th as the first item)
     const limited = filtered.slice(0, avatarVoice ? 9 : 10);
 
+    const getAudioUrl = (v: any) => {
+      const raw = v.preview_audio || v.preview_audio_url || v.sample_audio || v.audio_url || v.preview_url || null;
+      if (!raw) return null;
+      if (typeof raw === 'string' && raw.startsWith('http://')) {
+        return raw.replace(/^http:\/\//i, 'https://');
+      }
+      return raw;
+    };
+
     const voices = [
       // Avatar's own voice first (if it exists and has a voice)
       ...(avatarVoice
-        ? [{ id: avatarVoice.voice_id, name: `${avatarVoice.name || 'Avatar Voice'} (собственный)`, preview_audio: avatarVoice.preview_audio || null, isAvatarVoice: true }]
+        ? [{ id: avatarVoice.voice_id, name: `${avatarVoice.name || 'Avatar Voice'} (собственный)`, preview_audio: getAudioUrl(avatarVoice), isAvatarVoice: true }]
         : []),
       ...limited.map((v: any) => ({
         id: v.voice_id,
         name: v.name || v.display_name || 'Voice',
-        preview_audio: v.preview_audio || null,
+        preview_audio: getAudioUrl(v),
         isAvatarVoice: false,
       })),
     ];
