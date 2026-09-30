@@ -1,9 +1,10 @@
 export const idb = {
   dbName: 'ViralEngineDB',
-  version: 2,
+  version: 3,
   stores: {
     drafts: 'ProjectDrafts',
-    media: 'MediaBuffer'
+    media: 'MediaBuffer',
+    cache: 'AppCache'
   },
 
   async getDB(): Promise<IDBDatabase> {
@@ -22,6 +23,9 @@ export const idb = {
         if (!db.objectStoreNames.contains(this.stores.media)) {
           db.createObjectStore(this.stores.media);
         }
+        if (!db.objectStoreNames.contains(this.stores.cache)) {
+          db.createObjectStore(this.stores.cache);
+        }
       };
 
       request.onsuccess = () => {
@@ -37,108 +41,172 @@ export const idb = {
   },
 
   async set(key: string, value: any, storeName: string = 'ProjectDrafts') {
-    const db = await this.getDB();
-    const timestamp = Date.now();
-    let payload = value;
-    
-    if (value instanceof Blob) {
-      payload = { _isBlobWrapper: true, data: value, timestamp };
-    } else if (value && typeof value === 'object' && !(value instanceof Uint8Array)) {
-      payload = { ...value, _idb_timestamp: timestamp };
-    }
+    try {
+      const db = await this.getDB();
+      const targetStore = db.objectStoreNames.contains(storeName) 
+        ? storeName 
+        : (db.objectStoreNames.contains(this.stores.drafts) ? this.stores.drafts : db.objectStoreNames[0]);
+      
+      if (!targetStore) return;
 
-    return new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.put(payload, key);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+      const timestamp = Date.now();
+      let payload = value;
+      
+      if (value instanceof Blob) {
+        payload = { _isBlobWrapper: true, data: value, timestamp };
+      } else if (value && typeof value === 'object' && !(value instanceof Uint8Array)) {
+        payload = { ...value, _idb_timestamp: timestamp };
+      }
+
+      return new Promise<void>((resolve) => {
+        try {
+          const transaction = db.transaction(targetStore, 'readwrite');
+          const store = transaction.objectStore(targetStore);
+          const request = store.put(payload, key);
+          request.onsuccess = () => resolve();
+          request.onerror = () => resolve();
+        } catch (e) {
+          console.warn('[IDB] transaction failed:', e);
+          resolve();
+        }
+      });
+    } catch (e) {
+      console.warn('[IDB] set failed safely:', e);
+    }
   },
 
   async get(key: string, storeName: string = 'ProjectDrafts') {
-    const db = await this.getDB();
-    return new Promise<any>((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readonly');
-      const store = transaction.objectStore(storeName);
-      const request = store.get(key);
-      request.onsuccess = () => {
-        const result = request.result;
-        if (!result) return resolve(null);
+    try {
+      const db = await this.getDB();
+      const targetStore = db.objectStoreNames.contains(storeName) 
+        ? storeName 
+        : (db.objectStoreNames.contains(this.stores.drafts) ? this.stores.drafts : null);
+      
+      if (!targetStore) return null;
 
-        const MAX_AGE_MS = 48 * 60 * 60 * 1000; // 48 hours
-        const itemTimestamp = result?._idb_timestamp || result?.timestamp;
+      return new Promise<any>((resolve) => {
+        try {
+          const transaction = db.transaction(targetStore, 'readonly');
+          const store = transaction.objectStore(targetStore);
+          const request = store.get(key);
+          request.onsuccess = () => {
+            const result = request.result;
+            if (!result) return resolve(null);
 
-        if (itemTimestamp && (Date.now() - itemTimestamp) > MAX_AGE_MS) {
-          console.log(`[IDB] Item '${key}' in '${storeName}' expired (>48h). Purging...`);
-          this.delete(key, storeName).catch(() => {});
-          return resolve(null);
+            const MAX_AGE_MS = 48 * 60 * 60 * 1000; // 48 hours
+            const itemTimestamp = result?._idb_timestamp || result?.timestamp;
+
+            if (itemTimestamp && (Date.now() - itemTimestamp) > MAX_AGE_MS) {
+              console.log(`[IDB] Item '${key}' in '${targetStore}' expired (>48h). Purging...`);
+              this.delete(key, targetStore).catch(() => {});
+              return resolve(null);
+            }
+
+            if (result && typeof result === 'object' && result._isBlobWrapper) {
+              return resolve(result.data);
+            }
+            
+            return resolve(result);
+          };
+          request.onerror = () => resolve(null);
+        } catch (e) {
+          console.warn('[IDB] get transaction failed:', e);
+          resolve(null);
         }
-
-        if (result && typeof result === 'object' && result._isBlobWrapper) {
-          return resolve(result.data);
-        }
-        
-        return resolve(result);
-      };
-      request.onerror = () => reject(request.error);
-    });
+      });
+    } catch (e) {
+      console.warn('[IDB] get failed safely:', e);
+      return null;
+    }
   },
 
   async delete(key: string, storeName: string = 'ProjectDrafts') {
-    const db = await this.getDB();
-    return new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.delete(key);
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    try {
+      const db = await this.getDB();
+      const targetStore = db.objectStoreNames.contains(storeName) ? storeName : this.stores.drafts;
+      if (!db.objectStoreNames.contains(targetStore)) return;
+
+      return new Promise<void>((resolve) => {
+        try {
+          const transaction = db.transaction(targetStore, 'readwrite');
+          const store = transaction.objectStore(targetStore);
+          const request = store.delete(key);
+          request.onsuccess = () => resolve();
+          request.onerror = () => resolve();
+        } catch (e) {
+          resolve();
+        }
+      });
+    } catch (e) {
+      console.warn('[IDB] delete failed safely:', e);
+    }
   },
 
   async clear(storeName: string = 'ProjectDrafts') {
-    const db = await this.getDB();
-    return new Promise<void>((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readwrite');
-      const store = transaction.objectStore(storeName);
-      const request = store.clear();
-      request.onsuccess = () => resolve();
-      request.onerror = () => reject(request.error);
-    });
+    try {
+      const db = await this.getDB();
+      if (!db.objectStoreNames.contains(storeName)) return;
+
+      return new Promise<void>((resolve) => {
+        try {
+          const transaction = db.transaction(storeName, 'readwrite');
+          const store = transaction.objectStore(storeName);
+          const request = store.clear();
+          request.onsuccess = () => resolve();
+          request.onerror = () => resolve();
+        } catch (e) {
+          resolve();
+        }
+      });
+    } catch (e) {
+      console.warn('[IDB] clear failed safely:', e);
+    }
   },
 
   async getAllByPrefix(prefix: string, storeName: string = 'ProjectDrafts') {
-    const db = await this.getDB();
-    return new Promise<{key: string, value: any}[]>((resolve, reject) => {
-      const transaction = db.transaction(storeName, 'readonly');
-      const store = transaction.objectStore(storeName);
-      const request = store.openCursor();
-      const results: {key: string, value: any}[] = [];
+    try {
+      const db = await this.getDB();
+      const targetStore = db.objectStoreNames.contains(storeName) ? storeName : this.stores.drafts;
+      if (!db.objectStoreNames.contains(targetStore)) return [];
 
-      request.onsuccess = (event: any) => {
-        const cursor = event.target.result;
-        if (cursor) {
-          if (typeof cursor.key === 'string' && cursor.key.startsWith(prefix)) {
-            let value = cursor.value;
-            if (value && typeof value === 'object' && value._isBlobWrapper) {
-              value = value.data;
+      return new Promise<{key: string, value: any}[]>((resolve) => {
+        try {
+          const transaction = db.transaction(targetStore, 'readonly');
+          const store = transaction.objectStore(targetStore);
+          const request = store.openCursor();
+          const results: {key: string, value: any}[] = [];
+
+          request.onsuccess = (event: any) => {
+            const cursor = event.target.result;
+            if (cursor) {
+              if (typeof cursor.key === 'string' && cursor.key.startsWith(prefix)) {
+                let value = cursor.value;
+                if (value && typeof value === 'object' && value._isBlobWrapper) {
+                  value = value.data;
+                }
+                results.push({ key: cursor.key, value });
+              }
+              cursor.continue();
+            } else {
+              resolve(results);
             }
-            results.push({ key: cursor.key, value });
-          }
-          cursor.continue();
-        } else {
-          resolve(results);
+          };
+          request.onerror = () => resolve([]);
+        } catch (e) {
+          resolve([]);
         }
-      };
-      request.onerror = () => reject(request.error);
-    });
+      });
+    } catch (e) {
+      console.warn('[IDB] getAllByPrefix failed safely:', e);
+      return [];
+    }
   },
 
   async cleanExpired(maxAgeMs: number = 48 * 60 * 60 * 1000): Promise<number> {
     let purgedCount = 0;
     try {
       const db = await this.getDB();
-      const storeNames = [this.stores.drafts, this.stores.media];
+      const storeNames = [this.stores.drafts, this.stores.media, this.stores.cache];
 
       for (const storeName of storeNames) {
         if (!db.objectStoreNames.contains(storeName)) continue;
@@ -184,4 +252,3 @@ if (typeof window !== 'undefined') {
     }).catch(() => {});
   }, 2000);
 }
-
