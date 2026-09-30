@@ -84,7 +84,6 @@ export async function POST(req: Request) {
     if (elevenlabsKey !== undefined) updates.elevenlabs_api_key = elevenlabsKey;
     
     if (latedevKey !== undefined) {
-      updates.latedev_api_key = latedevKey;
       updates.user_api_keys = {
         ...currentApiKeys,
         latedev: latedevKey
