@@ -12,7 +12,7 @@ export async function GET() {
     
     const { data: profile, error } = await supabase
       .from('profiles')
-      .select('heygen_api_key, anthropic_api_key, groq_api_key, elevenlabs_api_key, latedev_api_key, user_api_keys, synthetic_training_data, credits_balance')
+      .select('*')
       .eq('id', user.id)
       .single();
  
@@ -67,7 +67,7 @@ export async function POST(req: Request) {
     // Fetch existing synthetic_training_data and user_api_keys first to preserve other properties
     const { data: currentProfile } = await supabase
       .from('profiles')
-      .select('synthetic_training_data, user_api_keys')
+      .select('*')
       .eq('id', user.id)
       .single();
 
