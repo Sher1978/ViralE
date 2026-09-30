@@ -495,8 +495,19 @@ export default function HeyGenAvatarFlow({
   const toggleResultPlay = () => {
     const v = resultVideoRef.current as any;
     if (!v) return;
-    if (isVideoPlaying) { v.pause(); setIsVideoPlaying(false); }
-    else { v.play(); setIsVideoPlaying(true); }
+    if (isVideoPlaying) { 
+      v.pause(); 
+      setIsVideoPlaying(false); 
+    } else { 
+      const playPromise = v.play();
+      if (playPromise !== undefined) {
+        playPromise.catch((err: any) => {
+          console.warn('[HeyGenFlow] Play prevented:', err);
+          setIsVideoPlaying(false);
+        });
+      }
+      setIsVideoPlaying(true); 
+    }
   };
 
   const handleDownload = () => {
