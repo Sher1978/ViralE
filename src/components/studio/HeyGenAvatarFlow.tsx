@@ -1133,8 +1133,12 @@ export default function HeyGenAvatarFlow({
                     {/* Animated avatar preview */}
                     <div className="relative w-32 h-32 mx-auto">
                       <div className="absolute inset-0 rounded-3xl overflow-hidden border border-purple-500/30">
-                        {selectedAvatar?.url && (
-                          <img src={selectedAvatar.url} alt="" className="w-full h-full object-cover" />
+                        {selectedAvatar?.url ? (
+                          <img src={selectedAvatar.url} alt="" className="w-full h-full object-cover" crossOrigin="anonymous" />
+                        ) : (
+                          <div className="w-full h-full bg-white/5 flex items-center justify-center">
+                            <Bot size={32} className="text-white/20" />
+                          </div>
                         )}
                         <div className="absolute inset-0 bg-black/50" />
                       </div>
