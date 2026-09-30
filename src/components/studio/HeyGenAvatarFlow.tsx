@@ -159,6 +159,13 @@ export default function HeyGenAvatarFlow({
   const loadAvatars = useCallback(async () => {
     setIsLoadingAvatars(true);
     try {
+      const { idb } = await import('@/lib/idb');
+      const cached = await idb.get('heygen_avatars_cache', 'AppCache');
+      if (cached && cached.length > 0) {
+        setAvatars(cached);
+        setIsLoadingAvatars(false); // Show UI instantly
+      }
+
       const res = await fetch('/api/ai/heygen/avatars');
       const data = await res.json();
       if (data.avatars) {
@@ -176,6 +183,7 @@ export default function HeyGenAvatarFlow({
           }
         }
         setAvatars(uniqueAvatars);
+        idb.put('heygen_avatars_cache', uniqueAvatars, 'AppCache');
       }
     } catch (e) {
       console.error('[HeyGenFlow] Failed to load avatars:', e);
@@ -256,6 +264,22 @@ export default function HeyGenAvatarFlow({
     if (!selectedAvatar) return;
     setIsLoadingVoices(true);
     try {
+      const { idb } = await import('@/lib/idb');
+      const cacheKey = `heygen_voices_${selectedLang}_${selectedAvatar.id || 'none'}`;
+      const cached = await idb.get(cacheKey, 'AppCache');
+      
+      if (cached) {
+        setVoices(cached.voices);
+        setLanguages(cached.languages);
+        setVoices((currentVoices) => {
+          if (cached.voices.length > 0) {
+             setSelectedVoice((prev) => prev || cached.voices[0].id);
+          }
+          return cached.voices;
+        });
+        setIsLoadingVoices(false);
+      }
+
       const params = new URLSearchParams({
         language: selectedLang,
         ...(selectedAvatar.id && !selectedAvatar.id.startsWith('local_')
@@ -266,11 +290,11 @@ export default function HeyGenAvatarFlow({
       const data = await res.json();
       if (data.voices) {
         setVoices(data.voices);
-        if (data.voices.length > 0 && !selectedVoice) {
-          setSelectedVoice(data.voices[0].id);
-        }
+        setSelectedVoice((prev) => (data.voices.length > 0 && !prev ? data.voices[0].id : prev));
+        if (data.languages) setLanguages(data.languages);
+        
+        idb.put(cacheKey, { voices: data.voices, languages: data.languages || cached?.languages || [] }, 'AppCache');
       }
-      if (data.languages) setLanguages(data.languages);
     } catch (e) {
       console.error('[HeyGenFlow] Failed to load voices:', e);
     } finally {
