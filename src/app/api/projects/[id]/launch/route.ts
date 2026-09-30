@@ -50,7 +50,6 @@ export async function POST(
         avatar_mode: mode,
         animation_tier: tier,
         selected_asset_id: assetId,
-        ai_look_polish: aiPolish,
         status: 'rendering'
       })
       .eq('id', projectId);

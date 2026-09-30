@@ -50,8 +50,8 @@ export async function GET(req: NextRequest) {
     if (!res.ok) throw new Error(`HeyGen API Error: ${res.status}`);
 
     const data = await res.json();
-    const avatarsList = (data.data?.avatars || []).slice(0, 200);
-    const talkingPhotosList = (data.data?.talking_photos || []).slice(0, 200);
+    const avatarsList = (data.data?.avatars || []).slice(0, 500);
+    const talkingPhotosList = (data.data?.talking_photos || []).slice(0, 500);
     const allAvatars = [...avatarsList, ...talkingPhotosList];
     // Deduplicate by avatar_id and transform to a clean format for the UI
     const seenIds = new Set<string>();
@@ -65,7 +65,8 @@ export async function GET(req: NextRequest) {
           id,
           url: tp.preview_image_url || tp.preview_video_url,
           label: tp.avatar_name || tp.talking_photo_name || 'Avatar',
-          type: tp.talking_photo_id ? 'talking_photo' : 'avatar'
+          type: tp.talking_photo_id ? 'talking_photo' : 'avatar',
+          gender: tp.gender
         });
       }
     }

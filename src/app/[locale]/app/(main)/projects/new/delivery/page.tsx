@@ -41,7 +41,7 @@ function DeliveryPageContent() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
   const [showRemotion, setShowRemotion] = useState<boolean>(false);
-  const [activeEngine, setActiveEngine] = useState<'remotion' | 'ffmpeg' | 'shotstack'>('shotstack');
+  const [activeEngine, setActiveEngine] = useState<'remotion' | 'ffmpeg' | 'shotstack'>('ffmpeg');
   const [remotionOutputUrl, setRemotionOutputUrl] = useState<string | null>(null);
   const [ffmpegOutputUrl, setFfmpegOutputUrl] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(true);
