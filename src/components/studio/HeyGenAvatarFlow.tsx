@@ -57,8 +57,8 @@ export default function HeyGenAvatarFlow({
   onSendToMontage,
   onBack,
 }: HeyGenAvatarFlowProps) {
-  const [step, setStep] = useState(1);
-  const [isCheckingKey, setIsCheckingKey] = useState(true);
+  const [step, setStep] = useState(2);
+  const [isCheckingKey, setIsCheckingKey] = useState(false);
   const [userBalance, setUserBalance] = useState<number>(0);
   const [actualDeductedCredits, setActualDeductedCredits] = useState<number | null>(null);
   const [finalDuration, setFinalDuration] = useState<number | null>(null);
@@ -114,8 +114,7 @@ export default function HeyGenAvatarFlow({
   const [isVideoPlaying, setIsVideoPlaying] = useState(false);
   const resultVideoRef = useRef<HTMLVideoElement>(null);
 
-  // ─── Step 1: Load BYOK status ───────────────────────────────────────────────
-
+  // ─── Step 1: Load BYOK status in background ────────────────────────────────
   useEffect(() => {
     const checkKey = async () => {
       try {
@@ -124,15 +123,12 @@ export default function HeyGenAvatarFlow({
         if (data.heygen?.hasKey) {
           setHasKey(true);
           setMaskedKey(data.heygen.maskedKey);
-          setStep(2); // Automatically jump to step 2
         }
         if (data.credits_balance !== undefined) {
           setUserBalance(data.credits_balance);
         }
       } catch (e) {
         console.warn('[HeyGenFlow] Could not check BYOK status');
-      } finally {
-        setIsCheckingKey(false);
       }
     };
     checkKey();
@@ -203,7 +199,10 @@ export default function HeyGenAvatarFlow({
   }, []);
 
   useEffect(() => {
-    if (step === 2) loadAvatars();
+    loadAvatars();
+  }, [loadAvatars]);
+
+  useEffect(() => {
     if (step === 3) {
       // Preload teleprompter library
       const loadLibrary = async () => {

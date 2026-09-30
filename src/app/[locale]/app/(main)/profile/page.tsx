@@ -539,7 +539,13 @@ export default function ProfilePage() {
       title: t('sectionProfile'),
       items: [
         { icon: Fingerprint, label: t('dnaLabel'), sub: t('dnaSub'), href: `/app/profile/dna`, accent: '#D4AF37' },
-        { icon: UserCircle2, label: t('avatarLabel'), sub: t('avatarSub'), href: `/app/profile/avatar`, accent: '#00FFCC', locked: isHeyGenLocked },
+        { 
+          icon: Key, 
+          label: locale === 'ru' ? 'API Ключи (BYOK)' : 'API Keys (BYOK)', 
+          sub: locale === 'ru' ? 'Свои ключи: Claude, HeyGen, ElevenLabs, Groq, Gemini, Late.dev' : 'Custom keys: Claude, HeyGen, ElevenLabs, Groq, Gemini, Late.dev', 
+          href: `/app/profile/byok`, 
+          accent: '#00FFCC' 
+        },
         { icon: Images, label: 'Мои фотографии', sub: 'Управление библиотекой фото для AI-синтеза', href: `/app/profile/photos`, accent: '#A855F7' },
         { icon: Send, label: t('telegramLabel'), sub: t('telegramSub'), href: `/app/profile/telegram`, accent: '#4D9EFF' },
       ],
@@ -547,7 +553,6 @@ export default function ProfilePage() {
     {
       title: t('sectionPro'),
       items: [
-        { icon: Key, label: t('byokLabel'), sub: t('byokSub'), href: `/app/profile/byok`, accent: '#D4AF37', locked: isHeyGenLocked },
         { icon: ShieldCheck, label: t('securityLabel'), sub: t('securitySub'), href: `/app/profile/security`, accent: '#FF4D6D' },
       ],
     },

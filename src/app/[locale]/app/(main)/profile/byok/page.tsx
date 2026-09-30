@@ -116,16 +116,18 @@ export default function ByokSettingsPage() {
         </div>
         <div>
           <h1 className="text-3xl font-black text-white leading-tight uppercase tracking-tight">
-            Digital Connectors
+            {locale === 'ru' ? 'Персональные API Ключи (BYOK)' : 'Personal API Keys (BYOK)'}
           </h1>
-          <p className="text-[11px] text-white/40 uppercase tracking-[0.3em] mt-1 font-medium">Link your production engines</p>
+          <p className="text-[11px] text-white/40 uppercase tracking-[0.3em] mt-1 font-medium">
+            {locale === 'ru' ? 'Подключите ваши производственные движки (HeyGen, Claude, ElevenLabs, Groq, Gemini, Late.dev)' : 'Link your custom production engines'}
+          </p>
         </div>
       </div>
 
       {loading ? (
         <div className="flex flex-col items-center justify-center py-20 space-y-4">
           <RefreshCw className="w-8 h-8 text-[#D4AF37] animate-spin" />
-          <p className="text-[10px] text-white/20 uppercase tracking-widest">Syncing protocols...</p>
+          <p className="text-[10px] text-white/20 uppercase tracking-widest">Проверка подключений...</p>
         </div>
       ) : (
         <div className="space-y-4">
