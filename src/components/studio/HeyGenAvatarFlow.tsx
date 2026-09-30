@@ -15,6 +15,7 @@ interface HeyGenAvatar {
   url: string;
   label: string;
   type: 'talking_photo' | 'avatar';
+  gender?: string;
   previewVideoUrl?: string;
 }
 
@@ -71,6 +72,8 @@ export default function HeyGenAvatarFlow({
 
   // Step 2 — Avatar
   const [avatars, setAvatars] = useState<HeyGenAvatar[]>([]);
+  const [avatarFilter, setAvatarFilter] = useState<'all' | 'male' | 'female'>('all');
+  const [avatarPage, setAvatarPage] = useState(1);
   const [isLoadingAvatars, setIsLoadingAvatars] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<HeyGenAvatar | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -183,6 +186,7 @@ export default function HeyGenAvatarFlow({
               url: a.url,
               label: a.label || 'Avatar',
               type: a.type || 'talking_photo',
+              gender: a.gender,
             });
           }
         }
@@ -705,9 +709,15 @@ export default function HeyGenAvatarFlow({
                   </div>
                 </div>
               ) : (
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                  {avatars.map((avatar) => (
-                    <button
+                <div className="space-y-4">
+                  <div className="flex gap-2 p-1 bg-white/5 rounded-2xl w-fit">
+                    <button onClick={() => { setAvatarFilter('all'); setAvatarPage(1); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${avatarFilter === 'all' ? 'bg-purple-600 text-white' : 'text-white/40 hover:text-white/80'}`}>Все</button>
+                    <button onClick={() => { setAvatarFilter('male'); setAvatarPage(1); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${avatarFilter === 'male' ? 'bg-blue-600 text-white' : 'text-white/40 hover:text-white/80'}`}>Мужские</button>
+                    <button onClick={() => { setAvatarFilter('female'); setAvatarPage(1); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${avatarFilter === 'female' ? 'bg-pink-600 text-white' : 'text-white/40 hover:text-white/80'}`}>Женские</button>
+                  </div>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                    {avatars.filter(a => avatarFilter === 'all' || a.gender === avatarFilter).slice(0, avatarPage * 10).map((avatar) => (
+                      <button
                       key={avatar.id}
                       onClick={() => setSelectedAvatar(avatar)}
                       className={`relative aspect-[3/4] rounded-[2rem] overflow-hidden border-2 transition-all ${
@@ -744,6 +754,15 @@ export default function HeyGenAvatarFlow({
                       )}
                     </button>
                   ))}
+                  </div>
+                  {avatars.filter(a => avatarFilter === 'all' || a.gender === avatarFilter).length > avatarPage * 10 && (
+                    <button 
+                      onClick={() => setAvatarPage(p => p + 1)}
+                      className="w-full py-4 mt-2 rounded-[1.5rem] bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-all border border-white/10"
+                    >
+                      Загрузить еще 10
+                    </button>
+                  )}
                 </div>
               )}
 
