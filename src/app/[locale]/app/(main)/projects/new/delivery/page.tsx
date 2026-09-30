@@ -41,7 +41,7 @@ function DeliveryPageContent() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [showSubtitles, setShowSubtitles] = useState<boolean>(true);
   const [showRemotion, setShowRemotion] = useState<boolean>(false);
-  const [activeEngine, setActiveEngine] = useState<'remotion' | 'ffmpeg'>('ffmpeg');
+  const [activeEngine, setActiveEngine] = useState<'remotion' | 'ffmpeg' | 'shotstack'>('shotstack');
   const [remotionOutputUrl, setRemotionOutputUrl] = useState<string | null>(null);
   const [ffmpegOutputUrl, setFfmpegOutputUrl] = useState<string | null>(null);
   const [isMuted, setIsMuted] = useState(true);
@@ -53,7 +53,7 @@ function DeliveryPageContent() {
   const [shotstackRealStatus, setShotstackRealStatus] = useState<string | null>(null);
   const [showShotstackModal, setShowShotstackModal] = useState(false);
   const [renderMode, setRenderMode] = useState<'shotstack' | 'ffmpeg'>('ffmpeg');
-  const [confirmEngineModal, setConfirmEngineModal] = useState<'remotion' | 'ffmpeg' | null>(null);
+  const [confirmEngineModal, setConfirmEngineModal] = useState<'remotion' | 'ffmpeg' | 'shotstack' | null>(null);
   const [currentStageIndex, setCurrentStageIndex] = useState<number>(1);
 
   const REAL_STAGES_RU = [
@@ -555,11 +555,11 @@ function DeliveryPageContent() {
     return baseFilter ? `${baseFilter},${drawtextChain}` : drawtextChain;
   };
 
-  const executeConfirmedGeneration = async (engine: 'remotion' | 'ffmpeg') => {
+  const executeConfirmedGeneration = async (engine: 'remotion' | 'ffmpeg' | 'shotstack') => {
     setConfirmEngineModal(null);
     setActiveEngine(engine);
     setShowRemotion(engine === 'remotion');
-    addSystemLog(`Запуск сборки роликов через ${engine === 'remotion' ? 'Remotion AI Cinematic Engine' : 'Standard FFmpeg'}...`);
+    addSystemLog(`Запуск сборки роликов через ${engine === 'remotion' ? 'Remotion AI Cinematic Engine' : engine === 'shotstack' ? 'Cloud Render' : 'Standard FFmpeg'}...`);
 
     if (!version) return;
 
@@ -568,14 +568,14 @@ function DeliveryPageContent() {
 
     setJob({ id: `local-${engine}-render`, status: 'processing', output_url: '', progress: 5 } as any);
     setRenderProgress(5);
-    setRenderStatus(`Запуск генерации через ${engine === 'remotion' ? 'Remotion AI Engine' : 'Standard FFmpeg'}...`);
+    setRenderStatus(`Запуск генерации через ${engine === 'remotion' ? 'Remotion AI Engine' : engine === 'shotstack' ? 'Cloud Render' : 'Standard FFmpeg'}...`);
 
     isLaunchingRenderRef.current = false;
     isCancelledRef.current = false;
     handleClientRender(version, engine);
   };
 
-  const handleSwitchEngine = async (targetEngine: 'remotion' | 'ffmpeg') => {
+  const handleSwitchEngine = async (targetEngine: 'remotion' | 'ffmpeg' | 'shotstack') => {
     setActiveEngine(targetEngine);
     setShowRemotion(targetEngine === 'remotion');
     addSystemLog(`Переключение движка рендеринга на ${targetEngine === 'remotion' ? 'Remotion Motion Engine' : 'Standard FFmpeg'}...`);
@@ -606,7 +606,7 @@ function DeliveryPageContent() {
     handleClientRender(version, targetEngine);
   };
 
-  const handleClientRender = async (ver: ProjectVersion, targetEngineOverride?: 'remotion' | 'ffmpeg') => {
+  const handleClientRender = async (ver: ProjectVersion, targetEngineOverride?: 'remotion' | 'ffmpeg' | 'shotstack') => {
     if (isLaunchingRenderRef.current) return;
     isLaunchingRenderRef.current = true;
     isCancelledRef.current = false;

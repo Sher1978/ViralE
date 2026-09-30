@@ -7,6 +7,7 @@ import { Zap, Sparkles, AlertTriangle, Cpu, HelpCircle, ArrowRight, Loader2 } fr
 export interface PreviewData {
   title: string;
   concept: string;
+  hook?: string;
 }
 
 interface ScriptPreviewsProps {
