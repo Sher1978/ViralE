@@ -35,7 +35,7 @@ export async function POST(req: Request) {
     }
 
     // 1. Check user balance
-    const profile = await profileService.getOrCreateProfile(userId, authorizedSupabase);
+    const profile = await profileService.getProfile(userId);
     if (!profile || (profile.credits_balance || 0) < 2) {
       return NextResponse.json({ error: 'INSUFFICIENT_FUNDS' }, { status: 402 });
     }

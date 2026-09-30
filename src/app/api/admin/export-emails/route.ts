@@ -28,7 +28,7 @@ export async function GET(req: NextRequest) {
 
     // 3. Convert to CSV
     const header = 'id,email,full_name,created_at,tier,telegram_id,credits_balance\n';
-    const rows = users.map(u => 
+    const rows = (users || []).map((u: any) => 
       `"${u.id}","${u.email}","${(u.full_name || '').replace(/"/g, '""')}","${u.created_at}","${u.tier}","${u.telegram_id || ''}",${u.credits_balance}`
     ).join('\n');
 
