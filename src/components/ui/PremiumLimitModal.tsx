@@ -491,12 +491,12 @@ export function PremiumLimitModal({
                     <BrainCircuit className="w-4 h-4 text-purple-400 shrink-0 mt-0.5" />
                     <div className="space-y-1">
                       <p className="text-[9px] font-black uppercase tracking-widest text-purple-300">
-                        {locale === 'ru' ? 'Как происходит оплата в Telegram:' : 'How Telegram payment works:'}
+                        {locale === 'ru' ? 'Как происходит оплата:' : 'How payment works:'}
                       </p>
                       <p className="text-[10px] text-white/70 leading-relaxed">
                         {locale === 'ru' 
-                          ? 'Оплата тарифов производится через проверенного бота Telegram Tribute (@subscribeappbot). Картами МИР/Visa/Mastercard. После оплаты вы вступаете в канал и доступ активируется мгновенно.' 
-                          : 'Payments are processed via official Telegram Tribute bot (@subscribeappbot) or Stars. Access is granted instantly.'}
+                          ? 'Оплата производится через Telegram Stars. Безопасно, быстро, активация мгновенная.' 
+                          : 'Payments are processed securely via Telegram Stars. Access is granted instantly.'}
                       </p>
                     </div>
                   </div>
@@ -547,7 +547,7 @@ export function PremiumLimitModal({
                   >
                     <div className="relative z-10 flex items-center justify-center gap-3">
                       <span className="text-xs font-black uppercase tracking-tighter italic text-white">
-                        {locale === 'ru' ? 'Перейти к оплате через Tribute →' : 'Go to Tribute Payment →'}
+                        {locale === 'ru' ? 'Перейти к Тарифам →' : 'View Plans →'}
                       </span>
                       <ArrowRight className="h-4 w-4 text-white transition-transform group-hover:translate-x-1" />
                     </div>

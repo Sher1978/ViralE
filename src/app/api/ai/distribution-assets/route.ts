@@ -34,6 +34,12 @@ export async function POST(req: Request) {
       return NextResponse.json({ error: 'Script text is required' }, { status: 400 });
     }
 
+    // 1. Check user balance
+    const profile = await profileService.getOrCreateProfile(userId, authorizedSupabase);
+    if (!profile || (profile.credits_balance || 0) < 2) {
+      return NextResponse.json({ error: 'INSUFFICIENT_FUNDS' }, { status: 402 });
+    }
+
     let rawProjectTitle = ideaTitle || '';
     if (projectId && !rawProjectTitle) {
       try {
@@ -141,6 +147,9 @@ export async function POST(req: Request) {
       if (assets?.video_banner?.text_on_banner && isGenericTitle(assets.video_banner.text_on_banner)) {
         delete assets.video_banner.text_on_banner;
       }
+
+      // Deduct 2 tokens
+      await profileService.updateProfile(userId, { credits_balance: (profile.credits_balance || 0) - 2 });
 
       return NextResponse.json(assets);
     } catch (parseErr: any) {

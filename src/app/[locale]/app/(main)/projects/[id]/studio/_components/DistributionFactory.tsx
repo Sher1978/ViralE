@@ -12,6 +12,7 @@ import { cn } from '@/lib/utils';
 import { supabase } from '@/lib/supabase';
 import { LateDevInstructionModal } from '@/components/modals/LateDevInstructionModal';
 import { TokenConfirmModal } from '@/components/ui/TokenConfirmModal';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 
 interface DistributionFactoryProps {
   manifest: any;
@@ -149,6 +150,16 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     isOpen: false, cost: 0, balance: 0, title: '', description: '', onConfirm: () => {}
   });
 
+  const [limitModal, setLimitModal] = useState<{
+    isOpen: boolean;
+    title: string;
+    description: string;
+    advice?: string;
+    type: 'trial' | 'credits' | 'tier' | 'success' | 'info' | 'error' | 'warning' | 'confirm' | 'tier_upgrade';
+  }>({
+    isOpen: false, title: '', description: '', type: 'credits'
+  });
+
   const checkBalanceAndConfirm = async (cost: number, title: string, description: string, onConfirm: () => void) => {
     try {
       const res = await fetch('/api/profile/byok');
@@ -234,6 +245,24 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
     }
     setIsPublishingSocials(true);
     setSocialPublishResults(null);
+
+    // Block non-Scale users from Auto-Posting
+    try {
+      const pRes = await fetch('/api/profile/byok');
+      const pData = await pRes.json();
+      if (pData.tier !== 'scale') {
+        setIsPublishingSocials(false);
+        setLimitModal({
+          isOpen: true,
+          title: locale === 'ru' ? 'Доступно только на SCALE' : 'SCALE Tier Required',
+          description: locale === 'ru' 
+            ? '🤖 Автопостинг в YouTube, Reels, TikTok и Telegram доступен только на максимальном тарифе Scale. Сэкономьте часы рутины!' 
+            : '🤖 Cross-posting to YouTube, Reels, TikTok and Telegram is only available on the Scale tier.',
+          type: 'tier_upgrade'
+        });
+        return;
+      }
+    } catch (e) {}
 
     const collaboratorsList = instagramCollaborators
       .split(/[\s,]+/)
@@ -953,6 +982,17 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
         body: JSON.stringify({ scriptText, projectId, locale })
       });
       if (!res.ok) {
+        if (res.status === 402) {
+          setLimitModal({
+            isOpen: true,
+            title: locale === 'ru' ? 'Лимит Токенов Исчерпан' : 'Token Limit Reached',
+            description: locale === 'ru' 
+              ? '⚡ Генерация текстов для дистрибуции стоит 2 токена. Ваш бесплатный триал завершен. Пополните баланс или выберите план.' 
+              : '⚡ Text generation costs 2 tokens. Your free trial is over. Top up or select a plan.',
+            type: 'credits'
+          });
+          return;
+        }
         const errorData = await res.json().catch(() => ({}));
         throw new Error(errorData.error || 'Failed to generate assets');
       }
@@ -2767,6 +2807,15 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
           balance={tokenModal.balance}
           title={tokenModal.title}
           description={tokenModal.description}
+        />
+        <PremiumLimitModal
+          isOpen={limitModal.isOpen}
+          onClose={() => setLimitModal(prev => ({ ...prev, isOpen: false }))}
+          title={limitModal.title}
+          description={limitModal.description}
+          advice={limitModal.advice}
+          type={limitModal.type}
+          locale={locale}
         />
     </div>
   );

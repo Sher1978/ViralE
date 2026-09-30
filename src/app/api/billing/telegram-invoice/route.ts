@@ -45,7 +45,7 @@ export async function POST(req: Request) {
       description = isRu ? pkg.descRu : pkg.descEn;
       credits = pkg.credits;
       starsCount = pkg.stars;
-    } else if (type === 'plan') {
+    } else if (type === 'plans' || type === 'plan') {
       const plan = PLANS[itemId as keyof typeof PLANS];
       if (!plan) {
         return NextResponse.json({ error: 'Invalid plan ID' }, { status: 400 });
