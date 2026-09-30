@@ -399,7 +399,15 @@ export default function HeyGenAvatarFlow({
       if (audioMode === 'video' && selectedLibraryVideo?.blob) {
         const { supabase } = await import('@/lib/supabase');
         const { data: { user } } = await supabase.auth.getUser();
-        const ext = 'webm';
+        
+        let ext = 'mp4';
+        if (selectedLibraryVideo.blob instanceof File) {
+          const parts = selectedLibraryVideo.blob.name.split('.');
+          if (parts.length > 1) ext = parts.pop() || 'mp4';
+        } else if (selectedLibraryVideo.blob.type) {
+          ext = selectedLibraryVideo.blob.type.split('/')[1] || 'webm';
+        }
+        
         const path = `teleprompter-library/${user?.id || 'anon'}/temp_${Date.now()}.${ext}`;
         const { error: upErr } = await supabase.storage.from('media').upload(path, selectedLibraryVideo.blob);
         if (upErr) throw upErr;
@@ -1003,26 +1011,17 @@ export default function HeyGenAvatarFlow({
                       type="file" 
                       accept="video/*,audio/*" 
                       className="hidden" 
-                      onChange={async (e) => {
+                      onChange={(e) => {
                         const file = (e.target as any).files?.[0];
                         if (!file) return;
-                        setIsUploadingVideo(true);
-                        try {
-                          const formData = new FormData();
-                          formData.append('file', file);
-                          const res = await fetch('/api/storage/upload', {
-                            method: 'POST',
-                            body: formData
-                          });
-                          const data = await res.json();
-                          if (!res.ok) throw new Error(data.error || 'Ошибка загрузки');
-                          
-                          setSelectedLibraryVideo({ url: data.url, label: file.name });
-                        } catch (err: any) {
-                          alert(err.message || 'Ошибка загрузки файла');
-                        } finally {
-                          setIsUploadingVideo(false);
-                        }
+                        
+                        // Fix for Next.js API payload limit: Do not use /api/storage/upload for large videos.
+                        // Instead, create a local blob URL and attach the file so handleGenerate uploads it directly to Supabase client-side.
+                        const url = URL.createObjectURL(file);
+                        setSelectedLibraryVideo({ url: url, blob: file, label: file.name });
+                        
+                        // Clear input so the same file can be selected again
+                        (e.target as any).value = '';
                       }}
                     />
                   </div>
