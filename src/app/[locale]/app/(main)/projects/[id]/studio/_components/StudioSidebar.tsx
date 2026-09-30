@@ -121,7 +121,7 @@ export const StudioSidebar = React.memo(({
                   if (tab.id === 'concept') {
                     router.push(`/app/projects/new/script?projectId=${projectId}`);
                   } else if (tab.id === 'branch') {
-                    setActiveTab('script_editor');
+                    setActiveTab('branch');
                   } else {
                     setActiveTab(tab.id);
                   }

@@ -818,7 +818,7 @@ export default function StudioPage() {
                       handleTabChange('insta_gallery');
                     }
                   }}
-                  onBack={() => handleTabChange('concept')}
+                  onBack={() => handleTabChange('script_editor')}
                 />
               </div>
             )}
