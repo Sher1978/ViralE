@@ -88,6 +88,7 @@ export default function HeyGenAvatarFlow({
   const [selectedLibraryVideo, setSelectedLibraryVideo] = useState<{ url: string, blob?: Blob, label: string } | null>(null);
   const [teleprompterVideos, setTeleprompterVideos] = useState<any[]>([]);
   const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
+  const [isUploadingVideo, setIsUploadingVideo] = useState(false);
   const videoInputRef = useRef<HTMLInputElement>(null);
   const [voices, setVoices] = useState<HeyGenVoice[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
@@ -851,11 +852,15 @@ export default function HeyGenAvatarFlow({
                 <div className="space-y-4">
                   <div className="flex flex-col sm:flex-row items-center gap-3">
                     <button 
-                      onClick={() => (videoInputRef.current as any)?.click()}
-                      className="w-full sm:flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
+                      onClick={() => !isUploadingVideo && (videoInputRef.current as any)?.click()}
+                      disabled={isUploadingVideo}
+                      className="w-full sm:flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-white/10 transition-all disabled:opacity-50"
                     >
-                      <Upload size={14} className="text-purple-400" />
-                      Загрузить с устройства
+                      {isUploadingVideo ? (
+                        <><Loader2 size={14} className="text-purple-400 animate-spin" /> Загрузка...</>
+                      ) : (
+                        <><Upload size={14} className="text-purple-400" /> Загрузить с устройства</>
+                      )}
                     </button>
                     <input 
                       ref={videoInputRef}
@@ -865,16 +870,22 @@ export default function HeyGenAvatarFlow({
                       onChange={async (e) => {
                         const file = (e.target as any).files?.[0];
                         if (!file) return;
+                        setIsUploadingVideo(true);
                         try {
-                          const { supabase } = await import('@/lib/supabase');
-                          const { data: { user } } = await supabase.auth.getUser();
-                          const path = `teleprompter-library/${user?.id || 'anon'}/${Date.now()}_${file.name}`;
-                          const { error: upErr } = await supabase.storage.from('media').upload(path, file);
-                          if (upErr) throw upErr;
-                          const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path);
-                          setSelectedLibraryVideo({ url: publicUrl, label: file.name });
-                        } catch (err) {
-                          alert('Ошибка загрузки файла');
+                          const formData = new FormData();
+                          formData.append('file', file);
+                          const res = await fetch('/api/storage/upload', {
+                            method: 'POST',
+                            body: formData
+                          });
+                          const data = await res.json();
+                          if (!res.ok) throw new Error(data.error || 'Ошибка загрузки');
+                          
+                          setSelectedLibraryVideo({ url: data.url, label: file.name });
+                        } catch (err: any) {
+                          alert(err.message || 'Ошибка загрузки файла');
+                        } finally {
+                          setIsUploadingVideo(false);
                         }
                       }}
                     />
@@ -926,10 +937,17 @@ export default function HeyGenAvatarFlow({
                   </div>
 
                   {selectedLibraryVideo && (
-                    <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20">
+                    <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20 space-y-3">
                       <p className="text-[10px] font-black uppercase text-green-400 tracking-widest flex items-center gap-2">
                         <Check size={14} /> Выбрано: {selectedLibraryVideo.label}
                       </p>
+                      <div className="rounded-xl overflow-hidden bg-black/40 border border-white/10">
+                        <video 
+                          src={selectedLibraryVideo.url} 
+                          controls 
+                          className="w-full max-h-[200px] object-contain"
+                        />
+                      </div>
                     </div>
                   )}
                 </div>
