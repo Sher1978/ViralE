@@ -410,7 +410,7 @@ export function useStudioExport({
         addSystemLog('Export: Auto-generating Remotion Architect cutSheet...');
         try {
           const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 5000);
+          const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for LLM
 
           const cutSheetRes = await fetch('/api/ai/remotion-architect', {
             method: 'POST',
@@ -497,12 +497,15 @@ export function useStudioExport({
       } catch (e) { /* ignore */ }
 
       // Final Redirect
-      router.push(`/app/projects/new/delivery?projectId=${projectId}`);
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).window.location.href = `/${locale}/app/projects/new/delivery?projectId=${projectId}`;
+      } else {
+        router.push(`/app/projects/new/delivery?projectId=${projectId}`);
+      }
 
     } catch (err: any) {
       console.error('Export failed:', err);
       (globalThis as any).alert?.(`Не удалось сохранить проект: ${err.message}`);
-    } finally {
       setIsSaving(false);
     }
   };
