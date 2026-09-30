@@ -47,9 +47,6 @@ export async function POST(
     const { error: updateError } = await authorizedSupabase
       .from('projects')
       .update({
-        avatar_mode: mode,
-        animation_tier: tier,
-        selected_asset_id: assetId,
         status: 'rendering'
       })
       .eq('id', projectId);

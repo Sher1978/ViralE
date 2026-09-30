@@ -19,12 +19,13 @@ export async function POST(req: Request) {
       if (user) {
         const { data: profile } = await authSupabase
           .from('profiles')
-          .select('latedev_api_key, user_api_keys')
+          .select('latedev_api_key, user_api_keys, synthetic_training_data')
           .eq('id', user.id)
           .single();
 
         const userApiKeys = profile?.user_api_keys as Record<string, any> || {};
-        userLateDevKey = profile?.latedev_api_key || userApiKeys.latedev || undefined;
+        const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
+        userLateDevKey = syntheticData.latedev_api_key || profile?.latedev_api_key || userApiKeys.latedev || undefined;
       }
     } catch (authErr) {
       console.warn('[API /api/social/publish] Auth context warning, proceeding with fallback key:', authErr);

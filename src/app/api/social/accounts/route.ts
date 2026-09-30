@@ -11,12 +11,13 @@ export async function GET() {
 
     const { data: profile } = await authSupabase
       .from('profiles')
-      .select('latedev_api_key, user_api_keys')
+      .select('latedev_api_key, user_api_keys, synthetic_training_data')
       .eq('id', user.id)
       .single();
 
     const userApiKeys = profile?.user_api_keys as Record<string, any> || {};
-    const userLateDevKey = profile?.latedev_api_key || userApiKeys.latedev || undefined;
+    const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
+    const userLateDevKey = syntheticData.latedev_api_key || profile?.latedev_api_key || userApiKeys.latedev || undefined;
 
     const result = await getLateDevConnectedAccounts(userLateDevKey);
     return NextResponse.json(result);
