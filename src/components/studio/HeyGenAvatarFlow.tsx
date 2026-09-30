@@ -282,7 +282,7 @@ export default function HeyGenAvatarFlow({
   }, [step, selectedLang, loadVoices]);
 
   const playVoicePreview = (audioUrl: string, voiceId: string) => {
-    const audio = audioRef.current as any;
+    const audio = audioRef.current as HTMLAudioElement;
     if (playingPreview === voiceId) {
       audio?.pause();
       setPlayingPreview(null);
@@ -291,9 +291,15 @@ export default function HeyGenAvatarFlow({
     if (audio) {
       audio.pause();
       audio.src = audioUrl;
-      audio.play().catch(() => {});
+      audio.load();
+      audio.play().then(() => {
+        setPlayingPreview(voiceId);
+      }).catch((err) => {
+        console.error('[HeyGenFlow] Audio play error:', err);
+        setPlayingPreview(null);
+        alert('Не удалось воспроизвести аудио превью (возможно формат не поддерживается браузером)');
+      });
     }
-    setPlayingPreview(voiceId);
   };
 
   // ─── Step 4: Generate ───────────────────────────────────────────────────────
