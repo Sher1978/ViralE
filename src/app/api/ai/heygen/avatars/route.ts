@@ -50,8 +50,8 @@ export async function GET(req: NextRequest) {
     if (!res.ok) throw new Error(`HeyGen API Error: ${res.status}`);
 
     const data = await res.json();
-    const avatarsList = data.data?.avatars || [];
-    const talkingPhotosList = data.data?.talking_photos || [];
+    const avatarsList = (data.data?.avatars || []).slice(0, 200);
+    const talkingPhotosList = (data.data?.talking_photos || []).slice(0, 200);
     const allAvatars = [...avatarsList, ...talkingPhotosList];
     // Deduplicate by avatar_id and transform to a clean format for the UI
     const seenIds = new Set<string>();
