@@ -62,39 +62,19 @@ export async function runCinematicMultiAgentPipeline({
     const activeKey = groqKey || geminiKey || openaiKey!;
     const providerName = groqKey ? 'groq' : (geminiKey ? 'gemini' : 'openai');
     try {
-      // 1. PASS 1: DIRECTOR AGENT
-      const directorOutput = await runDirectorAgent(transcriptData, userIntent, activeKey);
-
-      if (!directorOutput) {
-        console.warn('[CinematicPipeline] Director Agent returned null (AI rate-limited or unavailable). Falling back to procedural cutSheet.');
-        const proceduralResult = generateProceduralCinematicCutSheet(transcriptData, selectedStyle, fps);
-        proceduralResult.qaDiagnostics = {
-          provider: 'procedural',
-          passed: true,
-          score: 100,
-          attempts: 1,
-          issues: ['AI rate-limited or returned null'],
-          generationTimeMs: Date.now() - startTime
-        };
-        return proceduralResult;
-      }
-
       let attempts = 0;
       let finalCutSheet: any = null;
       let lastQaResult: any = { isValid: true, score: 100, issues: [] };
 
       while (attempts < 2) {
         attempts++;
-        // 2. PASS 2: ART DIRECTOR AGENT
-        const artDirectorOutput = await runArtDirectorAgent(directorOutput, selectedStyle, userBrandDna, activeKey);
-
-        // 3. PASS 3: REMOTION ANIMATOR AGENT
-        const cutSheet = await runAnimatorAgent(directorOutput, artDirectorOutput, selectedStyle, fps, activeKey);
+        // PASS 1: UNIFIED MASTER AGENT (Replaces Director, Art Director, and Animator)
+        const cutSheet = await runUnifiedCinematicAgent(transcriptData, selectedStyle, userBrandDna, userIntent, fps, activeKey);
 
         if (cutSheet && cutSheet.cameraCuts && cutSheet.bRollElements) {
-          // 4. PASS 4: QA INSPECTOR AGENT (Validation & Self-Correction)
+          // PASS 2: QA INSPECTOR AGENT (Validation)
           lastQaResult = await runQaInspectorAgent(cutSheet, transcriptData);
-          console.log(`[CinematicPipeline] Pass 4 QA Inspector Result (${providerName.toUpperCase()}, Attempt ${attempts}):`, lastQaResult);
+          console.log(`[CinematicPipeline] Unified QA Result (${providerName.toUpperCase()}, Attempt ${attempts}):`, lastQaResult);
 
           if (lastQaResult.isValid || attempts >= 2) {
             finalCutSheet = cutSheet;
@@ -136,122 +116,39 @@ export async function runCinematicMultiAgentPipeline({
 }
 
 /**
- * PASS 1: Director Agent (with RAG Video Score Library Context)
+ * UNIFIED MASTER AGENT: Combines Director, Art Director, and Animator to save API requests and prevent Rate Limits (429).
  */
-async function runDirectorAgent(transcript: any[], intent: string, apiKey: string): Promise<any> {
+async function runUnifiedCinematicAgent(transcript: any[], style: any, userDna: any, intent: string, fps: number, apiKey: string): Promise<any> {
   const fullScriptText = transcript.map(t => t.text || t.scriptText || '').join(' ');
   const ragContext = buildFewShotRagPromptContext(fullScriptText);
-
-  const prompt = `
-Ты — Агент-Режиссер монтажа (Director Agent) сервиса Virali AI.
-Проанализируй транскрипт видео и создай Драматургическую Карту.
-
-### ВХОДНЫЕ ДАННЫЕ
-- Транскрипт: ${JSON.stringify(transcript.slice(0, 150))}
-- Цель: ${intent}
-${ragContext}
-
-### ТВОИ ЗАДАЧИ
-1. Выдели ХУК (первые 3-5 секунд).
-2. Разбей текст на смысловые фазы (Интрига, Проблема, Доказательства/Примеры, Кульминация, Призыв).
-3. Найди 3-5 ключевых Punch-слов (выделенных интонацией или цифрами).
-4. Найди монотонные зоны ("boredom_zones") длительностью > 3 секунд, требующие изменения крупности камеры или B-Roll.
-
-Формат вывода STRICT JSON:
-{
-  "hook": { "start": 0, "end": 4.5, "punchWords": ["..."] },
-  "beats": [
-    { "start": 0, "end": 5, "phase": "hook", "boredomZone": false, "punchWords": ["..."] }
-  ],
-  "boredomZones": [{ "start": 5.5, "end": 9.0 }]
-}
-  `;
-
-  return await callLlmApi(prompt, apiKey);
-}
-
-/**
- * PASS 2: Art Director Agent (with Dynamic Medium Rotation)
- */
-async function runArtDirectorAgent(directorOutput: any, style: any, userDna: any, apiKey: string): Promise<any> {
   const rotatedMedium = getRotatedArtMedium(Date.now());
+  const remotionContext = getRemotionPromptLibraryContext();
 
   const prompt = `
-Ты — Агент Арт-Директор (Art Director Agent) сервиса Virali AI.
-На основе Драматургической Карты подбери идеальные графические элементы под бренд-бук пользователя.
-
-### СТИЛЬ И ДНК БРЕНДА
-- Название пресета: ${style.name} (${style.key})
-- Акцентный цвет: ${style.colors.accent}
-- Вторичный цвет: ${style.colors.secondary}
-- Динамический 3D-медиум: ${rotatedMedium.details.name} (${rotatedMedium.details.promptSuffix})
-- Режиссерская карта: ${JSON.stringify(directorOutput)}
-
-### ТВОИ ЗАДАЧИ
-1. Назначь визуальные метафоры:
-   - Цифры/рост -> type: "chart" (с полем values: [40, 65, 85, 98], title)
-   - Главная мысль/вывод -> type: "kinetic_quote" или "tweet_card"
-   - Перечисление факторов -> type: "list" (title, items)
-   - Важная метрика -> type: "stat_callout" (statValue: "+350%", statLabel: "Рост продаж")
-   - Иконка понятий -> type: "3d_icon" (iconName)
-2. Установи правила расположения элементов на экране (Safe Zones: y > 0.65 для нижних плашек, y < 0.15 для верхних).
-
-Формат вывода STRICT JSON:
-{
-  "elements": [
-    {
-      "type": "chart",
-      "startTime": 2.5,
-      "endTime": 7.0,
-      "props": { "title": "Рост вовлеченности", "values": [35, 60, 85, 98] }
-    }
-  ]
-}
-  `;
-
-  return await callLlmApi(prompt, apiKey);
-}
-
-/**
- * PASS 3: Remotion Animator Agent
- */
-async function runAnimatorAgent(directorOutput: any, artOutput: any, style: any, fps: number, apiKey: string): Promise<any> {
-  const prompt = `
-Ты — Senior Motion Engineer в Remotion.
-Переведи выводы Режиссера и Арт-Директора в финальную схему монтажа с кадром упреждения.
-
-${getRemotionPromptLibraryContext()}
+Ты — Master Cinematic Director сервиса Virali AI. Твоя задача — провести полный монтаж (режиссура, арт-дирекшн, анимация) за ОДИН шаг.
 
 ### ВХОДНЫЕ ДАННЫЕ
-- Режиссер: ${JSON.stringify(directorOutput)}
-- Арт-Директор: ${JSON.stringify(artOutput)}
+- Цель: ${intent}
 - FPS: ${fps}
-- Время упреждения (anticipation): -150ms (-4 кадра)
+- Стиль: ${style.name} (Акцент: ${style.colors.accent})
+- 3D-Медиум: ${rotatedMedium.details.name}
+- Транскрипт (макс 250 симв): ${JSON.stringify(transcript.slice(0, 200))}
+${ragContext}
+${remotionContext}
 
 ### ТВОИ ЗАДАЧИ
-1. Рассчитай точные frame-номера с упреждением (startFrame = Math.max(0, startSec * fps - 4)).
-2. Сформируй список cameraCuts:
-   - "micro_zoom" (targetScale: 1.03) во время спокойной речи.
-   - "punch_zoom" (targetScale: 1.12) на хуках и ключевых Punch-словах.
-   - "scale_to_circle" или "move_left" при показах графиков.
-3. Назначь каждому bRollElement случайный visualSeed (от 1 до 99) для джиттера.
-4. Расставь soundCues ("whoosh", "pop", "click") на влетах карточек.
+1. Выдели ХУК (первые секунды) и ключевые смысловые зоны (Punch words, списки, графики).
+2. Расставь камеру (cameraCuts): "micro_zoom", "punch_zoom", "scale_to_circle". Используй время упреждения -150ms.
+3. Создай графику (bRollElements): "chart", "kinetic_quote", "list", "stat_callout". Назначай визуальные метафоры на скучные зоны.
+4. Добавь звуки (soundCues): "whoosh", "pop", "click" на появления.
 
 Формат вывода STRICT JSON:
 {
   "cameraCuts": [
-    { "startTime": "00:00.00", "duration": 3.0, "action": "punch_zoom", "targetScale": 1.12 },
-    { "startTime": "00:03.00", "duration": 4.5, "action": "scale_to_circle" }
+    { "startTime": "00:00.00", "duration": 3.0, "action": "punch_zoom", "targetScale": 1.12 }
   ],
   "bRollElements": [
-    {
-      "id": "elem_1",
-      "type": "chart",
-      "startTime": "00:02.80",
-      "endTime": "00:07.50",
-      "visualSeed": 42,
-      "props": { "title": "Рост просмотров", "values": [40, 65, 85, 98] }
-    }
+    { "id": "elem_1", "type": "chart", "startTime": "00:02.80", "endTime": "00:07.50", "props": { "title": "График", "values": [40, 98] } }
   ],
   "soundCues": [
     { "timeSec": 2.8, "type": "whoosh" }
