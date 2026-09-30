@@ -120,7 +120,7 @@ export async function POST(req: NextRequest) {
       client: GoogleGenAI,
       parts: any[]
     ) => {
-      const models = ['gemini-3.6-flash', 'gemini-3.1-flash', 'gemini-2.5-flash'];
+      const models = ['gemini-3.8-flash', 'gemini-3.8-flash-lite'];
       let lastError: any = null;
       for (const rawModel of models) {
         const modelName = normalizeModelName(rawModel);
