@@ -36,7 +36,7 @@ export async function POST(req: Request) {
     }
 
     // 1. Check user balance
-    const balance = await checkBalance(authorizedSupabase, userId);
+    const balance = await checkBalance(authorizedSupabase as any, userId);
     if (balance < 2) {
       return NextResponse.json({ error: 'INSUFFICIENT_FUNDS' }, { status: 402 });
     }
@@ -151,7 +151,7 @@ export async function POST(req: Request) {
       }
 
       // Deduct 2 tokens
-      await deductCredits(authorizedSupabase, userId, 2, 'distribution_assets', projectId);
+      await deductCredits(authorizedSupabase as any, userId, 2, 'distribution_assets', projectId);
 
       return NextResponse.json(assets);
     } catch (parseErr: any) {
