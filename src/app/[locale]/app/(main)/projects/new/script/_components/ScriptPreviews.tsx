@@ -126,7 +126,7 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
                     <span className="text-[8px] font-black text-purple-400/50 uppercase tracking-widest block">
                       {locale === 'ru' ? 'ХУК' : 'HOOK'}
                     </span>
-                    <p className="text-white/70 font-medium leading-relaxed italic line-clamp-2">
+                    <p className="text-white/80 font-medium leading-relaxed italic text-[11px]">
                       "{preview.hook}"
                     </p>
                   </div>
@@ -135,7 +135,7 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
                     <span className="text-[8px] font-black text-purple-400/50 uppercase tracking-widest block">
                       {locale === 'ru' ? 'РАСКРЫТИЕ' : 'REVEAL'}
                     </span>
-                    <p className="text-white/70 font-medium leading-relaxed italic line-clamp-2">
+                    <p className="text-white/80 font-medium leading-relaxed italic text-[11px]">
                       {preview.reveal}
                     </p>
                   </div>
@@ -144,7 +144,7 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
                     <span className="text-[8px] font-black text-purple-400/50 uppercase tracking-widest block">
                       {locale === 'ru' ? 'МЯСО' : 'MEAT'}
                     </span>
-                    <p className="text-white/70 font-medium leading-relaxed italic line-clamp-2">
+                    <p className="text-white/80 font-medium leading-relaxed italic text-[11px]">
                       {preview.meat}
                     </p>
                   </div>
@@ -153,7 +153,7 @@ export function ScriptPreviews({ previews, locale, onSelect, isLoading }: Script
                     <span className="text-[8px] font-black text-purple-400/50 uppercase tracking-widest block">
                       {locale === 'ru' ? 'CTA' : 'CTA'}
                     </span>
-                    <p className="text-white/70 font-medium leading-relaxed italic line-clamp-2">
+                    <p className="text-white/80 font-medium leading-relaxed italic text-[11px]">
                       {preview.cta}
                     </p>
                   </div>

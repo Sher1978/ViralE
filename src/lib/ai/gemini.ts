@@ -914,10 +914,10 @@ export async function generatePreviews(
     
     Structure for EACH preview style:
     - title: Clear title in ${languageName.toUpperCase()} describing this specific angle (e.g. "Ложь о продуктивности / Productivity Lies")
-    - hook: What attention-grabbing hook statement/angle will be used.
-    - reveal: How the problem is unpacked/revealed.
-    - meat: The core value/solution (meat/TRIZ inversion).
-    - cta: Call to action focus.
+    - hook: A detailed, expanded explanation of the attention-grabbing hook statement/angle (at least 2-3 full sentences), explaining exactly what the viewer will hear and feel.
+    - reveal: A detailed explanation of how the problem is unpacked/revealed, describing the emotional shift or the specific context provided to the viewer (at least 2-3 full sentences).
+    - meat: A rich, expanded description of the core value/solution (meat/TRIZ inversion) that will be presented (at least 2-3 full sentences).
+    - cta: A specific, meaningful Call To Action that tells the user exactly what to do and what value they get for doing it (at least 2-3 full sentences).
     
     Output ONLY valid JSON in format: 
     {
@@ -1039,6 +1039,9 @@ export async function generateFullScript(
     CRITICAL LANGUAGE RULES:
     1. Respond EXCLUSIVELY in the active language: ${languageName.toUpperCase()}.
     2. All generated content, hooks, body, triz_inversion, cta, broll descriptions, and social posts MUST be strictly in ${languageName.toUpperCase()}!
+    
+    CRITICAL CONVERSION RULE: 
+    Do NOT just copy the text from the preview. You must expand the preview concept into natural, high-density, rich spoken dictation text for the final video.
     
     CRITICAL STRUCTURE RULES (4-5 BLOCKS):
     0. matrix_pair: Explicitly name the pair used from Hook & Payoff Matrix (e.g. "Архетип Хука 1 (Разрушение мифа) + Payoff A (Аха-момент)").
