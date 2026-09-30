@@ -281,6 +281,9 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   const [isRegeneratingAll, setIsRegeneratingAll] = useState<boolean>(false);
   const [lightboxIndex, setLightboxIndex] = useState<number | null>(null);
   const [lightboxType, setLightboxType] = useState<'carousel' | 'banner' | null>(null);
+  
+  const [customBannerText, setCustomBannerText] = useState<string>('');
+  const [customBannerPrompt, setCustomBannerPrompt] = useState<string>('');
 
   const isAnyImageGenerating = Object.values(isGeneratingImages).some(Boolean);
   const isAnyGenerationActive = isGenerating || isRegeneratingAll || isAnyImageGenerating;
@@ -980,7 +983,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
   };
 
   const generateCoverImage = async () => {
-    let currentBannerPrompt = assets?.video_banner?.image_prompt;
+    let currentBannerPrompt = customBannerPrompt || assets?.video_banner?.image_prompt;
     
     // If video_banner prompt is not generated yet, generate concept on-the-fly using the transcript text!
     if (!currentBannerPrompt) {
@@ -1011,7 +1014,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
             distributionAssets: updatedAssets
           });
         }
-        currentBannerPrompt = data?.video_banner?.image_prompt;
+        currentBannerPrompt = customBannerPrompt || data?.video_banner?.image_prompt;
       } catch (err: any) {
         console.error('[Generate Cover Asset Error]:', err);
         safeAlert(locale === 'ru' 
@@ -2459,16 +2462,24 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                           <div className="space-y-5">
                             <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 space-y-3">
                               <h4 className="text-[9px] font-bold uppercase tracking-widest text-purple-400">{locale === 'ru' ? 'ЗАГОЛОВОК НА ОБЛОЖКЕ' : 'MAIN HEADLINE'}</h4>
-                              <div className="text-xl font-black italic uppercase tracking-tighter text-white leading-tight">
-                                "{assets?.video_banner?.text_on_banner || getCleanTitle(manifest?.ideaTitle, manifest?.projectTitle, projectTitle) || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}"
-                              </div>
+                              <textarea
+                                value={customBannerText || assets?.video_banner?.text_on_banner || getCleanTitle(manifest?.ideaTitle, manifest?.projectTitle, projectTitle) || ''}
+                                onChange={(e) => setCustomBannerText((e.target as any).value)}
+                                rows={2}
+                                className="w-full bg-transparent text-xl font-black italic uppercase tracking-tighter text-white leading-tight focus:outline-none border-b border-transparent focus:border-purple-500/50 resize-none"
+                                placeholder={locale === 'ru' ? 'Хук вашего видео' : 'Your video hook'}
+                              />
                             </div>
 
                             <div className="p-6 rounded-[2rem] bg-white/[0.02] border border-white/5 space-y-3">
                               <h4 className="text-[9px] font-bold uppercase tracking-widest text-blue-400">{locale === 'ru' ? 'ВИЗУАЛЬНЫЙ КОНЦЕПТ' : 'VISUAL CONCEPT'}</h4>
-                              <p className="text-[12px] text-white/50 leading-relaxed italic">
-                                {assets?.video_banner?.image_prompt || (locale === 'ru' ? 'Визуальный концепт обложки будет создан после полной генерации дистрибуции.' : 'Cover visual concept will be created after generating distribution assets.')}
-                              </p>
+                              <textarea
+                                value={customBannerPrompt || assets?.video_banner?.image_prompt || ''}
+                                onChange={(e) => setCustomBannerPrompt((e.target as any).value)}
+                                rows={3}
+                                className="w-full bg-transparent text-[12px] text-white/50 leading-relaxed italic focus:outline-none border-b border-transparent focus:border-blue-500/50 resize-none"
+                                placeholder={locale === 'ru' ? 'Визуальный концепт обложки будет создан после полной генерации дистрибуции.' : 'Cover visual concept will be created after generating distribution assets.'}
+                              />
                             </div>
                           </div>
 
@@ -2525,7 +2536,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                                       className="relative bg-[#FFE600] text-black px-5 py-3.5 font-black italic uppercase tracking-tighter text-xs flex items-center justify-center text-center leading-snug border-2 border-black"
                                       style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 8px), calc(100% - 8px) 50%, 100% calc(50% + 8px), 100% 100%, 0% 100%, 0% calc(50% + 8px), 8px 50%, 0% calc(50% - 8px))' }}
                                     >
-                                      {assets?.video_banner?.text_on_banner || getCleanTitle(manifest?.ideaTitle, manifest?.projectTitle, projectTitle) || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
+                                      {customBannerText || assets?.video_banner?.text_on_banner || getCleanTitle(manifest?.ideaTitle, manifest?.projectTitle, projectTitle) || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
                                     </div>
                                   </div>
                                 </div>
@@ -2730,7 +2741,7 @@ export default function DistributionFactory({ manifest, scriptText, projectId, l
                       className="relative bg-[#FFE600] text-black px-7 py-4.5 font-black italic uppercase tracking-tighter text-md flex items-center justify-center text-center leading-snug border-[3px] border-black"
                       style={{ clipPath: 'polygon(0% 0%, 100% 0%, 100% calc(50% - 10px), calc(100% - 10px) 50%, 100% calc(50% + 10px), 100% 100%, 0% 100%, 0% calc(50% + 10px), 10px 50%, 0% calc(50% - 10px))' }}
                     >
-                      {assets?.video_banner?.text_on_banner || getCleanTitle(manifest?.ideaTitle, manifest?.projectTitle, projectTitle) || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
+                      {customBannerText || assets?.video_banner?.text_on_banner || getCleanTitle(manifest?.ideaTitle, manifest?.projectTitle, projectTitle) || (locale === 'ru' ? 'Хук вашего видео' : 'Your video hook')}
                     </div>
                   </div>
                 </div>
