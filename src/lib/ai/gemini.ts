@@ -259,11 +259,13 @@ export function getModel(
   const rawCandidates = tier === 'pro' ? [
     baseModelName,
     "gemini-3.8-pro",
-    "gemini-3.8-flash"
+    "gemini-3.8-flash",
+    "gemini-3.7-flash"
   ] : [
     baseModelName,
     "gemini-3.8-flash",
-    "gemini-3.8-flash-lite"
+    "gemini-3.7-flash",
+    "gemini-3.5-flash"
   ];
   const fallbackModels = Array.from(new Set(rawCandidates.map(normalizeModelName)));
 

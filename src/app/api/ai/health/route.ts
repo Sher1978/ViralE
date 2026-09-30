@@ -27,7 +27,7 @@ export async function GET(req: Request) {
     }, { status: 500 });
   }
 
-  const candidateModels = ['gemini-3.8-flash', 'gemini-3.8-flash-lite'];
+  const candidateModels = ['gemini-3.8-flash', 'gemini-3.8-flash'];
   let lastError: any = null;
 
   for (const modelCandidate of candidateModels) {
