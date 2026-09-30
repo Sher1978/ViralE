@@ -206,7 +206,7 @@ export default function ByokSettingsPage() {
               value={form.latedevKey}
               onChange={(val: string) => setForm({ ...form, latedevKey: val })}
               accent="#A855F7"
-              link="https://late.dev"
+              link="https://zernio.com/dashboard/api-keys"
               delay={0.6}
             />
 

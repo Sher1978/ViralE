@@ -102,14 +102,14 @@ export const LateDevInstructionModal: React.FC<LateDevInstructionModalProps> = (
               </div>
               <div className="text-xs space-y-0.5">
                 <p className="font-bold text-white flex items-center gap-1.5">
-                  Зарегистрируйтесь на Late.dev
+                  Зарегистрируйтесь на Zernio (Late.dev)
                   <a
-                    href="https://late.dev"
+                    href="https://zernio.com/dashboard/api-keys"
                     target="_blank"
                     rel="noopener noreferrer"
                     className="text-purple-400 hover:underline flex items-center gap-1 text-[10px]"
                   >
-                    <span>late.dev</span>
+                    <span>zernio.com</span>
                     <ExternalLink size={10} />
                   </a>
                 </p>
@@ -138,7 +138,7 @@ export const LateDevInstructionModal: React.FC<LateDevInstructionModalProps> = (
               <div className="text-xs space-y-0.5">
                 <p className="font-bold text-white">Скопируйте ваш API Key</p>
                 <p className="text-white/40 text-[10px]">
-                  Перейдите в <b>Settings → API Keys</b> и нажмите <i>«Create API Key»</i>. Скопируйте ключ формата <code className="text-purple-300 font-mono">sk_...</code>.
+                  Перейдите в раздел <a href="https://zernio.com/dashboard/api-keys" target="_blank" rel="noopener noreferrer" className="text-purple-300 underline font-semibold">API Keys</a> на Zernio и нажмите <i>«Create API Key»</i>. Скопируйте ключ формата <code className="text-purple-300 font-mono">sk_...</code>.
                 </p>
               </div>
             </div>
