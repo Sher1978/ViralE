@@ -183,7 +183,7 @@ export default function HeyGenAvatarFlow({
           }
         }
         setAvatars(uniqueAvatars);
-        idb.put('heygen_avatars_cache', uniqueAvatars, 'AppCache');
+        idb.set('heygen_avatars_cache', uniqueAvatars, 'AppCache');
       }
     } catch (e) {
       console.error('[HeyGenFlow] Failed to load avatars:', e);
@@ -293,7 +293,7 @@ export default function HeyGenAvatarFlow({
         setSelectedVoice((prev) => (data.voices.length > 0 && !prev ? data.voices[0].id : prev));
         if (data.languages) setLanguages(data.languages);
         
-        idb.put(cacheKey, { voices: data.voices, languages: data.languages || cached?.languages || [] }, 'AppCache');
+        idb.set(cacheKey, { voices: data.voices, languages: data.languages || cached?.languages || [] }, 'AppCache');
       }
     } catch (e) {
       console.error('[HeyGenFlow] Failed to load voices:', e);
