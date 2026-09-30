@@ -868,7 +868,7 @@ function DeliveryPageContent() {
         setRenderProgress((prev: number) => Math.max(prev, p));
       });
 
-      const execWithTimeout = async (args: string[], timeoutMs = 180000): Promise<number> => {
+      const execWithTimeout = async (args: string[], timeoutMs = 600000): Promise<number> => {
         return Promise.race([
           ffmpeg.exec(args),
           new Promise<number>((_, reject) =>
