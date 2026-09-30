@@ -11,6 +11,7 @@ interface PostRecordBranchProps {
   onSelect: (type: 'pure' | 'animate') => void;
   onRetake?: () => void;
   onDownload?: () => void;
+  onSaveToLibrary?: () => void;
   onDownloadMp4?: () => void;
   isMp4Converting?: boolean;
   mp4Url?: string | null;
@@ -25,6 +26,7 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
   onSelect,
   onRetake,
   onDownload,
+  onSaveToLibrary,
   onDownloadMp4,
   isMp4Converting = false,
   mp4Url = null,
@@ -133,15 +135,13 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               <motion.button
                 whileHover={{ scale: 1.02 }}
                 whileTap={{ scale: 0.98 }}
-                onClick={onDownload}
-                className="py-3 rounded-[2rem] bg-blue-600/10 border border-blue-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex flex-col items-center justify-center gap-1 shadow-lg min-h-[52px]"
+                onClick={onSaveToLibrary}
+                className="py-3 rounded-[2rem] bg-purple-600/10 border border-purple-500/20 text-white font-black uppercase tracking-[0.2em] text-[9px] flex flex-col items-center justify-center gap-1 shadow-lg min-h-[52px]"
               >
-                <span className="flex items-center gap-1">СКАЧАТЬ <Download size={12} className="text-blue-400" /></span>
-                {recordedSize && (
-                  <span className="text-[7px] text-white/40 lowercase tracking-normal">
-                    ({(recordedSize / (1024 * 1024)).toFixed(1)} MB)
-                  </span>
-                )}
+                <span className="flex items-center gap-1 text-purple-300">БИБЛИОТЕКА <Download size={12} className="text-purple-400" /></span>
+                <span className="text-[7px] text-purple-400/60 lowercase tracking-normal">
+                  Локально
+                </span>
               </motion.button>
 
               <motion.button

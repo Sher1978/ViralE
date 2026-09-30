@@ -19,11 +19,18 @@ export async function POST(req: NextRequest) {
 
   try {
     const body = await req.json();
-    const { avatarId, avatarType, scriptText, voiceId, language, projectId } = body;
+    const { avatarId, avatarType, scriptText, voiceId, sourceVideoUrl, language, projectId } = body;
 
-    if (!avatarId || !scriptText || !voiceId) {
+    if (!avatarId) {
       return NextResponse.json(
-        { error: 'Missing required fields: avatarId, scriptText, voiceId' },
+        { error: 'Missing required field: avatarId' },
+        { status: 400 }
+      );
+    }
+    
+    if (!sourceVideoUrl && (!scriptText || !voiceId)) {
+      return NextResponse.json(
+        { error: 'Either sourceVideoUrl or (scriptText and voiceId) must be provided' },
         { status: 400 }
       );
     }
@@ -47,8 +54,14 @@ export async function POST(req: NextRequest) {
 
         // Calculate and pre-deduct credits if using system key
         if (!isByok) {
-          const wordCount = scriptText.trim().split(/\s+/).filter(Boolean).length;
-          estDuration = Math.max(5, Math.ceil(wordCount / 2.3)); // Estimate duration: ~138 WPM
+          // If we have text, we estimate duration by word count. If we have video, we estimate safely (e.g. 60s) or assume 1 min.
+          let wordCount = 0;
+          if (scriptText) {
+             wordCount = scriptText.trim().split(/\s+/).filter(Boolean).length;
+             estDuration = Math.max(5, Math.ceil(wordCount / 2.3)); // Estimate duration: ~138 WPM
+          } else {
+             estDuration = 30; // fallback estimate for audio upload, real cost will be reconciled later if possible
+          }
           const costRate = avatarType === 'avatar' ? (20 / 60) : (50 / 60); // 20 cred/min or 50 cred/min
           estCost = Math.round(estDuration * costRate);
 
@@ -95,13 +108,21 @@ export async function POST(req: NextRequest) {
       : { type: 'talking_photo', talking_photo_id: avatarId };
 
     // Build voice object
-    const voice = {
-      type: 'text',
-      input_text: scriptText.trim(),
-      voice_id: voiceId,
-      speed: 1.0,
-      ...(language && language !== 'en' ? { language } : {}),
-    };
+    let voice;
+    if (sourceVideoUrl) {
+      voice = {
+        type: 'audio',
+        audio_url: sourceVideoUrl
+      };
+    } else {
+      voice = {
+        type: 'text',
+        input_text: scriptText.trim(),
+        voice_id: voiceId,
+        speed: 1.0,
+        ...(language && language !== 'en' ? { language } : {}),
+      };
+    }
 
     const payload = {
       video_inputs: [

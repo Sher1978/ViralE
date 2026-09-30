@@ -84,6 +84,11 @@ export default function HeyGenAvatarFlow({
     return segs.map((s: any) => s.scriptText || s.text || '').filter(Boolean).join('\n\n');
   })();
   const [editedScript, setEditedScript] = useState(scriptText);
+  const [audioMode, setAudioMode] = useState<'text' | 'video'>('text');
+  const [selectedLibraryVideo, setSelectedLibraryVideo] = useState<{ url: string, blob?: Blob, label: string } | null>(null);
+  const [teleprompterVideos, setTeleprompterVideos] = useState<any[]>([]);
+  const [isLoadingLibrary, setIsLoadingLibrary] = useState(false);
+  const videoInputRef = useRef<HTMLInputElement>(null);
   const [voices, setVoices] = useState<HeyGenVoice[]>([]);
   const [languages, setLanguages] = useState<Language[]>([]);
   const [selectedVoice, setSelectedVoice] = useState<string | null>(null);
@@ -179,6 +184,26 @@ export default function HeyGenAvatarFlow({
 
   useEffect(() => {
     if (step === 2) loadAvatars();
+    if (step === 3) {
+      // Preload teleprompter library
+      const loadLibrary = async () => {
+        setIsLoadingLibrary(true);
+        try {
+          const { idb } = await import('@/lib/idb');
+          const results = await idb.getAllByPrefix('teleprompter_lib_', 'MediaBuffer');
+          setTeleprompterVideos(results.map(r => ({
+            key: r.key,
+            blob: r.value,
+            date: new Date(parseInt(r.key.split('_')[2])).toLocaleString()
+          })));
+        } catch(e) {
+          console.warn('[HeyGenFlow] Failed to load library', e);
+        } finally {
+          setIsLoadingLibrary(false);
+        }
+      };
+      loadLibrary();
+    }
   }, [step, loadAvatars]);
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -273,12 +298,28 @@ export default function HeyGenAvatarFlow({
   // ─── Step 4: Generate ───────────────────────────────────────────────────────
 
   const handleGenerate = async () => {
-    if (!selectedAvatar || !selectedVoice || !editedScript.trim()) return;
+    if (!selectedAvatar) return;
+    if (audioMode === 'text' && (!selectedVoice || !editedScript.trim())) return;
+    if (audioMode === 'video' && !selectedLibraryVideo) return;
+
     setIsGenerating(true);
     setGenError(null);
     setStep(4);
 
     try {
+      let finalSourceVideoUrl = audioMode === 'video' && selectedLibraryVideo ? selectedLibraryVideo.url : undefined;
+
+      if (audioMode === 'video' && selectedLibraryVideo?.blob) {
+        const { supabase } = await import('@/lib/supabase');
+        const { data: { user } } = await supabase.auth.getUser();
+        const ext = 'webm';
+        const path = `teleprompter-library/${user?.id || 'anon'}/temp_${Date.now()}.${ext}`;
+        const { error: upErr } = await supabase.storage.from('media').upload(path, selectedLibraryVideo.blob);
+        if (upErr) throw upErr;
+        const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path);
+        finalSourceVideoUrl = publicUrl;
+      }
+
       const res = await fetch('/api/ai/heygen/video-generate', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
@@ -287,8 +328,9 @@ export default function HeyGenAvatarFlow({
             ? undefined // will upload via photoUrl in server
             : selectedAvatar.id,
           avatarType: selectedAvatar.type,
-          scriptText: editedScript.trim(),
-          voiceId: selectedVoice,
+          scriptText: audioMode === 'text' ? editedScript.trim() : undefined,
+          voiceId: audioMode === 'text' ? selectedVoice : undefined,
+          sourceVideoUrl: finalSourceVideoUrl,
           language: selectedLang,
           projectId,
           photoUrl: selectedAvatar.id.startsWith('local_') ? selectedAvatar.url : undefined,
@@ -383,7 +425,9 @@ export default function HeyGenAvatarFlow({
 
   const canProceedStep1 = hasKey;
   const canProceedStep2 = !!selectedAvatar;
-  const canProceedStep3 = !!selectedVoice && editedScript.trim().length > 5 && !hasInsufficientBalance;
+  const canProceedStep3 = audioMode === 'text' 
+    ? (!!selectedVoice && editedScript.trim().length > 5 && !hasInsufficientBalance)
+    : (!!selectedLibraryVideo && !hasInsufficientBalance);
 
   return (
     <div className="h-full w-full flex flex-col bg-[#020205] text-white overflow-hidden relative">
@@ -678,10 +722,27 @@ export default function HeyGenAvatarFlow({
               className="p-6 space-y-6"
             >
               <h3 className="text-2xl font-black italic uppercase tracking-tighter text-white">
-                Голос & <span className="text-purple-400">Текст</span>
+                Источник <span className="text-purple-400">Звука</span>
               </h3>
 
-              {/* Language selector */}
+              <div className="flex bg-white/5 p-1 rounded-2xl">
+                <button 
+                  onClick={() => setAudioMode('text')}
+                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${audioMode === 'text' ? 'bg-purple-600 text-white shadow-lg' : 'text-white/40 hover:text-white/80'}`}
+                >
+                  Сценарий (AI Голос)
+                </button>
+                <button 
+                  onClick={() => setAudioMode('video')}
+                  className={`flex-1 py-2 text-[10px] font-black uppercase tracking-widest rounded-xl transition-all ${audioMode === 'video' ? 'bg-purple-600 text-white shadow-lg' : 'text-white/40 hover:text-white/80'}`}
+                >
+                  Записанное Видео (Аудио)
+                </button>
+              </div>
+
+              {audioMode === 'text' ? (
+                <>
+                  {/* Language selector */}
               <div className="space-y-2">
                 <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em] flex items-center gap-1.5">
                   <Globe2 size={12} /> Язык генерации
@@ -785,6 +846,94 @@ export default function HeyGenAvatarFlow({
                   {editedScript.length} символов
                 </p>
               </div>
+              </>
+              ) : (
+                <div className="space-y-4">
+                  <div className="flex flex-col sm:flex-row items-center gap-3">
+                    <button 
+                      onClick={() => (videoInputRef.current as any)?.click()}
+                      className="w-full sm:flex-1 py-4 rounded-2xl bg-white/5 border border-white/10 text-white font-black uppercase tracking-widest text-[10px] flex items-center justify-center gap-2 hover:bg-white/10 transition-all"
+                    >
+                      <Upload size={14} className="text-purple-400" />
+                      Загрузить с устройства
+                    </button>
+                    <input 
+                      ref={videoInputRef}
+                      type="file" 
+                      accept="video/*,audio/*" 
+                      className="hidden" 
+                      onChange={async (e) => {
+                        const file = (e.target as any).files?.[0];
+                        if (!file) return;
+                        try {
+                          const { supabase } = await import('@/lib/supabase');
+                          const { data: { user } } = await supabase.auth.getUser();
+                          const path = `teleprompter-library/${user?.id || 'anon'}/${Date.now()}_${file.name}`;
+                          const { error: upErr } = await supabase.storage.from('media').upload(path, file);
+                          if (upErr) throw upErr;
+                          const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path);
+                          setSelectedLibraryVideo({ url: publicUrl, label: file.name });
+                        } catch (err) {
+                          alert('Ошибка загрузки файла');
+                        }
+                      }}
+                    />
+                  </div>
+
+                  <div className="space-y-2">
+                    <label className="text-[10px] font-black text-white/40 uppercase tracking-[0.2em]">
+                      Библиотека Телесуфлера (Локально)
+                    </label>
+                    {isLoadingLibrary ? (
+                       <div className="p-4 text-center text-[10px] text-white/30 font-bold uppercase"><Loader2 size={14} className="animate-spin inline-block mr-2" /> Загрузка...</div>
+                    ) : teleprompterVideos.length === 0 ? (
+                       <div className="p-6 text-center bg-white/[0.02] rounded-2xl border border-white/5">
+                         <span className="text-[10px] text-white/40 uppercase tracking-widest font-black">Нет локальных записей</span>
+                       </div>
+                    ) : (
+                      <div className="space-y-2 max-h-[300px] overflow-y-auto pr-2">
+                        {teleprompterVideos.map((vid) => (
+                          <div 
+                            key={vid.key}
+                            onClick={async () => {
+                              // We need a URL. Let's create an object URL for preview, and when user clicks Generate, we might upload it.
+                              // Actually, if we just set it as a blob, we can upload it before generation, OR we can upload it right now to get a public URL for HeyGen.
+                              const url = URL.createObjectURL(vid.blob);
+                              setSelectedLibraryVideo({ url: url, blob: vid.blob, label: `Запись от ${vid.date}` });
+                            }}
+                            className={`p-3 rounded-2xl border cursor-pointer transition-all flex items-center justify-between ${
+                              selectedLibraryVideo?.label === `Запись от ${vid.date}` 
+                                ? 'bg-purple-600/20 border-purple-500/50' 
+                                : 'bg-white/5 border-white/10 hover:border-white/20'
+                            }`}
+                          >
+                            <div className="flex items-center gap-3">
+                              <div className="w-8 h-8 rounded-xl bg-purple-500/20 flex items-center justify-center">
+                                <Video size={14} className="text-purple-400" />
+                              </div>
+                              <div className="flex flex-col">
+                                <span className="text-[10px] font-black text-white">Запись Телесуфлера</span>
+                                <span className="text-[8px] font-bold text-white/40 uppercase tracking-widest">{vid.date}</span>
+                              </div>
+                            </div>
+                            {selectedLibraryVideo?.label === `Запись от ${vid.date}` && (
+                              <Check size={14} className="text-purple-400" />
+                            )}
+                          </div>
+                        ))}
+                      </div>
+                    )}
+                  </div>
+
+                  {selectedLibraryVideo && (
+                    <div className="p-4 rounded-2xl bg-green-500/10 border border-green-500/20">
+                      <p className="text-[10px] font-black uppercase text-green-400 tracking-widest flex items-center gap-2">
+                        <Check size={14} /> Выбрано: {selectedLibraryVideo.label}
+                      </p>
+                    </div>
+                  )}
+                </div>
+              )}
 
               {/* Cost display */}
               <div className="p-5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">

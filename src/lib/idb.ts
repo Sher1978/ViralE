@@ -107,6 +107,33 @@ export const idb = {
     });
   },
 
+  async getAllByPrefix(prefix: string, storeName: string = 'ProjectDrafts') {
+    const db = await this.getDB();
+    return new Promise<{key: string, value: any}[]>((resolve, reject) => {
+      const transaction = db.transaction(storeName, 'readonly');
+      const store = transaction.objectStore(storeName);
+      const request = store.openCursor();
+      const results: {key: string, value: any}[] = [];
+
+      request.onsuccess = (event: any) => {
+        const cursor = event.target.result;
+        if (cursor) {
+          if (typeof cursor.key === 'string' && cursor.key.startsWith(prefix)) {
+            let value = cursor.value;
+            if (value && typeof value === 'object' && value._isBlobWrapper) {
+              value = value.data;
+            }
+            results.push({ key: cursor.key, value });
+          }
+          cursor.continue();
+        } else {
+          resolve(results);
+        }
+      };
+      request.onerror = () => reject(request.error);
+    });
+  },
+
   async cleanExpired(maxAgeMs: number = 48 * 60 * 60 * 1000): Promise<number> {
     let purgedCount = 0;
     try {

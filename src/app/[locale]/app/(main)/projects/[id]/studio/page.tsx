@@ -1035,6 +1035,19 @@ export default function StudioPage() {
                      setTimeout(initCamera, 100);
                   }}
                   onDownload={downloadRawVideo}
+                  onSaveToLibrary={async () => {
+                    if (recordedBlobRef.current) {
+                      const ts = Date.now();
+                      const key = `teleprompter_lib_${ts}`;
+                      try {
+                        const { idb } = await import('@/lib/idb');
+                        await idb.set(key, recordedBlobRef.current, 'MediaBuffer');
+                        (globalThis as any).alert?.('Успешно сохранено в Библиотеку Телесуфлера!\n\nВидео доступно локально для использования в Аватар Студии.');
+                      } catch (e) {
+                        (globalThis as any).alert?.('Ошибка при сохранении видео в библиотеку.');
+                      }
+                    }
+                  }}
                   onDownloadMp4={downloadBackgroundMp4}
                   isMp4Converting={isBackgroundConverting}
                   mp4Url={backgroundMp4Url}
