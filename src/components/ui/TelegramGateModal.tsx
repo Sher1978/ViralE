@@ -101,12 +101,12 @@ export function TelegramGateModal() {
           </div>
           <div>
             <div className="text-xs font-bold text-cyan-200">
-              {locale === 'ru' ? '🎁 Бонус за подключение: +50 CR' : '🎁 Linking Bonus: +50 CR'}
+              {locale === 'ru' ? '🎁 Бонус за подключение: +10 CR' : '🎁 Linking Bonus: +10 CR'}
             </div>
             <div className="text-[11px] text-cyan-300/70 font-medium">
               {locale === 'ru' 
-                ? 'Вам зачислится +50 кредитов для создания вашего первого вирусного Reels!' 
-                : '+50 credits will be added to create your first viral Reels video!'}
+                ? 'Вам зачислится +10 кредитов для создания вашего первого вирусного Reels!' 
+                : '+10 credits will be added to create your first viral Reels video!'}
             </div>
           </div>
         </div>

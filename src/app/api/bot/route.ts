@@ -663,14 +663,14 @@ export async function POST(req: NextRequest) {
           let bonusText = '';
           const locale = user.language_code === 'ru' ? 'ru' : 'en';
           if (!alreadyRewarded) {
-            await addCredits(supabaseAdmin, targetUserId, 50, 'telegram_connect_bonus');
+            await addCredits(supabaseAdmin, targetUserId, 10, 'telegram_connect_bonus');
             bonusText = locale === 'ru' 
-              ? `\n\n🎁 *Вам зачислено +50 CR бонуса!* Наслаждайтесь созданием вирального контента.`
-              : `\n\n🎁 *+50 CR Bonus credited to your account!* Enjoy creating viral content.`;
+              ? `\n\n🎁 *Вам зачислено +10 CR бонуса!* Наслаждайтесь созданием вирального контента.`
+              : `\n\n🎁 *+10 CR Bonus credited to your account!* Enjoy creating viral content.`;
           } else {
             bonusText = locale === 'ru'
-              ? `\n\nℹ️ *Ваш аккаунт уже был подключен ранее (бонус +50 CR начисляется единоразово).*`
-              : `\n\nℹ️ *Your account was previously linked (the +50 CR bonus is granted once).*`;
+              ? `\n\nℹ️ *Ваш аккаунт уже был подключен ранее (бонус +10 CR начисляется единоразово).*`
+              : `\n\nℹ️ *Your account was previously linked (the +10 CR bonus is granted once).*`;
           }
 
 
