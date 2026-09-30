@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { getAuthenticatedUser } from '@/lib/auth';
+import { getAuthContext } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
 const HEYGEN_API_URL = 'https://api.heygen.com';
@@ -27,9 +27,9 @@ export async function GET(req: NextRequest) {
     let apiKey = process.env.HEYGEN_API_KEY;
 
     try {
-      const user = await getAuthenticatedUser();
+      const { user, supabase: authSupabase } = await getAuthContext();
       if (user) {
-        const { data: profile } = await supabase
+        const { data: profile } = await authSupabase
           .from('profiles')
           .select('heygen_api_key')
           .eq('id', user.id)
