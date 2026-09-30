@@ -3,7 +3,8 @@ import { getAuthContext } from '@/lib/auth';
 import { supabaseAdmin } from '@/lib/supabase';
 
 /**
- * Unified API Route for BYOK (HeyGen & Anthropic) management.
+ * Unified API Route for BYOK (HeyGen, Anthropic, Groq, Gemini, ElevenLabs, Late.dev) management.
+ * Stores extra custom keys inside existing JSONB column `synthetic_training_data`.
  */
 
 export async function GET() {
@@ -22,9 +23,8 @@ export async function GET() {
       key ? `${key.substring(0, 4)}...${key.substring(key.length - 4)}` : null;
  
     const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
-    const userApiKeys = profile?.user_api_keys as Record<string, any> || {};
     const geminiKey = syntheticData.gemini_api_key || null;
-    const latedevKey = profile?.latedev_api_key || userApiKeys.latedev || null;
+    const latedevKey = syntheticData.latedev_api_key || profile?.latedev_api_key || null;
  
     return NextResponse.json({ 
       credits_balance: profile?.credits_balance || 0,
@@ -64,7 +64,6 @@ export async function POST(req: Request) {
     const { user, supabase } = await getAuthContext();
     const { heygenKey, anthropicKey, groqKey, geminiKey, elevenlabsKey, latedevKey } = await req.json();
  
-    // Fetch existing synthetic_training_data and user_api_keys first to preserve other properties
     const { data: currentProfile } = await supabase
       .from('profiles')
       .select('*')
@@ -72,7 +71,6 @@ export async function POST(req: Request) {
       .single();
 
     const currentSynthetic = currentProfile?.synthetic_training_data as Record<string, any> || {};
-    const currentApiKeys = currentProfile?.user_api_keys as Record<string, any> || {};
 
     const updates: any = {
       updated_at: new Date().toISOString()
@@ -83,21 +81,23 @@ export async function POST(req: Request) {
     if (groqKey !== undefined) updates.groq_api_key = groqKey;
     if (elevenlabsKey !== undefined) updates.elevenlabs_api_key = elevenlabsKey;
     
+    let syntheticChanged = false;
+
     if (latedevKey !== undefined) {
-      updates.user_api_keys = {
-        ...currentApiKeys,
-        latedev: latedevKey
-      };
+      currentSynthetic.latedev_api_key = latedevKey;
+      syntheticChanged = true;
     }
 
     if (geminiKey !== undefined) {
-      updates.synthetic_training_data = {
-        ...currentSynthetic,
-        gemini_api_key: geminiKey
-      };
+      currentSynthetic.gemini_api_key = geminiKey;
+      syntheticChanged = true;
+    }
+
+    if (syntheticChanged) {
+      updates.synthetic_training_data = currentSynthetic;
     }
  
-    // Use supabaseAdmin to bypass any strict RLS that might be preventing updates to api keys
+    // Use supabaseAdmin to update profile
     const { error, data: updatedRow } = await supabaseAdmin
       .from('profiles')
       .update(updates)
@@ -105,7 +105,7 @@ export async function POST(req: Request) {
       .select();
  
     if (error) throw error;
-    if (!updatedRow || updatedRow.length === 0) throw new Error('Update failed, profile not found or RLS blocked it.');
+    if (!updatedRow || updatedRow.length === 0) throw new Error('Update failed, profile not found.');
  
     return NextResponse.json({ success: true });
   } catch (error: any) {
