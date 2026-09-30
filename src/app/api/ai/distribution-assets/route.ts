@@ -4,6 +4,7 @@ import { getAuthContext } from '@/lib/auth';
 import { safeJsonParse } from '@/lib/utils';
 
 import { profileService } from '@/lib/services/profileService';
+import { checkBalance, deductCredits } from '@/lib/credits';
 
 export const isGenericTitle = (title?: string | null): boolean => {
   if (!title || typeof title !== 'string') return true;
@@ -35,10 +36,11 @@ export async function POST(req: Request) {
     }
 
     // 1. Check user balance
-    const profile = await profileService.getProfile(userId);
-    if (!profile || (profile.credits_balance || 0) < 2) {
+    const balance = await checkBalance(authorizedSupabase, userId);
+    if (balance < 2) {
       return NextResponse.json({ error: 'INSUFFICIENT_FUNDS' }, { status: 402 });
     }
+
 
     let rawProjectTitle = ideaTitle || '';
     if (projectId && !rawProjectTitle) {
@@ -149,7 +151,7 @@ export async function POST(req: Request) {
       }
 
       // Deduct 2 tokens
-      await profileService.updateProfile(userId, { credits_balance: (profile.credits_balance || 0) - 2 });
+      await deductCredits(authorizedSupabase, userId, 2, 'distribution_assets', projectId);
 
       return NextResponse.json(assets);
     } catch (parseErr: any) {
