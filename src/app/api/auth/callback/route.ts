@@ -100,8 +100,10 @@ export async function GET(request: Request) {
           
           if (accessToken) {
             const supabaseUrl = "${supabaseUrl}";
-            const match = supabaseUrl.match(/(?:https?:\\/\\/)?([^.]+)/);
-            const projectRef = match ? match[1] : '';
+            var projectRef = '';
+            try {
+              projectRef = new URL(supabaseUrl).hostname.split('.')[0];
+            } catch (e) {}
             if (projectRef) {
               const cookieName = "sb-" + projectRef + "-auth-token";
               document.cookie = cookieName + "=" + accessToken + "; path=/; max-age=604800; SameSite=Lax; Secure";
