@@ -163,19 +163,21 @@ export default function HeyGenAvatarFlow({
 
   // ─── Step 2: Load Avatars ───────────────────────────────────────────────────
 
-  const loadAvatars = useCallback(async () => {
+  const loadAvatars = useCallback(async (forceRefresh = false) => {
     setIsLoadingAvatars(true);
     try {
       const { idb } = await import('@/lib/idb');
-      const cached = await idb.get('heygen_avatars_cache', 'AppCache');
-      if (cached && cached.length > 0) {
-        setAvatars(cached);
-        setIsLoadingAvatars(false); // Show UI instantly
+      if (!forceRefresh) {
+        const cached = await idb.get('heygen_avatars_cache', 'AppCache');
+        if (cached && Array.isArray(cached) && cached.length > 0) {
+          setAvatars(cached);
+          setIsLoadingAvatars(false);
+        }
       }
 
       const res = await fetch('/api/ai/heygen/avatars', { cache: 'no-store' });
       const data = await res.json();
-      if (data.avatars) {
+      if (data.avatars && Array.isArray(data.avatars) && data.avatars.length > 0) {
         const seenIds = new Set<string>();
         const uniqueAvatars: HeyGenAvatar[] = [];
         for (const a of data.avatars) {
@@ -668,21 +670,31 @@ export default function HeyGenAvatarFlow({
                     Ваши аватары из HeyGen · Фото (Avatar 4) или Видео
                   </p>
                 </div>
-                <button
-                  onClick={() => (photoInputRef.current as any)?.click()}
-                  disabled={isUploadingPhoto}
-                  className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-purple-600/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest hover:bg-purple-600/20 transition-all disabled:opacity-30"
-                >
-                  {isUploadingPhoto ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
-                  Загрузить фото
-                </button>
-                <input
-                  ref={photoInputRef}
-                  type="file"
-                  accept="image/*"
-                  onChange={handlePhotoUpload}
-                  className="hidden"
-                />
+                <div className="flex items-center gap-2">
+                  <button
+                    onClick={() => loadAvatars(true)}
+                    disabled={isLoadingAvatars}
+                    className="flex items-center gap-1.5 px-3 py-2.5 rounded-2xl bg-white/5 border border-white/10 text-white/60 text-[10px] font-black uppercase tracking-widest hover:bg-white/10 transition-all disabled:opacity-30"
+                  >
+                    <RefreshCw size={12} className={isLoadingAvatars ? 'animate-spin' : ''} />
+                    Обновить
+                  </button>
+                  <button
+                    onClick={() => (photoInputRef.current as any)?.click()}
+                    disabled={isUploadingPhoto}
+                    className="flex items-center gap-2 px-4 py-2.5 rounded-2xl bg-purple-600/10 border border-purple-500/20 text-purple-400 text-[10px] font-black uppercase tracking-widest hover:bg-purple-600/20 transition-all disabled:opacity-30"
+                  >
+                    {isUploadingPhoto ? <Loader2 size={14} className="animate-spin" /> : <Upload size={14} />}
+                    Загрузить фото
+                  </button>
+                  <input
+                    ref={photoInputRef}
+                    type="file"
+                    accept="image/*"
+                    onChange={handlePhotoUpload}
+                    className="hidden"
+                  />
+                </div>
               </div>
 
               {uploadError && (
@@ -707,6 +719,13 @@ export default function HeyGenAvatarFlow({
                     <p className="text-sm font-black text-white/30 uppercase tracking-wider">Аватары не найдены</p>
                     <p className="text-[10px] text-white/20 mt-1">Создайте аватар в вашем HeyGen аккаунте или загрузите фото выше</p>
                   </div>
+                  <button
+                    onClick={() => loadAvatars(true)}
+                    className="flex items-center gap-2 px-4 py-2 rounded-xl bg-purple-600/20 border border-purple-500/30 text-purple-300 text-xs font-bold hover:bg-purple-600/30 transition-all mt-2"
+                  >
+                    <RefreshCw size={14} />
+                    Загрузить аватары
+                  </button>
                 </div>
               ) : (
                 <div className="space-y-4">
