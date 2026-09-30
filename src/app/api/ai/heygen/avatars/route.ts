@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getAuthContext } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
@@ -49,8 +50,9 @@ export async function GET(req: NextRequest) {
     if (!res.ok) throw new Error(`HeyGen API Error: ${res.status}`);
 
     const data = await res.json();
-    const allAvatars = data.data?.avatars || [];
-    
+    const avatarsList = data.data?.avatars || [];
+    const talkingPhotosList = data.data?.talking_photos || [];
+    const allAvatars = [...avatarsList, ...talkingPhotosList];
     // Deduplicate by avatar_id and transform to a clean format for the UI
     const seenIds = new Set<string>();
     const avatars: any[] = [];

@@ -98,6 +98,7 @@ export default function HeyGenAvatarFlow({
   const [isLoadingVoices, setIsLoadingVoices] = useState(false);
   const [playingPreview, setPlayingPreview] = useState<string | null>(null);
   const audioRef = useRef<any>(null);
+  const [showPhotoWarning, setShowPhotoWarning] = useState(false);
 
   // Step 4 — Generation
   const [videoId, setVideoId] = useState<string | null>(null);
@@ -169,7 +170,7 @@ export default function HeyGenAvatarFlow({
         setIsLoadingAvatars(false); // Show UI instantly
       }
 
-      const res = await fetch('/api/ai/heygen/avatars');
+      const res = await fetch('/api/ai/heygen/avatars', { cache: 'no-store' });
       const data = await res.json();
       if (data.avatars) {
         const seenIds = new Set<string>();
@@ -236,18 +237,19 @@ export default function HeyGenAvatarFlow({
       if (upErr) throw upErr;
       const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path);
 
-      // 2. Create Talking Photo on HeyGen (reuse existing route)
-      const res = await fetch('/api/ai/heygen/talking-photo', {
+      // 2. Create Talking Photo on HeyGen using the new upload-photo route
+      const res = await fetch('/api/ai/heygen/upload-photo', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ photoUrl: publicUrl, avatarType: 'talking_photo', projectId }),
+        body: JSON.stringify({ photoUrl: publicUrl }),
       });
-      // This route now creates the talking photo — but we need the talking_photo_id
-      // For the avatar flow, we'll use the Supabase photo directly as a preview
-      // and rely on the video-generate API to do the HeyGen upload inline
+      const data = await res.json();
+      
+      if (!res.ok) throw new Error(data.error || 'Ошибка загрузки фото в HeyGen');
+      if (!data.talking_photo_id) throw new Error('Не удалось получить ID аватара от HeyGen');
 
       const newAvatar: HeyGenAvatar = {
-        id: `local_${Date.now()}`,
+        id: data.talking_photo_id,
         url: publicUrl,
         label: file.name.replace(/\.[^.]+$/, ''),
         type: 'talking_photo',
@@ -332,11 +334,17 @@ export default function HeyGenAvatarFlow({
 
   // ─── Step 4: Generate ───────────────────────────────────────────────────────
 
-  const handleGenerate = async () => {
+  const handleGenerate = async (skipWarning = false) => {
     if (!selectedAvatar) return;
     if (audioMode === 'text' && (!selectedVoice || !editedScript.trim())) return;
     if (audioMode === 'video' && !selectedLibraryVideo) return;
 
+    if (!skipWarning && selectedAvatar.type === 'talking_photo') {
+      setShowPhotoWarning(true);
+      return;
+    }
+
+    setShowPhotoWarning(false);
     setIsGenerating(true);
     setGenError(null);
     setStep(4);
@@ -359,9 +367,7 @@ export default function HeyGenAvatarFlow({
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          avatarId: selectedAvatar.id.startsWith('local_')
-            ? undefined // will upload via photoUrl in server
-            : selectedAvatar.id,
+          avatarId: selectedAvatar.id,
           avatarType: selectedAvatar.type,
           scriptText: audioMode === 'text' ? editedScript.trim() : undefined,
           voiceId: audioMode === 'text' ? selectedVoice : undefined,
@@ -1042,6 +1048,30 @@ export default function HeyGenAvatarFlow({
                 </div>
               )}
 
+              {/* Photo Generation Warning */}
+              {showPhotoWarning && (
+                <div className="p-4 rounded-2xl bg-orange-500/10 border border-orange-500/20 text-orange-400 text-xs font-bold flex flex-col gap-3">
+                  <div className="flex items-start gap-2">
+                    <AlertCircle size={16} className="shrink-0 mt-0.5" />
+                    <span className="leading-relaxed">Вы выбрали генерацию из фото (Talking Photo). Обратите внимание, что генерация из фото в HeyGen стоит 0.5 кредита за 30 секунд (в то время как Instant Avatar стоит 0.5 кредита за 1 минуту).</span>
+                  </div>
+                  <div className="flex gap-2">
+                    <button
+                      onClick={() => setShowPhotoWarning(false)}
+                      className="flex-1 text-[9px] font-black uppercase tracking-widest text-white bg-white/5 px-3 py-2 rounded-xl border border-white/10 hover:bg-white/10 transition-all"
+                    >
+                      Отмена
+                    </button>
+                    <button
+                      onClick={() => handleGenerate(true)}
+                      className="flex-1 text-[9px] font-black uppercase tracking-widest text-white bg-orange-600 px-3 py-2 rounded-xl hover:bg-orange-500 transition-all shadow-lg shadow-orange-500/20"
+                    >
+                      Согласен, продолжить
+                    </button>
+                  </div>
+                </div>
+              )}
+
               {/* Footer */}
               <div className="sticky bottom-0 pt-4 pb-2 bg-gradient-to-t from-[#020205] to-transparent flex gap-3">
                 <button
@@ -1053,8 +1083,8 @@ export default function HeyGenAvatarFlow({
                 <motion.button
                   whileHover={{ scale: 1.02 }}
                   whileTap={{ scale: 0.98 }}
-                  onClick={handleGenerate}
-                  disabled={!canProceedStep3}
+                  onClick={() => handleGenerate(false)}
+                  disabled={!canProceedStep3 || showPhotoWarning}
                   className="flex-1 py-4 rounded-[2rem] bg-gradient-to-r from-purple-600 to-blue-600 text-white font-black uppercase tracking-[0.2em] text-sm shadow-xl disabled:opacity-30 flex items-center justify-center gap-2"
                 >
                   <Sparkles size={16} />

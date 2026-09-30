@@ -1,4 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
 import { getAuthContext } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 
