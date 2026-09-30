@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
       if (user) {
         const { data: profile } = await authCtx.supabase
           .from('profiles')
-          .select('heygen_api_key, credits_balance')
+          .select('*')
           .eq('id', user.id)
           .single();
 

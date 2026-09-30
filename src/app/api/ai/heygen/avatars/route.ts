@@ -18,7 +18,7 @@ export async function GET(req: NextRequest) {
       if (user) {
         const { data: profile } = await authSupabase
           .from('profiles')
-          .select('heygen_api_key')
+          .select('*')
           .eq('id', user.id)
           .single();
         if (profile?.heygen_api_key && profile.heygen_api_key.trim() !== '') {
