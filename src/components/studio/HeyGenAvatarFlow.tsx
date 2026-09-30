@@ -169,6 +169,7 @@ export default function HeyGenAvatarFlow({
         if (cached && Array.isArray(cached) && cached.length > 0) {
           setAvatars(cached);
           setIsLoadingAvatars(false);
+          return; // Skip slow HeyGen API fetch if we have cache!
         }
       }
 
@@ -289,6 +290,7 @@ export default function HeyGenAvatarFlow({
           return cached.voices;
         });
         setIsLoadingVoices(false);
+        return; // Skip slow API fetch if cached
       }
 
       const params = new URLSearchParams({
