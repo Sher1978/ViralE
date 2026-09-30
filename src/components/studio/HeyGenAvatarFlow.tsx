@@ -57,6 +57,7 @@ export default function HeyGenAvatarFlow({
   onBack,
 }: HeyGenAvatarFlowProps) {
   const [step, setStep] = useState(1);
+  const [isCheckingKey, setIsCheckingKey] = useState(true);
   const [userBalance, setUserBalance] = useState<number>(0);
   const [actualDeductedCredits, setActualDeductedCredits] = useState<number | null>(null);
   const [finalDuration, setFinalDuration] = useState<number | null>(null);
@@ -126,6 +127,8 @@ export default function HeyGenAvatarFlow({
         }
       } catch (e) {
         console.warn('[HeyGenFlow] Could not check BYOK status');
+      } finally {
+        setIsCheckingKey(false);
       }
     };
     checkKey();
@@ -460,6 +463,15 @@ export default function HeyGenAvatarFlow({
   const canProceedStep3 = audioMode === 'text' 
     ? (!!selectedVoice && editedScript.trim().length > 5 && !hasInsufficientBalance)
     : (!!selectedLibraryVideo && !hasInsufficientBalance);
+
+  if (isCheckingKey) {
+    return (
+      <div className="h-full w-full flex flex-col items-center justify-center bg-[#020205] text-white space-y-4">
+        <div className="w-8 h-8 rounded-full border-2 border-purple-500 border-t-transparent animate-spin" />
+        <p className="text-white/40 text-[10px] font-black uppercase tracking-widest">Проверка ключа...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="h-full w-full flex flex-col bg-[#020205] text-white overflow-hidden relative">
