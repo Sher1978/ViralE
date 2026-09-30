@@ -1,6 +1,6 @@
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase';
-import { getAuthenticatedUser } from '@/lib/auth';
+import { getAuthContext } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
 
 /**
  * Unified API Route for BYOK (HeyGen & Anthropic) management.
@@ -8,7 +8,7 @@ import { getAuthenticatedUser } from '@/lib/auth';
 
 export async function GET() {
   try {
-    const user = await getAuthenticatedUser();
+    const { user, supabase } = await getAuthContext();
     
     const { data: profile, error } = await supabase
       .from('profiles')
@@ -61,7 +61,7 @@ export async function GET() {
  
 export async function POST(req: Request) {
   try {
-    const user = await getAuthenticatedUser();
+    const { user, supabase } = await getAuthContext();
     const { heygenKey, anthropicKey, groqKey, geminiKey, elevenlabsKey, latedevKey } = await req.json();
  
     // Fetch existing synthetic_training_data and user_api_keys first to preserve other properties
@@ -98,12 +98,15 @@ export async function POST(req: Request) {
       };
     }
  
-    const { error } = await supabase
+    // Use supabaseAdmin to bypass any strict RLS that might be preventing updates to api keys
+    const { error, data: updatedRow } = await supabaseAdmin
       .from('profiles')
       .update(updates)
-      .eq('id', user.id);
+      .eq('id', user.id)
+      .select();
  
     if (error) throw error;
+    if (!updatedRow || updatedRow.length === 0) throw new Error('Update failed, profile not found or RLS blocked it.');
  
     return NextResponse.json({ success: true });
   } catch (error: any) {
