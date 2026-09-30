@@ -64,8 +64,8 @@ export async function GET(req: NextRequest) {
         avatars.push({
           id,
           url: tp.preview_image_url || tp.preview_video_url,
-          label: tp.avatar_name || 'Avatar',
-          type: tp.avatar_type // 'talking_photo' or 'avatar' (for instant avatars)
+          label: tp.avatar_name || tp.talking_photo_name || 'Avatar',
+          type: tp.talking_photo_id ? 'talking_photo' : 'avatar'
         });
       }
     }
