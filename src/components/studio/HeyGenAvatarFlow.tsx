@@ -5,7 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion';
 import {
   Key, ChevronRight, ChevronLeft, Upload, Check, Loader2,
   AlertCircle, X, Mic, Globe2, Bot, Sparkles, Play, Pause,
-  Download, Scissors, RefreshCw, ExternalLink, Video, Camera
+  Download, Scissors, RefreshCw, ExternalLink, Video, Camera, Star
 } from 'lucide-react';
 
 // ─── Types ────────────────────────────────────────────────────────────────────
@@ -72,8 +72,26 @@ export default function HeyGenAvatarFlow({
 
   // Step 2 — Avatar
   const [avatars, setAvatars] = useState<HeyGenAvatar[]>([]);
-  const [avatarFilter, setAvatarFilter] = useState<'all' | 'male' | 'female'>('all');
+  const [avatarFilter, setAvatarFilter] = useState<'all' | 'male' | 'female' | 'favorites'>('all');
   const [avatarPage, setAvatarPage] = useState(1);
+  const [favoriteAvatars, setFavoriteAvatars] = useState<string[]>([]);
+
+  useEffect(() => {
+    try {
+      const saved = localStorage.getItem('heygen_favorite_avatars');
+      if (saved) setFavoriteAvatars(JSON.parse(saved));
+    } catch (e) {}
+  }, []);
+
+  const toggleFavorite = (e: React.MouseEvent, id: string) => {
+    e.stopPropagation();
+    setFavoriteAvatars(prev => {
+      const next = prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id];
+      localStorage.setItem('heygen_favorite_avatars', JSON.stringify(next));
+      return next;
+    });
+  };
+
   const [isLoadingAvatars, setIsLoadingAvatars] = useState(false);
   const [selectedAvatar, setSelectedAvatar] = useState<HeyGenAvatar | null>(null);
   const [isUploadingPhoto, setIsUploadingPhoto] = useState(false);
@@ -830,13 +848,14 @@ export default function HeyGenAvatarFlow({
                 </div>
               ) : (
                 <div className="space-y-4">
-                  <div className="flex gap-2 p-1 bg-white/5 rounded-2xl w-fit">
+                  <div className="flex gap-2 p-1 bg-white/5 rounded-2xl w-fit flex-wrap">
+                    <button onClick={() => { setAvatarFilter('favorites'); setAvatarPage(1); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all flex items-center gap-1.5 ${avatarFilter === 'favorites' ? 'bg-yellow-500 text-black' : 'text-white/40 hover:text-white/80'}`}><Star size={12} className={avatarFilter === 'favorites' ? 'fill-black' : ''} /> Избранное</button>
                     <button onClick={() => { setAvatarFilter('all'); setAvatarPage(1); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${avatarFilter === 'all' ? 'bg-purple-600 text-white' : 'text-white/40 hover:text-white/80'}`}>Все</button>
                     <button onClick={() => { setAvatarFilter('male'); setAvatarPage(1); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${avatarFilter === 'male' ? 'bg-blue-600 text-white' : 'text-white/40 hover:text-white/80'}`}>Мужские</button>
                     <button onClick={() => { setAvatarFilter('female'); setAvatarPage(1); }} className={`px-4 py-2 rounded-xl text-[10px] font-black uppercase tracking-widest transition-all ${avatarFilter === 'female' ? 'bg-pink-600 text-white' : 'text-white/40 hover:text-white/80'}`}>Женские</button>
                   </div>
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-                    {avatars.filter(a => avatarFilter === 'all' || a.gender === avatarFilter).slice(0, avatarPage * 10).map((avatar) => (
+                    {avatars.filter(a => avatarFilter === 'all' || (avatarFilter === 'favorites' ? favoriteAvatars.includes(a.id) : a.gender === avatarFilter)).slice(0, avatarPage * 10).map((avatar) => (
                       <button
                       key={avatar.id}
                       onClick={() => setSelectedAvatar(avatar)}
@@ -854,6 +873,13 @@ export default function HeyGenAvatarFlow({
                         </div>
                       )}
                       <div className="absolute inset-0 bg-gradient-to-t from-black/80 to-transparent" />
+                      
+                      <div 
+                        onClick={(e) => toggleFavorite(e, avatar.id)}
+                        className={`absolute top-3 left-3 w-7 h-7 rounded-full flex items-center justify-center transition-all ${favoriteAvatars.includes(avatar.id) ? 'bg-yellow-500 shadow-lg' : 'bg-black/40 hover:bg-black/60 border border-white/10'}`}
+                      >
+                        <Star size={12} className={favoriteAvatars.includes(avatar.id) ? 'text-black fill-black' : 'text-white/40'} />
+                      </div>
                       <div className="absolute bottom-3 left-3 right-3">
                         <p className="text-[9px] font-black uppercase text-white truncate">{avatar.label}</p>
                         <div className="flex items-center gap-1 mt-0.5">
@@ -875,7 +901,7 @@ export default function HeyGenAvatarFlow({
                     </button>
                   ))}
                   </div>
-                  {avatars.filter(a => avatarFilter === 'all' || a.gender === avatarFilter).length > avatarPage * 10 && (
+                  {avatars.filter(a => avatarFilter === 'all' || (avatarFilter === 'favorites' ? favoriteAvatars.includes(a.id) : a.gender === avatarFilter)).length > avatarPage * 10 && (
                     <button 
                       onClick={() => setAvatarPage(p => p + 1)}
                       className="w-full py-4 mt-2 rounded-[1.5rem] bg-white/5 hover:bg-white/10 text-[10px] font-black uppercase tracking-widest text-white/50 hover:text-white transition-all border border-white/10"
