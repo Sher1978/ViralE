@@ -126,18 +126,36 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
                 </div>
 
                 {/* AI Preview Graphics */}
-                <div className="w-full flex-1 min-h-[90px] max-h-[160px] relative flex items-center justify-center overflow-hidden rounded-xl bg-black/45 border border-white/5 shadow-inner mt-2">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(168,85,247,0.06)_0%,transparent_70%)]" />
-                  <div className="relative w-20 h-20 flex items-center justify-center">
-                    <div className="absolute inset-0 rounded-full border border-purple-500/20 animate-spin-slow" />
-                    <div className="absolute w-14 h-14 rounded-full border border-dashed border-blue-500/30 animate-spin-reverse" />
+                <div className="w-full flex-1 min-h-[90px] max-h-[160px] relative flex items-center justify-center overflow-hidden rounded-xl bg-black/60 border border-white/5 shadow-inner mt-2">
+                  <div className="absolute top-2 left-2 flex items-center gap-1 z-20 bg-purple-900/50 backdrop-blur-md px-2 py-0.5 rounded-full border border-purple-500/40">
+                    <Sparkles size={8} className="text-purple-400 animate-pulse" />
+                    <span className="text-[6px] font-black text-purple-300 uppercase tracking-widest leading-none">AI • RENDER</span>
+                  </div>
+
+                  <div className="w-28 h-32 border border-purple-500/20 rounded-xl bg-[#09090e] p-2 flex flex-col justify-end relative overflow-hidden shadow-2xl mt-2">
+                    <img 
+                      src="https://images.unsplash.com/photo-1534528741775-53994a69daeb?auto=format&fit=crop&w=400&q=80" 
+                      alt="AI Avatar Preview" 
+                      className="absolute inset-0 w-full h-full object-cover opacity-65 filter brightness-90 group-hover:scale-105 transition-transform duration-700 pointer-events-none"
+                    />
+                    <div className="absolute inset-0 bg-gradient-to-b from-purple-900/40 via-black/20 to-black/90 pointer-events-none" />
                     
-                    <Bot size={26} className="text-purple-400 animate-pulse relative z-10" />
-                    
-                    <div className="absolute bottom-1 flex gap-1 items-center justify-center z-10">
-                      <span className="w-0.5 h-1.5 bg-purple-500/50 rounded-full" />
-                      <span className="w-0.5 h-3 bg-purple-400/80 rounded-full animate-pulse" />
-                      <span className="w-0.5 h-4 bg-blue-400/90 rounded-full" />
+                    {/* Face tracking/scanning animation */}
+                    <div className="absolute inset-x-2 top-2 bottom-2 flex flex-col justify-between pointer-events-none z-10">
+                      <div className="w-full h-10 border border-purple-400/30 rounded-lg relative overflow-hidden">
+                        <div className="absolute top-0 left-0 w-full h-0.5 bg-purple-400 shadow-[0_0_8px_rgba(168,85,247,0.8)] animate-[scrollText_4s_ease-in-out_infinite_alternate]" />
+                        <div className="absolute bottom-1 right-1 flex gap-0.5">
+                          <div className="w-1 h-1 bg-purple-400 rounded-full animate-ping" />
+                        </div>
+                      </div>
+                      
+                      {/* Audio wave mockup */}
+                      <div className="flex gap-0.5 items-end h-4 justify-center mb-1">
+                        <span className="w-0.5 h-full bg-purple-500/50 rounded-full animate-pulse" style={{ animationDelay: '0ms' }} />
+                        <span className="w-0.5 h-2/3 bg-purple-400/80 rounded-full animate-pulse" style={{ animationDelay: '150ms' }} />
+                        <span className="w-0.5 h-4/5 bg-blue-400/90 rounded-full animate-pulse" style={{ animationDelay: '300ms' }} />
+                        <span className="w-0.5 h-1/2 bg-purple-500/50 rounded-full animate-pulse" style={{ animationDelay: '450ms' }} />
+                      </div>
                     </div>
                   </div>
                 </div>
@@ -165,23 +183,51 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
 
                 {/* Insta Gallery Preview Graphic */}
                 <div className="w-full flex-1 min-h-[90px] max-h-[160px] relative flex items-center justify-center overflow-hidden rounded-xl bg-black/60 border border-white/5 shadow-inner mt-2">
-                  <div className="absolute inset-0 bg-[radial-gradient(circle_at_center,rgba(236,72,153,0.1)_0%,transparent_70%)]" />
-                  
-                  {/* Carousel Cards Stack Effect */}
-                  <div className="relative w-28 h-28 flex items-center justify-center">
-                    <div className="absolute w-18 h-24 rounded-lg bg-purple-950/80 border border-purple-500/20 translate-x-4 rotate-12 scale-90 opacity-60 shadow-lg" />
-                    <div className="absolute w-18 h-24 rounded-lg bg-fuchsia-950/80 border border-fuchsia-500/30 translate-x-2 rotate-6 scale-95 opacity-80 shadow-xl" />
-                    <div className="relative w-20 h-26 rounded-xl bg-[#0e0717] border border-pink-500/40 p-2 flex flex-col justify-between shadow-2xl group-hover:scale-105 transition-transform duration-500">
-                      <div className="flex justify-between items-center text-[5px] font-black text-pink-400 uppercase tracking-widest">
-                        <span>@viral_engine</span>
-                        <span>01/06</span>
+                  <div className="absolute top-2 left-2 flex items-center gap-1 z-20 bg-pink-900/50 backdrop-blur-md px-2 py-0.5 rounded-full border border-pink-500/40">
+                    <ImageIcon size={8} className="text-pink-400 animate-pulse" />
+                    <span className="text-[6px] font-black text-pink-300 uppercase tracking-widest leading-none">CAROUSEL • IG</span>
+                  </div>
+
+                  <div className="relative w-28 h-32 flex flex-col justify-end mt-2 group-hover:-translate-y-1 transition-transform duration-500">
+                    {/* Background slide */}
+                    <div className="absolute inset-0 w-28 h-32 border border-fuchsia-500/20 rounded-xl bg-[#09090e] overflow-hidden translate-x-3 -translate-y-1.5 rotate-6 scale-95 opacity-60 shadow-lg z-0">
+                      <img 
+                        src="https://images.unsplash.com/photo-1616423640778-28d1b53229bd?auto=format&fit=crop&w=400&q=80" 
+                        alt="Background slide" 
+                        className="w-full h-full object-cover filter brightness-50 pointer-events-none"
+                      />
+                    </div>
+                    
+                    {/* Main slide */}
+                    <div className="absolute inset-0 w-28 h-32 border border-pink-500/30 rounded-xl bg-[#09090e] flex flex-col relative overflow-hidden shadow-2xl z-10">
+                      <img 
+                        src="https://images.unsplash.com/photo-1611162617474-5b21e879e113?auto=format&fit=crop&w=400&q=80" 
+                        alt="Instagram Carousel" 
+                        className="absolute inset-0 w-full h-full object-cover opacity-70 filter brightness-90 group-hover:scale-105 transition-transform duration-700 pointer-events-none"
+                      />
+                      <div className="absolute inset-0 bg-gradient-to-b from-black/50 via-black/20 to-black/90 pointer-events-none" />
+                      
+                      {/* Insta UI mockup */}
+                      <div className="absolute top-2 inset-x-2 flex items-center justify-between z-10 pointer-events-none">
+                        <div className="flex items-center gap-1">
+                          <div className="w-3 h-3 rounded-full border border-pink-500/50 overflow-hidden">
+                            <img src="https://images.unsplash.com/photo-1611162616305-c69b3fa7fbe0?auto=format&fit=crop&w=50&q=80" className="w-full h-full object-cover" />
+                          </div>
+                          <div className="h-1 w-8 bg-white/60 rounded-full" />
+                        </div>
+                        <div className="text-[5px] font-black text-pink-300 uppercase">1/6</div>
                       </div>
-                      <div className="w-full h-10 rounded-md bg-pink-500/10 border border-pink-500/20 flex items-center justify-center">
-                        <ImageIcon size={14} className="text-pink-400 animate-pulse" />
+
+                      {/* Text block at bottom */}
+                      <div className="absolute bottom-3 inset-x-2 space-y-1 z-10 pointer-events-none">
+                        <div className="h-1 w-3/4 bg-white/80 rounded-full shadow-[0_0_5px_rgba(255,255,255,0.5)]" />
+                        <div className="h-1 w-1/2 bg-pink-300/80 rounded-full" />
                       </div>
-                      <div className="space-y-0.5">
-                        <div className="h-1 w-full bg-white/20 rounded-full" />
-                        <div className="h-1 w-2/3 bg-pink-400/40 rounded-full" />
+                      
+                      <div className="absolute inset-x-0 bottom-0 h-6 flex justify-center pb-1 gap-1 items-end z-10">
+                        <div className="w-1 h-1 rounded-full bg-pink-400" />
+                        <div className="w-1 h-1 rounded-full bg-white/30" />
+                        <div className="w-1 h-1 rounded-full bg-white/30" />
                       </div>
                     </div>
                   </div>
@@ -260,7 +306,7 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
                   className="group relative h-48 sm:h-52 rounded-[2rem] bg-white/[0.02] border border-white/10 overflow-hidden flex flex-col justify-between p-5 text-left transition-all hover:bg-white/[0.04] hover:border-emerald-500/40 shadow-xl"
                 >
                   <img 
-                    src="https://images.unsplash.com/photo-1536240478700-b869070f9279?auto=format&fit=crop&w=600&q=80" 
+                    src="https://images.unsplash.com/photo-1618401471353-b98afee0b2eb?auto=format&fit=crop&w=600&q=80" 
                     alt="AI Faceless B-Roll" 
                     className="absolute inset-0 w-full h-full object-cover opacity-30 group-hover:opacity-45 group-hover:scale-105 transition-all duration-700" 
                   />
