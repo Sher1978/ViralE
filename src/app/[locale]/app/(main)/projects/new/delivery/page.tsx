@@ -1453,10 +1453,8 @@ function DeliveryPageContent() {
           return;
         }
 
-        // NO AUTO-LAUNCH: Wait for explicit user engine selection!
-        addSystemLog('Ожидание выбора пользователем типа сборки...');
-        setRenderStatus('Выберите тип сборки видео для начала генерации');
-        // Do not auto-launch anything, let user pick from the UI below.
+        addSystemLog('Запуск локального рендеринга (FFmpeg)...');
+        handleClientRender(verData);
 
       } catch (err: any) {
         console.error('[Delivery] Auto-launch failed:', err);
@@ -1605,55 +1603,7 @@ function DeliveryPageContent() {
 
   return (
     <div className="space-y-5 animate-fade-in pb-10">
-      <AnimatePresence>
-        {showShotstackModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-sm">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="w-full max-w-md bg-[#0f0f13] border border-white/10 rounded-3xl overflow-hidden shadow-2xl"
-            >
-              <div className="p-6 text-center space-y-4">
-                <div className="w-16 h-16 mx-auto bg-blue-500/10 rounded-full flex items-center justify-center border border-blue-500/20">
-                  <AlertCircle className="w-8 h-8 text-blue-400" />
-                </div>
-                <h2 className="text-2xl font-black text-white uppercase tracking-tighter">
-                  {locale === 'ru' ? 'Облачный рендеринг' : 'Cloud Rendering Recommended'}
-                </h2>
-                <p className="text-sm text-white/60 font-medium">
-                  {locale === 'ru' 
-                    ? 'Ваше устройство может не справиться с тяжелым локальным монтажом. Рекомендуем выполнить сборку на наших мощных серверах (Shotstack).' 
-                    : 'Your device might struggle with heavy local rendering. We recommend using our powerful cloud servers (Shotstack).'}
-                </p>
-                <div className="flex flex-col gap-3 mt-6">
-                  <button
-                    onClick={() => {
-                      setShowShotstackModal(false);
-                      setIsLoading(true);
-                      executeShotstackRender(version);
-                    }}
-                    className="w-full py-4 rounded-xl bg-blue-600 hover:bg-blue-500 text-white font-black uppercase tracking-widest text-xs transition-all"
-                  >
-                    {locale === 'ru' ? 'Продолжить в облаке (Быстро)' : 'Continue in Cloud (Fast)'}
-                  </button>
-                  <button
-                    onClick={() => {
-                      setShowShotstackModal(false);
-                      setIsLoading(true);
-                      setRenderMode('ffmpeg');
-                      handleClientRender(version!);
-                    }}
-                    className="w-full py-4 rounded-xl bg-white/5 hover:bg-white/10 text-white/60 hover:text-white font-black uppercase tracking-widest text-xs transition-all"
-                  >
-                    {locale === 'ru' ? 'Все равно локально (FFmpeg)' : 'Force Local (FFmpeg)'}
-                  </button>
-                </div>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
+
 
       {/* 1. Stepper line indicator placed at the very top */}
       <StatusStepper currentStep={job?.status === 'completed' ? 'done' : 'render'} />
@@ -1829,56 +1779,7 @@ function DeliveryPageContent() {
         </div>
       </div>
 
-      {/* Confirmation Modal for Engine Restart */}
-      <AnimatePresence>
-        {confirmEngineModal && (
-          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/80 backdrop-blur-md">
-            <motion.div
-              initial={{ opacity: 0, scale: 0.95 }}
-              animate={{ opacity: 1, scale: 1 }}
-              exit={{ opacity: 0, scale: 0.95 }}
-              className="bg-slate-900 border border-purple-500/30 rounded-3xl p-6 max-w-md w-full shadow-2xl space-y-4 text-center"
-            >
-              <div className="w-12 h-12 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center mx-auto text-purple-300">
-                <RefreshCw size={24} className="animate-spin-slow" />
-              </div>
 
-              <h3 className="text-lg font-black text-white uppercase tracking-wider">
-                {locale === 'ru' ? 'Запустить сборку видео?' : 'Restart Video Generation?'}
-              </h3>
-
-              <p className="text-xs text-white/70 leading-relaxed font-medium">
-                {confirmEngineModal === 'remotion'
-                  ? (locale === 'ru'
-                    ? 'Будет запущен Мультиагентский конвейер Remotion AI (Режиссер ➔ Арт-Директор ➔ Аниматор) с бренд-буком и Z-камерой.'
-                    : 'Will launch Remotion AI Multi-Agent Pipeline.')
-                  : (locale === 'ru'
-                    ? 'Будет запущен быстрый движок Standard FFmpeg для генерации файла.'
-                    : 'Will launch Standard FFmpeg generation.')}
-              </p>
-
-              <div className="flex gap-3 pt-2">
-                <button
-                  onClick={() => setConfirmEngineModal(null)}
-                  className="flex-1 py-3 rounded-xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 text-xs font-black uppercase tracking-wider transition-all"
-                >
-                  {locale === 'ru' ? 'Отмена' : 'Cancel'}
-                </button>
-                <button
-                  onClick={() => executeConfirmedGeneration(confirmEngineModal)}
-                  className={`flex-1 py-3 rounded-xl text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg ${
-                    confirmEngineModal === 'remotion'
-                      ? 'bg-purple-600 hover:bg-purple-500 shadow-purple-500/30'
-                      : 'bg-cyan-600 hover:bg-cyan-500 shadow-cyan-500/30'
-                  }`}
-                >
-                  {locale === 'ru' ? 'Да, запустить' : 'Start Build'}
-                </button>
-              </div>
-            </motion.div>
-          </div>
-        )}
-      </AnimatePresence>
 
       {/* Dual Engine Export Selection Panel */}
       <div className="max-w-[640px] mx-auto rounded-3xl p-6 bg-slate-900/60 border border-purple-500/20 backdrop-blur-xl shadow-2xl mt-4 space-y-5">
@@ -1889,7 +1790,7 @@ function DeliveryPageContent() {
               <span className="px-2.5 py-0.5 rounded-full text-[9px] font-black bg-purple-500/20 text-purple-300 border border-purple-500/30">Dual-Engine</span>
             </h3>
             <p className="text-[10px] text-white/50 uppercase tracking-widest font-semibold mt-1">
-              {locale === 'ru' ? 'Выберите способ сборки видео для запуска генерации' : 'Select rendering pipeline to launch generation'}
+              {locale === 'ru' ? 'Локальная сборка запущена автоматически. Вы можете переключиться на облако.' : 'Local render started automatically. You can switch to cloud.'}
             </p>
           </div>
           
@@ -1903,22 +1804,16 @@ function DeliveryPageContent() {
           </button>
         </div>
 
-        {/* 2 Main Engine Choice Cards */}
         <div className="grid grid-cols-2 gap-4">
           {/* Cloud Engine Button */}
           <button
             onClick={() => {
               if (version) {
-                setShowShotstackModal(false);
                 setIsLoading(true);
                 executeShotstackRender(version);
               }
             }}
-            className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between group ${
-              !activeEngine || activeEngine === 'shotstack'
-                ? 'bg-purple-600/20 border-purple-500 shadow-[0_0_30px_rgba(168,85,247,0.25)] text-white'
-                : 'bg-white/[0.02] border-white/10 text-white/60 hover:border-white/20 hover:bg-white/[0.04]'
-            }`}
+            className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between group bg-purple-600/20 border-purple-500 shadow-[0_0_30px_rgba(168,85,247,0.25)] text-white hover:bg-purple-500/30`}
           >
             <div className="flex justify-between items-start mb-3">
               <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
@@ -1926,35 +1821,30 @@ function DeliveryPageContent() {
               </span>
             </div>
             <p className="text-[9px] text-white/40 leading-relaxed font-medium mb-3">
-              {locale === 'ru' ? 'Сверхбыстрая сборка в облаке, высокое качество. 5-10 сек.' : 'Ultra-fast cloud rendering, high quality. 5-10 sec.'}
+              {locale === 'ru' ? 'Сверхбыстрая сборка в облаке. Нажмите для запуска.' : 'Ultra-fast cloud rendering. Click to start.'}
             </p>
           </button>
 
           {/* FFmpeg Engine Button */}
-          <button
-            onClick={() => setConfirmEngineModal('ffmpeg')}
-            className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between group ${
-              activeEngine === 'ffmpeg'
-                ? 'bg-cyan-600/20 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.25)] text-white'
-                : 'bg-white/[0.02] border-white/10 text-white/60 hover:border-white/20 hover:bg-white/[0.04]'
-            }`}
+          <div
+            className={`p-5 rounded-2xl border text-left transition-all relative overflow-hidden flex flex-col justify-between group bg-cyan-600/20 border-cyan-500 shadow-[0_0_30px_rgba(6,182,212,0.25)] text-white`}
           >
             <div className="flex justify-between items-start mb-3">
               <span className="text-xs font-black uppercase tracking-wider flex items-center gap-1.5">
                 Local FFmpeg 🐢
               </span>
               <span className={`text-[8px] font-bold uppercase px-2 py-0.5 rounded-full ${
-                ffmpegOutputUrl ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40'
+                ffmpegOutputUrl ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/30' : 'bg-white/10 text-white/40 animate-pulse'
               }`}>
-                {ffmpegOutputUrl ? 'Готово ⚡' : 'В браузере'}
+                {ffmpegOutputUrl ? 'Готово ⚡' : 'Рендерится...'}
               </span>
             </div>
             <p className="text-[9px] text-white/40 leading-relaxed font-medium mb-3">
-              {locale === 'ru' ? 'Сборка силами вашего устройства. Может занять 3-10 мин.' : 'Rendered locally on your device. Can take 3-10 min.'}
+              {locale === 'ru' ? 'Сборка силами вашего устройства. Выполняется автоматически.' : 'Rendered locally on your device. Running automatically.'}
             </p>
 
             {ffmpegOutputUrl && (
-              <div
+              <button
                 onClick={(e) => {
                   e.stopPropagation();
                   const doc = (globalThis as any).document;
@@ -1970,9 +1860,9 @@ function DeliveryPageContent() {
                 className="mt-2 w-full py-2 rounded-xl bg-cyan-500/20 border border-cyan-500/40 text-cyan-200 hover:bg-cyan-500/30 text-[9px] font-black uppercase tracking-widest text-center flex items-center justify-center gap-1 transition-all"
               >
                 <Download size={11} /> Скачать MP4
-              </div>
+              </button>
             )}
-          </button>
+          </div>
         </div>
       </div>
 
