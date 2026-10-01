@@ -68,7 +68,7 @@ export default function ScriptLabPage() {
   const [topicInput, setTopicInput] = useState('');
   const [customCommand, setCustomCommand] = useState('');
   const [onboardingIncomplete, setOnboardingIncomplete] = useState(false);
-  const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('groq');
+  const [selectedEngine, setSelectedEngine] = useState<'gemini' | 'claude' | 'claude-byok' | 'groq'>('gemini');
   
   const [viewMode, setViewMode] = useState<'editor' | 'matrix'>('editor');
   const [trizIdeas, setTrizIdeas] = useState<any[] | null>(null);
@@ -1274,37 +1274,33 @@ export default function ScriptLabPage() {
                     Gemini 3
                   </button>
                   <button
-                    onClick={() => setSelectedEngine('claude')}
-                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest ${
-                      selectedEngine === 'claude' 
+                    onClick={() => {
+                      if (!user?.anthropic_api_key) {
+                        setError(locale === 'ru' ? 'Для использования Claude 4 нужен личный API ключ. Добавьте его в настройках профиля (BYOK).' : 'Claude 4 requires a personal API key. Please add it in your profile settings (BYOK).');
+                        setTimeout(() => router.push('/app/profile'), 3000);
+                        return;
+                      }
+                      setSelectedEngine('claude-byok' as any);
+                    }}
+                    className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-purple-500/30 ${
+                      selectedEngine === ('claude-byok' as any) || selectedEngine === 'claude'
                         ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
-                        : 'text-white/20 hover:text-white/40'
+                        : 'text-purple-400/40 hover:text-purple-400'
                     }`}
                   >
-                    Claude 4
+                    <Key className="w-3 h-3" />
+                    Claude (BYOK)
                   </button>
-                  {user?.anthropic_api_key && (
-                    <button
-                      onClick={() => setSelectedEngine('claude-byok' as any)}
-                      className={`flex-1 min-w-[130px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-purple-500/30 ${
-                        selectedEngine === ('claude-byok' as any)
-                          ? 'bg-purple-600 text-white shadow-[0_0_20px_rgba(147,51,234,0.3)]' 
-                          : 'text-purple-400/40 hover:text-purple-400'
-                      }`}
-                    >
-                      <Key className="w-3 h-3" />
-                      Claude (BYOK)
-                    </button>
-                  )}
                   <button
                     onClick={() => setSelectedEngine('groq' as any)}
-                    className={`flex-1 min-w-[100px] flex items-center justify-center gap-2 py-3.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-orange-500/30 ${
+                    className={`flex-1 min-w-[100px] flex flex-col items-center justify-center gap-0.5 py-2.5 rounded-xl transition-all font-black uppercase text-[10px] tracking-widest border border-orange-500/30 ${
                       selectedEngine === ('groq' as any)
                         ? 'bg-orange-600 text-white shadow-[0_0_20px_rgba(255,100,0,0.3)]' 
                         : 'text-orange-400/40 hover:text-orange-400'
                     }`}
                   >
-                    Groq
+                    <span>Groq</span>
+                    <span className={`text-[7px] px-1.5 py-0.5 rounded uppercase tracking-wider ${selectedEngine === ('groq' as any) ? 'bg-black/20 text-white' : 'text-orange-400/80 bg-orange-500/10'}`}>Бесплатно</span>
                   </button>
                 </div>
               </div>
