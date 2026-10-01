@@ -154,8 +154,8 @@ export async function POST(req: NextRequest) {
       // Handle 30% Referral Commission Accrual
       if (profile.referred_by_id) {
         try {
-          const tributePricesUsd: Record<string, number> = { starter: 29, pro: 79, scale: 199 };
-          const paymentAmountUsd = tributePricesUsd[tier] || 29;
+          const tributePricesUsd: Record<string, number> = { starter: 9.9, pro: 19.9, scale: 39.9 };
+          const paymentAmountUsd = tributePricesUsd[tier] || 9.9;
           const earnedUsd = Math.round(paymentAmountUsd * 0.30 * 100) / 100;
 
           if (earnedUsd > 0) {

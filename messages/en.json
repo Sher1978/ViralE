@@ -636,9 +636,9 @@
       },
       "starter": {
         "title": "ViralE Starter",
-        "price": "$19.90",
+        "price": "$9.90",
         "period": "/ mo",
-        "periodDetail": "/ month · or $11.90/mo annual",
+        "periodDetail": "/ month · or $5.90/mo annual",
         "feature1": "Basic AI-idea generation",
         "feature2": "Script writing by proven hooks",
         "feature3": "400 monthly credits included",
@@ -649,9 +649,9 @@
       "pro": {
         "badge": "Most Popular",
         "title": "ViralE Pro",
-        "price": "$39.90",
+        "price": "$19.90",
         "period": "/ mo",
-        "periodDetail": "/ month · or $23.90/mo annual",
+        "periodDetail": "/ month · or $11.90/mo annual",
         "feature1": "Digital DNA integration",
         "feature2": "Unique Tone of Voice matching",
         "feature3": "AI neuro-editing (Semantic Bullets)",
@@ -661,8 +661,8 @@
       },
       "scale": {
         "title": "ViralE Scale",
-        "price": "$79.90",
-        "period": "/ month · or $47.90/mo annual",
+        "price": "$39.90",
+        "period": "/ month · or $23.90/mo annual",
         "feature1": "Full content-package generation",
         "feature2": "5 social networks from 1 thought",
         "feature3": "3000 monthly credits included",
@@ -831,23 +831,23 @@
         },
         "starter": {
           "title": "ViralE Starter",
-          "price": "$19.90",
-          "priceYearly": "$11.90",
+          "price": "$9.90",
+          "priceYearly": "$5.90",
           "features": ["Basic AI-idea generation", "Script writing based on proven hooks", "400 credits per month", "All Free tier features included"],
           "cta": "Get Starter"
         },
         "pro": {
           "title": "ViralE Pro",
           "badge": "POPULAR",
-          "price": "$39.90",
-          "priceYearly": "$23.90",
+          "price": "$19.90",
+          "priceYearly": "$11.90",
           "features": ["Digital DNA integration", "Unique Tone of Voice matching", "AI neuro-editing (Semantic Bullets)", "1000 credits per month", "Priority video rendering"],
           "cta": "Get Pro"
         },
         "scale": {
           "title": "ViralE Scale",
-          "price": "$79.90",
-          "priceYearly": "$47.90",
+          "price": "$39.90",
+          "priceYearly": "$23.90",
           "features": ["Full content-package generation", "5 social networks from 1 thought", "3000 credits per month", "Audience retention analytics", "BYOK (use your own API keys)"],
           "cta": "Get Scale"
         }

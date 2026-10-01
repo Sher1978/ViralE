@@ -9,7 +9,7 @@ const PLANS = [
   {
     id: 'starter',
     name: 'Starter',
-    price: '19.90',
+    price: '9.90',
     credits: 400,
     packs: 8,
     icon: '🌱',
@@ -25,7 +25,7 @@ const PLANS = [
   {
     id: 'pro',
     name: 'Pro',
-    price: '39.90',
+    price: '19.90',
     credits: 1000,
     packs: 20,
     icon: '⚡',
@@ -44,7 +44,7 @@ const PLANS = [
   {
     id: 'scale',
     name: 'Scale',
-    price: '79.90',
+    price: '39.90',
     credits: 3000,
     packs: 60,
     icon: '🚀',

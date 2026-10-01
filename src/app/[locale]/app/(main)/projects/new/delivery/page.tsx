@@ -15,8 +15,7 @@ import { supabase } from '@/lib/supabase';
 import { splitCaptionText } from '@/lib/utils';
 import DistributionFactory from '../../[id]/studio/_components/DistributionFactory';
 import { Suspense } from 'react';
-import { getFFmpeg, resetFFmpeg } from '@/lib/ffmpeg-delivery';
-import { fetchFile } from '@ffmpeg/util';
+import { getFFmpeg, resetFFmpeg, getFetchFile } from '@/lib/ffmpeg-delivery';
 import { renderRemotionInDevice } from '@/lib/remotion/remotionClientExporter';
 import { RemotionArchitectCutSheet } from '@/lib/types/remotionArchitect';
 
@@ -838,6 +837,7 @@ function DeliveryPageContent() {
 
       const ffmpeg = await getFFmpeg();
       ffmpegRef.current = ffmpeg;
+      const fetchFile = await getFetchFile();
 
       setRenderProgress(12);
       setRenderStatus('Загрузка исходников...');
@@ -1034,11 +1034,10 @@ function DeliveryPageContent() {
 
       const hasOverlays = processedBrolls.length > 0 || processedWhiteboards.length > 0;
       let currentInput = 'input_aroll.mp4';
+      let finalOutput = 'final_fast.mp4';
 
       if (!hasOverlays) {
         setRenderStatus(`Быстрая сборка ${isMobile ? '720p' : '1080p'}...`);
-        const subOutput = 'final_fast.mp4';
-        
         let vfFilter = scale;
         if (subs.length > 0) {
           setRenderStatus(`Быстрая сборка + субтитры (${subs.length})...`);
@@ -1049,95 +1048,62 @@ function DeliveryPageContent() {
           '-i', currentInput,
           '-vf', vfFilter,
           '-r', '30',
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1',
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28',
           '-c:a', 'aac', '-b:a', '128k',
-          subOutput
+          finalOutput
         ]);
         try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-        currentInput = subOutput;
+        currentInput = finalOutput;
 
       } else {
-        setRenderStatus(`Масштабирование исходника...`);
-        const scaledOutput = `temp_A.mp4`;
-        await execWithTimeout([
-          '-i', currentInput,
-          '-vf', scale,
-          '-r', '30',
-          '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1',
-          '-c:a', 'aac', '-b:a', '128k',
-          scaledOutput
-        ]);
-        try { await ffmpeg.deleteFile('input_aroll.mp4'); } catch(e) {}
-        currentInput = scaledOutput;
+        setRenderStatus(`Формирование многослойной композиции...`);
+        const inputArgs = ['-i', currentInput];
+        let filterStr = `[0:v]${scale}[bg0];`;
+        let lastOut = 'bg0';
+        let overlayIdx = 1;
 
-        // Overlay B-Roll layers
         for (let i = 0; i < processedBrolls.length; i++) {
           const broll = processedBrolls[i];
-          const nextOutput = i % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
+          inputArgs.push('-itsoffset', broll.clip.startTime.toString(), '-i', broll.name);
           const brX = broll.clip.x || 0;
           const brY = broll.clip.y || 0;
           const brScale = broll.clip.scale || 1;
-          
-          setRenderStatus(`Слой B-Roll ${i + 1} из ${processedBrolls.length}...`);
-          
-          const overlayFilter = `[1:v]scale=iw*${brScale}:-1[scaled];[0:v][scaled]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[out]`;
-          await execWithTimeout([
-            '-i', currentInput,
-            '-itsoffset', broll.clip.startTime.toString(),
-            '-i', broll.name,
-            '-filter_complex', overlayFilter,
-            '-map', '[out]',
-            '-map', '0:a',
-            '-r', '30',
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
-          ]);
-          try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-          try { await ffmpeg.deleteFile(broll.name); } catch(e) {}
-          currentInput = nextOutput;
+          const nextOut = `bg${overlayIdx}`;
+          filterStr += `[${overlayIdx}:v]scale=iw*${brScale}:-1[sc${overlayIdx}];[${lastOut}][sc${overlayIdx}]overlay=x=${brX}:y=${brY}:enable='between(t,${broll.clip.startTime},${broll.clip.endTime})'[${nextOut}];`;
+          lastOut = nextOut;
+          overlayIdx++;
         }
 
-        // Overlay Whiteboard sketch animation layers
         for (let i = 0; i < processedWhiteboards.length; i++) {
           const wb = processedWhiteboards[i];
-          const nextOutput = (processedBrolls.length + i) % 2 === 0 ? `temp_B.mp4` : `temp_A.mp4`;
-          
-          setRenderStatus(`Слой скетча ${i + 1} из ${processedWhiteboards.length}...`);
-          
-          const overlayFilter = `[0:v][1:v]overlay=x=0:y=0:enable='between(t,${wb.clip.startTime},${wb.clip.endTime})'[out]`;
-          await execWithTimeout([
-            '-i', currentInput,
-            '-itsoffset', wb.clip.startTime.toString(),
-            '-i', wb.name,
-            '-filter_complex', overlayFilter,
-            '-map', '[out]',
-            '-map', '0:a',
-            '-r', '30',
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1', '-c:a', 'copy', nextOutput
-          ]);
-          try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-          try { await ffmpeg.deleteFile(wb.name); } catch(e) {}
-          currentInput = nextOutput;
+          inputArgs.push('-itsoffset', wb.clip.startTime.toString(), '-i', wb.name);
+          const nextOut = `bg${overlayIdx}`;
+          filterStr += `[${lastOut}][${overlayIdx}:v]overlay=x=0:y=0:enable='between(t,${wb.clip.startTime},${wb.clip.endTime})'[${nextOut}];`;
+          lastOut = nextOut;
+          overlayIdx++;
         }
 
         if (subs.length > 0) {
           setRenderStatus(`Наложение субтитров (${subs.length})...`);
-          const subOutput = currentInput === 'temp_A.mp4' ? `temp_B.mp4` : `temp_A.mp4`;
           const vfFilter = buildDrawtextFilter(subs, '', isMobile ? 1280 : 1920, manifest);
-          
-          const exitCodeSub = await execWithTimeout([
-            '-i', currentInput,
-            '-vf', vfFilter,
-            '-r', '30',
-            '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28', '-threads', '1',
-            '-c:a', 'copy',
-            subOutput
-          ]);
-          
-          if (exitCodeSub === 0) {
-            try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
-            currentInput = subOutput;
-          }
+          filterStr += `[${lastOut}]${vfFilter}[final]`;
+          lastOut = 'final';
+        } else {
+          filterStr = filterStr.slice(0, -1);
         }
+
+        await execWithTimeout([
+          ...inputArgs,
+          '-filter_complex', filterStr,
+          '-map', `[${lastOut}]`,
+          '-map', '0:a',
+          '-r', '30',
+          '-c:v', 'libx264', '-preset', 'ultrafast', '-tune', 'zerolatency', '-crf', '28',
+          '-c:a', 'aac', '-b:a', '128k',
+          finalOutput
+        ]);
+        try { await ffmpeg.deleteFile(currentInput); } catch(e) {}
+        currentInput = finalOutput;
       }
 
       setRenderStatus('Формирование финального MP4 файла...');

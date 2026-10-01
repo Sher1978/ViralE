@@ -12,9 +12,9 @@ const TOP_UP_OPTIONS = [
 ];
 
 const PLANS = {
-  starter: { credits: 400, stars: 1000, titleEn: 'Starter Subscription', titleRu: 'Подписка Starter', descEn: 'Activate Starter Plan (includes 400 monthly credits)', descRu: 'Активация тарифа Starter (400 кредитов в месяц)' },
-  pro: { credits: 1000, stars: 2000, titleEn: 'Pro Subscription', titleRu: 'Подписка Pro', descEn: 'Activate Pro Plan (includes 1000 monthly credits)', descRu: 'Активация тарифа Pro (1000 кредитов в месяц)' },
-  scale: { credits: 3000, stars: 4000, titleEn: 'Scale Subscription', titleRu: 'Подписка Scale', descEn: 'Activate Scale Plan (includes 3000 monthly credits)', descRu: 'Активация тарифа Scale (3000 кредитов в месяц)' },
+  starter: { credits: 400, stars: 500, titleEn: 'Starter Subscription', titleRu: 'Подписка Starter', descEn: 'Activate Starter Plan (includes 400 monthly credits)', descRu: 'Активация тарифа Starter (400 кредитов в месяц)' },
+  pro: { credits: 1000, stars: 1000, titleEn: 'Pro Subscription', titleRu: 'Подписка Pro', descEn: 'Activate Pro Plan (includes 1000 monthly credits)', descRu: 'Активация тарифа Pro (1000 кредитов в месяц)' },
+  scale: { credits: 3000, stars: 2000, titleEn: 'Scale Subscription', titleRu: 'Подписка Scale', descEn: 'Activate Scale Plan (includes 3000 monthly credits)', descRu: 'Активация тарифа Scale (3000 кредитов в месяц)' },
 };
 
 export async function POST(req: Request) {

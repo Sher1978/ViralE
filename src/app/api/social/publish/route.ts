@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { publishToSocialPlatforms, SocialPlatform } from '@/lib/services/socialPostingService';
 import { getAuthContext } from '@/lib/auth';
+import { supabaseAdmin } from '@/lib/supabase';
 
 export async function POST(req: Request) {
   try {
@@ -15,13 +16,17 @@ export async function POST(req: Request) {
 
     let userLateDevKey: string | undefined = undefined;
     try {
-      const { user, supabase: authSupabase } = await getAuthContext();
+      const { user } = await getAuthContext();
       if (user) {
-        const { data: profile } = await authSupabase
+        const { data: profile, error } = await supabaseAdmin
           .from('profiles')
           .select('latedev_api_key, user_api_keys, synthetic_training_data')
           .eq('id', user.id)
           .single();
+
+        if (error) {
+          console.warn('[API /api/social/publish] Profile fetch error:', error.message);
+        }
 
         const userApiKeys = profile?.user_api_keys as Record<string, any> || {};
         const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};

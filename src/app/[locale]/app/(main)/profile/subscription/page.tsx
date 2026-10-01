@@ -166,8 +166,8 @@ export default function SubscriptionPage() {
     {
       id: 'starter',
       name: 'Starter',
-      price: '$19.90',
-      stars: '1000 Stars',
+      price: '$9.90',
+      stars: '500 Stars',
       icon: Zap,
       color: 'from-slate-400 to-slate-600',
       features: {
@@ -179,8 +179,8 @@ export default function SubscriptionPage() {
     {
       id: 'pro',
       name: 'Pro',
-      price: '$49.90',
-      stars: '2500 Stars',
+      price: '$19.90',
+      stars: '1000 Stars',
       icon: Sparkles,
       color: 'from-purple-500 to-indigo-600',
       features: {
@@ -192,8 +192,8 @@ export default function SubscriptionPage() {
     {
       id: 'scale',
       name: 'Scale',
-      price: '$79.90',
-      stars: '4000 Stars',
+      price: '$39.90',
+      stars: '2000 Stars',
       icon: Rocket,
       color: 'from-amber-400 to-orange-600',
       features: {
@@ -273,8 +273,8 @@ export default function SubscriptionPage() {
          </div>
       </div>
 
-      {/* Tiers Grid */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
+      {/* Tiers Grid (Horizontal) */}
+      <div className="grid grid-cols-1 gap-6">
         {PLANS_CONFIG.map((tier) => {
           const isCurrent = profile?.tier === tier.id && profile?.subscription_status === 'active';
           const Icon = tier.icon;
@@ -282,48 +282,53 @@ export default function SubscriptionPage() {
           return (
             <div 
               key={tier.id}
-              className={`relative rounded-[2.5rem] p-8 border transition-all duration-500 flex flex-col ${
+              className={`relative rounded-[2.5rem] p-8 md:p-10 border transition-all duration-500 flex flex-col md:flex-row items-start md:items-center gap-8 ${
                 isCurrent 
                   ? 'bg-white/5 border-purple-500/50 shadow-2xl shadow-purple-500/10' 
                   : 'bg-black/20 border-white/5 hover:border-white/20'
               }`}
             >
               {tier.popular && (
-                <div className="absolute -top-4 left-1/2 -translate-x-1/2 bg-purple-600 px-6 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl">
+                <div className="absolute top-0 right-8 -translate-y-1/2 bg-purple-600 px-6 py-1.5 rounded-full text-[9px] font-black uppercase tracking-widest shadow-xl">
                    Recommended
                 </div>
               )}
 
-              <div className={`w-14 h-14 rounded-2xl bg-gradient-to-br ${tier.color} flex items-center justify-center shadow-lg mb-6`}>
-                 <Icon className="text-white w-7 h-7" />
+              <div className="flex items-center gap-6 md:w-[30%] shrink-0">
+                <div className={`w-16 h-16 shrink-0 rounded-2xl bg-gradient-to-br ${tier.color} flex items-center justify-center shadow-lg`}>
+                   <Icon className="text-white w-8 h-8" />
+                </div>
+                <div>
+                  <h2 className="text-3xl font-black uppercase tracking-tighter mb-1">{tier.name}</h2>
+                  <div className="flex items-baseline gap-1">
+                     <span className="text-4xl font-black">{tier.price}</span>
+                     <span className="text-[10px] uppercase font-bold text-white/20">/ month</span>
+                  </div>
+                </div>
               </div>
 
-              <h2 className="text-2xl font-black uppercase tracking-tighter mb-1">{tier.name}</h2>
-              <div className="flex items-baseline gap-1 mb-8">
-                 <span className="text-3xl font-black">{tier.price}</span>
-                 <span className="text-[10px] uppercase font-bold text-white/20">/ month</span>
-              </div>
-
-              <div className="flex-1 space-y-4 mb-10">
+              <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-4 w-full">
                  {tier.features[locale === 'ru' ? 'ru' : 'en'].map(f => (
                    <div key={f} className="flex items-center gap-3">
-                      <CheckCircle2 size={16} className={isCurrent ? 'text-purple-400' : 'text-white/20'} />
-                      <span className="text-xs font-bold text-white/60">{f}</span>
+                      <CheckCircle2 size={18} className={isCurrent ? 'text-purple-400 shrink-0' : 'text-white/20 shrink-0'} />
+                      <span className="text-xs font-bold text-white/70">{f}</span>
                    </div>
                  ))}
               </div>
 
-              <button
-                onClick={() => handleOpenPaymentModal(tier.id)}
-                disabled={isCurrent}
-                className={`w-full py-5 rounded-3xl text-[11px] font-black uppercase tracking-widest transition-all ${
-                  isCurrent 
-                    ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-default'
-                    : 'bg-white text-black hover:scale-105 active:scale-95'
-                }`}
-              >
-                {isCurrent ? (locale === 'ru' ? 'Активный тариф' : 'Active Plan') : (locale === 'ru' ? 'Выбрать тариф' : 'Select Plan')}
-              </button>
+              <div className="w-full md:w-auto mt-2 md:mt-0 shrink-0">
+                <button
+                  onClick={() => handleOpenPaymentModal(tier.id)}
+                  disabled={isCurrent}
+                  className={`w-full md:w-48 py-5 rounded-3xl text-[11px] font-black uppercase tracking-widest transition-all ${
+                    isCurrent 
+                      ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/20 cursor-default'
+                      : 'bg-white text-black hover:scale-105 active:scale-95'
+                  }`}
+                >
+                  {isCurrent ? (locale === 'ru' ? 'Активный тариф' : 'Active Plan') : (locale === 'ru' ? 'Выбрать тариф' : 'Select Plan')}
+                </button>
+              </div>
             </div>
           );
         })}
