@@ -54,13 +54,14 @@ const FALLBACK_PUBLIC_AVATARS = [
   }
 ];
 
-async function fetchFromHeyGenKey(apiKey: string) {
+async function fetchFromHeyGenKey(apiKey: string, isSystem = false) {
   try {
     const res = await fetch(`${HEYGEN_API_URL}/v2/avatars`, {
       headers: {
         'x-api-key': apiKey,
         'Accept': 'application/json'
-      }
+      },
+      next: { revalidate: isSystem ? 86400 : 300 } // Hard cache 24h for system, 5m for BYOK
     });
 
     if (!res.ok) return [];
@@ -124,7 +125,7 @@ export async function GET(req: NextRequest) {
     // 2. Fetch system public avatars if custom avatars list is short, or if cached system list is stale
     let systemAvatars: any[] = [];
     if (!cachedAvatars || now - lastFetch > CACHE_TTL) {
-      systemAvatars = await fetchFromHeyGenKey(SYSTEM_FALLBACK_KEY);
+      systemAvatars = await fetchFromHeyGenKey(SYSTEM_FALLBACK_KEY, true);
       if (systemAvatars.length > 0) {
         cachedAvatars = systemAvatars;
         lastFetch = now;
