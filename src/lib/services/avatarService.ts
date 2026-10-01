@@ -2,6 +2,7 @@ import { SceneSegment, AvatarProvider } from '../types/studio';
 import { higgsfieldService } from './higgsfieldService';
 import { profileService } from './profileService';
 import { CREDIT_COSTS } from '../credits';
+import { notifyAdminError } from '@/lib/telegram';
 
 export const avatarService = {
   /**
@@ -33,27 +34,39 @@ export const avatarService = {
     console.log(`[HeyGen] Submitting task for segment: ${segment.id}`);
     
     // Real HeyGen API call (Simulated for this turn, but using the selected key)
-    const response = await fetch('https://api.heygen.com/v2/video/generate', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'X-Api-Key': apiKey || '',
-      },
-      body: JSON.stringify({
-        video_settings: {
-          avatar_id: segment.avatarId || 'default',
-          input_text: segment.prompt,
-          voice_id: segment.voiceUrl, // Assuming voice ID for HeyGen
-        }
-      })
-    });
+    try {
+      const response = await fetch('https://api.heygen.com/v2/video/generate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'X-Api-Key': apiKey || '',
+        },
+        body: JSON.stringify({
+          video_settings: {
+            avatar_id: segment.avatarId || 'default',
+            input_text: segment.prompt,
+            voice_id: segment.voiceUrl, // Assuming voice ID for HeyGen
+          }
+        })
+      });
 
-    if (!response.ok) {
-      throw new Error(`HeyGen API error: ${response.statusText}`);
+      if (!response.ok) {
+        const errText = await response.text();
+        throw new Error(`HeyGen API error ${response.status}: ${errText}`);
+      }
+
+      const data = await response.json();
+      return { jobId: data.data.video_id };
+    } catch (e: any) {
+      console.error('[AvatarService] HeyGen generation error:', e);
+      notifyAdminError({
+        source: 'AvatarService HeyGen Generate',
+        error: e,
+        userId: userId,
+        extra: { segmentId: segment.id, avatarId: segment.avatarId }
+      }).catch(() => {});
+      throw e;
     }
-
-    const data = await response.json();
-    return { jobId: data.data.video_id };
   },
 
   /**

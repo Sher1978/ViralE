@@ -3,6 +3,7 @@ export const dynamic = 'force-dynamic';
 import { getAuthContext } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { deductCredits, addCredits } from '@/lib/credits';
+import { notifyAdminError } from '@/lib/telegram';
 
 const HEYGEN_API_URL = 'https://api.heygen.com';
 
@@ -17,9 +18,11 @@ export async function POST(req: NextRequest) {
   let estDuration = 0;
   let chargeDeducted = false;
   let isByok = false;
+  let bodyPayload: any = {};
 
   try {
     const body = await req.json();
+    bodyPayload = body;
     const { avatarId, avatarType, scriptText, voiceId, sourceVideoUrl, language, projectId } = body;
 
     if (!avatarId) {
@@ -111,7 +114,12 @@ export async function POST(req: NextRequest) {
 
     // Build voice object
     let voice;
-    if (sourceVideoUrl) {
+    if (bodyPayload.audioAssetId) {
+      voice = {
+        type: 'audio',
+        audio_asset_id: bodyPayload.audioAssetId
+      };
+    } else if (sourceVideoUrl) {
       voice = {
         type: 'audio',
         audio_url: sourceVideoUrl
@@ -197,6 +205,20 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ videoId, status: 'processing' });
   } catch (e: any) {
     console.error('[HeyGen Video] Error:', e);
+
+    notifyAdminError({
+      source: 'HeyGen Video Generate',
+      error: e,
+      userId: user?.id,
+      extra: {
+        avatarId: bodyPayload?.avatarId,
+        avatarType: bodyPayload?.avatarType,
+        hasSourceVideo: !!bodyPayload?.sourceVideoUrl,
+        hasScript: !!bodyPayload?.scriptText,
+        language: bodyPayload?.language,
+        projectId: bodyPayload?.projectId
+      }
+    }).catch(() => {});
 
     // Refund credits on failure
     if (chargeDeducted && user) {

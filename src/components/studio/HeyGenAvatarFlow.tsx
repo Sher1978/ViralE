@@ -265,6 +265,15 @@ export default function HeyGenAvatarFlow({
       setSelectedAvatar(newAvatar);
     } catch (e: any) {
       setUploadError(e.message || 'Ошибка загрузки фото');
+      fetch('/api/report-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'HeyGenAvatarFlow Client Photo Upload',
+          error: e.message || String(e),
+          extra: { fileName: file?.name, fileSize: file?.size }
+        })
+      }).catch(() => {});
     } finally {
       setIsUploadingPhoto(false);
     }
@@ -396,25 +405,43 @@ export default function HeyGenAvatarFlow({
     setStep(4);
 
     try {
-      let finalSourceVideoUrl = audioMode === 'video' && selectedLibraryVideo ? selectedLibraryVideo.url : undefined;
+      let finalSourceVideoUrl = undefined;
+      let finalAudioAssetId = undefined;
 
       if (audioMode === 'video' && selectedLibraryVideo?.blob) {
-        const { supabase } = await import('@/lib/supabase');
-        const { data: { user } } = await supabase.auth.getUser();
-        
-        let ext = 'mp4';
-        if (selectedLibraryVideo.blob instanceof File) {
-          const parts = selectedLibraryVideo.blob.name.split('.');
-          if (parts.length > 1) ext = parts.pop() || 'mp4';
-        } else if (selectedLibraryVideo.blob.type) {
-          ext = selectedLibraryVideo.blob.type.split('/')[1] || 'webm';
-        }
-        
-        const path = `teleprompter-library/${user?.id || 'anon'}/temp_${Date.now()}.${ext}`;
-        const { error: upErr } = await supabase.storage.from('media').upload(path, selectedLibraryVideo.blob);
-        if (upErr) throw upErr;
-        const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path);
-        finalSourceVideoUrl = publicUrl;
+        const file = selectedLibraryVideo.blob;
+        const filename = file.name || `audio_${Date.now()}.mp3`;
+        const content_type = file.type || 'audio/mpeg';
+        const size_bytes = file.size;
+
+        // 1. Get Presigned URL
+        const initRes = await fetch('/api/ai/heygen/direct-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'init', filename, content_type, size_bytes })
+        });
+        const initData = await initRes.json();
+        if (!initRes.ok) throw new Error(initData.error || 'Ошибка инициализации прямой загрузки HeyGen');
+
+        const { upload_url, upload_headers, asset_id } = initData.data || initData;
+
+        // 2. PUT file directly to S3
+        const putRes = await fetch(upload_url, {
+          method: 'PUT',
+          headers: upload_headers || { 'Content-Type': content_type },
+          body: file
+        });
+        if (!putRes.ok) throw new Error(`Ошибка загрузки файла в HeyGen S3 (${putRes.status})`);
+
+        // 3. Finalize upload
+        const completeRes = await fetch('/api/ai/heygen/direct-upload', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ action: 'complete', asset_id })
+        });
+        if (!completeRes.ok) throw new Error('Ошибка финализации прямой загрузки HeyGen');
+
+        finalAudioAssetId = asset_id;
       }
 
       const res = await fetch('/api/ai/heygen/video-generate', {
@@ -426,6 +453,7 @@ export default function HeyGenAvatarFlow({
           scriptText: audioMode === 'text' ? editedScript.trim() : undefined,
           voiceId: audioMode === 'text' ? selectedVoice : undefined,
           sourceVideoUrl: finalSourceVideoUrl,
+          audioAssetId: finalAudioAssetId,
           language: selectedLang,
           projectId,
           photoUrl: selectedAvatar.id.startsWith('local_') ? selectedAvatar.url : undefined,
@@ -438,6 +466,20 @@ export default function HeyGenAvatarFlow({
     } catch (e: any) {
       setGenError(e.message);
       setIsGenerating(false);
+      
+      fetch('/api/report-error', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          source: 'HeyGenAvatarFlow Client Generate',
+          error: e.message || String(e),
+          extra: {
+             audioMode,
+             avatarType: selectedAvatar?.type,
+             fileSize: selectedLibraryVideo?.blob?.size
+          }
+        })
+      }).catch(() => {});
     }
   };
 

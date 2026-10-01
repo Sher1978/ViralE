@@ -1,18 +1,23 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getAuthenticatedUser } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
+import { notifyAdminError } from '@/lib/telegram';
 
 const HEYGEN_API_URL = 'https://api.heygen.com';
 
 export async function POST(req: NextRequest) {
+  let user: any = null;
+  let bodyPayload: any = {};
+
   try {
     const body = await req.json();
+    bodyPayload = body;
     const { audioUrl, photoUrl, avatarId, avatarType, projectId } = body;
 
     let apiKey = process.env.HEYGEN_API_KEY;
 
     try {
-      const user = await getAuthenticatedUser();
+      user = await getAuthenticatedUser();
       if (user) {
         const { data: profile } = await supabase
           .from('profiles')
@@ -115,6 +120,18 @@ export async function POST(req: NextRequest) {
 
       } catch (uploadErr: any) {
         console.error('[HeyGen V2] Fatal Upload Error:', uploadErr);
+
+        notifyAdminError({
+          source: 'HeyGen Photo Upload',
+          error: uploadErr,
+          userId: user?.id,
+          extra: {
+            avatarType: bodyPayload?.avatarType,
+            photoUrl: bodyPayload?.photoUrl,
+            projectId: bodyPayload?.projectId
+          }
+        }).catch(() => {});
+
         return NextResponse.json({ error: `HeyGen Upload Error: ${uploadErr.message}` }, { status: 500 });
       }
     }
@@ -173,6 +190,18 @@ export async function POST(req: NextRequest) {
 
   } catch (e: any) {
     console.error('[HeyGen V2] Route error:', e);
+    
+    notifyAdminError({
+      source: 'HeyGen V2 Route',
+      error: e,
+      userId: user?.id,
+      extra: {
+        avatarType: bodyPayload?.avatarType,
+        photoUrl: bodyPayload?.photoUrl,
+        projectId: bodyPayload?.projectId
+      }
+    }).catch(() => {});
+
     return NextResponse.json({ error: e.message }, { status: 500 });
   }
 }
