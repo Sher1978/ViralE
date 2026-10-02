@@ -428,7 +428,7 @@ export default function HeyGenAvatarFlow({
 
       if (audioMode === 'video' && selectedLibraryVideo?.blob) {
         const file = selectedLibraryVideo.blob;
-        const filename = file.name || `audio_${Date.now()}.mp3`;
+        const filename = (file as File).name || `audio_${Date.now()}.mp3`;
         const content_type = file.type || 'audio/mpeg';
         const size_bytes = file.size;
 
