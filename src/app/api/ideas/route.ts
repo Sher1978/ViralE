@@ -19,9 +19,17 @@ export async function GET(req: Request) {
     const userId = user.id;
     const { searchParams } = new URL(req.url);
     const force = searchParams.get('force') === 'true';
-    const locale = searchParams.get('locale') || 'en';
     const requestedStatus = searchParams.get('status') || 'new';
     const categoryParam = searchParams.get('category');
+    
+    // Get user's preferred content language
+    const { data: profile } = await authorizedSupabase
+      .from('profiles')
+      .select('content_language')
+      .eq('id', userId)
+      .single();
+    
+    const locale = profile?.content_language || searchParams.get('locale') || 'en';
 
     // 1. Build basic query
     let query = authorizedSupabase

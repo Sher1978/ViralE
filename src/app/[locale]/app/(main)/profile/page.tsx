@@ -83,6 +83,11 @@ export default function ProfilePage() {
   
   const [authUserEmail, setAuthUserEmail] = useState<string | null>(null);
 
+  // Language settings states
+  const [showLanguageSettings, setShowLanguageSettings] = useState(false);
+  const [tempContentLang, setTempContentLang] = useState('ru');
+  const [tempSubtitleLang, setTempSubtitleLang] = useState('ru');
+
   const fileInputRef = useRef<HTMLInputElement>(null);
   const storyBrandInputRef = useRef<HTMLInputElement>(null);
 
@@ -516,6 +521,48 @@ export default function ProfilePage() {
     }
   };
 
+  const handleSaveLanguageSettings = async (newInterfaceLang: string, newContentLang: string, newSubtitleLang: string) => {
+    // Check if content language changed
+    const contentChanged = profile?.content_language !== newContentLang;
+    if (contentChanged) {
+      const confirmReset = (globalThis as any).confirm?.(
+        locale === 'ru' 
+        ? `Внимание! Вы меняете язык контента на "${newContentLang}". Это приведет к сбросу текущей матрицы идей, чтобы сгенерировать новую на новом языке. Продолжить?` 
+        : `Warning! You are changing content language to "${newContentLang}". This will reset your current content matrix and regenerate it in the new language. Continue?`
+      );
+      if (!confirmReset) return;
+    }
+    
+    // save to DB
+    if (profile?.id) {
+       await profileService.updateProfile(profile.id, {
+         preferred_language: newInterfaceLang,
+         content_language: newContentLang,
+         subtitle_language: newSubtitleLang
+       });
+       setProfile({ ...profile, content_language: newContentLang, subtitle_language: newSubtitleLang, preferred_language: newInterfaceLang } as any);
+       updateGlobalProfile({ content_language: newContentLang, subtitle_language: newSubtitleLang, preferred_language: newInterfaceLang } as any);
+    }
+
+    if (contentChanged) {
+       await handleResetMatrix();
+    }
+    
+    // Handle interface language change if needed
+    if (newInterfaceLang !== locale) {
+      const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
+      if (globalObj && typeof globalObj.document !== 'undefined') {
+        globalObj.document.cookie = `NEXT_LOCALE=${newInterfaceLang}; path=/; max-age=31536000; SameSite=Lax`;
+      }
+      if (globalObj && typeof globalObj.window !== 'undefined') {
+        globalObj.window.localStorage.setItem('NEXT_LOCALE', newInterfaceLang);
+      }
+      router.replace(pathname, { locale: newInterfaceLang });
+    }
+    
+    setShowLanguageSettings(false);
+  };
+
   const [imgErr, setImgErr] = useState(false);
 
   const isHeyGenLocked = !profile || (profile.tier !== 'pro' && profile.tier !== 'scale' && profile.tier !== 'superadmin' && (profile as any).role !== 'superadmin');
@@ -582,24 +629,12 @@ export default function ProfilePage() {
         { icon: Bell, label: t('notifLabel'), sub: t('notifSub'), href: `/app/profile/notifications`, accent: '#9B5FFF' },
         { 
           icon: Languages, 
-          label: locale === 'ru' ? 'Язык Интерфейса' : 'Interface Language', 
-          sub: locale === 'ru' ? 'Текущий: Русский' : 'Current: English', 
+          label: locale === 'ru' ? 'Языковые Настройки' : 'Language Settings', 
+          sub: locale === 'ru' ? 'Интерфейс, контент, субтитры' : 'Interface, Content, Subtitles', 
           onClick: () => {
-            const nextLocale = locale === 'ru' ? 'en' : 'ru';
-            
-            const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
-            if (globalObj && typeof globalObj.document !== 'undefined') {
-              globalObj.document.cookie = `NEXT_LOCALE=${nextLocale}; path=/; max-age=31536000; SameSite=Lax`;
-            }
-            if (globalObj && typeof globalObj.window !== 'undefined') {
-              globalObj.window.localStorage.setItem('NEXT_LOCALE', nextLocale);
-            }
-            
-            if (profile?.id) {
-              supabase.from('profiles').update({ preferred_language: nextLocale }).eq('id', profile.id).then();
-            }
-            
-            router.replace(pathname, { locale: nextLocale });
+            setTempContentLang(profile?.content_language || 'ru');
+            setTempSubtitleLang(profile?.subtitle_language || 'ru');
+            setShowLanguageSettings(true);
           }, 
           accent: '#00FFCC' 
         },
@@ -1297,6 +1332,104 @@ export default function ProfilePage() {
                     <p className="text-[10px] text-white/40 font-mono uppercase tracking-widest">GDPR Art. 17 Compliance</p>
                   </div>
                 </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
+        
+        {/* Language Settings Modal */}
+        <AnimatePresence>
+          {showLanguageSettings && (
+            <div className="fixed inset-0 z-[99999] bg-black/80 backdrop-blur-md flex items-center justify-center p-4">
+              <motion.div
+                initial={{ opacity: 0, scale: 0.9, y: 20 }}
+                animate={{ opacity: 1, scale: 1, y: 0 }}
+                exit={{ opacity: 0, scale: 0.9, y: 20 }}
+                className="w-full max-w-md bg-neutral-900 border border-purple-500/40 rounded-3xl p-6 shadow-2xl text-left space-y-5 relative overflow-hidden"
+              >
+                <div className="flex items-center gap-3 text-purple-400 font-black text-lg">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-500/10 border border-purple-500/30 flex items-center justify-center shrink-0">
+                    <Languages size={22} />
+                  </div>
+                  <div>
+                    <h3>{locale === 'ru' ? 'Языковые Настройки' : 'Language Settings'}</h3>
+                  </div>
+                </div>
+                
+                <div className="space-y-4">
+                  {/* Interface Lang */}
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-white/50 block mb-2">
+                      {locale === 'ru' ? 'Язык Интерфейса' : 'Interface Language'}
+                    </label>
+                    <select 
+                      id="interface-lang-select"
+                      defaultValue={locale}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-[12px] text-white focus:border-purple-500/50 outline-none"
+                    >
+                      <option value="ru">Русский (Russian)</option>
+                      <option value="en">English (English)</option>
+                    </select>
+                  </div>
+                  
+                  {/* Content Lang */}
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-white/50 block mb-2">
+                      {locale === 'ru' ? 'Язык Контента (Скрипты, Идеи)' : 'Content Language (Scripts, Ideas)'}
+                    </label>
+                    <select 
+                      value={tempContentLang}
+                      onChange={(e) => setTempContentLang(e.target.value)}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-[12px] text-white focus:border-purple-500/50 outline-none"
+                    >
+                      <option value="ru">Русский (Russian)</option>
+                      <option value="en">English (English)</option>
+                      <option value="de">Deutsch (German)</option>
+                      <option value="fr">Français (French)</option>
+                      <option value="uk">Українська (Ukrainian)</option>
+                    </select>
+                  </div>
+
+                  {/* Subtitle Lang */}
+                  <div>
+                    <label className="text-[10px] font-black uppercase text-white/50 block mb-2">
+                      {locale === 'ru' ? 'Язык Субтитров' : 'Subtitle Language'}
+                    </label>
+                    <select 
+                      value={tempSubtitleLang}
+                      onChange={(e) => setTempSubtitleLang(e.target.value)}
+                      className="w-full bg-black/50 border border-white/10 rounded-xl px-4 py-3 text-[12px] text-white focus:border-purple-500/50 outline-none"
+                    >
+                      <option value="ru">Русский (Russian)</option>
+                      <option value="en">English (English)</option>
+                      <option value="de">Deutsch (German)</option>
+                      <option value="fr">Français (French)</option>
+                      <option value="uk">Українська (Ukrainian)</option>
+                    </select>
+                  </div>
+                </div>
+
+                <div className="flex gap-3 mt-6">
+                  <button 
+                    onClick={() => setShowLanguageSettings(false)}
+                    className="flex-1 py-3 rounded-xl border border-white/10 text-white/50 text-[10px] font-black uppercase tracking-wider hover:bg-white/5"
+                  >
+                    {locale === 'ru' ? 'Отмена' : 'Cancel'}
+                  </button>
+                  <button 
+                    onClick={() => {
+                      const interfaceSelect = document.getElementById('interface-lang-select') as HTMLSelectElement;
+                      handleSaveLanguageSettings(interfaceSelect.value, tempContentLang, tempSubtitleLang);
+                    }}
+                    className="flex-1 py-3 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[10px] font-black uppercase tracking-wider shadow-lg shadow-purple-600/30"
+                  >
+                    {locale === 'ru' ? 'Сохранить' : 'Save'}
+                  </button>
+                </div>
+              </motion.div>
+            </div>
+          )}
+        </AnimatePresence>
 
                 <p className="text-xs text-neutral-300 font-medium leading-relaxed">
                   This action is <strong>irreversible</strong>. All your projects, AI video renders, Digital DNA settings, credit balance, and personal metadata will be <strong>permanently purged</strong> from our servers and database.

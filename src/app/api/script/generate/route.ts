@@ -93,6 +93,9 @@ export async function POST(req: Request) {
     const anthropicApiKey = profile?.anthropic_api_key || undefined;
     const groqApiKey = profile?.groq_api_key || undefined;
     
+    // Override locale with content_language from profile if available
+    locale = profile?.content_language || locale;
+    
     // Retrieve Gemini API Key from BYOK (stored in synthetic_training_data)
     const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
     const geminiApiKey = syntheticData.gemini_api_key || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || undefined;

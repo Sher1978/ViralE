@@ -35,6 +35,8 @@ export interface Profile {
   youtube_token?: string | null;
   visual_style?: string | null;
   preferred_language?: string | null;
+  content_language?: string | null;
+  subtitle_language?: string | null;
 
   // Legal Consent & GDPR Compliance Metadata
   consent_given_at?: string | null;
