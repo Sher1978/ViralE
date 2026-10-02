@@ -80,7 +80,7 @@ export async function POST(req: Request) {
     // 2. Get Digital Shadow and Brand DNA
     const { data: profile, error: profileError } = await authorizedSupabase
       .from('profiles')
-      .select('digital_shadow_prompt, knowledge_base_json, industry_context, anthropic_api_key, groq_api_key, synthetic_training_data, credits_balance, tier')
+      .select('digital_shadow_prompt, knowledge_base_json, industry_context, anthropic_api_key, groq_api_key, synthetic_training_data, credits_balance, tier, content_language, subtitle_language')
       .eq('id', userId)
       .single();
 
