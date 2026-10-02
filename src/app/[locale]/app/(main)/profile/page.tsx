@@ -1332,11 +1332,58 @@ export default function ProfilePage() {
                     <p className="text-[10px] text-white/40 font-mono uppercase tracking-widest">GDPR Art. 17 Compliance</p>
                   </div>
                 </div>
+
+                <p className="text-xs text-neutral-300 font-medium leading-relaxed">
+                  This action is <strong>irreversible</strong>. All your projects, AI video renders, Digital DNA settings, credit balance, and personal metadata will be <strong>permanently purged</strong> from our servers and database.
+                </p>
+
+                <div className="space-y-2">
+                  <label htmlFor="delete-confirm-input" className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
+                    Type <span className="text-red-400 font-mono">DELETE</span> to confirm:
+                  </label>
+                  <input
+                    id="delete-confirm-input"
+                    type="text"
+                    value={deleteConfirmInput}
+                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
+                    placeholder="DELETE"
+                    className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-mono uppercase focus:outline-none focus:border-red-500/60"
+                  />
+                </div>
+
+                {deleteAccountError && (
+                  <p className="text-xs text-red-400 font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20">
+                    {deleteAccountError}
+                  </p>
+                )}
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    onClick={() => setShowDeleteModal(false)}
+                    disabled={isDeletingAccount}
+                    className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs uppercase tracking-wider hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50"
+                  >
+                    Cancel
+                  </button>
+                  <button
+                    onClick={handleConfirmDeleteAccount}
+                    disabled={deleteConfirmInput.trim().toUpperCase() !== 'DELETE' || isDeletingAccount}
+                    className="flex-1 py-3.5 rounded-xl bg-red-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-red-600/30"
+                  >
+                    {isDeletingAccount ? (
+                      <Loader2 size={16} className="animate-spin" />
+                    ) : (
+                      <>
+                        <Trash2 size={14} /> Purge Everything
+                      </>
+                    )}
+                  </button>
+                </div>
               </motion.div>
             </div>
           )}
         </AnimatePresence>
-        
+
         {/* Language Settings Modal */}
         <AnimatePresence>
           {showLanguageSettings && (
@@ -1431,56 +1478,6 @@ export default function ProfilePage() {
           )}
         </AnimatePresence>
 
-                <p className="text-xs text-neutral-300 font-medium leading-relaxed">
-                  This action is <strong>irreversible</strong>. All your projects, AI video renders, Digital DNA settings, credit balance, and personal metadata will be <strong>permanently purged</strong> from our servers and database.
-                </p>
-
-                <div className="space-y-2">
-                  <label htmlFor="delete-confirm-input" className="text-[10px] font-bold uppercase tracking-wider text-neutral-400">
-                    Type <span className="text-red-400 font-mono">DELETE</span> to confirm:
-                  </label>
-                  <input
-                    id="delete-confirm-input"
-                    type="text"
-                    value={deleteConfirmInput}
-                    onChange={(e) => setDeleteConfirmInput(e.target.value)}
-                    placeholder="DELETE"
-                    className="w-full bg-black/60 border border-white/10 rounded-xl px-4 py-3 text-sm text-white font-mono uppercase focus:outline-none focus:border-red-500/60"
-                  />
-                </div>
-
-                {deleteAccountError && (
-                  <p className="text-xs text-red-400 font-bold bg-red-500/10 p-3 rounded-xl border border-red-500/20">
-                    {deleteAccountError}
-                  </p>
-                )}
-
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    onClick={() => setShowDeleteModal(false)}
-                    disabled={isDeletingAccount}
-                    className="flex-1 py-3.5 rounded-xl bg-white/5 border border-white/10 text-white font-bold text-xs uppercase tracking-wider hover:bg-white/10 transition-all cursor-pointer disabled:opacity-50"
-                  >
-                    Cancel
-                  </button>
-                  <button
-                    onClick={handleConfirmDeleteAccount}
-                    disabled={deleteConfirmInput.trim().toUpperCase() !== 'DELETE' || isDeletingAccount}
-                    className="flex-1 py-3.5 rounded-xl bg-red-600 text-white font-bold text-xs uppercase tracking-wider hover:bg-red-500 disabled:opacity-40 disabled:cursor-not-allowed transition-all flex items-center justify-center gap-2 cursor-pointer shadow-lg shadow-red-600/30"
-                  >
-                    {isDeletingAccount ? (
-                      <Loader2 size={16} className="animate-spin" />
-                    ) : (
-                      <>
-                        <Trash2 size={14} /> Purge Everything
-                      </>
-                    )}
-                  </button>
-                </div>
-              </motion.div>
-            </div>
-          )}
-        </AnimatePresence>
 
         <div className="text-center space-y-2 pb-8">
           <div className="flex items-center justify-center gap-2 opacity-20">
