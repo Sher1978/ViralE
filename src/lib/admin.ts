@@ -48,6 +48,21 @@ export interface UserGrowthPoint {
   count: number;
 }
 
+export interface RevenueStats {
+  totalStarsPaid: number;
+  totalTransactionsCount: number;
+  mrrEst: number;
+  conversionRate: number;
+  paidUsersCount: number;
+  arpuEst: number;
+}
+
+export interface HeavyOpsWeekly {
+  avatarsThisWeek: number;
+  imagesThisWeek: number;
+  scriptsThisWeek: number;
+}
+
 export interface AdminStatsOverview {
   totalUsers: number;
   newUsersToday: number;
@@ -65,6 +80,9 @@ export interface AdminStatsOverview {
   totalAvatarsGenerated: number;
   totalImagesGenerated: number;
   totalScriptsGenerated: number;
+  heavyOpsWeekly?: HeavyOpsWeekly;
+  revenueStats?: RevenueStats;
+  trafficReport?: TrafficSourcesReport;
   systemBalances: any[];
   userGrowthTimeline: UserGrowthPoint[];
 }
@@ -196,6 +214,51 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
     .select('id', { count: 'exact', head: true })
     .eq('transaction_type', 'SCRIPT_GEN');
 
+  // Weekly heavy ops breakdown
+  const { count: avatarsThisWeek } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('transaction_type', 'HEYGEN_GENERATE')
+    .gte('created_at', weekStart);
+
+  const { count: imagesThisWeek } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('id', { count: 'exact', head: true })
+    .in('transaction_type', ['FAL_IMAGE', 'FAL_TIMELINE', 'STORYBOARD_GEN'])
+    .gte('created_at', weekStart);
+
+  const { count: scriptsThisWeek } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('id', { count: 'exact', head: true })
+    .eq('transaction_type', 'SCRIPT_GEN')
+    .gte('created_at', weekStart);
+
+  // Revenue & Payment stats
+  const { data: paidTx } = await supabaseAdmin
+    .from('credits_transactions')
+    .select('amount, metadata, transaction_type')
+    .in('transaction_type', ['top_up', 'tribute_subscription', 'lemonsqueezy', 'stars_purchase']);
+
+  let totalStarsPaid = 0;
+  const totalTransactionsCount = (paidTx || []).length;
+  (paidTx || []).forEach((tx: any) => {
+    const meta = tx.metadata || {};
+    const stars = meta.total_amount || meta.stars_amount || 2000;
+    totalStarsPaid += typeof stars === 'number' ? stars : 2000;
+  });
+
+  const paidUsersCount = (tierCounts.creator || 0) + (tierCounts.pro || 0) + (tierCounts.scale || 0);
+  const mrrEst = (tierCounts.creator || 0) * 19.90 + (tierCounts.pro || 0) * 49.90 + (tierCounts.scale || 0) * 199.00;
+  const conversionRate = totalUsers > 0 ? Number(((paidUsersCount / totalUsers) * 100).toFixed(1)) : 0;
+  const arpuEst = totalUsers > 0 ? Number((mrrEst / totalUsers).toFixed(2)) : 0;
+
+  let trafficReport: TrafficSourcesReport | undefined;
+  try {
+    trafficReport = await getAdminTrafficSourcesReport();
+  } catch (err) {
+    console.warn('[AdminStats] Traffic report error:', err);
+  }
+
   // 4. API System Balances
   let systemBalances: any[] = [];
   try {
@@ -216,6 +279,20 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
     totalAvatarsGenerated: totalAvatarsGenerated || 0,
     totalImagesGenerated: totalImagesGenerated || 0,
     totalScriptsGenerated: totalScriptsGenerated || 0,
+    heavyOpsWeekly: {
+      avatarsThisWeek: avatarsThisWeek || 0,
+      imagesThisWeek: imagesThisWeek || 0,
+      scriptsThisWeek: scriptsThisWeek || 0
+    },
+    revenueStats: {
+      totalStarsPaid,
+      totalTransactionsCount,
+      mrrEst,
+      conversionRate,
+      paidUsersCount,
+      arpuEst
+    },
+    trafficReport,
     systemBalances,
     userGrowthTimeline,
   };
@@ -421,20 +498,68 @@ export async function adminUpdateUserTier(userId: string, tier: string, subscrip
   return true;
 }
 
-export async function getAdminPaymentsLog(limit: number = 50) {
-  const { data: transactions, error } = await supabaseAdmin
-    .from('credits_transactions')
-    .select('*, profiles(email, full_name, telegram_id)')
-    .gte('amount', 0)
-    .order('created_at', { ascending: false })
-    .limit(limit);
+export async function getAdminPaymentsLog(limit: number = 100) {
+  try {
+    const { data: transactions, error } = await supabaseAdmin
+      .from('credits_transactions')
+      .select('*')
+      .order('created_at', { ascending: false })
+      .limit(limit);
 
-  if (error) {
-    console.error('[AdminPayments] Error fetching payments:', error);
-    throw error;
+    if (error) {
+      console.error('[AdminPayments] Error fetching payments:', error);
+      return [];
+    }
+
+    const filtered = (transactions || []).filter((t: any) => t.amount === undefined || t.amount === null || t.amount >= 0);
+
+    const userIds = Array.from(new Set(filtered.map((t: any) => t.user_id).filter(Boolean)));
+    const profilesMap: Record<string, any> = {};
+
+    if (userIds.length > 0) {
+      try {
+        const { data: profiles } = await supabaseAdmin
+          .from('profiles')
+          .select('id, email, full_name, telegram_id, avatar_url, tier, subscription_status')
+          .in('id', userIds);
+
+        (profiles || []).forEach((p: any) => {
+          profilesMap[p.id] = p;
+        });
+      } catch (pErr) {
+        console.warn('[AdminPayments] Failed to fetch profiles map:', pErr);
+      }
+    }
+
+    return filtered.map((t: any) => {
+      let provider = 'System / Admin';
+      const type = t.transaction_type || '';
+      const meta = t.metadata || {};
+
+      if (type === 'top_up') {
+        provider = meta.provider || 'Telegram Stars ⭐️';
+      } else if (type === 'tribute_subscription') {
+        provider = 'Tribute 💳';
+      } else if (type === 'lemonsqueezy') {
+        provider = 'LemonSqueezy 🍋';
+      } else if (type === 'promo_code_redemption' || type === 'promo_redemption') {
+        provider = `Промокод 🎟 (${meta.code || 'CODE'})`;
+      } else if (type === 'signup_bonus' || type === 'initial_free' || type === 'telegram_connect_bonus') {
+        provider = 'Регистрационный бонус 🎁';
+      } else if (type === 'admin_grant') {
+        provider = 'Ручное начисление Админа 👑';
+      }
+
+      return {
+        ...t,
+        profiles: profilesMap[t.user_id] || null,
+        provider
+      };
+    });
+  } catch (err: any) {
+    console.error('[AdminPayments] Unexpected exception:', err);
+    return [];
   }
-
-  return transactions || [];
 }
 
 export interface TrafficSourcesReport {

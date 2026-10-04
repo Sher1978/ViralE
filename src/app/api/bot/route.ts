@@ -490,75 +490,188 @@ export async function POST(req: NextRequest) {
     // 2. Handle successful_payment (Telegram Stars payment successful)
     if (message && message.successful_payment) {
       const payment = message.successful_payment;
-      const payload = payment.invoice_payload;
-      console.log('[Telegram Stars Webhook] Successful payment received:', payment);
+      const payload = payment.invoice_payload || '';
+      const fromUser = message.from || {};
+      const telegramId = String(fromUser.id);
+      const tgUsername = fromUser.username ? `@${fromUser.username}` : 'без_юзернейма';
+      const tgFullName = `${fromUser.first_name || ''} ${fromUser.last_name || ''}`.trim() || 'Пользователь Telegram';
+
+      console.log('[Telegram Stars Webhook] Successful payment received:', {
+        charge_id: payment.telegram_payment_charge_id,
+        amount: payment.total_amount,
+        from: fromUser,
+        payload
+      });
 
       try {
         const parts = payload.split(':');
-        if (parts.length >= 4) {
-          const [userId, creditsStr, itemId, type] = parts;
-          const credits = parseInt(creditsStr, 10) || 0;
+        let rawUserId = parts[0] || '';
+        let credits = parseInt(parts[1], 10) || 0;
+        let itemId = parts[2] || 'pro';
+        let type = parts[3] || 'plan';
 
-          if (userId && credits > 0) {
-            const { supabaseAdmin } = await import('@/lib/supabase');
-            const { addCredits } = await import('@/lib/credits');
+        // Fallback defaults if payload was simple
+        if (credits === 0) {
+          credits = payment.total_amount >= 2000 ? 3000 : payment.total_amount >= 1000 ? 1000 : 400;
+        }
 
-            // Credit balance
-            await addCredits(supabaseAdmin, userId, credits, 'top_up');
+        const { supabaseAdmin } = await import('@/lib/supabase');
+        const { addCredits } = await import('@/lib/credits');
 
-            // If it is a plan subscription, also update the tier
-            if (type === 'plan') {
-              await supabaseAdmin
-                .from('profiles')
-                .update({
-                  tier: itemId, // 'starter', 'pro', 'scale'
-                  subscription_status: 'active',
-                  subscription_expires_at: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString()
-                })
-                .eq('id', userId);
-            }
+        // 1. Find or create profile in DB
+        let targetProfile: any = null;
 
-            // Notify the user in the Telegram chat
-            const locale = (message.from?.language_code === 'ru') ? 'ru' : 'en';
-            const successText = locale === 'ru'
-              ? `⭐️ *Оплата успешно получена!*\n\nНа ваш баланс в Студии зачислено *${credits}* кредитов. Спасибо за поддержку! 🚀`
-              : `⭐️ *Payment successfully received!*\n\nYour Studio balance has been credited with *${credits}* credits. Thank you for your support! 🚀`;
+        if (rawUserId && rawUserId.length > 20) {
+          const { data: pById } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('id', rawUserId)
+            .maybeSingle();
+          targetProfile = pById;
+        }
 
-            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json' },
-              body: JSON.stringify({
-                chat_id: message.chat.id,
-                text: successText,
-                parse_mode: 'Markdown',
-              }),
-            });
+        if (!targetProfile && telegramId) {
+          const { data: pByTg } = await supabaseAdmin
+            .from('profiles')
+            .select('*')
+            .eq('telegram_id', telegramId)
+            .maybeSingle();
+          targetProfile = pByTg;
+        }
 
-            // Send admin notification about successful payment
-            try {
-              const { data: updatedProf } = await supabaseAdmin
-                .from('profiles')
-                .select('email, full_name, credits_balance')
-                .eq('id', userId)
-                .single();
+        // Auto-create profile if missing so payment is NEVER lost
+        if (!targetProfile) {
+          const newUserId = crypto.randomUUID();
+          const { data: newProf, error: createErr } = await supabaseAdmin
+            .from('profiles')
+            .insert([{
+              id: newUserId,
+              telegram_id: telegramId,
+              full_name: tgFullName,
+              tier: 'free',
+              subscription_status: 'active',
+              credits_balance: 0,
+              preferred_language: fromUser.language_code === 'ru' ? 'ru' : 'en'
+            }])
+            .select('*')
+            .single();
 
-              const { notifyPaymentSuccess } = await import('@/lib/telegram');
-              await notifyPaymentSuccess({
-                userId,
-                userEmail: updatedProf?.email,
-                fullName: updatedProf?.full_name,
-                credits,
-                totalBalance: updatedProf?.credits_balance,
-                planOrPackage: type === 'plan' ? `Тариф ${itemId.toUpperCase()}` : `Пакет ${credits} CR`
-              });
-            } catch (notifyErr) {
-              console.error('[Telegram Webhook] Failed to notify admin of successful payment:', notifyErr);
-            }
-
-            console.log(`[Telegram Stars Webhook] Successfully credited User ${userId} with ${credits} credits.`);
+          if (createErr) {
+            console.error('[Telegram Webhook] Error creating user profile for payment:', createErr);
+          } else {
+            targetProfile = newProf;
           }
         }
-      } catch (err) {
+
+        const targetUserId = targetProfile?.id;
+        let dbVerified = false;
+        let verifiedProfile: any = null;
+        let dbErrorMessage = '';
+
+        if (targetUserId) {
+          // 2. Add credits to balance
+          await addCredits(supabaseAdmin, targetUserId, credits, 'top_up', {
+            provider: 'Telegram Stars ⭐️',
+            stars_amount: payment.total_amount,
+            telegram_payment_charge_id: payment.telegram_payment_charge_id,
+            provider_payment_charge_id: payment.provider_payment_charge_id
+          });
+
+          // 3. Update subscription tier
+          const targetTier = (type === 'plan' || type === 'plans') ? itemId : (targetProfile.tier !== 'free' ? targetProfile.tier : 'pro');
+          const expiresAt = new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
+          const { error: updateErr } = await supabaseAdmin
+            .from('profiles')
+            .update({
+              tier: targetTier,
+              subscription_status: 'active',
+              subscription_expires_at: expiresAt,
+              telegram_id: telegramId,
+              updated_at: new Date().toISOString()
+            })
+            .eq('id', targetUserId);
+
+          if (updateErr) {
+            dbErrorMessage = updateErr.message;
+          }
+
+          // 4. DB Audit Verification
+          const { data: checkProf } = await supabaseAdmin
+            .from('profiles')
+            .select('id, email, full_name, telegram_id, tier, subscription_status, credits_balance, subscription_expires_at')
+            .eq('id', targetUserId)
+            .single();
+
+          verifiedProfile = checkProf;
+          dbVerified = Boolean(checkProf && checkProf.subscription_status === 'active' && checkProf.credits_balance >= credits);
+        } else {
+          dbErrorMessage = 'Could not locate or create user profile for payment';
+        }
+
+        // 5. User Telegram Confirmation
+        const locale = (fromUser.language_code === 'ru') ? 'ru' : 'en';
+        const userMsg = locale === 'ru'
+          ? `⭐️ *Оплата успешно получена!*\n\nНа ваш баланс в Студии зачислено *${credits}* кредитов. Ваш тариф обновлен до *${(verifiedProfile?.tier || itemId).toUpperCase()}*. Спасибо за поддержку! 🚀`
+          : `⭐️ *Payment successfully received!*\n\nYour Studio balance has been credited with *${credits}* credits. Plan upgraded to *${(verifiedProfile?.tier || itemId).toUpperCase()}*. Thank you for your support! 🚀`;
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: message.chat.id,
+            text: userMsg,
+            parse_mode: 'Markdown',
+          }),
+        });
+
+        // 6. Detailed Audit Report to Superadmin Bot
+        const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+        const productLabel = type === 'plan' || type === 'plans' ? `Подписка ${itemId.toUpperCase()}` : `Пакет ${credits} CR`;
+
+        const adminReportText =
+          `💰 <b>ПОСТУПИЛА ОПЛАТА TELEGRAM STARS!</b> ⭐️\n\n` +
+          `<b>📦 Продукт:</b> <code>${productLabel}</code>\n` +
+          `<b>⭐️ Сумма Stars:</b> <b>${payment.total_amount} XTR</b> (~$${(payment.total_amount * 0.013).toFixed(2)})\n` +
+          `<b>⚡ Начислено:</b> <code>+${credits.toLocaleString()} CR</code>\n` +
+          `<b>🆔 Telegram Charge ID:</b> <code>${payment.telegram_payment_charge_id}</code>\n\n` +
+          `<b>👤 ПОКУПАТЕЛЬ:</b>\n` +
+          `• <b>Имя:</b> ${tgFullName} (${tgUsername})\n` +
+          `• <b>Telegram ID:</b> <code>${telegramId}</code>\n` +
+          `• <b>Email в системе:</b> <code>${verifiedProfile?.email || 'Не привязан'}</code>\n` +
+          `• <b>User ID в БД:</b> <code>${targetUserId || 'N/A'}</code>\n\n` +
+          `<b>🔍 ПРОВЕРКА ЗАЧИСЛЕНИЯ В БД (Supabase Audit):</b>\n` +
+          (dbVerified
+            ? `🟢 <b>ДОСТУП УСПЕШНО ВЫДАН И ПОДТВЕРЖДЕН В БД!</b>\n` +
+              `• <b>Активированный Тариф:</b> <code>${(verifiedProfile?.tier || 'PRO').toUpperCase()}</code>\n` +
+              `• <b>Статус подписки:</b> <code>${(verifiedProfile?.subscription_status || 'ACTIVE').toUpperCase()}</code>\n` +
+              `• <b>Новый баланс:</b> <code>${verifiedProfile?.credits_balance?.toLocaleString()} CR</code>\n` +
+              `• <b>Активно до:</b> <code>${verifiedProfile?.subscription_expires_at ? new Date(verifiedProfile.subscription_expires_at).toLocaleDateString('ru-RU') : '30 дней'}</code>`
+            : `🔴 <b>СБОЙ ЗАЧИСЛЕНИЯ В БД! НЕОБХОДИМО ВНИМАНИЕ!</b>\n` +
+              `• <b>Причина:</b> <code>${dbErrorMessage || 'Ошибка проверки записи'}</code>`
+          );
+
+        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            chat_id: ADMIN_ID,
+            text: adminReportText,
+            parse_mode: 'HTML',
+            disable_web_page_preview: true,
+            reply_markup: {
+              inline_keyboard: [
+                [
+                  { text: '💬 Ответить пользователю', url: `tg://user?id=${telegramId}` },
+                  { text: '🌐 В Админ-панель', url: 'https://www.virale.uno/ru/app/admin' }
+                ]
+              ]
+            }
+          })
+        });
+
+        console.log(`[Telegram Stars Webhook] Successfully processed payment for ${telegramId}. Verified: ${dbVerified}`);
+      } catch (err: any) {
         console.error('[Telegram Stars Webhook] Failed to process successful payment:', err);
       }
 

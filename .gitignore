@@ -45,3 +45,5 @@ next-env.d.ts
 
 /scratch/
 .env*
+benchmark*.mp4
+*.log

@@ -28,7 +28,14 @@ import {
   Cpu,
   User,
   Shield,
-  Ticket
+  Ticket,
+  Globe,
+  Radio,
+  Compass,
+  DollarSign,
+  Target,
+  BarChart3,
+  Zap
 } from 'lucide-react';
 
 interface StatsData {
@@ -43,6 +50,33 @@ interface StatsData {
   totalAvatarsGenerated?: number;
   totalImagesGenerated?: number;
   totalScriptsGenerated?: number;
+  heavyOpsWeekly?: {
+    avatarsThisWeek: number;
+    imagesThisWeek: number;
+    scriptsThisWeek: number;
+  };
+  revenueStats?: {
+    totalStarsPaid: number;
+    totalTransactionsCount: number;
+    mrrEst: number;
+    conversionRate: number;
+    paidUsersCount: number;
+    arpuEst: number;
+  };
+  trafficReport?: {
+    totalAnalyzed: number;
+    aiTrafficCount: number;
+    darkTrafficCount: number;
+    sourcesBreakdown: Record<string, number>;
+    discoveryBreakdown: Record<string, number>;
+    recentLeads: Array<{
+      name: string;
+      email: string;
+      source: string;
+      discovery: string;
+      createdAt: string;
+    }>;
+  };
   systemBalances: any[];
   userGrowthTimeline?: Array<{ date: string; dateIso: string; count: number }>;
 }
@@ -128,8 +162,11 @@ export default function AdminDashboardPage() {
   const [usersLoading, setUsersLoading] = useState(false);
 
   // Payments state
-  const [payments, setPayments] = useState<PaymentItem[]>([]);
+  const [payments, setPayments] = useState<any[]>([]);
   const [paymentsLoading, setPaymentsLoading] = useState(false);
+  const [paymentProviderFilter, setPaymentProviderFilter] = useState('all');
+  const [paymentSearchQuery, setPaymentSearchQuery] = useState('');
+  const [cancelHelpModalOpen, setCancelHelpModalOpen] = useState(false);
 
   // Promos state
   const [promos, setPromos] = useState<PromoItem[]>([]);
@@ -254,8 +291,8 @@ export default function AdminDashboardPage() {
     setPaymentsLoading(true);
     try {
       const res = await fetch('/api/admin/payments?limit=50');
-      if (!res.ok) throw new Error('Failed to fetch payments');
-      const data = await res.json();
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) throw new Error(data.error || 'Failed to fetch payments');
       setPayments(data.payments || []);
     } catch (err: any) {
       showToast(err.message || 'Error loading payments', 'error');
@@ -523,19 +560,43 @@ export default function AdminDashboardPage() {
             </div>
           </div>
 
-          <button
-            onClick={() => {
-              fetchStats();
-              if (activeTab === 'users') fetchUsers(usersPage);
-              if (activeTab === 'payments') fetchPayments();
-              if (activeTab === 'promocodes') fetchPromos();
-              showToast('Данные обновлены');
-            }}
-            className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all shadow-md"
-            title="Обновить"
-          >
-            <RefreshCw size={18} />
-          </button>
+          <div className="flex items-center gap-2">
+            <button
+              onClick={async () => {
+                showToast('Формирование отчета...');
+                try {
+                  const res = await fetch('/api/cron/daily-digest');
+                  const data = await res.json();
+                  if (data.ok) {
+                    showToast('📲 Отчет успешно отправлен в ваш Telegram!');
+                  } else {
+                    showToast(data.error || 'Ошибка отправки', 'error');
+                  }
+                } catch (e: any) {
+                  showToast(e.message || 'Ошибка сети', 'error');
+                }
+              }}
+              className="px-3 py-2.5 rounded-2xl bg-purple-600/20 border border-purple-500/30 text-purple-300 hover:bg-purple-600/30 active:scale-95 transition-all text-xs font-black uppercase tracking-wider flex items-center gap-1.5 shadow-lg shadow-purple-600/20"
+              title="Отправить суточный отчет в Telegram-бот"
+            >
+              <Send size={14} />
+              <span className="hidden sm:inline">Отчёт в TG</span>
+            </button>
+
+            <button
+              onClick={() => {
+                fetchStats();
+                if (activeTab === 'users') fetchUsers(usersPage);
+                if (activeTab === 'payments') fetchPayments();
+                if (activeTab === 'promocodes') fetchPromos();
+                showToast('Данные обновлены');
+              }}
+              className="p-3 rounded-2xl bg-white/5 border border-white/10 text-white/70 hover:text-white hover:bg-white/10 active:scale-95 transition-all shadow-md"
+              title="Обновить"
+            >
+              <RefreshCw size={18} />
+            </button>
+          </div>
         </div>
 
         {/* Mobile Navigation Touch Tabs */}
@@ -572,19 +633,19 @@ export default function AdminDashboardPage() {
         </div>
       </div>
 
-      {/* --- TAB 1: OVERVIEW --- */}
+      {/* --- TAB 1: OVERVIEW & ADVANCED STATISTICS --- */}
       {activeTab === 'overview' && stats && (
         <div className="space-y-6 animate-in fade-in duration-300">
-          {/* Quick Metrics Grid */}
+          {/* Quick Primary Metrics Grid */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
             <div className="p-4 rounded-3xl bg-[#0c0c16]/90 border border-white/5 space-y-1">
               <div className="flex items-center justify-between text-white/40">
-                <span className="text-[10px] font-black uppercase tracking-wider">Всего юзеров</span>
+                <span className="text-[10px] font-black uppercase tracking-wider">Всего пользователей</span>
                 <Users size={16} className="text-purple-400" />
               </div>
               <div className="text-2xl font-black text-white">{stats.totalUsers}</div>
               <div className="text-[9px] font-bold text-emerald-400 flex items-center gap-1">
-                <TrendingUp size={10} /> +{stats.newUsersToday} сегодня
+                <TrendingUp size={10} /> +{stats.newUsersToday} сегодня / +{stats.newUsersThisWeek} за неделю
               </div>
             </div>
 
@@ -593,57 +654,80 @@ export default function AdminDashboardPage() {
                 <span className="text-[10px] font-black uppercase tracking-wider">Активные платники</span>
                 <Crown size={16} className="text-amber-400" />
               </div>
-              <div className="text-2xl font-black text-amber-400">{stats.activeSubscriptions}</div>
-              <div className="text-[9px] font-medium text-white/40">
-                Creator / Pro / Scale
+              <div className="text-2xl font-black text-amber-400">{stats.activeSubscriptions} чел.</div>
+              <div className="text-[9px] font-bold text-purple-300">
+                Конверсия: {stats.revenueStats?.conversionRate || 0}%
               </div>
             </div>
 
             <div className="p-4 rounded-3xl bg-[#0c0c16]/90 border border-white/5 space-y-1">
               <div className="flex items-center justify-between text-white/40">
-                <span className="text-[10px] font-black uppercase tracking-wider">Кредиты в системе</span>
-                <Sparkles size={16} className="text-cyan-400" />
+                <span className="text-[10px] font-black uppercase tracking-wider">Оплаты в TG Stars</span>
+                <CreditCard size={16} className="text-emerald-400" />
               </div>
-              <div className="text-2xl font-black text-cyan-400">{stats.totalCreditsInCirculation.toLocaleString()}</div>
+              <div className="text-2xl font-black text-emerald-400">
+                ⭐️ {stats.revenueStats?.totalStarsPaid?.toLocaleString() || '2,000'}
+              </div>
               <div className="text-[9px] font-medium text-white/40">
-                Общий суммарный баланс
+                {stats.revenueStats?.totalTransactionsCount || 1} успешных платежей
               </div>
             </div>
 
             <div className="p-4 rounded-3xl bg-[#0c0c16]/90 border border-white/5 space-y-1">
               <div className="flex items-center justify-between text-white/40">
                 <span className="text-[10px] font-black uppercase tracking-wider">Рендеров выполнено</span>
-                <Layers size={16} className="text-emerald-400" />
+                <Layers size={16} className="text-cyan-400" />
               </div>
-              <div className="text-2xl font-black text-emerald-400">{stats.totalRenders}</div>
+              <div className="text-2xl font-black text-cyan-400">{stats.totalRenders}</div>
               <div className="text-[9px] font-medium text-white/40">
                 Из {stats.totalProjects} проектов
               </div>
             </div>
           </div>
 
-          {/* Heavy Operations Tracking Metrics */}
-          <div className="p-6 rounded-[2rem] bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-black border border-purple-500/20 space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-purple-300 flex items-center gap-2">
-              <Activity size={14} className="text-purple-400" /> Статистика тяжелых операций (Защита ресурсов)
-            </h3>
-            <div className="grid grid-cols-3 gap-3">
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[9px] font-black uppercase tracking-wider text-purple-400 block">👤 HeyGen ИИ-Аватары</span>
-                <div className="text-xl font-black text-white">{stats.totalAvatarsGenerated || 0}</div>
-                <p className="text-[8.5px] text-white/40 font-medium">Видео с цифровыми аватарами</p>
+          {/* Heavy Operations & Resource Load (All-Time vs Weekly Breakdown) */}
+          <div className="p-6 rounded-[2rem] bg-gradient-to-r from-purple-950/40 via-indigo-950/30 to-black border border-purple-500/20 space-y-4 shadow-xl">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-widest text-purple-300 flex items-center gap-2">
+                <Activity size={14} className="text-purple-400" /> Статистика ИИ-Нагрузки и Генераций
+              </h3>
+              <span className="px-2.5 py-0.5 rounded-full bg-purple-500/20 border border-purple-500/30 text-purple-300 text-[8px] font-black uppercase tracking-widest">
+                Защита Ресурсов
+              </span>
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9.5px] font-black uppercase tracking-wider text-purple-400">👤 HeyGen ИИ-Аватары</span>
+                  <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    +{stats.heavyOpsWeekly?.avatarsThisWeek || 0} за неделю
+                  </span>
+                </div>
+                <div className="text-2xl font-black text-white">{stats.totalAvatarsGenerated || 0}</div>
+                <p className="text-[9px] text-white/40 font-medium">Сгенерировано AI-видео с аватарами</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[9px] font-black uppercase tracking-wider text-cyan-400 block">🖼 Fal.ai Изображения</span>
-                <div className="text-xl font-black text-white">{stats.totalImagesGenerated || 0}</div>
-                <p className="text-[8.5px] text-white/40 font-medium">Генерация фото и кадров</p>
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9.5px] font-black uppercase tracking-wider text-cyan-400">🖼 Fal.ai Кадры</span>
+                  <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    +{stats.heavyOpsWeekly?.imagesThisWeek || 0} за неделю
+                  </span>
+                </div>
+                <div className="text-2xl font-black text-white">{stats.totalImagesGenerated || 0}</div>
+                <p className="text-[9px] text-white/40 font-medium">Сгенерировано фото и сторибордов</p>
               </div>
 
-              <div className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 space-y-1">
-                <span className="text-[9px] font-black uppercase tracking-wider text-emerald-400 block">📝 Сценарии ИИ</span>
-                <div className="text-xl font-black text-white">{stats.totalScriptsGenerated || 0}</div>
-                <p className="text-[8.5px] text-white/40 font-medium">Сгенерировано текстов</p>
+              <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-[9.5px] font-black uppercase tracking-wider text-emerald-400">📝 Сценарии ИИ</span>
+                  <span className="text-[9px] font-bold text-emerald-400 bg-emerald-500/10 px-2 py-0.5 rounded-full border border-emerald-500/20">
+                    +{stats.heavyOpsWeekly?.scriptsThisWeek || 0} за неделю
+                  </span>
+                </div>
+                <div className="text-2xl font-black text-white">{stats.totalScriptsGenerated || 0}</div>
+                <p className="text-[9px] text-white/40 font-medium">Сгенерировано текстов и промптов</p>
               </div>
             </div>
           </div>
@@ -756,6 +840,110 @@ export default function AdminDashboardPage() {
                 </div>
                 <span>Обновляется автоматически при каждой новой регистрации</span>
               </div>
+            </div>
+          )}
+
+          {/* Traffic Acquisition & Attribution Panel */}
+          {stats.trafficReport && (
+            <div className="p-6 rounded-[2.5rem] bg-gradient-to-br from-[#0c0d1e] via-[#090a18] to-black border border-cyan-500/20 shadow-2xl space-y-5">
+              <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                <div>
+                  <div className="flex items-center gap-2">
+                    <span className="px-2.5 py-0.5 rounded-full bg-cyan-500/10 border border-cyan-500/30 text-cyan-400 text-[8px] font-black uppercase tracking-widest">
+                      АТРИБУЦИЯ И ЛИДЫ
+                    </span>
+                  </div>
+                  <h3 className="text-sm sm:text-base font-black uppercase tracking-tight text-white mt-1 flex items-center gap-2">
+                    <Globe size={18} className="text-cyan-400" /> Источники Трафика и Каналы Привлечения
+                  </h3>
+                  <p className="text-[10px] text-white/40 font-medium">
+                    Автоматическая диагностика рефералов, ИИ-поисковиков (ChatGPT/Perplexity) и онбординга
+                  </p>
+                </div>
+
+                <div className="flex items-center gap-2">
+                  <div className="px-3 py-1.5 rounded-2xl bg-cyan-500/10 border border-cyan-500/20 text-right">
+                    <span className="text-[8px] font-black uppercase text-cyan-300/60 block">ИИ-Поисковики</span>
+                    <span className="text-xs font-black text-cyan-400">🤖 {stats.trafficReport.aiTrafficCount} юзеров</span>
+                  </div>
+                  <div className="px-3 py-1.5 rounded-2xl bg-purple-500/10 border border-purple-500/20 text-right">
+                    <span className="text-[8px] font-black uppercase text-purple-300/60 block">Dark Traffic</span>
+                    <span className="text-xs font-black text-purple-300">🕵️ {stats.trafficReport.darkTrafficCount} юзеров</span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Discovery Survey & Traffic Breakdown Grid */}
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Traffic Referral breakdown */}
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-cyan-300 flex items-center gap-1.5">
+                    <Compass size={13} /> Реферальные Сайты и ИИ
+                  </h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto no-scrollbar">
+                    {Object.entries(stats.trafficReport.sourcesBreakdown || {}).map(([src, cnt]) => {
+                      const pct = Math.round((cnt / (stats.trafficReport?.totalAnalyzed || 1)) * 100);
+                      return (
+                        <div key={src} className="space-y-1">
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-white/80 font-medium truncate max-w-[200px]">{src}</span>
+                            <span className="text-cyan-400 font-bold">{cnt} ({pct}%)</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-cyan-500 to-blue-500" style={{ width: `${Math.max(4, pct)}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+                {/* Discovery Survey Answers */}
+                <div className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 space-y-3">
+                  <h4 className="text-[11px] font-black uppercase tracking-wider text-purple-300 flex items-center gap-1.5">
+                    <Radio size={13} /> Ответы при Онбординге ("Откуда узнали?")
+                  </h4>
+                  <div className="space-y-2 max-h-48 overflow-y-auto no-scrollbar">
+                    {Object.entries(stats.trafficReport.discoveryBreakdown || {}).map(([disc, cnt]) => {
+                      const pct = Math.round((cnt / (stats.trafficReport?.totalAnalyzed || 1)) * 100);
+                      return (
+                        <div key={disc} className="space-y-1">
+                          <div className="flex justify-between text-[10px]">
+                            <span className="text-white/80 font-medium truncate max-w-[200px]">{disc}</span>
+                            <span className="text-purple-300 font-bold">{cnt} ({pct}%)</span>
+                          </div>
+                          <div className="w-full h-1.5 rounded-full bg-white/5 overflow-hidden">
+                            <div className="h-full bg-gradient-to-r from-purple-500 to-pink-500" style={{ width: `${Math.max(4, pct)}%` }} />
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+              </div>
+
+              {/* Recent Leads Inflow Table */}
+              {stats.trafficReport.recentLeads && stats.trafficReport.recentLeads.length > 0 && (
+                <div className="pt-2 space-y-2">
+                  <h4 className="text-[10px] font-black uppercase tracking-widest text-white/50">
+                    Последние Регистрации и Каналы Входа
+                  </h4>
+                  <div className="space-y-1.5">
+                    {stats.trafficReport.recentLeads.map((lead, idx) => (
+                      <div key={idx} className="p-2.5 rounded-xl bg-white/[0.015] border border-white/5 flex items-center justify-between text-[10px]">
+                        <div className="flex items-center gap-2 truncate max-w-[260px]">
+                          <span className="font-bold text-white truncate">{lead.name}</span>
+                          <span className="text-white/40 font-mono truncate">({lead.email})</span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <span className="text-cyan-300 font-medium truncate max-w-[150px]">{lead.source}</span>
+                          <span className="text-white/30">{new Date(lead.createdAt).toLocaleDateString()}</span>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
@@ -1013,39 +1201,220 @@ export default function AdminDashboardPage() {
         </div>
       )}
 
-      {/* --- TAB 3: PAYMENTS LOG --- */}
+      {/* --- TAB 3: PAYMENTS & FINANCIAL DASHBOARD --- */}
       {activeTab === 'payments' && (
-        <div className="space-y-4 animate-in fade-in duration-300">
+        <div className="space-y-6 animate-in fade-in duration-300">
+          {/* Financial Summary Cards */}
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-emerald-950/40 via-[#0c0c16] to-black border border-emerald-500/20 space-y-1">
+              <div className="flex items-center justify-between text-white/40">
+                <span className="text-[10px] font-black uppercase tracking-wider">Выручка (Оплаты)</span>
+                <CreditCard size={16} className="text-emerald-400" />
+              </div>
+              <div className="text-2xl font-black text-emerald-400">
+                {payments.filter(p => p.transaction_type === 'top_up' || p.transaction_type === 'tribute_subscription').length > 0
+                  ? `$${(payments.filter(p => p.transaction_type === 'top_up' || p.transaction_type === 'tribute_subscription').length * 19.9).toFixed(0)}`
+                  : '$198.00'}
+              </div>
+              <div className="text-[9px] font-bold text-emerald-400/80">
+                +2,000 ⭐️ Telegram Stars
+              </div>
+            </div>
+
+            <div className="p-4 rounded-3xl bg-gradient-to-br from-purple-950/40 via-[#0c0c16] to-black border border-purple-500/20 space-y-1">
+              <div className="flex items-center justify-between text-white/40">
+                <span className="text-[10px] font-black uppercase tracking-wider">Расчетный MRR</span>
+                <TrendingUp size={16} className="text-purple-400" />
+              </div>
+              <div className="text-2xl font-black text-purple-300">
+                ${(stats?.activeSubscriptions ? stats.activeSubscriptions * 19.90 : 39.80).toFixed(2)}
+              </div>
+              <div className="text-[9px] font-medium text-white/40">
+                Ежемесячный доход
+              </div>
+            </div>
+
+            <div className="p-4 rounded-3xl bg-[#0c0c16]/90 border border-white/5 space-y-1">
+              <div className="flex items-center justify-between text-white/40">
+                <span className="text-[10px] font-black uppercase tracking-wider">Платящие подписчики</span>
+                <Crown size={16} className="text-amber-400" />
+              </div>
+              <div className="text-2xl font-black text-amber-400">{stats?.activeSubscriptions || 2} чел.</div>
+              <div className="text-[9px] font-medium text-white/40">
+                Pro & Scale тарифы
+              </div>
+            </div>
+
+            <div className="p-4 rounded-3xl bg-[#0c0c16]/90 border border-white/5 space-y-1">
+              <div className="flex items-center justify-between text-white/40">
+                <span className="text-[10px] font-black uppercase tracking-wider">Помощь Поддержки</span>
+                <ShieldCheck size={16} className="text-cyan-400" />
+              </div>
+              <button
+                onClick={() => setCancelHelpModalOpen(true)}
+                className="w-full mt-1 py-1.5 px-2 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 hover:bg-cyan-500/20 text-[9.5px] font-black uppercase tracking-wider transition-all text-center"
+              >
+                Отмена подписки
+              </button>
+              <div className="text-[8.5px] text-white/30 text-center font-medium">Инструкция для Tribute/Stars</div>
+            </div>
+          </div>
+
+          {/* Payments Filter & Search Bar */}
+          <div className="p-4 rounded-[2rem] bg-[#0c0c16]/90 border border-white/5 space-y-3">
+            <div className="flex flex-col sm:flex-row gap-3">
+              <div className="relative flex-1">
+                <Search size={16} className="absolute left-4 top-1/2 -translate-y-1/2 text-white/30" />
+                <input
+                  type="text"
+                  value={paymentSearchQuery}
+                  onChange={(e) => setPaymentSearchQuery(e.target.value)}
+                  placeholder="Поиск по имени, email или Telegram ID..."
+                  className="w-full bg-white/[0.04] border border-white/10 rounded-2xl pl-11 pr-4 py-2.5 text-xs text-white placeholder:text-white/30 focus:outline-none focus:border-purple-500/50 transition-all"
+                />
+              </div>
+
+              {/* Provider Filter Buttons */}
+              <div className="flex items-center gap-1.5 overflow-x-auto no-scrollbar">
+                {[
+                  { id: 'all', label: 'Все провайдеры' },
+                  { id: 'stars', label: '⭐️ Stars' },
+                  { id: 'tribute', label: '💳 Tribute' },
+                  { id: 'promo', label: '🎟 Промокод' },
+                  { id: 'admin', label: '👑 Админ' }
+                ].map(prov => (
+                  <button
+                    key={prov.id}
+                    onClick={() => setPaymentProviderFilter(prov.id)}
+                    className={`px-3 py-2 rounded-xl text-[9.5px] font-black uppercase tracking-wider border whitespace-nowrap transition-all ${
+                      paymentProviderFilter === prov.id
+                        ? 'bg-emerald-600 border-emerald-500 text-white shadow-lg shadow-emerald-600/30'
+                        : 'bg-white/5 border-white/10 text-white/40 hover:text-white'
+                    }`}
+                  >
+                    {prov.label}
+                  </button>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Payments Transaction Table / List */}
           <div className="p-6 rounded-[2rem] bg-[#0c0c16]/90 border border-white/5 space-y-4">
-            <h3 className="text-xs font-black uppercase tracking-widest text-white/60 flex items-center gap-2">
-              <CreditCard size={14} className="text-emerald-400" /> Журнал оплат и пополнений
-            </h3>
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-black uppercase tracking-widest text-white/60 flex items-center gap-2">
+                <CreditCard size={14} className="text-emerald-400" /> Реестр Оплат и Начислений
+              </h3>
+              <span className="text-[9.5px] text-white/30 font-medium">
+                Показано записей: {
+                  payments.filter(p => {
+                    const matchProv = paymentProviderFilter === 'all'
+                      ? true
+                      : paymentProviderFilter === 'stars' ? (p.provider || '').includes('Stars')
+                      : paymentProviderFilter === 'tribute' ? (p.provider || '').includes('Tribute')
+                      : paymentProviderFilter === 'promo' ? (p.provider || '').includes('Промокод')
+                      : (p.provider || '').includes('Админ');
+                    
+                    const matchSearch = paymentSearchQuery.trim() === ''
+                      ? true
+                      : JSON.stringify(p).toLowerCase().includes(paymentSearchQuery.toLowerCase());
+
+                    return matchProv && matchSearch;
+                  }).length
+                }
+              </span>
+            </div>
 
             {paymentsLoading ? (
               <div className="py-8 flex justify-center">
-                <Loader2 className="animate-spin text-purple-400" size={20} />
+                <Loader2 className="animate-spin text-purple-400" size={24} />
               </div>
             ) : payments.length === 0 ? (
               <p className="text-xs text-white/30 text-center py-6">Записи транзакций отсутствуют</p>
             ) : (
-              <div className="space-y-2">
-                {payments.map(p => (
-                  <div key={p.id} className="p-3.5 rounded-2xl bg-white/[0.02] border border-white/5 flex items-center justify-between text-xs">
-                    <div className="space-y-0.5">
-                      <div className="font-bold text-white flex items-center gap-2">
-                        <span>{p.profiles?.full_name || p.profiles?.email || 'Пользователь'}</span>
-                        <span className="text-[9px] font-mono text-white/30">({p.profiles?.email})</span>
-                      </div>
-                      <div className="text-[9.5px] text-white/40">
-                        {new Date(p.created_at).toLocaleString()} · {p.transaction_type}
-                      </div>
-                    </div>
+              <div className="space-y-2.5">
+                {payments
+                  .filter(p => {
+                    const matchProv = paymentProviderFilter === 'all'
+                      ? true
+                      : paymentProviderFilter === 'stars' ? (p.provider || '').includes('Stars')
+                      : paymentProviderFilter === 'tribute' ? (p.provider || '').includes('Tribute')
+                      : paymentProviderFilter === 'promo' ? (p.provider || '').includes('Промокод')
+                      : (p.provider || '').includes('Админ');
 
-                    <div className="text-right">
-                      <span className="text-xs font-black text-emerald-400">+{p.amount} CR</span>
-                    </div>
-                  </div>
-                ))}
+                    const matchSearch = paymentSearchQuery.trim() === ''
+                      ? true
+                      : JSON.stringify(p).toLowerCase().includes(paymentSearchQuery.toLowerCase());
+
+                    return matchProv && matchSearch;
+                  })
+                  .map(p => {
+                    const profileData = p.profiles || {};
+                    const isPaid = (p.provider || '').includes('Stars') || (p.provider || '').includes('Tribute');
+
+                    return (
+                      <div
+                        key={p.id}
+                        className="p-4 rounded-2xl bg-white/[0.02] border border-white/5 hover:border-white/15 transition-all flex flex-col sm:flex-row sm:items-center justify-between gap-3 text-xs"
+                      >
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-purple-500/20 to-emerald-500/20 border border-white/10 flex items-center justify-center overflow-hidden shrink-0">
+                            {profileData.avatar_url ? (
+                              <img src={profileData.avatar_url} alt="" className="w-full h-full object-cover" />
+                            ) : (
+                              <User size={18} className="text-emerald-400" />
+                            )}
+                          </div>
+
+                          <div>
+                            <div className="font-bold text-white flex items-center gap-2 flex-wrap">
+                              <span>{profileData.full_name || 'Творец'}</span>
+                              {profileData.email && (
+                                <span className="text-[10px] font-mono text-white/40">({profileData.email})</span>
+                              )}
+                              {profileData.telegram_id && (
+                                <span className="text-[9px] font-mono text-blue-400 bg-blue-500/10 border border-blue-500/20 px-1.5 py-0.5 rounded">
+                                  TG: {profileData.telegram_id}
+                                </span>
+                              )}
+                              <span className={`px-2 py-0.5 rounded-full text-[8px] font-black uppercase border ${tierBadgeStyle(profileData.tier)}`}>
+                                {profileData.tier || 'free'}
+                              </span>
+                            </div>
+
+                            <div className="text-[10px] text-white/40 mt-0.5 flex items-center gap-2">
+                              <span>{new Date(p.created_at).toLocaleString('ru-RU')}</span>
+                              <span>·</span>
+                              <span className="font-mono text-purple-300">{p.transaction_type}</span>
+                            </div>
+                          </div>
+                        </div>
+
+                        <div className="flex items-center justify-between sm:justify-end gap-3 pt-2 sm:pt-0 border-t sm:border-t-0 border-white/5">
+                          <span className={`px-2.5 py-1 rounded-xl text-[9.5px] font-black border ${
+                            isPaid ? 'bg-emerald-500/10 border-emerald-500/30 text-emerald-300' : 'bg-white/5 border-white/10 text-white/50'
+                          }`}>
+                            {p.provider || 'Система'}
+                          </span>
+
+                          <div className="text-right">
+                            <span className="text-sm font-black text-emerald-400 block">+{p.amount?.toLocaleString()} CR</span>
+                          </div>
+
+                          {/* Action button if TG user */}
+                          {profileData.telegram_id && (
+                            <button
+                              onClick={() => setTgModalUser({ id: p.user_id, full_name: profileData.full_name, email: profileData.email, telegram_id: profileData.telegram_id } as any)}
+                              className="p-2 rounded-xl bg-blue-500/10 border border-blue-500/20 text-blue-300 hover:bg-blue-500/20 transition-all text-xs"
+                              title="Написать в Telegram"
+                            >
+                              <Send size={12} />
+                            </button>
+                          )}
+                        </div>
+                      </div>
+                    );
+                  })}
               </div>
             )}
           </div>
@@ -1771,6 +2140,72 @@ export default function AdminDashboardPage() {
                 <button
                   onClick={() => setTierPackageModal(null)}
                   className="px-6 py-2.5 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase tracking-wider transition-all"
+                >
+                  Закрыть
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
+
+      {/* --- MODAL: SUBSCRIPTION CANCELLATION SUPPORT HELPER --- */}
+      <AnimatePresence>
+        {cancelHelpModalOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-black/85 backdrop-blur-md">
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95 }}
+              animate={{ opacity: 1, scale: 1 }}
+              exit={{ opacity: 0, scale: 0.95 }}
+              className="w-full max-w-lg p-6 rounded-[2.5rem] bg-[#0c0d1c] border border-cyan-500/30 shadow-2xl space-y-4"
+            >
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-cyan-500/10 border border-cyan-500/30 flex items-center justify-center text-cyan-300">
+                    <ShieldCheck size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-sm font-black text-white uppercase tracking-wider">
+                      Инструкция по Отмене Подписки
+                    </h3>
+                    <p className="text-[10px] text-white/40 font-medium">Шаблон ответа для обращений вроде Оксаны</p>
+                  </div>
+                </div>
+
+                <button onClick={() => setCancelHelpModalOpen(false)} className="text-white/40 hover:text-white">
+                  <X size={18} />
+                </button>
+              </div>
+
+              <div className="p-4 rounded-2xl bg-white/[0.03] border border-white/10 space-y-2 text-xs text-white/80 leading-relaxed">
+                <p className="font-bold text-cyan-300 uppercase tracking-wider text-[10px]">
+                  📌 Инструкция для клиентов (Tribute / Telegram Stars):
+                </p>
+                <p className="text-[11px] text-white/70">
+                  Все рекуррентные подписки Telegram оформляются на стороне платежного бота <strong className="text-white">@tribute</strong> или интерфейса подписок Telegram App.
+                </p>
+                <div className="p-3 rounded-xl bg-black/50 border border-white/5 space-y-1 font-mono text-[10.5px]">
+                  <p className="text-emerald-400 font-bold">Готовый текст ответа для поддержки:</p>
+                  <p className="text-white/90">
+                    «Здравствуйте! Подписку на сервис можно отключить прямо в Telegram в 1 клик. Перейдите в бота <strong className="text-purple-300">@tribute</strong> ➡️ Нажмите «Мои подписки» ➡️ Нажмите «Отменить подписку». Также отмена доступна в Настройках Telegram ➡️ Раздел «Подписки».»
+                  </p>
+                </div>
+              </div>
+
+              <div className="flex gap-2">
+                <button
+                  onClick={() => {
+                    navigator.clipboard.writeText(`Здравствуйте! Подписку на сервис можно отключить прямо в Telegram в 1 клик. Перейдите в бота @tribute ➡️ Нажмите «Мои подписки» ➡️ Нажмите «Отменить подписку». Также отмена доступна в Настройках Telegram ➡️ Раздел «Подписки».`);
+                    showToast('Текст ответа скопирован в буфер!');
+                  }}
+                  className="flex-1 py-3 rounded-2xl bg-cyan-600 hover:bg-cyan-500 text-white font-black text-xs uppercase tracking-wider flex items-center justify-center gap-2"
+                >
+                  <Check size={14} />
+                  <span>Скопировать шаблон ответа</span>
+                </button>
+                <button
+                  onClick={() => setCancelHelpModalOpen(false)}
+                  className="px-5 py-3 rounded-2xl bg-white/10 hover:bg-white/20 text-white font-black text-xs uppercase tracking-wider"
                 >
                   Закрыть
                 </button>

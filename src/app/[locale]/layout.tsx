@@ -68,6 +68,7 @@ export const viewport: Viewport = {
 import { Providers } from "@/components/Providers";
 import { TrafficTrackerComponent } from "@/components/analytics/TrafficTrackerComponent";
 import { CookieBanner } from "@/components/ui/CookieBanner";
+import { Analytics } from '@vercel/analytics/react';
 
 export default async function LocaleLayout({
   children,
@@ -259,6 +260,7 @@ export default async function LocaleLayout({
             <PageShell>
               {children}
             </PageShell>
+            <Analytics />
           </NextIntlClientProvider>
         </Providers>
       </body>
