@@ -99,19 +99,9 @@ export async function POST(req: NextRequest) {
     // Backend Tier Protection for Face Swap (avatarUrl)
     const isFaceSwapRequested = segments.some((s: any) => s.avatarUrl);
     if (isFaceSwapRequested) {
-      const { getAuthContext } = await import('@/lib/auth');
-      try {
-        const { user, supabase: authClient } = await getAuthContext();
-        const { data: profile } = await authClient.from('profiles').select('tier').eq('id', user.id).single();
-        const isAllowed = profile?.tier === 'pro' || profile?.tier === 'scale' || profile?.tier === 'superadmin' || (profile as any)?.role === 'superadmin';
-        if (!isAllowed) {
-          return NextResponse.json({ 
-            error: '🔒 Опция Фейс Свап (Face Swap) доступна в пакетах PRO ($39.90/мес) и SCALE ($79.90/мес). Пожалуйста, обновите ваш подписочный план.' 
-          }, { status: 403 });
-        }
-      } catch (authErr) {
-        console.warn('[Fusion] Tier check auth error:', authErr);
-      }
+      return NextResponse.json({ 
+        error: '🔒 Опция Фейс Свап (Face Swap) временно отключена для всех пользователей.' 
+      }, { status: 403 });
     }
 
     const normalizedVideoUrl = normalizeSupabaseUrl(videoUrl);

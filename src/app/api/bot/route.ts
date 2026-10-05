@@ -512,7 +512,7 @@ export async function POST(req: NextRequest) {
 
         // Fallback defaults if payload was simple
         if (credits === 0) {
-          credits = payment.total_amount >= 2000 ? 3000 : payment.total_amount >= 1000 ? 1000 : 400;
+          credits = payment.total_amount >= 2000 ? 5700 : payment.total_amount >= 1000 ? 2200 : 1000;
         }
 
         const { supabaseAdmin } = await import('@/lib/supabase');
@@ -1109,90 +1109,6 @@ export async function POST(req: NextRequest) {
         })
       });
       return NextResponse.json({ ok: true });
-    } else if (text.startsWith('/grant')) {
-      const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
-      if (String(user.id) !== String(ADMIN_ID)) {
-        return NextResponse.json({ ok: true });
-      }
-
-      // Format: /grant <email_or_user_id> <amount>
-      const parts = text.split(' ').filter(Boolean);
-      if (parts.length < 3) {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: `⚠️ *Формат команды:* \`/grant <email_или_uuid> <количество>\`\n\nПример: \`/grant user@example.com 500\``,
-            parse_mode: 'Markdown'
-          })
-        });
-        return NextResponse.json({ ok: true });
-      }
-
-      const target = parts[1];
-      const amount = parseInt(parts[2], 10);
-
-      if (isNaN(amount) || amount === 0) {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: `⚠️ *Укажите корректное число кредитов.*`,
-            parse_mode: 'Markdown'
-          })
-        });
-        return NextResponse.json({ ok: true });
-      }
-
-      try {
-        const { supabaseAdmin } = await import('@/lib/supabase');
-        const { adminGrantCredits } = await import('@/lib/admin');
-
-        // Find user by email or ID
-        const { data: profile } = await supabaseAdmin
-          .from('profiles')
-          .select('id, email, full_name, credits_balance')
-          .or(`email.eq.${target},id.eq.${target}`)
-          .maybeSingle();
-
-        if (!profile) {
-          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              chat_id: chatId,
-              text: `❌ *Пользователь "${target}" не найден в базе данных.*`,
-              parse_mode: 'Markdown'
-            })
-          });
-          return NextResponse.json({ ok: true });
-        }
-
-        await adminGrantCredits(profile.id, amount, 'tg_bot_admin_grant');
-        const newBal = (profile.credits_balance || 0) + amount;
-
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: `✅ *Кредиты успешно начислены!*\n\n• Пользователь: *${profile.full_name || 'Творец'}* (\`${profile.email}\`)\n• Сумма: *+${amount} CR*\n• Новый баланс: *${newBal} CR*`,
-            parse_mode: 'Markdown'
-          })
-        });
-      } catch (err: any) {
-        await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            chat_id: chatId,
-            text: `💥 *Ошибка исполнения:* ${err.message || err}`,
-            parse_mode: 'Markdown'
-          })
-        });
-      }
     } else if (text.startsWith('/support') || (text.startsWith('/start') && text.includes('support'))) {
       const locale = user.language_code === 'ru' ? 'ru' : 'en';
       const supportPrompt = locale === 'ru'
@@ -1215,14 +1131,12 @@ export async function POST(req: NextRequest) {
           `• /start — Войти в личный кабинет\n` +
           `• /support — Написать в поддержку суперадмину\n` +
           `• /admin — Панель администратора\n` +
-          `• /grant <email> <amount> — Начислить кредиты\n` +
           `• /balance — Проверить ресурсы (только для админов)\n` +
           `• Отправляйте любые вопросы и сообщения боту — они передаются админу.`
         : `🤖 *Viral Studio Assistant*\n\n` +
           `• /start — Sign in to your dashboard\n` +
           `• /support — Contact support / admin\n` +
           `• /admin — SuperAdmin Control Menu\n` +
-          `• /grant <email> <amount> — Grant user credits\n` +
           `• /balance — Check API limits (Admin only)\n` +
           `• Send any text message to reach support directly.`;
 
