@@ -35,8 +35,8 @@ const PLANS = [
     credits: 1000,
     icon: '🌱',
     color: '#4D9EFF',
-    featuresEn: ['1000 Credits included', 'ScriptLab standard access', 'Basic Storyboarding'],
-    featuresRu: ['Включено 1000 кредитов', 'Базовый доступ к монтажу', 'Стандартная раскадровка'],
+    featuresEn: ['1000 Credits (~10 Videos)', 'ScriptLab standard access', 'Basic Storyboarding'],
+    featuresRu: ['1000 Кредитов (~10 Видео)', 'Базовый доступ к монтажу', 'Стандартная раскадровка'],
   },
   {
     id: 'pro',
@@ -46,8 +46,8 @@ const PLANS = [
     icon: '⚡',
     color: '#00FFCC',
     popular: true,
-    featuresEn: ['2200 Credits included', 'Full AI script editing', 'Smart Storyboard regeneration'],
-    featuresRu: ['Включено 2200 кредитов', 'Полный ИИ монтаж сценариев', 'Умная регенерация кадров'],
+    featuresEn: ['2200 Credits (~22 Videos)', 'Full AI script editing', 'Smart Storyboard regeneration'],
+    featuresRu: ['2200 Кредитов (~22 Видео)', 'Полный ИИ монтаж сценариев', 'Умная регенерация кадров'],
   },
   {
     id: 'scale',
@@ -56,8 +56,8 @@ const PLANS = [
     credits: 5700,
     icon: '🚀',
     color: '#9B5FFF',
-    featuresEn: ['5700 Credits included', 'Bring Your Own Key support', 'Automated cross-posting'],
-    featuresRu: ['Включено 5700 кредитов', 'Поддержка своих API ключей', 'Автоматический постинг'],
+    featuresEn: ['5700 Credits (~57 Videos)', 'Bring Your Own Key support', 'Automated cross-posting'],
+    featuresRu: ['5700 Кредитов (~57 Видео)', 'Поддержка своих API ключей', 'Автоматический постинг'],
   },
 ];
 
@@ -498,6 +498,38 @@ export function PremiumLimitModal({
                           ? 'Оплата производится через Telegram Stars. Безопасно, быстро, активация мгновенная.' 
                           : 'Payments are processed securely via Telegram Stars. Access is granted instantly.'}
                       </p>
+                    </div>
+                  </div>
+                </div>
+              )}
+
+              {/* Credit Breakdown Info Block */}
+              {(type === 'tier' || type === 'tier_upgrade') && (
+                <div className="mb-6 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl relative group space-y-2">
+                  <div className="flex gap-2.5 items-start">
+                    <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
+                    <div className="space-y-1 w-full">
+                      <p className="text-[9px] font-black uppercase tracking-widest text-cyan-300">
+                        {locale === 'ru' ? 'Как списываются кредиты (~100 CR = 1 Видео):' : 'Credit Usage (~100 CR = 1 Video):'}
+                      </p>
+                      <div className="text-[9px] text-white/70 leading-relaxed space-y-0.5 mt-2">
+                        <div className="flex justify-between border-b border-white/5 pb-1">
+                          <span>{locale === 'ru' ? 'Генерация Идей & Сценария' : 'Ideas & Script Generation'}</span>
+                          <span className="font-mono text-cyan-400">5 CR</span>
+                        </div>
+                        <div className="flex justify-between border-b border-white/5 pb-1 pt-1">
+                          <span>{locale === 'ru' ? 'Черновик, Картинки & Озвучка' : 'Draft, Images & Voice'}</span>
+                          <span className="font-mono text-cyan-400">~20 CR</span>
+                        </div>
+                        <div className="flex justify-between border-b border-white/5 pb-1 pt-1">
+                          <span>{locale === 'ru' ? 'Финальный Экспорт MP4' : 'Final MP4 Export'}</span>
+                          <span className="font-mono text-cyan-400">75 CR</span>
+                        </div>
+                        <div className="flex justify-between pt-1 opacity-50">
+                          <span>{locale === 'ru' ? 'HeyGen Аватар (Свой ключ)' : 'HeyGen Avatar (BYOK)'}</span>
+                          <span className="font-mono text-green-400">0 CR</span>
+                        </div>
+                      </div>
                     </div>
                   </div>
                 </div>
