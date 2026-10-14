@@ -5,6 +5,7 @@ import { profileService, Profile } from '@/lib/services/profileService';
 import { supabase } from '@/lib/supabase';
 import { Idea } from '@/components/ideas/IdeaCard';
 import { strategistService } from '@/lib/services/strategistService';
+import { isChunkLoadError, recoverFromChunkError } from '@/lib/utils/chunkSafety';
 
 import { useLocale } from 'next-intl';
 
@@ -220,8 +221,15 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     if (!win) return;
 
     const handleWindowError = (event: any) => {
-      const errorMsg = event.error?.message || event.message || 'Unhandled Window Error';
-      const stack = event.error?.stack || '';
+      const errorObj = event.error;
+      const errorMsg = errorObj?.message || event.message || 'Unhandled Window Error';
+      const stack = errorObj?.stack || '';
+
+      // Auto-recover if this is a deployment chunk mismatch (ChunkLoadError)
+      if (isChunkLoadError(errorObj || errorMsg)) {
+        recoverFromChunkError();
+        return;
+      }
 
       if (
         (errorMsg && (
@@ -257,6 +265,12 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
       const reason = event.reason;
       const errorMsg = typeof reason === 'string' ? reason : reason?.message || JSON.stringify(reason);
       const stack = reason?.stack || '';
+
+      // Auto-recover if this is a deployment chunk mismatch (ChunkLoadError)
+      if (isChunkLoadError(reason || errorMsg)) {
+        recoverFromChunkError();
+        return;
+      }
 
       if (
         (errorMsg && (

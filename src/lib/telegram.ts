@@ -128,6 +128,9 @@ export async function notifyAdminError(details: {
     errorMessage.includes('NetworkError') ||
     errorMessage.includes('Load failed') ||
     errorMessage.includes('Failed to fetch dynamically imported module') ||
+    errorMessage.includes('ChunkLoadError') ||
+    errorMessage.includes('Failed to load chunk') ||
+    errorMessage.includes('Loading chunk') ||
     errorMessage.includes('The user aborted a request') ||
     errorMessage.includes('AbortError');
 

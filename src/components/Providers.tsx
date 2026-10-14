@@ -5,6 +5,7 @@ import { ReactNode } from 'react';
 import { LazyMotion, domAnimation } from 'framer-motion';
 import { DisableSwipeBack } from '@/components/ui/DisableSwipeBack';
 import '@/lib/utils/domSafety';
+import '@/lib/utils/chunkSafety';
 
 export function Providers({ children }: { children: ReactNode }) {
   return (
