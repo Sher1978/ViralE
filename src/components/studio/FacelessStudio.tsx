@@ -116,10 +116,23 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   const [rendering, setRendering] = useState(false);
   const [renderProgress, setRenderProgress] = useState(0);
   const [renderDone, setRendered] = useState(false);
+  const [renderError, setRenderError] = useState<string | null>(null);
   const [renderBackgroundUrl, setRenderBackgroundUrl] = useState<string | null>(null);
   const [finalVideoBlob, setFinalVideoBlob] = useState<Blob | null>(null);
   const [selectedEffects, setSelectedEffects] = useState<PostEffect[]>(['kenburns', 'zoom_punch', 'glitch', 'dust', 'flash']);
 
+  const finalVideoUrl = useMemo(() => {
+    if (!finalVideoBlob) return null;
+    return URL.createObjectURL(finalVideoBlob);
+  }, [finalVideoBlob]);
+
+  useEffect(() => {
+    return () => {
+      if (finalVideoUrl) {
+        URL.revokeObjectURL(finalVideoUrl);
+      }
+    };
+  }, [finalVideoUrl]);
 
   const canvasRef = useRef<any>(null);
   const timelineRef = useRef<HTMLDivElement>(null);
@@ -577,58 +590,104 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   // ── Render ──
   const startVideoRender = async () => {
     setRendering(true);
+    setRenderError(null);
     setActiveStage('rendering');
     setRenderProgress(0);
     setRenderBackgroundUrl(scenes[0]?.imageUrl || null);
 
     const canvas = canvasRef.current!;
-    canvas.width = 720; canvas.height = 1280;
+    if (!canvas) {
+      setRenderError(locale === 'ru' ? 'Ошибка холста: Canvas не найден.' : 'Canvas element not found.');
+      setRendering(false);
+      return;
+    }
+
+    canvas.width = 720;
+    canvas.height = 1280;
     const ctx = canvas.getContext('2d')!;
     const FPS = 24;
-    const totalFrames = Math.round(duration * FPS);
-    const imgCache: Record<string, HTMLImageElement> = {};
 
-    
-    // Assign a random motion style to each scene for variety
+    // Determine robust effectiveDuration
+    let effectiveDuration = (duration && !isNaN(duration) && duration > 0) ? duration : 30;
+    if (audioRef.current?.duration && !isNaN(audioRef.current.duration) && audioRef.current.duration > 0) {
+      effectiveDuration = audioRef.current.duration;
+    } else if (scenes.length > 0 && scenes[scenes.length - 1].end > 0) {
+      effectiveDuration = scenes[scenes.length - 1].end;
+    }
+
+    if (effectiveDuration <= 0) {
+      setRenderError(locale === 'ru' ? 'Некорректная длительность видео. Проверьте сцены.' : 'Invalid video duration.');
+      setRendering(false);
+      return;
+    }
+
+    // Assign motion styles & preload scene images
     const sceneMotionStyles: Record<string, any> = {};
     const motionTypes = ['zoom_in', 'zoom_out', 'pan_right', 'pan_left', 'diagonal_br', 'diagonal_tr'];
-    
+    const imgCache: Record<string, HTMLImageElement> = {};
+
     for (const scene of scenes) {
       sceneMotionStyles[scene.id] = motionTypes[Math.floor(Math.random() * motionTypes.length)];
       if (scene.imageUrl) {
-
         const img = new (globalThis as any).window.Image();
         img.crossOrigin = 'anonymous';
-        await new Promise<void>(res => { img.onload = () => res(); img.onerror = () => res(); img.src = scene.imageUrl!; });
+        await new Promise<void>(res => {
+          img.onload = () => res();
+          img.onerror = () => res();
+          img.src = scene.imageUrl!;
+        });
         imgCache[scene.id] = img;
       }
     }
+
+    // Pre-paint initial frame 0 to kickstart canvas stream buffer
+    const firstScene = scenes[0];
+    const firstImg = firstScene ? imgCache[firstScene.id] : null;
+    ctx.clearRect(0, 0, 720, 1280);
+    if ((firstImg as any)?.complete && (firstImg as any).naturalWidth > 0) {
+      let aspect = (firstImg as any).naturalWidth / (firstImg as any).naturalHeight;
+      if (!aspect || isNaN(aspect)) aspect = 9 / 16;
+      let dw, dh;
+      if (aspect < 720 / 1280) { dw = 720; dh = 720 / aspect; } else { dh = 1280; dw = 1280 * aspect; }
+      ctx.drawImage(firstImg, (720 - dw) / 2, (1280 - dh) / 2, dw, dh);
+    } else {
+      ctx.fillStyle = '#0a0a1a';
+      ctx.fillRect(0, 0, 720, 1280);
+    }
+
     const stream = canvas.captureStream(FPS);
-    
-    // ── FIXED AUDIO CAPTURE (Web Audio API) ──
+
+    // ── AUDIO CAPTURE (Web Audio API) ──
     if (audioRef.current) {
       try {
         if (!audioContextRef.current) {
-          audioContextRef.current = new ((globalThis as any).window.AudioContext || (globalThis as any).window.webkitAudioContext)();
+          const AudioContextClass = (globalThis as any).window.AudioContext || (globalThis as any).window.webkitAudioContext;
+          if (AudioContextClass) {
+            audioContextRef.current = new AudioContextClass();
+          }
         }
-        
-        const ctx = audioContextRef.current;
-        if (!audioSourceRef.current) {
-          audioSourceRef.current = ctx.createMediaElementSource(audioRef.current);
-        }
-        
-        const destination = ctx.createMediaStreamDestination();
-        
-        // Clear any previous connections
-        audioSourceRef.current.disconnect();
-        
-        // Connect ONLY to the stream destination for recording, NOT to ctx.destination (speakers)
-        audioSourceRef.current.connect(destination);
 
-        const audioTrack = destination.stream.getAudioTracks()[0];
-        if (audioTrack) stream.addTrack(audioTrack);
-        
-        if (ctx.state === 'suspended') await ctx.resume();
+        const actx = audioContextRef.current;
+        if (actx) {
+          if (!audioSourceRef.current) {
+            audioSourceRef.current = actx.createMediaElementSource(audioRef.current);
+          }
+
+          const destination = actx.createMediaStreamDestination();
+
+          // Clear any previous connections
+          try {
+            audioSourceRef.current.disconnect();
+          } catch (e) {}
+
+          // Connect ONLY to stream destination for recording
+          audioSourceRef.current.connect(destination);
+
+          const audioTrack = destination.stream.getAudioTracks()[0];
+          if (audioTrack) stream.addTrack(audioTrack);
+
+          if (actx.state === 'suspended') await actx.resume();
+        }
       } catch (e) {
         console.warn('[Render] Audio capture initialization failed:', e);
       }
@@ -638,7 +697,13 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
     let selectedMime = '';
     const MediaRecorderClass = (globalThis as any).MediaRecorder;
     if (typeof MediaRecorderClass !== 'undefined') {
-      const candidates = ['video/webm;codecs=vp9,opus', 'video/webm;codecs=vp8,opus', 'video/webm', 'video/mp4', 'video/quicktime'];
+      const candidates = [
+        'video/webm;codecs=vp9,opus',
+        'video/webm;codecs=vp8,opus',
+        'video/webm',
+        'video/mp4',
+        'video/quicktime'
+      ];
       for (const m of candidates) {
         if (MediaRecorderClass.isTypeSupported(m)) {
           selectedMime = m;
@@ -647,28 +712,103 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
       }
     }
 
-    const options: any = {};
+    if (!MediaRecorderClass) {
+      setRenderError(locale === 'ru' ? 'Ваш браузер не поддерживает запись видео.' : 'MediaRecorder not supported.');
+      setRendering(false);
+      return;
+    }
+
+    const options: any = { videoBitsPerSecond: 8000000 };
     if (selectedMime) options.mimeType = selectedMime;
-    const mr = MediaRecorderClass ? new MediaRecorderClass(stream, options) : null;
-    if (mr) mr.ondataavailable = (e: any) => { if (e.data.size > 0) chunks.push(e.data); };
-    
-    await new Promise<void>(async (resolve) => {
-      if (mr) mr.onstop = () => resolve();
-      else resolve();
-      if (mr) mr.start();
-      
-      if (audioRef.current) { 
-        audioRef.current.currentTime = 0; 
-        audioRef.current.muted = false; // MUST be false for WebAudio to capture!
-        await audioRef.current.play(); 
+
+    let mr: any = null;
+    try {
+      mr = new MediaRecorderClass(stream, options);
+    } catch (e) {
+      try {
+        mr = new MediaRecorderClass(stream);
+      } catch (e2) {
+        setRenderError(locale === 'ru' ? 'Не удалось инициализировать кодировщик видео.' : 'Failed to init MediaRecorder.');
+        setRendering(false);
+        return;
       }
+    }
+
+    mr.ondataavailable = (e: any) => {
+      if (e.data && e.data.size > 0) {
+        chunks.push(e.data);
+      }
+    };
+
+    // CRITICAL: Pause audio, seek to 0, and wait for seek to finish BEFORE starting recorder
+    if (audioRef.current) {
+      try {
+        audioRef.current.pause();
+        audioRef.current.currentTime = 0;
+        await new Promise<void>((res) => {
+          if (audioRef.current.currentTime === 0 && !audioRef.current.seeking) {
+            res();
+            return;
+          }
+          const onSeeked = () => {
+            audioRef.current?.removeEventListener('seeked', onSeeked);
+            res();
+          };
+          audioRef.current.addEventListener('seeked', onSeeked);
+          setTimeout(() => {
+            audioRef.current?.removeEventListener('seeked', onSeeked);
+            res();
+          }, 350);
+        });
+      } catch (e) {
+        console.warn('[Render] Failed to seek audio to 0:', e);
+      }
+    }
+
+    // Start recorder with timeslice to ensure continuous chunk buffering
+    try {
+      mr.start(1000);
+    } catch (e) {
+      mr.start();
+    }
+
+    await new Promise<void>(async (resolve) => {
+      mr.onstop = () => resolve();
+      mr.onerror = (e: any) => {
+        console.error('[Render] MediaRecorder error:', e);
+        resolve();
+      };
+
+      if (audioRef.current) {
+        audioRef.current.currentTime = 0;
+        audioRef.current.muted = false; // MUST be false for WebAudio to capture!
+        try {
+          await audioRef.current.play();
+        } catch (e) {
+          console.warn('[Render] audio play error:', e);
+        }
+      }
+
+      const startTime = performance.now();
+      let lastFrameTime = startTime;
 
       const renderLoop = () => {
         if (!renderingRef.current) return;
-        
-        const currentTime = audioRef.current?.currentTime || 0;
-        if (currentTime >= duration) {
-          if (mr) mr.stop();
+        lastFrameTime = performance.now();
+
+        const now = performance.now();
+        const elapsedRealSec = (now - startTime) / 1000;
+        let currentTime = audioRef.current?.currentTime || 0;
+
+        // Fallback to elapsedRealSec if audio playback didn't update currentTime
+        if (currentTime === 0 && elapsedRealSec > 0.5) {
+          currentTime = elapsedRealSec;
+        }
+
+        // CRITICAL GUARD: Only stop if effectiveDuration reached AND at least 1.0s elapsed (prevents instant 0.1KB exit)
+        if (currentTime >= effectiveDuration && elapsedRealSec >= 1.0) {
+          renderingRef.current = false;
+          if (mr && mr.state !== 'inactive') mr.stop();
           else resolve();
           return;
         }
@@ -677,11 +817,11 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
         const denom = (scene.end - scene.start) || 1;
         const prog = Math.max(0, Math.min(1, (currentTime - scene.start) / denom));
         const img = imgCache[scene.id];
-        
+
         ctx.clearRect(0, 0, 720, 1280);
-        if ((img as any)?.complete) {
+        if ((img as any)?.complete && (img as any).naturalWidth > 0) {
           const motion = sceneMotionStyles[scene.id];
-          
+
           // DRAMATICALLY ENHANCED KEN BURNS (2.5x to 3x more dynamic scale and pans)
           let scale = 1.05;
           let tx = 0;
@@ -700,13 +840,13 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             scale += punchFactor * 0.35; // Extra 35% scale decay
           }
 
-          ctx.save(); 
-          ctx.translate(360 + tx, 640 + ty); 
+          ctx.save();
+          ctx.translate(360 + tx, 640 + ty);
           ctx.scale(scale, scale);
-          
+
           let aspect = (img as any).naturalWidth / (img as any).naturalHeight;
           if (!aspect || isNaN(aspect)) aspect = 9 / 16;
-          
+
           let dw, dh;
           if (aspect < 720 / 1280) { dw = 720; dh = 720 / aspect; } else { dh = 1280; dw = 1280 * aspect; }
           ctx.drawImage(img, -dw / 2, -dh / 2, dw, dh);
@@ -717,7 +857,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             ctx.save();
             const shiftX = (Math.random() - 0.5) * 35;
             ctx.translate(shiftX, 0);
-            
+
             // Draw colorful digital artifacts
             ctx.fillStyle = 'rgba(255, 0, 80, 0.4)';
             ctx.fillRect(Math.random() * 720, Math.random() * 1280, Math.random() * 200 + 100, Math.random() * 15 + 5);
@@ -759,32 +899,59 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             ctx.restore();
           }
         } else {
-          ctx.fillStyle = '#0a0a1a'; ctx.fillRect(0, 0, 720, 1280);
+          ctx.fillStyle = '#0a0a1a';
+          ctx.fillRect(0, 0, 720, 1280);
         }
 
-        setRenderProgress(Math.round((currentTime / duration) * 100));
+        setRenderProgress(Math.min(99, Math.round((currentTime / effectiveDuration) * 100)));
         requestAnimationFrame(renderLoop);
       };
-      
+
+      // Watchdog interval in case tab is in background and requestAnimationFrame is throttled
+      const watchdog = setInterval(() => {
+        if (!renderingRef.current) {
+          clearInterval(watchdog);
+          return;
+        }
+        if (performance.now() - lastFrameTime > 250) {
+          renderLoop();
+        }
+      }, 100);
+
       renderingRef.current = true;
       renderLoop();
     });
 
+    const blob = new Blob(chunks, { type: selectedMime || 'video/webm' });
+    console.log(`[FacelessStudio] Render finished. Chunks: ${chunks.length}, Size: ${blob.size} bytes (${(blob.size / 1024).toFixed(1)} KB)`);
 
-    const blob = new Blob(chunks, { type: 'video/webm' });
+    // Post-render validation: Reject empty or corrupt recordings
+    if (blob.size < 50000) {
+      console.error('[FacelessStudio] Rendered video is too small / corrupt:', blob.size);
+      setRendering(false);
+      setRenderProgress(0);
+      setRenderError(locale === 'ru' 
+        ? `Видео не удалось записать (${(blob.size / 1024).toFixed(1)} KB). Пожалуйста, повторите сборку.`
+        : `Video recording failed (${(blob.size / 1024).toFixed(1)} KB). Please retry render.`);
+      return;
+    }
+
     setFinalVideoBlob(blob);
     setRendering(false);
     setRenderProgress(100);
     setRendered(true);
+
     if (audioRef.current && audioContextRef.current && audioSourceRef.current) {
       // Reconnect to speakers for preview
-      audioSourceRef.current.disconnect();
-      audioSourceRef.current.connect(audioContextRef.current.destination);
+      try {
+        audioSourceRef.current.disconnect();
+        audioSourceRef.current.connect(audioContextRef.current.destination);
+      } catch (e) {}
     }
   };
 
   const handleDownload = () => {
-    if (!finalVideoBlob) return;
+    if (!finalVideoBlob || finalVideoBlob.size < 50000) return;
     const doc = typeof globalThis !== 'undefined' ? (globalThis as any).document : null;
     const win = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
     if (!doc || !win) return;
@@ -810,7 +977,15 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
   return (
     <div className="flex flex-col bg-[#050508] text-white h-[100dvh] relative overflow-hidden font-sans select-none">
       <canvas ref={canvasRef} className="hidden" />
-      {audioUrl && <audio ref={audioRef} src={audioUrl} className="hidden" />}
+      {audioUrl && (
+        <audio 
+          ref={audioRef} 
+          src={audioUrl} 
+          crossOrigin="anonymous" 
+          preload="auto" 
+          className="hidden" 
+        />
+      )}
 
       {/* ── TOP HEADER ── */}
       <div className="flex items-center justify-between px-5 pt-4 pb-3 z-50 shrink-0">
@@ -1453,7 +1628,39 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
             )}
 
             <div className="w-full max-w-sm text-center space-y-10 relative z-10">
-              {!renderDone && (
+              {renderError && (
+                <div className="space-y-6 animate-in fade-in zoom-in duration-300">
+                  <div className="w-20 h-20 rounded-full bg-red-500/10 border border-red-500/20 flex items-center justify-center mx-auto shadow-[0_0_40px_rgba(239,68,68,0.2)]">
+                    <X size={32} className="text-red-400" />
+                  </div>
+                  <div>
+                    <h2 className="text-2xl font-black italic uppercase tracking-tighter text-white">Ошибка сборки</h2>
+                    <p className="text-[11px] font-medium text-red-300/80 mt-2 max-w-[260px] mx-auto">{renderError}</p>
+                  </div>
+                  <div className="flex gap-2 max-w-[280px] mx-auto w-full">
+                    <button
+                      onClick={() => {
+                        setRenderError(null);
+                        setActiveStage('editor');
+                      }}
+                      className="flex-1 py-4 rounded-2xl bg-white/5 border border-white/8 text-white text-[10px] font-black uppercase tracking-widest active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      <ArrowLeft size={14} /> Редактор
+                    </button>
+                    <button
+                      onClick={() => {
+                        setRenderError(null);
+                        startVideoRender();
+                      }}
+                      className="flex-1 py-4 rounded-2xl bg-purple-600 text-white font-black italic uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
+                    >
+                      <RefreshCw size={14} /> Повторить
+                    </button>
+                  </div>
+                </div>
+              )}
+
+              {!renderDone && !renderError && (
                 <div className="space-y-6">
                   <div className="relative inline-block">
                     <div className="w-32 h-32 rounded-[2.5rem] bg-purple-500/10 border border-purple-500/20 flex items-center justify-center shadow-[0_0_80px_rgba(168,85,247,0.1)]">
@@ -1486,7 +1693,7 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                 </div>
               )}
 
-              {renderDone && (
+              {renderDone && !renderError && (
                 <div className="space-y-6 animate-in fade-in zoom-in duration-500">
                   <div className="w-20 h-20 rounded-full bg-emerald-500/10 border border-emerald-500/20 flex items-center justify-center mx-auto shadow-[0_0_40px_rgba(16,185,129,0.2)]">
                     <Check size={32} className="text-emerald-400" />
@@ -1499,15 +1706,16 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
               )}
 
 
-              {renderDone && finalVideoBlob && (
+              {renderDone && finalVideoBlob && finalVideoBlob.size >= 50000 && !renderError && (
                 <div className="space-y-4">
                   <div className="relative aspect-[9/16] w-full max-w-[240px] mx-auto rounded-2xl overflow-hidden border border-white/10 shadow-2xl bg-black">
-                    <video 
-                      src={URL.createObjectURL(finalVideoBlob)} 
-                      controls 
-                      className="w-full h-full object-cover"
-                    />
-
+                    {finalVideoUrl && (
+                      <video 
+                        src={finalVideoUrl} 
+                        controls 
+                        className="w-full h-full object-cover"
+                      />
+                    )}
                   </div>
                   
                   <div className="flex flex-col gap-2.5 max-w-[280px] mx-auto w-full">
@@ -1522,8 +1730,10 @@ export default function FacelessStudio({ manifest, onBack, onComplete, onJumpToC
                         <ArrowLeft size={14} /> Редактор
                       </button>
                       <button
-                        onClick={() => onComplete(finalVideoBlob!, scenes.map(s => ({ text: s.text, start: s.start, end: s.end })), scenes)}
-
+                        onClick={() => {
+                          if (!finalVideoBlob || finalVideoBlob.size < 50000) return;
+                          onComplete(finalVideoBlob, scenes.map(s => ({ text: s.text, start: s.start, end: s.end })), scenes);
+                        }}
                         className="flex-1 py-4 rounded-2xl bg-purple-600 text-white font-black italic uppercase text-[10px] tracking-widest shadow-lg shadow-purple-500/20 active:scale-95 transition-all flex items-center justify-center gap-2"
                       >
                         В Монтажку <ArrowRight size={14} />

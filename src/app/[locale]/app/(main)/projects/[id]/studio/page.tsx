@@ -110,7 +110,7 @@ export default function StudioPage() {
   const [scriptOpacity, setScriptOpacity] = useState(0.85);
   const [scriptColor, setScriptColor] = useState('#ffffff');
   const [isRegenerating, setIsRegenerating] = useState<string | null>(null);
-  const [showFaceless, setShowFaceless] = useState(false);
+  const [showFaceless, setShowFaceless] = useState(() => searchParams?.get('mode') === 'faceless');
   const [isVoiceOnly, setIsVoiceOnly] = useState(false);
   const [showAvatarSelector, setShowAvatarSelector] = useState(false);
   const [availableAvatars, setAvailableAvatars] = useState<any[]>([]);
@@ -120,8 +120,9 @@ export default function StudioPage() {
   const [avatarPhoto, setAvatarPhoto] = useState<string | null>(null);
 
   const [visitedTabs, setVisitedTabs] = useState<Record<string, boolean>>(() => {
+    const isFaceless = searchParams?.get('mode') === 'faceless';
     const initialKey = initialTab === 'assembly' 
-      ? (showFaceless ? 'assembly_faceless' : 'assembly_editor')
+      ? (isFaceless ? 'assembly_faceless' : 'assembly_editor')
       : initialTab;
     return { [initialKey]: true };
   });
@@ -1119,6 +1120,14 @@ export default function StudioPage() {
                     router.push(`/app/projects/new/script?projectId=${projectId}`);
                   }}
                   onComplete={(videoBlob, transcriptData, scenesList) => {
+                    if (!videoBlob || videoBlob.size < 50000) {
+                      console.error('[Studio] Invalid or corrupted video blob passed to onComplete:', videoBlob?.size);
+                      (globalThis as any).alert?.(locale === 'ru' 
+                        ? 'Ошибка: видеозапись не удалась или повреждена. Пожалуйста, выполните сборку заново.' 
+                        : 'Error: Video recording is empty or corrupted. Please render again.');
+                      return;
+                    }
+
                     const localUrl = URL.createObjectURL(videoBlob);
                     
                     // Persist generated faceless video to IndexedDB so it's loaded in the montage editor
@@ -1177,6 +1186,8 @@ export default function StudioPage() {
                           return next;
                         });
                       }
+                    }).catch(err => {
+                      console.error('[Studio] Background faceless video upload failed:', err);
                     });
                   }}
                 />
