@@ -35,19 +35,32 @@ export async function GET(req: NextRequest) {
       .select('id', { count: 'exact', head: true })
       .gte('created_at', twentyFourHoursAgo);
 
-    // 2. Subscriptions & Tier counts
-    const { data: profiles } = await supabaseAdmin
-      .from('profiles')
-      .select('tier, subscription_status, credits_balance');
+    // 2. Subscriptions & Tier counts (Paginated to handle >1000 users)
+    let allProfiles: any[] = [];
+    let from = 0;
+    const step = 1000;
+    while (true) {
+      const { data: page } = await supabaseAdmin
+        .from('profiles')
+        .select('tier, subscription_status, credits_balance')
+        .range(from, from + step - 1);
+      if (!page || page.length === 0) break;
+      allProfiles = allProfiles.concat(page);
+      if (page.length < step) break;
+      from += step;
+    }
 
     let activeSubs = 0;
     let totalCreditsInCirculation = 0;
     const tierBreakdown = { free: 0, creator: 0, pro: 0, scale: 0 };
 
-    (profiles || []).forEach((p: any) => {
-      const tier = (p.tier || 'free').toLowerCase();
+    allProfiles.forEach((p: any) => {
+      const rawTier = (p.tier || '').toLowerCase().trim();
+      const isPaidTier = rawTier === 'creator' || rawTier === 'pro' || rawTier === 'scale';
+      const tier = isPaidTier ? rawTier : 'free';
+
       if (tier in tierBreakdown) (tierBreakdown as any)[tier]++;
-      if (tier !== 'free' && p.subscription_status === 'active') activeSubs++;
+      if (isPaidTier && p.subscription_status === 'active') activeSubs++;
       totalCreditsInCirculation += (p.credits_balance || 0);
     });
 
