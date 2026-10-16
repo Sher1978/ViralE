@@ -678,88 +678,104 @@ function DeliveryPageContent() {
         setRenderProgress(12);
         setRenderStatus('Director Agent: Анализ структуры сценария и смысловых фаз...');
 
-        let cutSheet: RemotionArchitectCutSheet | null = null;
-        addSystemLog('Remotion: Запуск мультиагентного конвейера (/api/ai/remotion-architect)...');
-        try {
-          const rawTranscript = manifestData?.subtitleClips || manifestData?.segments || manifestData?.transcriptData || [];
-          const transcriptData = rawTranscript.length > 0 ? rawTranscript : [
-            { start: 0, end: 15, text: manifestData?.scriptText || manifestData?.customScript || 'High retention AI video' }
-          ];
+        let cutSheet: RemotionArchitectCutSheet | null = manifestData?.remotionCutSheet || null;
 
-          const userBrandDna = manifestData?.userBrandDna || {
-            accentColor: manifestData?.subtitleColor || '#38bdf8',
-            stylePreset: manifestData?.subtitleStylePreset || manifestData?.stylePreset || 'minimal_expert',
-            niche: 'business'
-          };
+        if (!cutSheet) {
+          addSystemLog('Remotion: Запуск мультиагентного конвейера (/api/ai/remotion-architect)...');
+          try {
+            const rawTranscript = manifestData?.subtitleClips || manifestData?.segments || manifestData?.transcriptData || [];
+            const transcriptData = rawTranscript.length > 0 ? rawTranscript : [
+              { start: 0, end: 15, text: manifestData?.scriptText || manifestData?.customScript || 'High retention AI video' }
+            ];
 
-          // Progress animation during AI call
-          const aiProgressTimer = setInterval(() => {
-            setRenderProgress((prev) => {
-              if (prev < 32) {
-                const nextP = prev + 3;
-                if (nextP > 18 && nextP <= 26) {
-                  setRenderStatus('Art Director Agent: Подбор 3D-медиума и стилей оверлеев...');
-                } else if (nextP > 26) {
-                  setRenderStatus('Animator Agent: Расчет кадров упреждения (-150ms) и таймингов...');
+            const userBrandDna = manifestData?.userBrandDna || {
+              accentColor: manifestData?.subtitleColor || '#38bdf8',
+              stylePreset: manifestData?.subtitleStylePreset || manifestData?.stylePreset || 'minimal_expert',
+              niche: 'business'
+            };
+
+            // Progress animation during AI call
+            const aiProgressTimer = setInterval(() => {
+              setRenderProgress((prev) => {
+                if (prev < 32) {
+                  const nextP = prev + 3;
+                  if (nextP > 18 && nextP <= 26) {
+                    setRenderStatus('Art Director Agent: Подбор 3D-медиума и стилей оверлеев...');
+                  } else if (nextP > 26) {
+                    setRenderStatus('Animator Agent: Расчет кадров упреждения (-150ms) и таймингов...');
+                  }
+                  return nextP;
                 }
-                return nextP;
-              }
-              return prev;
+                return prev;
+              });
+            }, 400);
+
+            const cutRes = await fetch('/api/ai/remotion-architect', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                transcriptData,
+                presetKey: userBrandDna.stylePreset || 'minimal_expert',
+                userBrandDna,
+                projectId,
+                includeSubtitles: manifestData?.includeSubtitles ?? false,
+                dynamicTheme: manifestData?.dynamicTheme || null,
+                userIntent: 'High Retention dynamic motion edit with Safe Zones'
+              })
             });
-          }, 400);
 
-          const cutRes = await fetch('/api/ai/remotion-architect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              transcriptData,
-              presetKey: userBrandDna.stylePreset || 'minimal_expert',
-              userBrandDna,
-              projectId,
-              userIntent: 'High Retention dynamic motion edit with Safe Zones'
-            })
-          });
+            clearInterval(aiProgressTimer);
 
-          clearInterval(aiProgressTimer);
-
-          if (!cutRes.ok) {
-            const errData = await cutRes.json().catch(() => ({}));
-            const errorMsg = errData.error || `ОШИБКА ЭТАПА 2: Ошибка сервера ИИ (${cutRes.status} ${cutRes.statusText})`;
-            setError(errorMsg);
-            sendTelegramErrorAlert(2, REAL_STAGES_RU[1], errorMsg);
-            setIsLoading(false);
-            isLaunchingRenderRef.current = false;
-            return;
-          }
-
-          const cutData = await cutRes.json();
-          if (cutData.cutSheet) {
-            cutSheet = cutData.cutSheet;
-            manifestData.remotionCutSheet = cutSheet;
-            addSystemLog('Remotion: Схема монтажа успешно создана Мультиагентским конвейером.');
-            if (projectId) {
-              projectService.updateLatestVersionManifest(projectId, manifestData).catch(() => {});
+            if (!cutRes.ok) {
+              const errData = await cutRes.json().catch(() => ({}));
+              const errorMsg = errData.error || `ОШИБКА ЭТАПА 2: Ошибка сервера ИИ (${cutRes.status} ${cutRes.statusText})`;
+              setError(errorMsg);
+              sendTelegramErrorAlert(2, REAL_STAGES_RU[1], errorMsg);
+              setIsLoading(false);
+              isLaunchingRenderRef.current = false;
+              return;
             }
-          } else if (cutData.error) {
-            const errorMsg = cutData.error;
+
+            const cutData = await cutRes.json();
+            if (cutData.cutSheet) {
+              cutSheet = cutData.cutSheet;
+              manifestData.remotionCutSheet = cutSheet;
+              addSystemLog('Remotion: Схема монтажа успешно создана Мультиагентским конвейером.');
+              if (projectId) {
+                projectService.updateLatestVersionManifest(projectId, manifestData).catch(() => {});
+              }
+            } else if (cutData.error) {
+              const errorMsg = cutData.error;
+              setError(errorMsg);
+              sendTelegramErrorAlert(2, REAL_STAGES_RU[1], errorMsg);
+              setIsLoading(false);
+              isLaunchingRenderRef.current = false;
+              return;
+            }
+          } catch (errCut: any) {
+            console.warn('[Delivery] Multi-agent cutSheet fetch failed:', errCut);
+            const errorMsg = `ОШИБКА ЭТАПА 2: Не удалось получить ответ от нейросети. Детали: ${errCut.message || errCut}`;
             setError(errorMsg);
             sendTelegramErrorAlert(2, REAL_STAGES_RU[1], errorMsg);
             setIsLoading(false);
             isLaunchingRenderRef.current = false;
             return;
           }
-        } catch (errCut: any) {
-          console.warn('[Delivery] Multi-agent cutSheet fetch failed:', errCut);
-          const errorMsg = `ОШИБКА ЭТАПА 2: Не удалось получить ответ от нейросети. Детали: ${errCut.message || errCut}`;
-          setError(errorMsg);
-          sendTelegramErrorAlert(2, REAL_STAGES_RU[1], errorMsg);
-          setIsLoading(false);
-          isLaunchingRenderRef.current = false;
-          return;
+        } else {
+          addSystemLog('Remotion: Используется готовая схема монтажа Claude Motion Studio.');
         }
 
         if (!cutSheet) {
           cutSheet = manifestData?.remotionCutSheet || null;
+        }
+
+        // Strictly enforce subtitles setting
+        if (cutSheet) {
+          cutSheet.renderSettings = {
+            ...cutSheet.renderSettings,
+            includeSubtitles: manifestData?.includeSubtitles ?? false,
+            dynamicTheme: manifestData?.dynamicTheme || cutSheet.renderSettings?.dynamicTheme
+          };
         }
 
         setRenderProgress(35);
@@ -810,6 +826,23 @@ function DeliveryPageContent() {
           setRenderStatus('Готово (Remotion Motion Engine)!');
           setIsLoading(false);
           isLaunchingRenderRef.current = false;
+
+          // Background upload to Supabase CDN for direct Telegram sharing and link copying
+          if (projectId && videoBlob) {
+            renderService.uploadMedia(projectId, videoBlob, 'video').then((uploadRes) => {
+              if (uploadRes && uploadRes.publicUrl) {
+                console.log('[Delivery] Background upload of Remotion video completed:', uploadRes.publicUrl);
+                setJob((prev: any) => ({ ...prev, output_url: uploadRes.publicUrl }));
+                if (ver.id) {
+                  projectService.updateVersion(ver.id, {
+                    preview_url: uploadRes.publicUrl,
+                    script_data: { ...(ver.script_data as any), finalVideoUrl: uploadRes.publicUrl }
+                  }).catch(() => {});
+                }
+              }
+            }).catch((upErr) => console.warn('[Delivery] Background upload of Remotion video failed:', upErr));
+          }
+
           return;
         }
       } catch (remotionErr: any) {
@@ -1433,20 +1466,34 @@ function DeliveryPageContent() {
         const cachedRemotion = await idb.get(remotionCacheKey, 'MediaBuffer');
         const cachedFfmpeg = await idb.get(ffmpegCacheKey, 'MediaBuffer');
         
-        if (cachedRemotion instanceof Blob) {
-          const url = URL.createObjectURL(cachedRemotion);
-          setRemotionOutputUrl(url);
+        const modeParam = searchParams.get('mode');
+        const isRemotionMode = modeParam === 'remotion' || 
+          (verData.script_data as any)?.renderPipeline === 'remotion' || 
+          (verData.script_data as any)?.useRemotion === true;
+
+        if (isRemotionMode) {
           setActiveEngine('remotion');
           setShowRemotion(true);
-          setJob({ id: 'local-remotion-render', status: 'completed', output_url: url, progress: 100 } as any);
-          setRenderProgress(100);
-          setRenderStatus('Готово (Remotion Engine из кеша)!');
+          if (cachedRemotion instanceof Blob) {
+            const url = URL.createObjectURL(cachedRemotion);
+            setRemotionOutputUrl(url);
+            setJob({ id: 'local-remotion-render', status: 'completed', output_url: url, progress: 100 } as any);
+            setRenderProgress(100);
+            setRenderStatus('Готово (Claude Motion из кеша)!');
+            return;
+          }
+
+          addSystemLog('Запуск сборки Claude Motion (Remotion Engine)...');
+          handleClientRender(verData, 'remotion');
           return;
-        } else if (cachedFfmpeg instanceof Blob) {
+        }
+
+        // Standard FFmpeg Engine Mode
+        setActiveEngine('ffmpeg');
+        setShowRemotion(false);
+        if (cachedFfmpeg instanceof Blob) {
           const url = URL.createObjectURL(cachedFfmpeg);
           setFfmpegOutputUrl(url);
-          setActiveEngine('ffmpeg');
-          setShowRemotion(false);
           setJob({ id: 'local-ffmpeg-render', status: 'completed', output_url: url, progress: 100 } as any);
           setRenderProgress(100);
           setRenderStatus('Готово (Standard FFmpeg из кеша)!');
@@ -1454,7 +1501,7 @@ function DeliveryPageContent() {
         }
 
         addSystemLog('Запуск локального рендеринга (FFmpeg)...');
-        handleClientRender(verData);
+        handleClientRender(verData, 'ffmpeg');
 
       } catch (err: any) {
         console.error('[Delivery] Auto-launch failed:', err);

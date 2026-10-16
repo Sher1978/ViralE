@@ -23,7 +23,19 @@ export type BRollElementType =
   | 'list'
   | 'tweet_card'
   | 'kinetic_quote'
-  | 'stat_callout';
+  | 'stat_callout'
+  | 'comparison_card';
+
+export type BRollLayoutMode =
+  | 'floating_hud'
+  | 'split_screen'
+  | 'pip_side_card'
+  | 'full_slide';
+
+export type ChartVariant =
+  | 'vertical_bars'
+  | 'horizontal_progress'
+  | 'radial_gauge';
 
 export interface BRollElementProps {
   title?: string;
@@ -42,6 +54,13 @@ export interface BRollElementProps {
   highlightKeywords?: string[];
   statValue?: string;
   statLabel?: string;
+  // Comparison Card props
+  beforeTitle?: string;
+  beforeValue?: string;
+  beforeText?: string;
+  afterTitle?: string;
+  afterValue?: string;
+  afterText?: string;
 }
 
 export interface BRollElement {
@@ -52,6 +71,8 @@ export interface BRollElement {
   startFrame: number;
   endFrame: number;
   visualSeed: number;     // 0-100 for procedural jitter, angles, entrance vectors
+  layoutMode?: BRollLayoutMode;
+  chartVariant?: ChartVariant;
   props: BRollElementProps;
 }
 
@@ -80,6 +101,25 @@ export interface UserBrandDnaConfig {
   niche?: string;
 }
 
+export interface DynamicThemeConfig {
+  themeMode: 'dark' | 'light' | 'glass_translucent' | 'neon_high_contrast';
+  palette: {
+    backgroundPrimary: string;
+    backgroundSecondary: string;
+    cardSurface: string;
+    cardBorder: string;
+    accentPrimary: string;
+    accentSecondary: string;
+    textPrimary: string;
+    textMuted: string;
+  };
+  cardGeometry: 'rounded_modern' | 'sharp_brutalist' | 'pill_soft' | 'minimal_borderless' | 'hud_tech';
+  backgroundPattern: 'aurora_ring' | 'tech_grid' | 'minimal_dots' | 'clean_gradient' | 'diagonal_mesh';
+  defaultSpeakerLayout: 'pip_circle_left' | 'pip_rounded_right' | 'split_top_bottom' | 'floating_overlay' | 'full_cutaway';
+  chartVariant: ChartVariant;
+  animationCurve: 'snappy_spring' | 'smooth_editorial' | 'kinetic_bounce';
+}
+
 export interface RemotionArchitectSettings {
   presetKey?: string;
   stylePreset?: string;
@@ -87,6 +127,9 @@ export interface RemotionArchitectSettings {
   fps?: number;           // default 30
   userBrandDna?: UserBrandDnaConfig;
   anticipationOffsetFrames?: number; // default -4 (150ms)
+  includeSubtitles?: boolean; // default false for Motion
+  userPrompt?: string;
+  dynamicTheme?: DynamicThemeConfig;
 }
 
 export interface QaDiagnostics {

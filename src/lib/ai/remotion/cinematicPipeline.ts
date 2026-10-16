@@ -1,5 +1,5 @@
-import { RemotionArchitectCutSheet, CameraCut, BRollElement, SoundCue, UserBrandDnaConfig } from '@/lib/types/remotionArchitect';
-import { STYLE_PRESETS, resolveUserBrandStyle } from '@/lib/remotion/stylePresets';
+import { RemotionArchitectCutSheet, CameraCut, BRollElement, SoundCue, UserBrandDnaConfig, DynamicThemeConfig } from '@/lib/types/remotionArchitect';
+import { STYLE_PRESETS, resolveUserBrandStyle, buildDynamicThemeFromPrompt } from '@/lib/remotion/stylePresets';
 import { buildFewShotRagPromptContext } from './videoScoreLibrary';
 import { getRotatedArtMedium, buildDynamicAssetPrompt } from './dynamicPrompting';
 import { getRemotionPromptLibraryContext } from './remotionPromptLibrary';
@@ -11,6 +11,8 @@ export interface RunCinematicPipelineParams {
   presetKey?: string;
   userIntent?: string;
   fps?: number;
+  includeSubtitles?: boolean;
+  dynamicTheme?: DynamicThemeConfig;
 }
 
 export async function runCinematicMultiAgentPipeline({
@@ -18,9 +20,12 @@ export async function runCinematicMultiAgentPipeline({
   userBrandDna,
   presetKey = 'minimal_expert',
   userIntent = 'High Retention cinematic edit',
-  fps = 30
+  fps = 30,
+  includeSubtitles = false,
+  dynamicTheme
 }: RunCinematicPipelineParams): Promise<RemotionArchitectCutSheet> {
   const selectedStyle = resolveUserBrandStyle(presetKey, userBrandDna);
+  const resolvedTheme = dynamicTheme || buildDynamicThemeFromPrompt(userIntent, presetKey, 42, userBrandDna);
 
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const groqKey = process.env.GROQ_API_KEY;
@@ -39,7 +44,9 @@ export async function runCinematicMultiAgentPipeline({
         presetKey,
         userIntent,
         fps,
-        apiKey: anthropicKey
+        apiKey: anthropicKey,
+        includeSubtitles,
+        dynamicTheme: resolvedTheme
       });
 
       if (toolCutSheet && (toolCutSheet.cameraCuts.length > 0 || toolCutSheet.bRollElements.length > 0)) {
@@ -86,7 +93,7 @@ export async function runCinematicMultiAgentPipeline({
       }
 
       if (finalCutSheet) {
-        const enriched = processAndEnrichCutSheet(finalCutSheet, selectedStyle, fps);
+        const enriched = processAndEnrichCutSheet(finalCutSheet, selectedStyle, fps, resolvedTheme, includeSubtitles, userIntent);
         enriched.qaDiagnostics = {
           provider: providerName,
           passed: lastQaResult.isValid,
@@ -103,7 +110,7 @@ export async function runCinematicMultiAgentPipeline({
   }
 
   // Fallback to high-quality procedural cinematic generation
-  const proceduralResult = generateProceduralCinematicCutSheet(transcriptData, selectedStyle, fps);
+  const proceduralResult = generateProceduralCinematicCutSheet(transcriptData, selectedStyle, fps, resolvedTheme, includeSubtitles, userIntent);
   proceduralResult.qaDiagnostics = {
     provider: 'procedural',
     passed: true,
@@ -320,7 +327,14 @@ async function runQaInspectorAgent(cutSheet: any, transcript: any[]): Promise<{ 
 /**
  * Enriches LLM or procedural output with frame math and spring presets
  */
-function processAndEnrichCutSheet(data: any, style: any, fps: number): RemotionArchitectCutSheet {
+function processAndEnrichCutSheet(
+  data: any,
+  style: any,
+  fps: number,
+  theme?: DynamicThemeConfig,
+  includeSubtitles: boolean = false,
+  userPrompt?: string
+): RemotionArchitectCutSheet {
   const cameraCuts: CameraCut[] = (data.cameraCuts || data.camera_cuts || []).map((c: any) => {
     const startSec = parseTimeToSeconds(c.startTime || c.start_time);
     const duration = parseFloat(c.duration) || 4;
@@ -344,6 +358,8 @@ function processAndEnrichCutSheet(data: any, style: any, fps: number): RemotionA
     return {
       id: e.id || `elem_${idx + 1}`,
       type: e.type || 'chart',
+      layoutMode: e.layoutMode || 'floating_hud',
+      chartVariant: e.chartVariant || 'vertical_bars',
       startTime: e.startTime || `${startSecWithAnticipation.toFixed(2)}s`,
       endTime: e.endTime || `${rawEndSec.toFixed(2)}s`,
       startFrame: Math.round(startSecWithAnticipation * fps),
@@ -364,7 +380,7 @@ function processAndEnrichCutSheet(data: any, style: any, fps: number): RemotionA
 
   // AUTO-COUPLING: Guarantee that when side-cards (chart/list) are active, the speaker video is shifted to the left circle!
   bRollElements.forEach((elem) => {
-    if (elem.type === 'chart' || elem.type === 'list') {
+    if (elem.layoutMode === 'pip_side_card' || elem.type === 'chart') {
       const hasTransformCut = cameraCuts.some(
         (c) => (c.action === 'scale_to_circle' || c.action === 'move_left' || c.action === 'pip_right') &&
                c.startFrame <= elem.endFrame && (c.startFrame + c.durationFrames) >= elem.startFrame
@@ -406,12 +422,22 @@ function processAndEnrichCutSheet(data: any, style: any, fps: number): RemotionA
       stylePreset: style.name,
       globalJitter: style.jitterRangeDeg / 10,
       fps,
-      anticipationOffsetFrames: -4
+      anticipationOffsetFrames: -4,
+      includeSubtitles: Boolean(includeSubtitles),
+      userPrompt,
+      dynamicTheme: theme
     }
   };
 }
 
-function generateProceduralCinematicCutSheet(transcript: any[], style: any, fps: number): RemotionArchitectCutSheet {
+function generateProceduralCinematicCutSheet(
+  transcript: any[],
+  style: any,
+  fps: number,
+  theme?: DynamicThemeConfig,
+  includeSubtitles: boolean = false,
+  userPrompt?: string
+): RemotionArchitectCutSheet {
   const fullText = transcript.map(t => t.text || t.scriptText || '').join(' ').trim();
 
   // Dynamically extract real sentences and keywords from transcriptData
@@ -436,6 +462,7 @@ function generateProceduralCinematicCutSheet(transcript: any[], style: any, fps:
     {
       id: "elem_proc_1",
       type: "list",
+      layoutMode: 'floating_hud',
       startTime: "00:03.35",
       endTime: "00:08.20",
       startFrame: Math.round(3.35 * fps),
@@ -449,6 +476,7 @@ function generateProceduralCinematicCutSheet(transcript: any[], style: any, fps:
     {
       id: "elem_proc_2",
       type: "stat_callout",
+      layoutMode: 'split_screen',
       startTime: "00:08.35",
       endTime: "00:13.00",
       startFrame: Math.round(8.35 * fps),
@@ -476,7 +504,10 @@ function generateProceduralCinematicCutSheet(transcript: any[], style: any, fps:
       stylePreset: style.name,
       globalJitter: style.jitterRangeDeg / 10,
       fps,
-      anticipationOffsetFrames: -4
+      anticipationOffsetFrames: -4,
+      includeSubtitles: Boolean(includeSubtitles),
+      userPrompt,
+      dynamicTheme: theme
     }
   };
 }

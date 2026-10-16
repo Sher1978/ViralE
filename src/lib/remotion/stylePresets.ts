@@ -225,3 +225,167 @@ export function resolveUserBrandStyle(presetKey?: string, userBrandDna?: any): S
     fontFamily: customFont
   };
 }
+
+import { DynamicThemeConfig, ChartVariant } from '@/lib/types/remotionArchitect';
+
+/**
+ * Generates an anti-template dynamic theme based on user prompt, visual seed, and brand DNA.
+ */
+export function buildDynamicThemeFromPrompt(
+  prompt: string = '',
+  presetKey?: string,
+  visualSeed: number = 42,
+  userBrandDna?: any
+): DynamicThemeConfig {
+  const p = prompt.toLowerCase();
+  const seed = Math.abs(visualSeed);
+
+  const isLight = p.includes('light') || p.includes('светл') || p.includes('бел') || p.includes('apple') || p.includes('white');
+  const isNeon = p.includes('neon') || p.includes('неон') || p.includes('cyber') || p.includes('кибер') || p.includes('future');
+  const isLuxury = p.includes('lux') || p.includes('люкс') || p.includes('премиум') || p.includes('gold') || p.includes('золот');
+  const isHormozi = p.includes('hormozi') || p.includes('хормози') || p.includes('punch') || p.includes('энерги') || p.includes('желт');
+
+  // Geometries rotation
+  const geometries: DynamicThemeConfig['cardGeometry'][] = [
+    'rounded_modern',
+    'sharp_brutalist',
+    'pill_soft',
+    'minimal_borderless',
+    'hud_tech'
+  ];
+  let cardGeometry: DynamicThemeConfig['cardGeometry'] = geometries[seed % geometries.length];
+  if (p.includes('брутал') || p.includes('sharp')) cardGeometry = 'sharp_brutalist';
+  else if (p.includes('hud') || p.includes('tech')) cardGeometry = 'hud_tech';
+  else if (p.includes('без рамок') || p.includes('borderless')) cardGeometry = 'minimal_borderless';
+
+  // Patterns rotation
+  const patterns: DynamicThemeConfig['backgroundPattern'][] = [
+    'aurora_ring',
+    'tech_grid',
+    'minimal_dots',
+    'clean_gradient',
+    'diagonal_mesh'
+  ];
+  let backgroundPattern: DynamicThemeConfig['backgroundPattern'] = patterns[(seed + 2) % patterns.length];
+  if (p.includes('сетк') || p.includes('grid')) backgroundPattern = 'tech_grid';
+  else if (p.includes('точк') || p.includes('dots')) backgroundPattern = 'minimal_dots';
+
+  // Chart variant rotation
+  const chartVariants: ChartVariant[] = ['vertical_bars', 'horizontal_progress', 'radial_gauge'];
+  let chartVariant: ChartVariant = chartVariants[(seed + 1) % chartVariants.length];
+  if (p.includes('круг') || p.includes('radial') || p.includes('ring')) chartVariant = 'radial_gauge';
+  else if (p.includes('горизонт') || p.includes('полос') || p.includes('progress')) chartVariant = 'horizontal_progress';
+  else if (p.includes('столб') || p.includes('бар') || p.includes('bars')) chartVariant = 'vertical_bars';
+
+  // Speaker layout preference
+  let defaultSpeakerLayout: DynamicThemeConfig['defaultSpeakerLayout'] = 'pip_circle_left';
+  if (p.includes('50/50') || p.includes('split') || p.includes('пополам')) defaultSpeakerLayout = 'split_top_bottom';
+  else if (p.includes('поверх') || p.includes('hud') || p.includes('overlay')) defaultSpeakerLayout = 'floating_overlay';
+  else if (p.includes('справа') || p.includes('right')) defaultSpeakerLayout = 'pip_rounded_right';
+  else if (p.includes('слайд') || p.includes('full')) defaultSpeakerLayout = 'full_cutaway';
+
+  if (isLight) {
+    return {
+      themeMode: 'light',
+      palette: {
+        backgroundPrimary: '#F8FAFC',
+        backgroundSecondary: '#EEF2F6',
+        cardSurface: 'rgba(255, 255, 255, 0.94)',
+        cardBorder: 'rgba(15, 23, 42, 0.12)',
+        accentPrimary: userBrandDna?.accentColor || '#0284C7',
+        accentSecondary: '#6366F1',
+        textPrimary: '#0F172A',
+        textMuted: '#64748B'
+      },
+      cardGeometry,
+      backgroundPattern,
+      defaultSpeakerLayout,
+      chartVariant,
+      animationCurve: 'smooth_editorial'
+    };
+  }
+
+  if (isNeon) {
+    return {
+      themeMode: 'neon_high_contrast',
+      palette: {
+        backgroundPrimary: '#05050A',
+        backgroundSecondary: '#0E0919',
+        cardSurface: 'rgba(15, 10, 25, 0.95)',
+        cardBorder: 'rgba(0, 242, 234, 0.5)',
+        accentPrimary: userBrandDna?.accentColor || '#00F2EA',
+        accentSecondary: '#FF007F',
+        textPrimary: '#FFFFFF',
+        textMuted: '#94A3B8'
+      },
+      cardGeometry: 'hud_tech',
+      backgroundPattern: 'tech_grid',
+      defaultSpeakerLayout,
+      chartVariant,
+      animationCurve: 'snappy_spring'
+    };
+  }
+
+  if (isLuxury) {
+    return {
+      themeMode: 'dark',
+      palette: {
+        backgroundPrimary: '#0A110D',
+        backgroundSecondary: '#050806',
+        cardSurface: 'rgba(10, 17, 13, 0.94)',
+        cardBorder: 'rgba(212, 175, 55, 0.45)',
+        accentPrimary: userBrandDna?.accentColor || '#D4AF37',
+        accentSecondary: '#F59E0B',
+        textPrimary: '#F8FAFC',
+        textMuted: '#94A3B8'
+      },
+      cardGeometry: 'rounded_modern',
+      backgroundPattern: 'diagonal_mesh',
+      defaultSpeakerLayout,
+      chartVariant,
+      animationCurve: 'smooth_editorial'
+    };
+  }
+
+  if (isHormozi) {
+    return {
+      themeMode: 'dark',
+      palette: {
+        backgroundPrimary: '#09090B',
+        backgroundSecondary: '#18181B',
+        cardSurface: 'rgba(24, 24, 27, 0.96)',
+        cardBorder: 'rgba(250, 204, 21, 0.6)',
+        accentPrimary: userBrandDna?.accentColor || '#FACC15',
+        accentSecondary: '#22D3EE',
+        textPrimary: '#FFFFFF',
+        textMuted: '#A1A1AA'
+      },
+      cardGeometry: 'sharp_brutalist',
+      backgroundPattern: 'aurora_ring',
+      defaultSpeakerLayout: 'split_top_bottom',
+      chartVariant,
+      animationCurve: 'kinetic_bounce'
+    };
+  }
+
+  // Default: Minimal Expert Dark with random pattern & seed accents
+  const baseStyle = resolveUserBrandStyle(presetKey, userBrandDna);
+  return {
+    themeMode: 'glass_translucent',
+    palette: {
+      backgroundPrimary: baseStyle.colors.background,
+      backgroundSecondary: '#030712',
+      cardSurface: baseStyle.colors.cardBg,
+      cardBorder: baseStyle.colors.cardBorder,
+      accentPrimary: baseStyle.colors.accent,
+      accentSecondary: baseStyle.colors.secondary,
+      textPrimary: baseStyle.colors.text,
+      textMuted: '#94A3B8'
+    },
+    cardGeometry,
+    backgroundPattern,
+    defaultSpeakerLayout,
+    chartVariant,
+    animationCurve: 'snappy_spring'
+  };
+}

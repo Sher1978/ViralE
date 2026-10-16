@@ -1,7 +1,7 @@
 import Anthropic from '@anthropic-ai/sdk';
 import { getAnthropicClient } from '@/lib/ai/anthropic';
-import { RemotionArchitectCutSheet, CameraCut, BRollElement, SoundCue, UserBrandDnaConfig } from '@/lib/types/remotionArchitect';
-import { STYLE_PRESETS, resolveUserBrandStyle } from '@/lib/remotion/stylePresets';
+import { RemotionArchitectCutSheet, CameraCut, BRollElement, SoundCue, UserBrandDnaConfig, DynamicThemeConfig, BRollLayoutMode, ChartVariant } from '@/lib/types/remotionArchitect';
+import { STYLE_PRESETS, resolveUserBrandStyle, buildDynamicThemeFromPrompt } from '@/lib/remotion/stylePresets';
 
 export interface ToolDirectorParams {
   transcriptData: Array<{ start?: number; end?: number; text?: string; scriptText?: string }>;
@@ -10,6 +10,8 @@ export interface ToolDirectorParams {
   userIntent?: string;
   fps?: number;
   apiKey?: string;
+  includeSubtitles?: boolean;
+  dynamicTheme?: DynamicThemeConfig;
 }
 
 export const ANTHROPIC_TOOL_DEFINITIONS: Anthropic.Tool[] = [
@@ -41,6 +43,11 @@ export const ANTHROPIC_TOOL_DEFINITIONS: Anthropic.Tool[] = [
         endTimeSec: { type: 'number', description: 'End time in seconds' },
         quoteText: { type: 'string', description: 'The exact quote text or main key takeaway to display' },
         author: { type: 'string', description: 'Optional author or speaker title' },
+        layoutMode: {
+          type: 'string',
+          enum: ['floating_hud', 'split_screen', 'pip_side_card', 'full_slide'],
+          description: 'Framing layout for speaker and quote'
+        },
         highlightKeywords: {
           type: 'array',
           items: { type: 'string' },
@@ -52,7 +59,7 @@ export const ANTHROPIC_TOOL_DEFINITIONS: Anthropic.Tool[] = [
   },
   {
     name: 'render_chart',
-    description: 'Render a glassmorphic animated chart overlay representing growth, statistics, or numerical comparisons.',
+    description: 'Render an animated chart overlay representing growth, statistics, or numerical comparisons.',
     input_schema: {
       type: 'object',
       properties: {
@@ -69,9 +76,82 @@ export const ANTHROPIC_TOOL_DEFINITIONS: Anthropic.Tool[] = [
           items: { type: 'string' },
           description: 'Labels for each bar (e.g. ["Q1", "Q2", "Q3", "Q4"])'
         },
+        chartVariant: {
+          type: 'string',
+          enum: ['vertical_bars', 'horizontal_progress', 'radial_gauge'],
+          description: 'Chart presentation format'
+        },
+        layoutMode: {
+          type: 'string',
+          enum: ['floating_hud', 'split_screen', 'pip_side_card', 'full_slide'],
+          description: 'Framing layout for speaker and chart'
+        },
         statValue: { type: 'string', description: 'Callout badge stat text (e.g. "+350%" or "$120k")' }
       },
       required: ['startTimeSec', 'endTimeSec', 'title', 'values']
+    }
+  },
+  {
+    name: 'render_list_overlay',
+    description: 'Render a bulleted list of key benefits, roadmap steps, or principles from the speaker speech.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        startTimeSec: { type: 'number', description: 'Start time in seconds' },
+        endTimeSec: { type: 'number', description: 'End time in seconds' },
+        title: { type: 'string', description: 'Header of the list' },
+        items: {
+          type: 'array',
+          items: { type: 'string' },
+          description: '2 to 4 bullet points'
+        },
+        layoutMode: {
+          type: 'string',
+          enum: ['floating_hud', 'split_screen', 'pip_side_card', 'full_slide'],
+          description: 'Framing layout'
+        }
+      },
+      required: ['startTimeSec', 'endTimeSec', 'items']
+    }
+  },
+  {
+    name: 'render_stat_callout',
+    description: 'Render a huge punch statistic or KPI callout badge (e.g. 10x, +300%, $50,000).',
+    input_schema: {
+      type: 'object',
+      properties: {
+        startTimeSec: { type: 'number', description: 'Start time in seconds' },
+        endTimeSec: { type: 'number', description: 'End time in seconds' },
+        statValue: { type: 'string', description: 'Number or percentage badge (e.g. "+350%")' },
+        statLabel: { type: 'string', description: 'Short subtitle under the number' },
+        layoutMode: {
+          type: 'string',
+          enum: ['floating_hud', 'split_screen', 'pip_side_card', 'full_slide'],
+          description: 'Framing layout'
+        }
+      },
+      required: ['startTimeSec', 'endTimeSec', 'statValue']
+    }
+  },
+  {
+    name: 'render_comparison_card',
+    description: 'Render a Before vs After / Problem vs Solution side-by-side comparison card.',
+    input_schema: {
+      type: 'object',
+      properties: {
+        startTimeSec: { type: 'number', description: 'Start time in seconds' },
+        endTimeSec: { type: 'number', description: 'End time in seconds' },
+        beforeTitle: { type: 'string', description: 'Left title (e.g. Было)' },
+        beforeValue: { type: 'string', description: 'Left description/number' },
+        afterTitle: { type: 'string', description: 'Right title (e.g. Стало)' },
+        afterValue: { type: 'string', description: 'Right description/number' },
+        layoutMode: {
+          type: 'string',
+          enum: ['floating_hud', 'split_screen', 'pip_side_card', 'full_slide'],
+          description: 'Framing layout'
+        }
+      },
+      required: ['startTimeSec', 'endTimeSec', 'beforeValue', 'afterValue']
     }
   }
 ];
@@ -82,10 +162,13 @@ export async function generateVideoTimelineViaTools({
   presetKey = 'minimal_expert',
   userIntent = 'High Retention cinematic edit',
   fps = 30,
-  apiKey
+  apiKey,
+  includeSubtitles = false,
+  dynamicTheme
 }: ToolDirectorParams): Promise<RemotionArchitectCutSheet> {
   const anthropic = getAnthropicClient(apiKey);
   const selectedStyle = resolveUserBrandStyle(presetKey, userBrandDna);
+  const resolvedTheme = dynamicTheme || buildDynamicThemeFromPrompt(userIntent, presetKey, 42, userBrandDna);
 
   const fullScript = transcriptData.map((t) => t.text || t.scriptText || '').join(' ');
 
@@ -96,19 +179,19 @@ export async function generateVideoTimelineViaTools({
 1. Камера никогда не остается статичной:
    - В период спокойного монолога вызывай \`trigger_camera_cut\` с \`action: "micro_zoom"\` (\`targetScale: 1.03\`).
    - На ключевых хуках, цифрах и эмоциональных фразах вызывай \`trigger_camera_cut\` с \`action: "punch_zoom"\` (\`targetScale: 1.12\`).
-   - При активных оверлеях (\`render_chart\`) СПИШИ спикера влево через \`trigger_camera_cut\` с \`action: "scale_to_circle"\` (\`targetScale: 0.45\`).
-2. Оверлеи и оратор (Safe Zones):
-   - Вызывай \`render_kinetic_quote\` для ключевых инсайтов и тезисов (верхняя зона экрана).
-   - Вызывай \`render_chart\` при наличии статистических данных, процентов или метрик (боковая зона экрана).
-3. Тайминги:
-   - Применяй точные отметки времени из транскрипта.
+   - При активных оверлеях (\`render_chart\`, \`render_list_overlay\`) сдвигай спикера влево или делай Split-Screen.
+2. Оверлеи и компоновка (Safe Zones):
+   - \`render_kinetic_quote\` — для ключевых инсайтов и хуков (layoutMode: "floating_hud" или "split_screen").
+   - \`render_chart\` — при наличии цифр, статистики или процентов (chartVariant: "vertical_bars" | "horizontal_progress" | "radial_gauge").
+   - \`render_list_overlay\` — при перечислении шагов, правил или советов спикера.
+   - \`render_stat_callout\` — при громких метриках (10x, +300%, $100k).
+   - \`render_comparison_card\` — при сравнении "Было / Стало" или "Проблема / Решение".
 
 Позови все нужные инструменты для формирования полной композиции роликов!
 `;
 
   const modelName = process.env.ANTHROPIC_MODEL || 'claude-3-5-sonnet-20241022';
 
-  // Anthropic prompt caching integration via system prompt block and custom headers
   const response = await anthropic.messages.create(
     {
       model: modelName,
@@ -123,7 +206,7 @@ export async function generateVideoTimelineViaTools({
       messages: [
         {
           role: 'user',
-          content: `Проанализируй данный транскрипт и вызови инструменты режиссуры (\`trigger_camera_cut\`, \`render_kinetic_quote\`, \`render_chart\`):\n\nТранскрипт: ${JSON.stringify(transcriptData.slice(0, 100))}\n\nЦель: ${userIntent}`
+          content: `Проанализируй данный транскрипт и вызови инструменты режиссуры:\n\nТранскрипт: ${JSON.stringify(transcriptData.slice(0, 100))}\n\nЦель и бриф: ${userIntent}`
         }
       ],
       tools: ANTHROPIC_TOOL_DEFINITIONS,
@@ -142,7 +225,6 @@ export async function generateVideoTimelineViaTools({
 
   let elemCounter = 0;
 
-  // Process tool calls into deterministic timeline JSON
   for (const block of response.content) {
     if (block.type === 'tool_use') {
       const { name, input } = block;
@@ -167,7 +249,6 @@ export async function generateVideoTimelineViaTools({
         const rawStartSec = Number(args.startTimeSec) || 0;
         const rawEndSec = Number(args.endTimeSec) || (rawStartSec + 4.5);
 
-        // Anticipation offset -150ms (-4 frames at 30 FPS)
         const startSecWithAnticipation = Math.max(0, rawStartSec - 0.15);
         const startFrame = Math.round(startSecWithAnticipation * fps);
         const endFrame = Math.round(rawEndSec * fps);
@@ -175,6 +256,7 @@ export async function generateVideoTimelineViaTools({
         bRollElements.push({
           id: `elem_quote_${elemCounter}`,
           type: 'kinetic_quote',
+          layoutMode: args.layoutMode || 'floating_hud',
           startTime: `${startSecWithAnticipation.toFixed(2)}s`,
           endTime: `${rawEndSec.toFixed(2)}s`,
           startFrame,
@@ -187,7 +269,6 @@ export async function generateVideoTimelineViaTools({
           }
         });
 
-        // Sound cue at startFrame + 1
         soundCues.push({
           timeSec: startSecWithAnticipation,
           frame: startFrame + 1,
@@ -204,7 +285,9 @@ export async function generateVideoTimelineViaTools({
 
         bRollElements.push({
           id: `elem_chart_${elemCounter}`,
-          type: 'glassmorphic_chart',
+          type: 'chart',
+          layoutMode: args.layoutMode || 'split_screen',
+          chartVariant: args.chartVariant || 'vertical_bars',
           startTime: `${startSecWithAnticipation.toFixed(2)}s`,
           endTime: `${rawEndSec.toFixed(2)}s`,
           startFrame,
@@ -224,20 +307,106 @@ export async function generateVideoTimelineViaTools({
           type: 'pop'
         });
 
-        // Side panel coupling: auto-inject scale_to_circle camera cut
-        cameraCuts.push({
+        if (args.layoutMode === 'pip_side_card') {
+          cameraCuts.push({
+            startTime: `${startSecWithAnticipation.toFixed(2)}s`,
+            startFrame,
+            duration: rawEndSec - startSecWithAnticipation,
+            durationFrames: endFrame - startFrame,
+            action: 'scale_to_circle',
+            targetScale: 0.45
+          });
+        }
+      } else if (name === 'render_list_overlay') {
+        elemCounter++;
+        const rawStartSec = Number(args.startTimeSec) || 0;
+        const rawEndSec = Number(args.endTimeSec) || (rawStartSec + 5.0);
+        const startSecWithAnticipation = Math.max(0, rawStartSec - 0.15);
+        const startFrame = Math.round(startSecWithAnticipation * fps);
+        const endFrame = Math.round(rawEndSec * fps);
+
+        bRollElements.push({
+          id: `elem_list_${elemCounter}`,
+          type: 'list',
+          layoutMode: args.layoutMode || 'floating_hud',
           startTime: `${startSecWithAnticipation.toFixed(2)}s`,
+          endTime: `${rawEndSec.toFixed(2)}s`,
           startFrame,
-          duration: rawEndSec - startSecWithAnticipation,
-          durationFrames: endFrame - startFrame,
-          action: 'scale_to_circle',
-          targetScale: 0.45
+          endFrame,
+          visualSeed: Math.floor(Math.random() * 100),
+          props: {
+            title: args.title || 'КЛЮЧЕВЫЕ ТЕЗИСЫ',
+            items: args.items || []
+          }
+        });
+
+        soundCues.push({
+          timeSec: startSecWithAnticipation,
+          frame: startFrame + 1,
+          type: 'whoosh'
+        });
+      } else if (name === 'render_stat_callout') {
+        elemCounter++;
+        const rawStartSec = Number(args.startTimeSec) || 0;
+        const rawEndSec = Number(args.endTimeSec) || (rawStartSec + 4.0);
+        const startSecWithAnticipation = Math.max(0, rawStartSec - 0.15);
+        const startFrame = Math.round(startSecWithAnticipation * fps);
+        const endFrame = Math.round(rawEndSec * fps);
+
+        bRollElements.push({
+          id: `elem_stat_${elemCounter}`,
+          type: 'stat_callout',
+          layoutMode: args.layoutMode || 'floating_hud',
+          startTime: `${startSecWithAnticipation.toFixed(2)}s`,
+          endTime: `${rawEndSec.toFixed(2)}s`,
+          startFrame,
+          endFrame,
+          visualSeed: Math.floor(Math.random() * 100),
+          props: {
+            statValue: args.statValue,
+            statLabel: args.statLabel || 'Главный показатель'
+          }
+        });
+
+        soundCues.push({
+          timeSec: startSecWithAnticipation,
+          frame: startFrame + 1,
+          type: 'pop'
+        });
+      } else if (name === 'render_comparison_card') {
+        elemCounter++;
+        const rawStartSec = Number(args.startTimeSec) || 0;
+        const rawEndSec = Number(args.endTimeSec) || (rawStartSec + 5.0);
+        const startSecWithAnticipation = Math.max(0, rawStartSec - 0.15);
+        const startFrame = Math.round(startSecWithAnticipation * fps);
+        const endFrame = Math.round(rawEndSec * fps);
+
+        bRollElements.push({
+          id: `elem_compare_${elemCounter}`,
+          type: 'comparison_card',
+          layoutMode: args.layoutMode || 'split_screen',
+          startTime: `${startSecWithAnticipation.toFixed(2)}s`,
+          endTime: `${rawEndSec.toFixed(2)}s`,
+          startFrame,
+          endFrame,
+          visualSeed: Math.floor(Math.random() * 100),
+          props: {
+            beforeTitle: args.beforeTitle || 'Было',
+            beforeValue: args.beforeValue,
+            afterTitle: args.afterTitle || 'Стало',
+            afterValue: args.afterValue
+          }
+        });
+
+        soundCues.push({
+          timeSec: startSecWithAnticipation,
+          frame: startFrame + 1,
+          type: 'whoosh'
         });
       }
     }
   }
 
-  // Sort camera cuts by start frame
   cameraCuts.sort((a, b) => a.startFrame - b.startFrame);
 
   return {
@@ -249,7 +418,10 @@ export async function generateVideoTimelineViaTools({
       stylePreset: selectedStyle.name,
       globalJitter: selectedStyle.jitterRangeDeg / 10,
       fps,
-      anticipationOffsetFrames: -4
+      anticipationOffsetFrames: -4,
+      includeSubtitles: Boolean(includeSubtitles),
+      userPrompt: userIntent,
+      dynamicTheme: resolvedTheme
     }
   };
 }

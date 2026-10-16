@@ -30,6 +30,17 @@ export async function renderRemotionInDevice({
     cutSheet?.renderSettings?.userBrandDna
   );
 
+  const dynamicTheme = cutSheet?.renderSettings?.dynamicTheme;
+  const themeColors = {
+    accent: dynamicTheme?.palette?.accentPrimary || activeStyle.colors.accent || '#38BDF8',
+    secondary: dynamicTheme?.palette?.accentSecondary || activeStyle.colors.secondary || '#818CF8',
+    surface: dynamicTheme?.palette?.cardSurface || 'rgba(15, 23, 42, 0.94)',
+    background: dynamicTheme?.palette?.backgroundPrimary || activeStyle.colors.background || '#070A12',
+    text: dynamicTheme?.palette?.textPrimary || activeStyle.colors.text || '#FFFFFF',
+    mutedText: dynamicTheme?.palette?.textMuted || '#94A3B8',
+  };
+  const cardBorderRadius = dynamicTheme?.cardGeometry === 'sharp_brutalist' ? 12 : dynamicTheme?.cardGeometry === 'pill_soft' ? 48 : 32;
+
   let sourceUrl = typeof speakerVideoBlobOrUrl === 'string' ? speakerVideoBlobOrUrl : '';
   if (speakerVideoBlobOrUrl instanceof Blob) {
     sourceUrl = URL.createObjectURL(speakerVideoBlobOrUrl);
@@ -46,7 +57,11 @@ export async function renderRemotionInDevice({
   
   // Calculate max end frame from b-roll elements and subtitles to prevent premature cut-off
   const maxBRollFrame = (cutSheet?.bRollElements || []).reduce((max, e) => Math.max(max, e.endFrame || 0), 0);
-  const maxSubFrame = ((cutSheet as any)?.subtitles || (cutSheet as any)?.segments || (cutSheet as any)?.subtitleClips || []).reduce((max: number, s: any) => {
+  const shouldRenderSubs = cutSheet?.renderSettings?.includeSubtitles === true;
+  const rawSubtitles = shouldRenderSubs
+    ? ((cutSheet as any)?.subtitles || (cutSheet as any)?.segments || (cutSheet as any)?.subtitleClips || [])
+    : [];
+  const maxSubFrame = rawSubtitles.reduce((max: number, s: any) => {
     const ef = typeof s.endFrame === 'number' ? s.endFrame : Math.round((s.end ?? s.endTime ?? 0) * fps);
     return Math.max(max, ef);
   }, 0);
@@ -54,7 +69,7 @@ export async function renderRemotionInDevice({
   const baseFrames = Math.ceil(durationSec * fps);
   const totalFrames = Math.max(baseFrames, maxBRollFrame, maxSubFrame);
 
-  log(`Продолжительность: ${durationSec.toFixed(1)}s (${totalFrames} кадров, 1080p, пресет: ${activeStyle.name})...`, 10, 1);
+  log(`Продолжительность: ${durationSec.toFixed(1)}s (${totalFrames} кадров, 1080p, тема: ${dynamicTheme?.themeMode || activeStyle.name})...`, 10, 1);
 
   // Full HD 1080x1920 9:16 Canvas Setup
   const canvas = document.createElement('canvas');
@@ -142,9 +157,9 @@ export async function renderRemotionInDevice({
       }
     });
 
-    // 1. Fill background with active style gradient
+    // 1. Fill background with active theme gradient
     const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-    bgGrad.addColorStop(0, activeStyle.colors.background);
+    bgGrad.addColorStop(0, themeColors.background);
     bgGrad.addColorStop(1, '#030712');
     ctx.fillStyle = bgGrad;
     ctx.fillRect(0, 0, canvas.width, canvas.height);
@@ -155,11 +170,13 @@ export async function renderRemotionInDevice({
       if (e.type === 'list' && (!e.props?.items || !Array.isArray(e.props.items) || e.props.items.length === 0)) return false;
       if (e.type === 'chart' && (!e.props?.values || !Array.isArray(e.props.values) || e.props.values.length === 0)) return false;
       if (e.type === 'stat_callout' && !e.props?.statValue) return false;
+      if (e.type === 'comparison_card' && !e.props?.beforeTitle && !e.props?.afterTitle) return false;
       if ((e.type === 'kinetic_quote' || e.type === 'tweet_card') && !e.props?.text && !e.props?.title) return false;
       return true;
     });
 
     const hasActiveBRollSlide = activeElements.length > 0;
+    const currentLayoutMode = activeElements[0]?.layoutMode || 'full_slide';
 
     // 3. Dynamic Z-Axis Live Camera Motion for Speaker Video
     const activeCut = cameraCuts.find(
@@ -172,7 +189,7 @@ export async function renderRemotionInDevice({
     let targetX = 0;
     let targetY = 0;
 
-    if (activeCut && !hasActiveBRollSlide) {
+    if (activeCut && (!hasActiveBRollSlide || currentLayoutMode !== 'full_slide')) {
       const cutElapsed = currentFrame - activeCut.startFrame;
       if (activeCut.action === 'micro_zoom') {
         const durationFr = activeCut.durationFrames || 100;
@@ -184,8 +201,9 @@ export async function renderRemotionInDevice({
       }
     }
 
-    // Render Speaker Video (Full screen monologue)
-    if (!hasActiveBRollSlide) {
+    // Render Speaker Video based on Layout Mode
+    if (!hasActiveBRollSlide || currentLayoutMode === 'floating_hud') {
+      // Draw speaker full screen (with slight dimming if floating HUD is on top)
       if (targetX !== 0 || targetY !== 0 || targetScale !== 1.0) {
         const vidW = canvas.width * targetScale;
         const vidH = canvas.height * targetScale;
@@ -195,6 +213,35 @@ export async function renderRemotionInDevice({
       } else {
         ctx.drawImage(videoEl, 0, 0, canvas.width, canvas.height);
       }
+      if (hasActiveBRollSlide && currentLayoutMode === 'floating_hud') {
+        ctx.fillStyle = 'rgba(3, 7, 18, 0.55)';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+      }
+    } else if (currentLayoutMode === 'split_screen') {
+      // Top half reserved for card, bottom half shows speaker video
+      ctx.save();
+      ctx.beginPath();
+      ctx.rect(0, canvas.height * 0.48, canvas.width, canvas.height * 0.52);
+      ctx.clip();
+      ctx.drawImage(videoEl, 0, canvas.height * 0.1, canvas.width, canvas.height * 0.9);
+      ctx.restore();
+    } else if (currentLayoutMode === 'pip_side_card') {
+      // Speaker in rounded PIP bubble at top-right
+      const pipW = 340;
+      const pipH = 340;
+      const pipX = canvas.width - pipW - 60;
+      const pipY = 140;
+      ctx.save();
+      safeRoundRect(pipX, pipY, pipW, pipH, 40);
+      ctx.clip();
+      ctx.drawImage(videoEl, pipX - 100, pipY, pipW + 200, pipH + 50);
+      ctx.restore();
+      ctx.save();
+      ctx.strokeStyle = themeColors.accent;
+      ctx.lineWidth = 4;
+      safeRoundRect(pipX, pipY, pipW, pipH, 40);
+      ctx.stroke();
+      ctx.restore();
     }
 
     ctx.restore();
@@ -211,44 +258,46 @@ export async function renderRemotionInDevice({
         ctx.save();
         ctx.globalAlpha = opacityAnim;
 
-        // Full-screen Cinematic Dark Background Overlay
-        const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
-        bgGrad.addColorStop(0, 'rgba(7, 10, 18, 0.96)');
-        bgGrad.addColorStop(0.5, 'rgba(15, 23, 42, 0.98)');
-        bgGrad.addColorStop(1, 'rgba(3, 7, 18, 0.96)');
-        ctx.fillStyle = bgGrad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        // Full-screen Cinematic Dark Background Overlay (only for full_slide)
+        if (currentLayoutMode === 'full_slide') {
+          const bgGrad = ctx.createLinearGradient(0, 0, 0, canvas.height);
+          bgGrad.addColorStop(0, 'rgba(7, 10, 18, 0.96)');
+          bgGrad.addColorStop(0.5, 'rgba(15, 23, 42, 0.98)');
+          bgGrad.addColorStop(1, 'rgba(3, 7, 18, 0.96)');
+          ctx.fillStyle = bgGrad;
+          ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-        // Accent Ambient Glow Ring
-        ctx.save();
-        ctx.shadowColor = activeStyle.colors.accent;
-        ctx.shadowBlur = 80;
-        ctx.beginPath();
-        ctx.arc(canvas.width / 2, canvas.height * 0.45, 280, 0, Math.PI * 2);
-        ctx.strokeStyle = activeStyle.colors.accent;
-        ctx.lineWidth = 2;
-        ctx.stroke();
-        ctx.restore();
+          // Accent Ambient Glow Ring
+          ctx.save();
+          ctx.shadowColor = themeColors.accent;
+          ctx.shadowBlur = 80;
+          ctx.beginPath();
+          ctx.arc(canvas.width / 2, canvas.height * 0.45, 280, 0, Math.PI * 2);
+          ctx.strokeStyle = themeColors.accent;
+          ctx.lineWidth = 2;
+          ctx.stroke();
+          ctx.restore();
+        }
 
         const cardX = canvas.width * 0.08;
         const cardW = canvas.width * 0.84;
 
         if (elem.type === 'chart') {
-          const cardY = canvas.height * 0.24;
-          const cardH = 680;
+          const cardY = currentLayoutMode === 'split_screen' ? canvas.height * 0.08 : canvas.height * 0.24;
+          const cardH = currentLayoutMode === 'split_screen' ? 620 : 680;
 
           ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
           ctx.scale(scaleAnim, scaleAnim);
           ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
 
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.92)';
-          ctx.strokeStyle = activeStyle.colors.accent;
+          ctx.fillStyle = themeColors.surface;
+          ctx.strokeStyle = themeColors.accent;
           ctx.lineWidth = 4;
-          safeRoundRect(cardX, cardY, cardW, cardH, 32);
+          safeRoundRect(cardX, cardY, cardW, cardH, cardBorderRadius);
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = activeStyle.colors.text;
+          ctx.fillStyle = themeColors.text;
           ctx.font = '900 42px "Outfit", "Roboto", sans-serif';
           ctx.fillText(elem.props.title || 'КЛЮЧЕВЫЕ ПОКАЗАТЕЛИ', cardX + 36, cardY + 70);
 
@@ -263,8 +312,8 @@ export async function renderRemotionInDevice({
             const by = cardY + cardH - 45 - barH;
 
             const barGrad = ctx.createLinearGradient(bx, by, bx, by + barH);
-            barGrad.addColorStop(0, activeStyle.colors.accent);
-            barGrad.addColorStop(1, activeStyle.colors.secondary);
+            barGrad.addColorStop(0, themeColors.accent);
+            barGrad.addColorStop(1, themeColors.secondary);
             ctx.fillStyle = barGrad;
             safeRoundRect(bx, by, barWidth, Math.max(12, barH), 14);
             ctx.fill();
@@ -277,7 +326,7 @@ export async function renderRemotionInDevice({
           });
 
         } else if (elem.type === 'list') {
-          const cardY = canvas.height * 0.22;
+          const cardY = currentLayoutMode === 'split_screen' ? canvas.height * 0.08 : canvas.height * 0.22;
           const items: string[] = elem.props.items || [];
 
           // List Header
@@ -300,65 +349,120 @@ export async function renderRemotionInDevice({
             ctx.scale(scaleAnim, scaleAnim);
             ctx.translate(-(ix + cardW / 2), -(iy + 44));
 
-            ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-            ctx.strokeStyle = activeStyle.colors.accent;
+            ctx.fillStyle = themeColors.surface;
+            ctx.strokeStyle = themeColors.accent;
             ctx.lineWidth = 4;
             safeRoundRect(ix, iy, cardW, 88, 24);
             ctx.fill();
             ctx.stroke();
 
-            ctx.fillStyle = activeStyle.colors.accent;
+            ctx.fillStyle = themeColors.accent;
             ctx.font = '900 36px sans-serif';
             ctx.fillText('✓', ix + 32, iy + 56);
 
-            ctx.fillStyle = activeStyle.colors.text;
+            ctx.fillStyle = themeColors.text;
             ctx.font = '900 32px "Outfit", "Roboto", sans-serif';
             ctx.fillText(item, ix + 85, iy + 56);
             ctx.restore();
           });
 
         } else if (elem.type === 'stat_callout') {
-          const cardY = canvas.height * 0.30;
+          const cardY = currentLayoutMode === 'split_screen' ? canvas.height * 0.10 : canvas.height * 0.30;
           const cardH = 420;
 
           ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
           ctx.scale(scaleAnim, scaleAnim);
           ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
 
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.94)';
-          ctx.strokeStyle = activeStyle.colors.accent;
+          ctx.fillStyle = themeColors.surface;
+          ctx.strokeStyle = themeColors.accent;
           ctx.lineWidth = 4;
-          ctx.shadowColor = activeStyle.colors.accent;
+          ctx.shadowColor = themeColors.accent;
           ctx.shadowBlur = 32;
-          safeRoundRect(cardX, cardY, cardW, cardH, 36);
+          safeRoundRect(cardX, cardY, cardW, cardH, cardBorderRadius);
           ctx.fill();
           ctx.stroke();
 
           ctx.shadowColor = 'transparent';
-          ctx.fillStyle = activeStyle.colors.accent;
+          ctx.fillStyle = themeColors.accent;
           ctx.font = '900 110px "Outfit", "Roboto", sans-serif';
           ctx.fillText(elem.props.statValue || '+350%', cardX + 48, cardY + 160);
 
-          ctx.fillStyle = activeStyle.colors.text;
+          ctx.fillStyle = themeColors.text;
           ctx.font = '900 38px "Outfit", "Roboto", sans-serif';
           ctx.fillText(elem.props.statLabel || 'Главный результат', cardX + 48, cardY + 280);
 
+        } else if (elem.type === 'comparison_card') {
+          const cardY = currentLayoutMode === 'split_screen' ? canvas.height * 0.06 : canvas.height * 0.22;
+          const cardH = 680;
+
+          ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
+          ctx.scale(scaleAnim, scaleAnim);
+          ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
+
+          ctx.fillStyle = themeColors.surface;
+          ctx.strokeStyle = themeColors.accent;
+          ctx.lineWidth = 4;
+          safeRoundRect(cardX, cardY, cardW, cardH, cardBorderRadius);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = themeColors.text;
+          ctx.font = '900 38px "Outfit", sans-serif';
+          ctx.fillText(elem.props?.title || 'СРАВНЕНИЕ', cardX + 36, cardY + 64);
+
+          // Before box
+          const boxW = cardW - 72;
+          const boxH = 220;
+          const beforeY = cardY + 100;
+          ctx.fillStyle = 'rgba(239, 68, 68, 0.15)';
+          ctx.strokeStyle = 'rgba(239, 68, 68, 0.6)';
+          ctx.lineWidth = 2;
+          safeRoundRect(cardX + 36, beforeY, boxW, boxH, 20);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#EF4444';
+          ctx.font = '900 30px sans-serif';
+          ctx.fillText(`✕ ${elem.props?.beforeTitle || 'Было'}`, cardX + 60, beforeY + 50);
+
+          ctx.fillStyle = themeColors.mutedText;
+          ctx.font = '600 28px sans-serif';
+          ctx.fillText(elem.props?.beforeText || '', cardX + 60, beforeY + 110);
+
+          // After box
+          const afterY = cardY + 360;
+          ctx.fillStyle = 'rgba(16, 185, 129, 0.15)';
+          ctx.strokeStyle = themeColors.accent;
+          ctx.lineWidth = 2;
+          safeRoundRect(cardX + 36, afterY, boxW, boxH, 20);
+          ctx.fill();
+          ctx.stroke();
+
+          ctx.fillStyle = '#10B981';
+          ctx.font = '900 30px sans-serif';
+          ctx.fillText(`✓ ${elem.props?.afterTitle || 'Стало'}`, cardX + 60, afterY + 50);
+
+          ctx.fillStyle = themeColors.text;
+          ctx.font = '700 28px sans-serif';
+          ctx.fillText(elem.props?.afterText || '', cardX + 60, afterY + 110);
+
         } else if (elem.type === 'kinetic_quote' || elem.type === 'tweet_card') {
-          const cardY = canvas.height * 0.28;
+          const cardY = currentLayoutMode === 'split_screen' ? canvas.height * 0.08 : canvas.height * 0.28;
           const cardH = 480;
 
           ctx.translate(cardX + cardW / 2, cardY + cardH / 2);
           ctx.scale(scaleAnim, scaleAnim);
           ctx.translate(-(cardX + cardW / 2), -(cardY + cardH / 2));
 
-          ctx.fillStyle = 'rgba(15, 23, 42, 0.96)';
-          ctx.strokeStyle = activeStyle.colors.accent;
+          ctx.fillStyle = themeColors.surface;
+          ctx.strokeStyle = themeColors.accent;
           ctx.lineWidth = 4;
-          safeRoundRect(cardX, cardY, cardW, cardH, 36);
+          safeRoundRect(cardX, cardY, cardW, cardH, cardBorderRadius);
           ctx.fill();
           ctx.stroke();
 
-          ctx.fillStyle = activeStyle.colors.accent;
+          ctx.fillStyle = themeColors.accent;
           ctx.font = '900 72px sans-serif';
           ctx.fillText('“', cardX + 40, cardY + 90);
 
@@ -367,7 +471,7 @@ export async function renderRemotionInDevice({
           const quoteText = String(elem.props.text || elem.props.title || 'КЛЮЧЕВАЯ ИДЕЯ').toUpperCase();
           ctx.fillText(quoteText, cardX + 90, cardY + 90);
 
-          ctx.fillStyle = activeStyle.colors.accent;
+          ctx.fillStyle = themeColors.accent;
           ctx.font = '900 28px sans-serif';
           ctx.fillText(`— ${elem.props.author || 'Virali AI'}`, cardX + 90, cardY + 340);
         }
@@ -375,13 +479,9 @@ export async function renderRemotionInDevice({
       }
     }
 
-    // 5. Render Active Subtitle Overlay (Full HD 1080p Bold Typography)
-    const subtitles = (cutSheet as any)?.subtitles || 
-                      (cutSheet as any)?.segments || 
-                      (cutSheet as any)?.subtitleClips || [];
-
-    if (subtitles && Array.isArray(subtitles)) {
-      const activeSub = subtitles.find((s: any) => {
+    // 5. Render Active Subtitle Overlay (Full HD 1080p Bold Typography) - STRICTLY CONDITIONAL
+    if (shouldRenderSubs && Array.isArray(rawSubtitles) && rawSubtitles.length > 0) {
+      const activeSub = rawSubtitles.find((s: any) => {
         const startFr = typeof s.startFrame === 'number'
           ? s.startFrame
           : Math.round((s.start ?? s.startTime ?? 0) * fps);

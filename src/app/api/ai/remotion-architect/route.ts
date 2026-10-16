@@ -6,7 +6,7 @@ import { notifyAdminError } from '@/lib/telegram';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { transcriptData, nicheProfile, userIntent, presetKey, userBrandDna, fps = 30, projectId } = body;
+    const { transcriptData, nicheProfile, userIntent, presetKey, userBrandDna, fps = 30, projectId, includeSubtitles = false, dynamicTheme } = body;
 
     if (!transcriptData || !Array.isArray(transcriptData)) {
       return NextResponse.json({
@@ -27,7 +27,9 @@ export async function POST(req: NextRequest) {
       userBrandDna: brandDna,
       presetKey: presetKey || brandDna.stylePreset || 'minimal_expert',
       userIntent: userIntent || 'High Retention dynamic motion edit',
-      fps
+      fps,
+      includeSubtitles: Boolean(includeSubtitles),
+      dynamicTheme
     });
 
     if (!cutSheet || !Array.isArray(cutSheet.cameraCuts) || !Array.isArray(cutSheet.bRollElements)) {

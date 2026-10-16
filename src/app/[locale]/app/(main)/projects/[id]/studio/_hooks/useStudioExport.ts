@@ -405,34 +405,31 @@ export function useStudioExport({
         } : s)
       };
 
-      // Auto-generate Remotion Architect cutSheet if missing
-      if (!updatedManifest.remotionCutSheet) {
-        addSystemLog('Export: Auto-generating Remotion Architect cutSheet...');
-        try {
-          const controller = new AbortController();
-          const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout for LLM
+      // Ensure FFmpeg pipeline is explicitly set for standard export
+      updatedManifest.renderPipeline = 'ffmpeg';
+      updatedManifest.useRemotion = false;
 
-          const cutSheetRes = await fetch('/api/ai/remotion-architect', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
-              transcriptData: subs || [],
-              nicheProfile: { type: 'business' },
-              userIntent: 'High Retention dynamic motion edit'
-            }),
-            signal: controller.signal
-          });
-          clearTimeout(timeoutId);
-          if (cutSheetRes.ok) {
-            const cutSheetData = await cutSheetRes.json();
-            if (cutSheetData.cutSheet) {
-              updatedManifest.remotionCutSheet = cutSheetData.cutSheet;
-              addSystemLog('Export: Remotion cutSheet successfully generated.');
+      // Non-blocking background generation of Remotion cutSheet if missing
+      if (!updatedManifest.remotionCutSheet) {
+        fetch('/api/ai/remotion-architect', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            transcriptData: subs || [],
+            nicheProfile: { type: 'business' },
+            userIntent: 'High Retention dynamic motion edit'
+          })
+        })
+          .then(res => res.json())
+          .then(async cutSheetData => {
+            if (cutSheetData?.cutSheet) {
+              await projectService.updateLatestVersionManifest(projectId, {
+                ...updatedManifest,
+                remotionCutSheet: cutSheetData.cutSheet
+              });
             }
-          }
-        } catch (csErr) {
-          console.warn('[useStudioExport] Auto cutSheet failed or timed out:', csErr);
-        }
+          })
+          .catch(() => {});
       }
 
       // Trigger background distribution asset generation
@@ -510,12 +507,86 @@ export function useStudioExport({
     }
   };
 
+  // 4. Parallel Motion (Remotion) Export Pipeline
+  const handleMotionExport = async (
+    motionCutSheet: any,
+    explicitARollUrl?: string | null
+  ) => {
+    setIsSaving(true);
+    try {
+      if (!manifest) {
+        (globalThis as any).alert?.('Ошибка: манифест проекта не загружен.');
+        setIsSaving(false);
+        return;
+      }
+
+      addSystemLog('Motion Export: Подготовка параллельного конвейера Claude Motion...');
+
+      const manifestAny = manifest as any;
+      let resolvedARollUrl =
+        (explicitARollUrl && !explicitARollUrl.startsWith('blob:') ? explicitARollUrl : null) ||
+        (manifestAny.videoUrl && !manifestAny.videoUrl.startsWith('blob:') ? manifestAny.videoUrl : null) ||
+        explicitARollUrl ||
+        manifestAny.videoUrl ||
+        manifestAny.aRollUrl ||
+        manifestAny.segments?.find((s: any) => s.type === 'user_recording' && s.assetUrl)?.assetUrl ||
+        null;
+
+      const updatedManifest: any = {
+        ...manifest,
+        renderPipeline: 'remotion',
+        useRemotion: true,
+        remotionCutSheet: motionCutSheet,
+        includeSubtitles: motionCutSheet.renderSettings?.includeSubtitles ?? false,
+        dynamicTheme: motionCutSheet.renderSettings?.dynamicTheme,
+        aRollUrl: resolvedARollUrl
+      };
+
+      let savedVersion = null;
+      if (currentVersionId) {
+        savedVersion = await projectService.updateVersion(currentVersionId, { script_data: updatedManifest });
+      } else {
+        savedVersion = await projectService.updateLatestVersionManifest(projectId, updatedManifest);
+      }
+
+      if (!savedVersion) {
+        savedVersion = await projectService.createVersion({
+          projectId,
+          scriptData: updatedManifest,
+          versionLabel: 'Claude Motion Export'
+        });
+      }
+
+      // Invalidate remotion cache for fresh render
+      try {
+        if (savedVersion?.id) {
+          await idb.delete(`final_render_${projectId}_${savedVersion.id}_remotion_v6`, 'MediaBuffer');
+        }
+        await idb.delete(`final_render_${projectId}_remotion_v6`, 'MediaBuffer');
+      } catch (e) {}
+
+      addSystemLog('Motion Export: Перенаправление на экран готового видео (/delivery?mode=remotion)...');
+
+      const targetUrl = `/${locale}/app/projects/new/delivery?projectId=${projectId}&mode=remotion`;
+      if (typeof (globalThis as any).window !== 'undefined') {
+        (globalThis as any).window.location.href = targetUrl;
+      } else {
+        router.push(targetUrl);
+      }
+    } catch (err: any) {
+      console.error('[useStudioExport] Motion Export failed:', err);
+      (globalThis as any).alert?.(`Не удалось экспортировать через Motion: ${err.message}`);
+      setIsSaving(false);
+    }
+  };
+
   return {
     isSaving,
     setIsSaving,
     isSharing,
     downloadRawVideo,
     sendRawToTelegram,
-    handleFinalExport
+    handleFinalExport,
+    handleMotionExport
   };
 }

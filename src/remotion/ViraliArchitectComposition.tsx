@@ -8,14 +8,23 @@ import { Icon3D } from './elements/Icon3D';
 import { KineticQuote } from './components/new/KineticQuote';
 import { GlassmorphicChart } from './components/new/GlassmorphicChart';
 
+import { StatCallout } from './elements/StatCallout';
+import { ComparisonCard } from './elements/ComparisonCard';
+
 export interface ViraliCompositionProps {
   speakerVideoUrl: string;
   cutSheet: RemotionArchitectCutSheet;
+  subtitles?: Array<{ start?: number; end?: number; text?: string; word?: string }>;
+  onSelectElement?: (elementId: string) => void;
+  selectedElementId?: string | null;
 }
 
 export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
   speakerVideoUrl,
-  cutSheet
+  cutSheet,
+  subtitles = [],
+  onSelectElement,
+  selectedElementId
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
@@ -23,6 +32,8 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
   const cameraCuts = cutSheet?.cameraCuts || [];
   const bRollElements = cutSheet?.bRollElements || [];
   const globalJitter = cutSheet?.renderSettings?.globalJitter || 0.25;
+  const includeSubtitles = cutSheet?.renderSettings?.includeSubtitles === true;
+  const dynamicTheme = cutSheet?.renderSettings?.dynamicTheme;
 
   // 1. Поиск активной трансформации кадра спикера
   const activeCut = cameraCuts.find(
@@ -94,6 +105,16 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
     }
   }
 
+  // Active subtitle for current frame if enabled
+  const currentTimeSec = frame / fps;
+  const activeSub = includeSubtitles
+    ? subtitles.find((s) => {
+        const start = s.start ?? 0;
+        const end = s.end ?? start + 1.5;
+        return currentTimeSec >= start && currentTimeSec <= end;
+      })
+    : null;
+
   return (
     <AbsoluteFill className="bg-slate-950 overflow-hidden font-sans">
       {/* СЛОЙ 0: Видео спикера с трансформируемой кадровой маской */}
@@ -113,6 +134,7 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
       <AbsoluteFill>
         {bRollElements.map((elem: BRollElement) => {
           const durationFrames = Math.max(1, elem.endFrame - elem.startFrame);
+          const isSelected = selectedElementId === elem.id;
 
           return (
             <Sequence
@@ -120,11 +142,27 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
               from={elem.startFrame}
               durationInFrames={durationFrames}
             >
-              <RenderElement element={elem} globalJitter={globalJitter} />
+              <div
+                onClick={() => onSelectElement?.(elem.id)}
+                className={`w-full h-full relative cursor-pointer ${
+                  isSelected ? 'ring-4 ring-purple-500 rounded-3xl' : ''
+                }`}
+              >
+                <RenderElement element={elem} globalJitter={globalJitter} />
+              </div>
             </Sequence>
           );
         })}
       </AbsoluteFill>
+
+      {/* СЛОЙ 2: Опциональные субтитры (только если включены в настройках Motion) */}
+      {includeSubtitles && activeSub && (
+        <AbsoluteFill className="flex items-center justify-end pb-24 pointer-events-none">
+          <div className="px-6 py-2.5 rounded-2xl bg-black/80 border border-white/20 text-white font-black text-xl tracking-wide uppercase shadow-2xl">
+            {activeSub.text || activeSub.word}
+          </div>
+        </AbsoluteFill>
+      )}
     </AbsoluteFill>
   );
 };
@@ -134,7 +172,6 @@ const RenderElement: React.FC<{ element: BRollElement; globalJitter: number }> =
     case 'kinetic_quote':
       return <KineticQuote props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
     case 'glassmorphic_chart':
-      return <GlassmorphicChart props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
     case 'chart':
       return <GlassmorphicChart props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
     case 'tweet_card':
@@ -143,6 +180,10 @@ const RenderElement: React.FC<{ element: BRollElement; globalJitter: number }> =
       return <ListOverlay props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
     case '3d_icon':
       return <Icon3D props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+    case 'stat_callout':
+      return <StatCallout props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+    case 'comparison_card':
+      return <ComparisonCard props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
     default:
       return null;
   }

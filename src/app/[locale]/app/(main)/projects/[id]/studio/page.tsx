@@ -189,7 +189,8 @@ export default function StudioPage() {
     isSharing,
     downloadRawVideo,
     sendRawToTelegram,
-    handleFinalExport
+    handleFinalExport,
+    handleMotionExport
   } = useStudioExport({
     projectId,
     locale,
@@ -1100,6 +1101,7 @@ export default function StudioPage() {
                     }
                   }}
                   onNext={handleFinalExport}
+                  onMotionExport={handleMotionExport}
                   manifest={manifest}
                   onFaceless={() => setShowFaceless(true)}
                 />

@@ -23,6 +23,7 @@ import { CaptionStyleSelector } from './CaptionStyleSelector';
 import { StudioModals } from './StudioModals';
 import BRollEditorModal, { BRollClipMeta } from '@/components/studio/BRollEditorModal';
 import { TokenConfirmModal } from '@/components/ui/TokenConfirmModal';
+import { MotionDirectorModal } from './MotionDirectorModal';
 
 import { useStudioVisibilityGuard } from '@/hooks/useStudioVisibilityGuard';
 
@@ -43,12 +44,13 @@ interface VideoEditorProps {
     whiteboard?: WhiteboardClip[],
     aRollSpeed?: number
   ) => Promise<void>;
+  onMotionExport?: (cutSheet: any) => Promise<void>;
   manifest?: ProductionManifest | null;
   onFaceless?: () => void;
 }
 
 export const VideoEditor = React.memo(({
-  projectId, aRollUrl: propARollUrl, onBack, onNext, manifest, onFaceless
+  projectId, aRollUrl: propARollUrl, onBack, onNext, onMotionExport, manifest, onFaceless
 }: VideoEditorProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -81,6 +83,7 @@ export const VideoEditor = React.memo(({
   });
 
   const [selectedClip, setSelectedClip] = useState<{ id: string; type: 'aroll' | 'broll' | 'whiteboard' | 'subtitle'; } | null>(null);
+  const [showMotionModal, setShowMotionModal] = useState<boolean>(false);
 
   // 🛑 Prevent accidental swipe-back navigation & page unload in Montage Editor
   useEffect(() => {
@@ -652,6 +655,7 @@ export const VideoEditor = React.memo(({
       <EditorTopBar 
         onBack={onBack} 
         isExporting={isExporting}
+        onMotionClick={() => setShowMotionModal(true)}
         onExport={async () => {
           if (isExporting) return;
           setIsExporting(true);
@@ -675,6 +679,24 @@ export const VideoEditor = React.memo(({
             setIsExporting(false);
           }
         }} 
+      />
+
+      {/* Claude Motion Studio Parallel Workspace Modal */}
+      <MotionDirectorModal
+        isOpen={showMotionModal}
+        onClose={() => setShowMotionModal(false)}
+        projectId={projectId}
+        speakerVideoUrl={aRollUrl || ''}
+        transcriptData={subtitleClips}
+        initialCutSheet={(manifest as any)?.remotionCutSheet || null}
+        onExportMotion={async (motionCutSheet) => {
+          if (onMotionExport) {
+            await onMotionExport(motionCutSheet);
+          } else {
+            console.warn('[VideoEditor] onMotionExport prop not provided');
+          }
+        }}
+        isExporting={isExporting}
       />
 
       {/* 2. Video Preview (Viewport) */}
