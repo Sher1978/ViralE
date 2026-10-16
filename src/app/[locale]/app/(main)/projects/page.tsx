@@ -139,7 +139,19 @@ export default function ProjectsPage() {
     fetchProjects();
   }, [fetchProjects]);
 
-  if (!mounted) return null;
+  if (!mounted) {
+    return (
+      <div className="fixed inset-0 w-full h-[100dvh] overflow-hidden bg-[#0A0A10] flex flex-col items-center justify-center z-50">
+        <div className="w-10 h-10 border-2 border-purple-500/20 border-t-purple-500 rounded-full animate-spin mb-4" />
+        <h1 className="text-2xl font-black italic tracking-tighter text-white">
+          VIRAL<span className="text-purple-500">E</span>
+        </h1>
+        <p className="text-[9px] uppercase font-bold tracking-[0.35em] text-white/30 mt-2">
+          {locale === 'ru' ? 'ЗАГРУЗКА СТУДИИ...' : 'LOADING STUDIO...'}
+        </p>
+      </div>
+    );
+  }
 
   const hubs = [
     {

@@ -10,7 +10,9 @@ export function CookieBanner() {
 
   useEffect(() => {
     try {
-      const consent = localStorage.getItem('virale_cookie_consent');
+      const consent = localStorage.getItem('virale_cookie_consent') ||
+                      localStorage.getItem('virale_legal_consent_done') ||
+                      (typeof document !== 'undefined' && document.cookie.includes('virale_legal_consent'));
       if (!consent) {
         setShowBanner(true);
       }

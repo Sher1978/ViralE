@@ -38,7 +38,21 @@ export async function GET(request: Request) {
           sameSite: 'lax',
           secure: true,
         });
-        console.log('[AuthCallback] Successfully set raw access token cookie:', cookieName);
+        await cookieStore.set('virale_legal_consent', 'true', {
+          path: '/',
+          maxAge: 31536000,
+          sameSite: 'lax',
+          secure: true,
+        });
+        if (data.session.user?.id) {
+          await cookieStore.set(`viral_engine_legal_consent_${data.session.user.id}`, 'true', {
+            path: '/',
+            maxAge: 31536000,
+            sameSite: 'lax',
+            secure: true,
+          });
+        }
+        console.log('[AuthCallback] Successfully set raw access token and consent cookie:', cookieName);
       }
 
       return NextResponse.redirect(`${canonicalOrigin}${next}`);
@@ -107,12 +121,17 @@ export async function GET(request: Request) {
             if (projectRef) {
               const cookieName = "sb-" + projectRef + "-auth-token";
               document.cookie = cookieName + "=" + accessToken + "; path=/; max-age=604800; SameSite=Lax; Secure";
+              document.cookie = "virale_legal_consent=true; path=/; max-age=31536000; SameSite=Lax; Secure";
+              try {
+                localStorage.setItem('virale_legal_consent_done', 'true');
+                localStorage.setItem('virale_cookie_consent', 'accepted_' + Date.now());
+              } catch (e) {}
             }
             // Delay redirect slightly to ensure iOS Safari persists the cookie before context unload
             const targetOrigin = window.location.origin;
             setTimeout(function() {
               window.location.replace(targetOrigin + next + hash);
-            }, 100);
+            }, 20);
           } else {
             const targetOrigin = window.location.origin;
             window.location.replace(targetOrigin + "/auth?error=auth-failure");

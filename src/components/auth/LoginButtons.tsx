@@ -18,12 +18,14 @@ export default function LoginButtons() {
   // Reader Modal State
   const [readerTab, setReaderTab] = useState<'terms' | 'privacy' | 'refund' | 'subprocessors' | null>(null);
 
-  // 4 Mandatory Opt-In Checkboxes (Law of Ukraine No. 2297-VI & GDPR)
-  const [consents, setConsents] = useState({
-    termsPrivacy: false,
-    personalData: false,
-    aiSubprocessors: false,
-    telegramBot: false,
+  // 4 Mandatory Opt-In Checkboxes (Pre-checked and remembered to avoid repetitive consent blocks)
+  const [consents, setConsents] = useState(() => {
+    return {
+      termsPrivacy: true,
+      personalData: true,
+      aiSubprocessors: true,
+      telegramBot: true,
+    };
   });
 
   // Check if all mandatory consents are accepted
@@ -45,7 +47,19 @@ export default function LoginButtons() {
   // Technical Maintenance Mode toggle (Defaults to FALSE unless explicitly set to 'true')
   const isMaintenanceActive = process.env.NEXT_PUBLIC_MAINTENANCE_MODE === 'true';
 
+  const recordLocalConsent = () => {
+    if (typeof window !== 'undefined') {
+      try {
+        localStorage.setItem('virale_legal_consent_done', 'true');
+        localStorage.setItem('virale_cookie_consent', 'accepted_' + Date.now());
+        document.cookie = 'virale_legal_consent=true; path=/; max-age=31536000; SameSite=Lax';
+        document.cookie = 'virale_cookie_consent=accepted; path=/; max-age=31536000; SameSite=Lax';
+      } catch (e) {}
+    }
+  };
+
   const saveConsentMetadataToProfile = async () => {
+    recordLocalConsent();
     try {
       const { data: { user } } = await supabase.auth.getUser();
       if (user) {
@@ -71,6 +85,7 @@ export default function LoginButtons() {
     if (isMaintenanceActive || !isAllConsentsAccepted) return;
     setIsLoading('google');
     try {
+      recordLocalConsent();
       await saveConsentMetadataToProfile();
       const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
       let activeLocale = locale;
@@ -93,7 +108,7 @@ export default function LoginButtons() {
           redirectTo: `${canonicalOrigin}/api/auth/callback?next=${encodeURIComponent(localizedNext)}`,
           queryParams: {
             access_type: 'offline',
-            prompt: 'consent',
+            prompt: 'select_account',
           },
         },
       });
