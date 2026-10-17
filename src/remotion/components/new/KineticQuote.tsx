@@ -1,16 +1,19 @@
 import React from 'react';
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion';
-import { BRollElementProps } from '@/lib/types/remotionArchitect';
+import { BRollElementProps, DynamicThemeConfig } from '@/lib/types/remotionArchitect';
+import { getThemeCardStyles } from '../../utils/themeStyles';
 
 export interface KineticQuoteProps {
   props: BRollElementProps;
   visualSeed: number;
   globalJitter?: number;
+  theme?: DynamicThemeConfig;
 }
 
-export const KineticQuote: React.FC<KineticQuoteProps> = ({ props, visualSeed, globalJitter = 0.25 }) => {
+export const KineticQuote: React.FC<KineticQuoteProps> = ({ props, visualSeed, globalJitter = 0.25, theme }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const themeStyles = getThemeCardStyles(theme);
 
   // Mathematical Seed Jitter (-1.5deg to +1.5deg tilt)
   const seedJitterDeg = ((visualSeed % 5) - 2) * (0.6 + globalJitter * 0.5);
@@ -36,29 +39,38 @@ export const KineticQuote: React.FC<KineticQuoteProps> = ({ props, visualSeed, g
     : fullText.split(/\s+/).filter(Boolean);
 
   // Calculate word-by-word spring progress
-  // Distribute word reveals across frames
   const framesPerWord = Math.max(2, Math.floor(30 / Math.max(1, words.length / 3)));
 
   return (
     <div
-      className="absolute top-[8%] left-[6%] right-[6%] p-7 bg-slate-950/85 backdrop-blur-2xl border border-amber-400/25 rounded-3xl shadow-[0_20px_50px_rgba(0,0,0,0.7)] text-white font-sans overflow-hidden z-20"
+      className="absolute top-[8%] left-[6%] right-[6%] p-7 backdrop-blur-2xl overflow-hidden z-20"
       style={{
+        ...themeStyles.cardStyle,
         transform: `translateY(${translateY}px) scale(${scale}) rotate(${seedJitterDeg}deg)`,
         opacity
       }}
     >
       {/* Decorative quote mark badge */}
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-8 h-8 rounded-full bg-gradient-to-br from-amber-400 to-amber-600 flex items-center justify-center font-serif text-slate-950 font-bold text-lg shadow-md">
+        <div 
+          className="w-8 h-8 rounded-full flex items-center justify-center font-serif font-bold text-lg shadow-md"
+          style={{ background: themeStyles.accentGradient, color: '#000000' }}
+        >
           “
         </div>
-        <span className="text-xs font-semibold uppercase tracking-wider text-amber-400/90 font-mono">
+        <span 
+          className="text-xs font-semibold uppercase tracking-wider font-mono"
+          style={{ color: themeStyles.accentPrimary }}
+        >
           Key Takeaway
         </span>
       </div>
 
       {/* Kinetic Word-by-Word Container */}
-      <div className="flex flex-wrap gap-x-2.5 gap-y-1.5 leading-snug text-2xl md:text-3xl font-extrabold tracking-tight">
+      <div 
+        className="flex flex-wrap gap-x-2.5 gap-y-1.5 leading-snug text-2xl md:text-3xl font-extrabold tracking-tight"
+        style={{ fontFamily: themeStyles.fontFamily }}
+      >
         {words.map((word, idx) => {
           const cleanWord = word.replace(/[^a-zA-Z0-9а-яА-ЯёЁ]/g, '').toLowerCase();
           const isKeyword = highlightKeywords.some((k) => cleanWord.includes(k));
@@ -82,15 +94,14 @@ export const KineticQuote: React.FC<KineticQuoteProps> = ({ props, visualSeed, g
           return (
             <span
               key={`${word}-${idx}`}
-              className={`inline-block transition-all duration-150 rounded px-1 ${
-                isKeyword
-                  ? 'text-transparent bg-clip-text bg-gradient-to-r from-amber-300 via-amber-400 to-yellow-200 font-black drop-shadow-[0_2px_10px_rgba(251,191,36,0.3)]'
-                  : 'text-slate-100'
-              }`}
+              className="inline-block transition-all duration-150 rounded px-1"
               style={{
                 transform: `scale(${wordScale})`,
                 opacity: wordOpacity,
-                filter: `blur(${wordBlur}px)`
+                filter: `blur(${wordBlur}px)`,
+                color: isKeyword ? themeStyles.accentPrimary : themeStyles.textPrimary,
+                textShadow: isKeyword ? `0 0 15px ${themeStyles.accentPrimary}88` : 'none',
+                fontWeight: isKeyword ? 900 : 700
               }}
             >
               {word}
@@ -100,8 +111,10 @@ export const KineticQuote: React.FC<KineticQuoteProps> = ({ props, visualSeed, g
       </div>
 
       {author && (
-        <div className="mt-4 pt-3 border-t border-slate-800/80 flex items-center justify-between text-sm text-slate-400">
-          <span className="font-medium text-amber-300/80">— {author}</span>
+        <div className="mt-4 pt-3 border-t border-white/10 flex items-center justify-between text-sm">
+          <span className="font-medium" style={{ color: themeStyles.textMuted, fontFamily: themeStyles.fontFamily }}>
+            — {author}
+          </span>
         </div>
       )}
     </div>

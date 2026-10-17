@@ -1,10 +1,12 @@
 import React from 'react';
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion';
 import { ElementProps } from './DynamicChart';
+import { getThemeCardStyles } from '../utils/themeStyles';
 
-export const ListOverlay: React.FC<ElementProps> = ({ props, visualSeed, globalJitter = 0.25 }) => {
+export const ListOverlay: React.FC<ElementProps> = ({ props, visualSeed, globalJitter = 0.25, theme }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const themeStyles = getThemeCardStyles(theme);
 
   const randomRotation = ((visualSeed % 7) - 3) * (1 + globalJitter);
   const title = props.title || 'Главные тезисы';
@@ -12,12 +14,20 @@ export const ListOverlay: React.FC<ElementProps> = ({ props, visualSeed, globalJ
 
   return (
     <div
-      className="absolute right-[5%] top-[22%] w-[44%] p-6 bg-slate-900/90 backdrop-blur-2xl border border-amber-500/30 rounded-3xl shadow-2xl text-white font-sans"
+      className="absolute right-[5%] top-[22%] w-[44%] p-6 backdrop-blur-2xl"
       style={{
+        ...themeStyles.cardStyle,
         transform: `rotate(${randomRotation}deg)`
       }}
     >
-      <h3 className="text-xl font-black mb-4 text-amber-400 uppercase tracking-wider">
+      <h3 
+        className="text-xl font-black mb-4 tracking-wider"
+        style={{
+          color: themeStyles.accentPrimary,
+          textTransform: themeStyles.headerTransform,
+          fontFamily: themeStyles.fontFamily
+        }}
+      >
         {title}
       </h3>
       <div className="flex flex-col gap-3">
@@ -33,16 +43,26 @@ export const ListOverlay: React.FC<ElementProps> = ({ props, visualSeed, globalJ
           return (
             <div
               key={idx}
-              className="flex items-center gap-3 p-3 bg-slate-800/60 rounded-xl border border-slate-700/50"
+              className="flex items-center gap-3 p-3 border border-white/10"
               style={{
                 transform: `translateX(${translateX}px)`,
-                opacity
+                opacity,
+                borderRadius: themeStyles.borderRadius === '0px' ? '0px' : '12px',
+                backgroundColor: 'rgba(255, 255, 255, 0.05)'
               }}
             >
-              <div className="w-6 h-6 rounded-full bg-amber-500/20 text-amber-400 flex items-center justify-center font-mono font-bold text-xs">
+              <div 
+                className="w-6 h-6 rounded-full flex items-center justify-center font-mono font-bold text-xs"
+                style={{ 
+                  backgroundColor: `${themeStyles.accentPrimary}25`,
+                  color: themeStyles.accentPrimary
+                }}
+              >
                 {idx + 1}
               </div>
-              <span className="text-sm font-semibold text-slate-100">{item}</span>
+              <span className="text-sm font-semibold" style={{ color: themeStyles.textPrimary, fontFamily: themeStyles.fontFamily }}>
+                {item}
+              </span>
             </div>
           );
         })}

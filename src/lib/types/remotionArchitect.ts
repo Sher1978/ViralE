@@ -44,6 +44,7 @@ export interface BRollElementProps {
   values?: number[];
   labels?: string[];
   iconName?: string;
+  icon?: string;
   author?: string;
   handle?: string;
   avatarUrl?: string;
@@ -118,6 +119,13 @@ export interface DynamicThemeConfig {
   defaultSpeakerLayout: 'pip_circle_left' | 'pip_rounded_right' | 'split_top_bottom' | 'floating_overlay' | 'full_cutaway';
   chartVariant: ChartVariant;
   animationCurve: 'snappy_spring' | 'smooth_editorial' | 'kinetic_bounce';
+  typography?: {
+    fontFamily?: 'Space Grotesk' | 'JetBrains Mono' | 'Bebas Neue' | 'Inter' | string;
+    headerTransform?: 'uppercase' | 'none';
+    fontStyle?: 'normal' | 'italic';
+  };
+  styleName?: string;
+  userPrompt?: string;
 }
 
 export interface RemotionArchitectSettings {

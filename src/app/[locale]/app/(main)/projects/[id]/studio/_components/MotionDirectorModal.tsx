@@ -71,6 +71,11 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
   const [bottomRefinementPrompt, setBottomRefinementPrompt] = useState<string>('');
   const [isRefining, setIsRefining] = useState<boolean>(false);
 
+  // 4. AI Style Remix States
+  const [isRemixMenuOpen, setIsRemixMenuOpen] = useState<boolean>(false);
+  const [remixPrompt, setRemixPrompt] = useState<string>('');
+  const [isRemixLoading, setIsRemixLoading] = useState<boolean>(false);
+
   // Dynamic Theme state
   const [dynamicTheme, setDynamicTheme] = useState<DynamicThemeConfig>(() => {
     return initialCutSheet?.renderSettings?.dynamicTheme || buildDynamicThemeFromPrompt(userPrompt, selectedPreset);
@@ -182,8 +187,8 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
     }
   };
 
-  // 3. Remix Design (Changes visual seed, accent harmony, geometry without re-calling full LLM)
-  const handleRemixStyle = () => {
+  // 3. Procedural Shuffle (Instant seed and geometry randomizer without LLM)
+  const handleProceduralShuffle = () => {
     if (!cutSheet) return;
 
     // Generate random seed for every element
@@ -221,6 +226,63 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
     };
 
     setCutSheet(remixedCutSheet);
+  };
+
+  // 4. AI-Powered Style Remix (Transforms prompt/preset into JSON DynamicThemeConfig)
+  const handleAiRemixStyle = async (overridePrompt?: string, presetKey?: string) => {
+    const activePrompt = overridePrompt !== undefined ? overridePrompt : remixPrompt;
+    if (!activePrompt.trim() && !presetKey) return;
+    setIsRemixLoading(true);
+    try {
+      const res = await fetch('/api/ai/remotion-enrich-prompt', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          mode: 'remix_style',
+          stylePrompt: activePrompt,
+          presetKey,
+          currentTheme: dynamicTheme,
+          rawPrompt: userPrompt
+        })
+      });
+
+      if (!res.ok) throw new Error('Ошибка связи с AI-стилистом');
+      const data = await res.json();
+      if (data.dynamicTheme) {
+        setDynamicTheme(data.dynamicTheme);
+        if (cutSheet) {
+          const nextCutSheet: RemotionArchitectCutSheet = {
+            ...cutSheet,
+            renderSettings: {
+              ...cutSheet.renderSettings,
+              dynamicTheme: data.dynamicTheme,
+              includeSubtitles
+            }
+          };
+          setCutSheet(nextCutSheet);
+        }
+        setIsRemixMenuOpen(false);
+        setRemixPrompt('');
+      }
+    } catch (err: any) {
+      console.error('[MotionDirector] AI style remix error:', err);
+      // Fallback: procedural theme
+      const nextTheme = buildDynamicThemeFromPrompt(activePrompt, presetKey);
+      setDynamicTheme(nextTheme);
+      if (cutSheet) {
+        setCutSheet({
+          ...cutSheet,
+          renderSettings: {
+            ...cutSheet.renderSettings,
+            dynamicTheme: nextTheme,
+            includeSubtitles
+          }
+        });
+      }
+      setIsRemixMenuOpen(false);
+    } finally {
+      setIsRemixLoading(false);
+    }
   };
 
   // 4. Toggle Subtitles (Off by default for Motion)
@@ -381,13 +443,13 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
           {/* Style Remix Button */}
           <button
             type="button"
-            onClick={handleRemixStyle}
+            onClick={() => setIsRemixMenuOpen(true)}
             disabled={!cutSheet}
-            className="hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-white/5 border border-white/10 hover:bg-white/10 text-white/80 active:scale-95 transition-all disabled:opacity-40"
-            title="Сгенерировать другой сид дизайна и расположение"
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-200 active:scale-95 transition-all disabled:opacity-40"
+            title="Настроить стиль, палитру и шрифты по промпту"
           >
-            <Shuffle size={13} className="text-indigo-400" />
-            <span>Ремикс дизайна</span>
+            <Sparkles size={13} className="text-purple-400" />
+            <span>AI Ремикс Стиля</span>
           </button>
 
           {/* Export MP4 button */}
@@ -790,6 +852,170 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
           </div>
         </div>
       </div>
+
+      {/* AI Style Remix Popover Dialog */}
+      <AnimatePresence>
+        {isRemixMenuOpen && (
+          <div className="fixed inset-0 z-50 flex items-center justify-center p-4">
+            {/* Backdrop */}
+            <motion.div
+              initial={{ opacity: 0 }}
+              animate={{ opacity: 1 }}
+              exit={{ opacity: 0 }}
+              onClick={() => setIsRemixMenuOpen(false)}
+              className="absolute inset-0 bg-black/75 backdrop-blur-md"
+            />
+
+            {/* Dialog Container */}
+            <motion.div
+              initial={{ opacity: 0, scale: 0.95, y: 15 }}
+              animate={{ opacity: 1, scale: 1, y: 0 }}
+              exit={{ opacity: 0, scale: 0.95, y: 15 }}
+              className="relative w-full max-w-lg bg-[#0F111D] border border-purple-500/30 rounded-3xl p-6 shadow-2xl text-white space-y-5 overflow-hidden z-10"
+            >
+              {/* Header */}
+              <div className="flex items-center justify-between border-b border-white/10 pb-4">
+                <div className="flex items-center gap-3">
+                  <div className="w-10 h-10 rounded-2xl bg-purple-500/20 border border-purple-500/40 flex items-center justify-center shadow-lg shadow-purple-500/20">
+                    <Sparkles className="w-5 h-5 text-purple-400" />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-black tracking-tight text-white flex items-center gap-2">
+                      <span>AI Ремикс Стиля & Дизайна</span>
+                      <span className="text-[10px] uppercase font-mono px-2 py-0.5 rounded-full bg-purple-500/20 text-purple-300 border border-purple-500/30">
+                        Claude Motion
+                      </span>
+                    </h3>
+                    <p className="text-[12px] text-white/50">
+                      ИИ составит точные JSON-инструкции палитры, шрифтов и геометрии
+                    </p>
+                  </div>
+                </div>
+                <button
+                  onClick={() => setIsRemixMenuOpen(false)}
+                  className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/50 hover:text-white transition-all cursor-pointer"
+                >
+                  <X size={16} />
+                </button>
+              </div>
+
+              {/* Current Active Style Badge */}
+              <div className="flex items-center justify-between p-3 rounded-2xl bg-white/[0.03] border border-white/10 text-xs">
+                <div className="flex items-center gap-2.5">
+                  <span className="text-white/40 font-medium">Текущий стиль:</span>
+                  <span className="font-bold text-white tracking-wide">
+                    {dynamicTheme.styleName || 'Custom AI Style'}
+                  </span>
+                </div>
+                <div className="flex items-center gap-2">
+                  <span className="text-[11px] font-mono text-white/40">
+                    {dynamicTheme.typography?.fontFamily || 'Inter'}
+                  </span>
+                  <div className="flex items-center -space-x-1">
+                    <span 
+                      className="w-4 h-4 rounded-full border border-black/40 shadow-sm"
+                      style={{ backgroundColor: dynamicTheme.palette.accentPrimary }}
+                      title={`Акцент 1: ${dynamicTheme.palette.accentPrimary}`}
+                    />
+                    <span 
+                      className="w-4 h-4 rounded-full border border-black/40 shadow-sm"
+                      style={{ backgroundColor: dynamicTheme.palette.accentSecondary }}
+                      title={`Акцент 2: ${dynamicTheme.palette.accentSecondary}`}
+                    />
+                  </div>
+                </div>
+              </div>
+
+              {/* Quick Preset Chips */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-white/40 block">
+                  Готовые дизайн-системы (1 клик)
+                </label>
+                <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
+                  {[
+                    { id: 'cyberpunk_neon', label: '⚡ Cyberpunk Neon', desc: 'Циан, маджента, JetBrains Mono' },
+                    { id: 'apple_minimal', label: '🍏 Apple Minimal', desc: 'Чистый светлый, Inter, мягкие тени' },
+                    { id: 'luxury_gold', label: '👑 Luxury Gold', desc: 'Оникс, золото #D4AF37, Space Grotesk' },
+                    { id: 'hormozi_punch', label: '🔥 Hormozi Punch', desc: 'Контрастный желтый, Bebas Neue' },
+                    { id: 'fintech_mint', label: '💎 Fintech Mint', desc: 'Глубокий синий, изумруд #10B981' },
+                    { id: 'minimal_expert', label: '🎯 Modern Pro', desc: 'Стеклянный морфизм, фиолетовый' },
+                  ].map((preset) => (
+                    <button
+                      key={preset.id}
+                      onClick={() => handleAiRemixStyle(preset.desc, preset.id)}
+                      disabled={isRemixLoading}
+                      className="p-2.5 rounded-xl bg-white/[0.03] hover:bg-white/[0.08] border border-white/10 hover:border-purple-500/50 text-left transition-all group disabled:opacity-50 cursor-pointer"
+                    >
+                      <div className="font-bold text-[12px] text-white/90 group-hover:text-purple-300">
+                        {preset.label}
+                      </div>
+                      <div className="text-[10px] text-white/40 leading-tight truncate mt-0.5">
+                        {preset.desc}
+                      </div>
+                    </button>
+                  ))}
+                </div>
+              </div>
+
+              {/* Freeform Prompt Textarea */}
+              <div className="space-y-2">
+                <label className="text-[11px] font-bold uppercase tracking-wider text-white/40 block">
+                  Либо опишите свои цвета, шрифт и настроение:
+                </label>
+                <textarea
+                  value={remixPrompt}
+                  onChange={(e) => setRemixPrompt(e.target.value)}
+                  placeholder="Пример: Сделай глубокий темно-синий фон, неоновый лаймовый #A3E635 и бирюзовый акцент, шрифт JetBrains Mono, острые карточки с яркой обводкой..."
+                  rows={3}
+                  className="w-full bg-white/[0.03] border border-white/10 rounded-2xl p-3 text-xs text-white placeholder-white/30 focus:outline-none focus:border-purple-500/70 resize-none"
+                  onKeyDown={(e) => {
+                    if (e.key === 'Enter' && (e.metaKey || e.ctrlKey)) {
+                      handleAiRemixStyle();
+                    }
+                  }}
+                />
+              </div>
+
+              {/* Action Buttons */}
+              <div className="flex items-center justify-between gap-3 pt-2">
+                {/* Fast procedural shuffle button */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    handleProceduralShuffle();
+                    setIsRemixMenuOpen(false);
+                  }}
+                  className="px-3.5 py-2.5 rounded-2xl bg-white/5 hover:bg-white/10 border border-white/10 text-white/70 hover:text-white text-xs font-bold transition-all flex items-center gap-2 cursor-pointer"
+                  title="Быстро перемешать математический сид без вызова ИИ"
+                >
+                  <Shuffle size={14} className="text-indigo-400" />
+                  <span>🎲 Случайный шаффл</span>
+                </button>
+
+                {/* AI Remix Apply button */}
+                <button
+                  type="button"
+                  onClick={() => handleAiRemixStyle()}
+                  disabled={isRemixLoading || (!remixPrompt.trim())}
+                  className="flex-1 px-4 py-2.5 rounded-2xl bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-500 hover:brightness-110 active:scale-95 text-white text-xs font-black uppercase tracking-wider transition-all shadow-lg shadow-purple-600/30 flex items-center justify-center gap-2 disabled:opacity-40 cursor-pointer"
+                >
+                  {isRemixLoading ? (
+                    <>
+                      <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                      <span>ИИ составляет JSON...</span>
+                    </>
+                  ) : (
+                    <>
+                      <Sparkles size={14} />
+                      <span>Применить AI Стиль</span>
+                    </>
+                  )}
+                </button>
+              </div>
+            </motion.div>
+          </div>
+        )}
+      </AnimatePresence>
     </div>
   );
 };

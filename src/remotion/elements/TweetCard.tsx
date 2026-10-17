@@ -1,10 +1,12 @@
 import React from 'react';
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion';
 import { ElementProps } from './DynamicChart';
+import { getThemeCardStyles } from '../utils/themeStyles';
 
-export const TweetCard: React.FC<ElementProps> = ({ props, visualSeed, globalJitter = 0.25 }) => {
+export const TweetCard: React.FC<ElementProps> = ({ props, visualSeed, globalJitter = 0.25, theme }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const themeStyles = getThemeCardStyles(theme);
 
   const randomRotation = ((visualSeed % 5) - 2) * (1 + globalJitter);
   const microDelay = (visualSeed % 3) * 2;
@@ -26,22 +28,26 @@ export const TweetCard: React.FC<ElementProps> = ({ props, visualSeed, globalJit
 
   return (
     <div
-      className="absolute left-[6%] top-[6%] w-[88%] p-6 bg-slate-950/85 backdrop-blur-2xl border border-sky-500/30 rounded-3xl shadow-2xl text-white font-sans"
+      className="absolute left-[6%] top-[6%] w-[88%] p-6 backdrop-blur-2xl"
       style={{
+        ...themeStyles.cardStyle,
         transform: `translateY(${translateY}px) scale(${scale}) rotate(${randomRotation}deg)`,
         opacity
       }}
     >
       <div className="flex items-center gap-3 mb-3">
-        <div className="w-11 h-11 rounded-full bg-gradient-to-tr from-sky-500 to-indigo-500 flex items-center justify-center font-bold text-lg text-white">
+        <div 
+          className="w-11 h-11 rounded-full flex items-center justify-center font-bold text-lg text-white"
+          style={{ background: themeStyles.accentGradient }}
+        >
           {author.charAt(0)}
         </div>
         <div className="flex flex-col">
-          <span className="font-bold text-base text-slate-100">{author}</span>
-          <span className="text-xs text-sky-400 font-mono">{handle}</span>
+          <span className="font-bold text-base" style={{ color: themeStyles.textPrimary, fontFamily: themeStyles.fontFamily }}>{author}</span>
+          <span className="text-xs font-mono" style={{ color: themeStyles.accentPrimary }}>{handle}</span>
         </div>
       </div>
-      <p className="text-sm font-medium leading-relaxed text-slate-200">
+      <p className="text-sm font-medium leading-relaxed" style={{ color: themeStyles.textPrimary, fontFamily: themeStyles.fontFamily }}>
         "{text}"
       </p>
     </div>

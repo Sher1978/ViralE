@@ -240,10 +240,11 @@ export function buildDynamicThemeFromPrompt(
   const p = prompt.toLowerCase();
   const seed = Math.abs(visualSeed);
 
-  const isLight = p.includes('light') || p.includes('светл') || p.includes('бел') || p.includes('apple') || p.includes('white');
-  const isNeon = p.includes('neon') || p.includes('неон') || p.includes('cyber') || p.includes('кибер') || p.includes('future');
-  const isLuxury = p.includes('lux') || p.includes('люкс') || p.includes('премиум') || p.includes('gold') || p.includes('золот');
-  const isHormozi = p.includes('hormozi') || p.includes('хормози') || p.includes('punch') || p.includes('энерги') || p.includes('желт');
+  const isLight = p.includes('light') || p.includes('светл') || p.includes('бел') || p.includes('apple') || p.includes('white') || presetKey === 'apple_minimal';
+  const isNeon = p.includes('neon') || p.includes('неон') || p.includes('cyber') || p.includes('кибер') || p.includes('future') || presetKey === 'cyberpunk_neon';
+  const isLuxury = p.includes('lux') || p.includes('люкс') || p.includes('премиум') || p.includes('gold') || p.includes('золот') || presetKey === 'luxury_gold';
+  const isHormozi = p.includes('hormozi') || p.includes('хормози') || p.includes('punch') || p.includes('энерги') || p.includes('желт') || presetKey === 'hormozi_punch';
+  const isMint = p.includes('mint') || p.includes('мят') || p.includes('зелен') || p.includes('emerald') || p.includes('финтех') || p.includes('fintech') || presetKey === 'fintech_mint';
 
   // Geometries rotation
   const geometries: DynamicThemeConfig['cardGeometry'][] = [
@@ -255,7 +256,7 @@ export function buildDynamicThemeFromPrompt(
   ];
   let cardGeometry: DynamicThemeConfig['cardGeometry'] = geometries[seed % geometries.length];
   if (p.includes('брутал') || p.includes('sharp')) cardGeometry = 'sharp_brutalist';
-  else if (p.includes('hud') || p.includes('tech')) cardGeometry = 'hud_tech';
+  else if (p.includes('hud') || p.includes('tech') || isNeon || isMint) cardGeometry = 'hud_tech';
   else if (p.includes('без рамок') || p.includes('borderless')) cardGeometry = 'minimal_borderless';
 
   // Patterns rotation
@@ -267,7 +268,7 @@ export function buildDynamicThemeFromPrompt(
     'diagonal_mesh'
   ];
   let backgroundPattern: DynamicThemeConfig['backgroundPattern'] = patterns[(seed + 2) % patterns.length];
-  if (p.includes('сетк') || p.includes('grid')) backgroundPattern = 'tech_grid';
+  if (p.includes('сетк') || p.includes('grid') || isNeon) backgroundPattern = 'tech_grid';
   else if (p.includes('точк') || p.includes('dots')) backgroundPattern = 'minimal_dots';
 
   // Chart variant rotation
@@ -297,11 +298,17 @@ export function buildDynamicThemeFromPrompt(
         textPrimary: '#0F172A',
         textMuted: '#64748B'
       },
-      cardGeometry,
+      cardGeometry: cardGeometry === 'sharp_brutalist' ? 'rounded_modern' : cardGeometry,
       backgroundPattern,
       defaultSpeakerLayout,
       chartVariant,
-      animationCurve: 'smooth_editorial'
+      animationCurve: 'smooth_editorial',
+      typography: {
+        fontFamily: 'Inter',
+        headerTransform: 'none'
+      },
+      styleName: 'Apple Minimal',
+      userPrompt: prompt
     };
   }
 
@@ -322,7 +329,13 @@ export function buildDynamicThemeFromPrompt(
       backgroundPattern: 'tech_grid',
       defaultSpeakerLayout,
       chartVariant,
-      animationCurve: 'snappy_spring'
+      animationCurve: 'snappy_spring',
+      typography: {
+        fontFamily: 'JetBrains Mono',
+        headerTransform: 'uppercase'
+      },
+      styleName: 'Cyberpunk Neon',
+      userPrompt: prompt
     };
   }
 
@@ -343,7 +356,13 @@ export function buildDynamicThemeFromPrompt(
       backgroundPattern: 'diagonal_mesh',
       defaultSpeakerLayout,
       chartVariant,
-      animationCurve: 'smooth_editorial'
+      animationCurve: 'smooth_editorial',
+      typography: {
+        fontFamily: 'Space Grotesk',
+        headerTransform: 'uppercase'
+      },
+      styleName: 'Luxury Gold',
+      userPrompt: prompt
     };
   }
 
@@ -364,7 +383,40 @@ export function buildDynamicThemeFromPrompt(
       backgroundPattern: 'aurora_ring',
       defaultSpeakerLayout: 'split_top_bottom',
       chartVariant,
-      animationCurve: 'kinetic_bounce'
+      animationCurve: 'kinetic_bounce',
+      typography: {
+        fontFamily: 'Bebas Neue',
+        headerTransform: 'uppercase'
+      },
+      styleName: 'Hormozi Punch',
+      userPrompt: prompt
+    };
+  }
+
+  if (isMint) {
+    return {
+      themeMode: 'dark',
+      palette: {
+        backgroundPrimary: '#050B14',
+        backgroundSecondary: '#081426',
+        cardSurface: 'rgba(8, 20, 38, 0.94)',
+        cardBorder: 'rgba(16, 185, 129, 0.4)',
+        accentPrimary: '#10B981',
+        accentSecondary: '#06B6D4',
+        textPrimary: '#F0FDF4',
+        textMuted: '#94A3B8'
+      },
+      cardGeometry: 'hud_tech',
+      backgroundPattern: 'tech_grid',
+      defaultSpeakerLayout: 'floating_overlay',
+      chartVariant: 'horizontal_progress',
+      animationCurve: 'snappy_spring',
+      typography: {
+        fontFamily: 'JetBrains Mono',
+        headerTransform: 'uppercase'
+      },
+      styleName: 'Fintech Mint',
+      userPrompt: prompt
     };
   }
 
@@ -386,6 +438,12 @@ export function buildDynamicThemeFromPrompt(
     backgroundPattern,
     defaultSpeakerLayout,
     chartVariant,
-    animationCurve: 'snappy_spring'
+    animationCurve: 'snappy_spring',
+    typography: {
+      fontFamily: 'Space Grotesk',
+      headerTransform: 'none'
+    },
+    styleName: 'Modern Pro',
+    userPrompt: prompt
   };
 }

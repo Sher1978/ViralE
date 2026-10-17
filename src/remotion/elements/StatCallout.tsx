@@ -1,10 +1,12 @@
 import React from 'react';
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion';
 import { ElementProps } from './DynamicChart';
+import { getThemeCardStyles } from '../utils/themeStyles';
 
-export const StatCallout: React.FC<ElementProps> = ({ props, visualSeed = 42, globalJitter = 0.25 }) => {
+export const StatCallout: React.FC<ElementProps> = ({ props, visualSeed = 42, globalJitter = 0.25, theme }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const themeStyles = getThemeCardStyles(theme);
 
   const spr = spring({
     frame,
@@ -21,16 +23,31 @@ export const StatCallout: React.FC<ElementProps> = ({ props, visualSeed = 42, gl
 
   return (
     <div
-      className="absolute inset-x-8 top-[30%] p-8 bg-slate-900/95 backdrop-blur-2xl border-2 border-amber-400/50 rounded-[2.5rem] shadow-[0_20px_60px_rgba(0,0,0,0.8)] text-white font-sans text-center flex flex-col items-center justify-center gap-2"
+      className="absolute inset-x-8 top-[30%] p-8 backdrop-blur-2xl text-center flex flex-col items-center justify-center gap-2"
       style={{
+        ...themeStyles.cardStyle,
         transform: `scale(${scale}) rotate(${rotation}deg)`,
         opacity
       }}
     >
-      <div className="text-6xl sm:text-7xl font-black italic tracking-tighter text-transparent bg-clip-text bg-gradient-to-r from-amber-400 via-yellow-300 to-amber-500 drop-shadow-[0_4px_20px_rgba(251,191,36,0.4)]">
+      <div 
+        className="text-6xl sm:text-7xl font-black italic tracking-tighter"
+        style={{
+          color: themeStyles.accentPrimary,
+          textShadow: `0 4px 25px ${themeStyles.accentPrimary}66`,
+          fontFamily: themeStyles.fontFamily
+        }}
+      >
         {statValue}
       </div>
-      <div className="text-base sm:text-lg font-bold text-white/90 uppercase tracking-widest mt-1">
+      <div 
+        className="text-base sm:text-lg font-bold tracking-widest mt-1"
+        style={{ 
+          color: themeStyles.textMuted,
+          textTransform: themeStyles.headerTransform,
+          fontFamily: themeStyles.fontFamily
+        }}
+      >
         {statLabel}
       </div>
     </div>

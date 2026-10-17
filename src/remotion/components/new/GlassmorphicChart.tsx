@@ -1,16 +1,19 @@
 import React from 'react';
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion';
-import { BRollElementProps } from '@/lib/types/remotionArchitect';
+import { BRollElementProps, DynamicThemeConfig } from '@/lib/types/remotionArchitect';
+import { getThemeCardStyles } from '../../utils/themeStyles';
 
 export interface GlassmorphicChartProps {
   props: BRollElementProps;
   visualSeed: number;
   globalJitter?: number;
+  theme?: DynamicThemeConfig;
 }
 
-export const GlassmorphicChart: React.FC<GlassmorphicChartProps> = ({ props, visualSeed, globalJitter = 0.25 }) => {
+export const GlassmorphicChart: React.FC<GlassmorphicChartProps> = ({ props, visualSeed, globalJitter = 0.25, theme }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const themeStyles = getThemeCardStyles(theme);
 
   // Mathematical Seed Jitter (-1.5deg to +1.5deg tilt)
   const seedJitterDeg = ((visualSeed % 5) - 2) * (0.6 + globalJitter * 0.5);
@@ -39,22 +42,43 @@ export const GlassmorphicChart: React.FC<GlassmorphicChartProps> = ({ props, vis
 
   return (
     <div
-      className="absolute right-[5%] top-[20%] w-[48%] p-6 bg-slate-900/80 backdrop-blur-2xl border border-cyan-500/30 rounded-3xl shadow-[0_25px_60px_rgba(0,0,0,0.7)] text-white font-sans overflow-hidden z-20"
+      className="absolute right-[5%] top-[20%] w-[48%] p-6 backdrop-blur-2xl overflow-hidden z-20"
       style={{
+        ...themeStyles.cardStyle,
         transform: `translateX(${translateX}px) scale(${scale}) rotate(${seedJitterDeg}deg)`,
         opacity
       }}
     >
       {/* Header section with pulsating neon marker */}
-      <div className="flex items-center justify-between mb-4 pb-2 border-b border-slate-800/80">
+      <div className="flex items-center justify-between mb-4 pb-2 border-b border-white/10">
         <div className="flex items-center gap-2.5">
-          <div className="w-3.5 h-3.5 rounded-full bg-cyan-400 shadow-[0_0_12px_rgba(34,211,238,0.8)] animate-pulse" />
-          <h3 className="text-lg font-bold text-transparent bg-clip-text bg-gradient-to-r from-cyan-200 via-sky-300 to-indigo-300">
+          <div 
+            className="w-3.5 h-3.5 rounded-full animate-pulse" 
+            style={{ 
+              backgroundColor: themeStyles.accentPrimary,
+              boxShadow: `0 0 12px ${themeStyles.accentPrimary}`
+            }} 
+          />
+          <h3 
+            className="text-lg font-bold"
+            style={{ 
+              color: themeStyles.accentPrimary,
+              fontFamily: themeStyles.fontFamily,
+              textTransform: themeStyles.headerTransform
+            }}
+          >
             {title}
           </h3>
         </div>
         {statValue && (
-          <span className="text-xs font-mono font-extrabold text-cyan-300 bg-cyan-950/70 border border-cyan-500/40 px-2.5 py-1 rounded-full">
+          <span 
+            className="text-xs font-mono font-extrabold px-2.5 py-1 rounded-full border"
+            style={{ 
+              color: themeStyles.accentPrimary,
+              backgroundColor: `${themeStyles.accentPrimary}20`,
+              borderColor: `${themeStyles.accentPrimary}40`
+            }}
+          >
             {statValue}
           </span>
         )}
@@ -63,9 +87,9 @@ export const GlassmorphicChart: React.FC<GlassmorphicChartProps> = ({ props, vis
       {/* Chart Bars Section */}
       <div className="flex items-end gap-3.5 h-48 pt-6 pb-2 relative">
         {/* Subtle grid lines background */}
-        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 border-t border-b border-slate-700">
-          <div className="border-b border-slate-700 w-full" />
-          <div className="border-b border-slate-700 w-full" />
+        <div className="absolute inset-0 flex flex-col justify-between pointer-events-none opacity-20 border-t border-b border-white/20">
+          <div className="border-b border-white/20 w-full" />
+          <div className="border-b border-white/20 w-full" />
         </div>
 
         {values.map((val: number, idx: number) => {
@@ -83,16 +107,26 @@ export const GlassmorphicChart: React.FC<GlassmorphicChartProps> = ({ props, vis
 
           return (
             <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end relative z-10">
-              <span className="text-xs font-mono font-bold text-cyan-200/90">
+              <span className="text-xs font-mono font-bold" style={{ color: themeStyles.textPrimary }}>
                 {val}%
               </span>
-              <div className="w-full bg-slate-950/60 rounded-t-xl h-full flex items-end p-0.5 overflow-hidden border border-slate-800">
+              <div 
+                className="w-full bg-black/40 h-full flex items-end p-0.5 overflow-hidden border border-white/10"
+                style={{ borderRadius: themeStyles.borderRadius === '0px' ? '0px' : '8px 8px 0 0' }}
+              >
                 <div
-                  className="w-full bg-gradient-to-t from-indigo-600 via-cyan-500 to-cyan-300 rounded-t-lg shadow-[0_0_15px_rgba(34,211,238,0.4)] transition-all"
-                  style={{ height: `${barHeightPct}%` }}
+                  className="w-full transition-all shadow-md"
+                  style={{ 
+                    height: `${barHeightPct}%`,
+                    background: themeStyles.accentGradient,
+                    borderRadius: themeStyles.borderRadius === '0px' ? '0px' : '6px 6px 0 0'
+                  }}
                 />
               </div>
-              <span className="text-[11px] font-semibold text-slate-400 font-sans tracking-tight truncate w-full text-center">
+              <span 
+                className="text-[11px] font-semibold tracking-tight truncate w-full text-center"
+                style={{ color: themeStyles.textMuted, fontFamily: themeStyles.fontFamily }}
+              >
                 {labels[idx]}
               </span>
             </div>

@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildDynamicThemeFromPrompt } from '@/lib/remotion/stylePresets';
-import { BRollElement } from '@/lib/types/remotionArchitect';
+import { BRollElement, DynamicThemeConfig } from '@/lib/types/remotionArchitect';
 
 export async function POST(req: NextRequest) {
   try {
@@ -17,7 +17,19 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: true, updatedElement: updated });
     }
 
-    // 2. ENRICH BRIEF MODE (Claude Motion Structured Brief generator)
+    // 2. AI STYLE REMIX MODE (Converts styling prompt into precise JSON DynamicThemeConfig)
+    if (mode === 'remix_style') {
+      const stylePrompt = body.stylePrompt || rawPrompt || body.userPrompt || '';
+      const presetKey = body.presetKey;
+      const currentTheme = body.currentTheme;
+      const remixedTheme = await runStyleRemixLlm(stylePrompt, presetKey, currentTheme, brandDna);
+      return NextResponse.json({
+        success: true,
+        dynamicTheme: remixedTheme
+      });
+    }
+
+    // 3. ENRICH BRIEF MODE (Claude Motion Structured Brief generator)
     const visualSeed = Math.floor(Math.random() * 100);
     const suggestedTheme = buildDynamicThemeFromPrompt(rawPrompt, brandDna?.stylePreset, visualSeed, brandDna);
 
@@ -217,4 +229,93 @@ async function callLlmWithFallback(systemPrompt: string, userPrompt: string, jso
   }
 
   return null;
+}
+
+async function runStyleRemixLlm(
+  prompt: string,
+  presetKey?: string,
+  currentTheme?: any,
+  brandDna?: any
+): Promise<DynamicThemeConfig> {
+  const seed = Math.floor(Math.random() * 100);
+  const proceduralFallback = buildDynamicThemeFromPrompt(prompt, presetKey, seed, brandDna);
+
+  const systemPrompt = `
+Ты — арт-директор и моушн-дизайнер Claude Motion и Remotion.
+Твоя задача — преобразовать пожелания пользователя по стилю (цвета, оттенки, шрифт, геометрия карточек, эстетика) в ТОЧНЫЙ JSON объект DynamicThemeConfig для Remotion-монтажа.
+
+ФОРМАТ ВЫВОДА: Верни ТОЛЬКО валидный JSON со следующей структурой, без пояснений и markdown:
+{
+  "themeMode": "dark" | "light" | "glass_translucent" | "neon_high_contrast",
+  "palette": {
+    "backgroundPrimary": "#HEX (глубокий цвет фона ролика)",
+    "backgroundSecondary": "#HEX (второстепенный оттенок фона)",
+    "cardSurface": "rgba(r, g, b, a) (полупрозрачная подложка карточки)",
+    "cardBorder": "rgba(r, g, b, a) (обводка карточки)",
+    "accentPrimary": "#HEX (главный яркий цвет: кнопки, столбики графиков, бейджи)",
+    "accentSecondary": "#HEX (второй цвет для градиентов и маркеров)",
+    "textPrimary": "#HEX (основной цвет текста)",
+    "textMuted": "#HEX (приглушенный цвет подписей)"
+  },
+  "typography": {
+    "fontFamily": "Space Grotesk" | "JetBrains Mono" | "Bebas Neue" | "Inter",
+    "headerTransform": "uppercase" | "none",
+    "fontStyle": "normal" | "italic"
+  },
+  "cardGeometry": "rounded_modern" | "sharp_brutalist" | "pill_soft" | "minimal_borderless" | "hud_tech",
+  "backgroundPattern": "aurora_ring" | "tech_grid" | "minimal_dots" | "clean_gradient" | "diagonal_mesh",
+  "defaultSpeakerLayout": "pip_circle_left" | "pip_rounded_right" | "split_top_bottom" | "floating_overlay" | "full_cutaway",
+  "chartVariant": "vertical_bars" | "horizontal_progress" | "radial_gauge",
+  "animationCurve": "snappy_spring" | "smooth_editorial" | "kinetic_bounce",
+  "styleName": "Краткое название стиля на русском (напр. 'Неоновый Киберпанк')"
+}
+
+ПРАВИЛА ПОДБОРА:
+1. Цвета и контраст:
+   - Текст должен легко читаться на фоне карточки.
+   - Акцентные цвета должны быть сочными, современными и гармонично сочетаться.
+   - Если пользователь указал конкретные цвета (например, "изумрудный", "золотой", "маджента", "синий"), обязательно отрази их в palette.
+2. Шрифты:
+   - Технологичный, код, киберпанк, крипто, терминал -> "JetBrains Mono"
+   - Агрессивный, хуки, маркетинг, Hormozi, фитнес, мотивация -> "Bebas Neue" (с headerTransform: "uppercase")
+   - Современные стартапы, креатив, YouTube, медиа -> "Space Grotesk"
+   - Минимализм Apple, строгий корпоративный стиль, чистота -> "Inter"
+3. Геометрия карточек:
+   - Брутализм / резкий стиль -> "sharp_brutalist"
+   - Кибер / HUD / хай-тек -> "hud_tech"
+   - Apple / премиум -> "rounded_modern"
+   - Lifestyle / мягкий -> "pill_soft"
+`.trim();
+
+  const userContent = `
+Пожелания пользователя по стилю и оформлению: "${prompt || presetKey || 'Современный технологичный стиль'}"
+Выбранный пресет: "${presetKey || 'custom'}"
+Текущая тема: ${currentTheme ? JSON.stringify(currentTheme) : 'нет'}
+`.trim();
+
+  const responseJson = await callLlmWithFallback(systemPrompt, userContent, true);
+  if (responseJson) {
+    try {
+      const parsed = JSON.parse(responseJson);
+      if (parsed && parsed.palette && parsed.palette.accentPrimary) {
+        return {
+          ...proceduralFallback,
+          ...parsed,
+          palette: {
+            ...proceduralFallback.palette,
+            ...parsed.palette
+          },
+          typography: {
+            ...proceduralFallback.typography,
+            ...(parsed.typography || {})
+          },
+          userPrompt: prompt
+        };
+      }
+    } catch (e) {
+      console.warn('[remotion-enrich-prompt] Failed to parse remix theme JSON:', e);
+    }
+  }
+
+  return proceduralFallback;
 }

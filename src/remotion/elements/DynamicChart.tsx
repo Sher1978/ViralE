@@ -1,16 +1,19 @@
 import React from 'react';
 import { useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion';
-import { BRollElementProps } from '@/lib/types/remotionArchitect';
+import { BRollElementProps, DynamicThemeConfig } from '@/lib/types/remotionArchitect';
+import { getThemeCardStyles } from '../utils/themeStyles';
 
 export interface ElementProps {
   props: BRollElementProps;
   visualSeed: number;
   globalJitter?: number;
+  theme?: DynamicThemeConfig;
 }
 
-export const DynamicChart: React.FC<ElementProps> = ({ props, visualSeed, globalJitter = 0.25 }) => {
+export const DynamicChart: React.FC<ElementProps> = ({ props, visualSeed, globalJitter = 0.25, theme }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+  const themeStyles = getThemeCardStyles(theme);
 
   // Рандомизация на основе visualSeed
   const randomRotation = ((visualSeed % 7) - 3) * (1 + globalJitter); // от -3 до +3 градусов
@@ -31,20 +34,31 @@ export const DynamicChart: React.FC<ElementProps> = ({ props, visualSeed, global
 
   return (
     <div
-      className="absolute right-[5%] top-[22%] w-[44%] p-6 bg-slate-900/90 backdrop-blur-xl border border-indigo-500/30 rounded-3xl shadow-2xl text-white font-sans overflow-hidden"
+      className="absolute right-[5%] top-[22%] w-[44%] p-6 backdrop-blur-xl overflow-hidden"
       style={{
+        ...themeStyles.cardStyle,
         transform: `scale(${scale}) rotate(${randomRotation}deg)`,
         opacity
       }}
     >
       <div className="flex items-center gap-2 mb-4">
-        <div className="w-3 h-3 rounded-full bg-indigo-500 animate-pulse" />
-        <h3 className="text-xl font-bold text-transparent bg-clip-text bg-gradient-to-r from-indigo-300 to-cyan-300">
+        <div 
+          className="w-3 h-3 rounded-full animate-pulse" 
+          style={{ backgroundColor: themeStyles.accentPrimary, boxShadow: `0 0 10px ${themeStyles.accentPrimary}` }} 
+        />
+        <h3 
+          className="text-xl font-bold"
+          style={{ 
+            color: themeStyles.accentPrimary,
+            textTransform: themeStyles.headerTransform,
+            fontFamily: themeStyles.fontFamily
+          }}
+        >
           {title}
         </h3>
       </div>
 
-      <div className="flex items-end gap-3 h-44 pt-4 border-b border-slate-800 pb-2">
+      <div className="flex items-end gap-3 h-44 pt-4 border-b border-white/10 pb-2">
         {values.map((val: number, idx: number) => {
           const barSpr = spring({
             frame: Math.max(0, adjustedFrame - idx * 3),
@@ -56,10 +70,14 @@ export const DynamicChart: React.FC<ElementProps> = ({ props, visualSeed, global
           return (
             <div key={idx} className="flex-1 flex flex-col items-center gap-2 h-full justify-end">
               <div
-                className="w-full bg-gradient-to-t from-indigo-600 via-indigo-400 to-cyan-300 rounded-t-xl transition-all shadow-lg"
-                style={{ height: `${barHeight}%` }}
+                className="w-full transition-all shadow-lg"
+                style={{ 
+                  height: `${barHeight}%`,
+                  background: themeStyles.accentGradient,
+                  borderRadius: themeStyles.borderRadius === '0px' ? '0px' : '8px 8px 0 0'
+                }}
               />
-              <span className="text-xs font-mono text-slate-300 font-bold">{val}%</span>
+              <span className="text-xs font-mono font-bold" style={{ color: themeStyles.textMuted }}>{val}%</span>
             </div>
           );
         })}

@@ -1,6 +1,6 @@
 import React from 'react';
 import { AbsoluteFill, Sequence, Video, useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion';
-import { RemotionArchitectCutSheet, BRollElement } from '@/lib/types/remotionArchitect';
+import { RemotionArchitectCutSheet, BRollElement, DynamicThemeConfig } from '@/lib/types/remotionArchitect';
 import { DynamicChart } from './elements/DynamicChart';
 import { TweetCard } from './elements/TweetCard';
 import { ListOverlay } from './elements/ListOverlay';
@@ -148,7 +148,7 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
                   isSelected ? 'ring-4 ring-purple-500 rounded-3xl' : ''
                 }`}
               >
-                <RenderElement element={elem} globalJitter={globalJitter} />
+                <RenderElement element={elem} globalJitter={globalJitter} theme={dynamicTheme} />
               </div>
             </Sequence>
           );
@@ -167,23 +167,23 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
   );
 };
 
-const RenderElement: React.FC<{ element: BRollElement; globalJitter: number }> = ({ element, globalJitter }) => {
+const RenderElement: React.FC<{ element: BRollElement; globalJitter: number; theme?: DynamicThemeConfig }> = ({ element, globalJitter, theme }) => {
   switch (element.type) {
     case 'kinetic_quote':
-      return <KineticQuote props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+      return <KineticQuote props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} theme={theme} />;
     case 'glassmorphic_chart':
     case 'chart':
-      return <GlassmorphicChart props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+      return <GlassmorphicChart props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} theme={theme} />;
     case 'tweet_card':
-      return <TweetCard props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+      return <TweetCard props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} theme={theme} />;
     case 'list':
-      return <ListOverlay props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+      return <ListOverlay props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} theme={theme} />;
     case '3d_icon':
-      return <Icon3D props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+      return <Icon3D props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} theme={theme} />;
     case 'stat_callout':
-      return <StatCallout props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+      return <StatCallout props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} theme={theme} />;
     case 'comparison_card':
-      return <ComparisonCard props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} />;
+      return <ComparisonCard props={element.props} visualSeed={element.visualSeed} globalJitter={globalJitter} theme={theme} />;
     default:
       return null;
   }
