@@ -151,6 +151,29 @@ export async function POST(req: NextRequest) {
 
       console.log(`[Tribute Webhook] Successfully activated tier "${tier}" and added ${credits} credits for User ${profile.id}`);
 
+      // Notify SuperAdmin about subscription change
+      try {
+        const { notifySubscriptionChanged } = await import('@/lib/telegram');
+        notifySubscriptionChanged({
+          userId: profile.id,
+          userEmail: profile.email,
+          fullName: profile.full_name,
+          avatarUrl: profile.avatar_url,
+          telegramId: telegramId,
+          telegramUsername: username ? `@${username}` : undefined,
+          oldTier: profile.tier,
+          newTier: tier,
+          oldStatus: profile.subscription_status,
+          newStatus: 'active',
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          reason: `Tribute Sub (${subscriptionName || tier.toUpperCase()})`,
+          creditsAdded: credits,
+          newCreditsBalance: (profile.credits_balance || 0) + credits,
+        }).catch(err => console.error('[Tribute Webhook] notifySubscriptionChanged error:', err));
+      } catch (tgErr) {
+        console.error('[Tribute Webhook] Failed to import notifySubscriptionChanged:', tgErr);
+      }
+
       // Handle 30% Referral Commission Accrual
       if (profile.referred_by_id) {
         try {

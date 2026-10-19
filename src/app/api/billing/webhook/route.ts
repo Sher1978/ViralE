@@ -106,6 +106,26 @@ export async function POST(req: Request) {
 
       console.log(`[LemonSqueezy Webhook] Successfully credited User ${userId} with +${creditsToAdd} credits. Balance: ${newBalance}. Tier: ${updatedTier}`);
 
+      // Notify SuperAdmin about subscription change
+      try {
+        const { notifySubscriptionChanged } = await import('@/lib/telegram');
+        notifySubscriptionChanged({
+          userId,
+          userEmail: profile.email,
+          fullName: profile.full_name,
+          oldTier: profile.tier,
+          newTier: updatedTier,
+          oldStatus: profile.subscription_status,
+          newStatus: 'active',
+          expiresAt: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+          reason: `LemonSqueezy / Stripe (${variantName || eventName || updatedTier.toUpperCase()})`,
+          creditsAdded: creditsToAdd,
+          newCreditsBalance: newBalance,
+        }).catch(err => console.error('[LemonSqueezy Webhook] notifySubscriptionChanged error:', err));
+      } catch (tgErr) {
+        console.error('[LemonSqueezy Webhook] Failed to import notifySubscriptionChanged:', tgErr);
+      }
+
       // 5. Handle 30% Referral Commission Accrual
       if (profile.referred_by_id) {
         try {

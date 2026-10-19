@@ -472,6 +472,156 @@ export async function notifyNewUserRegistration(profile: NewUserRegistrationData
   return false;
 }
 
+export interface SubscriptionChangeData {
+  userId: string;
+  userEmail?: string | null;
+  fullName?: string | null;
+  avatarUrl?: string | null;
+  telegramId?: string | number | null;
+  telegramUsername?: string | null;
+  oldTier?: string | null;
+  newTier: string;
+  oldStatus?: string | null;
+  newStatus?: string | null;
+  expiresAt?: string | null;
+  reason?: string | null;
+  creditsAdded?: number | null;
+  newCreditsBalance?: number | null;
+}
+
+export async function notifySubscriptionChanged(details: SubscriptionChangeData): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+  if (!token || !adminChatId || !details?.userId) return false;
+
+  let dbProfile: any = null;
+  try {
+    const { supabaseAdmin } = await import('@/lib/supabase');
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, full_name, avatar_url, telegram_id, tier, subscription_status, subscription_expires_at, credits_balance')
+      .eq('id', details.userId)
+      .maybeSingle();
+    dbProfile = data;
+  } catch (err) {
+    console.warn('[Telegram Sub Change] Could not fetch DB profile:', err);
+  }
+
+  const fullName = details.fullName || dbProfile?.full_name || 'Не указано';
+  const email = details.userEmail || dbProfile?.email || 'Не указан';
+  const avatarUrl = details.avatarUrl || dbProfile?.avatar_url || null;
+  const telegramId = details.telegramId || dbProfile?.telegram_id || null;
+  const telegramUsername = details.telegramUsername || null;
+
+  const oldTier = (details.oldTier || dbProfile?.tier || 'free').toUpperCase();
+  const newTier = (details.newTier || 'free').toUpperCase();
+  const oldStatus = (details.oldStatus || dbProfile?.subscription_status || 'active').toUpperCase();
+  const newStatus = (details.newStatus || 'active').toUpperCase();
+  const expiresAt = details.expiresAt || dbProfile?.subscription_expires_at;
+
+  const currentBal = details.newCreditsBalance ?? dbProfile?.credits_balance;
+  const addedCreds = details.creditsAdded ? `(+${details.creditsAdded.toLocaleString()} CR)` : '';
+  const creditsStr = currentBal !== undefined ? `${currentBal.toLocaleString()} CR ${addedCreds}`.trim() : (addedCreds || null);
+
+  const reason = details.reason || 'Обновление в системе';
+
+  let telegramLine = '';
+  if (telegramUsername) {
+    telegramLine = `@${telegramUsername.replace('@', '')}${telegramId ? ` (ID: <code>${telegramId}</code>)` : ''}`;
+  } else if (telegramId) {
+    telegramLine = `ID: <code>${telegramId}</code>`;
+  }
+
+  let formattedExpires = 'Бессрочно';
+  if (expiresAt) {
+    if (expiresAt.startsWith('2099') || expiresAt.startsWith('2098')) {
+      formattedExpires = 'Бессрочно (Навсегда)';
+    } else {
+      formattedExpires = formatMskDate(expiresAt);
+    }
+  }
+
+  const cardLines = [
+    `💎 <b>ИЗМЕНЕНИЕ ПОДПИСКИ ПОЛЬЗОВАТЕЛЯ</b> 💎`,
+    `━━━━━━━━━━━━━━━━━━━━━━`,
+    `👤 <b>Пользователь:</b> <b>${escapeHtml(fullName)}</b>`,
+    `📧 <b>Email:</b> <code>${escapeHtml(email)}</code>`,
+    `🆔 <b>User ID:</b> <code>${escapeHtml(details.userId)}</code>`,
+    ...(telegramLine ? [`✈️ <b>Telegram:</b> ${telegramLine}`] : []),
+    `🔄 <b>Тариф:</b> <code>${escapeHtml(oldTier)}</code> ➔ <b>${escapeHtml(newTier)}</b>`,
+    `📊 <b>Статус:</b> <code>${escapeHtml(oldStatus)}</code> ➔ <b>${escapeHtml(newStatus)}</b>`,
+    `⏰ <b>Срок действия:</b> <code>${escapeHtml(formattedExpires)}</code>`,
+    ...(creditsStr ? [`⚡ <b>Баланс кредитов:</b> <code>${escapeHtml(creditsStr)}</code>`] : []),
+    `📌 <b>Основание:</b> <b>${escapeHtml(reason)}</b>`,
+    `⏰ <b>Время события:</b> <code>${formatMskDate(new Date().toISOString())}</code>`,
+    `━━━━━━━━━━━━━━━━━━━━━━`,
+  ];
+
+  const cardText = cardLines.join('\n');
+
+  const inlineKeyboard: any[][] = [];
+  const actionRow: any[] = [];
+  if (telegramUsername) {
+    actionRow.push({ text: '💬 Открыть в TG', url: `https://t.me/${telegramUsername.replace('@', '')}` });
+  } else if (telegramId) {
+    actionRow.push({ text: '💬 Открыть в TG', url: `tg://user?id=${telegramId}` });
+  }
+  actionRow.push({ text: '👑 Админ-панель', url: 'https://www.virale.uno/ru/app/admin' });
+  inlineKeyboard.push(actionRow);
+
+  const replyMarkup = { inline_keyboard: inlineKeyboard };
+
+  let sendSuccess = false;
+
+  // Attempt photo card if avatar is present
+  if (avatarUrl && avatarUrl.startsWith('http') && cardText.length <= 1024) {
+    try {
+      const photoRes = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: adminChatId,
+          photo: avatarUrl,
+          caption: cardText,
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup,
+        }),
+      });
+      const photoData = await photoRes.json();
+      if (photoData.ok) {
+        sendSuccess = true;
+      } else {
+        console.warn('[Telegram Sub Change] sendPhoto rejected, falling back to sendMessage:', photoData.description);
+      }
+    } catch (photoErr) {
+      console.warn('[Telegram Sub Change] sendPhoto exception:', photoErr);
+    }
+  }
+
+  if (!sendSuccess) {
+    try {
+      const msgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: adminChatId,
+          text: cardText,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          reply_markup: replyMarkup,
+        }),
+      });
+      const msgData = await msgRes.json();
+      sendSuccess = Boolean(msgData.ok);
+    } catch (msgErr) {
+      console.error('[Telegram Sub Change] Failed to send subscription message:', msgErr);
+      return false;
+    }
+  }
+
+  return sendSuccess;
+}
+
 export async function notifyDnaCompleted(details: {
   userId: string;
   userEmail?: string;

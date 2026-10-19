@@ -77,6 +77,23 @@ export async function POST(req: NextRequest) {
               .eq('id', profile.id);
               
             console.log(`[Telegram Bot Webhook] Subscription suspended for User ${profile.id} (left channel ${userTier})`);
+
+            try {
+              const { notifySubscriptionChanged } = await import('@/lib/telegram');
+              notifySubscriptionChanged({
+                userId: profile.id,
+                userEmail: profile.email,
+                fullName: profile.full_name,
+                avatarUrl: profile.avatar_url,
+                telegramId: user.id,
+                telegramUsername: user.username ? `@${user.username}` : undefined,
+                oldTier: profile.tier,
+                newTier: profile.tier,
+                oldStatus: 'active',
+                newStatus: 'expired',
+                reason: `Пользователь покинул VIP-канал (${userTier.toUpperCase()})`
+              }).catch(() => {});
+            } catch (e) {}
             
             // Send warning direct message from bot to user
             const locale = profile.preferred_language === 'ru' ? 'ru' : 'en';
@@ -139,6 +156,23 @@ export async function POST(req: NextRequest) {
                 .eq('id', profile.id);
                 
               console.log(`[Telegram Bot Webhook] Subscription auto-activated/updated for User ${profile.id} (joined channel ${targetTier})`);
+
+              try {
+                const { notifySubscriptionChanged } = await import('@/lib/telegram');
+                notifySubscriptionChanged({
+                  userId: profile.id,
+                  userEmail: profile.email,
+                  fullName: profile.full_name,
+                  avatarUrl: profile.avatar_url,
+                  telegramId: user.id,
+                  telegramUsername: user.username ? `@${user.username}` : undefined,
+                  oldTier: profile.tier,
+                  newTier: targetTier,
+                  oldStatus: profile.subscription_status,
+                  newStatus: 'active',
+                  reason: `Вступление в VIP-канал (${targetTier.toUpperCase()})`
+                }).catch(() => {});
+              } catch (e) {}
               
               const locale = profile.preferred_language === 'ru' ? 'ru' : 'en';
               const welcomeText = locale === 'ru'

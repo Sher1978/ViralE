@@ -484,17 +484,46 @@ export async function adminUpdateUserTier(userId: string, tier: string, subscrip
     throw new Error('INVALID_TIER');
   }
 
+  // Fetch current tier and status for audit & notification
+  const { data: currentProfile } = await supabaseAdmin
+    .from('profiles')
+    .select('tier, subscription_status, full_name, email, avatar_url, telegram_id')
+    .eq('id', userId)
+    .maybeSingle();
+
+  const expiresAt = tier === 'free' ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString();
+
   const { error } = await supabaseAdmin
     .from('profiles')
     .update({
       tier,
       subscription_status,
-      subscription_expires_at: tier === 'free' ? null : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString(),
+      subscription_expires_at: expiresAt,
       updated_at: new Date().toISOString(),
     })
     .eq('id', userId);
 
   if (error) throw error;
+
+  try {
+    const { notifySubscriptionChanged } = await import('@/lib/telegram');
+    notifySubscriptionChanged({
+      userId,
+      userEmail: currentProfile?.email,
+      fullName: currentProfile?.full_name,
+      avatarUrl: currentProfile?.avatar_url,
+      telegramId: currentProfile?.telegram_id,
+      oldTier: currentProfile?.tier,
+      newTier: tier,
+      oldStatus: currentProfile?.subscription_status,
+      newStatus: subscription_status,
+      expiresAt,
+      reason: 'Панель Администратора (Ручное изменение)',
+    }).catch(err => console.error('[AdminUpdateTier] Notification error:', err));
+  } catch (tgErr) {
+    console.error('[AdminUpdateTier] Failed to import notifySubscriptionChanged:', tgErr);
+  }
+
   return true;
 }
 

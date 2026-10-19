@@ -93,8 +93,15 @@ export async function POST(req: NextRequest) {
 
     // 4. Grant tier benefits if applicable (e.g. scale, pro, creator)
     let tierUpdated = false;
+    const { data: currentProfile } = await supabaseAdmin
+      .from('profiles')
+      .select('tier, subscription_status, credits_balance, full_name, email, avatar_url, telegram_id')
+      .eq('id', user.id)
+      .maybeSingle();
+
+    const nonExpiringDate = new Date('2099-12-31T23:59:59.999Z').toISOString();
+
     if (promo.tier && promo.tier !== 'free') {
-      const nonExpiringDate = new Date('2099-12-31T23:59:59.999Z').toISOString();
       const { error: tierError } = await supabaseAdmin
         .from('profiles')
         .update({
@@ -122,6 +129,30 @@ export async function POST(req: NextRequest) {
         user_email: user.email,
         redeemed_at: new Date().toISOString()
       });
+    }
+
+    // 6. Notify SuperAdmin if tier was changed
+    if (tierUpdated) {
+      try {
+        const { notifySubscriptionChanged } = await import('@/lib/telegram');
+        notifySubscriptionChanged({
+          userId: user.id,
+          userEmail: user.email || currentProfile?.email,
+          fullName: currentProfile?.full_name || user.user_metadata?.full_name,
+          avatarUrl: currentProfile?.avatar_url || user.user_metadata?.avatar_url,
+          telegramId: currentProfile?.telegram_id,
+          oldTier: currentProfile?.tier,
+          newTier: promo.tier,
+          oldStatus: currentProfile?.subscription_status,
+          newStatus: 'active',
+          expiresAt: nonExpiringDate,
+          reason: `Активация промокода: ${promo.code}`,
+          creditsAdded: creditsGranted,
+          newCreditsBalance: (currentProfile?.credits_balance || 0) + creditsGranted
+        }).catch(err => console.error('[Promo API] Notification error:', err));
+      } catch (tgErr) {
+        console.error('[Promo API] Failed to import notifySubscriptionChanged:', tgErr);
+      }
     } else if (!tierUpdated) {
       // If no credits and tier was free, still log redemption in credits_transactions
       await supabaseAdmin.from('credits_transactions').insert({
