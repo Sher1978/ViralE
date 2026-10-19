@@ -259,17 +259,20 @@ function formatMskDate(dateStr?: string | null): string {
   }
 }
 
+const inFlightRegistrations = new Set<string>();
+
 export async function notifyNewUserRegistration(profile: NewUserRegistrationData): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
   if (!token || !adminChatId || !profile?.id) return false;
 
-  // 1. Fast in-memory deduplication
-  if (notifiedUsers.has(profile.id)) {
+  // 1. Fast in-memory deduplication & in-flight lock
+  if (notifiedUsers.has(profile.id) || inFlightRegistrations.has(profile.id)) {
     return false;
   }
+  inFlightRegistrations.add(profile.id);
 
-  // 2. Database-backed deduplication and data enrichment
+  // 2. Database-backed ATOMIC deduplication and data enrichment
   let dbProfile: any = null;
   let inviterName: string | null = null;
 
@@ -286,6 +289,7 @@ export async function notifyNewUserRegistration(profile: NewUserRegistrationData
     // Check if already notified in database
     if (dbProfile?.raw_onboarding_data?.registration_notified) {
       notifiedUsers.add(profile.id);
+      inFlightRegistrations.delete(profile.id);
       return false;
     }
 
@@ -294,8 +298,8 @@ export async function notifyNewUserRegistration(profile: NewUserRegistrationData
     if (createdAtStr) {
       const ageMs = Date.now() - new Date(createdAtStr).getTime();
       if (ageMs > 2 * 60 * 60 * 1000) {
-        // Old user logging in, silently mark as notified to avoid future checks
         notifiedUsers.add(profile.id);
+        inFlightRegistrations.delete(profile.id);
         await supabaseAdmin
           .from('profiles')
           .update({
@@ -309,6 +313,28 @@ export async function notifyNewUserRegistration(profile: NewUserRegistrationData
           .eq('id', profile.id);
         return false;
       }
+    }
+
+    // ATOMIC CLAIM: Exactly ONE worker across all serverless instances can claim this notification
+    const { data: claimed } = await supabaseAdmin
+      .from('profiles')
+      .update({
+        raw_onboarding_data: {
+          ...(dbProfile?.raw_onboarding_data || {}),
+          ...(profile.raw_onboarding_data || {}),
+          registration_notified: true,
+          registration_notified_at: new Date().toISOString(),
+        },
+      })
+      .eq('id', profile.id)
+      .or('raw_onboarding_data->>registration_notified.is.null,raw_onboarding_data->>registration_notified.neq.true')
+      .select('id');
+
+    if (!claimed || claimed.length === 0) {
+      // Another concurrent worker claimed the lock a millisecond ago
+      notifiedUsers.add(profile.id);
+      inFlightRegistrations.delete(profile.id);
+      return false;
     }
 
     // Enrich referral information if invited
@@ -447,25 +473,10 @@ export async function notifyNewUserRegistration(profile: NewUserRegistrationData
     }
   }
 
-  // 8. On success, mark in memory and database so duplicate alerts are impossible
+  // 8. Clean in-flight lock and return result
+  inFlightRegistrations.delete(profile.id);
   if (sendSuccess) {
     notifiedUsers.add(profile.id);
-    try {
-      const { supabaseAdmin } = await import('@/lib/supabase');
-      await supabaseAdmin
-        .from('profiles')
-        .update({
-          raw_onboarding_data: {
-            ...(dbProfile?.raw_onboarding_data || {}),
-            ...(profile.raw_onboarding_data || {}),
-            registration_notified: true,
-            registration_notified_at: new Date().toISOString(),
-          },
-        })
-        .eq('id', profile.id);
-    } catch (saveErr) {
-      console.error('[Telegram User Card] Failed to persist registration_notified state:', saveErr);
-    }
     return true;
   }
 

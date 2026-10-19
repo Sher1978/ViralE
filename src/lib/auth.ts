@@ -1,8 +1,6 @@
 import { createClient } from '@supabase/supabase-js';
 import { cookies, headers } from 'next/headers';
 
-import { notifyNewUserRegistration } from '@/lib/telegram';
-
 /**
  * Server-side helper to get the authenticated context (user + authorized client).
  * This ensures that API routes can query data that respects RLS.
@@ -133,12 +131,6 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
         };
         const { error: insertErr } = await supabase.from('profiles').insert(profileData);
         if (insertErr) throw insertErr;
-        
-        notifyNewUserRegistration({
-          ...profileData,
-          auth_provider: user.app_metadata?.provider || 'Web OAuth',
-          created_at: user.created_at,
-        }).catch(() => {});
       } else {
         const updates: Record<string, any> = {};
         if (user.email && (!profile.email || profile.email.includes('anon_'))) {
@@ -153,16 +145,6 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
 
         if (Object.keys(updates).length > 0) {
           await supabase.from('profiles').update(updates).eq('id', user.id);
-        }
-
-        const isRecent = user.created_at && (Date.now() - new Date(user.created_at).getTime() < 30 * 60 * 1000);
-        if (isRecent && !profile.raw_onboarding_data?.registration_notified) {
-          notifyNewUserRegistration({
-            ...profile,
-            ...updates,
-            auth_provider: user.app_metadata?.provider || 'Web OAuth',
-            created_at: user.created_at || profile.created_at,
-          }).catch(() => {});
         }
       }
     } catch (err: any) {
