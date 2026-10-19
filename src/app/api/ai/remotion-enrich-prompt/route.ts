@@ -1,11 +1,12 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { buildDynamicThemeFromPrompt } from '@/lib/remotion/stylePresets';
 import { BRollElement, DynamicThemeConfig } from '@/lib/types/remotionArchitect';
+import { getRemotionPromptLibraryContext, getRemotionSurgicalSystemPrompt } from '@/lib/ai/remotion/remotionPromptLibrary';
 
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const { mode = 'enrich_brief', rawPrompt = '', transcriptData = [], brandDna, currentElement, command } = body;
+    const { mode = 'enrich_brief', rawPrompt = '', transcriptData = [], brandDna, currentElement, command, provider } = body;
 
     const fullScript = Array.isArray(transcriptData)
       ? transcriptData.map((t: any) => t.text || t.scriptText || '').filter(Boolean).join(' ')
@@ -13,7 +14,7 @@ export async function POST(req: NextRequest) {
 
     // 1. SURGICAL SCENE EDIT MODE (Direct targeted adjustment of a single scene)
     if (mode === 'surgical_scene_edit' && currentElement) {
-      const updated = await runSurgicalElementEdit(currentElement, command || rawPrompt, fullScript);
+      const updated = await runSurgicalElementEdit(currentElement, command || rawPrompt, fullScript, provider);
       return NextResponse.json({ success: true, updatedElement: updated });
     }
 
@@ -22,7 +23,7 @@ export async function POST(req: NextRequest) {
       const stylePrompt = body.stylePrompt || rawPrompt || body.userPrompt || '';
       const presetKey = body.presetKey;
       const currentTheme = body.currentTheme;
-      const remixedTheme = await runStyleRemixLlm(stylePrompt, presetKey, currentTheme, brandDna);
+      const remixedTheme = await runStyleRemixLlm(stylePrompt, presetKey, currentTheme, brandDna, provider);
       return NextResponse.json({
         success: true,
         dynamicTheme: remixedTheme
@@ -33,7 +34,7 @@ export async function POST(req: NextRequest) {
     const visualSeed = Math.floor(Math.random() * 100);
     const suggestedTheme = buildDynamicThemeFromPrompt(rawPrompt, brandDna?.stylePreset, visualSeed, brandDna);
 
-    const enrichedPrompt = await generateMotionBrief(rawPrompt, fullScript, suggestedTheme);
+    const enrichedPrompt = await generateMotionBrief(rawPrompt, fullScript, suggestedTheme, provider);
 
     return NextResponse.json({
       success: true,
@@ -50,10 +51,13 @@ export async function POST(req: NextRequest) {
   }
 }
 
-async function generateMotionBrief(userPrompt: string, scriptText: string, theme: any): Promise<string> {
+async function generateMotionBrief(userPrompt: string, scriptText: string, theme: any, provider?: string): Promise<string> {
+  const remotionSkills = getRemotionPromptLibraryContext();
   const systemPrompt = `
 Ты — Senior Motion Director в стиле Claude Motion и Remotion.
-Твоя задача — взять короткую мысль пользователя и текст сценария ролика, и развернуть её в структурированный РЕЖИССЕРСКИЙ MOTION BRIEF на русском языке.
+Твоя задача — взять короткую мысль пользователя и текст сценария ролика, и развернуть её в структурированный РЕЖИССЕРСКИЙ MOTION BRIEF на русском языке, строго следуя стандартам Remotion Agent Skills (Safe Zones, Z-axis камера, пружинные анимации).
+
+${remotionSkills}
 
 ### ФОРМАТ ВЫВОДА (3-4 абзаца, строго по структуре):
 1. ВИЗУАЛЬНЫЙ КОД И ТЕМА: Стиль, палитра (напр. ${theme.themeMode === 'light' ? 'светлый Apple-минимализм' : 'темный премиум'}), геометрия карточек (${theme.cardGeometry}), фоновый паттерн (${theme.backgroundPattern}).
@@ -77,9 +81,12 @@ async function generateMotionBrief(userPrompt: string, scriptText: string, theme
   return `ВИЗУАЛЬНЫЙ КОД: Современный экспертный стиль (${theme.palette.accentPrimary}), скругленные карточки с легким свечением.\nКАМЕРА: Динамичный панч-зум на стартовом хуке, плавный сдвиг спикера в кружок слева при показе инфографики.\nПОСЕКУНДНЫЙ ПЛАН: На 3-й секунде вывод анимированного графика роста, на 8-й секунде — плашка с главным тезисом и звуковым акцентом Whoosh.`;
 }
 
-async function runSurgicalElementEdit(elem: BRollElement, command: string, scriptText: string): Promise<BRollElement> {
+async function runSurgicalElementEdit(elem: BRollElement, command: string, scriptText: string, provider?: string): Promise<BRollElement> {
+  const surgicalRules = getRemotionSurgicalSystemPrompt();
   const systemPrompt = `
-Ты — Режиссер монтажа. Пользователь хочет точечно изменить ОДИН элемент моушн-графики:
+${surgicalRules}
+
+Пользователь хочет точечно изменить ОДИН элемент моушн-графики:
 Текущий элемент: ${JSON.stringify(elem)}
 Команда пользователя: "${command}"
 Контекст речи: "${scriptText.slice(0, 300)}"
@@ -105,7 +112,7 @@ async function runSurgicalElementEdit(elem: BRollElement, command: string, scrip
 }
   `.trim();
 
-  const rawJson = await callLlmWithFallback(systemPrompt, 'Выполни обновление элемента и верни валидный JSON.', true);
+  const rawJson = await callLlmWithFallback(systemPrompt, 'Выполни обновление элемента и верни валидный JSON.', true, provider);
   if (rawJson) {
     try {
       const parsed = JSON.parse(rawJson);
@@ -139,12 +146,44 @@ async function runSurgicalElementEdit(elem: BRollElement, command: string, scrip
   return elem;
 }
 
-async function callLlmWithFallback(systemPrompt: string, userPrompt: string, jsonMode: boolean = false): Promise<string | null> {
+async function callLlmWithFallback(systemPrompt: string, userPrompt: string, jsonMode: boolean = false, preferredProvider?: string): Promise<string | null> {
   const groqKey = process.env.GROQ_API_KEY;
   const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY;
   const anthropicKey = process.env.ANTHROPIC_API_KEY;
   const openaiKey = process.env.OPENAI_API_KEY;
 
+  // 1. Preferred Gemini (if requested)
+  if (preferredProvider === 'gemini' && geminiKey) {
+    try {
+      const { getModel } = await import('@/lib/ai/gemini');
+      const model = getModel('fast', 'ru', jsonMode ? 'json' : 'text', geminiKey);
+      const result = await model.generateContent(`${systemPrompt}\n\n${userPrompt}`);
+      const text = (await result.response).text();
+      if (text) return text;
+    } catch (e) {
+      console.warn('[remotion-enrich-prompt] Preferred Gemini error, continuing with fallback:', e);
+    }
+  }
+
+  // 2. Preferred Anthropic (if requested)
+  if (preferredProvider === 'anthropic' && anthropicKey) {
+    try {
+      const { getAnthropicClient } = await import('@/lib/ai/anthropic');
+      const client = getAnthropicClient(anthropicKey);
+      const msg = await client.messages.create({
+        model: 'claude-3-5-sonnet-20241022',
+        max_tokens: 1024,
+        system: systemPrompt,
+        messages: [{ role: 'user', content: userPrompt }]
+      });
+      const firstBlock: any = msg.content[0];
+      if (firstBlock && firstBlock.text) return firstBlock.text;
+    } catch (e) {
+      console.warn('[remotion-enrich-prompt] Preferred Anthropic error, continuing with fallback:', e);
+    }
+  }
+
+  // Ultra-fast Groq Llama 3.3 70B
   if (groqKey) {
     try {
       const res = await fetch('https://api.groq.com/openai/v1/chat/completions', {
@@ -173,6 +212,20 @@ async function callLlmWithFallback(systemPrompt: string, userPrompt: string, jso
     }
   }
 
+  // Highly-accurate Google Gemini (Gemini 2.5/1.5/3.8 with JSON mode support)
+  if (geminiKey) {
+    try {
+      const { getModel } = await import('@/lib/ai/gemini');
+      const model = getModel('fast', 'ru', jsonMode ? 'json' : 'text', geminiKey);
+      const result = await model.generateContent(`${systemPrompt}\n\n${userPrompt}`);
+      const text = (await result.response).text();
+      if (text) return text;
+    } catch (e) {
+      console.warn('[remotion-enrich-prompt] Gemini fallback error:', e);
+    }
+  }
+
+  // Anthropic Claude 3.5 Sonnet
   if (anthropicKey) {
     try {
       const { getAnthropicClient } = await import('@/lib/ai/anthropic');
@@ -190,18 +243,7 @@ async function callLlmWithFallback(systemPrompt: string, userPrompt: string, jso
     }
   }
 
-  if (geminiKey) {
-    try {
-      const { getModel } = await import('@/lib/ai/gemini');
-      const model = getModel('fast', 'ru', jsonMode ? 'json' : 'text', geminiKey);
-      const result = await model.generateContent(`${systemPrompt}\n\n${userPrompt}`);
-      const text = (await result.response).text();
-      if (text) return text;
-    } catch (e) {
-      console.warn('[remotion-enrich-prompt] Gemini fallback error:', e);
-    }
-  }
-
+  // OpenAI gpt-4o-mini
   if (openaiKey) {
     try {
       const res = await fetch('https://api.openai.com/v1/chat/completions', {
@@ -235,7 +277,8 @@ async function runStyleRemixLlm(
   prompt: string,
   presetKey?: string,
   currentTheme?: any,
-  brandDna?: any
+  brandDna?: any,
+  provider?: string
 ): Promise<DynamicThemeConfig> {
   const seed = Math.floor(Math.random() * 100);
   const proceduralFallback = buildDynamicThemeFromPrompt(prompt, presetKey, seed, brandDna);
@@ -293,7 +336,7 @@ async function runStyleRemixLlm(
 Текущая тема: ${currentTheme ? JSON.stringify(currentTheme) : 'нет'}
 `.trim();
 
-  const responseJson = await callLlmWithFallback(systemPrompt, userContent, true);
+  const responseJson = await callLlmWithFallback(systemPrompt, userContent, true, provider);
   if (responseJson) {
     try {
       const parsed = JSON.parse(responseJson);
