@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 60;
 import { getAuthContext } from '@/lib/auth';
 
 const HEYGEN_API_URL = 'https://api.heygen.com';

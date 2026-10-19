@@ -1,5 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
 import { getAuthContext } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
 import { deductCredits, addCredits } from '@/lib/credits';

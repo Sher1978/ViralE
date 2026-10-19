@@ -423,78 +423,127 @@ export default function HeyGenAvatarFlow({
     setStep(4);
 
     try {
-      let finalSourceVideoUrl = undefined;
-      let finalAudioAssetId = undefined;
+      let finalSourceVideoUrl: string | undefined = undefined;
 
-      if (audioMode === 'video' && selectedLibraryVideo?.blob) {
-        const file = selectedLibraryVideo.blob;
-        const filename = (file as File).name || `audio_${Date.now()}.mp3`;
-        const content_type = file.type || 'audio/mpeg';
-        const size_bytes = file.size;
+      // ─── Video/Audio source mode: upload to Supabase storage to bypass S3 CORS issues ───
+      if (audioMode === 'video' && selectedLibraryVideo) {
+        if (selectedLibraryVideo.blob) {
+          const file = selectedLibraryVideo.blob;
+          const { supabase } = await import('@/lib/supabase');
+          const { data: { user } } = await supabase.auth.getUser();
+          const ext = (file as any).name?.split('.').pop() || (file.type?.includes('video') ? 'mp4' : 'mp3');
+          const path = `heygen-audio/${user?.id || 'anon'}/${Date.now()}_${Math.random().toString(36).substring(7)}.${ext}`;
 
-        // 1. Get Presigned URL
-        const initRes = await fetch('/api/ai/heygen/direct-upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'init', filename, content_type, size_bytes })
-        });
-        const initData = await initRes.json();
-        if (!initRes.ok) throw new Error(initData.error || 'Ошибка инициализации прямой загрузки HeyGen');
+          const { error: upErr } = await supabase.storage.from('media').upload(path, file, {
+            contentType: file.type || (ext === 'mp4' ? 'video/mp4' : 'audio/mpeg'),
+            upsert: true
+          });
+          if (upErr) throw new Error(`Ошибка загрузки аудиофайла в хранилище: ${upErr.message}`);
 
-        const { upload_url, upload_headers, asset_id } = initData.data || initData;
-
-        // 2. PUT file directly to S3
-        const putRes = await fetch(upload_url, {
-          method: 'PUT',
-          headers: upload_headers || { 'Content-Type': content_type },
-          body: file
-        });
-        if (!putRes.ok) throw new Error(`Ошибка загрузки файла в HeyGen S3 (${putRes.status})`);
-
-        // 3. Finalize upload
-        const completeRes = await fetch('/api/ai/heygen/direct-upload', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ action: 'complete', asset_id })
-        });
-        if (!completeRes.ok) throw new Error('Ошибка финализации прямой загрузки HeyGen');
-
-        finalAudioAssetId = asset_id;
+          const { data: { publicUrl } } = supabase.storage.from('media').getPublicUrl(path);
+          finalSourceVideoUrl = publicUrl;
+        } else if (selectedLibraryVideo.url && selectedLibraryVideo.url.startsWith('http')) {
+          finalSourceVideoUrl = selectedLibraryVideo.url;
+        }
       }
 
-      const res = await fetch('/api/ai/heygen/video-generate', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          avatarId: selectedAvatar.id,
-          avatarType: selectedAvatar.type,
-          scriptText: audioMode === 'text' ? editedScript.trim() : undefined,
-          voiceId: audioMode === 'text' ? selectedVoice : undefined,
-          sourceVideoUrl: finalSourceVideoUrl,
-          audioAssetId: finalAudioAssetId,
-          language: selectedLang,
-          projectId,
-          photoUrl: selectedAvatar.id.startsWith('local_') ? selectedAvatar.url : undefined,
-        }),
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Ошибка запуска генерации');
+      // ─── Resilient server request with timeout and 1 auto-retry ───
+      const executeGenerateRequest = async () => {
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 90000); // 90s serverless grace
+
+        try {
+          const res = await fetch('/api/ai/heygen/video-generate', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            signal: controller.signal,
+            body: JSON.stringify({
+              avatarId: selectedAvatar.id,
+              avatarType: selectedAvatar.type,
+              scriptText: audioMode === 'text' ? editedScript.trim() : undefined,
+              voiceId: audioMode === 'text' ? selectedVoice : undefined,
+              sourceVideoUrl: finalSourceVideoUrl,
+              language: selectedLang,
+              projectId,
+              photoUrl: selectedAvatar.id.startsWith('local_') ? selectedAvatar.url : undefined,
+            }),
+          });
+
+          clearTimeout(timeoutId);
+
+          let data: any = {};
+          const cType = res.headers.get('content-type') || '';
+          if (cType.includes('application/json')) {
+            data = await res.json();
+          } else {
+            const raw = await res.text().catch(() => '');
+            if (!res.ok) {
+              throw new Error(`Ошибка сервера (${res.status}): ${raw.substring(0, 150) || 'Некорректный ответ'}`);
+            }
+          }
+
+          if (!res.ok) {
+            throw new Error(data.error || `Ошибка запуска генерации (${res.status})`);
+          }
+
+          return data;
+        } catch (fetchErr: any) {
+          clearTimeout(timeoutId);
+          throw fetchErr;
+        }
+      };
+
+      let data: any = null;
+      try {
+        data = await executeGenerateRequest();
+      } catch (firstErr: any) {
+        const errMsg = String(firstErr?.message || '');
+        const isNetErr = 
+          errMsg.includes('Failed to fetch') ||
+          errMsg.includes('NetworkError') ||
+          errMsg.includes('Load failed') ||
+          firstErr?.name === 'AbortError';
+
+        if (isNetErr) {
+          console.warn('[HeyGenFlow] Transient network issue on first call, retrying in 1.5s...', firstErr);
+          await new Promise(r => setTimeout(r, 1500));
+          data = await executeGenerateRequest();
+        } else {
+          throw firstErr;
+        }
+      }
+
       setVideoId(data.videoId);
       startPolling(data.videoId);
     } catch (e: any) {
-      setGenError(e.message);
+      const rawMsg = e?.message || String(e || '');
+      let friendlyMsg = rawMsg;
+
+      if (
+        rawMsg.includes('Failed to fetch') ||
+        rawMsg.includes('NetworkError') ||
+        rawMsg.includes('Load failed') ||
+        rawMsg.includes('net::ERR')
+      ) {
+        friendlyMsg = 'Сетевой сбой при обращении к серверу. Проверьте интернет-соединение или VPN и нажмите «Повторить».';
+      } else if (rawMsg.includes('aborted') || e?.name === 'AbortError') {
+        friendlyMsg = 'Время ожидания ответа сервера генерации истекло. Пожалуйста, нажмите «Повторить».';
+      }
+
+      setGenError(friendlyMsg);
       setIsGenerating(false);
-      
+
       fetch('/api/report-error', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           source: 'HeyGenAvatarFlow Client Generate',
-          error: e.message || String(e),
+          error: friendlyMsg,
+          rawError: rawMsg,
           extra: {
-             audioMode,
-             avatarType: selectedAvatar?.type,
-             fileSize: selectedLibraryVideo?.blob?.size
+            audioMode,
+            avatarType: selectedAvatar?.type,
+            fileSize: selectedLibraryVideo?.blob?.size
           }
         })
       }).catch(() => {});

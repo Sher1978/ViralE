@@ -44,7 +44,8 @@ export async function POST(req: NextRequest) {
         stackStr.includes('chrome-extension://') ||
         stackStr.includes('moz-extension://');
       
-      if (!isNetworkErr && !isAuthErr && !isExtensionNoise) {
+      const isCriticalSource = source?.includes('Generate') || source?.includes('HeyGen') || source?.includes('Render') || source?.includes('Studio');
+      if ((isCriticalSource || !isNetworkErr) && !isAuthErr && !isExtensionNoise) {
         await notifyAdminError({
           source: source || 'Client Session Error',
           error,

@@ -1,4 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
+export const dynamic = 'force-dynamic';
+export const maxDuration = 120;
 import { getAuthContext } from '@/lib/auth';
 
 const HEYGEN_API_URL = 'https://api.heygen.com';
@@ -19,9 +21,9 @@ export async function POST(req: NextRequest) {
       .eq('id', user.id)
       .single();
 
-    const apiKey = profile?.heygen_api_key?.trim();
+    const apiKey = profile?.heygen_api_key?.trim() || process.env.HEYGEN_API_KEY;
     if (!apiKey) {
-      return NextResponse.json({ error: 'BYOK API Key not found' }, { status: 400 });
+      return NextResponse.json({ error: 'HeyGen API Key not found' }, { status: 400 });
     }
 
     if (action === 'init') {
