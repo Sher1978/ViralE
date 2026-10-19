@@ -1,5 +1,4 @@
 import { supabase } from '../supabase';
-import { notifyNewUserRegistration } from '../telegram';
 
 export interface Profile {
   id: string;
@@ -57,6 +56,23 @@ export const profileService = {
    * If not authenticated, attempts to sign in anonymously.
    */
   async ensureProfile(): Promise<Profile | null> {
+    // 1. Try server-side synchronization first (guarantees secure metadata sync and Telegram notifications)
+    try {
+      const res = await fetch('/api/profile/sync', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+      });
+      if (res.ok) {
+        const json = await res.json();
+        if (json?.profile) {
+          return json.profile;
+        }
+      }
+    } catch (syncErr) {
+      console.warn('[ProfileService] /api/profile/sync failed, falling back to direct client DB sync:', syncErr);
+    }
+
+    // 2. Direct client fallback if API is unreachable
     const { data: { user } } = await supabase.auth.getUser();
     if (!user) return null;
 
@@ -108,7 +124,7 @@ export const profileService = {
             email: user.email || `anon_${user.id}@viral.engine`,
             full_name: googleName || defaultName,
             avatar_url: googleAvatar || null,
-            credits_balance: 0, // Starting credits set to 0
+            credits_balance: 0,
             tier: 'free',
             subscription_status: 'active',
             preferred_language: 'ru',
@@ -123,9 +139,6 @@ export const profileService = {
       if (createError) {
         console.error('Error creating profile:', createError);
         return null;
-      }
-      if (newProfile) {
-        notifyNewUserRegistration(newProfile).catch(() => {});
       }
       return newProfile;
     }
@@ -154,12 +167,10 @@ export const profileService = {
       needsUpdate = true;
     }
 
-    // If profile has generic "Creator" or is missing a full name, update it
     if (!profile.full_name || profile.full_name === 'Creator') {
       updates.full_name = googleName || defaultName;
       needsUpdate = true;
     }
-    // If profile is missing avatar URL but Google/Telegram has one, sync it
     if (!profile.avatar_url && googleAvatar) {
       updates.avatar_url = googleAvatar;
       needsUpdate = true;
@@ -174,13 +185,8 @@ export const profileService = {
         .single();
       
       if (!updateError && updatedProfile) {
-        notifyNewUserRegistration(updatedProfile).catch(() => {});
         return updatedProfile;
       }
-    }
-
-    if (profile) {
-      notifyNewUserRegistration(profile).catch(() => {});
     }
 
     return profile;

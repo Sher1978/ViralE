@@ -223,65 +223,253 @@ export async function notifyAdminError(details: {
 
 const notifiedUsers = new Set<string>();
 
-export async function notifyNewUserRegistration(profile: {
+export interface NewUserRegistrationData {
   id: string;
-  email?: string;
+  email?: string | null;
   full_name?: string | null;
-  tier?: string;
+  tier?: string | null;
+  credits_balance?: number | null;
   avatar_url?: string | null;
-  created_at?: string;
+  telegram_id?: string | number | null;
+  telegram_username?: string | null;
+  auth_provider?: string | null;
+  preferred_language?: string | null;
+  referral_code?: string | null;
+  referred_by_id?: string | null;
+  created_at?: string | null;
   raw_onboarding_data?: any;
-}): Promise<boolean> {
+}
+
+function formatMskDate(dateStr?: string | null): string {
+  try {
+    const date = dateStr ? new Date(dateStr) : new Date();
+    return (
+      new Intl.DateTimeFormat('ru-RU', {
+        timeZone: 'Europe/Moscow',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+        hour: '2-digit',
+        minute: '2-digit',
+        second: '2-digit',
+      }).format(date) + ' (МСК)'
+    );
+  } catch {
+    return dateStr || new Date().toISOString();
+  }
+}
+
+export async function notifyNewUserRegistration(profile: NewUserRegistrationData): Promise<boolean> {
   const token = process.env.TELEGRAM_BOT_TOKEN;
   const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
-  if (!token || !adminChatId) return false;
+  if (!token || !adminChatId || !profile?.id) return false;
 
-  // Ensure notification is sent exactly ONCE per user session/lifetime
+  // 1. Fast in-memory deduplication
   if (notifiedUsers.has(profile.id)) {
     return false;
   }
-  notifiedUsers.add(profile.id);
 
-  const raw = profile.raw_onboarding_data || {};
+  // 2. Database-backed deduplication and data enrichment
+  let dbProfile: any = null;
+  let inviterName: string | null = null;
+
+  try {
+    const { supabaseAdmin } = await import('@/lib/supabase');
+    const { data } = await supabaseAdmin
+      .from('profiles')
+      .select('id, email, full_name, avatar_url, telegram_id, tier, credits_balance, preferred_language, referral_code, referred_by_id, created_at, raw_onboarding_data')
+      .eq('id', profile.id)
+      .maybeSingle();
+
+    dbProfile = data;
+
+    // Check if already notified in database
+    if (dbProfile?.raw_onboarding_data?.registration_notified) {
+      notifiedUsers.add(profile.id);
+      return false;
+    }
+
+    // Guard: Prevent spam from existing legacy users created >2 hours ago
+    const createdAtStr = profile.created_at || dbProfile?.created_at;
+    if (createdAtStr) {
+      const ageMs = Date.now() - new Date(createdAtStr).getTime();
+      if (ageMs > 2 * 60 * 60 * 1000) {
+        // Old user logging in, silently mark as notified to avoid future checks
+        notifiedUsers.add(profile.id);
+        await supabaseAdmin
+          .from('profiles')
+          .update({
+            raw_onboarding_data: {
+              ...(dbProfile?.raw_onboarding_data || {}),
+              ...(profile.raw_onboarding_data || {}),
+              registration_notified: true,
+              registration_notified_at: new Date().toISOString(),
+            },
+          })
+          .eq('id', profile.id);
+        return false;
+      }
+    }
+
+    // Enrich referral information if invited
+    const inviterId = profile.referred_by_id || dbProfile?.referred_by_id;
+    if (inviterId) {
+      const { data: inviter } = await supabaseAdmin
+        .from('profiles')
+        .select('full_name, email')
+        .eq('id', inviterId)
+        .maybeSingle();
+      if (inviter) {
+        inviterName = inviter.full_name || inviter.email || null;
+      }
+    }
+  } catch (dbErr) {
+    console.warn('[Telegram User Card] Failed to fetch DB profile context:', dbErr);
+  }
+
+  // 3. Assemble complete profile details
+  const raw = profile.raw_onboarding_data || dbProfile?.raw_onboarding_data || {};
   const traffic = raw.traffic_data || {};
-  const discovery = raw.discovery_source || raw.discoverySource || 'Не указан';
+  const discovery = raw.discovery_source || raw.discoverySource;
 
-  let srcFormatted = 'Direct / Bookmark';
+  const fullName = profile.full_name || dbProfile?.full_name || 'Не указано';
+  const email = profile.email || dbProfile?.email || 'Не указан';
+  const tier = (profile.tier || dbProfile?.tier || 'free').toUpperCase();
+  const credits = profile.credits_balance ?? dbProfile?.credits_balance ?? 0;
+  const avatarUrl = profile.avatar_url || dbProfile?.avatar_url || null;
+  const telegramId = profile.telegram_id || dbProfile?.telegram_id || null;
+  const telegramUsername = profile.telegram_username || null;
+  const authProvider = profile.auth_provider || (telegramId ? 'Telegram Login' : (email.includes('@') && !email.includes('@telegram.local') ? 'Google / Web OAuth' : 'Прямая регистрация'));
+  const createdAt = profile.created_at || dbProfile?.created_at || new Date().toISOString();
+
+  const langCode = profile.preferred_language || dbProfile?.preferred_language || 'ru';
+  const langLabel = langCode === 'ru' ? '🇷🇺 Русский' : '🇬🇧 English';
+
+  let srcFormatted = 'Прямой заход (Direct)';
   if (traffic.is_ai_traffic) {
     srcFormatted = `🤖 ИИ-Переход: ${traffic.ai_provider || 'AI Assistant'}`;
   } else if (traffic.is_dark_traffic) {
-    srcFormatted = `🕵️ Dark Traffic (Глубокий URL)`;
-  } else if (traffic.referrer && traffic.referrer !== 'Direct / Bookmark') {
-    srcFormatted = `🌐 ${traffic.referrer.slice(0, 40)}`;
+    srcFormatted = `🕵️ Dark Traffic (Прямой глубокий URL)`;
   } else if (traffic.utm_source && traffic.utm_source !== 'none') {
-    srcFormatted = `🏷️ UTM Source: ${traffic.utm_source}`;
+    srcFormatted = `🏷️ UTM: ${traffic.utm_source}${traffic.utm_medium ? ` / ${traffic.utm_medium}` : ''}`;
+  } else if (traffic.referrer && traffic.referrer !== 'Direct / Bookmark') {
+    srcFormatted = `🌐 ${traffic.referrer.slice(0, 50)}`;
   }
 
-  const text = `🎉 <b>НОВАЯ РЕГИСТРАЦИЯ ПОЛЬЗОВАТЕЛЯ</b> 🎉\n\n` +
-    `<b>👤 Имя:</b> <code>${escapeHtml(profile.full_name || 'Не указано')}</code>\n` +
-    `<b>📧 Email:</b> <code>${escapeHtml(profile.email || 'Не указан')}</code>\n` +
-    `<b>🆔 User ID:</b> <code>${escapeHtml(profile.id)}</code>\n` +
-    `<b>🏷️ Тариф:</b> <code>${escapeHtml((profile.tier || 'free').toUpperCase())}</code>\n` +
-    `<b>🌐 Источник:</b> <code>${escapeHtml(srcFormatted)}</code>\n` +
-    `<b>🎯 Из ответа:</b> <code>${escapeHtml(discovery)}</code>\n` +
-    `<b>⏰ Время:</b> ${profile.created_at || new Date().toISOString()}`;
-
-  try {
-    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({
-        chat_id: adminChatId,
-        text,
-        parse_mode: 'HTML',
-        disable_web_page_preview: true,
-      }),
-    });
-    return res.ok;
-  } catch (err) {
-    console.error('[Telegram New User Alert] Failed to send notification:', err);
-    return false;
+  let telegramLine = '';
+  if (telegramUsername) {
+    telegramLine = `@${telegramUsername.replace('@', '')}${telegramId ? ` (ID: <code>${telegramId}</code>)` : ''}`;
+  } else if (telegramId) {
+    telegramLine = `ID: <code>${telegramId}</code>`;
   }
+
+  // 4. Construct Rich User Card Text
+  const cardLines = [
+    `🎉 <b>НОВАЯ РЕГИСТРАЦИЯ ПОЛЬЗОВАТЕЛЯ</b> 🎉`,
+    `━━━━━━━━━━━━━━━━━━━━━━`,
+    `👤 <b>Имя:</b> <b>${escapeHtml(fullName)}</b>`,
+    `📧 <b>Email:</b> <code>${escapeHtml(email)}</code>`,
+    `🆔 <b>User ID:</b> <code>${escapeHtml(profile.id)}</code>`,
+    `🔑 <b>Метод входа:</b> <b>${escapeHtml(authProvider)}</b>`,
+    ...(telegramLine ? [`✈️ <b>Telegram:</b> ${telegramLine}`] : []),
+    `🌐 <b>Язык интерфейса:</b> <code>${escapeHtml(langLabel)}</code>`,
+    `🏷️ <b>Тариф:</b> <code>${escapeHtml(tier)}</code> | <b>Баланс:</b> <code>${credits} CR</code>`,
+    ...(inviterName ? [`👥 <b>Пригласил:</b> <code>${escapeHtml(inviterName)}</code>`] : []),
+    `📍 <b>Источник:</b> <code>${escapeHtml(srcFormatted)}</code>`,
+    ...(discovery ? [`🎯 <b>Откуда узнал:</b> <code>${escapeHtml(discovery)}</code>`] : []),
+    `⏰ <b>Время регистрации:</b> <code>${formatMskDate(createdAt)}</code>`,
+    `━━━━━━━━━━━━━━━━━━━━━━`,
+  ];
+
+  const cardText = cardLines.join('\n');
+
+  // 5. Build Action Buttons
+  const inlineKeyboard: any[][] = [];
+  const actionRow: any[] = [];
+
+  if (telegramUsername) {
+    actionRow.push({ text: '💬 Открыть в TG', url: `https://t.me/${telegramUsername.replace('@', '')}` });
+  } else if (telegramId) {
+    actionRow.push({ text: '💬 Открыть в TG', url: `tg://user?id=${telegramId}` });
+  }
+
+  actionRow.push({ text: '👑 Админ-панель', url: 'https://www.virale.uno/ru/app/admin' });
+  inlineKeyboard.push(actionRow);
+
+  const replyMarkup = { inline_keyboard: inlineKeyboard };
+
+  let sendSuccess = false;
+
+  // 6. Attempt Photo Card if avatar_url is provided and caption <= 1024 chars
+  if (avatarUrl && avatarUrl.startsWith('http') && cardText.length <= 1024) {
+    try {
+      const photoRes = await fetch(`https://api.telegram.org/bot${token}/sendPhoto`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: adminChatId,
+          photo: avatarUrl,
+          caption: cardText,
+          parse_mode: 'HTML',
+          reply_markup: replyMarkup,
+        }),
+      });
+      const photoData = await photoRes.json();
+      if (photoData.ok) {
+        sendSuccess = true;
+      } else {
+        console.warn('[Telegram User Card] sendPhoto rejected, falling back to sendMessage:', photoData.description);
+      }
+    } catch (photoErr) {
+      console.warn('[Telegram User Card] sendPhoto exception, falling back to sendMessage:', photoErr);
+    }
+  }
+
+  // 7. Fallback to standard Text Message Card
+  if (!sendSuccess) {
+    try {
+      const msgRes = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          chat_id: adminChatId,
+          text: cardText,
+          parse_mode: 'HTML',
+          disable_web_page_preview: true,
+          reply_markup: replyMarkup,
+        }),
+      });
+      const msgData = await msgRes.json();
+      sendSuccess = Boolean(msgData.ok);
+    } catch (msgErr) {
+      console.error('[Telegram User Card] Failed to send registration message:', msgErr);
+      return false;
+    }
+  }
+
+  // 8. On success, mark in memory and database so duplicate alerts are impossible
+  if (sendSuccess) {
+    notifiedUsers.add(profile.id);
+    try {
+      const { supabaseAdmin } = await import('@/lib/supabase');
+      await supabaseAdmin
+        .from('profiles')
+        .update({
+          raw_onboarding_data: {
+            ...(dbProfile?.raw_onboarding_data || {}),
+            ...(profile.raw_onboarding_data || {}),
+            registration_notified: true,
+            registration_notified_at: new Date().toISOString(),
+          },
+        })
+        .eq('id', profile.id);
+    } catch (saveErr) {
+      console.error('[Telegram User Card] Failed to persist registration_notified state:', saveErr);
+    }
+    return true;
+  }
+
+  return false;
 }
 
 export async function notifyDnaCompleted(details: {

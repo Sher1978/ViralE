@@ -82,17 +82,19 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
   // Ensure profile exists in DB to prevent foreign key violations (projects_user_id_fkey)
   if (!skipProfileCheck) {
     try {
-      const { data: profile, error: profileError } = await supabase
+      const { data: profile } = await supabase
         .from('profiles')
-        .select('id')
+        .select('*')
         .eq('id', user.id)
-        .single();
+        .maybeSingle();
 
-      if (profileError && profileError.code === 'PGRST116') {
+      const stableNum = parseInt(user.id.slice(0, 4), 16) % 10000;
+      const defaultName = `Media Creator #${stableNum}`;
+      const googleName = user.user_metadata?.full_name || user.user_metadata?.name || defaultName;
+      const googleAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
+
+      if (!profile) {
         console.log('[Auth] Creating missing profile for user:', user.id);
-        const stableNum = parseInt(user.id.slice(0, 4), 16) % 10000;
-        const defaultName = `Media Creator #${stableNum}`;
-        
         const cleanId = user.id.replace(/-/g, '');
         const userRefCode = `ref_${cleanId.slice(0, 4).toLowerCase()}${cleanId.slice(-4).toLowerCase()}`;
         
@@ -104,7 +106,7 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
               .from('profiles')
               .select('id')
               .eq('referral_code', refCookie.trim().toLowerCase())
-              .single();
+              .maybeSingle();
             if (inviter && inviter.id !== user.id) {
               inviterId = inviter.id;
             }
@@ -116,20 +118,52 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
         const profileData = {
           id: user.id,
           email: user.email || `anon_${user.id}@viral.engine`,
-          full_name: user.user_metadata?.full_name || defaultName,
-          avatar_url: user.user_metadata?.avatar_url || null,
+          full_name: googleName,
+          avatar_url: googleAvatar,
           credits_balance: 0,
           digital_shadow_prompt: null,
           industry_context: null,
           onboarding_completed: false,
           tier: 'free',
           subscription_status: 'active',
-          preferred_language: 'ru'
+          preferred_language: 'ru',
+          referral_code: userRefCode,
+          referred_by_id: inviterId,
+          raw_onboarding_data: { registration_notified: false },
         };
         const { error: insertErr } = await supabase.from('profiles').insert(profileData);
         if (insertErr) throw insertErr;
         
-        notifyNewUserRegistration(profileData).catch(() => {});
+        notifyNewUserRegistration({
+          ...profileData,
+          auth_provider: user.app_metadata?.provider || 'Web OAuth',
+          created_at: user.created_at,
+        }).catch(() => {});
+      } else {
+        const updates: Record<string, any> = {};
+        if (user.email && (!profile.email || profile.email.includes('anon_'))) {
+          updates.email = user.email;
+        }
+        if (googleName && (!profile.full_name || profile.full_name === 'Creator')) {
+          updates.full_name = googleName;
+        }
+        if (googleAvatar && !profile.avatar_url) {
+          updates.avatar_url = googleAvatar;
+        }
+
+        if (Object.keys(updates).length > 0) {
+          await supabase.from('profiles').update(updates).eq('id', user.id);
+        }
+
+        const isRecent = user.created_at && (Date.now() - new Date(user.created_at).getTime() < 30 * 60 * 1000);
+        if (isRecent && !profile.raw_onboarding_data?.registration_notified) {
+          notifyNewUserRegistration({
+            ...profile,
+            ...updates,
+            auth_provider: user.app_metadata?.provider || 'Web OAuth',
+            created_at: user.created_at || profile.created_at,
+          }).catch(() => {});
+        }
       }
     } catch (err: any) {
       console.warn('[Auth] Failed to ensure profile:', err);

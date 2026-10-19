@@ -56,6 +56,7 @@ async function handleTelegramAuth(userData: any, hash: string) {
     targetUser = users?.find((u: any) => u.email === email) || null;
   }
 
+  let isNewUser = false;
   if (!targetUser) {
     const { data: { user: newUser }, error: createError } = await supabaseAdmin.auth.admin.createUser({
       email,
@@ -69,6 +70,7 @@ async function handleTelegramAuth(userData: any, hash: string) {
     });
     if (createError) throw createError;
     targetUser = newUser;
+    isNewUser = true;
   } else {
     // Ensure password matches current HMAC secret key for existing users
     await supabaseAdmin.auth.admin.updateUserById(targetUser.id, { password, email_confirm: true }).catch((err: any) => {
@@ -89,12 +91,13 @@ async function handleTelegramAuth(userData: any, hash: string) {
   // 5. Update Profile with telegram_id (preserve user custom updates)
   const { data: existingProfile } = await supabaseAdmin
     .from('profiles')
-    .select('full_name, avatar_url')
+    .select('full_name, avatar_url, raw_onboarding_data')
     .eq('id', targetUser!.id)
-    .single();
+    .maybeSingle();
 
   const fullName = existingProfile?.full_name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
   const avatarUrl = existingProfile?.avatar_url || userData.photo_url;
+  const isNewProfile = !existingProfile;
 
   if (existingProfile) {
     const { error: updateError } = await supabaseAdmin
@@ -122,6 +125,28 @@ async function handleTelegramAuth(userData: any, hash: string) {
         preferred_language: 'ru'
       });
     if (insertError) throw insertError;
+  }
+
+  // 6. Notify SuperAdmin on New Telegram Registration
+  if (isNewUser || isNewProfile) {
+    try {
+      const { notifyNewUserRegistration } = await import('@/lib/telegram');
+      notifyNewUserRegistration({
+        id: targetUser!.id,
+        email: email.includes('@telegram.local') ? undefined : email,
+        full_name: fullName,
+        avatar_url: avatarUrl,
+        telegram_id: String(telegramId),
+        telegram_username: userData.username ? `@${userData.username}` : undefined,
+        auth_provider: 'Telegram Login',
+        tier: 'free',
+        credits_balance: 0,
+        preferred_language: 'ru',
+        created_at: targetUser.created_at || new Date().toISOString()
+      }).catch(err => console.error('[Telegram Auth] Failed to notify registration:', err));
+    } catch (e) {
+      console.error('[Telegram Auth] Notification error:', e);
+    }
   }
 
   return { session: sessionData.session, user: targetUser };
