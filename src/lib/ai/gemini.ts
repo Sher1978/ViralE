@@ -9,7 +9,7 @@ export const ai = new GoogleGenAI({ apiKey });
 const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
 export function normalizeModelName(rawName?: string): string {
-  if (!rawName || typeof rawName !== 'string') return 'gemini-3.6-flash';
+  if (!rawName || typeof rawName !== 'string') return 'gemini-2.5-flash';
   let name = rawName.trim();
   if (name.startsWith('models/')) {
     name = name.replace(/^models\//i, '');
@@ -20,9 +20,9 @@ export function normalizeModelName(rawName?: string): string {
   return name;
 }
 
-// ✅ SEPTEMBER 2026 GEMINI MODEL LINEUP (Gemini 3.8)
-export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-3.8-flash");
-export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL_PRO || "gemini-3.8-pro");
+// ✅ OFFICIAL GOOGLE GEMINI GENERATIONS (Gemini 2.5 Flash / Pro & 2.0 Flash)
+export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.5-flash");
+export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL_PRO || "gemini-2.5-pro");
 
 /**
  * Standard unary text generation using modern @google/genai SDK
@@ -258,14 +258,16 @@ export function getModel(
   
   const rawCandidates = tier === 'pro' ? [
     baseModelName,
-    "gemini-3.8-pro",
-    "gemini-3.8-flash",
-    "gemini-3.7-flash"
+    "gemini-2.5-pro",
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-1.5-pro"
   ] : [
     baseModelName,
-    "gemini-3.8-flash",
-    "gemini-3.7-flash",
-    "gemini-3.5-flash"
+    "gemini-2.5-flash",
+    "gemini-2.0-flash",
+    "gemini-2.5-pro",
+    "gemini-1.5-flash"
   ];
   const fallbackModels = Array.from(new Set(rawCandidates.map(normalizeModelName)));
 
