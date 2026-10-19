@@ -688,7 +688,15 @@ export const VideoEditor = React.memo(({
         projectId={projectId}
         speakerVideoUrl={aRollUrl || ''}
         transcriptData={subtitleClips}
-        initialCutSheet={(manifest as any)?.remotionCutSheet || null}
+        initialCutSheet={(activeManifest as any)?.remotionCutSheet || (manifest as any)?.remotionCutSheet || null}
+        onSaveDraft={(draftCutSheet) => {
+          if (setManifest) {
+            setManifest((prev: any) => ({
+              ...prev,
+              remotionCutSheet: draftCutSheet
+            }));
+          }
+        }}
         onExportMotion={async (motionCutSheet) => {
           if (onMotionExport) {
             await onMotionExport(motionCutSheet);

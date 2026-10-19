@@ -4,7 +4,7 @@ import React, { useState, useRef, useEffect, useMemo } from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 
   X, Sparkles, Wand2, Play, Pause, RotateCcw, Shuffle, Download, 
-  Layers, Palette, Layout, Sliders, ChevronRight, Check, Eye, EyeOff,
+  Layers, Palette, Layout, Sliders, ChevronRight, ChevronLeft, Check, Eye, EyeOff,
   BarChart2, ListOrdered, MessageSquare, Quote, Activity, CheckCircle2,
   TrendingUp, SplitSquareVertical
 } from 'lucide-react';
@@ -26,6 +26,7 @@ interface MotionDirectorModalProps {
   speakerVideoUrl: string;
   transcriptData?: any[];
   initialCutSheet?: RemotionArchitectCutSheet | null;
+  onSaveDraft?: (cutSheet: RemotionArchitectCutSheet) => void;
   onExportMotion: (cutSheet: RemotionArchitectCutSheet) => Promise<void>;
   isExporting?: boolean;
 }
@@ -45,6 +46,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
   speakerVideoUrl,
   transcriptData = [],
   initialCutSheet = null,
+  onSaveDraft,
   onExportMotion,
   isExporting = false
 }) => {
@@ -57,7 +59,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
   );
   const [userPrompt, setUserPrompt] = useState<string>('Сделай стильный динамичный монтаж в стиле Apple Keynote с карточками тезисов и графиком роста');
   const [selectedPreset, setSelectedPreset] = useState<string>('apple_clean');
-  const [activeTab, setActiveTab] = useState<'brief' | 'beats'>('brief');
+  const [activeTab, setActiveTab] = useState<'brief' | 'beats' | 'preview'>('brief');
   
   // 2. AI Processing States
   const [isEnriching, setIsEnriching] = useState<boolean>(false);
@@ -67,6 +69,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
   // 3. Selection & Surgical Edit States
   const [selectedElementId, setSelectedElementId] = useState<string | null>(null);
   const [surgicalCommand, setSurgicalCommand] = useState<string>('');
+  const [inputScope, setInputScope] = useState<'scene' | 'all'>('scene');
   const [isSurgicalLoading, setIsSurgicalLoading] = useState<boolean>(false);
   const [bottomRefinementPrompt, setBottomRefinementPrompt] = useState<string>('');
   const [isRefining, setIsRefining] = useState<boolean>(false);
@@ -81,7 +84,23 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
     return initialCutSheet?.renderSettings?.dynamicTheme || buildDynamicThemeFromPrompt(userPrompt, selectedPreset);
   });
 
-  // Keep local cutSheet synced with initialCutSheet
+  // Helper to persist draft locally and notify parent
+  const persistDraft = (nextCutSheet: RemotionArchitectCutSheet) => {
+    setCutSheet(nextCutSheet);
+    if (typeof window !== 'undefined' && projectId) {
+      try {
+        const storageKey = `virale_motion_draft_${projectId}`;
+        const serialized = JSON.stringify(nextCutSheet);
+        localStorage.setItem(storageKey, serialized);
+        sessionStorage.setItem(storageKey, serialized);
+      } catch (e) {
+        console.warn('[MotionDirector] Failed to save draft:', e);
+      }
+    }
+    onSaveDraft?.(nextCutSheet);
+  };
+
+  // Keep local cutSheet synced with initialCutSheet OR restore saved session draft
   useEffect(() => {
     if (initialCutSheet && !cutSheet) {
       setCutSheet(initialCutSheet);
@@ -91,8 +110,32 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
       if (initialCutSheet.renderSettings?.dynamicTheme) {
         setDynamicTheme(initialCutSheet.renderSettings.dynamicTheme);
       }
+      return;
     }
-  }, [initialCutSheet]);
+
+    // Restore from session/local storage if available
+    if (!cutSheet && typeof window !== 'undefined' && projectId) {
+      try {
+        const storageKey = `virale_motion_draft_${projectId}`;
+        const raw = localStorage.getItem(storageKey) || sessionStorage.getItem(storageKey);
+        if (raw) {
+          const parsed = JSON.parse(raw);
+          if (parsed && Array.isArray(parsed.bRollElements) && parsed.bRollElements.length > 0) {
+            setCutSheet(parsed);
+            if (parsed.renderSettings?.includeSubtitles !== undefined) {
+              setIncludeSubtitles(parsed.renderSettings.includeSubtitles);
+            }
+            if (parsed.renderSettings?.dynamicTheme) {
+              setDynamicTheme(parsed.renderSettings.dynamicTheme);
+            }
+            setActiveTab('beats');
+          }
+        }
+      } catch (e) {
+        console.warn('[MotionDirector] Failed to restore draft:', e);
+      }
+    }
+  }, [initialCutSheet, projectId]);
 
   // Video duration calculation
   const totalFrames = useMemo(() => {
@@ -176,7 +219,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
             dynamicTheme
           }
         };
-        setCutSheet(enrichedCutSheet);
+        persistDraft(enrichedCutSheet);
         setActiveTab('beats'); // automatically switch to scene beats view
       }
     } catch (err: any) {
@@ -225,7 +268,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
       }
     };
 
-    setCutSheet(remixedCutSheet);
+    persistDraft(remixedCutSheet);
   };
 
   // 4. AI-Powered Style Remix (Transforms prompt/preset into JSON DynamicThemeConfig)
@@ -259,7 +302,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
               includeSubtitles
             }
           };
-          setCutSheet(nextCutSheet);
+          persistDraft(nextCutSheet);
         }
         setIsRemixMenuOpen(false);
         setRemixPrompt('');
@@ -270,7 +313,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
       const nextTheme = buildDynamicThemeFromPrompt(activePrompt, presetKey);
       setDynamicTheme(nextTheme);
       if (cutSheet) {
-        setCutSheet({
+        persistDraft({
           ...cutSheet,
           renderSettings: {
             ...cutSheet.renderSettings,
@@ -289,7 +332,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
   const handleToggleSubtitles = (checked: boolean) => {
     setIncludeSubtitles(checked);
     if (cutSheet) {
-      setCutSheet({
+      persistDraft({
         ...cutSheet,
         renderSettings: {
           ...cutSheet.renderSettings,
@@ -302,8 +345,21 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
   // 5. Seek Player to Scene Beat
   const handleSelectBeat = (elem: BRollElement) => {
     setSelectedElementId(elem.id);
-    if (playerRef.current && typeof elem.startFrame === 'number') {
-      playerRef.current.seekTo(elem.startFrame);
+    setInputScope('scene');
+    if (playerRef.current) {
+      const frame = typeof elem.startFrame === 'number' ? elem.startFrame : 0;
+      playerRef.current.seekTo(frame);
+    }
+  };
+
+  // Preview Beat in Player (opens Preview tab on mobile and plays immediately)
+  const handlePreviewBeat = (elem: BRollElement) => {
+    handleSelectBeat(elem);
+    setActiveTab('preview');
+    if (playerRef.current) {
+      const frame = typeof elem.startFrame === 'number' ? elem.startFrame : 0;
+      playerRef.current.seekTo(frame);
+      playerRef.current.play();
     }
   };
 
@@ -332,7 +388,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
         const nextElements = cutSheet.bRollElements.map(e => 
           e.id === selectedElementId ? { ...e, ...data.updatedElement } : e
         );
-        setCutSheet({ ...cutSheet, bRollElements: nextElements });
+        persistDraft({ ...cutSheet, bRollElements: nextElements });
         setSurgicalCommand('');
       }
     } catch (err: any) {
@@ -400,41 +456,51 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
 
   if (!isOpen) return null;
 
-  const selectedElem = (cutSheet?.bRollElements || []).find(e => e.id === selectedElementId);
+  const selectedElemIdx = (cutSheet?.bRollElements || []).findIndex(e => e.id === selectedElementId);
+  const selectedElem = selectedElemIdx >= 0 ? cutSheet!.bRollElements[selectedElemIdx] : null;
 
   return (
-    <div className="fixed inset-0 z-[400] bg-[#070A12]/95 backdrop-blur-2xl flex flex-col overflow-hidden text-white font-sans">
-      {/* 1. TOP HEADER (Claude Motion Artifacts Header) */}
-      <div className="h-14 border-b border-white/10 px-4 sm:px-6 flex items-center justify-between bg-black/40 flex-shrink-0 z-50">
-        {/* Left: Branding & Status */}
-        <div className="flex items-center gap-3">
-          <div className="w-8 h-8 rounded-xl bg-gradient-to-tr from-purple-600 via-indigo-600 to-violet-400 flex items-center justify-center shadow-lg shadow-purple-500/30">
-            <Sparkles size={16} className="text-white animate-pulse" />
-          </div>
-          <div>
-            <div className="flex items-center gap-2">
-              <span className="font-extrabold text-[14px] sm:text-[15px] tracking-tight bg-gradient-to-r from-white via-white/90 to-purple-200 bg-clip-text text-transparent">
-                Claude Motion Studio
-              </span>
-              <span className="hidden sm:inline-flex px-2 py-0.5 rounded-full text-[9px] font-black uppercase tracking-wider bg-purple-500/20 text-purple-300 border border-purple-500/30">
-                AI Directed • 60 FPS
-              </span>
+    <div className="fixed inset-0 z-[400] bg-[#070A12]/95 backdrop-blur-2xl flex flex-col overflow-hidden text-white font-sans no-scrollbar">
+      {/* 1. TOP HEADER with Safe-Area insets & Back Button */}
+      <div 
+        style={{ paddingTop: 'max(env(safe-area-inset-top, 0px), 1.25rem)' }}
+        className="min-h-[4.25rem] sm:min-h-[3.75rem] border-b border-white/10 px-3 sm:px-6 pb-2.5 flex items-center justify-between bg-black/60 backdrop-blur-md flex-shrink-0 z-50 gap-2"
+      >
+        {/* Left: Back button to Montage & Branding */}
+        <div className="flex items-center gap-2 sm:gap-3">
+          <button
+            type="button"
+            onClick={onClose}
+            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white text-[12px] font-bold border border-white/15 transition-all shadow-sm flex-shrink-0 cursor-pointer"
+            title="Вернуться в монтажку видео"
+          >
+            <ChevronLeft size={16} />
+            <span className="hidden xs:inline">В монтажку</span>
+            <span className="xs:hidden">Назад</span>
+          </button>
+
+          <div className="hidden sm:flex items-center gap-2 pl-2 border-l border-white/10">
+            <div className="w-7 h-7 rounded-lg bg-gradient-to-tr from-purple-600 via-indigo-600 to-violet-400 flex items-center justify-center shadow-md shadow-purple-500/30">
+              <Sparkles size={14} className="text-white animate-pulse" />
             </div>
+            <span className="font-extrabold text-[13px] tracking-tight bg-gradient-to-r from-white via-white/90 to-purple-200 bg-clip-text text-transparent">
+              Claude Motion Studio
+            </span>
           </div>
         </div>
 
         {/* Center/Right: Subtitles toggle + Remix button + Export */}
-        <div className="flex items-center gap-2 sm:gap-3">
-          {/* Subtitles Toggle Pill (Optional for Motion, off by default!) */}
+        <div className="flex items-center gap-1.5 sm:gap-2">
+          {/* Subtitles Toggle Pill */}
           <button
             type="button"
             onClick={() => handleToggleSubtitles(!includeSubtitles)}
-            className={`flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${
+            className={`hidden sm:flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold border transition-all ${
               includeSubtitles 
                 ? 'bg-purple-600/30 border-purple-500/60 text-purple-200' 
                 : 'bg-white/5 border-white/10 text-white/50 hover:text-white/80'
             }`}
-            title="Для Motion видео субтитры опциональны"
+            title="Субтитры опциональны для моушн-дизайна"
           >
             {includeSubtitles ? <Eye size={13} className="text-purple-400" /> : <EyeOff size={13} />}
             <span>Субтитры: {includeSubtitles ? 'ВКЛ' : 'ВЫКЛ'}</span>
@@ -445,11 +511,11 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
             type="button"
             onClick={() => setIsRemixMenuOpen(true)}
             disabled={!cutSheet}
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-full text-[11px] font-bold bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-200 active:scale-95 transition-all disabled:opacity-40"
-            title="Настроить стиль, палитру и шрифты по промпту"
+            className="flex items-center gap-1.5 px-2.5 sm:px-3 py-1.5 rounded-full text-[11px] font-bold bg-purple-500/10 border border-purple-500/30 hover:bg-purple-500/20 text-purple-200 active:scale-95 transition-all disabled:opacity-40"
+            title="Настроить стиль, палитру и шрифты"
           >
             <Sparkles size={13} className="text-purple-400" />
-            <span>AI Ремикс Стиля</span>
+            <span className="hidden xs:inline">AI Ремикс</span>
           </button>
 
           {/* Export MP4 button */}
@@ -457,17 +523,17 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
             type="button"
             onClick={handleExport}
             disabled={isExporting}
-            className="flex items-center gap-1.5 px-4 py-2 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-500 hover:brightness-110 active:scale-95 text-white text-[12px] sm:text-[13px] font-bold tracking-tight transition-all shadow-md shadow-purple-500/25 border border-white/20 disabled:opacity-50"
+            className="flex items-center gap-1.5 px-3.5 sm:px-4 py-2 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-500 hover:brightness-110 active:scale-95 text-white text-[12px] sm:text-[13px] font-bold tracking-tight transition-all shadow-md shadow-purple-500/25 border border-white/20 disabled:opacity-50 touch-manipulation cursor-pointer flex-shrink-0"
           >
             {isExporting ? (
               <>
                 <span className="w-3.5 h-3.5 border-2 border-white border-t-transparent rounded-full animate-spin" />
-                <span>Сохранение...</span>
+                <span>Рендер...</span>
               </>
             ) : (
               <>
-                <span>Рендер MP4 (В экспорт)</span>
-                <ChevronRight size={14} className="text-white/70" />
+                <span>Рендер MP4</span>
+                <ChevronRight size={14} className="text-white/70 hidden xs:inline" />
               </>
             )}
           </button>
@@ -476,7 +542,8 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
           <button
             type="button"
             onClick={onClose}
-            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all ml-1"
+            className="w-8 h-8 rounded-full bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/60 hover:text-white transition-all ml-0.5"
+            title="Закрыть"
           >
             <X size={18} />
           </button>
@@ -486,23 +553,23 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
       {/* 2. MAIN SPLIT-VIEW (Claude Artifacts Workspace) */}
       <div className="flex-1 flex flex-col md:flex-row overflow-hidden">
         {/* LEFT PANE: Prompt, Brief & Scene Beats Controls */}
-        <div className="w-full md:w-[460px] lg:w-[500px] border-r border-white/10 bg-[#0A0E1A]/80 flex flex-col h-full overflow-hidden flex-shrink-0">
-          {/* Tabs Switcher */}
-          <div className="p-3 border-b border-white/10 bg-white/[0.02] flex items-center gap-2">
+        <div className={`w-full md:w-[460px] lg:w-[500px] border-r border-white/10 bg-[#0A0E1A]/80 flex-col h-full overflow-hidden flex-shrink-0 no-scrollbar ${activeTab === 'preview' ? 'hidden md:flex' : 'flex'}`}>
+          {/* Tabs Switcher (3-way on mobile: Brief, Beats, Preview) */}
+          <div className="p-2 sm:p-3 border-b border-white/10 bg-white/[0.02] flex items-center gap-1.5 sm:gap-2">
             <button
               onClick={() => setActiveTab('brief')}
-              className={`flex-1 py-2 px-3 rounded-xl text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 ${
                 activeTab === 'brief'
                   ? 'bg-purple-600/25 border border-purple-500/40 text-purple-200 shadow-sm'
                   : 'text-white/50 hover:text-white hover:bg-white/5'
               }`}
             >
               <Wand2 size={13} />
-              <span>Motion Brief & Стиль</span>
+              <span>Бриф</span>
             </button>
             <button
               onClick={() => setActiveTab('beats')}
-              className={`flex-1 py-2 px-3 rounded-xl text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+              className={`flex-1 py-2 px-2 sm:px-3 rounded-xl text-[11px] sm:text-[12px] font-bold transition-all flex items-center justify-center gap-1.5 ${
                 activeTab === 'beats'
                   ? 'bg-purple-600/25 border border-purple-500/40 text-purple-200 shadow-sm'
                   : 'text-white/50 hover:text-white hover:bg-white/5'
@@ -511,11 +578,22 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
               <Layers size={13} />
               <span>Раскадровка ({cutSheet?.bRollElements?.length || 0})</span>
             </button>
+            <button
+              onClick={() => setActiveTab('preview')}
+              className={`md:hidden flex-1 py-2 px-2 rounded-xl text-[11px] font-bold transition-all flex items-center justify-center gap-1.5 ${
+                activeTab === 'preview'
+                  ? 'bg-purple-600/25 border border-purple-500/40 text-purple-200 shadow-sm'
+                  : 'text-white/50 hover:text-white hover:bg-white/5'
+              }`}
+            >
+              <Play size={12} className="fill-current text-purple-300" />
+              <span>🎬 Превью</span>
+            </button>
           </div>
 
           {/* Tab 1: Brief & Prompt Engine */}
           {activeTab === 'brief' && (
-            <div className="flex-1 overflow-y-auto p-4 space-y-4">
+            <div className="flex-1 overflow-y-auto no-scrollbar p-4 space-y-4">
               {/* User Prompt Input */}
               <div className="space-y-1.5">
                 <label className="text-[11px] font-bold text-white/50 uppercase tracking-wider flex items-center justify-between">
@@ -635,7 +713,7 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
           {activeTab === 'beats' && (
             <div className="flex-1 flex flex-col overflow-hidden">
               {/* Beats list */}
-              <div className="flex-1 overflow-y-auto p-3 space-y-2">
+              <div className="flex-1 overflow-y-auto no-scrollbar p-3 space-y-2">
                 {(!cutSheet?.bRollElements || cutSheet.bRollElements.length === 0) ? (
                   <div className="p-8 text-center space-y-3">
                     <Layers className="w-8 h-8 text-white/20 mx-auto" />
@@ -690,31 +768,69 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
                             {elem.props.items.join(' • ')}
                           </div>
                         )}
+
+                        {/* Quick Preview & Select row */}
+                        <div className="flex items-center justify-between mt-2 pt-2 border-t border-white/5">
+                          <button
+                            type="button"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handlePreviewBeat(elem);
+                            }}
+                            className="flex items-center gap-1.5 px-2.5 py-1 rounded-lg bg-purple-500/15 hover:bg-purple-500/30 text-purple-300 text-[11px] font-bold border border-purple-500/30 transition-all active:scale-95"
+                            title="Посмотреть анимацию этой сцены в плеере"
+                          >
+                            <Play size={11} className="fill-purple-300 text-purple-300" />
+                            <span>▶️ Превью сцены</span>
+                          </button>
+                          <span className="text-[10px] text-white/40 font-mono">
+                            {typeof elem.endFrame === 'number' && typeof elem.startFrame === 'number'
+                              ? `${Math.round(((elem.endFrame - elem.startFrame) / 30) * 10) / 10} сек`
+                              : `${elem.startTime} – ${elem.endTime}`}
+                          </span>
+                        </div>
                       </div>
                     );
                   })
                 )}
               </div>
+            </div>
+          )}
 
-              {/* Surgical Editor Drawer for selected beat */}
-              {selectedElem && (
-                <div className="p-3.5 border-t border-white/10 bg-black/60 space-y-2.5">
-                  <div className="flex items-center justify-between">
-                    <span className="text-[11px] font-bold text-purple-300 flex items-center gap-1">
-                      <Sliders size={12} />
-                      Хирургическая правка выбранной сцены
-                    </span>
-                    <button
-                      onClick={() => setSelectedElementId(null)}
-                      className="text-[10px] text-white/40 hover:text-white"
-                    >
-                      Снять выбор
-                    </button>
-                  </div>
+          {/* Unified Smart Input & Context Bar (Replaces 2 stacked duplicate inputs) */}
+          <div className="p-3 border-t border-white/10 bg-black/60 backdrop-blur-md flex flex-col gap-2 flex-shrink-0">
+            {/* Context Controls (When scene is selected) */}
+            {selectedElem && (
+              <div className="flex items-center justify-between gap-1.5 pb-1 border-b border-white/5">
+                {/* Target Scope Pill Switcher */}
+                <div className="flex items-center gap-1 bg-white/5 p-0.5 rounded-lg border border-white/10">
+                  <button
+                    type="button"
+                    onClick={() => setInputScope('scene')}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                      inputScope === 'scene'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    🎯 Сцена #{selectedElemIdx + 1}
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setInputScope('all')}
+                    className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition-all ${
+                      inputScope === 'all'
+                        ? 'bg-purple-600 text-white shadow-sm'
+                        : 'text-white/40 hover:text-white'
+                    }`}
+                  >
+                    🌐 Весь ролик
+                  </button>
+                </div>
 
-                  {/* Layout mode switcher */}
-                  <div className="flex items-center gap-1">
-                    <span className="text-[10px] text-white/40 mr-1">Лейаут:</span>
+                {/* Layout mode switcher for the active scene */}
+                {inputScope === 'scene' && (
+                  <div className="flex items-center gap-1 overflow-x-auto no-scrollbar">
                     {(['floating_hud', 'split_screen', 'pip_side_card', 'full_slide'] as BRollLayoutMode[]).map((mode) => (
                       <button
                         key={mode}
@@ -723,11 +839,11 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
                           const nextElements = cutSheet.bRollElements.map(e =>
                             e.id === selectedElem.id ? { ...e, layoutMode: mode } : e
                           );
-                          setCutSheet({ ...cutSheet, bRollElements: nextElements });
+                          persistDraft({ ...cutSheet, bRollElements: nextElements });
                         }}
-                        className={`px-2 py-0.5 rounded text-[10px] font-bold transition-all border ${
+                        className={`px-1.5 py-0.5 rounded text-[9px] font-bold uppercase transition-all border ${
                           (selectedElem.layoutMode || 'full_slide') === mode
-                            ? 'bg-purple-600/30 border-purple-500 text-purple-200'
+                            ? 'bg-purple-600/30 border-purple-400 text-purple-200'
                             : 'bg-white/5 border-transparent text-white/40 hover:text-white/70'
                         }`}
                       >
@@ -735,61 +851,101 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
                       </button>
                     ))}
                   </div>
+                )}
 
-                  {/* Command input */}
-                  <div className="flex gap-1.5">
-                    <input
-                      type="text"
-                      value={surgicalCommand}
-                      onChange={(e) => setSurgicalCommand(e.target.value)}
-                      placeholder="Пример: замени заголовок на Х3 РОСТ и сделай цифры зелеными..."
-                      className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-1.5 text-[11px] text-white placeholder-white/30 focus:outline-none focus:border-purple-500/60"
-                      onKeyDown={(e) => {
-                        if (e.key === 'Enter') handleSurgicalEdit();
-                      }}
-                    />
-                    <button
-                      onClick={handleSurgicalEdit}
-                      disabled={isSurgicalLoading || !surgicalCommand.trim()}
-                      className="px-3 py-1.5 rounded-xl bg-purple-600 hover:bg-purple-500 text-white text-[11px] font-bold transition-all disabled:opacity-40"
-                    >
-                      {isSurgicalLoading ? '...' : 'ИИ'}
-                    </button>
-                  </div>
-                </div>
-              )}
+                {/* Deselect beat */}
+                <button
+                  type="button"
+                  onClick={() => {
+                    setSelectedElementId(null);
+                    setInputScope('all');
+                  }}
+                  className="w-5 h-5 rounded-md bg-white/5 hover:bg-white/10 flex items-center justify-center text-white/40 hover:text-white transition-all ml-auto"
+                  title="Снять выбор сцены"
+                >
+                  <X size={12} />
+                </button>
+              </div>
+            )}
+
+            {/* The Single Unified Input Line */}
+            <div className="flex items-center gap-2">
+              <input
+                type="text"
+                value={selectedElem && inputScope === 'scene' ? surgicalCommand : bottomRefinementPrompt}
+                onChange={(e) => {
+                  if (selectedElem && inputScope === 'scene') {
+                    setSurgicalCommand(e.target.value);
+                  } else {
+                    setBottomRefinementPrompt(e.target.value);
+                  }
+                }}
+                placeholder={
+                  selectedElem && inputScope === 'scene'
+                    ? `Правка сцены #${selectedElemIdx + 1}: «замени заголовок на РОСТ, цвет на зеленый»...`
+                    : 'Что изменить во всем ролике? (ИИ пересоберет раскадровку)...'
+                }
+                className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white placeholder-white/30 focus:outline-none focus:border-purple-500/60"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter') {
+                    if (selectedElem && inputScope === 'scene') {
+                      handleSurgicalEdit();
+                    } else {
+                      handleRefineAll();
+                    }
+                  }
+                }}
+              />
+              <button
+                type="button"
+                onClick={() => {
+                  if (selectedElem && inputScope === 'scene') {
+                    handleSurgicalEdit();
+                  } else {
+                    handleRefineAll();
+                  }
+                }}
+                disabled={
+                  selectedElem && inputScope === 'scene'
+                    ? (isSurgicalLoading || !surgicalCommand.trim())
+                    : (isRefining || !bottomRefinementPrompt.trim())
+                }
+                className="px-3 py-2 rounded-xl bg-purple-600 hover:bg-purple-500 active:scale-95 text-white text-[11px] font-bold transition-all disabled:opacity-40 flex items-center gap-1 shadow-md shadow-purple-600/25 flex-shrink-0 cursor-pointer"
+                title={selectedElem && inputScope === 'scene' ? 'Применить к выбранной сцене' : 'Ремикс всего ролика'}
+              >
+                {(selectedElem && inputScope === 'scene' ? isSurgicalLoading : isRefining) ? (
+                  <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
+                ) : (
+                  <>
+                    <Sparkles size={13} />
+                    <span className="hidden xs:inline">
+                      {selectedElem && inputScope === 'scene' ? 'Изменить' : 'Ремикс'}
+                    </span>
+                  </>
+                )}
+              </button>
             </div>
-          )}
-
-          {/* Bottom Refinement Bar (Claude Chat prompt) */}
-          <div className="p-3 border-t border-white/10 bg-black/40 flex items-center gap-2">
-            <input
-              type="text"
-              value={bottomRefinementPrompt}
-              onChange={(e) => setBottomRefinementPrompt(e.target.value)}
-              placeholder="Что изменить во всем ролике? (ИИ пересоберет схему)..."
-              className="flex-1 bg-white/5 border border-white/10 rounded-xl px-3 py-2 text-[12px] text-white placeholder-white/30 focus:outline-none focus:border-purple-500/60"
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') handleRefineAll();
-              }}
-            />
-            <button
-              onClick={handleRefineAll}
-              disabled={isRefining || !bottomRefinementPrompt.trim()}
-              className="p-2 rounded-xl bg-purple-600 hover:bg-purple-500 text-white transition-all disabled:opacity-40"
-              title="Отправить команду на ремикс ролика"
-            >
-              {isRefining ? (
-                <span className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin block" />
-              ) : (
-                <Sparkles size={15} />
-              )}
-            </button>
           </div>
         </div>
 
-        {/* RIGHT PANE: Interactive @remotion/player Preview */}
-        <div className="flex-1 bg-[#05070D] flex flex-col items-center justify-center p-4 sm:p-6 overflow-hidden relative">
+        {/* RIGHT PANE: Interactive @remotion/player Preview (Responsive Mobile & Desktop) */}
+        <div className={`flex-1 bg-[#05070D] flex-col items-center justify-center p-2 sm:p-4 md:p-6 overflow-hidden relative no-scrollbar ${activeTab === 'preview' ? 'flex' : 'hidden md:flex'}`}>
+          {/* Mobile Back button from Preview to Beats / Brief */}
+          <div className="md:hidden w-full max-w-sm flex items-center justify-between pb-2 px-2 z-10 flex-shrink-0">
+            <button
+              type="button"
+              onClick={() => setActiveTab('beats')}
+              className="flex items-center gap-1.5 px-3 py-1.5 rounded-full bg-white/10 hover:bg-white/20 active:scale-95 text-white text-[11px] font-bold border border-white/15 shadow-sm transition-all"
+            >
+              <Layers size={13} />
+              <span>← К раскадровке</span>
+            </button>
+            <div className="flex items-center gap-1.5 text-[11px] text-purple-300 font-bold bg-purple-500/15 border border-purple-500/30 px-2.5 py-1 rounded-full">
+              <Sparkles size={11} />
+              <span>Живой Remotion 60 FPS</span>
+            </div>
+          </div>
+
           {/* Ambient Glow */}
           <div 
             className="absolute w-[400px] h-[400px] rounded-full blur-[140px] opacity-20 pointer-events-none"
