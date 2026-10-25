@@ -562,6 +562,23 @@ export default function HeyGenAvatarFlow({
           setIsGenerating(false);
           setResultVideoUrl(data.videoUrl);
           setFinalDuration(data.duration || null);
+
+          // Automatically mirror video to permanent Supabase Storage to prevent CloudFront expiry or CORS playback errors
+          fetch('/api/ai/heygen/mirror-to-storage', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ videoUrl: data.videoUrl, projectId })
+          })
+            .then(res => res.json())
+            .then(mirrorData => {
+              if (mirrorData?.publicUrl) {
+                console.log('[HeyGenFlow] Video successfully mirrored to Supabase storage:', mirrorData.publicUrl);
+                setResultVideoUrl(mirrorData.publicUrl);
+              }
+            })
+            .catch(err => {
+              console.warn('[HeyGenFlow] Background storage mirror warning:', err);
+            });
           
           if (!hasKey) {
             const actualDuration = data.duration || 0;

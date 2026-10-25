@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { AbsoluteFill, Sequence, Video, useCurrentFrame, useVideoConfig, spring, interpolate } from 'remotion';
 import { RemotionArchitectCutSheet, BRollElement, DynamicThemeConfig } from '@/lib/types/remotionArchitect';
 import { DynamicChart } from './elements/DynamicChart';
@@ -28,6 +28,27 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
 }) => {
   const frame = useCurrentFrame();
   const { fps } = useVideoConfig();
+
+  // Resilient video source state with auto-proxy fallback on browser playback error
+  const [activeVideoSrc, setActiveVideoSrc] = useState<string>(speakerVideoUrl || '');
+  const [hasPlaybackError, setHasPlaybackError] = useState<boolean>(false);
+
+  useEffect(() => {
+    setActiveVideoSrc(speakerVideoUrl || '');
+    setHasPlaybackError(false);
+  }, [speakerVideoUrl]);
+
+  const handleVideoError = useCallback((err: Error) => {
+    console.warn('[ViraliArchitectComposition] Video playback error caught by Remotion:', err?.message || err);
+    // If original source was external and not yet proxied, try our server proxy
+    if (activeVideoSrc && !activeVideoSrc.includes('/api/media/proxy') && activeVideoSrc.startsWith('http')) {
+      console.log('[ViraliArchitectComposition] Retrying speaker video via /api/media/proxy...');
+      setActiveVideoSrc(`/api/media/proxy?url=${encodeURIComponent(speakerVideoUrl)}`);
+    } else {
+      // Both direct and proxy failed or unavailable, fallback gracefully to placeholder
+      setHasPlaybackError(true);
+    }
+  }, [activeVideoSrc, speakerVideoUrl]);
 
   const cameraCuts = cutSheet?.cameraCuts || [];
   const bRollElements = cutSheet?.bRollElements || [];
@@ -120,11 +141,20 @@ export const ViraliArchitectComposition: React.FC<ViraliCompositionProps> = ({
       {/* СЛОЙ 0: Видео спикера с трансформируемой кадровой маской */}
       <AbsoluteFill className="flex items-center justify-center">
         <div style={videoStyle} className="transition-all duration-300 overflow-hidden">
-          {speakerVideoUrl ? (
-            <Video src={speakerVideoUrl} className="w-full h-full object-cover" />
+          {activeVideoSrc && !hasPlaybackError ? (
+            <Video 
+              src={activeVideoSrc} 
+              className="w-full h-full object-cover" 
+              onError={handleVideoError}
+            />
           ) : (
-            <div className="w-full h-full bg-slate-800 flex items-center justify-center text-slate-400">
-              [Speaker Video Placeholder]
+            <div className="w-full h-full bg-slate-900 flex flex-col items-center justify-center text-slate-400 p-6 text-center space-y-2">
+              <div className="w-10 h-10 rounded-full bg-purple-500/20 flex items-center justify-center text-purple-400 text-lg">
+                🎬
+              </div>
+              <span className="text-[12px] text-white/50 font-medium">
+                {hasPlaybackError ? 'Видеопоток спикера временно недоступен' : 'Видео спикера загружается...'}
+              </span>
             </div>
           )}
         </div>

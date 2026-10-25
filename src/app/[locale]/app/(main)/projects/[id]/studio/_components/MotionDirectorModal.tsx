@@ -39,6 +39,50 @@ const PRESET_PILLS = [
   { id: 'minimal_expert', label: '🎯 Минимализм', prompt: 'Строгий минималистичный стиль эксперта, матовое стекло, графики и тезисы' },
 ];
 
+class PlayerErrorBoundary extends React.Component<
+  { children: React.ReactNode },
+  { hasError: boolean; error: Error | null }
+> {
+  constructor(props: any) {
+    super(props);
+    this.state = { hasError: false, error: null };
+  }
+
+  static getDerivedStateFromError(error: Error) {
+    return { hasError: true, error };
+  }
+
+  componentDidCatch(error: Error, errorInfo: React.ErrorInfo) {
+    console.warn('[PlayerErrorBoundary] Caught Remotion player error:', error, errorInfo);
+  }
+
+  render() {
+    if (this.state.hasError) {
+      return (
+        <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-3 bg-slate-950 text-white">
+          <div className="w-12 h-12 rounded-full bg-amber-500/20 border border-amber-500/30 flex items-center justify-center">
+            <Sparkles className="w-6 h-6 text-amber-400" />
+          </div>
+          <div className="space-y-1">
+            <h4 className="text-[13px] font-bold text-white">Превью плеера приостановлено</h4>
+            <p className="text-[11px] text-white/50 max-w-xs">
+              {this.state.error?.message || 'Не удалось отрисовать интерактивный плеер'}
+            </p>
+          </div>
+          <button
+            type="button"
+            onClick={() => this.setState({ hasError: false, error: null })}
+            className="px-3 py-1.5 rounded-lg bg-white/10 hover:bg-white/20 active:scale-95 text-[11px] font-bold text-white transition-all border border-white/15 cursor-pointer"
+          >
+            Повторить
+          </button>
+        </div>
+      );
+    }
+    return this.props.children;
+  }
+}
+
 export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
   isOpen,
   onClose,
@@ -954,31 +998,45 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
 
           {/* Player Container (Phone Mockup Frame) */}
           <div className="h-full max-h-[82vh] aspect-[9/16] rounded-[2rem] overflow-hidden shadow-2xl border-4 border-white/10 bg-black relative flex flex-col">
-            {cutSheet ? (
-              <Player
-                ref={playerRef}
-                component={ViraliArchitectComposition as any}
-                inputProps={{
-                  speakerVideoUrl,
-                  cutSheet,
-                  subtitles: includeSubtitles ? transcriptData : [],
-                  onSelectElement: (id: string) => setSelectedElementId(id),
-                  selectedElementId
-                }}
-                durationInFrames={totalFrames}
-                compositionWidth={1080}
-                compositionHeight={1920}
-                fps={30}
-                style={{
-                  width: '100%',
-                  height: '100%',
-                  backgroundColor: '#000000'
-                }}
-                controls
-                autoPlay={false}
-                loop
-              />
-            ) : (
+            <PlayerErrorBoundary>
+              {cutSheet ? (
+                <Player
+                  ref={playerRef}
+                  component={ViraliArchitectComposition as any}
+                  inputProps={{
+                    speakerVideoUrl,
+                    cutSheet,
+                    subtitles: includeSubtitles ? transcriptData : [],
+                    onSelectElement: (id: string) => setSelectedElementId(id),
+                    selectedElementId
+                  }}
+                  durationInFrames={totalFrames}
+                  compositionWidth={1080}
+                  compositionHeight={1920}
+                  fps={30}
+                  style={{
+                    width: '100%',
+                    height: '100%',
+                    backgroundColor: '#000000'
+                  }}
+                  controls
+                  autoPlay={false}
+                  loop
+                  errorFallback={({ error }) => (
+                    <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-4 bg-slate-950 text-white">
+                      <div className="w-16 h-16 rounded-full bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+                        <Sparkles className="w-8 h-8 text-amber-400" />
+                      </div>
+                      <div className="space-y-1">
+                        <h4 className="text-[14px] font-bold text-white">Превью временно недоступно</h4>
+                        <p className="text-[12px] text-white/50 max-w-xs">
+                          {error?.message || 'Не удалось воспроизвести медиапоток для предпросмотра.'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                />
+              ) : (
               <div className="w-full h-full flex flex-col items-center justify-center p-6 text-center space-y-4">
                 <div className="w-16 h-16 rounded-full bg-purple-500/10 border border-purple-500/20 flex items-center justify-center">
                   <Sparkles className="w-8 h-8 text-purple-400 animate-pulse" />
@@ -997,7 +1055,8 @@ export const MotionDirectorModal: React.FC<MotionDirectorModalProps> = ({
                   Собрать сцены
                 </button>
               </div>
-            )}
+            ) }
+            </PlayerErrorBoundary>
           </div>
 
           {/* Bottom helper info */}

@@ -239,7 +239,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           errorMsg.includes('AbortError') ||
           errorMsg.includes('Script error') ||
           errorMsg.includes('MetaMask') ||
-          errorMsg.includes('ethereum')
+          errorMsg.includes('ethereum') || errorMsg.includes('MediaPlaybackError')
         )) ||
         stack.includes('chrome-extension://') ||
         stack.includes('moz-extension://')
@@ -279,7 +279,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
           errorMsg.includes('Load failed') ||
           errorMsg.includes('AbortError') ||
           errorMsg.includes('MetaMask') ||
-          errorMsg.includes('ethereum') ||
+          errorMsg.includes('ethereum') || errorMsg.includes('MediaPlaybackError') ||
           errorMsg.includes('User rejected') ||
           errorMsg.includes('User denied')
         )) ||
