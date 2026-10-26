@@ -1,6 +1,7 @@
 import { NextResponse } from 'next/server';
 import { GoogleGenAI } from '@google/genai';
 import { notifyAdminError } from '@/lib/telegram';
+import { normalizeModelName } from '@/lib/ai/gemini';
 
 export const maxDuration = 15;
 
@@ -28,11 +29,11 @@ export async function GET(req: Request) {
   }
 
   const candidateModels = [
-    process.env.GEMINI_MODEL || 'gemini-2.5-flash',
-    'gemini-2.5-flash',
-    'gemini-2.0-flash',
-    'gemini-1.5-flash'
-  ];
+    process.env.GEMINI_MODEL || 'gemini-3.5-flash',
+    'gemini-3.5-flash',
+    'gemini-3.8-flash',
+    'gemini-3.1-flash-lite'
+  ].map(m => normalizeModelName(m));
   let lastError: any = null;
 
   for (const modelCandidate of candidateModels) {

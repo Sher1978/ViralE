@@ -2,7 +2,7 @@
  * UTILITY SCRIPT: AI-Injected DNA Enrichment
  * Can be run via: npx tsx scripts/enrich-dna.ts --userId "ID" --text "NEW INFO"
  */
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import { createClient } from '@supabase/supabase-js';
 import * as dotenv from 'dotenv';
 import path from 'path';
@@ -12,10 +12,10 @@ dotenv.config({ path: path.resolve(process.cwd(), '.env.local') });
 
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL!;
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY!; // Needs service role for direct admin updates
-const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY!;
+const geminiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
 
 const supabase = createClient(supabaseUrl, supabaseKey);
-const genAI = new GoogleGenerativeAI(geminiKey);
+const ai = new GoogleGenAI({ apiKey: geminiKey });
 
 async function enrichDna() {
   const args = process.argv.slice(2);
@@ -44,7 +44,6 @@ async function enrichDna() {
 
   // 2. Synthesize with Gemini
   console.log(`[DNA CLI] Synthesizing with Gemini...`);
-  const model = genAI.getGenerativeModel({ model: "gemini-2.5-flash" });
   const prompt = `
     You are an AI Persona Architect. Update this Digital Shadow DNA by integrating new information.
     Synthesize it into a cohesive, consistent personality profile. Output ONLY the updated paragraph.
@@ -56,8 +55,11 @@ async function enrichDna() {
     ${newInfo}
   `;
 
-  const result = await model.generateContent(prompt);
-  const updatedDna = result.response.text().trim();
+  const result = await ai.models.generateContent({
+    model: "gemini-3.5-flash",
+    contents: prompt
+  });
+  const updatedDna = (result.text || '').trim();
 
   // 3. Update DB
   console.log(`[DNA CLI] Saving to Supabase...`);

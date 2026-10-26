@@ -8,8 +8,20 @@ export const ai = new GoogleGenAI({ apiKey });
 // [REVERSIBLE OVERRIDE] Set to true to route all Gemini calls to Groq
 const IS_GROQ_OVERRIDE = process.env.OVERRIDE_GEMINI_WITH_GROQ === 'true';
 
+export const DEPRECATED_MODEL_MAP: Record<string, string> = {
+  'gemini-1.5-flash': 'gemini-3.5-flash',
+  'gemini-1.5-flash-latest': 'gemini-3.5-flash',
+  'gemini-1.5-pro': 'gemini-3.1-pro-preview',
+  'gemini-1.5-pro-latest': 'gemini-3.1-pro-preview',
+  'gemini-2.0-flash': 'gemini-3.5-flash',
+  'gemini-2.0-flash-exp': 'gemini-3.5-flash',
+  'gemini-2.5-flash': 'gemini-3.5-flash',
+  'gemini-2.5-flash-lite': 'gemini-3.1-flash-lite',
+  'gemini-2.5-pro': 'gemini-3.1-pro-preview',
+};
+
 export function normalizeModelName(rawName?: string): string {
-  if (!rawName || typeof rawName !== 'string') return 'gemini-2.5-flash';
+  if (!rawName || typeof rawName !== 'string') return 'gemini-3.5-flash';
   let name = rawName.trim();
   if (name.startsWith('models/')) {
     name = name.replace(/^models\//i, '');
@@ -17,12 +29,13 @@ export function normalizeModelName(rawName?: string): string {
   if (!name.toLowerCase().startsWith('gemini-')) {
     name = `gemini-${name}`;
   }
-  return name;
+  const lower = name.toLowerCase();
+  return DEPRECATED_MODEL_MAP[lower] || name;
 }
 
-// ✅ OFFICIAL GOOGLE GEMINI GENERATIONS (Gemini 2.5 Flash / Pro & 2.0 Flash)
-export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-2.5-flash");
-export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL_PRO || "gemini-2.5-pro");
+// ✅ OFFICIAL GOOGLE GEMINI GENERATIONS (Gemini 3.5 Flash / 3.8 Flash & 3.1 Pro Preview)
+export const FAST_MODEL = normalizeModelName(process.env.GEMINI_MODEL || "gemini-3.5-flash");
+export const PRO_MODEL = normalizeModelName(process.env.GEMINI_MODEL_PRO || "gemini-3.1-pro-preview");
 
 /**
  * Standard unary text generation using modern @google/genai SDK
@@ -258,16 +271,16 @@ export function getModel(
   
   const rawCandidates = tier === 'pro' ? [
     baseModelName,
-    "gemini-2.5-pro",
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-1.5-pro"
+    "gemini-3.1-pro-preview",
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.1-flash-lite"
   ] : [
     baseModelName,
-    "gemini-2.5-flash",
-    "gemini-2.0-flash",
-    "gemini-2.5-pro",
-    "gemini-1.5-flash"
+    "gemini-3.5-flash",
+    "gemini-3.8-flash",
+    "gemini-3.1-flash-lite",
+    "gemini-3-flash-preview"
   ];
   const fallbackModels = Array.from(new Set(rawCandidates.map(normalizeModelName)));
 
@@ -322,18 +335,14 @@ export function getModel(
             if (errMsg.includes('API_KEY_INVALID') || errMsg.includes('key is invalid')) {
               retries = 0;
             }
-            if (errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED')) {
-              // If free tier quota is depleted across the project, stop iterating all candidate models
-              if (fallbackModels.indexOf(modelCandidate) >= 1) {
-                console.warn('[Gemini client] Quota exhausted on multiple models, breaking candidate loop to trigger fallback...');
-                retries = 0;
-              }
+            if (errMsg.includes('Quota exceeded') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('429')) {
+              console.warn(`[Gemini client] Quota/rate-limit on ${modelCandidate}, proceeding to next candidate model...`);
+              retries = 0;
             }
             break; // Break the while loop to move to the next model candidate
           }
         }
         if (lastError?.message?.includes('API_KEY_INVALID') || lastError?.message?.includes('key is invalid')) break;
-        if ((lastError?.message?.includes('Quota exceeded') || lastError?.message?.includes('RESOURCE_EXHAUSTED')) && fallbackModels.indexOf(modelCandidate) >= 1) break;
       }
 
       // Emergency Fallback: If Gemini quota is depleted (429/RESOURCE_EXHAUSTED/Prepayment depleted) or all candidates fail, fall back to Groq
@@ -444,16 +453,13 @@ export function getModel(
                   retries = 0;
                 }
                 if (errMsg.includes('429') || errMsg.includes('RESOURCE_EXHAUSTED') || errMsg.includes('Quota exceeded')) {
-                  if (fallbackModels.indexOf(modelCandidate) >= 1) {
-                    console.warn('[Gemini chat client] Quota exhausted on multiple models, breaking candidate loop to trigger fallback...');
-                    retries = 0;
-                  }
+                  console.warn(`[Gemini chat client] Quota/rate-limit on ${modelCandidate}, trying next fallback model...`);
+                  retries = 0;
                 }
                 break; // Break the while loop to try the next model candidate
               }
             }
             if (lastChatErr?.message?.includes('API_KEY_INVALID') || lastChatErr?.message?.includes('key is invalid')) break;
-            if ((lastChatErr?.message?.includes('Quota exceeded') || lastChatErr?.message?.includes('RESOURCE_EXHAUSTED') || lastChatErr?.message?.includes('429')) && fallbackModels.indexOf(modelCandidate) >= 1) break;
           }
 
           // 2. Emergency Groq Fallback if all Gemini models hit rate limits / quota errors

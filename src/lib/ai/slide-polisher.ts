@@ -24,7 +24,7 @@ export async function polishCriticalSlides(
   if (!apiKey) return fallback;
 
   try {
-    // Using gemini-2.5-flash-lite for high-fidelity creative copywriting
+    // Using fast model tier (gemini-3.5-flash) for high-fidelity creative copywriting
     const model = getModel('fast', locale, 'json');
 
     const systemPrompt = `

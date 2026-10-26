@@ -1,4 +1,4 @@
-import { GoogleGenerativeAI } from "@google/generative-ai";
+import { GoogleGenAI } from "@google/genai";
 import * as dotenv from "dotenv";
 import path from "path";
 
@@ -6,7 +6,7 @@ import path from "path";
 dotenv.config({ path: path.resolve(process.cwd(), ".env.local") });
 
 const apiKey = process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || "";
-const modelName = process.env.GEMINI_MODEL || "gemini-2.5-flash";
+const modelName = process.env.GEMINI_MODEL || "gemini-3.5-flash";
 
 async function checkAI() {
   console.log("🚀 Starting Gemini API Health Check...");
@@ -18,14 +18,15 @@ async function checkAI() {
     process.exit(1);
   }
 
-  const genAI = new GoogleGenerativeAI(apiKey);
-  const model = genAI.getGenerativeModel({ model: modelName });
+  const ai = new GoogleGenAI({ apiKey });
 
   try {
     const start = Date.now();
-    const result = await model.generateContent("Say 'AI is Online' if you can read this.");
-    const response = await result.response;
-    const text = response.text();
+    const result = await ai.models.generateContent({
+      model: modelName,
+      contents: "Say 'AI is Online' if you can read this."
+    });
+    const text = result.text || "";
     const duration = Date.now() - start;
 
     if (text) {
@@ -40,7 +41,7 @@ async function checkAI() {
     
     if (error.message?.includes("404")) {
       console.error("👉 Error 404: The model name is likely wrong or the region is not supported for this model.");
-      console.error("Suggestion: Try 'gemini-2.5-flash' or 'gemini-2.5-pro'.");
+      console.error("Suggestion: Try 'gemini-3.5-flash' or 'gemini-3.8-flash'.");
     } else if (error.message?.includes("401") || error.message?.includes("403")) {
       console.error("👉 Error 401/403: API Key is invalid or restricted.");
     } else if (error.message?.includes("429")) {
