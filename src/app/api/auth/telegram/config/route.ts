@@ -2,8 +2,10 @@ import { NextResponse } from 'next/server';
 
 export async function GET() {
   const token = process.env.TELEGRAM_BOT_TOKEN;
+  const defaultBotUsername = 'Viralengin_bot';
+
   if (!token) {
-    return NextResponse.json({ error: 'Not configured' }, { status: 500 });
+    return NextResponse.json({ botId: '', botUsername: defaultBotUsername });
   }
 
   // Extract bot_id from token (before the colon)
@@ -13,12 +15,12 @@ export async function GET() {
   try {
     const response = await fetch(`https://api.telegram.org/bot${token}/getMe`);
     const data = await response.json();
-    if (data.ok) {
+    if (data.ok && data.result?.username) {
       return NextResponse.json({ botId, botUsername: data.result.username });
     }
   } catch (error) {
     console.error('Error fetching bot info:', error);
   }
   
-  return NextResponse.json({ botId });
+  return NextResponse.json({ botId, botUsername: defaultBotUsername });
 }

@@ -487,10 +487,10 @@
     "viewAllIdeas": "View all ideas →"
   },
   "auth": {
-    "title": "ENTER THE",
-    "titleAccent": "FACTORY",
+    "title": "SIGN IN &",
+    "titleAccent": "REGISTER",
     "subtitle": "Welcome to the command center of your virality.",
-    "greeting": "Welcome back, Creator.",
+    "greeting": "1-Click Sign In & Registration",
     "aestheticPhrase1": "The machine is ready for your signals.",
     "aestheticPhrase2": "One login away from total presence.",
     "strategistGreeting": "Hello! I am your AI Strategist.",
@@ -498,7 +498,7 @@
     "googleBtn": "Login with Google",
     "telegramBtn": "Login with Telegram",
     "backToLanding": "← Back to landing",
-    "footer": "Secure login via official protocols"
+    "footer": "Registration is free and automatic on first sign-in via Google or Telegram"
   },
   "mocks": {
     "idea1Topic": "Car Inspector Secrets 2026",

@@ -18,11 +18,24 @@ async function handleTelegramAuth(userData: any, hash: string) {
   // 1. Verify Telegram Data
   const secretKey = crypto.createHash('sha256').update(botToken).digest();
   const dataCheckString = Object.keys(userData)
+    .filter(key => key !== 'hash' && userData[key] !== undefined && userData[key] !== 'undefined' && userData[key] !== null)
     .sort()
     .map(key => `${key}=${userData[key]}`)
     .join('\n');
   
-  const hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+  let hmac = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+
+  if (hmac !== hash) {
+    // Fallback: check raw dataCheckString including potential 'undefined' strings from legacy links
+    const legacyCheckString = Object.keys(userData)
+      .sort()
+      .map(key => `${key}=${userData[key]}`)
+      .join('\n');
+    const legacyHmac = crypto.createHmac('sha256', secretKey).update(legacyCheckString).digest('hex');
+    if (legacyHmac === hash) {
+      hmac = legacyHmac;
+    }
+  }
 
   if (hmac !== hash) {
     throw new Error('Invalid hash');
@@ -194,7 +207,7 @@ export async function GET(request: Request) {
   const pathLocale = pathParts.find(p => p === 'ru' || p === 'en');
   const locale = cookieLocale === 'ru' ? 'ru' : (pathLocale || 'en');
   
-  callbackUrl.pathname = `/${locale}/auth/telegram/callback`;
+  callbackUrl.pathname = locale === 'ru' ? '/ru/auth/telegram/callback' : '/auth/telegram/callback';
   
   return NextResponse.redirect(callbackUrl);
 }

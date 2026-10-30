@@ -727,17 +727,19 @@ export async function POST(req: NextRequest) {
       if (payload === 'auth') {
         // Frictionless Auth Flow
         // Generate a signed message for the web app to verify
-        const authData = {
+        const authData: Record<string, any> = {
           id: user.id,
           first_name: user.first_name,
-          last_name: user.last_name,
           username: user.username,
           auth_date: Math.floor(Date.now() / 1000)
         };
+        if (user.last_name) {
+          authData.last_name = user.last_name;
+        }
 
         // Create check hash
         const dataCheckArr = Object.entries(authData)
-          .filter(([key]) => key !== 'hash')
+          .filter(([key, val]) => key !== 'hash' && val !== undefined && val !== null)
           .sort()
           .map(([key, value]) => `${key}=${value}`);
         
@@ -758,7 +760,8 @@ export async function POST(req: NextRequest) {
 
         const locale = user.language_code === 'ru' ? 'ru' : 'en';
         const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno';
-        const authUrl = `${baseUrl}/${locale}/auth/telegram/callback?${params.toString()}`;
+        const callbackPath = locale === 'ru' ? '/ru/auth/telegram/callback' : '/auth/telegram/callback';
+        const authUrl = `${baseUrl}${callbackPath}?${params.toString()}`;
 
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
@@ -918,11 +921,41 @@ export async function POST(req: NextRequest) {
           })
         });
       } else {
-        // Regular welcome with language buttons
+        // Regular welcome with 1-click login and language buttons
         const locale = user.language_code === 'ru' ? 'ru' : 'en';
+        const baseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://www.virale.uno';
+
+        const authData: Record<string, any> = {
+          id: user.id,
+          first_name: user.first_name,
+          username: user.username,
+          auth_date: Math.floor(Date.now() / 1000)
+        };
+        if (user.last_name) {
+          authData.last_name = user.last_name;
+        }
+
+        const dataCheckArr = Object.entries(authData)
+          .filter(([key, val]) => key !== 'hash' && val !== undefined && val !== null)
+          .sort()
+          .map(([key, value]) => `${key}=${value}`);
+        
+        const dataCheckString = dataCheckArr.join('\n');
+        const secretKey = crypto.createHash('sha256').update(TELEGRAM_BOT_TOKEN).digest();
+        const hash = crypto.createHmac('sha256', secretKey).update(dataCheckString).digest('hex');
+
+        const params = new URLSearchParams({
+          ...Object.fromEntries(Object.entries(authData).map(([k, v]) => [k, String(v)])),
+          hash
+        });
+
+        const callbackPath = locale === 'ru' ? '/ru/auth/telegram/callback' : '/auth/telegram/callback';
+        const oneClickAuthUrl = `${baseUrl}${callbackPath}?${params.toString()}`;
+        const studioUrl = `${baseUrl}/${locale === 'ru' ? 'ru/' : ''}app/projects`;
+
         const welcomeMsg = locale === 'ru'
-          ? `Привет! Я официальный бот *Viral Studio* 🤖\n\nЯ помогаю генерировать сценарии, отслеживать тренды и доставлять контент прямо в Telegram!\n\nИспользуйте меню или выберите ваш язык ниже:`
-          : `Hello! I'm the official *Viral Studio Bot* 🤖\n\nI help you generate viral scripts, track trends, and deliver content directly to Telegram!\n\nUse the menu or choose your language below:`;
+          ? `Привет! Я официальный бот *Viral Studio* 🤖\n\nЯ помогаю создавать трендовый видеоконтент, сценарии и управлять студией.\n\nНажмите кнопку ниже для моментального входа в 1 клик или выберите язык:`
+          : `Hello! I'm the official *Viral Studio Bot* 🤖\n\nI help you generate viral scripts, track trends, and deliver content directly to Telegram!\n\nClick below to sign in instantly or choose your language:`;
 
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',
@@ -934,11 +967,14 @@ export async function POST(req: NextRequest) {
             reply_markup: {
               inline_keyboard: [
                 [
+                  { text: locale === 'ru' ? '🚀 Войти в Студию в 1 клик' : '🚀 1-Click Studio Sign In', url: oneClickAuthUrl }
+                ],
+                [
                   { text: '🇷🇺 Русский', callback_data: 'set_lang_ru' },
                   { text: '🇬🇧 English', callback_data: 'set_lang_en' }
                 ],
                 [
-                  { text: '🌐 Открыть Студию', url: 'https://www.virale.uno/app/ideas' }
+                  { text: locale === 'ru' ? '🌐 Открыть Студию' : '🌐 Open Studio', url: studioUrl }
                 ]
               ]
             }
