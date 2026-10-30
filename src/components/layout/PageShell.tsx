@@ -5,6 +5,7 @@ import { useLocale } from 'next-intl';
 import { BottomNav } from './BottomNav';
 import { GlobalStrategist } from '../global/GlobalStrategist';
 import { PwaInstallPrompt } from '../pwa/PwaInstallPrompt';
+import { SupportChatWidget } from '../ui/SupportChatWidget';
 
 interface PageShellProps {
   children: React.ReactNode;
@@ -34,6 +35,7 @@ export function PageShell({ children }: PageShellProps) {
         <main className="relative z-10 w-full min-h-screen safe-top">
           {children}
         </main>
+        <SupportChatWidget />
         <PwaInstallPrompt />
       </div>
     );
@@ -68,6 +70,7 @@ export function PageShell({ children }: PageShellProps) {
       </main>
       {!isStudioMode && <BottomNav />}
       <GlobalStrategist />
+      <SupportChatWidget />
       <PwaInstallPrompt />
     </div>
   );

@@ -1223,15 +1223,125 @@ export async function POST(req: NextRequest) {
       // Regular user text message -> Forward to SuperAdmin if sender is not the SuperAdmin
       const ADMIN_ID = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
       
-      if (String(user.id) !== String(ADMIN_ID)) {
+      if (String(user.id) === String(ADMIN_ID)) {
+        // Admin sent a text message -> check if replying to a forwarded support inquiry
+        if (message.reply_to_message) {
+          const originalText = message.reply_to_message.text || message.reply_to_message.caption || '';
+          
+          const tgIdMatch = originalText.match(/(?:Telegram ID|tg id|tg):\s*<code>?(\d+)<\/code>?/i);
+          const userIdMatch = originalText.match(/(?:User ID|user_id):\s*<code>?([a-zA-Z0-9_-]+)<\/code>?/i);
+
+          const targetTelegramId = tgIdMatch ? tgIdMatch[1] : null;
+          const targetUserId = userIdMatch ? userIdMatch[1] : null;
+
+          if (!targetTelegramId && !targetUserId) {
+            await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({
+                chat_id: ADMIN_ID,
+                text: '⚠️ Не удалось определить получателя (Telegram ID или User ID) из исходного сообщения.',
+                reply_to_message_id: message.message_id
+              })
+            });
+            return NextResponse.json({ ok: true });
+          }
+
+          const { supportService } = await import('@/lib/supportService');
+          let deliveredToTg = false;
+          let deliveredToApp = false;
+
+          // 1. Send anonymous reply to user in Telegram (from @Viralengin_bot)
+          if (targetTelegramId) {
+            try {
+              const tgRes = await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                  chat_id: targetTelegramId,
+                  text: `💬 <b>Служба поддержки Viral Studio:</b>\n\n${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}`,
+                  parse_mode: 'HTML'
+                })
+              });
+              const tgData = await tgRes.json();
+              if (tgData.ok) {
+                deliveredToTg = true;
+              }
+            } catch (tgErr) {
+              console.error('[Admin Reply] Failed to send Telegram message to user:', tgErr);
+            }
+          }
+
+          // 2. Save reply to Web App Support Dialog
+          const appTarget = targetUserId || targetTelegramId;
+          if (appTarget) {
+            try {
+              const saveRes = await supportService.saveAdminReply(appTarget, text);
+              if (saveRes.success) {
+                deliveredToApp = true;
+              }
+            } catch (appErr) {
+              console.error('[Admin Reply] Failed to save reply to app:', appErr);
+            }
+          }
+
+          // 3. Confirm to Admin
+          const statusParts = [];
+          if (deliveredToTg) statusParts.push('📱 Telegram (анонимно от лица бота)');
+          if (deliveredToApp) statusParts.push('🌐 Веб-приложение (в открытый диалог)');
+          const deliverySummary = statusParts.length > 0 ? statusParts.join(' и ') : '⚠️ Сохранено в системе';
+
+          const ackReport =
+            `✅ <b>ОТВЕТ УСПЕШНО ДОСТАВЛЕН!</b>\n\n` +
+            `<b>👤 Кому:</b> ${targetTelegramId ? `TG: <code>${targetTelegramId}</code>` : ''} ${targetUserId ? `User: <code>${targetUserId}</code>` : ''}\n` +
+            `<b>🚀 Каналы доставки:</b> ${deliverySummary}\n\n` +
+            `<b>💬 Ваш ответ:</b>\n` +
+            `${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}\n\n` +
+            `<i>Пользователь видит ответ анонимно от лица «Службы поддержки Viral Studio».</i>`;
+
+          await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              chat_id: ADMIN_ID,
+              text: ackReport,
+              parse_mode: 'HTML',
+              reply_to_message_id: message.message_id
+            })
+          });
+
+          return NextResponse.json({ ok: true });
+        }
+      } else {
+        // Regular user text message -> Forward to SuperAdmin
         const userNameStr = `${user.first_name || ''} ${user.last_name || ''}`.trim() || 'Пользователь';
         const userUsername = user.username ? `@${user.username}` : 'без_юзернейма';
 
-        const forwardHeader = `🆘 <b>ОБРАЩЕНИЕ В ПОДДЕРЖКУ</b>\n\n` +
+        // Check if user has an existing web profile
+        let webUserId = '';
+        try {
+          const { supabaseAdmin } = await import('@/lib/supabase');
+          const { data: prof } = await supabaseAdmin
+            .from('profiles')
+            .select('id')
+            .eq('telegram_id', String(user.id))
+            .maybeSingle();
+          if (prof?.id) webUserId = prof.id;
+
+          // Save to support dialog history
+          const { supportService } = await import('@/lib/supportService');
+          if (webUserId) {
+            await supportService.saveUserMessage(webUserId, text, userNameStr);
+          }
+        } catch (e) {}
+
+        const forwardHeader = `🆘 <b>ОБРАЩЕНИЕ В ПОДДЕРЖКУ (ИЗ TELEGRAM)</b>\n\n` +
           `<b>👤 От:</b> ${userNameStr} (${userUsername})\n` +
-          `<b>🆔 Telegram ID:</b> <code>${user.id}</code>\n\n` +
-          `💬 <b>Сообщение:</b>\n` +
-          `${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}`;
+          `<b>🆔 Telegram ID:</b> <code>${user.id}</code>\n` +
+          (webUserId ? `<b>🆔 User ID:</b> <code>${webUserId}</code>\n` : '') +
+          `\n💬 <b>Сообщение:</b>\n` +
+          `${text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')}\n\n` +
+          `👉 <i>Ответьте (Reply) на это сообщение в Telegram, чтобы отправить ответ пользователю анонимно!</i>`;
 
         // Forward to SuperAdmin
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
@@ -1240,25 +1350,15 @@ export async function POST(req: NextRequest) {
           body: JSON.stringify({
             chat_id: ADMIN_ID,
             text: forwardHeader,
-            parse_mode: 'HTML',
-            reply_markup: {
-              inline_keyboard: [
-                [
-                  {
-                    text: '✉️ Ответить в Telegram',
-                    url: `tg://user?id=${user.id}`
-                  }
-                ]
-              ]
-            }
+            parse_mode: 'HTML'
           })
         });
 
         // Reply confirmation to the user
         const locale = user.language_code === 'ru' ? 'ru' : 'en';
         const ackText = locale === 'ru'
-          ? `✅ *Ваше сообщение доставлено суперадминистратору!*\n\nМы свяжемся с вами в ближайшее время.`
-          : `✅ *Your message has been delivered to the SuperAdmin!*\n\nWe will get back to you shortly.`;
+          ? `✅ *Ваше сообщение доставлено в службу поддержки!*\n\nАдминистратор ответит вам прямо в этот чат.`
+          : `✅ *Your message has been delivered to support!*\n\nAn administrator will reply directly here.`;
 
         await fetch(`https://api.telegram.org/bot${TELEGRAM_BOT_TOKEN}/sendMessage`, {
           method: 'POST',

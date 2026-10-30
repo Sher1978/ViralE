@@ -650,8 +650,7 @@ export default function ProfilePage() {
           icon: HelpCircle, 
           label: locale === 'ru' ? 'Служба Поддержки' : 'Support & Admin', 
           sub: locale === 'ru' ? 'Написать сообщение напрямую суперадминистратору' : 'Send message directly to SuperAdmin in Telegram', 
-          href: 'https://t.me/Viralengin_bot?start=support', 
-          external: true,
+          onClick: () => { if (typeof window !== 'undefined') window.dispatchEvent(new CustomEvent('open-support-chat')); },
           accent: '#00FFCC' 
         },
       ],
