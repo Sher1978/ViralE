@@ -40,6 +40,7 @@ import { useAppData } from '@/components/providers/AppDataProvider';
 import { profileService } from '@/lib/services/profileService';
 import { Profile } from '@/lib/services/profileService';
 import { supabase } from '@/lib/supabase';
+import { SupportChatWidget } from '@/components/ui/SupportChatWidget';
 
 import { useTheme } from 'next-themes';
 
@@ -53,6 +54,7 @@ export default function ProfilePage() {
   const { updateProfile: updateGlobalProfile } = useAppData();
   
   const [profile, setProfile] = useState<Profile | null>(null);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
   const [isEditing, setIsEditing] = useState(false);
   const [editName, setEditName] = useState('');
   const [uploading, setUploading] = useState(false);
@@ -95,6 +97,7 @@ export default function ProfilePage() {
     const loadProfileAndAuth = async () => {
       try {
         const { data: { user } } = await supabase.auth.getUser();
+        setIsLoggedIn(!!user && !user.is_anonymous);
         if (user?.email) {
           setAuthUserEmail(user.email);
         }
@@ -163,6 +166,13 @@ export default function ProfilePage() {
     };
 
     loadProfileAndAuth();
+
+    const { data: authListener } = supabase.auth.onAuthStateChange((_event: any, session: any) => {
+      setIsLoggedIn(!!session?.user && !session.user.is_anonymous);
+    });
+    return () => {
+      authListener?.subscription?.unsubscribe();
+    };
   }, []);
 
   const toggleTheme = () => {
@@ -1477,6 +1487,8 @@ export default function ProfilePage() {
           )}
         </AnimatePresence>
 
+
+        {isLoggedIn && profile && <SupportChatWidget />}
 
         <div className="text-center space-y-2 pb-8">
           <div className="flex items-center justify-center gap-2 opacity-20">
