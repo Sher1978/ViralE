@@ -36,8 +36,8 @@ const PLANS = [
     credits: 1000,
     icon: '🌱',
     color: '#4D9EFF',
-    featuresEn: ['1000 Credits (~10 Videos)', 'ScriptLab standard access', 'Basic Storyboarding'],
-    featuresRu: ['1000 Кредитов (~10 Видео)', 'Базовый доступ к монтажу', 'Стандартная раскадровка'],
+    featuresEn: ['1000 Credits (~10-15 Videos)', 'ScriptLab standard access', 'Teleprompter & clean HD export'],
+    featuresRu: ['1000 Кредитов (~10-15 Видео)', 'Генератор идей и сценариев', 'Телесуфлер и чистый HD экспорт'],
   },
   {
     id: 'pro',
@@ -47,8 +47,8 @@ const PLANS = [
     icon: '⚡',
     color: '#00FFCC',
     popular: true,
-    featuresEn: ['2200 Credits (~22 Videos)', 'Full AI script editing', 'Smart Storyboard regeneration'],
-    featuresRu: ['2200 Кредитов (~22 Видео)', 'Полный ИИ монтаж сценариев', 'Умная регенерация кадров'],
+    featuresEn: ['2200 Credits (~22-30 Videos)', 'AI Strategist Pilot', 'Full AI script editing & 4K'],
+    featuresRu: ['2200 Кредитов (~22-30 Видео)', 'ИИ-Стратег Пилот', 'Полный ИИ монтаж сценариев и 4K'],
   },
   {
     id: 'scale',
@@ -57,8 +57,8 @@ const PLANS = [
     credits: 5700,
     icon: '🚀',
     color: '#9B5FFF',
-    featuresEn: ['5700 Credits (~57 Videos)', 'Bring Your Own Key support', 'Automated cross-posting'],
-    featuresRu: ['5700 Кредитов (~57 Видео)', 'Поддержка своих API ключей', 'Автоматический постинг'],
+    featuresEn: ['5700 Credits (~57-70 Videos)', 'Face Swap neural replacement', 'BYOK API keys & autoposting'],
+    featuresRu: ['5700 Кредитов (~57-70 Видео)', 'Нейрозамена лиц (Face Swap)', 'Свои API-ключи (BYOK) и постинг'],
   },
 ];
 

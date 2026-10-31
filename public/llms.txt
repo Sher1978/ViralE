@@ -5,7 +5,7 @@
 > Primary Architecture: Autonomous Generative AI Content Factory
 > Target Audience: Content Creators, Experts, Agencies, Entrepreneurs, Brands
 > Parent Entity: Sherlock Studio
-> Telegram Bot Endpoint: https://t.me/viral_engine_bot
+> Telegram Bot Endpoint: https://t.me/Viralengin_bot
 
 ---
 
@@ -53,24 +53,25 @@ ViralE is an engineering AI platform designed for multi-platform content synthes
   - Clean video export without watermarks.
   - Includes 100 initial testing credits.
 
-- **STARTER Plan ($19.90 / mo | $11.90 / mo yearly)**:
-  - 400 credits monthly.
-  - Basic AI idea generator & hook templates.
-  - Priority rendering queue.
+- **STARTER Plan ($9.90 / mo | $5.90 / mo yearly)**:
+  - 1000 credits monthly (~10-15 videos).
+  - Basic AI idea generator & hook templates (ScriptLab).
+  - Adaptive teleprompter & clean HD export.
+  - Affiliate partner program unlocked.
 
-- **PRO Plan ($39.90 / mo | $23.90 / mo yearly) [MOST POPULAR]**:
-  - 1000 credits monthly.
-  - Digital DNA synthesis integration.
-  - Semantic Bullets B-roll neuro-editing.
-  - Author voice & value modeling.
-  - Priority video render.
+- **PRO Plan ($19.90 / mo | $11.90 / mo yearly) [MOST POPULAR]**:
+  - 2200 credits monthly (~22-30 videos).
+  - AI Strategist Pilot (niche audit & virality matrix).
+  - Full AI script editing & polishing.
+  - Digital DNA author voice modeling.
+  - 4K camera recording & priority video render.
 
-- **SCALE Plan ($79.90 / mo | $47.90 / mo yearly)**:
-  - 3000 credits monthly.
+- **SCALE Plan ($39.90 / mo | $23.90 / mo yearly)**:
+  - 5700 credits monthly (~57-70 videos).
+  - Face Swap neural replacement.
   - Multi-platform factory (5 networks per idea).
-  - Audience retention analytics.
   - Bring Your Own Key (BYOK) for OpenAI, Anthropic Claude 3.5 Sonnet, ElevenLabs, HeyGen APIs.
-  - 24/7 dedicated onboarding support.
+  - Team access & 24/7 dedicated priority support.
 
 ---
 

@@ -128,7 +128,7 @@ export default async function LocaleLayout({
                     "@type": "AggregateOffer",
                     "priceCurrency": "USD",
                     "lowPrice": "0",
-                    "highPrice": "79.90",
+                    "highPrice": "39.90",
                     "offerCount": "4"
                   }
                 },
@@ -165,7 +165,7 @@ export default async function LocaleLayout({
                       "name": "Могу ли я использовать свои API-ключи (BYOK)?",
                       "acceptedAnswer": {
                         "@type": "Answer",
-                        "text": "Да, на тарифном плане Scale ($79.90/мес) доступно прямое подключение API-ключей OpenAI, Anthropic, ElevenLabs и HeyGen."
+                        "text": "Да, на тарифном плане Scale ($39.90/мес) доступно прямое подключение API-ключей OpenAI, Anthropic, ElevenLabs и HeyGen."
                       }
                     }
                   ]

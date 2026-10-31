@@ -99,9 +99,9 @@
     "step2TipText": "Look straight into the camera, speak naturally. Light should come from the front. No studio background needed.",
     "step3Title": "Connect Telegram",
     "step3Sub": "The bot will deliver your final video, texts and carousel right to your DMs.",
-    "step3BotName": "@viral_engine_bot",
+    "step3BotName": "@Viralengin_bot",
     "step3BotLabel": "Telegram delivery bot",
-    "step3Cta": "✈️ Open @viral_engine_bot",
+    "step3Cta": "✈️ Open @Viralengin_bot",
     "step3Hint": "Go to Telegram and press /start",
     "step3Done": "Done! As soon as you open the bot — we'll know.",
     "skipDna": "Skip for now",
@@ -275,7 +275,7 @@
     "instaCarousel": "Instagram carousel",
     "carouselMeta": "{n} slides · ZIP archive",
     "openTg": "Open in Telegram",
-    "botName": "@viral_engine_bot",
+    "botName": "@Viralengin_bot",
     "delivered": "Delivered",
     "createMore": "Create more content",
     "newProject": "← New project"
@@ -407,7 +407,9 @@
       "team": "Team Access",
       "onboarding": "Personal Onboarding",
       "support": "Priority Support",
-      "everythingPro": "Everything in Pro"
+      "everythingPro": "Everything in Pro",
+      "aiStrategist": "AI Strategist Pilot",
+      "faceSwap": "Face Swap neural replacement"
     }
   },
   "profile": {
@@ -431,7 +433,7 @@
     "avatarLabel": "Avatar Studio",
     "avatarSub": "Neural Lab active",
     "telegramLabel": "Telegram bot connected",
-    "telegramSub": "@viral_engine_bot",
+    "telegramSub": "@Viralengin_bot",
     "notifLabel": "Notifications",
     "notifSub": "Push + Telegram",
     "themeLabel": "Theme",
@@ -641,9 +643,9 @@
         "periodDetail": "/ month · or $5.90/mo annual",
         "feature1": "Basic AI-idea generation",
         "feature2": "Script writing by proven hooks",
-        "feature3": "400 monthly credits included",
+        "feature3": "1000 monthly credits included (~10-15 videos)",
         "feature4": "All Free features included",
-        "feature5": "Priority generation",
+        "feature5": "Teleprompter & clean HD export",
         "cta": "Get Starter →"
       },
       "pro": {
@@ -653,21 +655,21 @@
         "period": "/ mo",
         "periodDetail": "/ month · or $11.90/mo annual",
         "feature1": "Digital DNA integration",
-        "feature2": "Unique Tone of Voice matching",
-        "feature3": "AI neuro-editing (Semantic Bullets)",
-        "feature4": "1000 monthly credits included",
-        "feature5": "Priority video rendering",
+        "feature2": "AI Strategist Pilot (niche audit & virality)",
+        "feature3": "Full AI script editing & polishing",
+        "feature4": "2200 monthly credits included (~22-30 videos)",
+        "feature5": "4K recording & priority video rendering",
         "cta": "Get Pro →"
       },
       "scale": {
         "title": "ViralE Scale",
         "price": "$39.90",
         "period": "/ month · or $23.90/mo annual",
-        "feature1": "Full content-package generation",
-        "feature2": "5 social networks from 1 thought",
-        "feature3": "3000 monthly credits included",
-        "feature4": "Audience retention analytics",
-        "feature5": "BYOK (use your own API keys)",
+        "feature1": "Multi-format Content Factory (5 networks)",
+        "feature2": "Face Swap neural replacement",
+        "feature3": "5700 monthly credits included (~57-70 videos)",
+        "feature4": "BYOK (use your own API keys)",
+        "feature5": "Team access & dedicated 24/7 priority",
         "cta": "Get Scale →"
       }
     },
@@ -740,7 +742,13 @@
       }
     },
     "marquee": [
-      "VIRAL ENGINE", "DIGITAL DNA", "SEMANTIC BULLETS", "AI VIDEO", "4 VIRALITY FILTERS", "TELEPROMPTER", "$19.90 PER MONTH"
+      "VIRAL ENGINE",
+      "DIGITAL DNA",
+      "SEMANTIC BULLETS",
+      "AI VIDEO",
+      "4 VIRALITY FILTERS",
+      "TELEPROMPTER",
+      "$19.90 PER MONTH"
     ],
     "technology": {
       "label": "// TECHNOLOGY",
@@ -770,24 +778,65 @@
       "subtitle": "Competitors edit for 3 hours. You do it in 10 minutes. Below is the real process with a timer.",
       "placeholder": "COMING SOON: 10-MINUTE CHALLENGE",
       "steps": [
-        { "time": "01:00", "title": "IDEA", "desc": "Pick or write your topic. ViralE extracts the core and forms the structure." },
-        { "time": "03:00", "title": "DIGITAL DNA", "desc": "The system generates 5 different scripts in your style. Choose the best one." },
-        { "time": "07:00", "title": "FILMING", "desc": "Adaptive teleprompter manages the pace. You read — the system shoots." },
-        { "time": "09:00", "title": "EDITING", "desc": "AI picks Semantic Bullets (B-roll), adds subtitles and post-production effects." },
-        { "time": "10:00", "title": "ALL READY", "desc": "Video + cover + carousel (5 images) + text for 5 platforms — simultaneously." }
+        {
+          "time": "01:00",
+          "title": "IDEA",
+          "desc": "Pick or write your topic. ViralE extracts the core and forms the structure."
+        },
+        {
+          "time": "03:00",
+          "title": "DIGITAL DNA",
+          "desc": "The system generates 5 different scripts in your style. Choose the best one."
+        },
+        {
+          "time": "07:00",
+          "title": "FILMING",
+          "desc": "Adaptive teleprompter manages the pace. You read — the system shoots."
+        },
+        {
+          "time": "09:00",
+          "title": "EDITING",
+          "desc": "AI picks Semantic Bullets (B-roll), adds subtitles and post-production effects."
+        },
+        {
+          "time": "10:00",
+          "title": "ALL READY",
+          "desc": "Video + cover + carousel (5 images) + text for 5 platforms — simultaneously."
+        }
       ]
     },
     "comparison": {
       "label": "// COMPARISON",
       "title": "CALCULATE HOW MUCH YOU ARE LOSING.",
-      "headers": ["WITHOUT VIRALE", "WITH VIRALE"],
+      "headers": [
+        "WITHOUT VIRALE",
+        "WITH VIRALE"
+      ],
       "rows": [
-        ["3 hours of editing for one video", "10 minutes — from idea to publish"],
-        ["1 platform at a time", "5 platforms simultaneously"],
-        ["Generic AI content", "Your voice, your meanings (Digital DNA)"],
-        ["Weekends spent on production", "Weekends are yours again"],
-        ["Need an editor ($500–2000/mo)", "ViralE for $39.90/mo replaces an editor"],
-        ["Content released 1–2 times a week", "Content released every day without burnout"]
+        [
+          "3 hours of editing for one video",
+          "10 minutes — from idea to publish"
+        ],
+        [
+          "1 platform at a time",
+          "5 platforms simultaneously"
+        ],
+        [
+          "Generic AI content",
+          "Your voice, your meanings (Digital DNA)"
+        ],
+        [
+          "Weekends spent on production",
+          "Weekends are yours again"
+        ],
+        [
+          "Need an editor ($500–2000/mo)",
+          "ViralE for $39.90/mo replaces an editor"
+        ],
+        [
+          "Content released 1–2 times a week",
+          "Content released every day without burnout"
+        ]
       ]
     },
     "social": {
@@ -799,19 +848,22 @@
           "name": "Alex M.",
           "handle": "@alexcreates · Dubai · 84K followers",
           "quote": "\"Created 7 Reels in the first week. Used to take 3 days for one. ViralE is an unfair advantage.\"",
-          "avatar": "A", "color": "orange"
+          "avatar": "A",
+          "color": "orange"
         },
         {
           "name": "Sara K.",
           "handle": "@sarabuilds · Bali · 42K followers",
           "quote": "\"Digital DNA actually works. For the first time in 2 years, my posts sound like me, not a robot. Tried 6 AI tools before this.\"",
-          "avatar": "S", "color": "gold"
+          "avatar": "S",
+          "color": "gold"
         },
         {
           "name": "James T.",
           "handle": "@jamesgrowth · Vietnam · 127K followers",
           "quote": "\"Started posting every day. Growth in 30 days — x2. Faceless video feature pays for the subscription itself.\"",
-          "avatar": "J", "color": "red"
+          "avatar": "J",
+          "color": "red"
         }
       ]
     },
@@ -820,20 +872,33 @@
       "title1": "15 HOURS OF YOUR LIFE",
       "title2": "PER WEEK.",
       "subtitle": "You invest $1 a day — and get your freedom back. First 100 spots at $19.90 forever. {count} spots left.",
-      "toggle": ["Monthly", "Yearly (Save 40%)"],
+      "toggle": [
+        "Monthly",
+        "Yearly (Save 40%)"
+      ],
       "tiers": {
         "free": {
           "title": "ViralE Free",
           "price": "$0",
           "priceYearly": "$0",
-          "features": ["Adaptive teleprompter", "Manual script input", "Record video from app camera", "Export clean video to device"],
+          "features": [
+            "Adaptive teleprompter",
+            "Manual script input",
+            "Record video from app camera",
+            "Export clean video to device"
+          ],
           "cta": "Get Free"
         },
         "starter": {
           "title": "ViralE Starter",
           "price": "$9.90",
           "priceYearly": "$5.90",
-          "features": ["Basic AI-idea generation", "Script writing based on proven hooks", "400 credits per month", "All Free tier features included"],
+          "features": [
+            "1000 credits per month (~10-15 videos)",
+            "AI-idea & proven hook generation",
+            "Adaptive teleprompter & clean HD export",
+            "Affiliate program & payout unlocked"
+          ],
           "cta": "Get Starter"
         },
         "pro": {
@@ -841,19 +906,35 @@
           "badge": "POPULAR",
           "price": "$19.90",
           "priceYearly": "$11.90",
-          "features": ["Digital DNA integration", "Unique Tone of Voice matching", "AI neuro-editing (Semantic Bullets)", "1000 credits per month", "Priority video rendering"],
+          "features": [
+            "2200 credits per month (~22-30 videos)",
+            "AI Strategist Pilot (niche audit & virality)",
+            "Full AI script editing & polishing",
+            "Digital DNA author voice calibration",
+            "4K camera recording & priority rendering"
+          ],
           "cta": "Get Pro"
         },
         "scale": {
           "title": "ViralE Scale",
           "price": "$39.90",
           "priceYearly": "$23.90",
-          "features": ["Full content-package generation", "5 social networks from 1 thought", "3000 credits per month", "Audience retention analytics", "BYOK (use your own API keys)"],
+          "features": [
+            "5700 credits per month (~57-70 videos)",
+            "Face Swap neural replacement",
+            "Multi-format Content Factory (5 platforms)",
+            "BYOK (use your own custom API keys)",
+            "Team access & dedicated 24/7 priority"
+          ],
           "cta": "Get Scale"
         }
       },
       "urgency": "{count} of 100 spots taken",
-      "trust": ["🔒 Secure payment (Stripe)", "↩ 14-day refund (if unused)", "✕ Cancel anytime"]
+      "trust": [
+        "🔒 Secure payment (Stripe)",
+        "↩ 14-day refund (if unused)",
+        "✕ Cancel anytime"
+      ]
     },
     "faq": {
       "label": "// QUESTIONS",
@@ -903,13 +984,26 @@
     },
     "footer": {
       "slogan": "AI virality engine for experts and content creators.",
-      "links": ["Privacy Policy", "Terms of Use", "Contact"],
+      "links": [
+        "Privacy Policy",
+        "Terms of Use",
+        "Contact"
+      ],
       "copyright": "© 2026 ViralE. All rights reserved."
     },
     "form": {
       "emailPlaceholder": "Your email address",
       "nichePlaceholder": "Select niche",
-      "niches": ["Fitness", "Finance", "Lifestyle", "Tech", "Business", "Education", "Travel", "Other"],
+      "niches": [
+        "Fitness",
+        "Finance",
+        "Lifestyle",
+        "Tech",
+        "Business",
+        "Education",
+        "Travel",
+        "Other"
+      ],
       "submit": "GET EARLY ACCESS",
       "success": "You're on the list! We'll email you within 24 hours with access instructions."
     }

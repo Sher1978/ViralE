@@ -175,8 +175,8 @@ export default function SubscriptionPage() {
       icon: Zap,
       color: 'from-slate-400 to-slate-600',
       features: {
-        ru: ['400 токенов /мес (~20 видео)', 'Генерация идей и сценариев', 'Телесуфлер, монтажка, экспорт', 'Без генерации ИИ-видео'],
-        en: ['400 tokens /mo (~20 videos)', 'Idea & script generation', 'Teleprompter, editor, export', 'No AI-video generation']
+        ru: ['1000 кредитов /мес (~10-15 видео)', 'Генерация идей и сценариев (ScriptLab)', 'Телесуфлер и чистый HD экспорт', 'Партнерская программа и вывод'],
+        en: ['1000 credits /mo (~10-15 videos)', 'Idea & script generation (ScriptLab)', 'Teleprompter & clean HD export', 'Affiliate program & payouts unlocked']
       },
       popular: false
     },
@@ -188,8 +188,8 @@ export default function SubscriptionPage() {
       icon: Sparkles,
       color: 'from-purple-500 to-indigo-600',
       features: {
-        ru: ['1000 токенов /мес (~50 видео)', 'Полный ИИ монтаж сценариев', 'Регенерация скетчей и обложек', 'Приоритетный рендер'],
-        en: ['1000 tokens /mo (~50 videos)', 'Full AI script editing', 'Smart sketch & cover generation', 'Priority Rendering']
+        ru: ['2200 кредитов /мес (~22-30 видео)', 'ИИ-Стратег Пилот (аудит и матрица)', 'Полный ИИ монтаж сценариев', '4K съемка и приоритетный рендер'],
+        en: ['2200 credits /mo (~22-30 videos)', 'AI Strategist Pilot (audit & matrix)', 'Full AI script editing & polishing', '4K recording & priority rendering']
       },
       popular: true
     },
@@ -201,8 +201,8 @@ export default function SubscriptionPage() {
       icon: Rocket,
       color: 'from-amber-400 to-orange-600',
       features: {
-        ru: ['3000 токенов /мес (~150 видео)', 'Поддержка своих API ключей', 'Кросспостинг в соцсети', 'Выделенный ИИ-стратег'],
-        en: ['3000 tokens /mo (~150 videos)', 'Bring Your Own Key support', 'Automated cross-posting', 'Dedicated Pilot Strategist']
+        ru: ['5700 кредитов /мес (~57-70 видео)', 'Нейрозамена лиц (Face Swap)', 'Мультиформатная Фабрика на 5 соцсетей', 'Поддержка своих API ключей (BYOK)'],
+        en: ['5700 credits /mo (~57-70 videos)', 'Face Swap neural replacement', 'Multi-platform Content Factory', 'Bring Your Own Key support (BYOK)']
       },
       popular: false
     }
