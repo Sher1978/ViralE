@@ -704,6 +704,20 @@ export async function POST(req: NextRequest) {
           })
         });
 
+        // Record event in user_events audit log
+        supabaseAdmin.from('user_events').insert({
+          user_id: targetProfile?.id || null,
+          event_name: 'payment_success',
+          properties: {
+            product: productLabel,
+            stars: payment.total_amount,
+            credits,
+            telegram_payment_charge_id: payment.telegram_payment_charge_id,
+            telegramId,
+            tgUsername
+          }
+        }).catch(() => {});
+
         console.log(`[Telegram Stars Webhook] Successfully processed payment for ${telegramId}. Verified: ${dbVerified}`);
       } catch (err: any) {
         console.error('[Telegram Stars Webhook] Failed to process successful payment:', err);

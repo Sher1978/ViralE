@@ -1,3 +1,4 @@
+import { trackEvent } from '@/lib/analytics';
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -90,6 +91,15 @@ export default function SubscriptionPage() {
     }
 
     try {
+      trackEvent('payment_attempt', {
+        type: 'plan',
+        planId: selectedTier,
+      }, {
+        notifyAdmin: true,
+        title: 'ПОПЫТКА ОПЛАТЫ ТАРИФА (СТРАНИЦА ПОДПИСКИ)',
+        description: `Пользователь запросил оплату тарифа ${selectedTier?.toUpperCase()}`
+      });
+
       const res = await fetch('/api/billing/telegram-invoice', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },

@@ -1,3 +1,4 @@
+import { trackEvent } from '@/lib/analytics';
 'use client';
 
 import React from 'react';

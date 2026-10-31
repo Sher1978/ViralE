@@ -771,3 +771,91 @@ export async function notifyPaymentSuccess(details: {
 }
 
 
+
+export async function notifyAdminUserAction(details: {
+  userId?: string;
+  userEmail?: string;
+  fullName?: string;
+  eventName: string;
+  title?: string;
+  description?: string;
+  properties?: Record<string, any>;
+  clarityReplayUrl?: string;
+  posthogReplayUrl?: string;
+  videoUrl?: string;
+}): Promise<boolean> {
+  const token = process.env.TELEGRAM_BOT_TOKEN;
+  const adminChatId = process.env.TELEGRAM_ADMIN_CHAT_ID || '260669598';
+  if (!token || !adminChatId) return false;
+
+  const resolvedEmail = await resolveUserEmail(details.userId, details.userEmail);
+
+  let emoji = '⚡';
+  if (details.eventName.includes('record')) emoji = '📹';
+  else if (details.eventName.includes('export')) emoji = '🎬';
+  else if (details.eventName.includes('pay') || details.eventName.includes('checkout')) emoji = '💳';
+  else if (details.eventName.includes('auth') || details.eventName.includes('signup')) emoji = '🎉';
+  else if (details.eventName.includes('script') || details.eventName.includes('idea')) emoji = '🧠';
+
+  let text = `${emoji} <b>СОБЫТИЕ ПОЛЬЗОВАТЕЛЯ: ${escapeHtml(details.title || details.eventName.toUpperCase())}</b> ${emoji}\n\n` +
+    (details.fullName ? `<b>👤 Имя:</b> <code>${escapeHtml(details.fullName)}</code>\n` : '') +
+    (resolvedEmail ? `<b>📧 Email:</b> <code>${escapeHtml(resolvedEmail)}</code>\n` : '') +
+    (details.userId ? `<b>🆔 User ID:</b> <code>${escapeHtml(details.userId)}</code>\n` : '') +
+    `<b>📍 Событие:</b> <code>${escapeHtml(details.eventName)}</code>\n` +
+    (details.description ? `<b>📝 Описание:</b> ${escapeHtml(details.description)}\n` : '');
+
+  if (details.properties && Object.keys(details.properties).length > 0) {
+    const propsStr = Object.entries(details.properties)
+      .slice(0, 8)
+      .map(([k, v]) => `  • <i>${escapeHtml(k)}</i>: <code>${escapeHtml(typeof v === 'object' ? JSON.stringify(v) : String(v))}</code>`)
+      .join('\n');
+    text += `<b>📊 Детали:</b>\n${propsStr}\n`;
+  }
+
+  text += `<b>⏰ Время:</b> ${new Date().toISOString()}`;
+
+  const inlineKeyboard: { text: string; url: string }[][] = [];
+  const actionRow: { text: string; url: string }[] = [];
+
+  if (details.videoUrl) {
+    actionRow.push({ text: '▶️ Смотреть видео (MP4)', url: details.videoUrl });
+  }
+
+  if (details.clarityReplayUrl) {
+    actionRow.push({ text: '🎥 Запись в Clarity', url: details.clarityReplayUrl });
+  }
+
+  if (details.posthogReplayUrl) {
+    actionRow.push({ text: '🦔 Сессия в PostHog', url: details.posthogReplayUrl });
+  }
+
+  if (actionRow.length > 0) {
+    inlineKeyboard.push(actionRow);
+  }
+
+  // Admin button row
+  const adminBaseUrl = process.env.NEXT_PUBLIC_APP_URL || 'https://virale.uno';
+  inlineKeyboard.push([
+    { text: '👑 В Админ-панель', url: `${adminBaseUrl}/app/admin` }
+  ]);
+
+  try {
+    const res = await fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: adminChatId,
+        text,
+        parse_mode: 'HTML',
+        disable_web_page_preview: false,
+        reply_markup: {
+          inline_keyboard: inlineKeyboard,
+        },
+      }),
+    });
+    return res.ok;
+  } catch (err) {
+    console.error('[Telegram Admin Action Alert] Failed to send notification:', err);
+    return false;
+  }
+}

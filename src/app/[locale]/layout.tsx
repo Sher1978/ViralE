@@ -68,6 +68,8 @@ export const viewport: Viewport = {
 import { Providers } from "@/components/Providers";
 import { TrafficTrackerComponent } from "@/components/analytics/TrafficTrackerComponent";
 import { CookieBanner } from "@/components/ui/CookieBanner";
+import { ClarityAnalytics } from "@/components/analytics/ClarityAnalytics";
+import { PostHogProvider } from "@/components/analytics/PostHogProvider";
 import { Analytics } from '@vercel/analytics/react';
 
 export default async function LocaleLayout({
@@ -247,9 +249,11 @@ export default async function LocaleLayout({
         `}} />
 
         <Providers>
-          <NextIntlClientProvider locale={locale} messages={messages}>
-            <SessionSync />
-            <FFmpegPreloader />
+          <PostHogProvider>
+            <NextIntlClientProvider locale={locale} messages={messages}>
+              <SessionSync />
+              <ClarityAnalytics />
+              <FFmpegPreloader />
             <CookieBanner />
             
             {/* Decorative Orbs (Global) */}
@@ -262,6 +266,7 @@ export default async function LocaleLayout({
             </PageShell>
             <Analytics />
           </NextIntlClientProvider>
+          </PostHogProvider>
         </Providers>
       </body>
     </html>

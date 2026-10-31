@@ -1,3 +1,4 @@
+import { trackEvent } from '@/lib/analytics';
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -466,6 +467,19 @@ export function useHardwareRecorder({
               setLastRecordingUrl(url);
               addSystemLog(`Создана новая Blob-ссылка превью: ${url}`);
               
+              // Track event and alert superadmin with replay link
+              trackEvent('prompter_record_completed', {
+                projectId,
+                sizeBytes: blob.size,
+                sizeMB: (blob.size / (1024 * 1024)).toFixed(2),
+                mimeType: recInstance.mimeType,
+                isVoiceOnly,
+              }, {
+                notifyAdmin: true,
+                title: 'ЗАПИСЬ СУФЛЕРА ЗАВЕРШЕНА',
+                description: `Пользователь записал дубль (${(blob.size / (1024 * 1024)).toFixed(2)} MB)`
+              });
+
               // Start background conversion immediately
               addSystemLog('Запуск фоновой MP4 нормализации видео...');
               startBackgroundMp4Conversion(blob);

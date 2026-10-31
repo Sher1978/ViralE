@@ -1,3 +1,4 @@
+import { trackEvent } from '@/lib/analytics';
 'use client';
 
 import { useState } from 'react';
@@ -143,6 +144,15 @@ export function useStudioExport({
           if (uploadResult && uploadResult.publicUrl) {
             downloadUrl = uploadResult.publicUrl;
             addSystemLog(`Загрузка завершена. URL в облаке: ${downloadUrl}`);
+            trackEvent('video_export_completed', {
+              projectId,
+              videoUrl: downloadUrl,
+            }, {
+              notifyAdmin: true,
+              videoUrl: downloadUrl,
+              title: 'ЭКСПОРТ ВИДЕО (ОБЛАКО)',
+              description: 'Видео загружено в облако и готово к отдаче.'
+            });
 
             // Sync back to the manifest
             setManifest((prev: any) => {
