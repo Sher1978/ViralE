@@ -3,6 +3,7 @@
 import React from 'react';
 import { motion } from 'framer-motion';
 import { Scissors, Sparkles, Download, Send, RotateCcw, Loader2, CheckCircle2, Share2 } from 'lucide-react';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 
 interface PostRecordBranchProps {
   projectId?: string;
@@ -33,6 +34,7 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
   onTelegram,
   t
 }) => {
+  const [showFaceSwapModal, setShowFaceSwapModal] = React.useState(false);
   return (
     <div className="h-full w-full flex flex-col bg-[#050508] overflow-y-auto pb-10 relative">
       {/* iOS Style Retake Button */}
@@ -117,13 +119,17 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
                   const { supabase } = await import('@/lib/supabase');
                   const { data: { user } } = await supabase.auth.getUser();
                   if (user) {
-                    const { data: profile } = await supabase.from('profiles').select('tier').eq('id', user.id).single();
-                    if (profile?.tier !== 'pro') {
-                      (globalThis as any).alert?.("🔒 Опция Фейс Свап (Face Swap) доступна ТОЛЬКО в премиум-пакете SCALE ($79.90/мес).\nПожалуйста, перейдите в профиль и обновите подписку до тарифа Scale для доступа к нейро-замене лиц.");
+                    const { data: profile } = await supabase.from('profiles').select('tier, subscription_status').eq('id', user.id).single();
+                    const isScale = (profile?.tier === 'scale' || profile?.tier === 'superadmin') && profile?.subscription_status === 'active';
+                    if (!isScale) {
+                      setShowFaceSwapModal(true);
                       return;
                     }
                   }
-                } catch (e) {}
+                } catch (e) {
+                  setShowFaceSwapModal(true);
+                  return;
+                }
                 onSelect('animate');
               }}
               className="w-full py-4 rounded-[2rem] bg-amber-500/10 border border-amber-500/30 text-amber-300 font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2"
@@ -262,6 +268,15 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
           )}
         </div>
       </div>
+      <PremiumLimitModal
+        isOpen={showFaceSwapModal}
+        onClose={() => setShowFaceSwapModal(false)}
+        title="Face Swap (Нейро-замена лица)"
+        description="Функция нейро-замены лиц Face Swap доступна исключительно в пакете SCALE ($39.90/мес). Обновите ваш тариф для создания дипфейк-видео со своим лицом."
+        type="tier_upgrade"
+        locale="ru"
+        returnUrl={typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : undefined}
+      />
     </div>
   );
 };

@@ -7,6 +7,7 @@ import {
   Monitor, FileVideo, RefreshCw, Type, Trash2 
 } from 'lucide-react';
 import { useRouter } from '@/navigation';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { useAppData } from '@/components/providers/AppDataProvider';
 
 interface StudioSidebarProps {
@@ -90,6 +91,7 @@ export const StudioSidebar = React.memo(({
   const router = useRouter();
   const { id: projectId } = useParams() as { id: string };
   const { hasStrategistAccess } = useAppData();
+  const [show4kModal, setShow4kModal] = React.useState(false);
 
   return (
     <aside className="hidden lg:flex w-80 bg-[#0a0a14] border-r border-white/5 flex-col z-20 shadow-2xl">
@@ -226,13 +228,19 @@ export const StudioSidebar = React.memo(({
                       <label className="text-[7px] font-black uppercase text-white/20 tracking-widest ml-1">Resolution</label>
                       <div className="grid grid-cols-4 gap-1">
                         {(['360p', '720p', '1080p', '4k'] as const).map(res => {
-                          const isLocked = res === '4k' && currentProfile?.tier !== 'premium';
+                          const isLocked = res === '4k' && currentProfile?.tier !== 'pro' && currentProfile?.tier !== 'scale' && currentProfile?.tier !== 'premium' && currentProfile?.tier !== 'superadmin';
                           return (
                             <button 
                               key={res}
-                              disabled={isLocked}
-                              onClick={() => { setVideoResolution(res); setTimeout(initCamera, 100); }}
-                              className={`py-2 rounded-lg text-[8px] font-black uppercase border transition-all flex items-center justify-center gap-1 ${videoResolution === res ? 'bg-purple-500/20 border-purple-500/40 text-purple-400 shadow-lg shadow-purple-500/10' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'} ${isLocked ? 'opacity-40 cursor-not-allowed bg-black/20' : ''}`}
+                              onClick={() => { 
+                                if (isLocked) {
+                                  setShow4kModal(true);
+                                  return;
+                                }
+                                setVideoResolution(res); 
+                                setTimeout(initCamera, 100); 
+                              }}
+                              className={`py-2 rounded-lg text-[8px] font-black uppercase border transition-all flex items-center justify-center gap-1 ${videoResolution === res ? 'bg-purple-500/20 border-purple-500/40 text-purple-400 shadow-lg shadow-purple-500/10' : 'bg-white/5 border-white/5 text-white/40 hover:bg-white/10'} ${isLocked ? 'opacity-40 hover:opacity-80 bg-black/20' : ''}`}
                             >
                               {res}
                               {isLocked && <Trash2 size={8} />}
@@ -308,6 +316,15 @@ export const StudioSidebar = React.memo(({
       <div className="mt-auto pt-6 border-t border-white/5 p-8">
         <p className="text-[7px] font-bold text-center text-white/5 uppercase tracking-[0.4em]">Viral Engine v3.2</p>
       </div>
+      <PremiumLimitModal
+        isOpen={show4kModal}
+        onClose={() => setShow4kModal(false)}
+        title="Запись в 4K Ultra HD"
+        description="Запись видео в разрешении 4K Ultra HD доступна на тарифах Pro и Scale. Перейдите на тариф Pro для максимального разрешения камеры."
+        type="tier_upgrade"
+        locale="ru"
+        returnUrl={typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : undefined}
+      />
     </aside>
   );
 }, (prev, next) => {

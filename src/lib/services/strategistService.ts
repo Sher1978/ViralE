@@ -20,7 +20,12 @@ export const strategistService = {
         .single();
 
       if (profile) {
-        const isPaidTier = profile.tier === 'pro' || profile.tier === 'scale' || profile.tier === 'creator';
+        const isPaidTier = (
+          profile.tier === 'pro' || 
+          profile.tier === 'scale' || 
+          profile.tier === 'superadmin' || 
+          (profile as any).role === 'superadmin'
+        );
         if (isPaidTier && profile.subscription_status === 'active') {
           return { hasAccess: true, status: 'active', trialExpiresAt: null };
         }
@@ -39,14 +44,7 @@ export const strategistService = {
         return { hasAccess: true, status: 'active', trialExpiresAt: null };
       }
 
-      if (data?.trial_started_at) {
-        const trialStart = new Date(data.trial_started_at);
-        const now = new Date();
-        const expiresAt = new Date(trialStart.getTime() + 24 * 60 * 60 * 1000);
-        if (now < expiresAt) {
-          return { hasAccess: true, status: 'trial', trialExpiresAt: expiresAt.toISOString() };
-        }
-      }
+      // Free / Starter tiers have NO access to the AI Strategist unless explicitly subscribed
       return { hasAccess: false, status: 'no_access', trialExpiresAt: null };
     } catch (err) {
       console.error('[StrategistService] Access check failed:', err);
@@ -55,36 +53,7 @@ export const strategistService = {
   },
 
   async activateTrial(userId: string, client?: any): Promise<boolean> {
-    const db = client || supabase;
-    const { error } = await db
-      .from('feature_access')
-      .upsert({
-        user_id: userId,
-        feature_id: 'strategist_pilot',
-        trial_started_at: new Date().toISOString(),
-        updated_at: new Date().toISOString()
-      });
-
-    if (!error) return true;
-
-    console.warn('[StrategistService] Standard trial activation failed, trying admin client fallback...', error);
-    try {
-      const { supabaseAdmin } = await import('../supabase');
-      if (supabaseAdmin) {
-        const { error: adminErr } = await supabaseAdmin
-          .from('feature_access')
-          .upsert({
-            user_id: userId,
-            feature_id: 'strategist_pilot',
-            trial_started_at: new Date().toISOString(),
-            updated_at: new Date().toISOString()
-          });
-        return !adminErr;
-      }
-    } catch (e) {
-      console.error('[StrategistService] Admin fallback trial activation error:', e);
-    }
+    // Deprecated: automatic free trials for strategist are disabled
     return false;
   }
 };
-

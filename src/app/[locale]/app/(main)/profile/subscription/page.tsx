@@ -15,8 +15,10 @@ import {
   X,
   Loader2,
   Coins,
-  QrCode
+  QrCode,
+  ArrowLeft
 } from 'lucide-react';
+import { useSearchParams } from 'next/navigation';
 import { motion, AnimatePresence } from 'framer-motion';
 import { profileService, Profile } from '@/lib/services/profileService';
 import { supabase } from '@/lib/supabase';
@@ -26,6 +28,8 @@ export default function SubscriptionPage() {
   const t = useTranslations('profile');
   const locale = useLocale();
   const router = useRouter();
+  const searchParams = useSearchParams();
+  const returnUrl = searchParams?.get('returnUrl') || null;
   
   const [profile, setProfile] = useState<Profile | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -214,6 +218,20 @@ export default function SubscriptionPage() {
 
   return (
     <div className="space-y-10 pb-32">
+      {returnUrl && (
+        <div className="flex items-center justify-between pb-2">
+          <button
+            onClick={() => router.push(returnUrl)}
+            className="inline-flex items-center gap-2 px-4 py-2 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all text-xs font-bold text-white/80"
+          >
+            <ArrowLeft size={16} className="text-purple-400" />
+            <span>{locale === 'ru' ? '← Вернуться к работе' : '← Return to Work'}</span>
+          </button>
+          <span className="text-[10px] text-white/30 uppercase tracking-widest font-mono">
+            {locale === 'ru' ? 'Возврат на предыдущий экран' : 'Return after plan activation'}
+          </span>
+        </div>
+      )}
       {/* Header */}
       <div className="text-center space-y-4">
         <div className="inline-flex items-center gap-2 px-4 py-1.5 rounded-full bg-purple-500/10 border border-purple-500/20 mb-2">
@@ -407,10 +425,17 @@ export default function SubscriptionPage() {
                     </p>
                   </div>
                   <button
-                    onClick={() => setIsPaymentModalOpen(false)}
-                    className="w-full py-4 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all"
+                    onClick={() => {
+                      setIsPaymentModalOpen(false);
+                      if (returnUrl) {
+                        router.push(returnUrl);
+                      }
+                    }}
+                    className="w-full py-4 rounded-2xl bg-white text-black text-xs font-black uppercase tracking-widest hover:scale-[1.02] active:scale-[0.98] transition-all flex items-center justify-center gap-2"
                   >
-                    {locale === 'ru' ? 'Отлично' : 'Perfect'}
+                    {returnUrl 
+                      ? (locale === 'ru' ? 'Вернуться к работе →' : 'Return to Work →') 
+                      : (locale === 'ru' ? 'Отлично' : 'Perfect')}
                   </button>
                 </div>
               ) : (

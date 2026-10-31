@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
 import { motion, AnimatePresence } from 'framer-motion';
 import { Camera, Sparkles, Mic, Bot, ArrowLeft, LayoutGrid, Image as ImageIcon } from 'lucide-react';
 
@@ -9,6 +10,7 @@ interface ProductionBranchProps {
 
 export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, onBack }) => {
   const [subMode, setSubMode] = useState<'main' | 'ai'>('main');
+  const [showFaceSwapModal, setShowFaceSwapModal] = useState(false);
 
   return (
     <div className="h-full w-full flex flex-col justify-between items-center p-4 sm:p-6 overflow-hidden max-w-6xl mx-auto pt-[max(1.5rem,calc(env(safe-area-inset-top,0px)+0.5rem))] pb-4">
@@ -263,13 +265,17 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
                       const { supabase } = await import('@/lib/supabase');
                       const { data: { user } } = await supabase.auth.getUser();
                       if (user) {
-                        const { data: profile } = await supabase.from('profiles').select('tier').eq('id', user.id).single();
-                        if (profile?.tier !== 'pro') {
-                          (globalThis as any).alert?.("🔒 Опция Фейс Свап (Face Swap) доступна ТОЛЬКО в премиум-пакете SCALE ($79.90/мес).\nПожалуйста, перейдите в профиль и обновите подписку до тарифа Scale для доступа к нейро-замене лиц.");
+                        const { data: profile } = await supabase.from('profiles').select('tier, subscription_status').eq('id', user.id).single();
+                        const isScale = (profile?.tier === 'scale' || profile?.tier === 'superadmin') && profile?.subscription_status === 'active';
+                        if (!isScale) {
+                          setShowFaceSwapModal(true);
                           return;
                         }
                       }
-                    } catch (e) {}
+                    } catch (e) {
+                      setShowFaceSwapModal(true);
+                      return;
+                    }
                     onSelect('voice-master');
                   }}
                   className="group relative h-48 sm:h-52 rounded-[2rem] bg-white/[0.02] border border-amber-500/20 overflow-hidden flex flex-col justify-between p-5 text-left transition-all hover:bg-white/[0.04] hover:border-amber-500/50 shadow-xl"
@@ -373,6 +379,15 @@ export const ProductionBranch: React.FC<ProductionBranchProps> = ({ onSelect, on
           </button>
         </div>
       </motion.div>
+      <PremiumLimitModal
+        isOpen={showFaceSwapModal}
+        onClose={() => setShowFaceSwapModal(false)}
+        title="Face Swap (Нейро-замена лица)"
+        description="Функция нейро-замены лиц Face Swap доступна исключительно в пакете SCALE ($39.90/мес). Обновите ваш тариф для создания дипфейк-видео со своим лицом."
+        type="tier_upgrade"
+        locale="ru"
+        returnUrl={typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : undefined}
+      />
     </div>
   );
 };

@@ -510,7 +510,8 @@ export default function AvatarHub({ onSelect, onBack, projectId, currentConfig, 
                       const win = (globalThis as any).window;
                       if (win) {
                         const currentLocale = win.location.pathname.split('/')[1] || 'ru';
-                        win.location.href = `/${currentLocale}/app/profile/subscription`;
+                        const returnUrl = encodeURIComponent(win.location.pathname + win.location.search);
+                        win.location.href = `/${currentLocale}/app/profile/subscription?returnUrl=${returnUrl}`;
                       }
                     }}
                     className="w-full py-5 bg-gradient-to-r from-yellow-500 to-amber-500 hover:from-yellow-400 hover:to-amber-400 text-black font-black uppercase tracking-[0.2em] text-xs rounded-[2rem] shadow-xl shadow-yellow-500/10 active:scale-[0.98] transition-all"

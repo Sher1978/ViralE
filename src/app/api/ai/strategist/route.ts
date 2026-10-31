@@ -74,44 +74,52 @@ export async function POST(req: Request) {
       return new Response(JSON.stringify({ error: 'Unauthorized' }), { status: 401 });
     }
 
-    // 2. Check access
+    // 2. Check access - Strictly Pro, Scale, or Superadmin with active subscription
     const { data: profile } = await authorizedSupabase
       .from('profiles')
-      .select('tier, synthetic_training_data')
+      .select('tier, subscription_status, synthetic_training_data')
       .eq('id', user.id)
       .single();
 
-    const isPremium = profile?.tier === 'pro' || profile?.tier === 'scale';
-    const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
-    const geminiApiKey = syntheticData.gemini_api_key || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || undefined;
+    const isPaidSubscriber = Boolean(
+      profile && 
+      (profile.tier === 'pro' || profile.tier === 'scale' || profile.tier === 'superadmin' || (profile as any).role === 'superadmin') &&
+      profile.subscription_status === 'active'
+    );
 
-    let access = { hasAccess: true, status: 'active', trialExpiresAt: null } as any;
-    if (!isPremium) {
+    let hasExplicitAccess = false;
+    if (!isPaidSubscriber) {
       try {
-        access = await strategistService.getAccessStatus(user.id, authorizedSupabase);
-        if (access.status === 'no_access') {
-          const activated = await strategistService.activateTrial(user.id, authorizedSupabase);
-          if (!activated) {
-            console.warn('[Strategist API] Could not activate trial via RLS, using fallback access...');
-            // Fall back to allowing trial access if activation returned false
-            access = { hasAccess: true, status: 'trial', trialExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() };
-          } else {
-            access = await strategistService.getAccessStatus(user.id, authorizedSupabase);
-          }
+        const { data: featureData } = await authorizedSupabase
+          .from('feature_access')
+          .select('is_subscribed')
+          .eq('user_id', user.id)
+          .eq('feature_id', 'strategist_pilot')
+          .maybeSingle();
+
+        if (featureData?.is_subscribed) {
+          hasExplicitAccess = true;
         }
-      } catch (err: any) {
-        console.error('[Strategist API] Access check error:', err);
-        // Fallback: grant trial access rather than failing user request
-        access = { hasAccess: true, status: 'trial', trialExpiresAt: new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString() };
+      } catch (e) {
+        console.warn('[Strategist API] Failed to check feature_access:', e);
       }
     }
 
-    if (!isPremium && !access.hasAccess) {
+    if (!isPaidSubscriber && !hasExplicitAccess) {
       return new Response(JSON.stringify({ 
-        error: 'TRIAL_EXPIRED', 
-        message: 'Your 24h trial has ended.' 
-      }), { status: 403 });
+        error: 'UPGRADE_REQUIRED', 
+        code: 'PRO_TIER_REQUIRED',
+        message: locale === 'ru'
+          ? 'Функция "ИИ Стратег" доступна только на тарифах Pro и Scale. Пожалуйста, обновите ваш тариф.'
+          : 'AI Strategist is only available on Pro and Scale plans. Please upgrade your plan.'
+      }), { 
+        status: 403, 
+        headers: { 'Content-Type': 'application/json' } 
+      });
     }
+
+    const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};
+    const geminiApiKey = syntheticData.gemini_api_key || process.env.GOOGLE_GENERATIVE_AI_API_KEY || process.env.GEMINI_API_KEY || undefined;
 
     // 3. Build prompt
     const systemPrompt = await strategistServerService.getStrategistSystemPrompt(user.id, locale);
@@ -526,9 +534,17 @@ export async function POST(req: Request) {
     console.error('Strategist API error:', error);
     try {
       const errorMsg = error?.message || String(error);
-      const isRateLimit = errorMsg.includes('429') || errorMsg.includes('Quota exceeded') || errorMsg.includes('RESOURCE_EXHAUSTED') || errorMsg.includes('rate-limits');
+      const isExpectedTransient = 
+        errorMsg.includes('429') || 
+        errorMsg.includes('Quota exceeded') || 
+        errorMsg.includes('RESOURCE_EXHAUSTED') || 
+        errorMsg.includes('503') || 
+        errorMsg.includes('high demand') || 
+        errorMsg.includes('UNAVAILABLE') || 
+        errorMsg.includes('Service Unavailable') || 
+        errorMsg.includes('rate-limits');
       
-      if (!isRateLimit) {
+      if (!isExpectedTransient) {
         const { notifyAdminError } = await import('@/lib/telegram');
         notifyAdminError({
           source: 'Strategist AI Agent API',

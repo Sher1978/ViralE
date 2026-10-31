@@ -1154,7 +1154,13 @@ export function StrategistChat({
         activeProfile = prof;
       }
 
-      if (activeProfile?.tier === 'pro' || activeAccess?.hasAccess) {
+      const isProOrScale = Boolean(
+        activeProfile && 
+        (activeProfile.tier === 'pro' || activeProfile.tier === 'scale' || activeProfile.tier === 'superadmin' || (activeProfile as any).role === 'superadmin') &&
+        activeProfile.subscription_status === 'active'
+      );
+
+      if (isProOrScale || activeAccess?.hasAccess) {
         setIsOpen(true);
       } else {
         setShowUpgradeModal(true);
@@ -1162,7 +1168,12 @@ export function StrategistChat({
     } catch (err) {
       console.error('[StrategistChat] Failed to refresh access on toggle click:', err);
       // fallback to existing loaded state
-      if (profile?.tier === 'pro' || access?.hasAccess) {
+      const isProFallback = Boolean(
+        profile && 
+        (profile.tier === 'pro' || profile.tier === 'scale' || profile.tier === 'superadmin' || (profile as any).role === 'superadmin') &&
+        profile.subscription_status === 'active'
+      );
+      if (isProFallback || access?.hasAccess) {
         setIsOpen(true);
       } else {
         setShowUpgradeModal(true);
@@ -1822,12 +1833,13 @@ export function StrategistChat({
       <PremiumLimitModal 
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        title={locale === 'ru' ? 'ИИ Стратег заблокирован' : 'AI Strategist Locked'}
+        title={locale === 'ru' ? 'ИИ Стратег доступен в Pro' : 'AI Strategist (Pro/Scale)'}
         description={locale === 'ru' 
-          ? 'Функция "ИИ Стратег" доступна только для пользователей с Pro-пакетом. Обновите ваш пакет для продолжения.' 
-          : 'The AI Strategist feature is only available for users with the Pro package. Upgrade your package to continue.'}
+          ? 'Персональный ИИ-стратег доступен на тарифах Pro и Scale. Перейдите на тариф Pro, чтобы разблокировать аналитику смыслов, генерацию и аудит сценариев.' 
+          : 'Personal AI Strategist is only available on Pro and Scale plans. Upgrade to Pro to unlock strategic script synthesis and deep analytics.'}
         type="tier_upgrade"
         locale={locale}
+        returnUrl={typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : undefined}
       />
 
       {/* Structured Rotor View */}

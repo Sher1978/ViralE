@@ -19,6 +19,7 @@ interface PremiumLimitModalProps {
   locale?: string;
   balance?: number;
   onConfirm?: () => void;
+  returnUrl?: string;
 }
 
 const TOP_UP_OPTIONS = [
@@ -70,7 +71,8 @@ export function PremiumLimitModal({
   advice,
   type = 'trial',
   locale = 'en',
-  balance
+  balance,
+  returnUrl
 }: PremiumLimitModalProps) {
   const router = useRouter();
   
@@ -572,7 +574,11 @@ export function PremiumLimitModal({
                 ) : (type === 'tier_upgrade' || type === 'trial' || type === 'credits') ? (
                   <button
                     onClick={() => {
-                      router.push('/app/profile/subscription');
+                      const target = returnUrl || (typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '');
+                      const subUrl = target 
+                        ? `/app/profile/subscription?returnUrl=${encodeURIComponent(target)}`
+                        : '/app/profile/subscription';
+                      router.push(subUrl);
                       onClose();
                     }}
                     className="group relative w-full overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 p-5 text-white transition-all hover:brightness-110 active:scale-95 shadow-[0_10px_30px_rgba(147,51,234,0.3)] font-mono rounded-2xl"
