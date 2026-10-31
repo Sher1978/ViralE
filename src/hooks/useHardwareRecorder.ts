@@ -1,6 +1,5 @@
-import { trackEvent } from '@/lib/analytics';
 'use client';
-
+import { trackEvent } from '@/lib/analytics';
 import { useState, useEffect, useRef } from 'react';
 import { renderService } from '@/lib/services/renderService';
 import { projectService } from '@/lib/services/projectService';

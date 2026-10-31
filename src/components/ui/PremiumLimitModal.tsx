@@ -1,6 +1,5 @@
-import { trackEvent } from '@/lib/analytics';
 'use client';
-
+import { trackEvent } from '@/lib/analytics';
 import React from 'react';
 import { motion, AnimatePresence } from 'framer-motion';
 import { 

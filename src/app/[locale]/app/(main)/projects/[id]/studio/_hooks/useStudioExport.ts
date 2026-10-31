@@ -1,6 +1,5 @@
-import { trackEvent } from '@/lib/analytics';
 'use client';
-
+import { trackEvent } from '@/lib/analytics';
 import { useState } from 'react';
 import { useRouter } from '@/navigation';
 import { projectService } from '@/lib/services/projectService';

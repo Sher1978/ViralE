@@ -1,6 +1,5 @@
-import { trackEvent } from '@/lib/analytics';
 'use client';
-
+import { trackEvent } from '@/lib/analytics';
 import { useState, useEffect, useRef } from 'react';
 import { useTranslations, useLocale } from 'next-intl';
 import { 
