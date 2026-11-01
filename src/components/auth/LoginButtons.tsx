@@ -60,25 +60,6 @@ export default function LoginButtons() {
 
   const saveConsentMetadataToProfile = async () => {
     recordLocalConsent();
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (user) {
-        await supabase
-          .from('profiles')
-          .update({
-            consent_given_at: new Date().toISOString(),
-            legal_consent_version: '2026.1',
-            legal_consents: {
-              ...consents,
-              timestamp: new Date().toISOString(),
-              user_agent: typeof window !== 'undefined' ? window.navigator.userAgent : 'unknown'
-            }
-          })
-          .eq('id', user.id);
-      }
-    } catch (e) {
-      console.warn('[AuthConsent] Failed to record consent metadata:', e);
-    }
   };
 
   const handleGoogleLogin = async () => {

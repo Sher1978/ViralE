@@ -13,7 +13,7 @@ export async function POST(req: NextRequest) {
     const body = await req.json();
 
     // Whitelist allowable fields for client update
-    const allowedFields = ['full_name', 'avatar_url', 'preferred_language', 'digital_shadow_prompt'];
+    const allowedFields = ['full_name', 'preferred_language', 'digital_shadow_prompt', 'content_language', 'subtitle_language'];
     const updates: Record<string, any> = {};
 
     for (const key of allowedFields) {

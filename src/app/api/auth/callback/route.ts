@@ -66,19 +66,8 @@ export async function GET(request: Request) {
           const googleAvatar = user.user_metadata?.avatar_url || user.user_metadata?.picture || null;
           const userEmail = user.email || null;
 
-          // Check for referral inviter
           const refCookie = cookieStore.get('viral_ref_code')?.value;
-          let inviterId: string | null = null;
-          if (refCookie) {
-            const { data: inviter } = await supabaseAdmin
-              .from('profiles')
-              .select('id')
-              .eq('referral_code', refCookie.trim().toLowerCase())
-              .maybeSingle();
-            if (inviter && inviter.id !== user.id) {
-              inviterId = inviter.id;
-            }
-          }
+          const inviterCode = refCookie ? refCookie.trim().toLowerCase() : null;
 
           // Check existing profile
           const { data: existingProf } = await supabaseAdmin
@@ -101,34 +90,51 @@ export async function GET(request: Request) {
               id: user.id,
               email: userEmail,
               full_name: googleName || `Media Creator #${parseInt(user.id.slice(0, 4), 16) % 10000}`,
-              avatar_url: googleAvatar,
-              credits_balance: 0,
+              credits_balance: 100,
               tier: 'free',
               subscription_status: 'active',
               preferred_language: 'ru',
-              referral_code: referralCode,
-              referred_by_id: inviterId,
-              raw_onboarding_data: { registration_notified: false },
+              raw_onboarding_data: {
+                registration_notified: false,
+                welcome_credits_granted: true,
+                avatar_url: googleAvatar,
+                referral_code: referralCode,
+                referred_by_code: inviterCode,
+              },
             };
             await supabaseAdmin.from('profiles').insert(newProfileData);
             await notifyNewUserRegistration({
               ...newProfileData,
+              avatar_url: googleAvatar,
+              referral_code: referralCode,
               auth_provider: user.app_metadata?.provider || 'Google OAuth',
               created_at: user.created_at,
             });
           } else {
             const updates: Record<string, any> = {};
+            const rawOnboarding = (existingProf.raw_onboarding_data as Record<string, any>) || {};
+            const nextRaw = { ...rawOnboarding };
+            let rawChanged = false;
+
             if (userEmail && (!existingProf.email || existingProf.email.includes('anon_'))) {
               updates.email = userEmail;
             }
             if (googleName && (!existingProf.full_name || existingProf.full_name === 'Creator')) {
               updates.full_name = googleName;
             }
-            if (googleAvatar && !existingProf.avatar_url) {
-              updates.avatar_url = googleAvatar;
+            if (!existingProf.tier || existingProf.tier === 'null') {
+              updates.tier = 'free';
             }
-            if (inviterId && !existingProf.referred_by_id) {
-              updates.referred_by_id = inviterId;
+            if (googleAvatar && !nextRaw.avatar_url) {
+              nextRaw.avatar_url = googleAvatar;
+              rawChanged = true;
+            }
+            if (inviterCode && !nextRaw.referred_by_code) {
+              nextRaw.referred_by_code = inviterCode;
+              rawChanged = true;
+            }
+            if (rawChanged) {
+              updates.raw_onboarding_data = nextRaw;
             }
 
             if (Object.keys(updates).length > 0) {

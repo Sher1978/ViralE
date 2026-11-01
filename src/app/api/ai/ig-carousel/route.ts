@@ -58,7 +58,7 @@ export async function POST(req: Request) {
     try {
       const { data, error: profileErr } = await authorizedSupabase
         .from('profiles')
-        .select('digital_shadow_prompt, visual_style, knowledge_base_json, visual_dna_config')
+        .select('*')
         .eq('id', userId)
         .single();
       

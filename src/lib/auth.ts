@@ -95,39 +95,27 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
         console.log('[Auth] Creating missing profile for user:', user.id);
         const cleanId = user.id.replace(/-/g, '');
         const userRefCode = `ref_${cleanId.slice(0, 4).toLowerCase()}${cleanId.slice(-4).toLowerCase()}`;
-        
-        let inviterId: string | null = null;
-        try {
-          const refCookie = cookieStore.get('viral_ref_code')?.value;
-          if (refCookie) {
-            const { data: inviter } = await supabase
-              .from('profiles')
-              .select('id')
-              .eq('referral_code', refCookie.trim().toLowerCase())
-              .maybeSingle();
-            if (inviter && inviter.id !== user.id) {
-              inviterId = inviter.id;
-            }
-          }
-        } catch (e) {
-          console.warn('[Auth] Could not resolve inviter:', e);
-        }
+        const refCookie = cookieStore.get('viral_ref_code')?.value;
+        const inviterCode = refCookie ? refCookie.trim().toLowerCase() : null;
 
         const profileData = {
           id: user.id,
           email: user.email || `anon_${user.id}@viral.engine`,
           full_name: googleName,
-          avatar_url: googleAvatar,
-          credits_balance: 0,
+          credits_balance: 100,
           digital_shadow_prompt: null,
           industry_context: null,
           onboarding_completed: false,
           tier: 'free',
           subscription_status: 'active',
           preferred_language: 'ru',
-          referral_code: userRefCode,
-          referred_by_id: inviterId,
-          raw_onboarding_data: { registration_notified: false },
+          raw_onboarding_data: {
+            registration_notified: false,
+            welcome_credits_granted: true,
+            avatar_url: googleAvatar,
+            referral_code: userRefCode,
+            referred_by_code: inviterCode,
+          },
         };
         const { error: insertErr } = await supabase.from('profiles').insert(profileData);
         if (insertErr) throw insertErr;
@@ -139,8 +127,8 @@ export async function getAuthContext({ skipProfileCheck = false }: { skipProfile
         if (googleName && (!profile.full_name || profile.full_name === 'Creator')) {
           updates.full_name = googleName;
         }
-        if (googleAvatar && !profile.avatar_url) {
-          updates.avatar_url = googleAvatar;
+        if (!profile.tier || profile.tier === 'null') {
+          updates.tier = 'free';
         }
 
         if (Object.keys(updates).length > 0) {

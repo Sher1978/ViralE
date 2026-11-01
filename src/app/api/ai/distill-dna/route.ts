@@ -57,8 +57,7 @@ export async function POST(req: NextRequest) {
       .update({
         synthetic_training_data: trainingData,
         knowledge_base_json: dnaInfo,
-        visual_style: dnaInfo.suggested_visual_style || 'startup_valley',
-        dna_last_updated: new Date().toISOString()
+        updated_at: new Date().toISOString()
       })
 
 

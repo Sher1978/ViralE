@@ -13,7 +13,7 @@ export async function GET(req: NextRequest) {
 
     const { data: profile, error } = await supabaseAdmin
       .from('profiles')
-      .select('consent_given_at, legal_consent_version, legal_consents')
+      .select('raw_onboarding_data')
       .eq('id', authCtx.user.id)
       .maybeSingle();
 
@@ -21,11 +21,12 @@ export async function GET(req: NextRequest) {
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    const rawData = (profile?.raw_onboarding_data as Record<string, any>) || {};
     return NextResponse.json({
-      hasConsent: Boolean(profile?.consent_given_at),
-      consent_given_at: profile?.consent_given_at || null,
-      legal_consent_version: profile?.legal_consent_version || null,
-      legal_consents: profile?.legal_consents || null,
+      hasConsent: Boolean(rawData.consent_given_at),
+      consent_given_at: rawData.consent_given_at || null,
+      legal_consent_version: rawData.legal_consent_version || null,
+      legal_consents: rawData.legal_consents || null,
     });
   } catch (err: any) {
     return NextResponse.json({ error: err.message || 'Internal Server Error' }, { status: 500 });
@@ -46,15 +47,25 @@ export async function POST(req: NextRequest) {
     const nowIso = new Date().toISOString();
     const userAgent = req.headers.get('user-agent') || 'unknown';
 
+    const { data: existingProf } = await supabaseAdmin
+      .from('profiles')
+      .select('raw_onboarding_data')
+      .eq('id', userId)
+      .maybeSingle();
+    const rawData = (existingProf?.raw_onboarding_data as Record<string, any>) || {};
+
     const { error: updateErr } = await supabaseAdmin
       .from('profiles')
       .update({
-        consent_given_at: nowIso,
-        legal_consent_version: legal_consent_version || '2026.1',
-        legal_consents: {
-          ...(consents || {}),
-          timestamp: nowIso,
-          user_agent: userAgent
+        raw_onboarding_data: {
+          ...rawData,
+          consent_given_at: nowIso,
+          legal_consent_version: legal_consent_version || '2026.1',
+          legal_consents: {
+            ...(consents || {}),
+            timestamp: nowIso,
+            user_agent: userAgent
+          }
         },
         updated_at: nowIso
       })

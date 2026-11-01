@@ -9,7 +9,7 @@ export async function GET() {
 
     const { data, error } = await authorizedSupabase
       .from('profiles')
-      .select('digital_shadow_prompt, visual_style')
+      .select('*')
       .eq('id', userId)
       .single();
 
@@ -17,7 +17,7 @@ export async function GET() {
 
     return NextResponse.json({ 
       dna: data?.digital_shadow_prompt,
-      visualStyle: data?.visual_style 
+      visualStyle: (data as any)?.visual_style || (data?.raw_onboarding_data as any)?.visual_style || 'startup_valley'
     });
   } catch (error: any) {
     console.error('Fetch DNA failed:', error);
@@ -35,18 +35,16 @@ export async function PATCH(req: Request) {
     if (visualStyle && !newData) {
       const { data: currentProfile } = await authorizedSupabase
         .from('profiles')
-        .select('visual_dna_config')
+        .select('raw_onboarding_data')
         .eq('id', userId)
         .single();
 
-      const existingConfig = currentProfile?.visual_dna_config || {};
-      const updatedConfig = { ...existingConfig, stylePreset: visualStyle };
+      const rawData = (currentProfile?.raw_onboarding_data as Record<string, any>) || {};
 
       const { error } = await authorizedSupabase
         .from('profiles')
         .update({ 
-          visual_style: visualStyle,
-          visual_dna_config: updatedConfig,
+          raw_onboarding_data: { ...rawData, visual_style: visualStyle },
           updated_at: new Date().toISOString()
         })
         .eq('id', userId);
@@ -76,7 +74,6 @@ export async function PATCH(req: Request) {
       digital_shadow_prompt: updatedPersona,
       updated_at: new Date().toISOString()
     };
-    if (visualStyle) updates.visual_style = visualStyle;
 
     const { error } = await authorizedSupabase
       .from('profiles')

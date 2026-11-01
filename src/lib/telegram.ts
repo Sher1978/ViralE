@@ -280,7 +280,7 @@ export async function notifyNewUserRegistration(profile: NewUserRegistrationData
     const { supabaseAdmin } = await import('@/lib/supabase');
     const { data } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, full_name, avatar_url, telegram_id, tier, credits_balance, preferred_language, referral_code, referred_by_id, created_at, raw_onboarding_data')
+      .select('*')
       .eq('id', profile.id)
       .maybeSingle();
 
@@ -510,7 +510,7 @@ export async function notifySubscriptionChanged(details: SubscriptionChangeData)
     const { supabaseAdmin } = await import('@/lib/supabase');
     const { data } = await supabaseAdmin
       .from('profiles')
-      .select('id, email, full_name, avatar_url, telegram_id, tier, subscription_status, subscription_expires_at, credits_balance')
+      .select('*')
       .eq('id', details.userId)
       .maybeSingle();
     dbProfile = data;

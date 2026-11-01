@@ -487,7 +487,7 @@ export async function adminUpdateUserTier(userId: string, tier: string, subscrip
   // Fetch current tier and status for audit & notification
   const { data: currentProfile } = await supabaseAdmin
     .from('profiles')
-    .select('tier, subscription_status, full_name, email, avatar_url, telegram_id')
+    .select('*')
     .eq('id', userId)
     .maybeSingle();
 
@@ -549,7 +549,7 @@ export async function getAdminPaymentsLog(limit: number = 100) {
       try {
         const { data: profiles } = await supabaseAdmin
           .from('profiles')
-          .select('id, email, full_name, telegram_id, avatar_url, tier, subscription_status')
+          .select('*')
           .in('id', userIds);
 
         (profiles || []).forEach((p: any) => {

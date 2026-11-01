@@ -54,7 +54,7 @@ async function handleTelegramAuth(userData: any, hash: string) {
   // First check if profile exists with this telegram_id or email
   const { data: existingProfileData } = await supabaseAdmin
     .from('profiles')
-    .select('id, email, telegram_id, full_name, avatar_url')
+    .select('*')
     .or(`telegram_id.eq.${telegramId},email.eq.${email}`)
     .maybeSingle();
 
@@ -64,9 +64,17 @@ async function handleTelegramAuth(userData: any, hash: string) {
   }
 
   if (!targetUser) {
-    // Fallback: search auth users list in case profile is missing or delayed
-    const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 1000 }).catch(() => ({ data: { users: [] } }));
-    targetUser = users?.find((u: any) => u.email === email) || null;
+    // Fallback: paginate through auth users list in case profile is missing or unlinked
+    for (let page = 1; page <= 10; page++) {
+      const { data: { users } } = await supabaseAdmin.auth.admin.listUsers({ page, perPage: 1000 }).catch(() => ({ data: { users: [] } }));
+      if (!users || users.length === 0) break;
+      const found = users.find((u: any) => u.email === email || String(u.user_metadata?.telegram_id) === String(telegramId));
+      if (found) {
+        targetUser = found;
+        break;
+      }
+      if (users.length < 1000) break;
+    }
   }
 
   let isNewUser = false;
@@ -101,43 +109,45 @@ async function handleTelegramAuth(userData: any, hash: string) {
     throw signInError || new Error('Failed to create session');
   }
 
-  // 5. Update Profile with telegram_id (preserve user custom updates)
+  // 5. Upsert Profile with telegram_id using only real columns of public.profiles
   const { data: existingProfile } = await supabaseAdmin
     .from('profiles')
-    .select('full_name, avatar_url, raw_onboarding_data')
+    .select('*')
     .eq('id', targetUser!.id)
     .maybeSingle();
 
-  const fullName = existingProfile?.full_name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim();
-  const avatarUrl = existingProfile?.avatar_url || userData.photo_url;
-  const isNewProfile = !existingProfile;
+  const rawOnboarding = (existingProfile?.raw_onboarding_data as Record<string, any>) || {};
+  const fullName = existingProfile?.full_name || `${userData.first_name || ''} ${userData.last_name || ''}`.trim() || 'Telegram Creator';
+  const avatarUrl = rawOnboarding.avatar_url || userData.photo_url || null;
+  const isNewProfile = !existingProfile || (!existingProfile.email && !existingProfile.telegram_id);
 
-  if (existingProfile) {
-    const { error: updateError } = await supabaseAdmin
-      .from('profiles')
-      .update({
-        telegram_id: String(telegramId),
-        email,
-        full_name: fullName,
-        avatar_url: avatarUrl
-      })
-      .eq('id', targetUser!.id);
-    if (updateError) throw updateError;
-  } else {
-    const { error: insertError } = await supabaseAdmin
-      .from('profiles')
-      .insert({
-        id: targetUser!.id,
-        email,
-        telegram_id: String(telegramId),
-        full_name: fullName,
+  const currentBalance = existingProfile ? (existingProfile.credits_balance ?? 0) : 100;
+  const shouldGrantWelcome = !existingProfile || ((existingProfile.tier === 'free' || existingProfile.tier === 'null' || !existingProfile.tier) && currentBalance === 0 && !rawOnboarding.welcome_credits_granted);
+  const nextBalance = shouldGrantWelcome ? 100 : currentBalance;
+  const cleanTier = (!existingProfile?.tier || existingProfile.tier === 'null') ? 'free' : existingProfile.tier;
+
+  const { error: upsertError } = await supabaseAdmin
+    .from('profiles')
+    .upsert({
+      id: targetUser!.id,
+      email: existingProfile?.email && !existingProfile.email.includes('@telegram.local') ? existingProfile.email : email,
+      telegram_id: String(telegramId),
+      full_name: fullName,
+      credits_balance: nextBalance,
+      tier: cleanTier,
+      subscription_status: existingProfile?.subscription_status || 'active',
+      preferred_language: existingProfile?.preferred_language || 'ru',
+      raw_onboarding_data: {
+        ...rawOnboarding,
         avatar_url: avatarUrl,
-        credits_balance: 0,
-        tier: 'free',
-        subscription_status: 'active',
-        preferred_language: 'ru'
-      });
-    if (insertError) throw insertError;
+        telegram_username: userData.username ? `@${userData.username}` : (rawOnboarding.telegram_username || null),
+        welcome_credits_granted: true
+      },
+      updated_at: new Date().toISOString()
+    }, { onConflict: 'id' });
+
+  if (upsertError) {
+    console.error('[Telegram Auth] Profile upsert warning:', upsertError);
   }
 
   // 6. Notify SuperAdmin on New Telegram Registration

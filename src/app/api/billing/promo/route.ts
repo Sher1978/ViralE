@@ -95,7 +95,7 @@ export async function POST(req: NextRequest) {
     let tierUpdated = false;
     const { data: currentProfile } = await supabaseAdmin
       .from('profiles')
-      .select('tier, subscription_status, credits_balance, full_name, email, avatar_url, telegram_id')
+      .select('*')
       .eq('id', user.id)
       .maybeSingle();
 

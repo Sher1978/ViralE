@@ -20,17 +20,7 @@ export async function POST(req: NextRequest) {
 
     // Check for referral inviter from cookie
     const refCookie = cookieStore.get('viral_ref_code')?.value;
-    let inviterId: string | null = null;
-    if (refCookie) {
-      const { data: inviter } = await supabaseAdmin
-        .from('profiles')
-        .select('id')
-        .eq('referral_code', refCookie.trim().toLowerCase())
-        .maybeSingle();
-      if (inviter && inviter.id !== user.id) {
-        inviterId = inviter.id;
-      }
-    }
+    const inviterCode = refCookie ? refCookie.trim().toLowerCase() : null;
 
     // Check existing profile in DB
     const { data: existingProf } = await supabaseAdmin
@@ -55,14 +45,17 @@ export async function POST(req: NextRequest) {
         id: user.id,
         email: userEmail,
         full_name: googleName || `Media Creator #${parseInt(user.id.slice(0, 4), 16) % 10000}`,
-        avatar_url: googleAvatar,
         credits_balance: 100,
         tier: 'free',
         subscription_status: 'active',
         preferred_language: 'ru',
-        referral_code: referralCode,
-        referred_by_id: inviterId,
-        raw_onboarding_data: { registration_notified: false, welcome_credits_granted: true },
+        raw_onboarding_data: {
+          registration_notified: false,
+          welcome_credits_granted: true,
+          avatar_url: googleAvatar,
+          referral_code: referralCode,
+          referred_by_code: inviterCode,
+        },
       };
 
       const { data: inserted, error: insErr } = await supabaseAdmin
@@ -77,28 +70,42 @@ export async function POST(req: NextRequest) {
 
       await notifyNewUserRegistration({
         ...newProfileData,
+        avatar_url: googleAvatar,
+        referral_code: referralCode,
         auth_provider: user.app_metadata?.provider || 'Google / Web OAuth',
         created_at: user.created_at,
       }).catch(err => console.error('[ProfileSync API] Error notifying registration:', err));
     } else {
       const updates: Record<string, any> = {};
+      const rawOnboarding = (existingProf.raw_onboarding_data as Record<string, any>) || {};
+      let rawChanged = false;
+      const nextRaw = { ...rawOnboarding };
+
       if (userEmail && (!existingProf.email || existingProf.email.includes('anon_'))) {
         updates.email = userEmail;
       }
       if (googleName && (!existingProf.full_name || existingProf.full_name === 'Creator')) {
         updates.full_name = googleName;
       }
-      if (googleAvatar && !existingProf.avatar_url) {
-        updates.avatar_url = googleAvatar;
+      if (!existingProf.tier || existingProf.tier === 'null') {
+        updates.tier = 'free';
       }
-      if (inviterId && !existingProf.referred_by_id) {
-        updates.referred_by_id = inviterId;
+      if (googleAvatar && !nextRaw.avatar_url) {
+        nextRaw.avatar_url = googleAvatar;
+        rawChanged = true;
+      }
+      if (inviterCode && !nextRaw.referred_by_code) {
+        nextRaw.referred_by_code = inviterCode;
+        rawChanged = true;
       }
       // Grant 100 welcome credits once to existing Free users who were initialized with 0
-      const rawOnboarding = (existingProf.raw_onboarding_data as Record<string, any>) || {};
-      if (existingProf.tier === 'free' && (existingProf.credits_balance || 0) === 0 && !rawOnboarding.welcome_credits_granted) {
+      if ((existingProf.tier === 'free' || existingProf.tier === 'null' || !existingProf.tier) && (existingProf.credits_balance || 0) === 0 && !nextRaw.welcome_credits_granted) {
         updates.credits_balance = 100;
-        updates.raw_onboarding_data = { ...rawOnboarding, welcome_credits_granted: true };
+        nextRaw.welcome_credits_granted = true;
+        rawChanged = true;
+      }
+      if (rawChanged) {
+        updates.raw_onboarding_data = nextRaw;
       }
 
       if (Object.keys(updates).length > 0) {

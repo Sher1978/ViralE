@@ -41,7 +41,6 @@ export async function POST(req: Request) {
         id: userId,
         email: activeEmail,
         full_name: user.user_metadata?.full_name || `Media Creator #${parseInt(userId.slice(0, 4), 16) % 10000}`,
-        avatar_url: user.user_metadata?.avatar_url || null,
         digital_shadow_prompt: masterPrompt || null,
         synthetic_training_data: masterPrompt || null, // New column
         raw_onboarding_data: {

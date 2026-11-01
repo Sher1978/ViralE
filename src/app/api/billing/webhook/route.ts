@@ -77,7 +77,7 @@ export async function POST(req: Request) {
       // 3. Query current user profile (respects active schema dynamically!)
       const { data: profile, error: profileErr } = await supabaseAdmin
         .from('profiles')
-        .select('credits_balance, tier, subscription_status, referred_by_id, full_name, email')
+        .select('*')
         .eq('id', userId)
         .single();
 

@@ -743,10 +743,12 @@ export async function POST(req: NextRequest) {
         // Generate a signed message for the web app to verify
         const authData: Record<string, any> = {
           id: user.id,
-          first_name: user.first_name,
-          username: user.username,
+          first_name: user.first_name || 'Creator',
           auth_date: Math.floor(Date.now() / 1000)
         };
+        if (user.username) {
+          authData.username = user.username;
+        }
         if (user.last_name) {
           authData.last_name = user.last_name;
         }
@@ -941,10 +943,12 @@ export async function POST(req: NextRequest) {
 
         const authData: Record<string, any> = {
           id: user.id,
-          first_name: user.first_name,
-          username: user.username,
+          first_name: user.first_name || 'Creator',
           auth_date: Math.floor(Date.now() / 1000)
         };
+        if (user.username) {
+          authData.username = user.username;
+        }
         if (user.last_name) {
           authData.last_name = user.last_name;
         }
@@ -965,7 +969,7 @@ export async function POST(req: NextRequest) {
 
         const callbackPath = locale === 'ru' ? '/ru/auth/telegram/callback' : '/auth/telegram/callback';
         const oneClickAuthUrl = `${baseUrl}${callbackPath}?${params.toString()}`;
-        const studioUrl = `${baseUrl}/${locale === 'ru' ? 'ru/' : ''}app/projects`;
+        const studioUrl = oneClickAuthUrl;
 
         const welcomeMsg = locale === 'ru'
           ? `Привет! Я официальный бот *Viral Studio* 🤖\n\nЯ помогаю создавать трендовый видеоконтент, сценарии и управлять студией.\n\nНажмите кнопку ниже для моментального входа в 1 клик или выберите язык:`

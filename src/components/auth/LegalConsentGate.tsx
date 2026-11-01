@@ -62,11 +62,11 @@ export default function LegalConsentGate({ children }: { children: React.ReactNo
         // Fallback profile check
         const { data: profile } = await supabase
           .from('profiles')
-          .select('consent_given_at')
+          .select('raw_onboarding_data')
           .eq('id', user.id)
           .maybeSingle();
 
-        if (profile?.consent_given_at) {
+        if ((profile?.raw_onboarding_data as any)?.consent_given_at) {
           if (typeof window !== 'undefined') {
             localStorage.setItem(`viral_engine_legal_consent_${user.id}`, 'true');
             localStorage.setItem('virale_legal_consent_done', 'true');

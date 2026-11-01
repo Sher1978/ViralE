@@ -89,33 +89,7 @@ export const profileService = {
     const userRefCode = generateReferralCode(user.id);
 
     if (error && error.code === 'PGRST116') {
-      // Check for inviter from viral_ref_code cookie
-      let inviterId: string | null = null;
-      try {
-        const globalObj = typeof globalThis !== 'undefined' ? (globalThis as any) : null;
-        const cookieStr: string = globalObj && globalObj.document ? globalObj.document.cookie : '';
-        if (cookieStr) {
-          const cookies = cookieStr.split('; ');
-          const refCookie = cookies.find((c: string) => c.startsWith('viral_ref_code='));
-          if (refCookie) {
-            const code = refCookie.split('=')[1]?.trim();
-            if (code) {
-              const { data: inviter } = await supabase
-                .from('profiles')
-                .select('id')
-                .eq('referral_code', code)
-                .single();
-              if (inviter && inviter.id !== user.id) {
-                inviterId = inviter.id;
-              }
-            }
-          }
-        }
-      } catch (e) {
-        console.warn('[ProfileService] Failed to resolve inviter from cookie:', e);
-      }
-
-      // Profile missing, create it
+      // Profile missing, create it with valid columns
       const { data: newProfile, error: createError } = await supabase
         .from('profiles')
         .insert([
@@ -123,14 +97,18 @@ export const profileService = {
             id: user.id,
             email: user.email || `anon_${user.id}@viral.engine`,
             full_name: googleName || defaultName,
-            avatar_url: googleAvatar || null,
             credits_balance: 100,
             tier: 'free',
             subscription_status: 'active',
             preferred_language: 'ru',
             digital_shadow_prompt: null,
             industry_context: null,
-            onboarding_completed: false
+            onboarding_completed: false,
+            raw_onboarding_data: {
+              avatar_url: googleAvatar || null,
+              referral_code: userRefCode,
+              welcome_credits_granted: true
+            }
           }
         ])
         .select()
@@ -148,7 +126,7 @@ export const profileService = {
       return null;
     }
 
-    // Dynamic sync/back-fill for existing profiles missing email, referral_code, avatar, or telegram_id
+    // Dynamic sync/back-fill for existing profiles missing email, full_name, or telegram_id
     let needsUpdate = false;
     const updates: Partial<Profile> = {};
 
@@ -162,17 +140,8 @@ export const profileService = {
       needsUpdate = true;
     }
 
-    if (!profile.referral_code) {
-      updates.referral_code = userRefCode;
-      needsUpdate = true;
-    }
-
     if (!profile.full_name || profile.full_name === 'Creator') {
       updates.full_name = googleName || defaultName;
-      needsUpdate = true;
-    }
-    if (!profile.avatar_url && googleAvatar) {
-      updates.avatar_url = googleAvatar;
       needsUpdate = true;
     }
 
