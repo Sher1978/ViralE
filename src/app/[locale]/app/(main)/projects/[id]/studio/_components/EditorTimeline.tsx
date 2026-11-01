@@ -1,6 +1,7 @@
 'use client';
 import React, { useRef, useState, useEffect, useMemo } from 'react';
 import { Layers } from 'lucide-react';
+import { useAppData } from '@/components/providers/AppDataProvider';
 
 interface TimelineOverlay {
   id: string;
@@ -78,6 +79,9 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
   const [placeholderTime, setPlaceholderTime] = useState<number | null>(null);
   const [wbPlaceholderTime, setWbPlaceholderTime] = useState<number | null>(null);
 
+  let hasLabAccess = false;
+  try { hasLabAccess = useAppData().hasLabAccess; } catch (e) {}
+  const showWhiteboardTrack = hasLabAccess || (whiteboardClips && whiteboardClips.length > 0);
   const lastTapRef = useRef<number>(0);
   const lastSubtitleTapRef = useRef<number>(0);
 
@@ -441,7 +445,8 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                 ))}
               </div>
 
-              {/* WHITEBOARD/SKETCH TRACK */}
+              {/* WHITEBOARD/SKETCH TRACK (AI Lab only) */}
+              {showWhiteboardTrack && (
               <div 
                 className="absolute bottom-[52px] h-10 w-full cursor-copy pointer-events-auto group/track bg-purple-500/[0.04]"
                 onClick={(e) => {
@@ -578,6 +583,8 @@ export const EditorTimeline: React.FC<EditorTimelineProps> = ({
                 })}
               </div>
   
+              )}
+
               {/* SUBTITLE TRACK */}
               <div 
                 className="absolute bottom-[98px] h-10 w-full cursor-pointer pointer-events-auto bg-yellow-500/[0.04]"

@@ -58,16 +58,49 @@ export default function SubscriptionPage() {
     setIsLoading(false);
   };
 
-  const handleAddCredits = async (amount: number) => {
+  const handleTopUpStars = async (topUpIndex: number, creditsAmount: number) => {
     if (!profile) return;
-    setUpdateLoading(`credits-${amount}`);
+    setUpdateLoading(`topup-${topUpIndex}`);
     try {
-      const success = await profileService.updateProfile(profile.id, { 
-        credits_balance: (profile.credits_balance || 0) + amount 
+      trackEvent('payment_attempt', {
+        type: 'topup',
+        topUpIndex,
+        creditsAmount,
+      }, {
+        notifyAdmin: true,
+        title: 'ПОПЫТКА ПОПОЛНЕНИЯ КРЕДИТОВ (СТРАНИЦА ПОДПИСКИ)',
+        description: `Пользователь выбрал пакет +${creditsAmount} CR`
       });
-      if (success) {
-        await fetchProfile();
+
+      const res = await fetch('/api/billing/telegram-invoice', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          type: 'topup',
+          id: topUpIndex,
+          locale,
+        }),
+      });
+      const data = await res.json();
+      if (!res.ok || !data.success) throw new Error(data.error || 'Invoice error');
+
+      const tg = (globalThis as any).window?.Telegram?.WebApp;
+      if (tg && typeof tg.openInvoice === 'function') {
+        tg.openInvoice(data.invoiceLink, async (status: string) => {
+          if (status === 'paid') {
+            await new Promise((r) => setTimeout(r, 1500));
+            await fetchProfile();
+          }
+        });
+      } else {
+        const payWin = (globalThis as any).window?.open(data.invoiceLink, '_blank');
+        if (!payWin && (globalThis as any).window) {
+          (globalThis as any).window.location.href = data.invoiceLink;
+        }
       }
+    } catch (err) {
+      console.error('[Subscription TopUp] Error:', err);
+      (globalThis as any).alert?.(locale === 'ru' ? 'Не удалось создать счёт на пополнение' : 'Failed to create top-up invoice');
     } finally {
       setUpdateLoading(null);
     }
@@ -184,8 +217,18 @@ export default function SubscriptionPage() {
       icon: Zap,
       color: 'from-slate-400 to-slate-600',
       features: {
-        ru: ['1000 кредитов /мес (~10-15 видео)', 'Генерация идей и сценариев (ScriptLab)', 'Телесуфлер и чистый HD экспорт', 'Партнерская программа и вывод'],
-        en: ['1000 credits /mo (~10-15 videos)', 'Idea & script generation (ScriptLab)', 'Teleprompter & clean HD export', 'Affiliate program & payouts unlocked']
+        ru: [
+          '1 000 кредитов /мес (= 20 готовых видео)',
+          'ИИ-генерация тем, хуков и сценариев',
+          'Телесуфлёр в HD + запись с камеры',
+          'Автомонтаж: Караоке-субтитры + свои или стоковые B-Roll'
+        ],
+        en: [
+          '1,000 credits /mo (= 20 full videos)',
+          'AI topic, hook & script generation',
+          'HD Teleprompter & camera recording',
+          'Auto-Montage: Karaoke Subtitles + custom or stock B-Roll'
+        ]
       },
       popular: false
     },
@@ -197,21 +240,41 @@ export default function SubscriptionPage() {
       icon: Sparkles,
       color: 'from-purple-500 to-indigo-600',
       features: {
-        ru: ['2200 кредитов /мес (~22-30 видео)', 'ИИ-Стратег Пилот (аудит и матрица)', 'Полный ИИ монтаж сценариев', '4K съемка и приоритетный рендер'],
-        en: ['2200 credits /mo (~22-30 videos)', 'AI Strategist Pilot (audit & matrix)', 'Full AI script editing & polishing', '4K recording & priority rendering']
+        ru: [
+          '2 500 кредитов /мес (= 50 готовых видео)',
+          'Режим «Без камеры» (Faceless: ИИ-озвучка + стоки)',
+          'ИИ-Стратег Пилот и калибровка Цифровой ДНК',
+          '4K Ultra HD съёмка и приоритетный рендер'
+        ],
+        en: [
+          '2,500 credits /mo (= 50 full videos)',
+          'Faceless Mode (AI Voiceover + stock footage)',
+          'AI Strategist Pilot & Digital DNA calibration',
+          '4K Ultra HD recording & priority rendering'
+        ]
       },
       popular: true
     },
     {
       id: 'scale',
-      name: 'Scale',
+      name: 'Scale + AI Lab',
       price: '$39.90',
       stars: '2000 Stars',
       icon: Rocket,
       color: 'from-amber-400 to-orange-600',
       features: {
-        ru: ['5700 кредитов /мес (~57-70 видео)', 'Нейрозамена лиц (Face Swap)', 'Мультиформатная Фабрика на 5 соцсетей', 'Поддержка своих API ключей (BYOK)'],
-        en: ['5700 credits /mo (~57-70 videos)', 'Face Swap neural replacement', 'Multi-platform Content Factory', 'Bring Your Own Key support (BYOK)']
+        ru: [
+          '6 000 кредитов /мес (= 120 готовых видео)',
+          '🧪 Полный доступ в AI Lab (Face Swap, Скетчи, Remotion)',
+          'Мультиформатная Фабрика и HeyGen Аватар (BYOK)',
+          'Поддержка своих API-ключей и приоритет 24/7'
+        ],
+        en: [
+          '6,000 credits /mo (= 120 full videos)',
+          '🧪 Full AI Lab Beta (Face Swap, Whiteboard, Remotion)',
+          'Multi-platform Factory & HeyGen Avatar (BYOK)',
+          'Custom API keys (BYOK) & 24/7 priority'
+        ]
       },
       popular: false
     }
@@ -280,21 +343,22 @@ export default function SubscriptionPage() {
                </div>
             </div>
 
-            <div className="flex gap-3">
+            <div className="flex flex-wrap justify-center gap-3">
                <button 
-                  onClick={() => handleAddCredits(100)}
+                  onClick={() => handleTopUpStars(0, 250)}
                   disabled={!!updateLoading}
-                  className="px-6 py-4 rounded-2xl bg-white/5 border border-white/10 hover:bg-white/10 active:scale-95 transition-all text-[11px] font-black uppercase tracking-widest"
+                  className="px-5 py-3.5 rounded-2xl bg-white/5 border border-white/10 hover:border-purple-500/40 hover:bg-white/10 active:scale-95 transition-all text-[11px] font-black uppercase tracking-widest flex flex-col items-center"
                >
-                  {updateLoading === 'credits-100' ? 'Updating...' : '+100 CC'}
+                  <span>{updateLoading === 'topup-0' ? '...' : '+250 CR (5 видео)'}</span>
+                  <span className="text-[9px] text-amber-400 font-bold">$4 · 200 ⭐</span>
                </button>
                <button 
-                  onClick={() => handleAddCredits(500)}
+                  onClick={() => handleTopUpStars(1, 750)}
                   disabled={!!updateLoading}
-                  className="px-8 py-4 rounded-2xl bg-purple-600 text-white shadow-xl shadow-purple-600/20 hover:bg-purple-500 active:scale-95 transition-all text-[11px] font-black uppercase tracking-widest flex items-center gap-2"
+                  className="px-6 py-3.5 rounded-2xl bg-purple-600 text-white shadow-xl shadow-purple-600/20 hover:bg-purple-500 active:scale-95 transition-all text-[11px] font-black uppercase tracking-widest flex flex-col items-center"
                >
-                  <Plus size={14} strokeWidth={3} />
-                  {updateLoading === 'credits-500' ? 'Updating...' : 'Add 500'}
+                  <span className="flex items-center gap-1.5"><Plus size={13} strokeWidth={3} />{updateLoading === 'topup-1' ? '...' : '+750 CR (15 видео)'}</span>
+                  <span className="text-[9px] text-yellow-300 font-bold">$10 · 500 ⭐</span>
                </button>
             </div>
          </div>

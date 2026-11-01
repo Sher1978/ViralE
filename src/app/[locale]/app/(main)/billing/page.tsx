@@ -11,7 +11,7 @@ const PLANS = [
     name: 'Starter',
     price: '9.90',
     credits: 1000,
-    packs: 10,
+    packs: 20,
     icon: '🌱',
     color: '#4D9EFF',
     features: [
@@ -26,8 +26,8 @@ const PLANS = [
     id: 'pro',
     name: 'Pro',
     price: '19.90',
-    credits: 2200,
-    packs: 22,
+    credits: 2500,
+    packs: 50,
     icon: '⚡',
     color: '#00FFCC',
     popular: true,
@@ -43,10 +43,10 @@ const PLANS = [
   },
   {
     id: 'scale',
-    name: 'Scale',
+    name: 'Scale + AI Lab',
     price: '39.90',
-    credits: 5700,
-    packs: 57,
+    credits: 6000,
+    packs: 120,
     icon: '🚀',
     color: '#9B5FFF',
     features: [

@@ -8,7 +8,7 @@ export const CREDIT_COSTS = {
   ANIMATION_PREMIUM: 15,
   AI_LOOK_POLISH: 2,
   RENDER_PREVIEW: 15,
-  PRO_RENDER: 75,
+  PRO_RENDER: 45,
   AVATAR_HEYGEN: 0,
   AVATAR_HIGGSFIELD: 0,
   REGENERATE_BLOCK: 2,
@@ -31,7 +31,7 @@ export async function checkBalance(supabase: SupabaseClient, userId: string) {
         // Create profile if missing
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
-          .insert({ id: userId, credits_balance: 0 })
+          .insert({ id: userId, credits_balance: 100 })
           .select('credits_balance')
           .single();
         

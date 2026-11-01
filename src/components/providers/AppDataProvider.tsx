@@ -13,6 +13,7 @@ interface AppDataContextType {
   profile: Profile | null;
   dnaComplete: boolean;
   hasStrategistAccess: boolean;
+  hasLabAccess: boolean;
   ideas: Idea[];
   archivedIdeas: Idea[];
   usedIdeas: Idea[];
@@ -28,6 +29,17 @@ interface AppDataContextType {
 }
 
 const AppDataContext = createContext<AppDataContextType | undefined>(undefined);
+
+export function checkLabAccess(profile?: { tier?: string | null } | null): boolean {
+  if (!profile) return false;
+  if (profile.tier === 'scale' || profile.tier === 'superadmin') return true;
+  if (typeof window !== 'undefined') {
+    try {
+      return window.localStorage.getItem('virale_dev_lab_enabled') === 'true';
+    } catch (e) {}
+  }
+  return false;
+}
 
 export function AppDataProvider({ children }: { children: React.ReactNode }) {
   const locale = useLocale();
@@ -412,10 +424,13 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     }
   }, [ideas]);
 
+  const hasLabAccess = React.useMemo(() => checkLabAccess(profile), [profile]);
+
   const contextValue = React.useMemo(() => ({
     profile,
     dnaComplete,
     hasStrategistAccess,
+    hasLabAccess,
     ideas,
     archivedIdeas,
     usedIdeas,
@@ -432,6 +447,7 @@ export function AppDataProvider({ children }: { children: React.ReactNode }) {
     profile,
     dnaComplete,
     hasStrategistAccess,
+    hasLabAccess,
     ideas,
     archivedIdeas,
     usedIdeas,

@@ -56,13 +56,13 @@ export async function POST(req: NextRequest) {
         email: userEmail,
         full_name: googleName || `Media Creator #${parseInt(user.id.slice(0, 4), 16) % 10000}`,
         avatar_url: googleAvatar,
-        credits_balance: 0,
+        credits_balance: 100,
         tier: 'free',
         subscription_status: 'active',
         preferred_language: 'ru',
         referral_code: referralCode,
         referred_by_id: inviterId,
-        raw_onboarding_data: { registration_notified: false },
+        raw_onboarding_data: { registration_notified: false, welcome_credits_granted: true },
       };
 
       const { data: inserted, error: insErr } = await supabaseAdmin
@@ -93,6 +93,12 @@ export async function POST(req: NextRequest) {
       }
       if (inviterId && !existingProf.referred_by_id) {
         updates.referred_by_id = inviterId;
+      }
+      // Grant 100 welcome credits once to existing Free users who were initialized with 0
+      const rawOnboarding = (existingProf.raw_onboarding_data as Record<string, any>) || {};
+      if (existingProf.tier === 'free' && (existingProf.credits_balance || 0) === 0 && !rawOnboarding.welcome_credits_granted) {
+        updates.credits_balance = 100;
+        updates.raw_onboarding_data = { ...rawOnboarding, welcome_credits_granted: true };
       }
 
       if (Object.keys(updates).length > 0) {

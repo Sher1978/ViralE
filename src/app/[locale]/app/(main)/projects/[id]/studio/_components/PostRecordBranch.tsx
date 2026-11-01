@@ -4,6 +4,7 @@ import React from 'react';
 import { motion } from 'framer-motion';
 import { Scissors, Sparkles, Download, Send, RotateCcw, Loader2, CheckCircle2, Share2 } from 'lucide-react';
 import { PremiumLimitModal } from '@/components/ui/PremiumLimitModal';
+import { useAppData } from '@/components/providers/AppDataProvider';
 
 interface PostRecordBranchProps {
   projectId?: string;
@@ -35,6 +36,8 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
   t
 }) => {
   const [showFaceSwapModal, setShowFaceSwapModal] = React.useState(false);
+  let hasLabAccess = false;
+  try { hasLabAccess = useAppData().hasLabAccess; } catch (e) {}
   return (
     <div className="h-full w-full flex flex-col bg-[#050508] overflow-y-auto pb-10 relative">
       {/* iOS Style Retake Button */}
@@ -108,9 +111,10 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               onClick={() => onSelect('pure')}
               className="w-full py-5 rounded-[2rem] bg-purple-600 text-white font-black uppercase tracking-[0.2em] text-sm shadow-xl shadow-purple-900/40 flex items-center justify-center gap-2"
             >
-              В МОНТАЖ <Scissors size={16} />
+              ✨ В АВТОМОНТАЖ (СУБТИТРЫ + B-ROLL) <Scissors size={16} />
             </motion.button>
 
+            {hasLabAccess && (
             <motion.button
               whileHover={{ scale: 1.02 }}
               whileTap={{ scale: 0.98 }}
@@ -134,8 +138,9 @@ export const PostRecordBranch: React.FC<PostRecordBranchProps> = ({
               }}
               className="w-full py-4 rounded-[2rem] bg-amber-500/10 border border-amber-500/30 text-amber-300 font-black uppercase tracking-[0.2em] text-[11px] flex items-center justify-center gap-2"
             >
-              FACE SWAP 👑 (SCALE ONLY) <Sparkles size={14} className="text-amber-400" />
+              🧪 FACE SWAP (AI LAB) <Sparkles size={14} className="text-amber-400" />
             </motion.button>
+            )}
 
             <div className="grid grid-cols-3 gap-2">
               <motion.button

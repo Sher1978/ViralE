@@ -6,15 +6,15 @@ const TELEGRAM_BOT_TOKEN = process.env.TELEGRAM_BOT_TOKEN;
 
 // Local pricing/package configuration mapped to Telegram Stars (XTR)
 const TOP_UP_OPTIONS = [
-  { credits: 50, stars: 200, titleEn: 'Refill: 50 Credits', titleRu: 'Пополнение: 50 Кредитов', descEn: 'Purchase 50 credits for editing and AI generation in Viral Studio', descRu: 'Покупка 50 кредитов для монтажа и ИИ-генерации в Viral Studio' },
-  { credits: 200, stars: 600, titleEn: 'Refill: 200 Credits', titleRu: 'Пополнение: 200 Кредитов', descEn: 'Purchase 200 credits for editing and AI generation in Viral Studio', descRu: 'Покупка 200 кредитов для монтажа и ИИ-генерации в Viral Studio' },
-  { credits: 505, stars: 1450, titleEn: 'Refill: 500 Credits', titleRu: 'Пополнение: 500 Кредитов', descEn: 'Purchase 500 credits for editing and AI generation in Viral Studio', descRu: 'Покупка 500 кредитов для монтажа и ИИ-генерации в Viral Studio' },
+  { credits: 250, stars: 200, titleEn: 'Refill: 250 Credits (5 Videos)', titleRu: 'Пополнение: 250 Кредитов (5 Видео)', descEn: 'Purchase 250 credits (= 5 full videos with subtitles & B-Roll)', descRu: 'Покупка 250 кредитов (= 5 готовых видео со сценарием, субтитрами и B-Roll)' },
+  { credits: 750, stars: 500, titleEn: 'Refill: 750 Credits (15 Videos)', titleRu: 'Пополнение: 750 Кредитов (15 Видео)', descEn: 'Purchase 750 credits (= 15 full videos with subtitles & B-Roll)', descRu: 'Покупка 750 кредитов (= 15 готовых видео со сценарием, субтитрами и B-Roll)' },
+  { credits: 2000, stars: 1200, titleEn: 'Refill: 2000 Credits (40 Videos)', titleRu: 'Пополнение: 2000 Кредитов (40 Видео)', descEn: 'Purchase 2000 credits (= 40 full videos with subtitles & B-Roll)', descRu: 'Покупка 2000 кредитов (= 40 готовых видео со сценарием, субтитрами и B-Roll)' },
 ];
 
 const PLANS = {
-  starter: { credits: 1000, stars: 500, titleEn: 'Starter Subscription', titleRu: 'Подписка Starter', descEn: 'Activate Starter Plan (includes 1000 monthly credits)', descRu: 'Активация тарифа Starter (1000 кредитов в месяц)' },
-  pro: { credits: 2200, stars: 1000, titleEn: 'Pro Subscription', titleRu: 'Подписка Pro', descEn: 'Activate Pro Plan (includes 2200 monthly credits)', descRu: 'Активация тарифа Pro (2200 кредитов в месяц)' },
-  scale: { credits: 5700, stars: 2000, titleEn: 'Scale Subscription', titleRu: 'Подписка Scale', descEn: 'Activate Scale Plan (includes 5700 monthly credits)', descRu: 'Активация тарифа Scale (5700 кредитов в месяц)' },
+  starter: { credits: 1000, stars: 500, titleEn: 'Starter Subscription (20 Videos)', titleRu: 'Подписка Starter (20 Видео)', descEn: 'Activate Starter Plan (1,000 monthly credits = 20 full videos)', descRu: 'Активация тарифа Starter (1 000 кредитов в месяц = 20 готовых видео)' },
+  pro: { credits: 2500, stars: 1000, titleEn: 'Pro Subscription (50 Videos)', titleRu: 'Подписка Pro (50 Видео)', descEn: 'Activate Pro Plan (2,500 monthly credits = 50 full videos)', descRu: 'Активация тарифа Pro (2 500 кредитов в месяц = 50 готовых видео)' },
+  scale: { credits: 6000, stars: 2000, titleEn: 'Scale + AI Lab Subscription (120 Videos)', titleRu: 'Подписка Scale + AI Lab (120 Видео)', descEn: 'Activate Scale + AI Lab Plan (6,000 monthly credits = 120 full videos + Beta Lab)', descRu: 'Активация тарифа Scale + AI Lab (6 000 кредитов = 120 видео + доступ в AI Lab)' },
 };
 
 export async function POST(req: Request) {

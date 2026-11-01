@@ -90,7 +90,8 @@ export const StudioSidebar = React.memo(({
 }: StudioSidebarProps) => {
   const router = useRouter();
   const { id: projectId } = useParams() as { id: string };
-  const { hasStrategistAccess } = useAppData();
+  const { hasStrategistAccess, hasLabAccess } = useAppData();
+  const isLab = hasLabAccess || currentProfile?.tier === 'scale' || currentProfile?.tier === 'superadmin';
   const [show4kModal, setShow4kModal] = React.useState(false);
 
   return (
@@ -111,19 +112,20 @@ export const StudioSidebar = React.memo(({
           <label className="text-[9px] font-black uppercase text-white/30 tracking-widest ml-1">Production Pipeline</label>
           <div className="grid grid-cols-1 gap-2">
             {[
-              { id: 'concept', icon: Brain, label: '1. Лаборатория идей', desc: 'Смыслы и текст' },
-              { id: 'branch', icon: Video, label: '2. Студия Записи', desc: 'Создание A-Roll' },
-              { id: 'assembly', icon: Scissors, label: '3. Продакшн', desc: 'Монтаж и B-Roll' },
-              { id: 'assets', icon: Download, label: '4. Дистрибуция', desc: 'Посты и Обложки' },
-              { id: 'knowledge', icon: Dna, label: 'Shadow Analytics', desc: 'Настройка ДНК' }
+              { id: 'script_editor', icon: Brain, label: '1. Тема и Сценарий', desc: 'Смыслы и текст ролика' },
+              { id: 'teleprompter', icon: Video, label: '2. Телесуфлёр', desc: 'Запись с камеры' },
+              { id: 'assembly', icon: Scissors, label: '3. Автомонтаж', desc: 'Субтитры CC и B-Roll' },
+              ...(isLab ? [
+                { id: 'branch', icon: Monitor, label: '🧪 AI Lab (Beta)', desc: 'Face Swap, Аватары, Карусели' },
+                { id: 'assets', icon: Download, label: '4. Дистрибуция 🧪', desc: 'Посты и Обложки' },
+                { id: 'knowledge', icon: Dna, label: 'Shadow Analytics 🧪', desc: 'Настройка ДНК' }
+              ] : [])
             ].map((tab) => (
               <button 
                 key={tab.id}
                 onClick={() => {
                   if (tab.id === 'concept') {
                     router.push(`/app/projects/new/script?projectId=${projectId}`);
-                  } else if (tab.id === 'branch') {
-                    setActiveTab('branch');
                   } else {
                     setActiveTab(tab.id);
                   }

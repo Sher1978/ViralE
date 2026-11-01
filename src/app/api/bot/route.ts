@@ -546,7 +546,7 @@ export async function POST(req: NextRequest) {
 
         // Fallback defaults if payload was simple
         if (credits === 0) {
-          credits = payment.total_amount >= 2000 ? 5700 : payment.total_amount >= 1000 ? 2200 : 1000;
+          credits = payment.total_amount >= 2000 ? 6000 : payment.total_amount >= 1000 ? 2500 : 1000;
         }
 
         const { supabaseAdmin } = await import('@/lib/supabase');

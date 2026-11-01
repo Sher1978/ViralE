@@ -2,6 +2,7 @@
 
 import React from 'react';
 import { X, ChevronDown } from 'lucide-react';
+import { useAppData } from '@/components/providers/AppDataProvider';
 
 interface EditorTopBarProps {
   onBack: () => void;
@@ -16,10 +17,18 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
   onBack,
   onExport,
   onMotionClick,
-  title = 'Монтаж',
+  title = 'Автомонтаж',
   quality = 'HD',
   isExporting = false,
 }) => {
+  let hasLabAccess = false;
+  try {
+    const appData = useAppData();
+    hasLabAccess = appData.hasLabAccess;
+  } catch (e) {
+    // Fallback if rendered outside AppDataProvider
+  }
+
   return (
     <div className="flex items-center justify-between px-3 sm:px-4 py-1.5 h-12 bg-black border-b border-white/[0.06] flex-shrink-0 z-50">
       {/* Left: Close */}
@@ -37,27 +46,27 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
         <ChevronDown size={15} className="text-white/40 mt-0.5 flex-shrink-0" strokeWidth={2.5} />
       </button>
 
-      {/* Right: Quality + Motion + Export */}
+      {/* Right: Quality + Motion (AI Lab only) + Export */}
       <div className="flex items-center gap-1.5 sm:gap-2.5 mr-12 sm:mr-16">
         <span className="hidden md:inline-block text-[11px] font-bold text-white/40 tracking-[0.15em] uppercase">
           {quality}
         </span>
-        {onMotionClick && (
+        {hasLabAccess && onMotionClick && (
           <button
             type="button"
             onClick={onMotionClick}
             disabled={isExporting}
             className="flex items-center gap-1 sm:gap-1.5 px-3 py-1.5 sm:px-3.5 sm:py-2 rounded-full bg-gradient-to-r from-purple-600 via-indigo-600 to-violet-500 hover:brightness-110 active:scale-95 text-white text-[11px] sm:text-[12px] font-extrabold tracking-tight transition-all shadow-md shadow-purple-500/20 border border-white/20 whitespace-nowrap cursor-pointer"
-            title="Claude Motion AI монтаж (параллельный пайплайн)"
+            title="AI Lab: Claude Motion монтаж (Beta)"
           >
-            <span>Motion</span>
+            <span>🧪 Motion</span>
             <span className="text-[11px] sm:text-[12px]">✨</span>
           </button>
         )}
         <button
           onClick={onExport}
           disabled={isExporting}
-          className="flex items-center gap-1 sm:gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white text-black text-[12px] sm:text-[13px] font-bold tracking-tight active:scale-95 active:opacity-90 disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed transition-all shadow-sm min-w-[75px] sm:min-w-[90px] justify-center"
+          className="flex items-center gap-1 sm:gap-1.5 px-3.5 py-1.5 sm:px-4 sm:py-2 rounded-full bg-white text-black text-[12px] sm:text-[13px] font-bold tracking-tight active:scale-95 active:opacity-90 disabled:opacity-50 disabled:scale-100 disabled:cursor-not-allowed transition-all shadow-sm min-w-[85px] sm:min-w-[100px] justify-center"
         >
           {isExporting ? (
             <>
@@ -66,7 +75,7 @@ export const EditorTopBar: React.FC<EditorTopBarProps> = ({
             </>
           ) : (
             <>
-              <span>Экспорт</span>
+              <span>Готово MP4</span>
               <span className="ml-0.5 text-black/60">›</span>
             </>
           )}

@@ -54,6 +54,7 @@ export const VideoEditor = React.memo(({
 }: VideoEditorProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const brollFileInputRef = useRef<HTMLInputElement>(null);
 
   const {
     persistenceLoaded,
@@ -497,6 +498,33 @@ export const VideoEditor = React.memo(({
     }
   };
 
+  const handleBrollFileChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = (e.target as any).files?.[0];
+    if (!file) return;
+    const clipId = `br_user_${Date.now()}`;
+    const localUrl = URL.createObjectURL(file);
+    try {
+      await idb.set(`broll_file_${clipId}`, file);
+    } catch (err) {
+      console.warn('[Editor] Failed to cache custom B-roll in IDB:', err);
+    }
+    const cleanName = (file.name || 'Мой B-Roll').replace(/\.[^/.]+$/, '').slice(0, 22);
+    setBrollClips(prev => [
+      ...prev,
+      {
+        id: clipId,
+        phraseId: clipId,
+        url: localUrl,
+        label: cleanName || 'Мой B-Roll',
+        prompt: cleanName || 'custom b-roll',
+        startTime: currentTime,
+        endTime: Math.min((duration || 60), currentTime + 3.5),
+        track: 0,
+      }
+    ]);
+    (e.target as any).value = '';
+  };
+
   const openBRollHunterForClip = (phraseId: string, prompt: string) => {
     setActiveBrollPhraseId(phraseId);
     setActiveBrollPrompt(prompt);
@@ -628,6 +656,7 @@ export const VideoEditor = React.memo(({
   return (
     <div className="flex flex-col bg-black text-white h-full max-h-[100dvh] relative overflow-hidden select-none touch-pan-y overscroll-none">
       <input ref={fileInputRef} type="file" accept="video/*" className="hidden" onChange={handleFileChange} />
+      <input ref={brollFileInputRef} type="file" accept="video/*" className="hidden" onChange={handleBrollFileChange} />
 
       {/* FOUNDATION SELECTION */}
       <AnimatePresence>
@@ -635,18 +664,23 @@ export const VideoEditor = React.memo(({
           <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
             className="absolute inset-0 z-[100] bg-[#050508] flex flex-col items-center justify-center px-8">
             <div className="w-full max-w-md space-y-8 text-center">
-              <h2 className="text-3xl font-black uppercase tracking-tighter">Choose Foundation</h2>
+              <div className="space-y-2">
+                <h2 className="text-2xl sm:text-3xl font-black uppercase tracking-tighter">Выберите основу видео</h2>
+                <p className="text-xs text-white/40 font-medium">Загрузите готовый ролик с телефона или ПК для наложения караоке-субтитров и B-Roll, или соберите видео без камеры</p>
+              </div>
               <div className="grid gap-4">
-                <button onClick={() => (fileInputRef.current as any)?.click()} className="p-8 rounded-[2rem] bg-white/5 border border-white/10 hover:border-purple-500 transition-all flex flex-col items-center gap-4">
-                  <Upload size={32} />
-                  <span className="block font-black uppercase">Upload A-Roll</span>
+                <button onClick={() => (fileInputRef.current as any)?.click()} className="p-7 rounded-[2rem] bg-purple-600/15 border border-purple-500/40 hover:border-purple-400 hover:bg-purple-600/25 transition-all flex flex-col items-center gap-3 shadow-xl shadow-purple-900/20">
+                  <Upload size={32} className="text-purple-400" />
+                  <span className="block font-black uppercase tracking-wider text-sm">📁 Загрузить своё видео (MP4 / MOV)</span>
+                  <span className="text-[10px] text-white/50 font-medium">ИИ распознает речь, сделает караоке-субтитры и подберёт B-Roll</span>
                 </button>
-                <button onClick={() => onFaceless?.()} className="p-8 rounded-[2rem] bg-white/5 border border-white/10 hover:border-blue-500 transition-all flex flex-col items-center gap-4">
-                  <Cpu size={32} />
-                  <span className="block font-black uppercase">AI Faceless Mode</span>
+                <button onClick={() => onFaceless?.()} className="p-6 rounded-[2rem] bg-white/5 border border-white/10 hover:border-blue-500 transition-all flex flex-col items-center gap-2.5">
+                  <Cpu size={28} className="text-cyan-400" />
+                  <span className="block font-black uppercase tracking-wider text-xs">🎙️ Собрать без камеры (Faceless)</span>
+                  <span className="text-[10px] text-white/40 font-medium">ИИ-озвучка вашего сценария + стоковые видео</span>
                 </button>
               </div>
-              <button onClick={onBack} className="text-[10px] font-black uppercase text-white/20 tracking-widest">Cancel</button>
+              <button onClick={onBack} className="text-[11px] font-black uppercase text-white/40 hover:text-white tracking-widest transition-colors">← Назад к сценарию</button>
             </div>
           </motion.div>
         )}
@@ -1099,9 +1133,12 @@ export const VideoEditor = React.memo(({
                 </button>
 
                 <div className="grid grid-cols-2 gap-3">
-                    <button className="p-5 bg-white/5 border border-white/5 rounded-3xl flex flex-col items-center gap-2 opacity-40">
+                    <button
+                        onClick={() => (brollFileInputRef.current as any)?.click()}
+                        className="p-5 bg-emerald-500/10 border border-emerald-500/30 hover:bg-emerald-500/20 rounded-3xl flex flex-col items-center gap-2 text-emerald-300 active:scale-95 transition-all"
+                    >
                         <Upload size={18} />
-                        <span className="text-[9px] font-bold uppercase">Загрузить</span>
+                        <span className="text-[9px] font-black uppercase tracking-widest">Загрузить свой</span>
                     </button>
                     <button 
                         onClick={() => setActiveTool(null)}

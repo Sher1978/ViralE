@@ -62,7 +62,7 @@ export default function StudioPage() {
   const { id: projectId, locale } = useParams() as { id: string; locale: string };
 
   const searchParams = useSearchParams();
-  const initialTab = searchParams.get('tab') as any || 'branch';
+  const initialTab = searchParams.get('tab') as any || 'script_editor';
 
   const [isPending, startTransition] = React.useTransition();
   const [isLoading, setIsLoading] = useState(true);
@@ -789,6 +789,21 @@ export default function StudioPage() {
                     });
                   }}
                   onNext={() => handleTabChange('branch')}
+                  onRecordTeleprompter={() => {
+                    setShowFaceless(false);
+                    setIsVoiceOnly(false);
+                    handleTabChange('teleprompter');
+                  }}
+                  onUploadToMontage={() => {
+                    setShowFaceless(false);
+                    setIsVoiceOnly(false);
+                    handleTabChange('assembly');
+                  }}
+                  onFaceless={() => {
+                    setShowFaceless(true);
+                    setIsVoiceOnly(false);
+                    handleTabChange('assembly');
+                  }}
                   onBack={() => handleTabChange('concept')}
                   locale={locale}
                 />
@@ -918,7 +933,7 @@ export default function StudioPage() {
                     });
                   }}
                   onColorChange={(color) => setScriptColor(color)}
-                  onBack={() => handleTabChange('branch')}
+                  onBack={() => handleTabChange('script_editor')}
                   onToggleRecording={isRecordingVideo ? stopVideoRecording : startVideoRecording}
                   onFlipCamera={flipCamera}
                   onTextSizeChange={(size) => setTextSize(size)}
@@ -1096,8 +1111,10 @@ export default function StudioPage() {
 
                     if (fusedVideoUrl && lastRecordingUrl === fusedVideoUrl) {
                       handleTabChange('fusion_preview');
+                    } else if (lastRecordingUrl) {
+                      handleTabChange('post_record_branch');
                     } else {
-                      handleTabChange('branch');
+                      handleTabChange('script_editor');
                     }
                   }}
                   onNext={handleFinalExport}

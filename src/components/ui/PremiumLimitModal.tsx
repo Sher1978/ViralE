@@ -23,9 +23,9 @@ interface PremiumLimitModalProps {
 }
 
 const TOP_UP_OPTIONS = [
-  { credits: 50, price: '4', packKeyEn: 'Starter Refill', packKeyRu: 'Стартовый пакет' },
-  { credits: 200, price: '12', packKeyEn: 'Popular Refill', packKeyRu: 'Популярный пакет' },
-  { credits: 500, price: '29', packKeyEn: 'Max Refill', packKeyRu: 'Максимальный пакет' },
+  { credits: 250, price: '4', packKeyEn: '5 Full Videos Pack', packKeyRu: 'Пакет на 5 готовых видео' },
+  { credits: 750, price: '10', packKeyEn: '15 Full Videos Pack', packKeyRu: 'Пакет на 15 готовых видео' },
+  { credits: 2000, price: '24', packKeyEn: '40 Full Videos Pack', packKeyRu: 'Пакет на 40 готовых видео' },
 ];
 
 const PLANS = [
@@ -36,29 +36,29 @@ const PLANS = [
     credits: 1000,
     icon: '🌱',
     color: '#4D9EFF',
-    featuresEn: ['1000 Credits (~10-15 Videos)', 'ScriptLab standard access', 'Teleprompter & clean HD export'],
-    featuresRu: ['1000 Кредитов (~10-15 Видео)', 'Генератор идей и сценариев', 'Телесуфлер и чистый HD экспорт'],
+    featuresEn: ['1,000 Credits (= 20 Full Videos/mo)', 'AI Script Generator & Teleprompter HD', 'Auto-Montage: Karaoke Subtitles + B-Roll'],
+    featuresRu: ['1 000 Кредитов (= 20 готовых видео/мес)', 'ИИ-сценарии и Телесуфлёр в HD', 'Автомонтаж: Караоке-субтитры + свои/стоковые B-Roll'],
   },
   {
     id: 'pro',
     name: 'Pro',
     price: '19.90',
-    credits: 2200,
+    credits: 2500,
     icon: '⚡',
     color: '#00FFCC',
     popular: true,
-    featuresEn: ['2200 Credits (~22-30 Videos)', 'AI Strategist Pilot', 'Full AI script editing & 4K'],
-    featuresRu: ['2200 Кредитов (~22-30 Видео)', 'ИИ-Стратег Пилот', 'Полный ИИ монтаж сценариев и 4K'],
+    featuresEn: ['2,500 Credits (= 50 Full Videos/mo)', 'Faceless Mode (AI Voiceover + Stock)', 'AI Strategist Pilot & 4K Ultra HD'],
+    featuresRu: ['2 500 Кредитов (= 50 готовых видео/мес)', 'Режим «Без камеры» (Faceless ИИ-озвучка)', 'ИИ-Стратег Пилот и съёмка 4K Ultra HD'],
   },
   {
     id: 'scale',
-    name: 'Scale',
+    name: 'Scale + AI Lab',
     price: '39.90',
-    credits: 5700,
+    credits: 6000,
     icon: '🚀',
     color: '#9B5FFF',
-    featuresEn: ['5700 Credits (~57-70 Videos)', 'Face Swap neural replacement', 'BYOK API keys & autoposting'],
-    featuresRu: ['5700 Кредитов (~57-70 Видео)', 'Нейрозамена лиц (Face Swap)', 'Свои API-ключи (BYOK) и постинг'],
+    featuresEn: ['6,000 Credits (= 120 Full Videos/mo)', '🧪 AI Lab Beta (Face Swap, Sketches, Remotion)', 'BYOK API keys & HeyGen Avatar Studio'],
+    featuresRu: ['6 000 Кредитов (= 120 готовых видео/мес)', '🧪 Доступ в AI Lab (Face Swap, Скетчи, Remotion)', 'Свои API-ключи (BYOK) и HeyGen Аватар'],
   },
 ];
 
@@ -514,24 +514,24 @@ export function PremiumLimitModal({
                     <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
                     <div className="space-y-1 w-full">
                       <p className="text-[9px] font-black uppercase tracking-widest text-cyan-300">
-                        {locale === 'ru' ? 'Как списываются кредиты (~100 CR = 1 Видео):' : 'Credit Usage (~100 CR = 1 Video):'}
+                        {locale === 'ru' ? 'Прозрачная математика (50 CR = 1 готовое видео):' : 'Simple Math (50 CR = 1 Full Video):'}
                       </p>
                       <div className="text-[9px] text-white/70 leading-relaxed space-y-0.5 mt-2">
                         <div className="flex justify-between border-b border-white/5 pb-1">
-                          <span>{locale === 'ru' ? 'Генерация Идей & Сценария' : 'Ideas & Script Generation'}</span>
+                          <span>{locale === 'ru' ? '1. ИИ-Сценарий по вашей теме' : '1. AI Script Generation'}</span>
                           <span className="font-mono text-cyan-400">5 CR</span>
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-1 pt-1">
-                          <span>{locale === 'ru' ? 'Черновик, Картинки & Озвучка' : 'Draft, Images & Voice'}</span>
-                          <span className="font-mono text-cyan-400">~20 CR</span>
+                          <span>{locale === 'ru' ? '2. Запись с Телесуфлёром' : '2. Teleprompter Recording'}</span>
+                          <span className="font-mono text-green-400">0 CR</span>
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-1 pt-1">
-                          <span>{locale === 'ru' ? 'Финальный Экспорт MP4' : 'Final MP4 Export'}</span>
-                          <span className="font-mono text-cyan-400">75 CR</span>
+                          <span>{locale === 'ru' ? '3. Автомонтаж (Караоке CC + B-Roll + MP4)' : '3. Auto-Montage (Karaoke CC + B-Roll + MP4)'}</span>
+                          <span className="font-mono text-cyan-400">45 CR</span>
                         </div>
-                        <div className="flex justify-between pt-1 opacity-50">
-                          <span>{locale === 'ru' ? 'HeyGen Аватар (Свой ключ)' : 'HeyGen Avatar (BYOK)'}</span>
-                          <span className="font-mono text-green-400">0 CR</span>
+                        <div className="flex justify-between pt-1 font-bold text-white">
+                          <span>{locale === 'ru' ? 'Итого за 1 готовый ролик:' : 'Total per 1 finished video:'}</span>
+                          <span className="font-mono text-emerald-400">= 50 CR</span>
                         </div>
                       </div>
                     </div>
