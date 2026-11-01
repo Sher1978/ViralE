@@ -111,6 +111,7 @@ export function PremiumLimitModal({
     }
     if (isOpen) {
       fetchUser();
+      trackEvent('premium_modal_opened', { modalType: type, title, balance: liveBalance });
       // Reset state when opening modal
       setShowCheckout(false);
       setPaymentStatus('idle');
@@ -143,6 +144,7 @@ export function PremiumLimitModal({
 
   // Handle Telegram Stars Payment Checkout
   const handlePayment = async () => {
+    trackEvent('payment_attempt', { source: 'premium_limit_modal', tab: billingTab, itemId: billingTab === 'topup' ? selectedTopUp : selectedPlan, locale }, { notifyAdmin: true, title: 'ПОПЫТКА ОПЛАТЫ (МОДАЛКА)', description: `Пользователь нажал оплатить в модальном окне (${billingTab === 'topup' ? 'TopUp #' + selectedTopUp : 'Тариф ' + selectedPlan})` });
     setPaymentStatus('processing');
     
     // Clear any active polling first

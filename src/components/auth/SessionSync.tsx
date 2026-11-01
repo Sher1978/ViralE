@@ -12,17 +12,24 @@ export function SessionSync() {
     // 1. Sync initial session to cookie
     const syncSession = async () => {
       const { data: { session } } = await supabase.auth.getSession();
-      
+
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
       const projectRef = supabaseUrl.split('.')[0].split('//')[1];
       if (!projectRef) return;
-      
+
       const cookieName = `sb-${projectRef}-auth-token`;
 
       if (session) {
         console.log('[SessionSync] Session found, setting cookie...');
         // Set cookie for 7 days
         doc.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
+        if (session.user) {
+          identifyUser({
+            id: session.user.id,
+            email: session.user.email,
+            full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
+          });
+        }
       }
     };
 
@@ -33,7 +40,7 @@ export function SessionSync() {
       const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || '';
       const projectRef = supabaseUrl.split('.')[0].split('//')[1];
       if (!projectRef) return;
-      
+
       const cookieName = `sb-${projectRef}-auth-token`;
 
       console.log(`[SessionSync] Auth event: ${event}`, session ? `User: ${session.user.id}` : 'No session');
@@ -41,10 +48,18 @@ export function SessionSync() {
       if (event === 'SIGNED_IN' || event === 'TOKEN_REFRESHED') {
         if (session) {
           doc.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
+          if (event === 'SIGNED_IN' && session.user) {
+            identifyUser({
+              id: session.user.id,
+              email: session.user.email,
+              full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
+            });
+          }
         }
       } else if (event === 'SIGNED_OUT') {
         console.log('[SessionSync] Signing out, clearing cookie...');
         doc.cookie = `${cookieName}=; path=/; max-age=0`;
+        resetAnalyticsSession();
       }
     });
 

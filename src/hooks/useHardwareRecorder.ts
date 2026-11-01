@@ -244,6 +244,7 @@ export function useHardwareRecorder({
       }
 
       if (stream) {
+        trackEvent('prompter_camera_initialized', { projectId, resolution: videoResolution, isVoiceOnly });
         setCameraStream(stream);
         if (videoPreviewRef.current && !isVoiceOnly) {
           (videoPreviewRef.current as any).srcObject = stream;
@@ -262,6 +263,7 @@ export function useHardwareRecorder({
         return fallbackStream;
       } catch (fallbackErr: any) {
         console.error('[useHardwareRecorder] All camera paths failed:', fallbackErr.name);
+        trackEvent('prompter_camera_error', { projectId, errorName: fallbackErr.name, errorMessage: fallbackErr.message });
         setCameraError(`Camera Error: ${fallbackErr.name}. Try another browser or close other apps.`);
         return null;
       }
@@ -529,6 +531,7 @@ export function useHardwareRecorder({
           }
 
           mediaRecorderRef.current = recorder;
+          trackEvent('prompter_record_started', { projectId, isVoiceOnly, resolution: videoResolution });
           setIsRecordingVideo(true);
           setRecordingTime(0);
           if (recordingTimerRef.current) clearInterval(recordingTimerRef.current);

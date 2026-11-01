@@ -1,4 +1,5 @@
 'use client';
+import { trackEvent } from '@/lib/analytics';
 // Build trigger: Ensure TypeScript property name parity (script_data)
 
 
@@ -590,6 +591,7 @@ export default function ScriptLabPage() {
       if (!project) throw new Error(locale === 'ru' ? 'Не удалось создать проект' : 'Project creation failed');
       
       await projectService.updateProjectStatus(project.id, 'scripting');
+      trackEvent('idea_selected', { projectId: project.id, title: topicInput, mode: 'manual' });
       const version = await projectService.createVersion({
         projectId: project.id,
         scriptData: scriptData, // Use current default scriptData
@@ -742,6 +744,7 @@ export default function ScriptLabPage() {
         (globalThis as any).sessionStorage?.setItem('isGenerating', 'true');
         if (data.projectId) {
           (globalThis as any).sessionStorage?.setItem('currentProjectId', data.projectId);
+          trackEvent('idea_selected', { projectId: data.projectId, title: ideaToUse, mode: 'ai_previews' });
         }
       }
       
@@ -802,6 +805,7 @@ export default function ScriptLabPage() {
         (globalThis as any).sessionStorage?.setItem('currentProjectId', data.projectId);
       }
 
+      trackEvent('script_generated', { projectId: data.projectId, styleKey });
       setScriptData(data.script);
       setSelectedStyle(styleKey);
       
@@ -931,6 +935,7 @@ export default function ScriptLabPage() {
         if (!version) throw new Error(locale === 'ru' ? 'Ошибка при обновлении версии' : 'Version update failed');
       }
 
+      trackEvent('script_approved', { projectId: pId, versionId: vId });
       // Redirect to Studio (Universal Script Screen)
       router.push(`/app/projects/${pId}/studio?tab=script_editor`);
     } catch (err: any) {
