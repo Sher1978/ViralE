@@ -42,6 +42,11 @@ export const supabaseAdmin = (supabaseUrl && serviceRoleKey)
         autoRefreshToken: false,
         persistSession: false
       },
+      global: {
+        headers: {
+          Authorization: `Bearer ${serviceRoleKey}`
+        }
+      },
       db: {
         schema
       }

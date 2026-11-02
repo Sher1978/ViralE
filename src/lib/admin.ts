@@ -92,40 +92,23 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
   const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate()).toISOString();
   const weekStart = new Date(now.getTime() - 7 * 24 * 60 * 60 * 1000).toISOString();
 
-  // 1. Fetch total users & new signups count directly from auth.users for 100% accuracy
-  let totalUsers = 0;
-  let newUsersToday = 0;
-  let newUsersThisWeek = 0;
+  // 1. Fetch total users & new signups count from profiles (synced with auth.users, supports >1000 rows via exact count)
+  const { count: profCount } = await supabaseAdmin
+    .from('profiles')
+    .select('id', { count: 'exact', head: true });
+  const totalUsers = profCount || 0;
 
-  try {
-    const { data: authRes } = await supabaseAdmin.auth.admin.listUsers({ page: 1, perPage: 10000 });
-    if (authRes && authRes.users) {
-      totalUsers = authRes.users.length;
-      newUsersToday = authRes.users.filter((u: any) => u.created_at && u.created_at >= todayStart).length;
-      newUsersThisWeek = authRes.users.filter((u: any) => u.created_at && u.created_at >= weekStart).length;
-    }
-  } catch (err) {
-    console.warn('[AdminStats] Failed to fetch auth.users:', err);
-  }
+  const { count: profToday } = await supabaseAdmin
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', todayStart);
+  const newUsersToday = profToday || 0;
 
-  if (totalUsers === 0) {
-    const { count: profCount } = await supabaseAdmin
-      .from('profiles')
-      .select('id', { count: 'exact', head: true });
-    totalUsers = profCount || 0;
-
-    const { count: profToday } = await supabaseAdmin
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', todayStart);
-    newUsersToday = profToday || 0;
-
-    const { count: profWeek } = await supabaseAdmin
-      .from('profiles')
-      .select('id', { count: 'exact', head: true })
-      .gte('created_at', weekStart);
-    newUsersThisWeek = profWeek || 0;
-  }
+  const { count: profWeek } = await supabaseAdmin
+    .from('profiles')
+    .select('id', { count: 'exact', head: true })
+    .gte('created_at', weekStart);
+  const newUsersThisWeek = profWeek || 0;
 
   // 1.5 Fetch registration timeline for the past 14 days
   const fourteenDaysAgo = new Date(now.getTime() - 13 * 24 * 60 * 60 * 1000);
@@ -160,10 +143,21 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
     });
   }
 
-  // 2. Fetch Tier breakdown & Active subs
-  const { data: profiles } = await supabaseAdmin
-    .from('profiles')
-    .select('tier, subscription_status, credits_balance');
+  // 2. Fetch Tier breakdown & Active subs (Paginated to handle >1000 users)
+  let profiles: any[] = [];
+  let from = 0;
+  const step = 1000;
+  while (true) {
+    const { data: page } = await supabaseAdmin
+      .from('profiles')
+      .select('tier, subscription_status, credits_balance')
+      .order('id', { ascending: true })
+      .range(from, from + step - 1);
+    if (!page || page.length === 0) break;
+    profiles = profiles.concat(page);
+    if (page.length < step) break;
+    from += step;
+  }
 
   const tierCounts = {
     free: 0,
@@ -175,15 +169,17 @@ export async function getAdminOverviewStats(): Promise<AdminStatsOverview> {
   let activeSubscriptions = 0;
   let totalCreditsInCirculation = 0;
 
-  (profiles || []).forEach((p: any) => {
-    const tier = (p.tier || 'free').toLowerCase();
-    if (tier in tierCounts) {
-      (tierCounts as any)[tier]++;
+  profiles.forEach((p: any) => {
+    const rawTier = (p.tier || 'free').toLowerCase().trim();
+    const mappedTier = rawTier === 'starter' ? 'creator' : rawTier;
+    if (mappedTier in tierCounts) {
+      (tierCounts as any)[mappedTier]++;
     } else {
       tierCounts.free++;
     }
 
-    if (tier !== 'free' && p.subscription_status === 'active') {
+    const isPaid = rawTier === 'starter' || rawTier === 'creator' || rawTier === 'pro' || rawTier === 'scale';
+    if (isPaid && (!p.subscription_status || p.subscription_status === 'active')) {
       activeSubscriptions++;
     }
 
@@ -479,7 +475,7 @@ export async function adminGrantCredits(userId: string, amount: number, reason: 
 }
 
 export async function adminUpdateUserTier(userId: string, tier: string, subscription_status: string = 'active') {
-  const validTiers = ['free', 'creator', 'pro', 'scale'];
+  const validTiers = ['free', 'starter', 'creator', 'pro', 'scale'];
   if (!validTiers.includes(tier)) {
     throw new Error('INVALID_TIER');
   }

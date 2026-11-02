@@ -43,6 +43,7 @@ export async function GET(req: NextRequest) {
       const { data: page } = await supabaseAdmin
         .from('profiles')
         .select('tier, subscription_status, credits_balance')
+        .order('id', { ascending: true })
         .range(from, from + step - 1);
       if (!page || page.length === 0) break;
       allProfiles = allProfiles.concat(page);
@@ -52,15 +53,15 @@ export async function GET(req: NextRequest) {
 
     let activeSubs = 0;
     let totalCreditsInCirculation = 0;
-    const tierBreakdown = { free: 0, creator: 0, pro: 0, scale: 0 };
+    const tierBreakdown = { free: 0, starter: 0, creator: 0, pro: 0, scale: 0 };
 
     allProfiles.forEach((p: any) => {
       const rawTier = (p.tier || '').toLowerCase().trim();
-      const isPaidTier = rawTier === 'creator' || rawTier === 'pro' || rawTier === 'scale';
+      const isPaidTier = rawTier === 'starter' || rawTier === 'creator' || rawTier === 'pro' || rawTier === 'scale';
       const tier = isPaidTier ? rawTier : 'free';
 
       if (tier in tierBreakdown) (tierBreakdown as any)[tier]++;
-      if (isPaidTier && p.subscription_status === 'active') activeSubs++;
+      if (isPaidTier && (!p.subscription_status || p.subscription_status === 'active')) activeSubs++;
       totalCreditsInCirculation += (p.credits_balance || 0);
     });
 
@@ -70,15 +71,24 @@ export async function GET(req: NextRequest) {
       .select('*, profiles(full_name, email)')
       .gte('created_at', twentyFourHoursAgo);
 
-    const paidTxs24h = (txs24h || []).filter((t: any) => t.transaction_type === 'top_up' || t.transaction_type === 'tribute_subscription');
+    const paidTxs24h = (txs24h || []).filter((t: any) =>
+      ['top_up', 'tribute_subscription', 'lemonsqueezy', 'stars_purchase'].includes(t.transaction_type)
+    );
     const revenue24hCredits = paidTxs24h.reduce((acc: number, t: any) => acc + (t.amount || 0), 0);
 
     // 4. Content Generation Metrics (Last 24h & Total)
-    const { count: scripts24h } = await supabaseAdmin
+    const { count: scriptsTx24h } = await supabaseAdmin
       .from('credits_transactions')
       .select('id', { count: 'exact', head: true })
-      .eq('transaction_type', 'SCRIPT_GEN')
+      .in('transaction_type', ['SCRIPT_GEN', 'GENERATE_SCRIPT'])
       .gte('created_at', twentyFourHoursAgo);
+
+    const { count: projects24h } = await supabaseAdmin
+      .from('projects')
+      .select('id', { count: 'exact', head: true })
+      .gte('created_at', twentyFourHoursAgo);
+
+    const scripts24h = Math.max(scriptsTx24h || 0, projects24h || 0);
 
     const { count: renders24h } = await supabaseAdmin
       .from('render_jobs')
@@ -112,7 +122,7 @@ export async function GET(req: NextRequest) {
       `• Новых за 24 часа: <b>+${newUsers24h || 0} чел.</b>\n` +
       `• Всего зарегистрировано: <b>${totalUsers || 0} чел.</b>\n` +
       `• Активных платных подписок: <b>${activeSubs}</b>\n` +
-      `└ Free: ${tierBreakdown.free} | Creator: ${tierBreakdown.creator} | Pro: ${tierBreakdown.pro} | Scale: ${tierBreakdown.scale}\n\n` +
+      `└ Free: ${tierBreakdown.free} | Starter: ${tierBreakdown.starter} | Creator: ${tierBreakdown.creator} | Pro: ${tierBreakdown.pro} | Scale: ${tierBreakdown.scale}\n\n` +
 
       `💳 <b>ФИНАНСЫ И ОПЛАТЫ (24ч):</b>\n` +
       `• Новых транзакций оплат: <b>${paidTxs24h.length}</b>\n` +

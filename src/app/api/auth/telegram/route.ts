@@ -1,5 +1,6 @@
 import { NextResponse } from 'next/server';
 import crypto from 'crypto';
+import { createClient } from '@supabase/supabase-js';
 import { supabaseAdmin } from '@/lib/supabase';
 import { cookies } from 'next/headers';
 import { isTelegramIdBlocked } from '@/lib/blockedUsers';
@@ -99,8 +100,18 @@ async function handleTelegramAuth(userData: any, hash: string) {
     });
   }
 
-  // 4. Create Session
-  const { data: sessionData, error: signInError } = await supabaseAdmin.auth.signInWithPassword({
+  // 4. Create Session using an isolated ephemeral client so we NEVER overwrite supabaseAdmin's service_role session
+  const authClient = createClient(
+    process.env.NEXT_PUBLIC_SUPABASE_URL!,
+    process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || serviceRoleKey,
+    {
+      auth: {
+        autoRefreshToken: false,
+        persistSession: false
+      }
+    }
+  );
+  const { data: sessionData, error: signInError } = await authClient.auth.signInWithPassword({
     email,
     password,
   });
@@ -162,8 +173,8 @@ async function handleTelegramAuth(userData: any, hash: string) {
         telegram_id: String(telegramId),
         telegram_username: userData.username ? `@${userData.username}` : undefined,
         auth_provider: 'Telegram Login',
-        tier: 'free',
-        credits_balance: 0,
+        tier: cleanTier,
+        credits_balance: nextBalance,
         preferred_language: 'ru',
         created_at: targetUser.created_at || new Date().toISOString()
       }).catch(err => console.error('[Telegram Auth] Failed to notify registration:', err));

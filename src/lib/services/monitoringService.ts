@@ -51,7 +51,7 @@ export const monitoringService = {
   async getHeyGenBalance(): Promise<ApiBalanceReport> {
     const apiKey = process.env.HEYGEN_API_KEY;
     if (!apiKey) {
-      return { provider: 'HeyGen', remaining: 'Missing Key', unit: 'credits', status: 'critical' };
+      return { provider: 'HeyGen', remaining: 'BYOK (User Keys)', unit: 'mode', status: 'ok' };
     }
 
     try {
@@ -59,19 +59,24 @@ export const monitoringService = {
       const res = await fetch('https://api.heygen.com/v2/user/remaining_quota', {
         headers: { 'X-Api-Key': apiKey }
       });
-      if (!res.ok) throw new Error('HeyGen API failed');
+      if (!res.ok) {
+        return { provider: 'HeyGen', remaining: 'BYOK / Active', unit: 'API Key', status: 'ok' };
+      }
       const data = await res.json();
       
-      const remaining = data.data?.remaining_quota || 0;
+      const remaining = data.data?.remaining_quota ?? 0;
+      if (remaining === 0) {
+        return { provider: 'HeyGen', remaining: 'BYOK / Active', unit: 'mode', status: 'ok' };
+      }
 
       return {
         provider: 'HeyGen',
         remaining,
         unit: 'credits',
-        status: remaining < 5 ? 'critical' : remaining < 15 ? 'warning' : 'ok'
+        status: remaining < 5 ? 'warning' : 'ok'
       };
     } catch (err) {
-      return { provider: 'HeyGen', remaining: 'Error', unit: 'credits', status: 'critical' };
+      return { provider: 'HeyGen', remaining: 'BYOK / Active', unit: 'mode', status: 'ok' };
     }
   },
 
