@@ -132,9 +132,10 @@ async function handleTelegramAuth(userData: any, hash: string) {
   const avatarUrl = rawOnboarding.avatar_url || userData.photo_url || null;
   const isNewProfile = !existingProfile || (!existingProfile.email && !existingProfile.telegram_id);
 
-  const currentBalance = existingProfile ? (existingProfile.credits_balance ?? 0) : 100;
-  const shouldGrantWelcome = !existingProfile || ((existingProfile.tier === 'free' || existingProfile.tier === 'null' || !existingProfile.tier) && currentBalance === 0 && !rawOnboarding.welcome_credits_granted);
-  const nextBalance = shouldGrantWelcome ? 100 : currentBalance;
+  const currentBalance = existingProfile ? (existingProfile.credits_balance ?? 0) : 50;
+  const isVeryRecent = !existingProfile || (existingProfile.created_at && (Date.now() - new Date(existingProfile.created_at).getTime() < 5 * 60 * 1000));
+  const shouldGrantWelcome = !existingProfile || (isVeryRecent && (existingProfile.tier === 'free' || existingProfile.tier === 'null' || !existingProfile.tier) && currentBalance === 0 && !rawOnboarding.welcome_credits_granted);
+  const nextBalance = shouldGrantWelcome ? 50 : currentBalance;
   const cleanTier = (!existingProfile?.tier || existingProfile.tier === 'null') ? 'free' : existingProfile.tier;
 
   const { error: upsertError } = await supabaseAdmin

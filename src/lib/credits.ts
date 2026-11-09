@@ -1,22 +1,23 @@
 import { SupabaseClient } from '@supabase/supabase-js';
 
 export const CREDIT_COSTS = {
-  GENERATE_SCRIPT: 5,
+  GENERATE_SCRIPT: 15,
   GENERATE_STORYBOARD: 5,
   ANIMATION_LITE: 0,
   ANIMATION_STANDARD: 15,
   ANIMATION_PREMIUM: 15,
   AI_LOOK_POLISH: 2,
   RENDER_PREVIEW: 15,
-  PRO_RENDER: 45,
+  PRO_RENDER: 35,
   AVATAR_HEYGEN: 0,
   AVATAR_HIGGSFIELD: 0,
   REGENERATE_BLOCK: 2,
+  STRATEGIST_CHAT: 10,
   HEYGEN_AVATAR_4_PER_MIN: 0,
   HEYGEN_AVATAR_VIDEO_PER_MIN: 0,
 };
 
-export const REGENERATE_THRESHOLD = 50;
+export const REGENERATE_THRESHOLD = 2;
 
 export async function checkBalance(supabase: SupabaseClient, userId: string) {
   try {
@@ -31,7 +32,7 @@ export async function checkBalance(supabase: SupabaseClient, userId: string) {
         // Create profile if missing
         const { data: newProfile, error: createError } = await supabase
           .from('profiles')
-          .insert({ id: userId, credits_balance: 100 })
+          .insert({ id: userId, credits_balance: 50 })
           .select('credits_balance')
           .single();
         

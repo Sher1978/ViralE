@@ -24,11 +24,16 @@ export function SessionSync() {
         // Set cookie for 7 days
         doc.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
         if (session.user) {
-          identifyUser({
-            id: session.user.id,
-            email: session.user.email,
-            full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
-          });
+          const storageKey = `virale_identified_${session.user.id}`;
+          const alreadyIdentified = typeof window !== 'undefined' && window.sessionStorage?.getItem(storageKey);
+          if (!alreadyIdentified) {
+            if (typeof window !== 'undefined') window.sessionStorage?.setItem(storageKey, '1');
+            identifyUser({
+              id: session.user.id,
+              email: session.user.email,
+              full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
+            });
+          }
         }
       }
     };
@@ -49,11 +54,16 @@ export function SessionSync() {
         if (session) {
           doc.cookie = `${cookieName}=${session.access_token}; path=/; max-age=604800; SameSite=Lax`;
           if (event === 'SIGNED_IN' && session.user) {
-            identifyUser({
-              id: session.user.id,
-              email: session.user.email,
-              full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
-            });
+            const storageKey = `virale_identified_${session.user.id}`;
+            const alreadyIdentified = typeof window !== 'undefined' && window.sessionStorage?.getItem(storageKey);
+            if (!alreadyIdentified) {
+              if (typeof window !== 'undefined') window.sessionStorage?.setItem(storageKey, '1');
+              identifyUser({
+                id: session.user.id,
+                email: session.user.email,
+                full_name: session.user.user_metadata?.full_name || session.user.user_metadata?.name,
+              });
+            }
           }
         }
       } else if (event === 'SIGNED_OUT') {

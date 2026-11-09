@@ -15,7 +15,7 @@ export const strategistService = {
     try {
       const { data: profile } = await db
         .from('profiles')
-        .select('tier, subscription_status')
+        .select('tier, subscription_status, credits_balance')
         .eq('id', userId)
         .single();
 
@@ -28,6 +28,9 @@ export const strategistService = {
         );
         if (isPaidTier && profile.subscription_status === 'active') {
           return { hasAccess: true, status: 'active', trialExpiresAt: null };
+        }
+        if ((profile.credits_balance || 0) >= 10) {
+          return { hasAccess: true, status: 'trial', trialExpiresAt: null };
         }
       }
 

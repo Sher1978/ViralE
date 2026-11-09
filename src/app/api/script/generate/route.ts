@@ -128,65 +128,38 @@ export async function POST(req: Request) {
       }, { status: 400 });
     }
 
-    // 2.5 Tier-based Enforcement (Backend)
-    if (mode === 'initial') {
-      if (tier === 'creator') {
-        const startOfMonth = new Date();
-        startOfMonth.setDate(1);
-        startOfMonth.setHours(0, 0, 0, 0);
-
-        const { count, error: countError } = await authorizedSupabase
-          .from('credits_transactions')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .eq('transaction_type', 'SCRIPT_GEN')
-          .gte('created_at', startOfMonth.toISOString());
-
-        if (countError) {
-          console.error('[ScriptGen] Limit check failed:', countError);
-        } else if ((count || 0) >= 20) {
-          return NextResponse.json({ 
-            error: 'Monthly generation limit (20) reached for Creator tier. Plan your content wisely or upgrade to PRO.',
-            code: 'LIMIT_EXCEEDED'
-          }, { status: 403 });
-        }
-      } else if (tier === 'free') {
-        // Hard limit for free tier: 3 total generations
-        const { count, error: countError } = await authorizedSupabase
-          .from('credits_transactions')
-          .select('*', { count: 'exact', head: true })
-          .eq('user_id', userId)
-          .eq('transaction_type', 'SCRIPT_GEN');
-        
-        if (countError) {
-          console.error('[ScriptGen] Free limit check failed:', countError);
-        } else if ((count || 0) >= 3) {
-          return NextResponse.json({ 
-            error: 'Free trial limit (3) reached. Upgrade to CREATOR to continue generating scripts.',
-            code: 'LIMIT_EXCEEDED'
-          }, { status: 403 });
-        }
-      }
-    }
-
-    // 3. Transact Credits
+    // 3. Transact Credits (15 CR per script generation = max 3 scripts on 50 CR welcome balance; 0 CR when expanding an already-paid preview)
     try {
       const balance = profile?.credits_balance || 0;
-      const cost = mode === 'refine' ? CREDIT_COSTS.REGENERATE_BLOCK : CREDIT_COSTS.GENERATE_SCRIPT;
+      const isExpandingPaidPreview = mode === 'full_script' && Boolean(selectedPreview);
+      const cost = mode === 'refine'
+        ? CREDIT_COSTS.REGENERATE_BLOCK
+        : isExpandingPaidPreview
+          ? 0
+          : CREDIT_COSTS.GENERATE_SCRIPT;
       
       // Threshold check for refinement
-      if (mode === 'refine' && balance < 50) {
+      if (mode === 'refine' && balance < CREDIT_COSTS.REGENERATE_BLOCK) {
         return NextResponse.json({ 
-          error: 'Balance threshold (50 credits) required for script adjustment. Please top up to ensure you have enough for video generation.',
+          error: locale === 'ru'
+            ? 'Недостаточно кредитов (нужно 2 CR для редактирования сценария). Пополните баланс или выберите тариф.'
+            : 'Insufficient credits (2 CR required for script adjustment). Please top up your balance.',
           code: 'BALANCE_TOO_LOW'
         }, { status: 402 });
       }
 
-      console.log(`[ScriptGen] Deducting ${cost} credits...`);
-      await deductCredits(authorizedSupabase as any, userId, cost, mode === 'refine' ? 'SCRIPT_REFINEMENT' : 'SCRIPT_GEN', projectId);
+      if (cost > 0) {
+        console.log(`[ScriptGen] Deducting ${cost} credits...`);
+        await deductCredits(authorizedSupabase as any, userId, cost, mode === 'refine' ? 'SCRIPT_REFINEMENT' : 'SCRIPT_GEN', projectId);
+      }
     } catch (e: any) {
       if (e.message === 'INSUFFICIENT_CREDITS') {
-        return NextResponse.json({ error: 'Insufficient credits' }, { status: 402 });
+        return NextResponse.json({
+          error: locale === 'ru'
+            ? 'Бесплатный лимит сценариев исчерпан (нужно 15 CR). Пополните баланс от $4 или подключите тариф, чтобы продолжить!'
+            : 'Insufficient credits (15 CR required). Top up from $4 or upgrade your plan to continue!',
+          code: 'INSUFFICIENT_CREDITS'
+        }, { status: 402 });
       }
       throw e;
     }

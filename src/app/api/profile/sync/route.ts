@@ -45,7 +45,7 @@ export async function POST(req: NextRequest) {
         id: user.id,
         email: userEmail,
         full_name: googleName || `Media Creator #${parseInt(user.id.slice(0, 4), 16) % 10000}`,
-        credits_balance: 100,
+        credits_balance: 50,
         tier: 'free',
         subscription_status: 'active',
         preferred_language: 'ru',
@@ -98,9 +98,13 @@ export async function POST(req: NextRequest) {
         nextRaw.referred_by_code = inviterCode;
         rawChanged = true;
       }
-      // Grant 100 welcome credits once to existing Free users who were initialized with 0
-      if ((existingProf.tier === 'free' || existingProf.tier === 'null' || !existingProf.tier) && (existingProf.credits_balance || 0) === 0 && !nextRaw.welcome_credits_granted) {
-        updates.credits_balance = 100;
+      // Grant 50 welcome credits once ONLY to brand-new Free users (created < 5 mins ago) who were initialized with 0 by DB trigger
+      const isVeryRecent = existingProf.created_at && (Date.now() - new Date(existingProf.created_at).getTime() < 5 * 60 * 1000);
+      if (isVeryRecent && (existingProf.tier === 'free' || existingProf.tier === 'null' || !existingProf.tier) && (existingProf.credits_balance || 0) === 0 && !nextRaw.welcome_credits_granted) {
+        updates.credits_balance = 50;
+        nextRaw.welcome_credits_granted = true;
+        rawChanged = true;
+      } else if (!nextRaw.welcome_credits_granted) {
         nextRaw.welcome_credits_granted = true;
         rawChanged = true;
       }

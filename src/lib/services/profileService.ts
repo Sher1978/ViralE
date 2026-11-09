@@ -97,7 +97,7 @@ export const profileService = {
             id: user.id,
             email: user.email || `anon_${user.id}@viral.engine`,
             full_name: googleName || defaultName,
-            credits_balance: 100,
+            credits_balance: 50,
             tier: 'free',
             subscription_status: 'active',
             preferred_language: 'ru',

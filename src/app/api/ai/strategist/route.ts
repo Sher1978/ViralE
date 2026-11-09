@@ -3,6 +3,7 @@ import { GoogleGenAI, Type } from '@google/genai';
 import { strategistService } from '@/lib/services/strategistService';
 import { strategistServerService } from '@/lib/services/strategistServerService';
 import { getAuthContext } from '@/lib/auth';
+import { deductCredits, CREDIT_COSTS } from '@/lib/credits';
 import { NextResponse } from 'next/server';
 
 export const runtime = 'nodejs';
@@ -106,16 +107,28 @@ export async function POST(req: Request) {
     }
 
     if (!isPaidSubscriber && !hasExplicitAccess) {
-      return new Response(JSON.stringify({ 
-        error: 'UPGRADE_REQUIRED', 
-        code: 'PRO_TIER_REQUIRED',
-        message: locale === 'ru'
-          ? 'Функция "ИИ Стратег" доступна только на тарифах Pro и Scale. Пожалуйста, обновите ваш тариф.'
-          : 'AI Strategist is only available on Pro and Scale plans. Please upgrade your plan.'
-      }), { 
-        status: 403, 
-        headers: { 'Content-Type': 'application/json' } 
-      });
+      // Allow Starter / Free / Top-Up users to use AI Strategist by deducting 10 CR per message
+      try {
+        const validProjectId = projectId && projectId !== 'global' && projectId !== 'null' && projectId.length > 10 ? projectId : undefined;
+        await deductCredits(
+          authorizedSupabase,
+          user.id,
+          CREDIT_COSTS.STRATEGIST_CHAT || 10,
+          'STRATEGIST_CHAT',
+          validProjectId
+        );
+      } catch (creditErr: any) {
+        return new Response(JSON.stringify({ 
+          error: 'INSUFFICIENT_CREDITS', 
+          code: 'INSUFFICIENT_CREDITS',
+          message: locale === 'ru'
+            ? 'Недостаточно кредитов (нужно 10 CR за запрос к ИИ-Стратегу, либо безлимит на тарифах Pro и Scale). Пополните баланс или выберите тариф.'
+            : 'Insufficient credits (10 CR per AI Strategist message, or unlimited on Pro and Scale plans). Please top up or upgrade.'
+        }), { 
+          status: 402, 
+          headers: { 'Content-Type': 'application/json' } 
+        });
+      }
     }
 
     const syntheticData = profile?.synthetic_training_data as Record<string, any> || {};

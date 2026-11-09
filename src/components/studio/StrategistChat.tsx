@@ -802,7 +802,7 @@ export function StrategistChat({
         body: formData,
       });
 
-      if (response.status === 403) {
+      if (response.status === 402 || response.status === 403) {
         setShowLimitModal(true);
         setIsStreaming(false);
         return;
@@ -1160,7 +1160,9 @@ export function StrategistChat({
         activeProfile.subscription_status === 'active'
       );
 
-      if (isProOrScale || activeAccess?.hasAccess) {
+      const hasCreditsAccess = (activeProfile?.credits_balance || 0) >= 10;
+
+      if (isProOrScale || activeAccess?.hasAccess || hasCreditsAccess) {
         setIsOpen(true);
       } else {
         setShowUpgradeModal(true);
@@ -1173,7 +1175,8 @@ export function StrategistChat({
         (profile.tier === 'pro' || profile.tier === 'scale' || profile.tier === 'superadmin' || (profile as any).role === 'superadmin') &&
         profile.subscription_status === 'active'
       );
-      if (isProFallback || access?.hasAccess) {
+      const hasCreditsFallback = (profile?.credits_balance || 0) >= 10;
+      if (isProFallback || access?.hasAccess || hasCreditsFallback) {
         setIsOpen(true);
       } else {
         setShowUpgradeModal(true);
@@ -1185,11 +1188,11 @@ export function StrategistChat({
 
   return (
     <>
-      {/* Floating Toggle Button Container */}
+      {/* Floating Toggle Button Container (Positioned above BottomNav so it never overlaps top-right header actions) */}
       <div 
-        className={containerClassName || "fixed right-6 z-[100] flex flex-col items-end"}
+        className={containerClassName || "fixed right-4 md:right-6 z-[90] flex flex-col items-end"}
         style={{
-          top: 'calc(env(safe-area-inset-top, 0px) + 24px)'
+          bottom: 'calc(env(safe-area-inset-bottom, 0px) + 92px)'
         }}
       >
         <motion.button
@@ -1197,11 +1200,12 @@ export function StrategistChat({
           whileTap={{ scale: 0.95 }}
           onClick={handleToggleClick}
           disabled={isCheckingAccess}
+          title={locale === 'ru' ? 'ИИ-Стратег (Ассистент)' : 'AI Strategist'}
           className={cn(
-            "relative h-12 w-12 rounded-xl shadow-2xl flex items-center justify-center transition-all duration-500 overflow-hidden border-2",
+            "relative h-12 w-12 rounded-2xl shadow-2xl flex items-center justify-center transition-all duration-500 overflow-hidden border",
             isOpen 
               ? "bg-red-500/80 backdrop-blur-md border-red-400/50" 
-              : "bg-black/80 backdrop-blur-md border-white/20",
+              : "bg-black/85 backdrop-blur-md border-purple-500/40 shadow-purple-500/20",
             isCheckingAccess && "opacity-80 cursor-wait"
           )}
         >
@@ -1214,13 +1218,6 @@ export function StrategistChat({
               src="/icon-512x512.png" 
               alt="Advisor" 
               className="w-full h-full object-cover scale-110"
-            />
-          )}
-          {!isOpen && !isCheckingAccess && (
-            <motion.div
-              animate={{ scale: [1, 1.2, 1] }}
-              transition={{ repeat: Infinity, duration: 2 }}
-              className="absolute -top-1 -right-1 h-4 w-4 bg-yellow-400 rounded-full border-2 border-slate-900"
             />
           )}
         </motion.button>
@@ -1822,22 +1819,23 @@ export function StrategistChat({
       <PremiumLimitModal 
         isOpen={showLimitModal}
         onClose={() => setShowLimitModal(false)}
-        title={locale === 'ru' ? 'Доступ ограничен' : 'Access Restricted'}
+        title={locale === 'ru' ? 'Недостаточно кредитов' : 'Insufficient Credits'}
         description={locale === 'ru' 
-          ? 'Ваш доступ к Стратегу закончился. Перейдите на премиум-план, чтобы продолжить работу.' 
-          : 'Your access to the Strategist has ended. Upgrade to a premium plan to continue.'}
-        type="trial"
+          ? 'Один запрос к ИИ-Стратегу стоит 10 CR (или безлимитно на тарифах Pro и Scale). Пополните баланс от $4 или подключите тариф Pro, чтобы продолжить диалог.' 
+          : 'Each AI Strategist message costs 10 CR (or is unlimited on Pro & Scale plans). Top up from $4 or upgrade to Pro to continue.'}
+        type="credits"
         locale={locale}
+        returnUrl={typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : undefined}
       />
 
       <PremiumLimitModal 
         isOpen={showUpgradeModal}
         onClose={() => setShowUpgradeModal(false)}
-        title={locale === 'ru' ? 'ИИ Стратег доступен в Pro' : 'AI Strategist (Pro/Scale)'}
+        title={locale === 'ru' ? 'Пополните баланс для ИИ-Стратега' : 'AI Strategist Access'}
         description={locale === 'ru' 
-          ? 'Персональный ИИ-стратег доступен на тарифах Pro и Scale. Перейдите на тариф Pro, чтобы разблокировать аналитику смыслов, генерацию и аудит сценариев.' 
-          : 'Personal AI Strategist is only available on Pro and Scale plans. Upgrade to Pro to unlock strategic script synthesis and deep analytics.'}
-        type="tier_upgrade"
+          ? 'Персональный ИИ-стратег работает безлимитно на тарифах Pro и Scale, либо за 10 CR за сообщение при пополнении баланса.' 
+          : 'Personal AI Strategist is unlimited on Pro & Scale plans, or 10 CR per message when you top up your balance.'}
+        type="credits"
         locale={locale}
         returnUrl={typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : undefined}
       />

@@ -40,6 +40,7 @@ export default function SubscriptionPage() {
   const [isPaymentModalOpen, setIsPaymentModalOpen] = useState(false);
   const [paymentMethod, setPaymentMethod] = useState<'stars' | 'tribute' | 'paybio' | null>(null);
   const [paymentStatus, setPaymentStatus] = useState<'idle' | 'processing' | 'success'>('idle');
+  const [invoiceUrl, setInvoiceUrl] = useState<string | null>(null);
   
   const pollingRef = useRef<any>(null);
 
@@ -61,6 +62,20 @@ export default function SubscriptionPage() {
   const handleTopUpStars = async (topUpIndex: number, creditsAmount: number) => {
     if (!profile) return;
     setUpdateLoading(`topup-${topUpIndex}`);
+    setSelectedTier(`+${creditsAmount} CR`);
+    setIsPaymentModalOpen(true);
+    setPaymentStatus('processing');
+    setInvoiceUrl(null);
+
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+
+    const tg = (globalThis as any).window?.Telegram?.WebApp;
+    const isTgWebApp = Boolean(tg && typeof tg.openInvoice === 'function');
+    const payWin = !isTgWebApp ? (globalThis as any).window?.open('about:blank', '_blank') : null;
+
     try {
       trackEvent('payment_attempt', {
         type: 'topup',
@@ -84,22 +99,56 @@ export default function SubscriptionPage() {
       const data = await res.json();
       if (!res.ok || !data.success) throw new Error(data.error || 'Invoice error');
 
-      const tg = (globalThis as any).window?.Telegram?.WebApp;
-      if (tg && typeof tg.openInvoice === 'function') {
+      setInvoiceUrl(data.invoiceLink);
+
+      if (isTgWebApp) {
         tg.openInvoice(data.invoiceLink, async (status: string) => {
           if (status === 'paid') {
             await new Promise((r) => setTimeout(r, 1500));
             await fetchProfile();
+            setPaymentStatus('success');
+          } else {
+            setPaymentStatus('idle');
+            setIsPaymentModalOpen(false);
           }
         });
       } else {
-        const payWin = (globalThis as any).window?.open(data.invoiceLink, '_blank');
-        if (!payWin && (globalThis as any).window) {
-          (globalThis as any).window.location.href = data.invoiceLink;
+        if (payWin && !payWin.closed) {
+          payWin.location.href = data.invoiceLink;
         }
+        const initialBalance = profile.credits_balance || 0;
+        let attempts = 0;
+        const maxAttempts = 60;
+        pollingRef.current = setInterval(async () => {
+          attempts++;
+          if (attempts > maxAttempts) {
+            if (pollingRef.current) {
+              clearInterval(pollingRef.current);
+              pollingRef.current = null;
+            }
+            setPaymentStatus('idle');
+            return;
+          }
+          try {
+            const u = await profileService.getOrCreateProfile();
+            if (u && u.credits_balance > initialBalance) {
+              setProfile(u);
+              setPaymentStatus('success');
+              if (pollingRef.current) {
+                clearInterval(pollingRef.current);
+                pollingRef.current = null;
+              }
+            }
+          } catch (pollErr) {
+            console.error('[Telegram Stars TopUp Polling] Fetch error:', pollErr);
+          }
+        }, 3000);
       }
     } catch (err) {
+      if (payWin && !payWin.closed) payWin.close();
       console.error('[Subscription TopUp] Error:', err);
+      setPaymentStatus('idle');
+      setIsPaymentModalOpen(false);
       (globalThis as any).alert?.(locale === 'ru' ? 'Не удалось создать счёт на пополнение' : 'Failed to create top-up invoice');
     } finally {
       setUpdateLoading(null);
@@ -111,16 +160,22 @@ export default function SubscriptionPage() {
     setIsPaymentModalOpen(true);
     setPaymentStatus('idle');
     setPaymentMethod(null);
+    setInvoiceUrl(null);
   };
 
   const startStarsPayment = async () => {
     if (!selectedTier || !profile) return;
     setPaymentStatus('processing');
+    setInvoiceUrl(null);
     
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
+
+    const tg = (globalThis as any).window?.Telegram?.WebApp;
+    const isTgWebApp = Boolean(tg && typeof tg.openInvoice === 'function');
+    const payWindow = !isTgWebApp ? (globalThis as any).window?.open('about:blank', '_blank') : null;
 
     try {
       trackEvent('payment_attempt', {
@@ -148,9 +203,9 @@ export default function SubscriptionPage() {
       }
 
       const invoiceLink = data.invoiceLink;
-      const tg = (globalThis as any).window?.Telegram?.WebApp;
+      setInvoiceUrl(invoiceLink);
       
-      if (tg && typeof tg.openInvoice === 'function') {
+      if (isTgWebApp) {
         tg.openInvoice(invoiceLink, async (status: string) => {
           if (status === 'paid') {
             setPaymentStatus('processing');
@@ -162,12 +217,8 @@ export default function SubscriptionPage() {
           }
         });
       } else {
-        const payWindow = (globalThis as any).window?.open(invoiceLink, '_blank');
-        if (!payWindow) {
-          if ((globalThis as any).window) {
-            (globalThis as any).window.location.href = invoiceLink;
-          }
-          return;
+        if (payWindow && !payWindow.closed) {
+          payWindow.location.href = invoiceLink;
         }
 
         const initialBalance = profile.credits_balance || 0;
@@ -201,6 +252,7 @@ export default function SubscriptionPage() {
         }, 3000);
       }
     } catch (err: any) {
+      if (payWindow && !payWindow.closed) payWindow.close();
       console.error('[Telegram Stars Payment] Initiation failed:', err);
       setPaymentStatus('idle');
       (globalThis as any).alert?.(locale === 'ru' ? 'Ошибка генерации счета' : 'Error generating invoice');
@@ -459,26 +511,53 @@ export default function SubscriptionPage() {
               className="relative w-full max-w-sm overflow-hidden border border-white/10 bg-black/80 p-8 shadow-[0_0_50px_rgba(0,0,0,0.5)] backdrop-blur-2xl transition-all duration-300 rounded-[2.5rem]"
             >
               {/* Close Button */}
-              {paymentStatus !== 'processing' && (
-                <button
-                  onClick={() => setIsPaymentModalOpen(false)}
-                  className="absolute right-6 top-6 rounded-full p-2 text-white/20 hover:bg-white/5 hover:text-white transition-all z-20"
-                >
-                  <X size={18} />
-                </button>
-              )}
+              <button
+                onClick={() => {
+                  if (pollingRef.current) {
+                    clearInterval(pollingRef.current);
+                    pollingRef.current = null;
+                  }
+                  setPaymentStatus('idle');
+                  setIsPaymentModalOpen(false);
+                }}
+                className="absolute right-6 top-6 rounded-full p-2 text-white/20 hover:bg-white/5 hover:text-white transition-all z-20"
+              >
+                <X size={18} />
+              </button>
 
               {paymentStatus === 'processing' ? (
-                <div className="py-12 flex flex-col items-center justify-center space-y-4 text-center animate-pulse">
+                <div className="py-8 flex flex-col items-center justify-center space-y-4 text-center">
                   <Loader2 className="w-10 h-10 text-purple-400 animate-spin" />
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-white">
                     {locale === 'ru' ? 'ОЖИДАНИЕ ОПЛАТЫ...' : 'WAITING FOR PAYMENT...'}
                   </p>
-                  <p className="text-[10px] text-white/40 leading-relaxed max-w-[200px]">
+                  <p className="text-[11px] text-white/60 leading-relaxed max-w-[240px]">
                     {locale === 'ru' 
-                      ? 'Пожалуйста, завершите платеж в открывшемся окне Telegram.' 
-                      : 'Please complete the payment in the opened Telegram window.'}
+                      ? 'Пожалуйста, завершите платеж через Telegram Stars. Если окно не открылось автоматически — нажмите кнопку ниже:' 
+                      : 'Please complete the payment in Telegram. If the window did not open automatically, click below:'}
                   </p>
+                  {invoiceUrl && (
+                    <a
+                      href={invoiceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3.5 px-4 rounded-2xl bg-gradient-to-r from-purple-600 to-blue-600 text-white text-xs font-black uppercase tracking-wider hover:brightness-110 transition-all shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <span>{locale === 'ru' ? '⭐ Открыть счёт в Telegram →' : '⭐ Open Invoice in Telegram →'}</span>
+                    </a>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (pollingRef.current) {
+                        clearInterval(pollingRef.current);
+                        pollingRef.current = null;
+                      }
+                      setPaymentStatus('idle');
+                    }}
+                    className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white pt-2 transition-all"
+                  >
+                    {locale === 'ru' ? '← Отмена / Назад' : '← Cancel / Back'}
+                  </button>
                 </div>
               ) : paymentStatus === 'success' ? (
                 <div className="text-center py-6 space-y-6">

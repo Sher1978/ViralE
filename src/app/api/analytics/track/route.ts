@@ -88,16 +88,26 @@ export async function POST(req: Request) {
 
               const currentData = prof?.raw_onboarding_data || {};
               const events = Array.isArray(currentData.recent_events) ? currentData.recent_events : [];
-              events.push({
-                event: eventName,
-                time: new Date().toISOString(),
-                properties,
-                clarityReplayUrl,
-                posthogReplayUrl
-              });
-              // Keep last 30 events
-              currentData.recent_events = events.slice(-30);
-              await supabaseAdmin.from('profiles').update({ raw_onboarding_data: currentData }).eq('id', userId);
+              const lastEvt = events[events.length - 1];
+              const isDuplicateIdentify =
+                eventName === 'user_identified' &&
+                lastEvt?.event === 'user_identified' &&
+                lastEvt?.time &&
+                Date.now() - new Date(lastEvt.time).getTime() < 10 * 60 * 1000;
+
+              if (!isDuplicateIdentify) {
+                events.push({
+                  event: eventName,
+                  time: new Date().toISOString(),
+                  properties,
+                  clarityReplayUrl,
+                  posthogReplayUrl
+                });
+                // Keep last 30 events and always preserve welcome_credits_granted
+                currentData.recent_events = events.slice(-30);
+                currentData.welcome_credits_granted = true;
+                await supabaseAdmin.from('profiles').update({ raw_onboarding_data: currentData }).eq('id', userId);
+              }
             }
           } else {
             console.error('[Analytics Track] Supabase insert error:', insertError);

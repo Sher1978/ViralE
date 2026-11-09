@@ -82,6 +82,7 @@ export function PremiumLimitModal({
   const [selectedTopUp, setSelectedTopUp] = React.useState<number>(1); // Default to popular package
   const [selectedPlan, setSelectedPlan] = React.useState<string>('pro');
   const [paymentStatus, setPaymentStatus] = React.useState<'idle' | 'processing' | 'success'>('idle');
+  const [invoiceUrl, setInvoiceUrl] = React.useState<string | null>(null);
   const [userProfile, setUserProfile] = React.useState<any>(null);
   const [liveBalance, setLiveBalance] = React.useState<number | undefined>(balance);
 
@@ -115,6 +116,7 @@ export function PremiumLimitModal({
       // Reset state when opening modal
       setShowCheckout(false);
       setPaymentStatus('idle');
+      setInvoiceUrl(null);
     } else {
       // Clear polling when modal is closed
       if (pollingRef.current) {
@@ -146,12 +148,18 @@ export function PremiumLimitModal({
   const handlePayment = async () => {
     trackEvent('payment_attempt', { source: 'premium_limit_modal', tab: billingTab, itemId: billingTab === 'topup' ? selectedTopUp : selectedPlan, locale }, { notifyAdmin: true, title: 'ПОПЫТКА ОПЛАТЫ (МОДАЛКА)', description: `Пользователь нажал оплатить в модальном окне (${billingTab === 'topup' ? 'TopUp #' + selectedTopUp : 'Тариф ' + selectedPlan})` });
     setPaymentStatus('processing');
+    setInvoiceUrl(null);
     
     // Clear any active polling first
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
       pollingRef.current = null;
     }
+
+    const tg = (globalThis as any).window?.Telegram?.WebApp;
+    const isTgWebApp = Boolean(tg && typeof tg.openInvoice === 'function');
+    // Pre-open popup synchronously on user tap to prevent mobile browser popup blockers
+    const payWindow = !isTgWebApp ? (globalThis as any).window?.open('about:blank', '_blank') : null;
 
     try {
       // 1. Call API to create Telegram Stars Invoice Link
@@ -171,11 +179,10 @@ export function PremiumLimitModal({
       }
 
       const invoiceLink = data.invoiceLink;
+      setInvoiceUrl(invoiceLink);
 
       // 2. Open invoice link according to the active platform context
-      const tg = (globalThis as any).window?.Telegram?.WebApp;
-      
-      if (tg && typeof tg.openInvoice === 'function') {
+      if (isTgWebApp) {
         // native Mini App context
         tg.openInvoice(invoiceLink, async (status: string) => {
           if (status === 'paid') {
@@ -196,15 +203,13 @@ export function PremiumLimitModal({
         });
       } else {
         // Standard Web Browser Context
-        const payWindow = (globalThis as any).window?.open(invoiceLink, '_blank');
-        if (!payWindow) {
-          // Fallback if popup blocker block is triggered
-          (globalThis as any).window.location.href = invoiceLink;
-          return;
+        if (payWindow && !payWindow.closed) {
+          payWindow.location.href = invoiceLink;
         }
 
         // Poll for profile credit updates since payment is completed asynchronously on Telegram
         const initialBalance = liveBalance || 0;
+        const initialTier = userProfile?.tier || 'free';
         let attempts = 0;
         const maxAttempts = 60; // 3 minutes limit
 
@@ -221,7 +226,7 @@ export function PremiumLimitModal({
 
           try {
             const u = await profileService.getOrCreateProfile();
-            if (u && u.credits_balance > initialBalance) {
+            if (u && (u.credits_balance > initialBalance || (billingTab === 'plans' && u.tier !== initialTier))) {
               setLiveBalance(u.credits_balance);
               setUserProfile(u);
               setPaymentStatus('success');
@@ -237,6 +242,9 @@ export function PremiumLimitModal({
         }, 3000);
       }
     } catch (err: any) {
+      if (payWindow && !payWindow.closed) {
+        payWindow.close();
+      }
       console.error('[Telegram Stars Payment] Initiation failed:', err);
       setPaymentStatus('idle');
       if (typeof (globalThis as any).window !== 'undefined') {
@@ -288,15 +296,39 @@ export function PremiumLimitModal({
           {showCheckout ? (
             <div className="space-y-6">
               {paymentStatus === 'processing' ? (
-                /* Processing State Spinner */
-                <div className="py-12 flex flex-col items-center justify-center space-y-4 text-center animate-pulse">
+                /* Processing State with Direct Telegram Link Fallback */
+                <div className="py-8 flex flex-col items-center justify-center space-y-4 text-center">
                   <Loader2 className="w-10 h-10 text-cyan-400 animate-spin" />
                   <p className="text-xs font-black uppercase tracking-[0.2em] text-white">
-                    {locale === 'ru' ? 'БЕЗОПАСНАЯ ОПЛАТА...' : 'SECURE PAYMENT PROCESSING...'}
+                    {locale === 'ru' ? 'ОЖИДАНИЕ ОПЛАТЫ В TELEGRAM...' : 'WAITING FOR TELEGRAM PAYMENT...'}
                   </p>
-                  <p className="text-[10px] text-white/40 leading-relaxed max-w-[200px]">
-                    {locale === 'ru' ? 'Связь с банком-эквайером и начисление...' : 'Establishing bank connection & crediting account...'}
+                  <p className="text-[11px] text-white/60 leading-relaxed max-w-[240px]">
+                    {locale === 'ru'
+                      ? 'Завершите оплату через Telegram Stars в открывшемся окне. Если окно не открылось автоматически — нажмите кнопку ниже:'
+                      : 'Complete the payment via Telegram Stars. If the window did not open automatically, click the button below:'}
                   </p>
+                  {invoiceUrl && (
+                    <a
+                      href={invoiceUrl}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-500 to-blue-600 text-white text-xs font-black uppercase tracking-wider hover:brightness-110 transition-all shadow-lg flex items-center justify-center gap-2"
+                    >
+                      <span>{locale === 'ru' ? '⭐ Открыть счёт в Telegram →' : '⭐ Open Invoice in Telegram →'}</span>
+                    </a>
+                  )}
+                  <button
+                    onClick={() => {
+                      if (pollingRef.current) {
+                        clearInterval(pollingRef.current);
+                        pollingRef.current = null;
+                      }
+                      setPaymentStatus('idle');
+                    }}
+                    className="text-[10px] font-bold uppercase tracking-widest text-white/40 hover:text-white pt-2 transition-all"
+                  >
+                    {locale === 'ru' ? '← Выбрать другой пакет' : '← Choose another pack'}
+                  </button>
                 </div>
               ) : paymentStatus === 'success' ? (
                 /* Payment Success View */
@@ -508,7 +540,7 @@ export function PremiumLimitModal({
               )}
 
               {/* Credit Breakdown Info Block */}
-              {(type === 'tier' || type === 'tier_upgrade') && (
+              {(type === 'tier' || type === 'tier_upgrade' || type === 'credits' || type === 'trial') && (
                 <div className="mb-6 p-4 bg-cyan-500/10 border border-cyan-500/20 rounded-2xl relative group space-y-2">
                   <div className="flex gap-2.5 items-start">
                     <Info className="w-4 h-4 text-cyan-400 shrink-0 mt-0.5" />
@@ -519,7 +551,7 @@ export function PremiumLimitModal({
                       <div className="text-[9px] text-white/70 leading-relaxed space-y-0.5 mt-2">
                         <div className="flex justify-between border-b border-white/5 pb-1">
                           <span>{locale === 'ru' ? '1. ИИ-Сценарий по вашей теме' : '1. AI Script Generation'}</span>
-                          <span className="font-mono text-cyan-400">5 CR</span>
+                          <span className="font-mono text-cyan-400">15 CR</span>
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-1 pt-1">
                           <span>{locale === 'ru' ? '2. Запись с Телесуфлёром' : '2. Teleprompter Recording'}</span>
@@ -527,7 +559,7 @@ export function PremiumLimitModal({
                         </div>
                         <div className="flex justify-between border-b border-white/5 pb-1 pt-1">
                           <span>{locale === 'ru' ? '3. Автомонтаж (Караоке CC + B-Roll + MP4)' : '3. Auto-Montage (Karaoke CC + B-Roll + MP4)'}</span>
-                          <span className="font-mono text-cyan-400">45 CR</span>
+                          <span className="font-mono text-cyan-400">35 CR</span>
                         </div>
                         <div className="flex justify-between pt-1 font-bold text-white">
                           <span>{locale === 'ru' ? 'Итого за 1 готовый ролик:' : 'Total per 1 finished video:'}</span>
@@ -573,25 +605,36 @@ export function PremiumLimitModal({
                       {locale === 'ru' ? 'Дальше' : 'Proceed'}
                     </button>
                   </div>
-                ) : (type === 'tier_upgrade' || type === 'trial' || type === 'credits') ? (
-                  <button
-                    onClick={() => {
-                      const target = returnUrl || (typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '');
-                      const subUrl = target 
-                        ? `/app/profile/subscription?returnUrl=${encodeURIComponent(target)}`
-                        : '/app/profile/subscription';
-                      router.push(subUrl);
-                      onClose();
-                    }}
-                    className="group relative w-full overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 p-5 text-white transition-all hover:brightness-110 active:scale-95 shadow-[0_10px_30px_rgba(147,51,234,0.3)] font-mono rounded-2xl"
-                  >
-                    <div className="relative z-10 flex items-center justify-center gap-3">
-                      <span className="text-xs font-black uppercase tracking-tighter italic text-white">
-                        {locale === 'ru' ? 'Перейти к Тарифам →' : 'View Plans →'}
-                      </span>
-                      <ArrowRight className="h-4 w-4 text-white transition-transform group-hover:translate-x-1" />
-                    </div>
-                  </button>
+                ) : (type === 'tier_upgrade' || type === 'tier' || type === 'trial' || type === 'credits') ? (
+                  <div className="space-y-2.5">
+                    <button
+                      onClick={() => {
+                        setBillingTab(type === 'tier_upgrade' || type === 'tier' ? 'plans' : 'topup');
+                        setShowCheckout(true);
+                      }}
+                      className="group relative w-full overflow-hidden bg-gradient-to-r from-purple-600 to-indigo-600 p-5 text-white transition-all hover:brightness-110 active:scale-95 shadow-[0_10px_30px_rgba(147,51,234,0.3)] font-mono rounded-2xl"
+                    >
+                      <div className="relative z-10 flex items-center justify-center gap-3">
+                        <span className="text-xs font-black uppercase tracking-tighter italic text-white">
+                          {locale === 'ru' ? 'Пополнить от $4 / Выбрать Тариф →' : 'Top Up from $4 / View Plans →'}
+                        </span>
+                        <ArrowRight className="h-4 w-4 text-white transition-transform group-hover:translate-x-1" />
+                      </div>
+                    </button>
+                    <button
+                      onClick={() => {
+                        const target = returnUrl || (typeof window !== 'undefined' ? (window.location.pathname + window.location.search) : '');
+                        const subUrl = target 
+                          ? `/app/profile/subscription?returnUrl=${encodeURIComponent(target)}`
+                          : '/app/profile/subscription';
+                        router.push(subUrl);
+                        onClose();
+                      }}
+                      className="w-full py-2 text-[9px] font-black uppercase tracking-widest text-purple-300/70 hover:text-purple-300 transition-all text-center"
+                    >
+                      {locale === 'ru' ? 'Открыть полное описание тарифов →' : 'Open Full Plans Comparison →'}
+                    </button>
+                  </div>
                 ) : (
                   <button
                     onClick={onClose}

@@ -159,7 +159,22 @@ export default function ScriptLabPage() {
       router.replace(`/app/projects/new/script?projectId=${data.projectId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Restart generation failed:', err);
-      setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
+      const isCreditError = err.message === 'Insufficient credits' ||
+                            err.message?.includes('Insufficient credits') ||
+                            err.message?.includes('Недостаточно кредитов') ||
+                            err.message?.includes('Бесплатный лимит сценариев исчерпан') ||
+                            err.message?.includes('limit reached') ||
+                            err.message?.includes('Limit reached');
+      if (isCreditError) {
+        setLimitModalData({
+          title: locale === 'ru' ? 'Пополните баланс' : 'Top Up Required',
+          desc: err.message,
+          type: 'credits'
+        });
+        setShowLimitModal(true);
+      } else {
+        setError(err.message || (locale === 'ru' ? 'Произошла ошибка' : 'An error occurred'));
+      }
       setIsGenerating(false);
     } finally {
       setIsLoading(false);
@@ -502,13 +517,13 @@ export default function ScriptLabPage() {
   };
 
   const handleApplyRefinement = async (instruction: string) => {
-    // Threshold check
-    if ((user?.credits_balance || 0) < 50 && user?.tier !== 'pro') {
+    // Threshold check (2 CR required per refinement)
+    if ((user?.credits_balance || 0) < 2 && user?.tier !== 'pro' && user?.tier !== 'scale') {
       setLimitModalData({
-        title: locale === 'ru' ? 'Лимит исчерпан' : 'Limit Reached',
+        title: locale === 'ru' ? 'Недостаточно кредитов' : 'Insufficient Credits',
         desc: locale === 'ru' 
-          ? 'Для редактирования сценария нужно минимум 50 кредитов. Пополните баланс, чтобы продолжить.' 
-          : 'Minimum 50 credits required for adjustment. Please refill your balance to continue.',
+          ? 'Для редактирования сценария нужно 2 кредита (CR). Пополните баланс, чтобы продолжить.' 
+          : '2 credits (CR) required for script adjustment. Please refill your balance to continue.',
         type: 'credits'
       });
       setShowLimitModal(true);
@@ -758,6 +773,9 @@ export default function ScriptLabPage() {
     } catch (err: any) {
       console.error('[ScriptLab] Generation failed:', err);
       const isCreditError = err.message === 'Insufficient credits' || 
+                            err.message?.includes('Insufficient credits') ||
+                            err.message?.includes('Недостаточно кредитов') ||
+                            err.message?.includes('Бесплатный лимит сценариев исчерпан') ||
                             err.message?.includes('limit reached') || 
                             err.message?.includes('Limit reached') ||
                             err.message?.includes('limit (3) reached') ||
@@ -766,7 +784,7 @@ export default function ScriptLabPage() {
       
       if (isCreditError) {
         setLimitModalData({
-          title: locale === 'ru' ? 'Лимит ИИ' : 'AI Limit',
+          title: locale === 'ru' ? 'Пополните баланс' : 'Top Up Required',
           desc: err.message,
           type: 'credits'
         });
@@ -823,7 +841,22 @@ export default function ScriptLabPage() {
       router.replace(`/app/projects/new/script?projectId=${data.projectId}&versionId=${data.versionId}`);
     } catch (err: any) {
       console.error('[ScriptLab] Full script generation failed:', err);
-      setError(err.message || 'Error generating script');
+      const isCreditError = err.message === 'Insufficient credits' ||
+                            err.message?.includes('Insufficient credits') ||
+                            err.message?.includes('Недостаточно кредитов') ||
+                            err.message?.includes('Бесплатный лимит сценариев исчерпан') ||
+                            err.message?.includes('limit reached') ||
+                            err.message?.includes('Limit reached');
+      if (isCreditError) {
+        setLimitModalData({
+          title: locale === 'ru' ? 'Пополните баланс' : 'Top Up Required',
+          desc: err.message,
+          type: 'credits'
+        });
+        setShowLimitModal(true);
+      } else {
+        setError(err.message || 'Error generating script');
+      }
     } finally {
       setIsLoading(false);
     }
